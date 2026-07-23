@@ -6,7 +6,7 @@
 # `__cancel_pending` on the next poll and exit via CancelledError
 # rather than completing the sleep. `slow finished` never prints.
 import asyncio
-from tpy import Int32
+from tpy import Int32, Own
 
 
 async def slow() -> Int32:
@@ -22,7 +22,7 @@ async def slow() -> Int32:
         raise
 
 
-async def gather_helper() -> list[Int32]:
+async def gather_helper() -> Own[list[Int32]]:
     tasks: list[asyncio.Task[Int32]] = []
     tasks.append(asyncio.create_task(slow()))
     tasks.append(asyncio.create_task(slow()))

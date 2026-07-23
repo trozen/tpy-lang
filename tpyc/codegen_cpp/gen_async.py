@@ -60,6 +60,7 @@ _FRESH_COLLECTION_NODES = (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
+from ..value_category import async_return_form, AsyncReturnForm
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_owned_in_coro_frame, view_owned_copy_init)
@@ -748,21 +749,32 @@ class AsyncCoroCodegen:
             if p.cpp_name != "__self")
 
     def _ret_cpp(self, func: TpyFunction) -> str:
+        """The coro's Poll payload C++ type, per `async_return_form`:
+        borrow-contract returns (bare reference types and pointer-repr
+        Optionals) use pointer form, matching the sync `to_cpp_return`
+        convention -- so the await binding aliases the source rather than
+        copying. The sync dangling-return check (plus the async Own-param
+        root rule) gates what may be returned as a borrow: sources root
+        in caller-durable storage that outlives the frame. Generic `-> T`
+        defers the split to instantiation via `val_or_ptr_t<T>` (value ->
+        T, object -> T*), mirroring sync's `val_or_ref_t`. Pointer-variant
+        Union returns share the root cause but their await-result consumer
+        (frame-slot binding + isinstance narrowing) is not yet borrow-form
+        aware, and recursive-union wrappers have no pointer spelling --
+        both keep storage form (see BUGS.md)."""
         rt = unwrap_ref_type(func.return_type)
-        # Pointer-repr Optional / pointer-variant Union returns use borrow form
-        # (T* / variant<A*,B*>), matching the sync `to_cpp_return` convention,
-        # so the await binding aliases the source rather than failing to consume
-        # a storage-form Poll payload. The sync dangling-return check already
-        # gates what may be returned as a borrow, and reference-type params live
-        # in the frame by reference (T&), so the borrow points into durable
-        # caller storage that outlives the suspension. Recursive-union wrappers
-        # keep storage form (their borrow return is `X&`, which cannot live in
-        # Poll<...>); value types are unaffected.
-        if isinstance(rt, OptionalType) and rt.uses_pointer_repr():
-            return rt.to_cpp_return()
-        # Pointer-variant Union returns share the root cause but their await-
-        # result consumer (frame-slot binding + isinstance narrowing) is not yet
-        # borrow-form aware, so they keep storage form for now.
+        form = async_return_form(func.return_type)
+        if form is AsyncReturnForm.BORROW:
+            bare = unwrap_readonly(unwrap_send_sync(rt))
+            if isinstance(bare, OptionalType):
+                return rt.to_cpp_return()
+            const_pfx = "const " if isinstance(rt, ReadonlyType) else ""
+            return f"{const_pfx}{self.types.type_to_cpp(bare)}*"
+        if form is AsyncReturnForm.TRAIT:
+            bare = unwrap_readonly(unwrap_send_sync(rt))
+            trait = ("val_or_cptr_t" if isinstance(rt, ReadonlyType)
+                     else "val_or_ptr_t")
+            return f"::tpy::{trait}<{self.types.type_to_cpp(bare)}>"
         return self.types.type_to_cpp(rt)
 
     def _is_void_return(self, func: TpyFunction) -> bool:
@@ -2275,6 +2287,23 @@ class AsyncCoroCodegen:
                         # `aliases`); only the const fact is recorded here,
                         # where the initializing decl is in hand.
                         const_aliases.add(s.name)
+                elif isinstance(s, TpyWith) and s.is_async:
+                    # An `async with ... as t` whose __aenter__ result is a
+                    # borrow (pointer Poll payload): the as-binding must
+                    # alias, not copy -- same rule as the await-init
+                    # VarDecl arm above. Gated on the item's own
+                    # enter_type, not frame_local_types: the with-prescan
+                    # appends the as-target to generator_locals only
+                    # later, at struct emission.
+                    for it in s.items:
+                        if (it.target is not None
+                                and it.aenter_result_is_borrow
+                                and it.enter_type is not None
+                                and self.statements._is_plain_nonvalue(
+                                    unwrap_ref_type(it.enter_type))):
+                            aliases.add(it.target)
+                            if it.aenter_result_is_const:
+                                const_aliases.add(it.target)
                 elif isinstance(s, TpyTupleUnpack):
                     # For-loop element unpacks (`idx, it = __for_tup`) already
                     # get pointer-form slots via the loop machinery's

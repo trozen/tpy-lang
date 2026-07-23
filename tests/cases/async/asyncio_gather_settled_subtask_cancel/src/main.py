@@ -30,7 +30,7 @@ async def canceller(target: Own[asyncio.Task[Int32]]) -> None:
     target.cancel()
 
 
-async def gather_helper() -> list[asyncio.Settled[Int32]]:
+async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
     a = asyncio.create_task(slow())
     b = asyncio.create_task(fast())
     # Hand a clone to the canceller; cancel propagates through the shared

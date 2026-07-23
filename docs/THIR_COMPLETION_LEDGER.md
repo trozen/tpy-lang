@@ -578,6 +578,15 @@ deferred (self-contained) / blocked-on-`<rung>`.
   limitation, not a correctness constraint. Surfaced by the /tpy-ready retrospective of
   the resumable container-return cell.
 
+- **Async BORROW-form returns** (`return.borrow_form`, `_lower_resumable_return_value`):
+  a bare reference-type async return has a pointer Poll payload (`Poll<C*>`, the async
+  borrow-return ABI); the `&(...)` lift and its alias-source renders are unported, so
+  the body falls back (8 async cases marked no_thir carry the shape or its erased
+  task-layer consumers). The generic TRAIT form (`val_or_ptr_t<T>` +
+  `to_val_or_ptr` lift) IS mirrored (the `async_ret_val_or_ptr` THIRCoerce). To CLOSE:
+  mirror the borrow lift (form-driven, one arm) plus the await-site pointer-alias
+  binding consumers.
+
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
   write/return + move): **DONE**.

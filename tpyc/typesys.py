@@ -3997,6 +3997,13 @@ def make_cancellable(awaited_type: 'TpyType') -> 'NominalType':
     Cancellable structurally extends Awaitable via its `__poll__` member,
     so `await coro` and other Awaitable-consumer sites continue to work."""
     from tpyc import qnames
+    # Own is a return-ABI decoration, not part of what type the awaited
+    # result is: `-> Own[C]` and `-> C` both await to a C. Normalizing it
+    # out here lets an Own-returning coro match `Own[Cancellable[T]]`
+    # consumers (run / create_task / wait_for) at T=C; the borrow-vs-own
+    # distinction lives on `FunctionInfo.async_inner_return`.
+    if isinstance(awaited_type, OwnType):
+        awaited_type = awaited_type.wrapped
     # is_dynamic_protocol matches the lib declaration (tpy.coro.Cancellable
     # is @dynamic); without it is_dyn_protocol() disagrees with the
     # registry's protocol_info and Own[Cancellable[T]] renders as the
@@ -4034,6 +4041,11 @@ class ConcreteCoroType(NominalType):
     # Defining module when it differs from the binding module (qualifies
     # the struct name with the callee's C++ namespace).
     coro_module_qual: 'str | None' = None
+    # Awaiting this handle yields a borrow (pointer Poll payload aliasing
+    # caller-durable storage), per the callee's declared-return form. A
+    # borrow-result handle is direct-await-only: it must never erase to
+    # Own[Cancellable[T]] (task results are owned slots).
+    result_is_borrow: bool = False
 
     def to_cpp(self) -> str:
         raise RuntimeError(
@@ -4052,13 +4064,15 @@ class ConcreteCoroType(NominalType):
             coro_func_name=self.coro_func_name,
             coro_owner=self.coro_owner,
             coro_inferred_type_args=self.coro_inferred_type_args,
-            coro_module_qual=self.coro_module_qual)
+            coro_module_qual=self.coro_module_qual,
+            result_is_borrow=self.result_is_borrow)
 
 
 def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
                        owner: 'NominalType | None' = None,
                        inferred_type_args: 'tuple[TpyType, ...] | None' = None,
-                       module_qual: 'str | None' = None) -> 'ConcreteCoroType':
+                       module_qual: 'str | None' = None,
+                       result_is_borrow: bool = False) -> 'ConcreteCoroType':
     from tpyc import qnames
     return ConcreteCoroType(
         name="Cancellable", type_args=(awaited_type,),
@@ -4066,7 +4080,8 @@ def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
         _module_qname=qnames.CANCELLABLE,
         coro_func_name=func_name, coro_owner=owner,
         coro_inferred_type_args=inferred_type_args,
-        coro_module_qual=module_qual)
+        coro_module_qual=module_qual,
+        result_is_borrow=result_is_borrow)
 
 
 # Singleton for the non-generic Waker type. Registered as a value-type
@@ -5280,6 +5295,13 @@ class FunctionInfo:
     is_staticmethod: bool = False
     is_async: bool = False  # `async def` -- factory returns a coroutine struct
     is_generator: bool = False  # `yield` body -- factory returns an iterator/frame that borrows the receiver + args
+    # async def only: the raw declared return (`C`, `Own[C]`, `T`, ...)
+    # BEFORE the Cancellable[T] wrap. `return_type` carries the wrapped,
+    # Own-normalized call-site type, which cannot distinguish a borrow
+    # contract (`-> C`) from an ownership one (`-> Own[C]`); the
+    # async-return-form classification (value_category.async_return_form)
+    # reads this field.
+    async_inner_return: Optional[TpyType] = None
     is_property_getter: bool = False
     is_property_setter: bool = False
     property_name: Optional[str] = None  # for setter: which property it belongs to

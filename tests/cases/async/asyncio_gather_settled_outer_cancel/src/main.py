@@ -6,7 +6,7 @@
 # behavior is for an *independently-cancelled sub-task* -- see
 # asyncio_gather_settled_subtask_cancel.)
 import asyncio
-from tpy import Int32
+from tpy import Int32, Own
 
 
 async def slow() -> Int32:
@@ -16,7 +16,7 @@ async def slow() -> Int32:
     return Int32(0)
 
 
-async def gather_helper() -> list[asyncio.Settled[Int32]]:
+async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
     tasks: list[asyncio.Task[Int32]] = []
     tasks.append(asyncio.create_task(slow()))
     tasks.append(asyncio.create_task(slow()))

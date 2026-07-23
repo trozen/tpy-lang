@@ -62,7 +62,7 @@ from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
-from ..value_category import is_rvalue_source
+from ..value_category import is_rvalue_source, async_result_aliases
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -2379,7 +2379,10 @@ class ExpressionAnalyzer:
             source_fi = resolved_fi if resolved_fi is not None else async_fi
             # Frame Send/Sync: the sub-coro is stored inline in this frame
             self.ctx.func.current_awaited_subframes.append(async_fi)
-            return self._unwrap_awaitable_return(source_fi.return_type)
+            inner = self._unwrap_awaitable_return(source_fi.return_type)
+            expr.await_result_is_borrow = async_result_aliases(
+                source_fi.async_inner_return, inner)
+            return inner
 
         # Type-erased path: analyze operand. Supported v1 erased forms:
         #   - tpy.Task[T]            (heap-erased coroutine frame)
@@ -2418,7 +2421,10 @@ class ExpressionAnalyzer:
                         self.ctx.registry.get_record_for_type(owner_type))
                 if mfi.return_type is not None:
                     self.ctx.func.current_awaited_subframes.append(mfi)
-                    return self._unwrap_awaitable_return(mfi.return_type)
+                    inner = self._unwrap_awaitable_return(mfi.return_type)
+                    expr.await_result_is_borrow = async_result_aliases(
+                        mfi.async_inner_return, inner)
+                    return inner
         # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
         # is a valid await operand -- strip the Own[] before structural
         # matching so the inner Task[T] / Awaitable conformance check fires.
@@ -2445,6 +2451,7 @@ class ExpressionAnalyzer:
                 # Erased-equivalent conservative frame classification.
                 self.ctx.func.current_awaited_subframes.append(None)
                 self._mark_await_operand_mutated(operand)
+                expr.await_result_is_borrow = unwrapped.result_is_borrow
                 return unwrapped.type_args[0]
             # Cancellable only: the structural Awaitable[T] has no @dynamic
             # C++ base to poll through, so it stays rejected below.

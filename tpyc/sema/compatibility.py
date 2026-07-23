@@ -22,8 +22,9 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
-    disambiguated_pair)
+    disambiguated_pair, ConcreteCoroType)
 from .. import qnames
+from ..value_category import async_result_aliases
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -32,7 +33,7 @@ from ..parse import (
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
-    SourceLocation
+    TpyAwait, SourceLocation
 )
 
 
@@ -1535,6 +1536,29 @@ class TypeCompatibility:
 
         return coercion
 
+    def _borrow_coro_awaited_inner(self, expr: TpyExpr,
+                                   actual_bare: TpyType) -> 'TpyType | None':
+        """The awaited inner type when `expr` is a borrow-returning
+        coroutine (a direct async-def call result, or a bound concrete
+        handle carrying `result_is_borrow`); None otherwise. Consumed by
+        the erasure-boundary reject in `coerce_expr`."""
+        inner_t = (actual_bare.wrapped if isinstance(actual_bare, OwnType)
+                   else actual_bare)
+        inner_t = unwrap_readonly(inner_t)
+        if isinstance(inner_t, ConcreteCoroType):
+            return inner_t.type_args[0] if inner_t.result_is_borrow else None
+        if not (isinstance(inner_t, NominalType)
+                and inner_t.qualified_name() == qnames.CANCELLABLE
+                and inner_t.type_args):
+            return None
+        fi = getattr(expr, "resolved_function_info", None)
+        if fi is None or not getattr(fi, "is_async", False):
+            return None
+        awaited = inner_t.type_args[0]
+        return (awaited
+                if async_result_aliases(fi.async_inner_return, awaited)
+                else None)
+
     def coerce_expr(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
         coercion_ctx: CoercionContext, is_return: bool = False,
@@ -1565,6 +1589,32 @@ class TypeCompatibility:
                     f"handle is single-use; consume it instead (await it, "
                     f"pass it to asyncio.create_task/run, or move it into "
                     f"an Own[Cancellable[T]] slot)",
+                    expr if getattr(expr, "loc", None) else None)
+        # A borrow-returning coroutine is direct-await-only: its Poll
+        # payload is a pointer into caller-durable storage, but every
+        # erased/templated awaitable surface (Own[Cancellable[T]] task
+        # slots, Awaitable/Cancellable-typed params) promises an owned
+        # payload the task layer can park past the source's lifetime.
+        borrowed_inner = self._borrow_coro_awaited_inner(expr, actual_bare)
+        if borrowed_inner is not None:
+            expected_own = unwrap_readonly(unwrap_send_sync(expected))
+            exp_inner = (unwrap_readonly(expected_own.wrapped)
+                         if isinstance(expected_own, OwnType)
+                         else unwrap_readonly(unwrap_ref_type(expected_own)))
+            if (isinstance(exp_inner, NominalType)
+                    and exp_inner.qualified_name() in (qnames.CANCELLABLE,
+                                                       qnames.AWAITABLE)
+                    and (isinstance(expected_own, OwnType)
+                         or coercion_ctx in (CoercionContext.ARG,
+                                             CoercionContext.RETURN))):
+                raise self.ctx.error(
+                    f"cannot pass a borrow-returning coroutine to {context}: "
+                    f"'-> {borrowed_inner}' makes the awaited result a "
+                    f"borrow of the caller's data, which is only valid at a "
+                    f"direct 'await'. This consumer stores an owned result: "
+                    f"declare the async def '-> Own[{borrowed_inner}]' and "
+                    f"return an owned value (tpy.copy(...) a borrowed "
+                    f"source such as 'self')",
                     expr if getattr(expr, "loc", None) else None)
         coercion = self.check_type_compatible(
             actual, expected, context,
@@ -2642,6 +2692,35 @@ class TypeCompatibility:
 
         # List repeat - creates temporary
         if isinstance(expr, TpyListRepeat):
+            return True
+
+        # An awaited result: an owned result is a fresh temporary
+        # materialized in the frame (dangling as a borrow). A
+        # borrow-returning await hands back a pointer whose roots are the
+        # awaited call's receiver / borrowed args (the inner coroutine's
+        # own return check gated its sources to its params/self/fields,
+        # and those bind exactly the call's operands) -- recurse into
+        # them like the sync call/method arms, so a local-rooted receiver
+        # is rejected while a param-rooted one chains. Missing borrow
+        # facts and untraceable operands (a bound handle name) fail
+        # closed.
+        if isinstance(expr, TpyAwait):
+            if not expr.await_result_is_borrow:
+                return True
+            op = expr.value
+            if isinstance(op, (TpyCall, TpyMethodCall)):
+                fi = op.resolved_function_info
+                obj = op.obj if isinstance(op, TpyMethodCall) else None
+                if fi is not None and fi.return_borrows_from:
+                    for idx in fi.return_borrows_from:
+                        src = (obj if idx == -1
+                               else op.args[idx]
+                               if 0 <= idx < len(op.args) else None)
+                        if src is not None and self.is_dangling_return(src):
+                            return True
+                    return False
+                roots = ([obj] if obj is not None else []) + list(op.args)
+                return any(self.is_dangling_return(r) for r in roots)
             return True
 
         # Constructor call - creates temporary

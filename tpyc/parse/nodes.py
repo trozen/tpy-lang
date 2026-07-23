@@ -696,6 +696,11 @@ class TpyAwait(TpyExpr):
     # slot in place (no sub-future field, no allocation). Holds the name.
     awaited_prebuilt_slot: str | None = field(default=None, kw_only=True)
     suspension_index: int | None = field(default=None, kw_only=True)
+    # The awaited coroutine's result is a borrow (pointer payload aliasing
+    # caller-durable storage), per the callee's declared-return form. Set
+    # by sema's await analysis; value_category / binding classification
+    # read it instead of re-deriving the callee convention.
+    await_result_is_borrow: bool = field(default=False, kw_only=True)
 
     def children(self) -> list[TpyExpr]:
         return [self.value]
@@ -1037,6 +1042,12 @@ class TpyWithItem:
     # -- the struct is emitted once, for the defining record.
     aenter_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
     aexit_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
+    # Set by sema for `async with`: __aenter__'s result is a borrow
+    # (pointer Poll payload aliasing the manager), so the as-binding must
+    # be an aliasing pointer frame field, not an owning copy. The const
+    # twin marks a readonly-declared borrow (const T* field).
+    aenter_result_is_borrow: bool = field(default=False, kw_only=True)
+    aenter_result_is_const: bool = field(default=False, kw_only=True)
 
 
 @dataclass

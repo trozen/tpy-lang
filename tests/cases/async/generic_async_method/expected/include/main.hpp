@@ -60,7 +60,7 @@ struct __coro_Container_echo {
     __coro_Container_echo(const Container& __self, ::tpy::param_val_or_ref_t<T> x_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), x(x_) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Container_echo<T>&) {
@@ -70,14 +70,14 @@ struct __coro_Container_echo {
 
 // async def echo[T](self, x: T) -> T:
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Container_echo<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Container_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // return x
         __state = S_DONE;
-        T __tpy_async_ret = x;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

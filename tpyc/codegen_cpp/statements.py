@@ -47,7 +47,7 @@ from ..sema.literal_utils import (
 )
 from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
-from ..value_category import wants_move
+from ..value_category import wants_move, async_return_form, AsyncReturnForm
 from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate, try_terminates_ignoring_finally
@@ -4043,21 +4043,37 @@ class StatementGenerator:
 
     def _async_ret_to_borrow(self, value: TpyExpr, ret_type: TpyType,
                              expr_cpp: str) -> str:
-        """When the coro return slot is borrow form (pointer-repr Optional --
-        see gen_async `_ret_cpp`), lift a storage-form return source (`return
-        h.opt`) into the borrow form via the chokepoint; a borrow source
-        (pointer-local) passes through. None is handled separately (it renders
-        as nullptr for a pointer-repr target). The pointer-variant Union return
-        is excluded -- its await-result consumer is not yet borrow-form aware.
+        """When the coro return slot is borrow form (pointer-repr Optional
+        or a bare reference type -- see gen_async `_ret_cpp`) or the
+        generic `val_or_ptr_t<T>` trait form, lift a storage-form return
+        source into the slot's form; a borrow source (pointer-local)
+        passes through. None is handled separately (it renders as nullptr
+        for a pointer-repr target). The pointer-variant Union return is
+        excluded -- its await-result consumer is not yet borrow-form aware.
         """
-        bare = unwrap_ref_type(ret_type)
-        if not (isinstance(bare, OptionalType) and bare.uses_pointer_repr()):
+        form = async_return_form(ret_type)
+        if form is AsyncReturnForm.STORAGE:
             return expr_cpp
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
+        if form is AsyncReturnForm.TRAIT:
+            # Generic T: the helper borrows (address) into a pointer slot
+            # at an object-typed instantiation and copies into a value
+            # slot -- the same per-instantiation split val_or_ptr_t makes.
+            t_cpp = self.types.type_to_cpp(bare)
+            return (f"::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<{t_cpp}>>"
+                    f"({expr_cpp})")
         src = self.ctx.unwrap_copy(value)
         if isinstance(src, TpyCoerce):
             src = src.expr
+        if isinstance(bare, OptionalType):
+            return self.ctx.convert(
+                FormValue(expr_cpp, bare, self.ctx.source_form(src),
+                          is_const=self.ctx.is_const_storage_source(src)),
+                dst_type=bare, dst_form=CppForm.BORROW)
+        # Bare reference type: the render is an lvalue of the type; its
+        # borrow form is its address (convert's reference-type arm).
         return self.ctx.convert(
-            FormValue(expr_cpp, bare, self.ctx.source_form(src),
+            FormValue(expr_cpp, bare, CppForm.STORAGE,
                       is_const=self.ctx.is_const_storage_source(src)),
             dst_type=bare, dst_form=CppForm.BORROW)
 
@@ -4077,18 +4093,17 @@ class StatementGenerator:
         if leaf is not None:
             # A routed body renders position-blind, replacing only the value
             # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
-            # it skips are no-ops for every admitted return shape (value
-            # scalars, value-opt scalars, value tuples, container storage --
-            # _async_ret_to_borrow short-circuits on anything but a
-            # pointer-repr Optional), and the last-use move it skips is
-            # mirrored at lowering (THIRMove in
-            # _lower_resumable_return_value) with the same site rule via
-            # allow_move below -- so every scaffolding site stays identical.
-            # Serves ReturnT terminators AND nested leaf returns
-            # (THIRResumableReturn's emit hook re-enters _make_async_return,
-            # which lands back here). Widening the return-shape gate must
-            # revisit this seam -- see the THIRResumableBody return_values
-            # contract.
+            # it skips are covered at lowering for every admitted return
+            # shape: STORAGE forms need no lift, the generic TRAIT lift is
+            # mirrored (the async_ret_val_or_ptr THIRCoerce), and BORROW
+            # forms reject to AST fallback. The last-use move it skips is
+            # mirrored too (THIRMove in _lower_resumable_return_value) with
+            # the same site rule via allow_move below -- so every
+            # scaffolding site stays identical. Serves ReturnT terminators
+            # AND nested leaf returns (THIRResumableReturn's emit hook
+            # re-enters _make_async_return, which lands back here).
+            # Widening the return-shape gate must revisit this seam -- see
+            # the THIRResumableBody return_values contract.
             return leaf.render_return_value(stmt, allow_move=allow_move)
         if isinstance(stmt.value, TpyNoneLiteral):
             # The coroutine return slot is storage form: None needs the
@@ -4117,11 +4132,8 @@ class StatementGenerator:
                 stmt.value, expr_cpp, self.ctx.is_indirect_name(stmt.value),
                 target_type=ret_type)
         expr_cpp = self._wrap_view_to_storage(stmt.value, ret_type, expr_cpp)
-        bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
-                if ret_type is not None else None)
         if (allow_move
-                and not (isinstance(bare, OptionalType)
-                         and bare.uses_pointer_repr())):
+                and async_return_form(ret_type) is AsyncReturnForm.STORAGE):
             # Direct-ready storage slot: a last-use movable bare name moves
             # out (the frame is completing, nothing can read it after).
             # Every ctx.movable_locals member is already trusted for
@@ -4131,7 +4143,9 @@ class StatementGenerator:
             # never declared, so the working set alone under-covers it.
             # A coerce-wrapped source is excluded (its render is a fresh
             # conversion temp), and wants_move keeps trivial scalars bare.
-            # Borrow-form slots (pointer-repr Optional) alias, not move.
+            # Borrow-form slots (pointer payloads) and the generic trait
+            # form alias, not move -- the move gate and the borrow lift
+            # are mutually exclusive by form.
             if (isinstance(stmt.value, TpyName)
                     and self.expressions._is_last_use_movable(
                         stmt.value,
@@ -4169,15 +4183,18 @@ class StatementGenerator:
             boundary = self.ctx.async_pending_return_boundary
             assert target_state is not None
             if pending_slot is not None and stmt.value is not None:
+                # The pending slot is typed as the Poll payload (`ret_cpp`),
+                # so a borrow-form return stores its pointer here -- alias-
+                # correct through the suspending finally. For STORAGE
+                # payloads this remains the KNOWN-WRONG eager COPY: a
+                # mutation of the returned local by the suspending finally
+                # is invisible in the returned object (CPython's pending
+                # return aliases), and a @nocopy payload fails to build. A
+                # move is NOT the fix (an alias in the finally would read a
+                # gutted object); the deferral needs a parked discriminant
+                # at AsyncFinallyExit -- tracked in BUGS.md.
                 expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                        to_borrow=False)
-                # KNOWN-WRONG eager COPY for reference payloads: a mutation
-                # of the returned local by the suspending finally is
-                # invisible in the returned object (CPython's pending return
-                # aliases), and a @nocopy payload fails to build. A move is
-                # NOT the fix (an alias in the finally would read a gutted
-                # object); the deferral needs a parked discriminant at
-                # AsyncFinallyExit -- tracked in BUGS.md.
+                                                        to_borrow=True)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-

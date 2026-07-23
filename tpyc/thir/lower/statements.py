@@ -117,7 +117,10 @@ from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...typesys import polymorphic_source_inner
 from ...codegen_cpp.types import resolve_pending_container
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
-from ...value_category import call_returns_cpp_ref, is_rvalue_source, wants_move
+from ...value_category import (
+    call_returns_cpp_ref, is_rvalue_source, wants_move,
+    async_return_form, AsyncReturnForm,
+)
 from ..faces import witness as _witness
 from ..fallback import (
     ThirUnsupported,
@@ -3528,6 +3531,26 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         return value
     value = _wrap_view_owned_return(
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
+    form = async_return_form(lc.func.return_type)
+    if form is AsyncReturnForm.BORROW:
+        # The pointer-payload family (bare reference-type returns; the
+        # pointer-repr Optional slot already rejects upstream at the
+        # return-type admission): the `&(...)` lift and its alias-source
+        # renders are a later rung -- whole-body fallback.
+        note_detail("return.borrow_form")
+        raise ThirUnsupported(stmt_reject_reason(ret))
+    if form is AsyncReturnForm.TRAIT:
+        # Generic `-> T` slot (`val_or_ptr_t<T>`): mirror the AST's
+        # `_async_ret_to_borrow` trait lift. The AST's move gate skips
+        # non-STORAGE forms, so no THIRMove composes with this wrap.
+        t_cpp = lc.render_type(unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(lc.func.return_type))))
+        return THIRCoerce(
+            result_type=value.result_type, expr=value,
+            coercion_name="async_ret_val_or_ptr",
+            wrap=(f"::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<{t_cpp}>>"
+                  f"({{0}})"),
+            loc=getattr(ret, "loc", None))
     # Mirror the AST's direct-ready last-use move (_async_return_value_cpp).
     # The sets agree on every ADMITTED return shape; lc.movable_locals is
     # deliberately partial vs codegen's seeds (owned-tuple params, the
@@ -3536,13 +3559,10 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # position-blind; the emit hook unwraps the THIRMove at pre-finally
     # scaffolding sites (render_return_value's allow_move), matching the
     # AST's site rule. Bare names only (a coerce-wrapped source renders a
-    # fresh conversion temp); the borrow-form pointer-repr Optional slot
-    # aliases instead of moving.
-    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lc.func.return_type)))
-          if isinstance(lc.func.return_type, TpyType) else None)
+    # fresh conversion temp); STORAGE-form slots only (borrow/trait forms
+    # alias, mirroring the AST move gate's form check).
     if (isinstance(ret.value, TpyName)
-            and _is_move_source(ret.value, lc)
-            and not (isinstance(rt, OptionalType) and rt.uses_pointer_repr())):
+            and _is_move_source(ret.value, lc)):
         vt = lc.analyzer.get_expr_type(ret.value)
         vt = unwrap_readonly(vt) if vt is not None else None
         if vt is not None and wants_move(vt):

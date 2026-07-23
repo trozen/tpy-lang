@@ -41,7 +41,7 @@ from ..parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
-    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyFString,
+    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyFString, TpyAwait,
     is_stable_address_lvalue,
 )
 from ..coercions import CoercionContext
@@ -72,7 +72,10 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
-from ..value_category import is_rvalue_source, call_returns_cpp_ref
+from ..value_category import (
+    is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
+    async_return_form, AsyncReturnForm,
+)
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
@@ -191,6 +194,16 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     When a function has return_borrows_from facts, the result variable
     borrows from the indicated argument(s). None means unanalyzed -- skip.
     """
+    if isinstance(expr, TpyAwait):
+        # A borrow-returning await aliases the awaited call's receiver /
+        # borrowed args exactly like the sync call it wraps -- recurse so
+        # the binding demotes a later move of the source (the auto-move
+        # borrow gate). Owned await results are fresh values (nothing to
+        # register); a bound-handle operand has no traceable roots here
+        # (the handle's own binding registered its receiver borrow).
+        if expr.await_result_is_borrow:
+            _register_call_result_borrow(ctx, borrower, expr.value)
+        return
     if isinstance(expr, TpyCall):
         fi = expr.resolved_function_info
         args = expr.args
@@ -585,16 +598,35 @@ class StatementAnalyzer:
         erasure boundary.
         """
         fi = init.resolved_function_info
+        inner = cancellable.type_args[0] if cancellable.type_args else VOID
+        aliases = async_result_aliases(fi.async_inner_return, inner)
+
+        def erased_or_reject() -> TpyType:
+            # The erased handle loses the borrow-result fact, and an
+            # erased Cancellable[T] promises an owned payload -- so a
+            # borrow-returning coroutine must not degrade to it.
+            if aliases:
+                raise self.ctx.error(
+                    f"cannot bind this coroutine to a handle: "
+                    f"'{fi.name}' returns a borrow of '{inner}' (a "
+                    f"reference type), and binding it here requires the "
+                    f"type-erased handle, whose result must be owned. "
+                    f"Declare the async def '-> Own[{inner}]' (return an "
+                    f"owned value; copy a borrowed source explicitly), "
+                    f"or await the call directly",
+                    init)
+            return cancellable
+
         for p in fi.params:
             pt = unwrap_readonly(unwrap_ref_type(p.type))
             if (is_protocol_type(pt) and not is_dyn_protocol(pt)) or is_fn_type(pt):
-                return cancellable
+                return erased_or_reject()
         owner = None
         if isinstance(init, TpyMethodCall):
             recv_type = self.ctx.get_expr_type(init.obj)
             recv_inner = unwrap_own(unwrap_ref_type(recv_type)) if recv_type else None
             if not isinstance(recv_inner, NominalType):
-                return cancellable
+                return erased_or_reject()
             owner = coro_struct_owner(
                 fi.owning_type_qname, recv_inner,
                 self.ctx.registry.get_record_for_type(recv_inner))
@@ -603,11 +635,11 @@ class StatementAnalyzer:
                 and fi.originating_module != self.ctx.module_name):
             module_qual = fi.originating_module
         targs = getattr(init, "inferred_type_args", None)
-        inner = cancellable.type_args[0] if cancellable.type_args else VOID
         return make_concrete_coro(
             inner, fi.name, owner=owner,
             inferred_type_args=tuple(targs) if targs else None,
-            module_qual=module_qual)
+            module_qual=module_qual,
+            result_is_borrow=aliases)
 
     def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
@@ -2862,6 +2894,14 @@ class StatementAnalyzer:
                     and len(enter_type.type_args) == 1):
                 enter_type = enter_type.type_args[0]
             item.enter_type = enter_type
+            if stmt.is_async:
+                item.aenter_result_is_borrow = async_result_aliases(
+                    enter_info.async_inner_return, enter_type)
+                item.aenter_result_is_const = (
+                    item.aenter_result_is_borrow
+                    and isinstance(
+                        unwrap_ref_type(enter_info.async_inner_return),
+                        ReadonlyType))
 
             # Register the as-variable if present
             if item.target is not None:

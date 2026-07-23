@@ -14,6 +14,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -216,22 +217,29 @@ decltype(auto) tuple_elem_ref(T&& x) {
     }
 }
 
-// Build a generic tuple slot from an element lvalue, with the slot type given
-// explicitly (Dest = val_or_ptr_t<T>): borrow into a pointer slot by address
-// (pass already-pointer sources through), construct/copy into a value slot.
-// Dest must be explicit -- the source alone can't distinguish a `T =
-// val_or_ref<U>` instantiation (value slot constructed from U&) from a plain
-// non-value `T = U` (pointer slot taking &x).
+// Build a generic slot value (tuple element or async return payload), with
+// the slot type given explicitly (Dest = val_or_ptr_t<T>): borrow into a
+// pointer slot by address (pass already-pointer sources through), construct/
+// copy/move into a value slot. Dest must be explicit -- the source alone
+// can't distinguish a `T = val_or_ref<U>` instantiation (value slot
+// constructed from U&) from a plain non-value `T = U` (pointer slot taking
+// &x). Forwarding reference: a source whose render is an lvalue at an
+// object-typed instantiation (a borrow-returning call) may be a prvalue at a
+// value-typed one, where the value slot absorbs it; sema's borrow gating
+// makes a temporary at a pointer slot unreachable -- the static_assert
+// documents that invariant.
 template<typename Dest, typename T>
-Dest to_val_or_ptr(T& x) {
+Dest to_val_or_ptr(T&& x) {
     if constexpr (std::is_pointer_v<Dest>) {
-        if constexpr (std::is_pointer_v<std::remove_cv_t<T>>) {
+        if constexpr (std::is_pointer_v<std::remove_cvref_t<T>>) {
             return x;
         } else {
+            static_assert(std::is_lvalue_reference_v<T>,
+                          "borrow slot cannot take a temporary");
             return &x;
         }
     } else {
-        return x;
+        return std::forward<T>(x);
     }
 }
 

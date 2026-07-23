@@ -2370,6 +2370,13 @@ class CodeGenContext:
                 return f"::tpy::tuple_to_pointer<{borrow_cpp}>({val.code})"
             helper = "tuple_to_storage_move" if val.move else "tuple_to_storage"
             return f"::tpy::{helper}<{t.to_cpp()}>({val.code})"
+        # Plain reference type (record / container): the borrow form is a
+        # pointer to the storage lvalue. Only storage->borrow is bridged;
+        # the reverse is a copy -- an ownership decision that belongs to
+        # the producing site, never to a form conversion.
+        if (isinstance(t, NominalType) and not t.is_value_type()
+                and dst_form is CppForm.BORROW):
+            return f"&({val.code})"
         raise NotImplementedError(
             f"convert(): {type(t).__name__} bridging not yet routed through the "
             f"chokepoint (val.form={val.form}, dst_form={dst_form})")

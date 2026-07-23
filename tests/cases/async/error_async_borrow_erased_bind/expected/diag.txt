@@ -1,0 +1,1 @@
+main.py:24: error: cannot bind this coroutine to a handle: 'pick' returns a borrow of 'C' (a reference type), and binding it here requires the type-erased handle, whose result must be owned. Declare the async def '-> Own[C]' (return an owned value; copy a borrowed source explicitly), or await the call directly

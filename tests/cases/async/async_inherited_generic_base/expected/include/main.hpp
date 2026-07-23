@@ -171,7 +171,7 @@ struct __coro_Box_fetch {
     __coro_Box_fetch(Box<T>& __self)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Box_fetch<T>&) {
@@ -181,7 +181,7 @@ struct __coro_Box_fetch {
 
 // async def fetch(self) -> T:
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Box_fetch<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Box_fetch<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -191,13 +191,13 @@ template <typename T>
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // return self.v
         __state = S_DONE;
-        T __tpy_async_ret = __self.v;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.v);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -227,7 +227,7 @@ struct __coro_Guard___aenter__ {
     __coro_Guard___aenter__(Guard<T>& __self)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Guard___aenter__<T>&) {
@@ -237,7 +237,7 @@ struct __coro_Guard___aenter__ {
 
 // async def __aenter__(self) -> T:
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Guard___aenter__<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Guard___aenter__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -247,15 +247,15 @@ template <typename T>
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // self.entered += 1
         __self.entered = ::tpy::add_check<int32_t>(__self.entered, 1);
         // return self.val
         __state = S_DONE;
-        T __tpy_async_ret = __self.val;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.val);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -342,7 +342,7 @@ struct __coro_Counter___anext__ {
     __coro_Counter___anext__(Counter<T>& __self)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Counter___anext__<T>&) {
@@ -352,7 +352,7 @@ struct __coro_Counter___anext__ {
 
 // async def __anext__(self) -> T:
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_Counter___anext__<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Counter___anext__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -362,7 +362,7 @@ template <typename T>
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // if self.cur >= self.limit:
@@ -374,8 +374,8 @@ template <typename T>
         __self.cur = ::tpy::add_check<int32_t>(__self.cur, 1);
         // return self.seed
         __state = S_DONE;
-        T __tpy_async_ret = __self.seed;
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.seed);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

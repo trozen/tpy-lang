@@ -12,18 +12,20 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 `SemanticAnalyzer` satisfy this.
 """
 
+from enum import Enum, auto
 from typing import Any, Protocol
 
 from .typesys import (
     FunctionInfo, TpyType, TypeParamRef, OwnType, OptionalType, UnionType,
-    is_protocol_type, unwrap_ref_type,
+    VoidType, is_protocol_type, unwrap_readonly, unwrap_ref_type,
+    unwrap_send_sync,
 )
 from .parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
-    TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr,
+    TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
 )
 from .type_def_registry import is_bool_type
 
@@ -33,6 +35,68 @@ def wants_move(t: TpyType) -> bool:
     types always, value types only when the copy is expensive (String,
     BigInt, ...). For trivial types std::move is just noise."""
     return not t.is_value_type() or t.is_expensive_copy()
+
+
+class AsyncReturnForm(Enum):
+    """The Poll-payload shape of an `async def -> R` result.
+
+    Mirrors the sync return convention (`call_returns_cpp_ref`): a bare
+    reference-type return is a borrow. A C++ reference cannot live in a
+    Poll payload (it travels by value up the poll chain), so the async
+    borrow form is a pointer.
+    """
+    STORAGE = auto()  # by-value payload: value types, Own[T], unions, ...
+    BORROW = auto()   # pointer payload: T* (incl. pointer-repr Optional)
+    TRAIT = auto()    # generic T: ::tpy::val_or_ptr_t<T> at instantiation
+
+
+def async_return_form(ret_type: 'TpyType | None') -> AsyncReturnForm:
+    """Classify an async def's declared return into its Poll-payload form.
+
+    Kept beside `call_returns_cpp_ref` so the async and sync return
+    conventions can't drift: the same type kinds that make a sync return
+    `T&` make the async payload `T*`. Unions and recursive-union wrappers
+    stay storage form (their borrow-consumer side is not built -- see the
+    pointer-variant Union entry in BUGS.md); protocol returns are
+    value-shaped concrete structs.
+    """
+    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_type)))
+          if ret_type is not None else None)
+    if rt is None or isinstance(rt, (VoidType, OwnType)):
+        return AsyncReturnForm.STORAGE
+    if isinstance(rt, TypeParamRef):
+        return AsyncReturnForm.TRAIT
+    if isinstance(rt, OptionalType):
+        return (AsyncReturnForm.BORROW if rt.uses_pointer_repr()
+                else AsyncReturnForm.STORAGE)
+    if (isinstance(rt, UnionType) or rt.is_value_type()
+            or is_protocol_type(rt) or rt.needs_wrapper()):
+        return AsyncReturnForm.STORAGE
+    return AsyncReturnForm.BORROW
+
+
+def async_result_aliases(declared_return: 'TpyType | None',
+                         inner_type: 'TpyType | None') -> bool:
+    """True when awaiting this coroutine yields a borrow (an alias of
+    caller-durable storage) rather than an owned value.
+
+    `declared_return` is the async def's raw declared return (the
+    pre-Cancellable-wrap `FunctionInfo.async_inner_return`);
+    `inner_type` is the (substituted) awaited type, consulted only for
+    the generic TRAIT form, where borrow-ness is decided per
+    instantiation exactly as `val_or_ptr_t<T>` decides it: non-value ->
+    pointer.
+    """
+    form = async_return_form(declared_return)
+    if form is AsyncReturnForm.BORROW:
+        return True
+    if form is AsyncReturnForm.TRAIT:
+        inner = (unwrap_readonly(unwrap_ref_type(inner_type))
+                 if inner_type is not None else None)
+        return (inner is not None and not inner.is_value_type()
+                and not isinstance(inner, TypeParamRef)
+                and not is_protocol_type(inner))
+    return False
 
 
 class ValueCategoryAnalyzer(Protocol):
@@ -135,6 +199,13 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         if not is_bool_type(result_type):
             return (is_rvalue_source(analyzer, expr.left)
                     and is_rvalue_source(analyzer, expr.right))
+    # An awaited borrow-returning coroutine hands back a pointer into
+    # caller-durable storage -- an lvalue alias, like the sync
+    # borrow-returning call arm below. Owned results stay rvalues. The
+    # fact is stamped on the node by sema's await analysis (the callee's
+    # declared-return form), never re-derived here.
+    if isinstance(expr, TpyAwait):
+        return not expr.await_result_is_borrow
     # An arithmetic binop/unaryop resolved to a dunder follows the method's
     # return convention, like the method-call and subscript arms: a
     # borrow-returning `__add__`/`__neg__` aliases an operand, it does not

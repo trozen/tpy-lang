@@ -39,7 +39,7 @@ struct __coro_unwrap {
     __coro_unwrap(::tpystd::tplib::box::Box<T>& b)
         : __state(S_INITIAL), __cancel_pending(false), b(b) {}
 
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_unwrap<T>&) {
@@ -48,14 +48,14 @@ struct __coro_unwrap {
 };
 // async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
-::tpystd::tpy::Poll<T> __coro_unwrap<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_unwrap<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // return b.get()
         __state = S_DONE;
-        T __tpy_async_ret = b.get();
-        return ::tpystd::tpy::Poll<T>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(b.get());
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

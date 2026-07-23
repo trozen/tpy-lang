@@ -33,7 +33,11 @@ from ._executor import (
 )
 
 
-def run[T](coro: Own[Cancellable[T]]) -> T:
+# `-> Own[T]`: the result is moved out of the task's owned result slot.
+# A bare `-> T` would render the generic borrow convention
+# (val_or_ref_t<T> = T& for object T), which cannot bind the slot's
+# moved-out rvalue -- and a borrow could not outlive the executor anyway.
+def run[T](coro: Own[Cancellable[T]]) -> Own[T]:
     if _get_current_executor() is not None:
         raise RuntimeError(
             "asyncio.run() cannot be called from a running event loop")
@@ -468,7 +472,10 @@ class _WaitForFuture[T]:
 # before polling, so the inner observes `CancelledError` at its
 # suspension point and can run `finally`-with-await cleanup before
 # the cancellation surfaces to the caller.
-async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> T:
+# `-> Own[T]` for the same reason as `run`: the awaited inner result is
+# an owned value moved up the poll chain; a bare `-> T` would make this
+# a borrow contract at object-typed instantiations.
+async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> Own[T]:
     return await _WaitForFuture[T](coro, timeout)
 
 
@@ -629,7 +636,7 @@ class _GatherFuture[T]:
 # heterogeneous variadic form `gather[*Ts](*coros) -> tuple[*Ts]`
 # remains deferred (needs variadic generics + the async-def `*args`
 # codegen fix; see TODO.md / BUGS.md).
-async def gather_list[T](tasks: list[Task[T]]) -> list[T]:
+async def gather_list[T](tasks: list[Task[T]]) -> Own[list[T]]:
     return await _GatherFuture[T](tasks)
 
 
@@ -847,7 +854,7 @@ class _GatherSettledFuture[T]:
 #
 # Sibling of `gather_list` / `gather` (cancel-and-re-raise variants).
 async def gather_list_settled[T](
-        tasks: list[Task[T]]) -> list[Settled[T]]:
+        tasks: list[Task[T]]) -> Own[list[Settled[T]]]:
     return await _GatherSettledFuture[T](tasks)
 
 
@@ -1556,12 +1563,11 @@ class Server:
     creation (CPython parity -- it serves before `serve_forever`). The bound
     address is read via `server.sockets[0].getsockname()`, as in CPython.
 
-    `close()` stops accepting and leaves in-flight handler tasks running, and
-    `serve_forever()` serves until cancelled then re-raises `CancelledError`
-    (both CPython parity). v1 divergences: `wait_closed()` is a no-op rather than
-    awaiting in-flight connections to drain, and `__aenter__` returns None (not
-    self -- `async with server as s` is unsupported). Usable as `async with
-    server:`."""
+    `close()` stops accepting and leaves in-flight handler tasks running,
+    `serve_forever()` serves until cancelled then re-raises `CancelledError`,
+    and `async with server as s` binds an alias of the server (all CPython
+    parity). v1 divergence: `wait_closed()` is a no-op rather than awaiting
+    in-flight connections to drain."""
 
     _listener: Rc[socket]
     _task: Task[None]
@@ -1595,12 +1601,10 @@ class Server:
         # wait_closed()` shutdown returns while connections may still be live.
         pass
 
-    async def __aenter__(self) -> None:
-        # Returns None, not self: an async __aenter__ returning self copies the
-        # @nocopy Server (async return doesn't borrow self like sync __enter__);
-        # `async with server as s` is unsupported -- use the bare `async with
-        # server:` form (BUGS.md). CPython's __aenter__ returns the server.
-        pass
+    async def __aenter__(self) -> "Server":
+        # Borrow return: `async with server as s` binds `s` as an alias of
+        # the server (CPython parity; @nocopy-safe -- no copy is made).
+        return self
 
     async def __aexit__(self, exc_type: None, exc_val: None,
                         exc_tb: None) -> None:

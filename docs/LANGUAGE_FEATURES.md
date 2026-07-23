@@ -6868,10 +6868,10 @@ Send/Sync rules for built-in types:
   `getsockname`; mutating socket methods aren't exposed). `serve_forever()`
   serves until cancelled then re-raises `CancelledError` (a `close()` elsewhere
   cancels the accept task it awaits), matching CPython -- both lifecycle tests
-  run under real CPython asyncio. Two documented v1 divergences remain (no test
-  exercises them): `wait_closed()` is a no-op (does not await connection drain),
-  and `__aenter__` returns None so `async with server as s` is unsupported (bare
-  `async with server:` only -- blocked on an async-return-of-self codegen gap).
+  run under real CPython asyncio. One documented v1 divergence remains (no test
+  exercises it): `wait_closed()` is a no-op (does not await connection drain).
+  `__aenter__` returns `self` (a borrow), so `async with server as s` binds an
+  alias of the server, matching CPython.
   `StreamReader.readuntil(sep)` reads through a `bytes` separator (raising
   `IncompleteReadError` on EOF first); like `readline`/`read` it enforces no
   buffer limit (`LimitOverrunError` is a deferred follow-up, TODO.md). See
@@ -6977,15 +6977,39 @@ Send/Sync rules for built-in types:
   `emplace(...)` call site by the same coercion sync uses. Same
   `nullptr`-doubles-as-uninitialized-and-None convention as the
   matching hoisted-locals row in the generator section above.
-- **Working**: `async def f(...) -> Own[T]` returning a reference-type
-  frame local moves it out of the frame at the return (the sync
-  last-use discipline), so `@nocopy` results work and no copy is paid;
-  under a non-suspending `finally` the deferred-capture path keeps the
-  finally's reads/mutations visible in the returned object. Direct
-  `await` only for now: routing an `Own[T]`-returning coro through
-  `asyncio.run`/`create_task`, and the borrow-form returns
-  (`return self`, bare reference returns, generic object-`T`), await
-  the async reference-return ABI design (see BUGS.md).
+- **Working**: the async return convention mirrors sync's, per the
+  declared return (the async borrow-return ABI):
+  - `-> C` (bare reference type) is a BORROW contract: the Poll payload
+    is a pointer (`Poll<C*>`), so a direct `await` binds an ALIAS of the
+    source -- `r = await s.get()` then `r.n = 9` is visible through `s`
+    (CPython aliasing). Sources are gated exactly like sync borrow
+    returns (params / `self` / globals / field chains; a local,
+    temporary, or awaited owned result is rejected with the `Own[C]`
+    fix-hint). `async def __aenter__(self) -> "Server": return self`
+    works, and `async with server as s:` binds `s` as an alias of the
+    manager. A borrow return under a SUSPENDING finally stores the
+    pointer in the pending-return slot, so the finally's mutations are
+    visible through the result (unlike the storage-form eager-copy
+    divergence tracked in BUGS.md).
+  - `-> Own[C]` is the ownership contract: the value moves out of the
+    frame (the sync last-use discipline; `@nocopy` results work), and
+    the coro flows through every owned consumer -- `asyncio.run`,
+    `create_task` + `await task`, `wait_for` (Own is normalized out of
+    the `Cancellable[T]` type arg, so `Own[Cancellable[T]]` slots
+    unify at `T=C`). Under a non-suspending `finally` the
+    deferred-capture path keeps the finally's reads/mutations visible.
+  - Generic `-> T` splits per instantiation via `val_or_ptr_t<T>`
+    (value -> by value, object -> pointer borrow), mirroring sync's
+    `val_or_ref_t`: `await identity(node)` aliases, `await
+    identity("s")` copies the value.
+  - Borrow-returning coroutines are DIRECT-AWAIT-ONLY: passing one to
+    `asyncio.run` / `create_task` / `wait_for` / any
+    `Own[Cancellable[T]]` or `Awaitable`-protocol slot is a compile
+    error (task results live in owned slots that outlive the borrow's
+    source) naming the escape hatch -- declare `-> Own[C]` and return
+    an owned value (`tpy.copy(...)` a borrowed source such as `self`).
+  - Pointer-variant Union and recursive-union-wrapper returns still
+    keep storage form (consumer-side work pending -- see BUGS.md).
 - **Working (v1.5 M9)**: `asyncio.gather(*tasks)` (variadic-positional)
   and `asyncio.gather_list(tasks)` (list-shaped) -- two homogeneous
   entrypoints over one `_GatherFuture[T]` engine. Both run N already-

@@ -7,6 +7,8 @@ routing wrong."""
 
 from __future__ import annotations
 
+import pytest
+
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import _compile, _entry
 
@@ -3254,11 +3256,12 @@ class TestContainerReturns:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "__tpy_async_ret = std::move((*xs));" in cpp
 
-    def test_bare_container_await_result_routes(self):
-        # The BARE `-> list[T]` slot (no Own) -- the axis on which this
-        # predicate is wider than its sync sibling. Sema admits it only
-        # for an await source (the corpus gather_helper shape), and the
-        # return is pure skeleton (`auto __ret0 = std::move(__r0).value();`).
+    def test_bare_container_await_result_rejected(self):
+        # The BARE `-> list[T]` slot is a borrow contract (the async
+        # borrow-return ABI, sync-aligned): an awaited OWNED result is a
+        # frame temporary that cannot be handed out as a borrow, so sema
+        # rejects with the Own fix-hint -- the `-> Own[list[T]]` spelling
+        # (previous test) is the routed shape.
         src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
                + "async def g() -> Own[list[Int32]]:\n"
                + "    await asyncio.sleep(0)\n"
@@ -3266,11 +3269,8 @@ class TestContainerReturns:
                + "async def f() -> list[Int32]:\n"
                + "    return await g()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
-        assert ("::tpystd::tpy::Poll<std::vector<int32_t>>::ready("
-                "std::move(__ret0));") in cpp
+        with pytest.raises(Exception, match="Own\\[list\\[Int32\\]\\]"):
+            _gen(src, thir=False)
 
     def test_container_return_through_finally_routes(self):
         # The pre-finally capture scaffolding site (a DIFFERENT

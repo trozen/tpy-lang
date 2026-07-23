@@ -10,6 +10,7 @@
 # teardown), and the test's purpose is "destructor fires, no leak"
 # regardless of exact timing.
 import asyncio
+from tpy import Own
 from asyncio import Future
 
 
@@ -26,7 +27,7 @@ class Tracked:
         dropped.append(self.label)
 
 
-async def waiter(f: Future[Tracked]) -> Tracked:
+async def waiter(f: Future[Tracked]) -> Own[Tracked]:
     return await f
 
 

@@ -1,0 +1,2 @@
+Async borrow-return ABI: BORROW-form return slots reject at THIR
+lowering (return.borrow_form) -- the pointer-payload lift is a later rung.

@@ -1592,9 +1592,13 @@ class MethodAnalyzer:
             return_type=return_type,
             # Resumable-factory flags drive call-site capture decisions
             # (e.g. temporary-receiver lift); a pending-generic generator/
-            # async method must not lose them on this minimal path.
+            # async method must not lose them on this minimal path. The
+            # declared-return shape rides along for the same reason: losing
+            # it would classify a borrow-returning coro as owned and skip
+            # the erasure-boundary reject.
             is_async=method.is_async,
             is_generator=method.is_generator,
+            async_inner_return=method.async_inner_return,
             canonical_fi=method.root,
         )
         return return_type

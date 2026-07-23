@@ -16,7 +16,7 @@ from tpy.coro import Cancellable
 
 class Runner:
     async def with_timeout[T](self, coro: Own[Cancellable[T]],
-                              timeout: float) -> T:
+                              timeout: float) -> Own[T]:
         return await asyncio.wait_for(coro, timeout)
 
 

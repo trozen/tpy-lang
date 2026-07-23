@@ -55,7 +55,7 @@ struct __coro_Box_with_label {
     __coro_Box_with_label(const Box<T>& __self, ::tpy::param_val_or_ref_t<U> label_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), label(label_) {}
 
-    ::tpystd::tpy::Poll<U> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Box_with_label<T, U>&) {
@@ -65,14 +65,14 @@ struct __coro_Box_with_label {
 
 // async def with_label[U](self, label: U) -> U:
 template <typename T, typename U>
-::tpystd::tpy::Poll<U> __coro_Box_with_label<T, U>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __coro_Box_with_label<T, U>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // return label
         __state = S_DONE;
-        U __tpy_async_ret = label;
-        return ::tpystd::tpy::Poll<U>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(label);
+        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

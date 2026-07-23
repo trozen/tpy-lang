@@ -65,7 +65,7 @@ struct __coro_Runner_with_timeout {
 };
 
 // async def with_timeout[T](self, coro: Own[Cancellable[T]],
-// timeout: float) -> T:
+// timeout: float) -> Own[T]:
 template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {

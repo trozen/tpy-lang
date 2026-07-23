@@ -60,7 +60,7 @@ __coro_slow slow() {
     return __coro_slow();
 }
 
-// async def gather_helper() -> list[Int32]:
+// async def gather_helper() -> Own[list[Int32]]:
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -89,7 +89,7 @@ __coro_slow slow() {
 }
 
 
-// async def gather_helper() -> list[Int32]:
+// async def gather_helper() -> Own[list[Int32]]:
 __coro_gather_helper gather_helper() {
     return __coro_gather_helper();
 }

@@ -1966,6 +1966,10 @@ class TypeOperations:
             # is_async / is_generator are invariant under type-arg substitution.
             is_async=method.is_async,
             is_generator=method.is_generator,
+            # Kept UNSUBSTITUTED by design: consumers classify the declared
+            # return SHAPE (Own vs bare vs type-param) and read the
+            # instantiated inner from the substituted return_type.
+            async_inner_return=method.async_inner_return,
             is_builtin_function=method.is_builtin_function,
             type_params=method.type_params,
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,

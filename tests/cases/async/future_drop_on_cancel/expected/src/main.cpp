@@ -6,7 +6,7 @@ namespace tpyapp::main {
 // dropped: list[str] = []
 std::vector<std::string>* dropped{};
 
-// async def waiter(f: Future[Tracked]) -> Tracked:
+// async def waiter(f: Future[Tracked]) -> Own[Tracked]:
 ::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ std::vector<std::string>* dropped{};
 }
 
 
-// async def waiter(f: Future[Tracked]) -> Tracked:
+// async def waiter(f: Future[Tracked]) -> Own[Tracked]:
 __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
     return __coro_waiter(f);
 }

@@ -1,0 +1,2 @@
+Uses erased task-layer consumers (create_task arg erasure) in shapes
+the THIR resumable path does not route yet.

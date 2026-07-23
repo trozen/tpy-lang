@@ -1,0 +1,1 @@
+main.py:20: error: cannot pass a borrow-returning coroutine to argument 'coro': '-> Server' makes the awaited result a borrow of the caller's data, which is only valid at a direct 'await'. This consumer stores an owned result: declare the async def '-> Own[Server]' and return an owned value (tpy.copy(...) a borrowed source such as 'self')
