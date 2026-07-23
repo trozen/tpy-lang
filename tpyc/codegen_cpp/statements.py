@@ -1049,6 +1049,16 @@ class StatementGenerator:
             fi = init.resolved_unaryop.method
             if fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
                 return True
+        # A subscript / method call on a const-rooted receiver binds const:
+        # when the enclosing method's readonly-ness is INFERRED (post
+        # body-analysis), sema resolved the MUTABLE twin, so the
+        # fi.is_readonly arms above miss -- but C++ overload resolution on
+        # the const receiver picks the const twin regardless. Sound for the
+        # same reason as the name-alias arm below: a const-rooted source
+        # implies inference proved no writes through the result.
+        if isinstance(init, (TpySubscript, TpyMethodCall)) \
+                and self.ctx.is_const_storage_source(init.obj):
+            return True
         # An alias of a const-inferred source must also bind const, else a
         # mutable reference/pointer would be taken from a const source. Sound
         # because a const source implies the alias is never written through --

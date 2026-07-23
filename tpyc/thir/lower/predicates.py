@@ -3659,6 +3659,16 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         if (fi is not None and fi.is_readonly
                 and call_returns_cpp_ref(analyzer, fi)):
             return True
+    # A subscript / method call on a const-rooted receiver binds const even
+    # when sema resolved the MUTABLE twin (the enclosing method's
+    # readonly-ness is INFERRED post body-analysis, so fi.is_readonly above
+    # misses; C++ overload resolution on the const receiver picks the const
+    # twin regardless) -- mirror of the AST's receiver-const arm in
+    # `_is_const_indirect`.
+    if isinstance(stmt.init, (TpySubscript, TpyMethodCall)) \
+            and _f1_const_rooted_source(stmt.init.obj, func, analyzer,
+                                        const_locals, record_name):
+        return True
     # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
     # `r = obj.field`, `c = self.store[k]`): mirror of the AST REF_ALIAS
     # const propagation via `is_const_union_source` -- recurse through

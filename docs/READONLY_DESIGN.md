@@ -453,10 +453,16 @@ Mutation rooting is symmetric with subscript element access (`xs[0].v = 9`):
 through-reference write climbs a field-path borrow root to its owning param
 (`mark_param_mutated(..., through_field=True)`).
 
-**Limitation:** binding an accessor result to a local (`x = o.b.get()`) keeps
-the receiver mutable, because a non-const local alias requires a mutable source
-(locals are non-const by default). A const receiver for aliased *reads* awaits
-never-mutated-local const-binding (see TODO).
+**Limitation:** binding a named accessor result to a local (`x = o.b.get()`)
+keeps the receiver mutable, because a non-const local alias requires a mutable
+source (locals are non-const by default). A const receiver for aliased *reads*
+awaits never-mutated-local const-binding (see TODO). The SUBSCRIPT spelling
+(`x = o.b[k]`) is not subject to this: it stays readonly-compatible, and the
+bound borrow local is emitted const when the receiver chain is const-rooted
+(e.g. `self` in an inferred-readonly method) -- codegen's `_is_const_indirect`
+receiver-const arm, mirrored in THIR's `_f1_is_const`, since C++ overload
+resolution picks the const twin regardless of which twin sema resolved
+pre-inference.
 
 ### Restrictions
 
