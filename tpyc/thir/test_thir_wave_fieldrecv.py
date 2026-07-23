@@ -389,10 +389,10 @@ class TestRecordDunderRvalue:
         assert w.get("method.recv.binop", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_decl_init_stays_ast(self):
-        # A record-binop DECL init has no pinned consumer row -- the decl
-        # gates own that seam; the admission must not leak past print /
-        # field / method receivers.
+    def test_decl_init_routes_value_record(self):
+        # A record-binop DECL init at a bare VALUE-record slot rides the
+        # value-record decl row (`Meters c = (a) // (b);` -- the plain
+        # spelled copy over the dunder render; dualgen-verified).
         src = (_METERS
                + "def use() -> None:\n"
                + "    a = Meters(12)\n"
@@ -400,7 +400,8 @@ class TestRecordDunderRvalue:
                + "    c = a // b\n"
                + "    print(c.v)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
     def test_field_over_unary_stays_ast(self):
         # `(-a).v` -- field over a UNARY dunder has no ladder row (no

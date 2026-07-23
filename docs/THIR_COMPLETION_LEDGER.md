@@ -2070,3 +2070,56 @@ byte-diff itself.
   rc_new_arg_passing (generic static-factory rvalue temp, memo-A
   spelling asymmetry); optional_other_nonetype conds (fragments 3+:
   container-borrow / callable / subscript subjects).
+
+- **Landed: valrec-union/coro-temps/returns wave (`thir-wave-next4`,
+  2026-07-23, 8 cells).** (1) Value-record unions (the parked
+  isinstance rung): `_eligible_value_union`'s member table admits
+  non-generic user VALUE records (`_value_record_member` -- `Fixed |
+  Zone | None`, datetime's `ZoneInfo | timezone | None`); isinstance
+  narrowing, monostate None tests, and the variant ArgTemps ride the
+  existing U1 machinery; `_value_union_temp_slot` folds the record row
+  into the main flow (Own-unwrapped ctor/call rvalues). Nested-temp
+  threading grew three positions the family needed: method-arg record
+  rvalues thread `nested_temps` into their nested ctor args (the
+  eval_once shape), borrow-tuple RVALUE elements take `elem_temps` +
+  the pointer-repr Optional elem-slot unwrap, and call-shaped FIELD
+  receivers inherit the statement's flush right. (2) Consuming rvalue
+  receivers + coro temps: a consuming fi admits an RVALUE call/method
+  receiver (no move -- the AST moves NAME receivers only); a
+  coro-factory call rvalue at a STRUCTURAL protocol slot hoists the
+  un-spelled `auto __tmp_N = f();` (bypassing the protocol-typed
+  lvalue bare-forward; init under use.coro_factory); generic plain
+  callees run the protocol-slot pre-arm -- the whole
+  poll_once/.value() family (11 async cases). (3) Module-qualified
+  ctor rvalues (`pcre2.Code(7)` -- a TpyMethodCall with a synthetic
+  ctor fi) ride the record-rvalue temp row via
+  `_module_qual_ctor_shape` (marker "qualified" kind; STORAGE-result
+  init). (4) Spanlike coerces admit container FIELD inners
+  (`return self._data` at Span slots -- the @auto_readonly pair, 8
+  witnesses). (5) Method-call record rvalues at STORAGE return slots
+  render the bare call (ret.record_methodcall). (6) Bare value-record
+  decl slots (the plain spelled copy -- datetime date/datetime);
+  recursive-union WRAPPER decls from CALL inits ride the storage_call
+  escape with the container reassigned-guard extended to wrappers (a
+  reassigned wrapper is an AST pointer-local -- dualgen-caught; NB the
+  `_storage_call_ret` wrapper verdict reaches every gate consumer of
+  that predicate -- the decl row is the only render-relevant one, the
+  rest render the bare call);
+  wrapper NAMEs pass bare at same-wrapper marker slots;
+  print_optional_val admits value-record-inner method results.
+  (7) Borrow-container returns (`-> list[T]` -> `std::vector<T>&`):
+  bare name / plain field sources return bare (ret_container_borrow).
+  (8) Value-record rvalues admit at NESTED ctor positions
+  (`timezone(timedelta(...))` -- temp-free). PARKED with verified
+  blockers: value-opt RECORD bindings (`Fx | None` params -- the
+  `_value_opt_scalar` 32-consumer widening, a future cell);
+  print.arg.scalar_bin_op (fragments 3+ operand families);
+  bounded-T method receivers (`factory.create_point(x, y)` -- generics
+  lane); negated 3-member isinstance ifs (if.narrow_shape,
+  member-count-driven); consuming @native free-form methods
+  (`v.pop_last()` -> `::tpy::pop_back(v)`); deferred-inference generic
+  methods; the lambda inferred-signature family (nested-def lane);
+  wrapper READ lanes (fields/subscripts -- the json read cells);
+  `return iter(self._items)` iterator-protocol returns; `-> Any`
+  literal returns (into_any at return); exceptions-class isinstance
+  dispatch; NativeIterable protocol narrowing.

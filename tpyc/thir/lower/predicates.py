@@ -475,23 +475,31 @@ def _own_type_param_slot(t: 'TpyType | int | None') -> bool:
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return isinstance(inner, OwnType) and _is_type_param_slot(inner.wrapped)
 
+def _value_record_member(m: 'TpyType') -> bool:
+    """A non-generic user VALUE-record union member (`Fixed` in `Fixed | Zone
+    | None`, datetime's `ZoneInfo`): stored by value in the variant like a
+    scalar, spelled via to_cpp/native_cpp_names (cross-module qualification
+    agrees with the resolver). Generic value records stay out -- their
+    type-arg recursion is the F5 spelling slice."""
+    return (isinstance(m, NominalType) and m.is_user_record
+            and m.is_value_type() and not m.type_args)
+
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
-    """The F4 U1 slice: a value-form union of scalar / Char / str / StrView
-    members (`Int32 | Float64 [| None]`, `Int32 | str`, `Int32 | Char`) --
-    `std::variant<...>` where every member is stored by value (a str member is
-    owned `std::string`, a StrView member a `std::string_view`). At the
-    WHOLE-variant positions the slice routes -- reads/writes/returns/same-type
-    args, and isinstance extraction (`std::get<std::string>`, spelled through
-    the shared `render_type`) -- the member form is fixed by the variant, so
-    both paths render bare (the converting ctor does the work) and a `None`
-    source renders `std::monostate{}`. The form-relevant boundary is member
-    INSERT: a str-VIEW value into a `... | str` slot is a view->owned
-    conversion (`std::variant<...> __tmp = view;`), which `_value_union_temp_
-    slot`'s scalar-only member check rejects (the body then stays AST).
-    Pointer-variant record members (U2) and recursive-alias wrappers ride
-    later F4 cells; VALUE-TYPE record members (also value variants) have
-    their own arg-temp slice in `_value_record_union` -- keep the two
-    member tables in sync when widening either."""
+    """The F4 U1 slice: a value-form union of scalar / Char / str / StrView /
+    value-record members (`Int32 | Float64 [| None]`, `Int32 | str`,
+    `Fixed | Zone | None`) -- `std::variant<...>` where every member is stored
+    by value (a str member is owned `std::string`, a StrView member a
+    `std::string_view`, a ValueType record itself). At the WHOLE-variant
+    positions the slice routes -- reads/writes/returns/same-type args, and
+    isinstance extraction (`std::get<std::string>` / `std::get<Fixed>`,
+    spelled through the shared `render_type`) -- the member form is fixed by
+    the variant, so both paths render bare (the converting ctor does the
+    work) and a `None` source renders `std::monostate{}`. The form-relevant
+    boundary is member INSERT: a str-VIEW value into a `... | str` slot is a
+    view->owned conversion (`std::variant<...> __tmp = view;`), which
+    `_value_union_temp_slot`'s member check rejects (the body then stays
+    AST). Pointer-variant record members (U2) and recursive-alias wrappers
+    ride later F4 cells."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -499,6 +507,7 @@ def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
         return None
     if not all(_eligible_scalar(m) or _eligible_char(m)
                or is_str_type(m) or is_str_view_type(m)
+               or _value_record_member(m)
                or is_void_like_type(m) for m in t.members):
         return None
     return t
@@ -2173,6 +2182,20 @@ def _container_storage_return(t: TpyType | None, analyzer) -> 'TpyType | None':
         return None
     inner = unwrap_readonly(t.wrapped)
     return inner if (is_list(inner) or is_dict(inner) or is_set(inner)) else None
+
+def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
+    """The BORROW-form container return slot (`-> list[T]` / `-> readonly[
+    list[T]]` -- C++ `std::vector<T>&` / `const std::vector<T>&`), or None.
+    A bare container NAME (`return cells;`) and a plain FIELD read
+    (`return self._items;`) return bare on both paths -- element-blind (no
+    per-element conversion happens at a whole-container borrow return).
+    The Own axis is `_container_storage_return`'s."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType):
+        return None
+    return u if (is_list(u) or is_dict(u) or is_set(u)) else None
 
 def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None':
     """The resolved owned str/bytes family behind an `Own[str]` / `Own[bytes]`
@@ -3952,6 +3975,11 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
         return t
     if _eligible_value_union(t) is not None:
         return t
+    if isinstance(t, UnionType) and t.needs_wrapper():
+        # A recursive-union WRAPPER result (`v = json.loads(s)` ->
+        # `::tpystd::json::JsonValue v = ::tpystd::json::loads(..);`): the
+        # bare call lands in the spelled wrapper slot like a value union.
+        return t
     return None
 
 def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
@@ -4062,21 +4090,6 @@ def _record_call_rvalue_operand(a: TpyExpr, analyzer) -> bool:
     return (isinstance(stu, NominalType) and stu.is_user_record
             and is_rvalue_source(analyzer, a))
 
-def _value_record_union(t: 'UnionType') -> 'UnionType | None':
-    """A non-wrapper union whose non-void members are all VALUE-TYPE records
-    (`None | ZoneInfo | timezone` -- `std::variant<std::monostate, ..>`
-    stores them by value): the member-valued arg hoists the same variant
-    temp as the scalar slice. Mixed record/scalar member sets stay out
-    (unwitnessed)."""
-    if t.needs_wrapper():
-        return None
-    members = [m for m in t.members if not is_void_like_type(m)]
-    if not members or not all(
-            isinstance(m, NominalType) and m.is_user_record
-            and m.is_value_type() for m in members):
-        return None
-    return t
-
 def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType],
                            analyzer) -> 'UnionType | None':
@@ -4101,9 +4114,6 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(pt, UnionType):
         return None
     ut = _eligible_value_union(pt)
-    value_rec_union = ut is None and _value_record_union(pt) is not None
-    if value_rec_union:
-        ut = pt
     if ut is None:
         return None
     # `_gen_union_arg`'s `already_union` verdict keys on the C++ DECLARED type:
@@ -4144,16 +4154,19 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     if isinstance(at, FloatLiteralType):
         at = FLOAT
-    if value_rec_union:
-        # The value-RECORD union slice (`datetime(.., tzinfo=ist)` -- the
-        # ValueType-record members store by value, so the same
-        # `std::variant<...> __tmp_N = v;` hoist applies; the ArgTemp arm
-        # spells the variant via render_type for cross-module members).
-        if not (isinstance(at, NominalType)
-                and any(at == m for m in ut.members
-                        if not is_void_like_type(m))):
-            return None
-        return ut
+    if isinstance(at, OwnType):
+        # A record-ctor rvalue types as Own[member]; the variant temp
+        # absorbs it by value either way.
+        at = unwrap_readonly(at.wrapped)
+    if at is not None and _value_record_member(at):
+        # The value-RECORD member row (`datetime(.., tzinfo=ist)`, a member
+        # ctor/call rvalue like `Holder(Fixed(60))` -- the ValueType-record
+        # members store by value, so the same `std::variant<...> __tmp_N =
+        # v;` hoist applies; the ArgTemp arm spells the variant via
+        # render_type for cross-module members).
+        if any(at == m for m in ut.members if not is_void_like_type(m)):
+            return ut
+        return None
     if not _eligible_scalar(at):
         return None
     if not any(at == m for m in ut.members if not is_void_like_type(m)):
@@ -4178,6 +4191,23 @@ def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'UnionType | None':
     if is_ptr_variant_union(pt):
         return None
     return pt
+
+def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                         locals_: dict[str, TpyType],
+                         narrowed: 'AbstractSet[str]') -> bool:
+    """A wrapper-union NAME at a same-wrapper arg slot (`json.dumps(v)` on
+    `v: JsonValue`): the binding is already the wrapper struct, so both
+    paths render the bare name (no lift, no temp). Narrowed names are
+    excluded defensively -- THIR installs no wrapper-union extraction
+    aliases today, but a future narrowing arm must not silently ride the
+    bare pass."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None or not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    if a.name in narrowed:
+        return False
+    dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    return dt == ut
 
 def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
     """A list/dict literal coercible into a recursive-union wrapper slot,
@@ -4276,7 +4306,9 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     if not _f1_record(pt, analyzer):
         return None
-    if not isinstance(a, TpyCall):
+    # TpyMethodCall: the module-qualified ctor spelling (`pcre2.Code(7)`);
+    # the shape half of each consumer keeps other method-call sources out.
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
         return None
     if not is_rvalue_source(analyzer, a):
         return None

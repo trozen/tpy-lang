@@ -472,6 +472,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # is the only distinguishing site).
     "ret.record_borrow",
     "ret.record_storage",
+    "ret.record_methodcall",        # method-call rvalue at the storage slot
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
     "ret.record_subscript",         # `return c[i]` -- container record element
@@ -487,6 +488,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # bare owned name / the decl-init literal emits -- are shared, so
     # admission is the distinguishing site).
     "ret.container_name",
+    "ret.container_borrow",         # borrow-slot name/field returns bare
     "ret.container_literal",
     "ret.container_call",           # `return make_list(n);` -- bare call source
     "ret.container_comp",           # `return {x for ...}` -- the decl-init

@@ -1346,9 +1346,10 @@ class TestSpanReturn:
             + "    return buf\n")
         assert _fn(thir, "widen") is not None
 
-    def test_array_field_convert_return_ineligible(self):
-        # An Array field -> span conversion return (::tpy::as_mut_span) carries
-        # the spanlike_to_span RETURN coerce -> AST.
+    def test_array_field_convert_return_routes(self):
+        # An Array field -> span conversion return (::tpy::as_mut_span over
+        # the bare member read) rides the spanlike-coerce field arm
+        # (dualgen-verified byte-identical).
         src = (
             self._SPAN
             + "class Buf:\n"
@@ -1357,7 +1358,8 @@ class TestSpanReturn:
             + "        self.data = Array[Int32, 4]()\n"
             + "    def view(self) -> Span[Int32]:\n        return self.data\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "view") is None
+        assert _fn(thir, "view") is not None
+        _assert_byte_identical(src)
 
     def test_span_span_return_ineligible(self):
         # Span[Span[Int32]] -- the element is not a scalar -> AST.

@@ -1617,9 +1617,10 @@ class TestOwnedRecordMethodDecl:
         # The owned local is moved at its last use into the Own[Inner] slot.
         assert "consume(std::move(r))" in cpp
 
-    def test_return_position_stays_ast(self):
-        # record_ret_ok is pinned to the owned-record decl sink: a
-        # record-rvalue method call in RETURN / arg position stays AST.
+    def test_return_position_routes_methodcall(self):
+        # A record-rvalue method call at the STORAGE return slot renders the
+        # bare call (`return b.build();` -- the ret.record_methodcall row;
+        # dualgen-verified byte-identical).
         src = (
             _F1_RECORDS
             + "class B:\n    s: Int32\n"
@@ -1627,7 +1628,8 @@ class TestOwnedRecordMethodDecl:
             + "    def build(self) -> Own[Inner]:\n        return Inner(self.s)\n"
             + "def r(b: B) -> Own[Inner]:\n    return b.build()\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "r") is None
+        assert _fn(thir, "r") is not None
+        _assert_byte_identical(src)
 
 
 _PTR_RECORDS = (

@@ -229,6 +229,7 @@ from .predicates import (
     _f1_tuple,
     _field_over_global_record_ok,
     _field_over_subscript_ok,
+    _field_markers_clean,
     _field_receiver_ok,
     _ptr_value_field_recv_ok,
     _ptr_value_none_field,
@@ -348,6 +349,7 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 
 from .checks import (
+    _coro_factory_structural_arg,
     copy_plain_record_source,
     _optional_ptr_container_slot,
     _owned_str_slot,
@@ -390,6 +392,7 @@ from .checks import (
     _marker_call_kind,
     _marker_call_supported,
     _marker_reject,
+    _module_qual_ctor_shape,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _method_recv_family,
@@ -725,7 +728,12 @@ def _record_ctor_arg_supported(
                                           analyzer) is not None
                 or (_record_rvalue_temp_arg(
                         arg, param_type, declared, analyzer)
-                    and (temps_ok if is_mutated else True)))
+                    and (temps_ok if is_mutated else True)
+                    # The module-qualified ctor slice is const-slot-only: at
+                    # a MUTATED ref slot the rec ArgTemp's init would lower
+                    # with plain use and dead-end at the marker result gate
+                    # -- reject honestly instead of admitting a dead path.
+                    and not (is_mutated and isinstance(arg, TpyMethodCall))))
 
     slot = unwrap_readonly(unwrap_ref_type(param_type))
     if _eligible_scalar(slot):
@@ -752,6 +760,11 @@ def _record_ctor_arg_supported(
         # The make_unique / make_adapter conformer wraps are temp-free
         # in-place renders (`Box(Box(Dog(..)))` -- the inner Box's Dog arg),
         # so the nested position admits them like the rvalue rows above.
+        return True
+    if _value_record_rvalue_arg(arg, param_type, analyzer):
+        # A record rvalue into a BY-VALUE record slot renders bare
+        # (`timezone(timedelta(...))` -- no ref param, no temp), so the
+        # nested position admits it like the direct loop.
         return True
     if (_record_rvalue_temp_slot(arg, param_type, analyzer) is not None
             and not is_mutated):
@@ -2341,9 +2354,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             )
         return THIRFieldAccess(
             result_type=rtype,
+            # A call-shaped receiver's own arg temps flush at the enclosing
+            # statement (`Holder(__tmp_1).kind`), so allow_temps rides
+            # through; inert for every non-call receiver shape.
             receiver=_lower_expr(
                 e.obj, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.RECEIVER),
+                use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                             allow_temps=use.allow_temps),
                 subscript_prechecked=isinstance(e.obj, TpySubscript)),
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
@@ -3970,14 +3987,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # A consuming method's receiver-move render is mirrored only for
             # a bare non-pointer, non-narrowed name (never `self`): the AST
             # wraps exactly that shape in `std::move(name)`; indirect
-            # receivers compose a deref the emit does not carry.
+            # receivers compose a deref the emit does not carry. An RVALUE
+            # call receiver (`poll_once(aw).value()`) is already an rvalue
+            # -- the AST moves NAME receivers only, so it renders bare
+            # (move_receiver stays off for it below).
             consuming_ok = (
-                isinstance(e.obj, TpyName)
-                and e.obj.name in declared
-                and e.obj.name != lc.self_receiver
-                and e.obj.name not in lc.pointers
-                and e.obj.name not in lc.narrow.narrowed
-                and e.obj.name not in lc.inline_narrowed)
+                (isinstance(e.obj, TpyName)
+                 and e.obj.name in declared
+                 and e.obj.name != lc.self_receiver
+                 and e.obj.name not in lc.pointers
+                 and e.obj.name not in lc.narrow.narrowed
+                 and e.obj.name not in lc.inline_narrowed)
+                or (isinstance(e.obj, (TpyCall, TpyMethodCall))
+                    and is_rvalue_source(analyzer, e.obj)))
             if fi is None or not _plain_method_fi_ok(
                     fi, property_getter_ok=True, property_setter_ok=True,
                     coro_factory_ok=use.coro_factory,
@@ -4152,6 +4174,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                          is not None)
             return _lower_call_arg(a, ptype, lc, declared,
                                    temp_args=own_flush,
+                                   nested_temps=temp_args,
                                    method_arg=not proto_recv,
                                    method_arg_stub=stub_recv and not proto_recv)
 
@@ -4198,6 +4221,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                               and lc.self_is_pointer)),
             deref_check=deref_check,
             move_receiver=(bool(fi.is_consuming)
+                           and isinstance(e.obj, TpyName)
                            and _witness("method.consuming_move")),
             form=_viewfam_result_form(m_str),
             loc=loc,
@@ -4234,6 +4258,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             inner = _lower_expr(e.expr, lc, declared, target_type=arr_t)
             inner = replace(inner, typed_brace_cpp=arr_t.to_cpp())
             _witness("coerce.span_array_literal")
+        elif (e.coercion.name in _SPANLIKE_COERCIONS
+              and isinstance(e.expr, TpyFieldAccess)
+              and _field_markers_clean(e.expr)
+              and _field_receiver_ok(e.expr, declared, lc.analyzer)):
+            # A container FIELD inner (`return self._data` at a Span return
+            # slot -- the @auto_readonly pair's body): the as_span /
+            # as_mut_span helper wraps the bare member read, so the coerce
+            # IS the field's consumer -- result admission is skipped
+            # (field_prechecked) but the receiver shape is pre-validated
+            # here, mirroring the ret_container_borrow arm's discipline.
+            inner = _lower_expr(e.expr, lc, declared, field_prechecked=True)
         elif (e.coercion.name in _ADDR_PTR_COERCIONS
               and isinstance(e.expr, (TpyFieldAccess, TpySubscript))):
             # A record `.field` / `c[i]` element taken by address
@@ -4947,7 +4982,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                                 lc: '_LowerCtx',
                                 declared: dict[str, TpyType], *,
                                 target_readonly: bool = False,
-                                rvalue_ok: bool = False) -> THIRExpr:
+                                rvalue_ok: bool = False,
+                                elem_temps: bool = False) -> THIRExpr:
     """Lower a tuple literal at a BORROW-form slot (`std::tuple<..., T*>`) --
     the ref-element path of `_gen_tuple_literal` reduced to the lvalue-NAME
     subset. Per element the slot-info ladder's sliced arms: VALUE mode lowers
@@ -4993,12 +5029,21 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # Borrow slot: the earlier slot-info arms (pointer-repr Optional,
         # pointer-variant union, TypeParamRef) each spell their own form --
         # sliced out; only the plain pointer-repr non-value arm is mirrored.
-        if (isinstance(et_bare, (OptionalType, UnionType, TypeParamRef))
-                or et_bare.value_form() is not ValueForm.BORROW_REF
-                or not TupleType._element_is_pointer_repr(et_bare)):
+        elem = e.elements[i]
+        et_slot = et_bare
+        if (isinstance(et_slot, OptionalType) and et_slot.uses_pointer_repr()
+                and rvalue_ok and is_rvalue_source(analyzer, elem)):
+            # A pointer-repr Optional elem slot takes the same `Inner*` /
+            # source-`Inner` spelling as the plain borrow elem for an RVALUE
+            # element (`tuple[Box | None, ...]` <- `Box(...)`, the
+            # elem_target.inner unwrap); NAME sources keep the slot-info
+            # optional arm -> the reject below.
+            et_slot = unwrap_readonly(unwrap_ref_type(et_slot.inner))
+        if (isinstance(et_slot, (OptionalType, UnionType, TypeParamRef))
+                or et_slot.value_form() is not ValueForm.BORROW_REF
+                or not TupleType._element_is_pointer_repr(et_slot)):
             note_detail("btuple.elem_slot")
             raise ThirUnsupported("expr.tuple_literal")
-        elem = e.elements[i]
         if is_rvalue_source(analyzer, elem):
             # Rvalue-into-borrow: the element renders VALUE-form into the
             # helper's source tuple; `tuple_value_to_borrow` takes its
@@ -5009,14 +5054,18 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 note_detail("btuple.elem_rvalue")
                 raise ThirUnsupported("expr.tuple_literal")
             ptr_base = lc.render_type(unwrap_readonly(unwrap_ref_type(
-                et_bare)))
+                et_slot)))
             parts.append(f"const {ptr_base}*"
                          if mode == TupleElemCapture.CONST_REF
                          else f"{ptr_base}*")
             src_parts.append(ptr_base)
+            # `elem_temps` rides the arg position's flush right into a
+            # call-shaped rvalue element (its nested arg temps hoist at the
+            # enclosing statement, like any nested call arg's).
             lowered.append(_lower_expr(
                 elem, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.STORAGE)))
+                use=_ExprUse(result=_ExprResultUse.STORAGE,
+                             allow_temps=elem_temps)))
             lifts.append(False)
             any_rvalue = True
             continue
@@ -5304,6 +5353,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         else:
             args.append(_lower_call_arg(
                 a, resolved, lc, declared, temp_args=temp_args,
+                protocol_slots=True,
                 readonly_target=dcbp is not None and i in dcbp))
     return THIRCall(
         result_type=lc.analyzer.get_expr_type(e),
@@ -5671,6 +5721,7 @@ def _lower_range_object(call, lc: '_LowerCtx',
 
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
+                    nested_temps: bool = False,
                     readonly_target: bool = False,
                     method_arg: bool = False,
                     method_arg_stub: bool = False,
@@ -5714,7 +5765,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     target_readonly=isinstance(
                         unwrap_ref_type(unwrap_send_sync(ptype)),
                         ReadonlyType),
-                    rvalue_ok=True)
+                    rvalue_ok=True,
+                    elem_temps=temp_args or nested_temps)
             vt = _value_tuple_nested(pslot, lc.analyzer)
             if vt is not None:
                 _witness("btuple.value_arg")
@@ -5938,6 +5990,20 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # builtins loop does not, and renders a protocol slot bare.
     proto = _protocol_arg_slot(ptype) if protocol_slots else None
     if proto is not None:
+        if _coro_factory_structural_arg(a, proto, lc.analyzer):
+            # The coro-factory structural temp (`auto __tmp_N = f();`):
+            # gate-admitted under temps_ok only; the frame result lowers
+            # under use.coro_factory (lifts only the async-callee reject).
+            if not temp_args:
+                raise ThirUnsupported(
+                    "protocol arg-temp outside a flush position")
+            _witness("argtemp.protocol")
+            return THIRArgTemp(
+                result_type=proto, cpp_type=None,
+                init=_lower_expr(
+                    a, lc, declared,
+                    use=replace(_NESTED_ARG_USE, coro_factory=True)),
+                form=Form.BORROW, loc=getattr(a, "loc", None))
         at = lc.analyzer.get_expr_type(a)
         if isinstance(a, TpyArrayLiteral):
             # A container literal's expr type is still PENDING; the AST's
@@ -6010,11 +6076,26 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer,
                                           frame_capturing=frame_capturing,
                                           upcast_ok=True)
+        if (rec_pt is not None and isinstance(a, TpyMethodCall)
+                and not _module_qual_ctor_shape(a, lc.analyzer)):
+            # Only the module-qualified CTOR slice of method-call sources
+            # hoists here; a qualified NON-ctor record call renders INLINE
+            # on the AST path (`samestat(s, ::tpystd::os::stat(d))` -- the
+            # _native_record_call_arg row below).
+            rec_pt = None
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(
                 result_type=rec_pt, cpp_type=rec_pt.to_cpp(),
-                init=_lower_expr(a, lc, declared, use=_RECORD_TEMP_FLUSH_USE),
+                # A module-qualified ctor source (TpyMethodCall) lowers via
+                # the marker path, whose result gate needs the temp's
+                # STORAGE sink named; the TpyCall ctor path is result-blind.
+                init=_lower_expr(
+                    a, lc, declared,
+                    use=(replace(_RECORD_TEMP_FLUSH_USE,
+                                 result=_ExprResultUse.STORAGE)
+                         if isinstance(a, TpyMethodCall)
+                         else _RECORD_TEMP_FLUSH_USE)),
                 form=Form.BORROW,
                 loc=getattr(a, "loc", None))
         ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
@@ -6333,8 +6414,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # the shape via `_shared_pass_through_arg` / `_protocol_slot_arg`.
     # `allow_temps` rides into a call-shaped arg (the AST flushes nested arg
     # temps at the enclosing statement); inert for every non-call shape.
+    # `nested_temps` grants the same ride when the arg's OWN rows are
+    # temp-free (a method arg's record rvalue renders inline, but its nested
+    # ctor args still flush their temps at the statement).
     lowered = _lower_expr(a, lc, declared,
-                          use=replace(_NESTED_ARG_USE, allow_temps=temp_args),
+                          use=replace(_NESTED_ARG_USE,
+                                      allow_temps=temp_args or nested_temps),
                           field_owned_str_ok=isinstance(a, TpyFieldAccess),
                           allow_union_divergent=isinstance(slot_u, UnionType))
     if (method_arg and isinstance(lowered, THIRLiteral)

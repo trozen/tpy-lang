@@ -197,6 +197,7 @@ from .predicates import (
     _resolve_literal_seeded,
     _ru_container_literal_ok,
     _ru_wrapper_arg_slot,
+    _ru_wrapper_name_arg,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -227,6 +228,7 @@ from .predicates import (
     _value_opt_scalar_name,
     _value_opt_str,
     _value_opt_view_name,
+    _value_record_member,
     _value_tuple,
     _value_tuple_nested,
     _value_union_temp_slot,
@@ -2584,6 +2586,12 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
             # slot, exactly like the concrete free-call path.
             or (temps_ok and _own_lvalue_arg(
                 a, resolved, locals_, narrowed, analyzer))
+            # A protocol slot in the substituted param list
+            # (`poll_once(f())` -- `Awaitable[T]`): the same pre-arm the
+            # concrete free-call loop runs (protocol_slots=True there and
+            # in the generic lowering alike).
+            or _protocol_slot_arg(a, resolved, locals_, analyzer,
+                                  temps_ok=temps_ok)
             or note_detail("call.generic_arg_shape"))
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3056,6 +3064,13 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         rvalue = False
     elif isinstance(a, TpyCall) and _ctor_shape_ok(a, analyzer):
         rvalue = True
+    elif _coro_factory_structural_arg(a, proto, analyzer):
+        # A coro-factory call rvalue at a STRUCTURAL slot
+        # (`poll_once(f())`): always hoists the un-spelled `auto __tmp_N =
+        # f();` structural rvalue temp -- sema types the frame result as
+        # the protocol, so `_protocol_arg_temp`'s protocol-typed
+        # bare-forward (an LVALUE rule) must not swallow it.
+        return temps_ok and _witness("argtemp.protocol")
     elif (isinstance(a, TpyArrayLiteral) and not is_dyn_protocol(proto)):
         # A container literal into a STRUCTURAL slot (`math.dist([0.0, 0.0],
         # ..)`): the resolved literal hoists the un-spelled `auto __tmp_N =
@@ -3134,7 +3149,31 @@ def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
              and (_ctor_shape_ok(a, analyzer)
                   or _ctor_instantiation_ok(a, analyzer)
                   or _typed_dict_ctor_call(a, analyzer) is not None))
+            or _module_qual_ctor_shape(a, analyzer)
             or _record_rvalue_call_shape(a, analyzer))
+
+
+def _coro_factory_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
+    """A coro-factory call RVALUE at a STRUCTURAL protocol slot -- the one
+    verdict shared by the `_protocol_slot_arg` gate arm and
+    `_lower_call_arg`'s auto-temp arm, so the two cannot drift."""
+    return (isinstance(a, TpyCall) and not is_dyn_protocol(proto)
+            and a.resolved_function_info is not None
+            and a.resolved_function_info.is_async
+            and is_rvalue_source(analyzer, a))
+
+
+def _module_qual_ctor_shape(a: TpyExpr, analyzer) -> bool:
+    """A module-qualified plain record ctor rvalue (`pcre2.Code(7)` -- a
+    TpyMethodCall resolving to `__init__`): the marker "qualified" kind's
+    ctor slice, so the temp row's init lowers through that arm
+    (`::tpyapp::_bindings::pcre2::Code(7)`)."""
+    if not isinstance(a, TpyMethodCall):
+        return False
+    fi = a.resolved_function_info
+    if fi is None or not fi.is_constructor:
+        return False
+    return _marker_call_kind(a, analyzer) is not None
 
 def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
@@ -4538,6 +4577,10 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # the value-union temp row.
             or (temps_ok and _ru_wrapper_arg_slot(ptype) is not None
                 and _ru_container_literal_ok(a, analyzer))
+            # A wrapper-union NAME at a same-wrapper slot (`json.dumps(v)`
+            # on `v: JsonValue`): the binding is already the wrapper struct
+            # -- passes bare like a same-union name.
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
             or (own_ok and _own_union_ctor_arg(
                 a, ptype, locals_, analyzer))
             or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)
@@ -5940,7 +5983,18 @@ def _print_optval_opt(a: TpyExpr, analyzer,
         # an rvalue, so the resolved type is authoritative. Optional[bytes] is
         # excluded (BytesPrinter arm), matching the name/field rows below.
         t = analyzer.get_expr_type(a)
-        return _value_opt_scalar(t, analyzer) or _value_opt_str(t, analyzer)
+        opt = _value_opt_scalar(t, analyzer) or _value_opt_str(t, analyzer)
+        if opt is not None:
+            return opt
+        # A value-RECORD inner (`after.utcoffset()` -> `timedelta | None`,
+        # `std::optional<timedelta>` by value): the same member-blind
+        # `print_optional_val` wrap over the bare call render.
+        tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+              if t is not None else None)
+        if (isinstance(tb, OptionalType) and not tb.uses_pointer_repr()
+                and _value_record_member(unwrap_readonly(tb.inner))):
+            return tb
+        return None
     if not isinstance(a, (TpyName, TpyFieldAccess)):
         return None
     if isinstance(a, TpyFieldAccess) and not _field_markers_clean(a):

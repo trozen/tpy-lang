@@ -20,6 +20,7 @@ from ...typesys import (
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
+    _container_borrow_return,
     _container_storage_return,
     _res_container_return,
     _eligible_char,
@@ -109,7 +110,8 @@ class _Prescan:
                  "alias_sources", "alias_born",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
-                 "ret_container_storage", "ret_res_container",
+                 "ret_container_storage", "ret_container_borrow",
+                 "ret_res_container",
                  "ret_value_tuple", "ret_generic_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
@@ -221,6 +223,10 @@ class _Prescan:
         # literals return bare (the decl-init renders, position-independent);
         # every other source shape stays on the AST path.
         self.ret_container_storage = _container_storage_return(rt, analyzer)
+        # The BORROW-form container return slot (`-> list[T]` -> C++
+        # `std::vector<T>&`): a bare container name / plain field read
+        # returns bare; every other source shape stays on the AST path.
+        self.ret_container_borrow = _container_borrow_return(rt)
         # The RESUMABLE container return slot -- wider at the `Own` axis
         # (a coro's slot holds T by value either way); read only by the
         # resumable return arm's empty-literal guard.
@@ -292,6 +298,7 @@ class _Prescan:
             or self.ret_record_borrow is not None
             or self.ret_record_storage is not None
             or self.ret_container_storage is not None
+            or self.ret_container_borrow is not None
             or self.ret_value_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
             or self.ret_union is not None or self.ret_ptr_union is not None

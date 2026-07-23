@@ -211,6 +211,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
+    _value_record_member,
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
     _f1_record,
@@ -220,6 +221,7 @@ from .predicates import (
     _f2b_optional_field_write_ok,
     _facts_have_concrete,
     _field_decl_type,
+    _field_markers_clean,
     _field_receiver_ok,
     _typed_dict_recv_ok,
     _for_each_elem_binding_ok,
@@ -4554,7 +4556,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # also gates the generic-instantiation arms, where bytearray
                 # does not belong), and its reassigned locals take the AST's
                 # pointer-rebind machinery exactly like list/dict/set.
-                if _storage_call_container(fam) or is_bytearray_type(fam):
+                # A recursive-union WRAPPER is a reference type despite the
+                # value-variant fam tag: its reassigned locals take the
+                # AST's pointer-rebind machinery (`(*v)` reads --
+                # dualgen-caught), so it shares the container guards.
+                wrapper_fam = (isinstance(fam, UnionType)
+                               and fam.needs_wrapper())
+                if (_storage_call_container(fam) or is_bytearray_type(fam)
+                        or wrapper_fam):
                     if (is_reassign
                             or stmt.name in lc.prescan.reassigned
                             or stmt.name in lc.prescan.hoisted
@@ -4768,7 +4777,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # upgraded = w.upgrade();`) -- the record twin of the
                     # value-opt scalar row; registration below keys its
                     # narrowed/None-test reads.
-                    or _own_opt_record_call_slot(stmt, vtype, lc, analyzer))
+                    or _own_opt_record_call_slot(stmt, vtype, lc, analyzer)
+                    # A bare VALUE-record slot (`bad5 = date(...) + td` --
+                    # `::tpystd::datetime::date bad5 = <init>;`): the plain
+                    # spelled copy, exactly a scalar decl's shape; the init
+                    # rides its own arms (ctor/dunder-binop/method rvalues).
+                    or (isinstance(vtype, NominalType)
+                        and _f1_record(vtype, analyzer)
+                        and _value_record_member(vtype)))
                 if not slot_ok:
                     # Branch-first REBIND_SLOT and owned-record decls are
                     # handled by the borrow cascade above (its per-arm
@@ -5890,6 +5906,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             record_ok = False
             if _record_rvalue_source_shape(stmt.value, analyzer):
                 record_ok = bool(_witness("ret.record_storage"))
+            elif (lc.prescan.ret_record_borrow is None
+                  and isinstance(stmt.value, TpyMethodCall)
+                  and is_rvalue_source(analyzer, stmt.value)):
+                # A method-call record rvalue at the STORAGE return slot
+                # renders the bare call (`return factory.create_point(x, y);`
+                # / `return self._shared.clone();`): the generic tail's
+                # STORAGE lowering runs the method call's own receiver / fi /
+                # arg / result gates, so admission here is shape-shallow.
+                record_ok = bool(_witness("ret.record_methodcall"))
             elif (lc.prescan.ret_record_borrow is not None
                   and lc.prescan.has_self
                   and isinstance(stmt.value, TpyName)
@@ -5957,6 +5982,38 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value=_lower_expr(stmt.value, lc, declared,
                                       subscript_prechecked=True),
                     loc=loc)
+        if stmt.value is not None and lc.prescan.ret_container_borrow is not None:
+            # The borrow-container return (`-> list[T]` -> `std::vector<T>&`):
+            # a bare non-narrowed, non-pointer container NAME or a plain
+            # markers-clean FIELD read returns bare; other sources reject.
+            cb = lc.prescan.ret_container_borrow
+            source = stmt.value
+            cb_ok = False
+            if (isinstance(source, TpyName) and source.name in declared
+                    and source.name not in narrowed
+                    and source.name not in pointers
+                    # Defensive: reassigned container bindings cannot route
+                    # today (sema rejects reassigned container params; a
+                    # reassigned local rejects at its decl), but a future
+                    # decl widening must not ride this bare-name render.
+                    and source.name not in lc.prescan.reassigned):
+                dt = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(declared[source.name])))
+                cb_ok = bool(dt == cb and _witness("ret.container_borrow"))
+            elif (isinstance(source, TpyFieldAccess)
+                  and _field_markers_clean(source)
+                  and _field_receiver_ok(source, declared, analyzer)):
+                ft = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(analyzer.get_expr_type(source))))
+                cb_ok = bool(ft == cb and _witness("ret.container_borrow"))
+            if not cb_ok:
+                note_detail("return.container_borrow_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return THIRReturn(
+                value=_lower_expr(
+                    source, lc, declared,
+                    field_prechecked=isinstance(source, TpyFieldAccess)),
+                loc=loc)
         if stmt.value is not None and lc.prescan.ret_container_storage is not None:
             source = stmt.value
             container_ok = False
