@@ -77,6 +77,12 @@ path = "tpyc/_build_hook.py"
 
 [tool.hatch.build.targets.sdist.force-include]
 "tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
+# lib/cpy/tplib is a symlink to lib/tpy/tplib; hatchling's sdist walk
+# follows symlinks and dedups directories by inode, so whichever path it
+# visits first consumes the inode and the real lib/tpy/tplib gets pruned
+# as "already seen" (order-dependent, silent). Force-include bypasses
+# the walk entirely.
+"lib/tpy/tplib" = "lib/tpy/tplib"
 
 [tool.pyright]
 extraPaths = ["lib/cpy"]
