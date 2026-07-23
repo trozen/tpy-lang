@@ -77,6 +77,7 @@ files. Core types:
 | Bytes    | `bytes`, `bytearray`, `BytesView` |
 | Optional / union | `Optional[T]` / `T | None`, `A | B` |
 | Ownership markers | `Own[T]`, `Ptr[T]`, `readonly[T]` |
+| Concurrency | `spawn` (`tpy.thread`), `Mutex[T]` / `RwLock[T]` / `Condvar` (`tpy.sync`), `Atomic[T]` (`tpy.atomic`), `Arc[T]` (`tplib.arc`), channels (`tplib.channel`) |
 
 When to reach for each:
 
@@ -103,9 +104,11 @@ language but common enough to standardize. Import as `from tplib import X`.
 | `Box[T]` | You need a heap-allocated owning container -- e.g. recursive types, or oversized records you don't want stack-stored. Single owner. |
 | `Rc[T]` | You need shared ownership (multiple owners of the same value, possibly with shared mutation). `@nocopy`; share via `.clone()`. Construct with `Rc.new(value)`. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; breaks reference cycles. `from tplib.rc import Weak`. Mint via `rc.downgrade()`; recover a strong handle (or `None`) via `weak.upgrade()`. |
+| `Arc[T]` | Atomic sibling of `Rc[T]` for shared ownership *across threads* (`Send + Sync` iff `T` is). `@nocopy`; share via `.clone()`. `from tplib.arc import Arc` (its own `Weak` lives there too). Canonical shared-mutable form: `Arc[Mutex[T]]`. |
 | `ArrayList[T, N]` | Fixed-capacity list with stack-allocated storage -- avoids heap allocation when the upper bound is known. |
 | `FixStr[N]` | Fixed-capacity string with stack-allocated storage. |
 | `tplib.json` | JSON decoding/encoding via a `@model` class macro. |
+| `tplib.channel` | Blocking MPSC channel for cross-thread handoff: `tx, rx = channel[T](capacity)`; clone senders per producer; `for item in rx:` ends when the last sender drops. |
 
 For full details (semantics, tradeoffs, current rough edges), see
 `LANGUAGE_FEATURES.md`.
@@ -513,6 +516,46 @@ and exception-based cancellation (`Task.cancel()` / `CancelledError`).
 `async for`, `async with`, async methods, and generic async functions all
 work; `await` is allowed in arbitrary control flow.
 
+**Threads with a channel.** Real OS threads use a Rust-style Send+move
+API: `spawn(task)` takes ownership of a task object with a `run()`
+method; `handle.join()` returns `run()`'s result. Cross-thread safety is
+compile-checked -- moving a non-`Send` value across `spawn` or a channel
+is a compile error, not a race.
+
+```python
+from tpy import Int32, Own, nocopy
+from tpy.thread import spawn
+from tplib.channel import channel, Sender
+
+@nocopy
+class Producer:
+    tx: Sender[Int32]
+
+    def __init__(self, tx: Own[Sender[Int32]]) -> None:
+        self.tx = tx
+
+    def run(self) -> None:
+        for i in range(3):
+            self.tx.send(i)
+
+def main() -> None:
+    tx, rx = channel[Int32](4)
+    h1 = spawn(Producer(tx.clone()))
+    h2 = spawn(Producer(tx))         # last sender moved in
+    total = 0
+    for v in rx:                     # ends when both senders drop
+        total += v
+    h1.join()
+    h2.join()
+    print(total)
+```
+
+For shared mutable state instead of message passing, wrap it in
+`Arc[Mutex[T]]`: give each thread its own `arc.clone()` and mutate under
+the lock (`with shared.lock() as g: ...` -- the guard derefs to the
+payload). `RwLock[T]`, `Condvar`, and `Atomic[T]` cover the
+reader-heavy, wait/notify, and lock-free-counter shapes.
+
 ---
 
 ## 8. Verifying your code
@@ -538,6 +581,9 @@ Diagnostics are line-precise and usually name the fix. When a type error
 is confusing, inspect the generated C++ with `--dump-code` -- the mapping
 is usually clear enough to spot what the compiler inferred.
 
+Re-running `tpy` on an unchanged program skips the whole pipeline and
+executes the cached binary (~100ms), so tight edit-run loops are cheap.
+
 If the code must also run under CPython (dual-target), run it with
 `python` as well and confirm output matches. CPython reference-shares
 values that TPy copies; that's exactly what the `copy()` warnings from 5.4
@@ -556,11 +602,11 @@ yet available but are on the roadmap:
   `setattr` / `hasattr` builtins *are* supported, but they route to those
   hooks; they cannot create undeclared fields.
 - `match` sequence patterns (`case [a, b]:` / `case (a, b):`).
-- Threads: `threading` / `multiprocessing` are absent, and the asyncio
-  executor is single-threaded. Real OS threads exist via `tpy.thread.spawn`
-  (a Rust-style Send+move API, fully inferred: `h = spawn(task)` where
-  `task` has a `run()` method; `h.join()` returns the result) -- but no
-  shared mutable state across threads yet (`Arc`/`Mutex` are planned).
+- The Python `threading` / `multiprocessing` *modules* are absent, and
+  the asyncio executor is single-threaded (no cross-thread asyncio).
+  Threads themselves are fully supported -- `spawn`/`join`, `Arc`,
+  `Mutex`/`RwLock`, `Condvar`, `Atomic`, channels (see section 7) --
+  just under TPy's own compile-checked API, not the `threading` module.
 
 If you're tempted to use one of these, pick the closest fully-annotated /
 single-threaded equivalent and leave a comment noting the dependency.
@@ -584,7 +630,11 @@ Topics worth looking up there when you need depth beyond this guide:
 - `match`/`case` patterns (literal, record, union, optional, enum, guard,
   or-pattern, positional, polymorphic class dispatch).
 - `async`/`await`, the asyncio subset, and cancellation.
+- Threads and shared state: `Send`/`Sync` inference, lock guards,
+  channel close semantics ("Concurrency" / "Thread Safety Markers").
 - Union types (variant codegen, recursive unions).
 - `@native` / `@export` native interop for C++ bindings.
+- Authoring CPython extension modules (`# tpy: ext_module` + `@export`
+  -- compile TPy to an importable CPython `.so`; "CPython Extensions").
 - `@error_return` zero-cost error handling.
 - Protocol definition and conformance.
