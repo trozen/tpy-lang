@@ -6141,6 +6141,19 @@ class ExpressionGenerator:
             analyzed = self.ctx.get_expr_type(expr.obj)
             if not isinstance(analyzed, OptionalType):
                 obj_type = obj_type.inner
+        # Same for an isinstance-narrowed union member: get_resolved_type still
+        # returns the declared union (no __getitem__), so keying the tuple
+        # fast-path / __getitem__ fi lookup / view-key pin on it drops to a raw
+        # operator[] -- a dict default-inserts a missing key instead of raising
+        # KeyError, a tuple's operator[] is ill-formed, a list skips bounds
+        # normalization. Sema surfaces the narrowed member; key on it.
+        if isinstance(obj_type, UnionType):
+            narrowed = self.ctx.get_expr_type(expr.obj)
+            # The still-union guard is defensive: sema rejects subscripting a
+            # partially-narrowed union (ambiguous isinstance / non-int index)
+            # before codegen, so `narrowed` is always a concrete member here.
+            if narrowed is not None and not isinstance(narrowed, UnionType):
+                obj_type = narrowed
 
         # Tuple subscript: std::get<N>(obj). Strip Own/Readonly/Ref so
         # Own[tuple[...]] params and similar wrapped tuple shapes hit

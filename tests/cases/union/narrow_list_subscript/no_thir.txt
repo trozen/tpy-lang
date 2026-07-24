@@ -1,0 +1,4 @@
+Own[union] returns + union local decls fall back (return.slot_type /
+decl.slot_type); the narrowed-union subscript itself routes (covered by
+tplib/requests_get + test_thir_wave_ru_narrow). Auto-managed by
+--thir-classify; --thir-check-flip lists it once clean.

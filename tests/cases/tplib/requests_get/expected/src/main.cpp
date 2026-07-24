@@ -46,7 +46,7 @@ void main() {
     if (std::holds_alternative<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value)) {
         auto& __d = std::get<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value);
         // v: JsonValue = d["rows"]
-        ::tpystd::json::JsonValue& v = __d["rows"];
+        ::tpystd::json::JsonValue& v = ::tpy::__getitem__(__d, "rows");
         // if isinstance(v, int):
         if (std::holds_alternative<::tpy::BigInt>(v.value)) {
             auto& __v = std::get<::tpy::BigInt>(v.value);

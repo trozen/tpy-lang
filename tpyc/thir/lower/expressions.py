@@ -3224,20 +3224,22 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if _resolved_bytes_value(analyzer.get_expr_type(e.obj),
                                      analyzer) is not None:
                 _witness("subscript.bytes_field")
-        # A U3-NARROWED receiver takes the AST's fi-fallback operator[]
-        # (`__d["rows"]`): gen_subscript keys the __getitem__ fi lookup on
-        # the DECLARED binding (get_resolved_type reads ctx.var_types, which
-        # narrowing never rewrites), and the union has no fi -- so the render
-        # is the bare `recv[idx]`, never the checked dunder. The index render
-        # keys on the same union (no BigInt narrow, no view-key pin). The
-        # element is a `T&` lvalue (BORROW), bound e.g. by the REF_ALIAS
-        # decl arm.
+        # A U3-NARROWED receiver: gen_subscript keys the subscript on the
+        # narrowed MEMBER (sema's analyzed type), so a dict/list/array/span
+        # member routes the checked `::tpy::__getitem__` (a missing dict key
+        # raises KeyError; a list index normalizes/bounds-checks) with the
+        # index keyed on the member (BigInt narrow, view-key pin). Mirror that:
+        # key on the member, never the declared union. Non-container narrows
+        # (tuple std::get, record operator[], str/bytes) key differently --
+        # fall back to AST for those. The element is a `T&` lvalue (BORROW).
         narrowed_recv_u = (lc.narrow.subject_union.get(e.obj.name)
                            if isinstance(e.obj, TpyName)
                            and e.obj.name in lc.narrow.narrowed else None)
-        idx_obj_type = (narrowed_recv_u if narrowed_recv_u is not None
-                        else analyzer.get_expr_type(e.obj))
+        idx_obj_type = analyzer.get_expr_type(e.obj)
         if narrowed_recv_u is not None:
+            if not (is_dict(idx_obj_type) or is_list(idx_obj_type)
+                    or is_array(idx_obj_type) or is_span(idx_obj_type)):
+                raise ThirUnsupported("subscript.ru_narrowed_nonmap")
             form = Form.BORROW
             _witness("subscript.ru_narrowed_recv")
         return THIRSubscript(
@@ -3251,7 +3253,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                        idx_obj_type,
                                        analyzer, loc),
             bounds_safe=e.bounds_safe,
-            record_getitem=narrowed_recv_u is not None,
+            record_getitem=False,
             form=form,
             loc=loc,
         )

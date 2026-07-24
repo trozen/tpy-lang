@@ -57,6 +57,18 @@ class TestWrapperUnionNarrow:
     def test_nested_narrow_byte_identical(self):
         _assert_byte_identical(_JSON_NESTED)
 
+    def test_nested_narrow_emits_checked_getitem(self):
+        # The narrowed-dict read routes the CHECKED dunder (a missing key
+        # raises KeyError), never the raw operator[] that default-inserts.
+        from .testutil import _compile, _entry
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(_JSON_NESTED)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        assert '::tpy::__getitem__(__d, "rows")' in cpp
+        assert '__d["rows"]' not in cpp
+
     def test_param_subject_cond_routes(self):
         # A wrapper-union PARAM subject narrows with the `const auto&`
         # extraction alias (read-only body) -- routes byte-identically.
