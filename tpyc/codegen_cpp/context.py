@@ -1677,6 +1677,12 @@ class CodeGenContext:
         self.walrus_pointer_locals = set()
         self.walrus_const_pointer_locals = set()
         self.overload_terminated = False
+        # The `if` node whose folded-True terminating branch set
+        # overload_terminated. The function-body emit truncates the rest of a
+        # list only when the just-emitted top-level stmt IS this node; a flag
+        # set by a fold nested in a non-terminating compound (loop/branch) has
+        # a different node, so the reachable post-compound code still emits.
+        self.overload_terminated_node = None
         # Note: overload_param_types and literal_overload_facts are NOT reset
         # here -- they're managed by the caller (set before gen_body, cleared
         # in a finally block).

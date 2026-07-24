@@ -220,8 +220,14 @@ mangled names.
 extended to resolve literal equality conditions statically via
 `_resolve_literal_eq_statically`. Combined with `literal_overload_facts`,
 the specialization bodies have all branches except the matching one
-eliminated. Unreachable returns after eliminated branches are silently
-dropped.
+eliminated. Unreachable statements after a taken terminating branch are
+silently dropped -- but only within the statement list that DIRECTLY
+contains the folded `if`. A fold nested in a non-terminating compound (a
+loop, a dynamic `if`, a match arm) does not truncate the code reachable
+after that compound (the loop/branch may not run), so a trailing `return`
+survives; the truncation is scoped per-list (`overload_terminated` is
+honored only for the top-level node that set it, mirrored in THIR by
+save/restore across nested `_lower_stmts`).
 
 ### Example
 

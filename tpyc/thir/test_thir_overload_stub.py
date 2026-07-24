@@ -87,6 +87,28 @@ class TestPerStubRouting:
         assert len([f for f in thir.functions if f.name == "label"]) == 2
         _assert_byte_identical(src)
 
+    def test_fold_return_in_loop_keeps_trailing_return(self):
+        # A folded-True `return` INSIDE a while loop must not truncate the
+        # reachable `return 0` after the loop (the loop may not run). Both
+        # paths must emit the trailing return; byte-diff pins the scoping and
+        # that THIR does not leak lc.overload_terminated past the loop body.
+        src = _PRELUDE + (
+            "@overload\n"
+            "def in_loop(a: Dog, k: int) -> int: ...\n"
+            "@overload\n"
+            "def in_loop(a: Cat, k: int) -> int: ...\n"
+            "def in_loop(a: Dog | Cat, k: int) -> int:\n"
+            "    while k > 0:\n"
+            "        if isinstance(a, Dog):\n"
+            "            return k\n"
+            "        else:\n"
+            "            return a.lives - k\n"
+            "    return 0\n"
+        )
+        thir = _lower_ctx(src)
+        assert len([f for f in thir.functions if f.name == "in_loop"]) == 2
+        _assert_byte_identical(src)
+
     def test_second_match_after_fold_keeps_numbering(self):
         # The AST burns __match_subject_N for the folded match; a real match
         # in a sibling body must number PAST it -- byte-diff pins the burn.

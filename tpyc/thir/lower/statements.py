@@ -2987,12 +2987,14 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
     retyping the subject for the REST of the list -- the enclosing branch/loop
     save-restore pops both (the AST's scope-snapshot semantics)."""
     out: list[THIRStmt] = []
+    # A folded-True terminating @overload branch truncates the list it DIRECTLY
+    # lives in. A nested list (loop/branch/try body) never breaks on the flag
+    # (only the FUNCTION-LEVEL top_level loop does, mirroring the AST's single
+    # _gen_buffered_body) -- but a fold inside it must not leak the flag OUT to
+    # the enclosing top_level loop, where a reachable post-compound tail would
+    # then be wrongly truncated. Save on entry / restore on exit scopes it.
+    saved_overload_terminated = lc.overload_terminated
     for s in body:
-        # A folded-True terminating @overload branch truncates the
-        # FUNCTION-LEVEL statement list ONLY: the AST's
-        # ctx.overload_terminated break lives in _gen_buffered_body, which
-        # runs once for the outermost body -- nested loop/branch bodies
-        # never consult the flag, so their trailing statements still emit.
         if top_level and lc.overload_terminated:
             break
         out.append(_lower_stmt(s, lc, declared, in_branch=in_branch,
@@ -3018,6 +3020,8 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
         lc.narrow.subject_union[var] = u
         lc.narrow.persistent_narrowed.add(var)
         declared[var] = post
+    if not top_level:
+        lc.overload_terminated = saved_overload_terminated
     return tuple(out)
 
 def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',

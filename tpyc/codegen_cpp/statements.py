@@ -139,11 +139,20 @@ class StatementGenerator:
                 body_buf.write(f"{indent}{cpp_type} {cpp_name} = {init};\n")
             self._reassigned_param_copies = []
         for stmt in stmts:
-            if self.ctx.overload_terminated:
-                break
             if track_stmt_line:
                 self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
             self.gen_stmt(body_buf, stmt)
+            if self.ctx.overload_terminated:
+                # A folded-True terminating @overload branch truncates the rest
+                # of the list it DIRECTLY lives in. When the flag was set by a
+                # fold nested in a non-terminating compound (loop / dynamic
+                # branch / try), the just-emitted top-level stmt is that
+                # compound, not the fold's own `if` node -- the post-compound
+                # code is reachable, so clear the leaked flag and keep emitting.
+                if self.ctx.overload_terminated_node is stmt:
+                    break
+                self.ctx.overload_terminated = False
+                self.ctx.overload_terminated_node = None
         if track_stmt_line:
             self.ctx.current_stmt_line = 0
         hoist_indent = INDENT * self.ctx.indent_level
@@ -5407,6 +5416,11 @@ class StatementGenerator:
                     self.gen_stmt(out, s)
                 if node.then_body and isinstance(node.then_body[-1], (TpyReturn, TpyRaise)):
                     self.ctx.overload_terminated = True
+                    # Tag the top-level chain node so the function-body emit
+                    # truncates only the list this fold directly lives in --
+                    # not a reachable tail after an enclosing loop/branch this
+                    # fold happens to be nested in.
+                    self.ctx.overload_terminated_node = chain[0]
                 return True
             elif resolved is False:
                 continue
