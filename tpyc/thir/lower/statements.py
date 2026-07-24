@@ -114,7 +114,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...codegen_cpp.context import escape_cpp_name
 from ...codegen_cpp.protocols import narrow_cast_rhs
-from ...typesys import polymorphic_source_inner
+from ...typesys import polymorphic_source_inner, polymorphic_source_is_pointer
 from ...codegen_cpp.types import resolve_pending_container
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import (
@@ -160,6 +160,7 @@ from ..nodes import (
     THIRIsinstance,
     THIRAnyIsinstance,
     THIRDynIsinstance,
+    THIRDynIsinstanceMulti,
     THIRAnyNarrowAlias,
     THIRLiteral,
     THIRMethodCall,
@@ -210,6 +211,8 @@ from .predicates import (
     _dyn_proto_ptr,
     _eligible_enum,
     _eligible_ptr_union,
+    _eligible_wrapper_union,
+    _ru_elem_ok,
     _union_storage_val_cpp,
     _eligible_ptr_value,
     _eligible_scalar,
@@ -237,6 +240,8 @@ from .predicates import (
     _any_narrow_fact,
     _const_borrow_name,
     _poly_narrow_info,
+    _poly_narrow_multi_info,
+    _poly_subject_readonly,
     _narrow_facts_ok,
     _any_narrow_facts_ok,
     _nonvalue_container_ret,
@@ -347,6 +352,10 @@ from .expressions import (
     _flush_witness,
     _narrow_member_cpp,
     _narrow_subject_const,
+    _narrow_variant_cpp,
+    _poly_cast_checks,
+    _poly_cast_context,
+    _ptr_read_derefs,
     _param_declared_type,
     _is_move_source,
     _lower_call_arg,
@@ -1354,6 +1363,13 @@ def _select_for_each_route(
         iterator_object_locals: 'AbstractSet[str]' = frozenset(),
         *, protocol_param_ok: bool = False) -> _ForEachRoute:
     """Select the lowering strategy or reject from the lowering boundary."""
+    if isinstance(stmt.iterable, TpyName) and stmt.iterable.name in narrowed:
+        # The AST for-dispatch keys the DECLARED binding (get_resolved_type
+        # reads ctx.var_types), so a narrowed-alias iterable renders the
+        # generic `__iter__`/`__next__` protocol loop, not the member's
+        # begin/end peephole -- unmirrored; keep falling back.
+        note_detail("foreach.narrowed_src")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
     if _is_range_call(stmt.iterable):
         route = _for_range_route(stmt, analyzer, declared)
     elif stmt.is_tuple_unpack:
@@ -2698,7 +2714,8 @@ def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
     src = _lower_expr(init, lc, declared)
     if not isinstance(src, THIRName):
         return None
-    return replace(src, deref=True) if init.name in lc.pointers else src
+    return (replace(src, deref=True)
+            if _ptr_read_derefs(init.name, lc) else src)
 
 
 def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
@@ -2919,8 +2936,12 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
     `const auto&` qualifier fires for value-type union PARAMS (the `const
     std::variant<...>` signature slot)."""
     member_cpp, is_ptr = _narrow_member_cpp(var, member, u, lc)
-    const_ref = var in lc.prescan.param_names and u.is_value_type()
-    return THIRNarrowAlias(alias=alias, variant_cpp=var, member_cpp=member_cpp,
+    # The AST's param-const verdict covers value-type unions AND wrapper
+    # unions (both bind `const auto&` from the const signature slot).
+    const_ref = (var in lc.prescan.param_names
+                 and (u.is_value_type() or u.needs_wrapper()))
+    return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u),
+                           member_cpp=member_cpp,
                            is_ptr_variant=is_ptr, const_ref=const_ref,
                            no_source_comment=True, loc=loc)
 
@@ -3078,6 +3099,10 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
                 else:
                     out.append(_make_narrow_alias(alias, var, fact, u, lc,
                                                   alias_loc))
+                    # Consumers that mirror gen_print/gen_subscript's
+                    # DECLARED-type keying (ctx.var_types ignores narrowing)
+                    # need the original union; branch_scope pops the entry.
+                    lc.narrow.subject_union[var] = u
                 lc.narrow.narrowed[var] = alias
                 if any_subject:
                     lc.narrow.any_narrowed.add(var)
@@ -3100,9 +3125,11 @@ def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
         return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
     is_ptr = is_ptr_variant_union(u)
     const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
+    if u.needs_wrapper():
+        _witness("narrow.wrapper_union")
     return THIRIsinstance(
         result_type=result_type,
-        variant_cpp=var,
+        variant_cpp=_narrow_variant_cpp(var, u),
         member_cpps=tuple(
             f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
             for m in members),
@@ -3226,6 +3253,90 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
                                   declared, loc, loop_depth=loop_depth)
 
 
+def _folded_narrow_info(
+        cond: TpyExpr, lc: _LowerCtx,
+) -> 'tuple[str, UnionType, tuple[TpyType, ...], bool] | None':
+    """The F1 fold: `isinstance(v, T)` on an ALREADY-narrowed subject --
+    sema resolved the condition statically (`macro_expansion` is the
+    True/False literal), the AST renders the bare `if (true)`/`if (false)`
+    and a SHADOWING re-extraction from the ORIGINAL union
+    (`_emit_isinstance_extractions` targets the original variable, never
+    the live alias). Returns `(var, union, check_members, value)` or None;
+    the original union comes from `lc.narrow.subject_union` (the branch
+    fact retyped `declared`, so `_isinstance_narrow_info` cannot see it)."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+        return None
+    me = cond.macro_expansion
+    if not isinstance(me, TpyBoolLiteral):
+        return None
+    var = cond.isinstance_var
+    if var not in lc.narrow.narrowed:
+        return None
+    u0 = lc.narrow.subject_union.get(var)
+    if u0 is None:
+        return None
+    ct = cond.isinstance_type
+    members = tuple(ct.members) if isinstance(ct, UnionType) else (ct,)
+    if not all(any(m == cm for m in u0.members) for cm in members):
+        return None
+    return var, u0, members, me.value
+
+
+def _reject_const_narrowed_write_recv(tobj, lc: _LowerCtx, stmt) -> None:
+    """A PARAM subject's extraction alias is `const auto&` (value-type and
+    wrapper unions alike), and the AST still WRITES through it --
+    uncompilable C++ (pre-existing const-verdict bug, BUGS.md). Reject
+    rather than mirror; shared by the plain and augmented subscript-write
+    paths so the two cannot drift."""
+    if (isinstance(tobj, TpyName)
+            and (u0 := lc.narrow.subject_union.get(tobj.name)) is not None
+            and tobj.name in lc.prescan.param_names
+            and (u0.is_value_type() or u0.needs_wrapper())):
+        note_detail("setitem.const_narrowed_recv")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+
+
+def _body_writes_name(body, var: str) -> bool:
+    """Whether any statement in `body` (compound bodies included) writes
+    `var` at name level -- the fold arm's stale-alias guard: a re-extraction
+    from the original union must not coexist with an in-branch subject
+    rebind. Walks via `sub_bodies()`, which every compound statement
+    implements completely (TpyTry includes its handler bodies)."""
+    for s in body:
+        if var in _written_names(s):
+            return True
+        for inner in s.sub_bodies():
+            if _body_writes_name(inner, var):
+                return True
+    return False
+
+
+def _lower_folded_narrow_if(stmt: TpyIf, finfo, lc: _LowerCtx,
+                            declared: dict[str, TpyType], loc, *,
+                            loop_depth: int = 0) -> THIRIf:
+    """Lower an F1 folded narrowing `if`: the literal condition over the
+    shared chain skeleton, the branch alias re-extracted from the ORIGINAL
+    union (folded-FALSE extracts the CHECKED member -- sema's dead-branch
+    fact -- exactly as the AST's dead emit does)."""
+    var, u0, _members, value = finfo
+    cond = THIRLiteral(result_type=lc.analyzer.get_expr_type(stmt.condition),
+                       value=value, loc=getattr(stmt.condition, "loc", None))
+    _witness("narrow.folded_isinstance")
+
+    def fact_of(facts):
+        return _narrow_fact_member(u0, facts, var)
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, fact, var, u0, lc, declared,
+                                      alias_loc, loop_depth=loop_depth)
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
+
 def _lower_any_isinstance_cond(ainfo, condition: TpyExpr,
                                lc: _LowerCtx) -> THIRExpr:
     """The D15 Any-isinstance condition render: the has_value + typeid
@@ -3250,18 +3361,19 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
     """Lower a polymorphic-isinstance `if` (dyn-protocol / polymorphic-base
     subject): the C++17 if-init condition over the shared chain skeleton,
     composed via the `narrow_cast_rhs` chokepoint the AST emit shares."""
-    var, member, var_decl = pinfo
+    var, member, _var_decl = pinfo
     analyzer = lc.analyzer
     cpp_type = lc.render_type(member)
-    # The AST if-init clause consults `_is_const_borrow_source` (the param
-    # const verdicts), not the pointer-variant subject predicate.
-    const = _const_borrow_name(var, lc)
+    # The shared const / cast-arg / source-inner triple (the AST if-init
+    # clause consults `_is_const_borrow_source` -- the param const verdicts
+    # + the readonly-declared arm -- and polymorphic_cast_arg's
+    # pointer-vs-address split).
+    const, cast_arg, inner_src = _poly_cast_context(var, lc, declared)
     const_pfx = "const " if const else ""
     ptr_local = f"__{var}_ptr"
     cast_rhs = narrow_cast_rhs(
-        cpp_type, member,
-        polymorphic_source_inner(var_decl, analyzer.registry),
-        f"&{escape_cpp_name(var)}", is_const=const, analyzer=analyzer)
+        cpp_type, member, inner_src,
+        cast_arg, is_const=const, analyzer=analyzer)
     inner = stmt.condition
     cond = THIRDynIsinstance(
         result_type=analyzer.get_expr_type(inner),
@@ -3277,6 +3389,33 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
         return _lower_narrowed_branch(body, fact, var, None, lc, declared,
                                       alias_loc, loop_depth=loop_depth,
                                       bind_spelled=f"(*{ptr_local})")
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
+
+def _lower_dyn_multi_if(stmt: TpyIf, minfo, lc: _LowerCtx,
+                        declared: dict[str, TpyType], loc, *,
+                        loop_depth: int = 0) -> THIRIf:
+    """The tuple-form polymorphic isinstance `if` (`isinstance(v, (A, B))`):
+    the no-init OR-chain of `(dynamic_cast<const A*>(v) != nullptr)` checks
+    composed via the shared `narrow_cast_rhs` chokepoint. No extraction
+    alias -- the branch fact is the checked union, so the body lowers with
+    the subject's own render."""
+    var, members, _var_decl = minfo
+    analyzer = lc.analyzer
+    cond = THIRDynIsinstanceMulti(
+        result_type=analyzer.get_expr_type(stmt.condition),
+        checks_cpp=_poly_cast_checks(var, members, lc, declared),
+        loc=getattr(stmt.condition, "loc", None))
+    _witness("narrow.poly_tuple")
+
+    def fact_of(facts):
+        return None
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, None, var, None, lc, declared,
+                                      alias_loc, loop_depth=loop_depth)
 
     return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
                                   declared, loc, loop_depth=loop_depth)
@@ -5130,6 +5269,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if not (any_dict_write or user_setitem or _container_setitem_ok(
                     stmt, declared, pointers, narrowed, analyzer)):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            _reject_const_narrowed_write_recv(stmt.target.obj, lc, stmt)
         elif (isinstance(stmt.target, TpyFieldAccess)
               and stmt.target.property_setter_call is not None):
             # A `@prop.setter` write is a void setter method call in disguise
@@ -5265,6 +5405,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value = THIRLiteral(result_type=eu, value=None,
                                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.optval_none")
+            elif _eligible_wrapper_union(eu, analyzer) is not None:
+                # Recursive-union WRAPPER value slot: a scalar/str literal
+                # constructs the wrapper via its converting ctor -- the bare
+                # token on both paths (the `_ru_elem_ok` leaf slice). None
+                # (the monostate spelling) and nested container literals
+                # stay AST until witnessed.
+                v = stmt.value
+                if (isinstance(v, (TpyNoneLiteral, TpyArrayLiteral,
+                                   TpyDictLiteral))
+                        or not _ru_elem_ok(v, analyzer)):
+                    note_detail("setitem.ru_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                value = _lower_expr(v, lc, declared)
+                _witness("setitem.ru_scalar")
             elif _eligible_ptr_union(eu, analyzer) is not None:
                 # Value-variant union element: a same-union borrow NAME lifts
                 # via `::tpy::to_value_variant<...>` (copy); a NARROWED member
@@ -5633,6 +5787,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                       or _container_aug_setitem_ok(
                           stmt, declared, scope.admission_pointers(),
                           narrowed, analyzer))
+            if aug_ok:
+                # Unreachable today (a wrapper union's elements are never
+                # the scalar family the aug gate requires), but the guard
+                # must stay symmetric with the plain-write path.
+                _reject_const_narrowed_write_recv(stmt.target.obj, lc, stmt)
         else:
             aug_ok = (_scalar_aug_assign_ok(stmt, declared, analyzer)
                       or _class_const_aug_assign_ok(
@@ -6320,8 +6479,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         ainfo = (None if info is not None
                  else _any_narrow_cond_info(stmt.condition, declared,
                                             analyzer))
+        finfo = (None if info is not None or ainfo is not None
+                 else _folded_narrow_info(stmt.condition, lc))
         hoists = analyzer.if_branch_decls.get(id(stmt), {})
-        if hoists and (info is not None or ainfo is not None):
+        if hoists and (info is not None or ainfo is not None
+                       or finfo is not None):
             note_detail("if.narrow_hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         # Classification registers the hoisted names' read/write model on
@@ -6357,6 +6519,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_any_narrow_if(stmt, ainfo, lc, declared, loc,
                                         loop_depth=scope.loop_depth)
+        if finfo is not None:
+            fvar, fu0, _fmembers, _fvalue = finfo
+            fold_ok = not (
+                bool(stmt.else_body)
+                or not _narrow_facts_ok(fu0, stmt.then_type_facts, fvar)
+                or not _narrow_facts_ok(fu0, stmt.else_type_facts, fvar)
+                or _body_writes_name(stmt.then_body, fvar))
+            if not fold_ok:
+                note_detail("if.folded_narrow_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_folded_narrow_if(stmt, finfo, lc, declared, loc,
+                                           loop_depth=scope.loop_depth)
         pinfo = _poly_narrow_info(stmt.condition, declared, analyzer)
         if pinfo is not None:
             pvar, pmember, _pdecl = pinfo
@@ -6366,7 +6540,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # and no concrete else-fact (the else keeps the base).
             poly_ok = not (
                 bool(hoists)
-                or pvar in lc.pointers
+                # A pointer-SHAPED declared subject (raw Ptr / Optional-ptr
+                # borrow) is fine -- the cast arg spells the bare name; only
+                # a pointer-local whose DECL is not pointer-shaped (an F2
+                # rebind alias) keeps rejecting.
+                or (pvar in lc.pointers
+                    and not polymorphic_source_is_pointer(declared.get(pvar)))
                 or pvar == lc.self_receiver
                 or pvar in lc.prescan.global_seeded
                 or pvar in lc.narrow.narrowed
@@ -6379,6 +6558,38 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_dyn_narrow_if(stmt, pinfo, lc, declared, loc,
                                         loop_depth=scope.loop_depth)
+        minfo = _poly_narrow_multi_info(stmt.condition, declared, analyzer)
+        if minfo is not None:
+            mvar, _mmembers, mdecl = minfo
+
+            def _poly_facts_extract(facts):
+                # A strict-subclass fact would emit an extraction alias (the
+                # AST's is_polymorphic_subclass_fact gate); union / identity
+                # facts extract nothing. Foreign facts are unmodeled.
+                for k, ft in facts.items():
+                    if k != mvar:
+                        return True
+                    if (isinstance(ft, NominalType)
+                            and is_polymorphic_subclass_fact(
+                                mdecl, ft, analyzer.registry)):
+                        return True
+                return False
+
+            multi_ok = not (
+                bool(hoists)
+                or (mvar in lc.pointers
+                    and not polymorphic_source_is_pointer(declared.get(mvar)))
+                or mvar == lc.self_receiver
+                or mvar in lc.prescan.global_seeded
+                or mvar in lc.narrow.narrowed
+                or mvar in lc.narrow.spelled
+                or _poly_facts_extract(stmt.then_type_facts)
+                or _poly_facts_extract(stmt.else_type_facts))
+            if not multi_ok:
+                note_detail("if.dyn_narrow_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_dyn_multi_if(stmt, minfo, lc, declared, loc,
+                                       loop_depth=scope.loop_depth)
         try:
             condition = _lower_truthy(stmt.condition, lc, declared,
                                       temps_ok=True)
@@ -7115,18 +7326,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             lowered_args = []
             for arg in e.args:
                 if isinstance(arg, TpyName) and arg.name in narrowed:
-                    if arg.name not in lc.narrow.any_narrowed:
+                    if arg.name in lc.narrow.any_narrowed:
+                        # An Any-narrowed alias: the AST classifies print args
+                        # by the DECLARED type (get_resolved_type reads the
+                        # pre-narrow binding), so an Any subject streams the
+                        # alias RAW -- including the narrowed-float face (no
+                        # print_float wrap; that formatting divergence is the
+                        # AST's, mirrored byte-identically and filed in
+                        # BUGS.md).
+                        lowered_args.append(THIRPrintArg(
+                            expr=_lower_expr(arg, lc, declared),
+                            print_form=PrintForm.RAW))
+                        continue
+                    # gen_print classifies a NAME by its DECLARED binding
+                    # (get_resolved_type reads ctx.var_types, which narrowing
+                    # never rewrites) -- so every U3-narrowed alias streams
+                    # through the union-typed `::tpy::__str__` visitor arm,
+                    # extraction alias notwithstanding.
+                    if lc.narrow.subject_union.get(arg.name) is None:
                         note_detail("print.narrowed_arg")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
-                    # An Any-narrowed alias: the AST classifies print args by
-                    # the DECLARED type (get_resolved_type reads the
-                    # pre-narrow binding), so an Any subject streams the
-                    # alias RAW -- including the narrowed-float face (no
-                    # print_float wrap; that formatting divergence is the
-                    # AST's, mirrored byte-identically and filed in BUGS.md).
+                    _witness("print.union_narrowed_arg")
                     lowered_args.append(THIRPrintArg(
                         expr=_lower_expr(arg, lc, declared),
-                        print_form=PrintForm.RAW))
+                        print_form=PrintForm.STR))
                     continue
                 if type(arg) in _comprehensions._COMP_KINDS:
                     ok = True
@@ -7404,7 +7627,8 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         # to a reference before the `.__raise__()` member call (`(*e).__raise__()`,
         # the AST's gen_expr_deref) -- the `_lower_expr` name arm leaves it bare
         # (its normal consumers use `->`), so apply the pointer deref here.
-        if isinstance(stmt.raise_expr, TpyName) and stmt.raise_expr.name in lc.pointers:
+        if (isinstance(stmt.raise_expr, TpyName)
+                and _ptr_read_derefs(stmt.raise_expr.name, lc)):
             assert isinstance(raised, THIRName)
             raised = replace(raised, deref=True)
         _witness("raise.expr")
@@ -7594,10 +7818,14 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
 
 def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                      declared: dict[str, TpyType],
-                     pointers: AbstractSet[str]) -> THIRPrintArg:
+                     pointers: AbstractSet[str], *,
+                     temps_ok: bool = True) -> THIRPrintArg:
     """Lower one print arg + tag its `std::cout <<` wrapper form. A str literal
     lowers to a THIRStrLiteral (RAW: emitted via cpp_string_literal_expr); an
-    eligible scalar lowers normally with its type-derived form."""
+    eligible scalar lowers normally with its type-derived form. `temps_ok`
+    is False inside a void-lambda body (the print chain is the closure
+    body): a hoisted arg temp would flush at the ENCLOSING statement,
+    outside the closure -- shapes that need one reject instead."""
     if type(a) in _comprehensions._COMP_KINDS:
         # C3 comp print arg: the stmt-expr render inside its container
         # printer (List/Set/DictPrinter -- gen_print's container arms).
@@ -7648,7 +7876,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         return THIRPrintArg(
             _lower_expr(a, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     allow_temps=True)),
+                                     allow_temps=temps_ok)),
             wrap)
     if wrap is not None:
         return THIRPrintArg(
@@ -7671,9 +7899,9 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # folds (literal_fold_ok). The record-call branch drops the flag --
     # fine while the two shapes stay mutually exclusive (a record-call arg
     # is never a both-literal int binop); revisit if that ever changes.
-    use = _ExprUse(allow_temps=True, literal_fold_ok=True)
+    use = _ExprUse(allow_temps=temps_ok, literal_fold_ok=True)
     if _record_call_rvalue_operand(a, lc.analyzer):
-        use = _ExprUse(allow_temps=True,
+        use = _ExprUse(allow_temps=temps_ok,
                        result=_ExprResultUse.BORROW_BIND)
     return THIRPrintArg(
         _lower_expr(a, lc, declared, use=use,

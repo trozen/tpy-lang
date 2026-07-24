@@ -429,15 +429,17 @@ class TestReadonlyParamLambda:
         assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
-    def test_void_body_lambda_stays_ast(self):
-        # A void-body lambda renders the statement form -- still deferred.
+    def test_void_body_lambda_routes_print(self):
+        # A void PRINT-body lambda routes as the statement-body closure
+        # (THIRPrintChain body); other void bodies stay deferred.
         src = ("from typing import Callable\n"
                "def run(f: Callable[[int], None]) -> None:\n"
                "    f(1)\n"
                "def use() -> None:\n"
                "    run(lambda x: print(x))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
 
 class TestPropertyRecordReceiver:

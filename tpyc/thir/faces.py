@@ -39,6 +39,23 @@ THIR_FACES: frozenset[str] = frozenset({
     # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
     # materialization, and the structural slot's `auto __tmp_N` rvalue temp.
     "argtemp.protocol",
+    "argtemp.iter_proto",           # gen-factory / iter() / dict-view rvalue
+                                    # at a structural slot -> un-spelled
+                                    # `auto __tmp_N = <rvalue>;` temp
+    "arg.deref_coerce_inline",      # Ptr[T] deref coercion at a record slot
+                                    # -> inline `::tpy::deref_check(p)`
+    "move.opt_own_last_use",        # record name moved bare into an
+                                    # Optional[Own[T]] slot (converting ctor)
+    "arg.native_protocol_value",    # scalar/Char/str value at a native
+                                    # protocol slot -> bare render (__hash__)
+    "arg.readonly_empty_container", # empty [] / list() at a readonly slot
+                                    # -> inline typed rvalue (const-ref bind)
+    "arg.ru_wrapper_narrowed",      # F6-narrowed member alias passed bare
+                                    # into a same-wrapper arg slot
+    "expr.lambda_void_print",       # void print-body lambda -> the
+                                    # statement-body closure { cout << ...; }
+    "argtemp.deref_coerce",         # wrapper `__deref__()` coercion -> the
+                                    # slot-typed VALUE copy temp
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
@@ -269,6 +286,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
+    "ctor.lambda_arg",              # routable lambda into a Callable ctor slot
+                                    # -> the inline closure, temp-free
+    "method.callable_field",        # callable-field invocation h.cb(3) ->
+                                    # the bare member call (std::function)
     "ctor.own_arg",                 # Own-slot ctor arg via the shared cascade
                                     # rows (last-use move / copy+move temp)
     "ctor.container_literal_arg",   # list literal into a ctor's list slot:
@@ -508,6 +529,25 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
+    "narrow.wrapper_union",         # F6 isinstance on a recursive-alias wrapper
+                                    # union subject -> holds/get via `.value`
+    "narrow.folded_isinstance",     # F1 isinstance on an already-narrowed
+                                    # subject -> `if (true)/(false)` + shadow
+                                    # re-extraction from the ORIGINAL union
+    "narrow.poly_tuple",            # tuple-form poly isinstance -> the
+                                    # no-init dynamic_cast OR-chain
+    "narrow.poly_value",            # value-position poly isinstance -> the
+                                    # bare null-check chain (no branch)
+    "subscript.protocol_recv",      # protocol-typed template-param receiver
+                                    # -> the shared checked __getitem__
+    "subscript.varargs_recv",       # *args view + range-proven index ->
+                                    # args[static_cast<std::size_t>(i)]
+    "setitem.ru_scalar",            # scalar/str literal into a wrapper-union
+                                    # value slot -> bare token (converting ctor)
+    "print.union_narrowed_arg",     # U3-narrowed alias print arg -> the
+                                    # union-typed `::tpy::__str__` visitor
+    "subscript.ru_narrowed_recv",   # subscript off a narrowed wrapper-union
+                                    # receiver -> the fi-fallback bare recv[idx]
     "narrow.opt_field_test",        # `self.f is [not] None` -> the storage-form
                                     # `.has_value()` compare over the bare member
     "narrow.ptr_field_test",        # `s.p is [not] None` on a `Ptr[T]` field ->

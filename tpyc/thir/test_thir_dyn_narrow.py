@@ -3,7 +3,9 @@ if-init cast condition, spelled reads, and the excluded-face fallbacks."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _compile, _entry, _fn, _lower_ctx
+from .testutil import (
+    _assert_byte_identical, _compile, _entry, _fn, _lower_ctx,
+)
 
 _PRELUDE = (
     "from typing import Protocol\n"
@@ -113,8 +115,11 @@ class TestDynNarrowLowering:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
 
-    def test_tuple_check_falls_back(self):
-        # A tuple check yields a union fact -- no single-fact if-init form.
+    def test_tuple_check_routes_or_chain(self):
+        # A tuple check yields a union fact (no alias); the condition
+        # routes as the no-init dynamic_cast OR-chain
+        # (THIRDynIsinstanceMulti) -- dualgen-verified identical, the
+        # structural-conformer cast riding narrow_cast_rhs.
         src = (
             _PRELUDE
             + "def f(p: Pet) -> str:\n"
@@ -123,4 +128,5 @@ class TestDynNarrowLowering:
             + "    return \"no\"\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)

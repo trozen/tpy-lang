@@ -39,6 +39,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
+from ...modules.defs import get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
     AliasRef,
@@ -564,6 +565,28 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
         return None
     return t
 
+def _eligible_wrapper_union(t: TpyType | None,
+                            analyzer=None) -> 'UnionType | None':
+    """The F6 slice: a recursive-alias WRAPPER union (`needs_wrapper()` --
+    emitted as `struct Alias { std::variant<...> value; }`, stored by value
+    everywhere). The variant access is the VALUE form reached via `.value`
+    (`_narrow_variant_cpp`, mirroring VariantAccess.variant_expr), so the
+    isinstance test and the extraction alias render member-shape-blind
+    (`holds_alternative<M>(v.value)` / `std::get<M>(v.value)`); no member
+    restriction is needed for the render itself -- the narrowed FACT retypes
+    the subject for the branch walk, where the ordinary per-construct gates
+    apply. With `analyzer`, a non-generic `AliasRef` slot (the placeholder
+    container elements and annotations carry) resolves through the registry
+    to its union body first."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, AliasRef) and not t.args and analyzer is not None:
+        t = analyzer.registry.resolve_alias_ref(t)
+    if not (isinstance(t, UnionType) and t.needs_wrapper()):
+        return None
+    return t
+
 def _union_storage_val_cpp(ptr_u: 'UnionType') -> str:
     """The value-variant STORAGE spelling for a ptr-variant union slot
     (`__slot_N`), mirroring the AST's `type_to_cpp` for a union: a NAMED plain
@@ -620,7 +643,8 @@ def _isinstance_narrow_info(
     deref-view / type-param subjects (different extraction machinery),
     readonly-qualified subjects (the `ptr_variant_to_const` chain stays AST,
     the U2 verdict), and indirect / frame-slot names (no globals or resumable
-    frames route)."""
+    frames route). A recursive-alias wrapper union rides the F6 slice
+    (`_eligible_wrapper_union`; the `.value` variant access)."""
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
@@ -632,9 +656,20 @@ def _isinstance_narrow_info(
         return None
     var = cond.isinstance_var
     dt = declared.get(var)
-    if dt is None or unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) is not dt:
+    if dt is None:
         return None
-    u = _eligible_value_union(dt) or _eligible_ptr_union(dt, analyzer)
+    db = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    if db is not dt:
+        # F2: a READONLY-qualified subject (a @readonly callable's union
+        # param, `Ref(ReadonlyType(U))`) is admitted -- the const-pointee
+        # spelling rides `_narrow_subject_const`; any other wrapper stays
+        # out.
+        if not isinstance(unwrap_ref_type(unwrap_send_sync(dt)),
+                          ReadonlyType):
+            return None
+        dt = db
+    u = (_eligible_value_union(dt) or _eligible_ptr_union(dt, analyzer)
+         or _eligible_wrapper_union(dt, analyzer))
     if u is None:
         return None
     ct = cond.isinstance_type
@@ -680,9 +715,10 @@ def _poly_narrow_info(
     declared local/param whose type is a @dynamic-dispatch source (a bare
     dyn-protocol ref or polymorphic base -- `polymorphic_source_inner`),
     narrowing to a strict subclass. Returns `(var, member, var_decl)` or
-    None. The slice admits the BARE (`T&`) binding shape only -- pointer-repr
-    Optional / Ptr / deref-view subjects, tuple checks, negation, and
-    compound conditions stay AST (the cast-arg spelling differs there)."""
+    None. The slice admits the BARE (`T&`) binding and the raw `Ptr[Base]`
+    binding (the cast arg spells `&var` vs bare `var`, picked at lowering);
+    pointer-repr Optional (nullability machinery) / deref-view subjects,
+    tuple checks, negation, and compound conditions stay AST."""
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
@@ -693,15 +729,103 @@ def _poly_narrow_info(
     if not isinstance(member, NominalType):
         return None
     var = cond.isinstance_var
-    dt = declared.get(var)
-    if dt is None or unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) is not dt:
+    dt = _poly_subject_decl(declared.get(var))
+    if dt is None:
         return None
     registry = analyzer.registry
-    if polymorphic_source_is_pointer(dt):
-        return None
     if not is_polymorphic_subclass_fact(dt, member, registry):
         return None
     return var, member, dt
+
+
+def _poly_narrow_multi_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, tuple[NominalType, ...], TpyType] | None':
+    """The NO-ALIAS polymorphic isinstance forms: the TUPLE check
+    `isinstance(v, (A, B))` -> the no-init OR-chain
+    `((dynamic_cast<const A*>(v) != nullptr) || ...)`, and the ROOT-class
+    identity check `isinstance(v, Base)` -> the single no-init null-check
+    (the `is not None` pin). Neither binds an extraction alias (a union
+    fact / identity fact extracts nothing on the AST path); reads inside
+    the branch keep the subject's own render. Returns
+    `(var, members, var_decl)` or None."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if (cond.isinstance_type_param or cond.isinstance_deref_depth
+            or cond.macro_expansion is not None):
+        return None
+    var = cond.isinstance_var
+    dt = _poly_subject_decl(declared.get(var))
+    if dt is None:
+        return None
+    registry = analyzer.registry
+    ct = cond.isinstance_type
+    if isinstance(ct, UnionType):
+        members = tuple(ct.members)
+        if not all(isinstance(m, NominalType)
+                   and is_polymorphic_subclass_fact(dt, m, registry)
+                   for m in members):
+            return None
+        return var, members, dt
+    if isinstance(ct, NominalType):
+        root = polymorphic_source_inner(dt, registry)
+        if root is None or ct != root:
+            return None
+        return var, (ct,), dt
+    return None
+
+
+def _poly_subject_decl(dt: 'TpyType | None') -> 'TpyType | None':
+    """The poly-subject declared type after the admitted wrappers: bare, or
+    READONLY-qualified (`readonly[Optional[Base]]` -- the const-pointee
+    spelling rides `_poly_subject_readonly`). Any other wrapper declines."""
+    if dt is None:
+        return None
+    db = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    if db is not dt and not isinstance(
+            unwrap_ref_type(unwrap_send_sync(dt)), ReadonlyType):
+        return None
+    return db
+
+
+def _poly_subject_readonly(dt: 'TpyType | None') -> bool:
+    """Whether the subject's RAW declared type is readonly-qualified -- the
+    AST's `isinstance(var_decl, ReadonlyType)` const arm."""
+    return (dt is not None
+            and isinstance(unwrap_ref_type(unwrap_send_sync(dt)),
+                           ReadonlyType))
+
+
+def _poly_isinstance_value_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, tuple[NominalType, ...], TpyType] | None':
+    """A VALUE-position polymorphic isinstance (`return isinstance(e, VE)`):
+    the bare null-check chain -- no branch, no alias, so members may be
+    strict subclasses or the root, single or tuple. Returns
+    `(var, members, var_decl)` or None."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if (cond.isinstance_type_param or cond.isinstance_deref_depth
+            or cond.macro_expansion is not None):
+        return None
+    var = cond.isinstance_var
+    dt = _poly_subject_decl(declared.get(var))
+    if dt is None:
+        return None
+    registry = analyzer.registry
+    root = polymorphic_source_inner(dt, registry)
+    if root is None:
+        return None
+    ct = cond.isinstance_type
+    members = (tuple(ct.members) if isinstance(ct, UnionType) else (ct,))
+    if not all(isinstance(m, NominalType)
+               and (m == root
+                    or is_polymorphic_subclass_fact(dt, m, registry))
+               for m in members):
+        return None
+    return var, members, dt
 
 
 def _any_narrow_fact(members: tuple[TpyType, ...],
@@ -1740,6 +1864,29 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
     if analyzer.registry.get_record_for_type(t) is None:
         return False
     return not is_builtin_record or _witness("recv.builtin_record")
+
+def _protocol_subscript_recv(recv: TpyExpr, declared: dict[str, TpyType],
+                             analyzer) -> bool:
+    """A bare protocol-typed NAME receiver whose `__getitem__` resolves to
+    the shared checked-dunder protocol template (get_type_method_fi's
+    fallback: `::tpy::__getitem__({self}, {0})`) -- the Sequence-family
+    subscript inside the concept-bounded template. A protocol whose own
+    registered `__getitem__` carries a template/native render keeps
+    rejecting (that fi would render differently) -- verified UNREACHABLE
+    today (sema rejects @cpp_template on protocol methods; no lib protocol
+    carries one), so the arm guards a future lib protocol only."""
+    if not (isinstance(recv, TpyName) and recv.name in declared):
+        return False
+    pb = _protocol_binding(declared[recv.name])
+    if pb is None or is_dyn_protocol(pb):
+        return False
+    ri = analyzer.registry.get_record_for_type(pb)
+    if ri is not None:
+        for fi in ri.get_method_overloads("__getitem__"):
+            if fi.cpp_template or fi.native_function or fi.native_name:
+                return False
+    return bool(get_dunder_cpp_template("__getitem__"))
+
 
 def _protocol_binding(t: 'TpyType | None') -> 'NominalType | None':
     """The protocol a bare protocol-typed binding names, or None.
@@ -4287,16 +4434,17 @@ def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                          narrowed: 'AbstractSet[str]') -> bool:
     """A wrapper-union NAME at a same-wrapper arg slot (`json.dumps(v)` on
     `v: JsonValue`): the binding is already the wrapper struct, so both
-    paths render the bare name (no lift, no temp). Narrowed names are
-    excluded defensively -- THIR installs no wrapper-union extraction
-    aliases today, but a future narrowing arm must not silently ride the
-    bare pass."""
+    paths render the bare name (no lift, no temp). An F6-NARROWED name
+    passes only when its branch fact is a MEMBER of the slot's union: the
+    extraction alias renders bare and the wrapper's converting ctor absorbs
+    it (`dumps(__d, ...)`); any other narrowed shape keeps rejecting."""
     ut = _ru_wrapper_arg_slot(ptype)
     if ut is None or not isinstance(a, TpyName) or a.name not in locals_:
         return False
-    if a.name in narrowed:
-        return False
     dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if a.name in narrowed:
+        return (any(dt == m for m in ut.members if not is_void_like_type(m))
+                and _witness("arg.ru_wrapper_narrowed"))
     return dt == ut
 
 def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
@@ -4565,7 +4713,17 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         fi = a.resolved_function_info
         if fi is None or not fi.is_constructor:
             return None
-        return 'ctor' if analyzer.get_expr_type(a) == inner else None
+        at = analyzer.get_expr_type(a)
+        if at == inner:
+            return 'ctor'
+        # A SUBCLASS ctor rvalue: the CHILD-typed temp's address binds the
+        # base pointer implicitly (`ClickEvent __tmp_2 = ClickEvent(..);
+        # describe(&(__tmp_2))` -- the AST's upcast temp).
+        if (isinstance(at, NominalType)
+                and is_polymorphic_subclass_fact(inner, at,
+                                                 analyzer.registry)):
+            return 'ctor'
+        return None
     if isinstance(a, TpyMethodCall):
         # A record-returning marker-call rvalue (`HTTPSConnection(..,
         # ssl.create_default_context())`): the AST tail hoists the same

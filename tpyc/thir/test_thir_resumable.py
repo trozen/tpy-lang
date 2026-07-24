@@ -1856,11 +1856,11 @@ class TestNarrowedResume:
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
-    def test_readonly_union_cond_defers(self):
-        # A readonly-qualified union subject is a SYNC slice-out too
-        # (`_isinstance_narrow_info` requires a bare declared type -- the
-        # ptr_variant_to_const chain stays AST); the Branch cond rejects
-        # res.cond and the body falls back byte-identically.
+    def test_readonly_union_cond_routes(self):
+        # A readonly-qualified union subject narrows with const-qualified
+        # alternatives (F2, `_isinstance_narrow_info`'s readonly unwrap);
+        # the resumable Branch machinery rides it -- dualgen-verified
+        # identical.
         src = ("from typing import Iterator\n"
                + "from tpy import readonly\n\n"
                + "class Dog:\n"
@@ -1876,7 +1876,7 @@ class TestNarrowedResume:
                + "        yield 2\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert fallback.get("res.cond", 0) >= 1
+        assert sum(fallback.values()) == 0
         _assert_identical(src)
 
     def test_while_narrow_across_suspend_routes(self):
@@ -3553,9 +3553,10 @@ class TestFrameFamilyAdmissions:
         assert "std::holds_alternative<::tpy::BigInt>(a)" in hpp + cpp
 
     def test_own_container_param_admits_reads_defer(self):
-        # F6: an Own[list] param admits (moved value-container field);
-        # its subscript READ still defers (subscript.recv_type) -- the
-        # honest next-blocker, not res.param_type.
+        # F6: an Own[list] param admits (moved value-container field); its
+        # subscript READ now routes (the Own-receiver read row), so the
+        # honest next-blocker is the len-position NAME read
+        # (name.own_read), not res.param_type.
         src = ("from typing import Iterator\nfrom tpy import Int32, Own\n\n"
                + "def gen_own(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
                + "    yield xs[0]\n"
@@ -3563,7 +3564,7 @@ class TestFrameFamilyAdmissions:
                + "def main() -> None:\n    pass\nmain()\n")
         fb = _res_fallback(src)
         assert "res.param_type" not in fb
-        assert fb.get("subscript.recv_type") == 1
+        assert fb.get("name.own_read") == 1
         _assert_identical(src)
 
 

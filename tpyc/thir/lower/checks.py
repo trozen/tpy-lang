@@ -5,6 +5,7 @@ predictively traverse a body or expression before lowering.
 """
 
 from __future__ import annotations
+import math
 from collections.abc import Set as AbstractSet
 from dataclasses import field
 from typing import Callable, NamedTuple
@@ -150,6 +151,7 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
+    _eligible_wrapper_union,
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
@@ -312,6 +314,10 @@ def _compound_narrow_info(
         return None
     idx, (var, u, members, folded) = hits[0]
     if folded:
+        return None
+    # The inline THIRNarrowedRead render has no wrapper `.value` spelling;
+    # compound conditions on wrapper-union subjects stay AST.
+    if u.needs_wrapper():
         return None
     return var, u, members, leaves[idx]
 
@@ -740,6 +746,19 @@ def _container_ref_alias_elem_subscript(e: TpyExpr,
                                         _container_ref_alias_elem)
 
 
+def _container_wrapper_elem_subscript(e: TpyExpr,
+                                      locals_: dict[str, TpyType],
+                                      analyzer) -> bool:
+    """A container subscript whose element/value is a recursive-union WRAPPER
+    (`v: JsonValue = d["rows"]`): the element lvalue binds the wrapper's `T&`
+    REF_ALIAS. The wrapper-union analog of
+    `_container_ref_alias_elem_subscript`."""
+    return _borrow_elem_subscript_shape(
+        e, locals_, analyzer,
+        lambda t, a: _container_elem_family(
+            t, a, lambda m: _eligible_wrapper_union(m, a) is not None))
+
+
 def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
                                  analyzer, elem_family) -> bool:
     """Shared shell for the record-element / nested-container-element subscript
@@ -979,6 +998,20 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _alias_ref_container(target_type)
                 and _container_ref_alias_elem_subscript(stmt.init, declared,
                                                         analyzer)):
+            return binding
+        # A wrapper-union element subscript (`v: JsonValue = d["rows"]`)
+        # binds the element lvalue as the wrapper's `T&` alias. LOCAL
+        # narrowing-alias receivers only: a PARAM subject's extraction alias
+        # is `const auto&`, and the AST still emits the non-const `T&` bind
+        # off it -- uncompilable C++ (pre-existing AST bug, BUGS.md); the
+        # shape stays gate-rejected rather than mirroring it.
+        if (binding is LocalBinding.REF_ALIAS
+                and _eligible_wrapper_union(target_type, analyzer) is not None
+                and isinstance(stmt.init, TpySubscript)
+                and isinstance(stmt.init.obj, TpyName)
+                and stmt.init.obj.name not in prescan.param_names
+                and _container_wrapper_elem_subscript(stmt.init, declared,
+                                                      analyzer)):
             return binding
         # A bare non-value NAME alias (`y = x`, `alias = items`, `c = b`) binds
         # the single-assignment `T&` alias directly -- no field-receiver pin.
@@ -1662,10 +1695,12 @@ def _setitem_target_ok(
                                       or recv.name in narrowed):
         # A rebound CONTAINER pointer-local (F2d) writes through the deref
         # (`::tpy::__setitem__((*xs), i, v)` -- the name arm's
-        # pointer_value_expr render); record / narrowed pointer receivers
-        # keep their own (unrouted) shapes.
-        rb = (declared.get(recv.name)
-              if recv.name not in narrowed else None)
+        # pointer_value_expr render). A narrowing ALIAS whose branch fact is
+        # an admitted container renders the bare alias on both paths (the
+        # fact retyped `declared` for the branch); a narrowed name whose
+        # declared entry is still the union (post-if / assert scopes don't
+        # retype) fails the container check below and keeps rejecting.
+        rb = declared.get(recv.name)
         rbu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rb)))
                if rb is not None else None)
         if not (rbu is not None and (is_list(rbu) or is_dict(rbu)
@@ -1712,7 +1747,12 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
             # the checked `__setitem__` forwards a record RVALUE bare; the
             # value shape (exact / covariant-upcast rvalue) narrows at the
             # lowering arm.
-            or _f1_record(elem_t, analyzer))
+            or _f1_record(elem_t, analyzer)
+            # A recursive-union WRAPPER value slot (`d["c"] = 3` on
+            # `dict[str, JsonValue]`): the wrapper's converting ctor absorbs
+            # a scalar/str literal bare; the value shape narrows at the
+            # lowering arm.
+            or _eligible_wrapper_union(elem_t, analyzer) is not None)
 
 def _setitem_widened_family_ok(recv_t: 'TpyType | None', analyzer) -> bool:
     """The non-scalar element/value slots the setitem WRITE additionally
@@ -2351,7 +2391,65 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # native arg loop renders it bare (`protocol_slots=False`), no
             # adapter wrap, so only the no-temp bare row admits here.
             or _protocol_slot_arg(a, ptype, locals_, analyzer, temps_ok=False)
+            # A value-typed arg (scalar / Char / str family) at a native
+            # protocol slot (`hash("hello")` -> `::tpy::__hash__("hello")`):
+            # the native loop renders the value bare, position-independent.
+            or _native_protocol_value_arg(a, ptype, analyzer)
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
+
+
+def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   analyzer) -> 'TpyType | None':
+    """An EMPTY container rvalue into a `readonly[list/dict/set]` slot: the
+    const-ref slot binds the rvalue INLINE -- `f(std::vector<int32_t>())`
+    for the hint-typed `list()` instantiation, `f(std::vector<int32_t>{})`
+    for the `[]` literal (the typed empty spelling). Empty only: elements
+    would take the mutable slots' temp machinery. Returns the container
+    slot or None."""
+    if not isinstance(ptype, ReadonlyType):
+        return None
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    if not (is_list(inner) or is_dict(inner) or is_set(inner)):
+        return None
+    if isinstance(a, TpyArrayLiteral) and not a.elements and is_list(inner):
+        return inner
+    if isinstance(a, TpySetLiteral) and not a.elements and is_set(inner):
+        return inner
+    if (isinstance(a, TpyDictLiteral) and not a.keys and is_dict(inner)):
+        return inner
+    if (isinstance(a, TpyCall) and a.call_type is not None
+            and not a.args and not a.kwargs):
+        ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.call_type)))
+        return inner if ct == inner else None
+    return None
+
+
+def _native_protocol_value_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """The value-typed slice of a native callee's protocol slot: the arg's
+    resolved type is an eligible scalar / Char / str value, whose bare
+    render is position-independent (the ordinary lowering tail carries it).
+    Gate row only -- an arg SHAPE the tail cannot route still falls the
+    body back."""
+    proto = _protocol_arg_slot(ptype)
+    if proto is None or is_dyn_protocol(proto):
+        return False
+    # Unresolved scalar literals render their bare token (`__hash__(42)`,
+    # `__hash__(3.14)`) -- the `_ru_elem_ok` leaf bounds (strict on both
+    # ends BY DESIGN: INT32_MIN itself stays AST, like _ru_elem_ok).
+    if isinstance(a, TpyIntLiteral):
+        return (-(2 ** 31) < a.value < 2 ** 31
+                and _witness("arg.native_protocol_value"))
+    if isinstance(a, TpyFloatLiteral):
+        return bool(math.isfinite(a.value)
+                    and _witness("arg.native_protocol_value"))
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return bool(atu is not None
+                and (_eligible_scalar(atu) or _eligible_char(atu)
+                     or _resolved_str_value(atu, analyzer) is not None)
+                and _witness("arg.native_protocol_value"))
 
 def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     """The lambda-expression shapes `_lower_lambda` reproduces byte-for-byte:
@@ -2361,10 +2459,11 @@ def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     return body; }` arm, in its by-reference (Fn template), by-value
     (Callable/std::function), and readonly-param (key-function -- const
     `_callable_param_cpp` spelling + `to_cpp_return_const` trailing) capture
-    modes. The void-body statement render stays on the AST path. The
-    single source of truth for both the arg-admission gate and the lowering
-    arm (they must agree, else the gate admits a shape lowering then rejects
-    -- a needless fallback)."""
+    modes. A VOID body routes IFF it is a bare builtin-print call (the
+    statement-body closure `{ std::cout << ...; }`); other void bodies stay
+    on the AST path. The single source of truth for both the arg-admission
+    gate and the lowering arm (they must agree, else the gate admits a
+    shape lowering then rejects -- a needless fallback)."""
     if not isinstance(a, TpyLambda):
         return False
     # A captured `self` spells `this` in the capture list (method context
@@ -2372,11 +2471,23 @@ def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     if "self" in a.captured_names:
         return False
     rt = a.inferred_return_type
-    if rt is None or is_void_like_type(rt):
+    if rt is None:
         return False
-    ru = unwrap_readonly(rt)
-    if isinstance(ru, TupleType) and ru.has_pointer_repr_element():
-        return False
+    if is_void_like_type(rt):
+        b = a.body
+        # A param/capture named `print` would shadow the builtin; kwargs
+        # (sep/end/file) and star-unpack shapes stay AST.
+        if not (isinstance(b, TpyCall) and isinstance(b.func, TpyName)
+                and b.func_name == "print"
+                and not b.kwargs and b.double_star_unpack is None
+                and "print" not in a.param_names
+                and "print" not in a.captured_names
+                and _is_builtin_print(b, {}, analyzer)):
+            return False
+    else:
+        ru = unwrap_readonly(rt)
+        if isinstance(ru, TupleType) and ru.has_pointer_repr_element():
+            return False
     for pt in a.inferred_param_types:
         if not isinstance(pt, TpyType):
             return False
@@ -2458,6 +2569,10 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                 is not None)
             or _optional_ptr_arg(a, ptype, locals_, analyzer,
                                  temps_ok=temps_ok)
+            # A record name moved into an Optional[Own[T]] slot (bare
+            # `std::move(name)`); the lowering enforces the move verdict.
+            or _opt_own_record_name_arg(a, ptype, locals_, analyzer)
+            is not None
             or _readonly_record_ctor_arg(a, ptype, locals_, analyzer)
             or _union_pass_through_arg(a, ptype, locals_, analyzer)
             or _union_member_lift_arg(a, ptype, locals_, analyzer)
@@ -2475,6 +2590,12 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # gate checks only the slot/arity pairing.
             or _tuple_literal_arg(a, ptype)
             or _record_field_ref_arg(a, ptype, locals_, analyzer)
+            # The deref auto-coercion name: inline Ptr deref_check, or the
+            # slot-typed wrapper-`__deref__()` copy temp (flush-gated).
+            or ((dc := _deref_coerce_arg(a, ptype, locals_, analyzer))
+                is not None and (dc[0] == "inline" or temps_ok))
+            # An empty container rvalue at a readonly slot binds inline.
+            or _readonly_container_rvalue_arg(a, ptype, analyzer) is not None
             or note_detail(
                 "call.arg_shape." + _type_family_tag(ptype, analyzer)))
 
@@ -2654,7 +2775,13 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     this arm does not mirror. A MUTATED ctor slot rejects (a prvalue into a
     non-const `T&`). Element shapes are pre-checked so admission tracks
     lowerability; the make_vector element path is rejected at lowering (its
-    ctor-arg render is unverified)."""
+    ctor-arg render is unverified). A DECLARED-readonly slot binds the
+    literal INLINE on the AST path (dualgen-verified `take_ro({1, 2, 3})`),
+    so it must not ride the temp arms -- only the empty rvalue is mirrored
+    (`_readonly_container_rvalue_arg`); non-empty stays AST."""
+    if isinstance(ptype, TpyType) and isinstance(
+            unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType):
+        return False
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if ptype is not None else None)
     if pt is None or isinstance(pt, (OwnType, OptionalType)):
@@ -2692,7 +2819,12 @@ def _ref_param_dictset_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     container init (`::tpy::ordered_map<...> __tmp_N = ::tpy::ordered_map<...>
     ({{..}});` -- gen_call_arg renders the literal target-typed, then the
     ref-param cascade hoists it). Flush positions only (the arm is
-    temps_ok-gated); the list-literal sibling rides `_container_literal_arg`."""
+    temps_ok-gated); the list-literal sibling rides `_container_literal_arg`.
+    DECLARED-readonly slots bind inline on the AST path -- excluded like the
+    list sibling."""
+    if isinstance(ptype, TpyType) and isinstance(
+            unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType):
+        return False
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if ptype is not None else None)
     if pt is None or isinstance(pt, (OwnType, OptionalType)):
@@ -3119,6 +3251,10 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         # the protocol, so `_protocol_arg_temp`'s protocol-typed
         # bare-forward (an LVALUE rule) must not swallow it.
         return temps_ok and _witness("argtemp.protocol")
+    elif _iter_rvalue_structural_arg(a, proto, locals_, analyzer):
+        # The iterator sibling (gen-factory / iter() / dict-view rvalues):
+        # the same un-spelled auto temp, always hoisted.
+        return temps_ok and _witness("argtemp.iter_proto")
     elif (isinstance(a, TpyArrayLiteral) and not is_dyn_protocol(proto)):
         # A container literal into a STRUCTURAL slot (`math.dist([0.0, 0.0],
         # ..)`): the resolved literal hoists the un-spelled `auto __tmp_N =
@@ -3209,6 +3345,58 @@ def _coro_factory_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
             and a.resolved_function_info is not None
             and a.resolved_function_info.is_async
             and is_rvalue_source(analyzer, a))
+
+
+def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
+                      locals_: dict[str, TpyType], analyzer
+                      ) -> 'tuple[str, TpyType] | None':
+    """A deref auto-coercion (`deref_to_target`) over a bare in-scope NAME
+    into a plain F1-record slot (`print_point(r)` on a Deref-implementing
+    `Ref` / `describe(p)` on `p: Ptr[Point]`). Two AST renders, keyed on the
+    source: a `Ptr[T]` source is the inline `::tpy::deref_check(p)` lvalue
+    (binds the const ref directly); a record-wrapper source hoists the
+    slot-typed VALUE copy `Point __tmp_N = r.__deref__();` (the ref-param
+    cascade's temporary row) and passes the temp. Returns
+    `("inline" | "temp", slot)` or None."""
+    if not (isinstance(a, TpyCoerce) and a.coercion.name == "deref_to_target"):
+        return None
+    src = a.expr
+    if not (isinstance(src, TpyName) and src.name in locals_):
+        return None
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    if slot is None or not _f1_record(slot, analyzer):
+        return None
+    actual = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.actual_type)))
+    if isinstance(actual, PtrType):
+        return "inline", slot
+    if isinstance(actual, NominalType) and actual.is_user_record:
+        return "temp", slot
+    return None
+
+
+def _iter_rvalue_structural_arg(a: TpyExpr, proto,
+                                locals_: dict[str, TpyType],
+                                analyzer) -> bool:
+    """An iterator/iterable-object RVALUE at a STRUCTURAL protocol slot
+    (`make_toks(ints(3))` / `mutate_via_iterator(iter(pts2))` /
+    `collect_items(d.keys())`): the AST hoists the un-spelled
+    `auto __tmp_N = <rvalue>;` and passes the temp name -- the coro-factory
+    temp's iterator sibling. Shared by the gate arm and the lowering; the
+    init lowers under ITERABLE result use (the universal loop's
+    source-capture admission)."""
+    if is_dyn_protocol(proto):
+        return False
+    if isinstance(a, TpyCall):
+        fi = a.resolved_function_info
+        if fi is not None and fi.is_generator:
+            return is_rvalue_source(analyzer, a)
+        return (_iter_proto_call_ret(a, analyzer)
+                and is_rvalue_source(analyzer, a))
+    if isinstance(a, TpyMethodCall):
+        return _dict_view_iterable_ok(a, locals_, analyzer,
+                                      methods=("values", "keys", "items"))
+    return False
 
 
 def _module_qual_ctor_shape(a: TpyExpr, analyzer) -> bool:
@@ -3466,6 +3654,34 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
         if a.name == "self" or a.name in narrowed or a.name not in locals_:
             return False
     return True
+
+def _opt_own_record_name_arg(a: TpyExpr, ptype: TpyType | None,
+                             locals_: dict[str, TpyType],
+                             analyzer) -> 'TpyType | None':
+    """A same-nominal F1-record NAME into an `Optional[Own[T]]` slot
+    (`_urlopen(..., conn)` on `conn: Box[...]`): the AST's `_maybe_move`
+    renders the movable last use `std::move(conn)` BARE -- the
+    `std::optional` converting ctor absorbs the moved payload. Gate is
+    shape-only; the lowering requires the move verdict (`_is_move_source`)
+    and rejects the copy shape (unwitnessed). Returns the record payload or
+    None."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    if not isinstance(pt, OptionalType):
+        return None
+    ow = unwrap_optional_own(pt)
+    if ow is None:
+        return None
+    w = unwrap_readonly(ow.wrapped)
+    if not _f1_record(w, analyzer):
+        return None
+    if not (isinstance(a, TpyName) and a.name in locals_):
+        return None
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    return w if at == w else None
+
 
 def _readonly_record_ctor_arg(a: TpyExpr, ptype: TpyType | None,
                               locals_: dict[str, TpyType], analyzer) -> bool:
@@ -4643,6 +4859,11 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                 a, ptype, locals_, narrowed, analyzer))
             or _optional_ptr_arg(a, ptype, locals_, analyzer,
                                  temps_ok=temps_ok)
+            # A record name moved into an Optional[Own[T]] slot
+            # (`_urlopen(..., conn)` -> bare `std::move(conn)`); the
+            # lowering enforces the move verdict.
+            or _opt_own_record_name_arg(a, ptype, locals_, analyzer)
+            is not None
             or _readonly_record_ctor_arg(a, ptype, locals_, analyzer)
             or _union_pass_through_arg(a, ptype, locals_, analyzer)
             or _union_member_lift_arg(a, ptype, locals_, analyzer)

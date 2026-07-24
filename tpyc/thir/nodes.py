@@ -1298,6 +1298,17 @@ class THIRIsinstance(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRDynIsinstanceMulti(THIRExpr):
+    """The TUPLE form of a polymorphic isinstance condition --
+    `isinstance(v, (A, B))` -> the no-init OR-chain
+    `((dynamic_cast<const A*>(v) != nullptr) || (...))`. `checks_cpp` are
+    the pre-rendered per-member null-checks (narrow_cast_rhs at lowering,
+    the AST chokepoint); no extraction alias exists (the branch fact is
+    the checked union)."""
+    checks_cpp: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRAnyIsinstance(THIRExpr):
     """`isinstance(v, A)` / `isinstance(v, (A, B))` over an Any-typed subject
     (D15) -> the has_value guard + typeid check(s):
@@ -2590,6 +2601,8 @@ class PrintForm(Enum):
     """
     RAW = auto()
     INT8 = auto()
+    STR = auto()  # `::tpy::__str__(...)` -- a union-typed arg (std::variant
+                  # has no operator<<; the per-alternative visitor dispatch)
     BOOL = auto()
     FLOAT = auto()
     FLOAT32 = auto()
@@ -2615,6 +2628,17 @@ class THIRPrintArg:
     expr: THIRExpr
     print_form: PrintForm
     opt_inner_cpp: str | None = None
+
+
+@dataclass(frozen=True)
+class THIRPrintChain(THIRExpr):
+    """The `std::cout << a0 << " " << a1 << ... << "\\n"` chain as an
+    EXPRESSION -- the body of a void print-call lambda (`_gen_lambda`'s
+    statement-body arm renders `gen_print(...)` as the closure body; the
+    enclosing THIRLambda adds the `;`). Plain `print(args)` only: the
+    default sep/end literals, no file/flush kwargs (those shapes stay on
+    the AST path)."""
+    args: tuple[THIRPrintArg, ...] = ()
 
 
 @dataclass(frozen=True)

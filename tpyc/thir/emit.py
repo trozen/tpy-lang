@@ -83,6 +83,7 @@ from .nodes import (
     THIRIsinstance,
     THIRAnyIsinstance,
     THIRDynIsinstance,
+    THIRDynIsinstanceMulti,
     THIRLiteral,
     THIRMatch,
     THIRMatchBinding,
@@ -99,6 +100,7 @@ from .nodes import (
     THIROptionalPtrArg,
     THIRParamCopy,
     THIRPrint,
+    THIRPrintChain,
     THIRPrintArg,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
@@ -1320,6 +1322,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # The C++17 if-init form: the whole `init; cond` sits inside the if's
         # own parens (mirrors _gen_if's `{init_clause}{cond}` composition).
         return f"{e.init_cpp}; ({e.ptr_local} != nullptr)"
+    if isinstance(e, THIRDynIsinstanceMulti):
+        # The tuple form's OR-chain; a single check (the root-class form)
+        # renders bare (mirrors the AST isinstance arm's join rule).
+        if len(e.checks_cpp) == 1:
+            return e.checks_cpp[0]
+        return "(" + " || ".join(e.checks_cpp) + ")"
     if isinstance(e, THIRAnyIsinstance):
         # The shared composition (any_isinstance_check) -- one spelling for
         # the AST isinstance arm's Any branch and this node.
@@ -1499,6 +1507,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"{e.capture_cpp}({params}) {{ {body}; }}"
         return (f"{e.capture_cpp}({params}) -> {e.ret_cpp} "
                 f"{{ return {body}; }}")
+    if isinstance(e, THIRPrintChain):
+        # The void-lambda body chain: the plain-print segments (default
+        # sep/end literals), no sink/`;` -- the enclosing lambda adds those.
+        return "std::cout << " + " << ".join(
+            _print_parts(e.args, '" "', '"\\n"', state))
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             return "nullptr"
@@ -3741,6 +3754,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::print_float(static_cast<double>({inner}))"
     if a.print_form is PrintForm.INT8:
         return f"static_cast<int>({inner})"
+    if a.print_form is PrintForm.STR:
+        return f"::tpy::__str__({inner})"
     if a.print_form is PrintForm.BYTES:
         return f"::tpy::BytesPrinter({inner})"
     if a.print_form is PrintForm.REPR:
@@ -3776,6 +3791,20 @@ def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
     return cpp_string_literal_expr(value)
 
 
+def _print_parts(args, sep_token: 'str | None', end_token: 'str | None',
+                 state: _EmitState) -> list[str]:
+    """The `<<` chain segments shared by the print statement and the
+    void-lambda THIRPrintChain body, so the two renders cannot drift."""
+    parts: list[str] = []
+    for i, a in enumerate(args):
+        if i > 0 and sep_token is not None:
+            parts.append(sep_token)
+        parts.append(_emit_print_arg(a, state))
+    if end_token is not None:
+        parts.append(end_token)
+    return parts
+
+
 def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
                 state: _EmitState) -> None:
     # Mirrors gen_print's cout-sink path: `std::cout << a0 << SEP << a1
@@ -3787,13 +3816,7 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     # match the AST order before widening that gate.
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
-    parts = []
-    for i, a in enumerate(stmt.args):
-        if i > 0 and sep_token is not None:
-            parts.append(sep_token)
-        parts.append(_emit_print_arg(a, state))
-    if end_token is not None:
-        parts.append(end_token)
+    parts = _print_parts(stmt.args, sep_token, end_token, state)
     # Args render first: their hoisted temps flush before the cout line
     # (the AST's pre-statement `ctx.temps.flush`).
     state.temps.flush(out, indent)

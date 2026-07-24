@@ -41,6 +41,7 @@ from .nodes import (
     THIRIsinstance,
     THIRAnyIsinstance,
     THIRDynIsinstance,
+    THIRDynIsinstanceMulti,
     THIRExprStmt,
     THIRContainerLiteral,
     THIRContinue,
@@ -59,6 +60,7 @@ from .nodes import (
     THIRNarrowedRead,
     THIROptionalPtrArg,
     THIRPrint,
+    THIRPrintChain,
     THIRReturn,
     THIRSelf,
     THIRStmt,
@@ -283,6 +285,12 @@ def _expr(e: THIRExpr) -> str:
                 f"[{', '.join(e.member_cpps)}])")
     if isinstance(e, THIRDynIsinstance):
         return f"dyn_isinstance[{e.ptr_local}]({e.init_cpp})"
+    if isinstance(e, THIRDynIsinstanceMulti):
+        return f"dyn_isinstance_multi([{', '.join(e.checks_cpp)}])"
+    if isinstance(e, THIRPrintChain):
+        args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]"
+                         for a in e.args)
+        return f"print_chain({args})"
     if isinstance(e, THIRNarrowedRead):
         deref = "*" if e.is_ptr_variant else ""
         return f"({deref}get<{e.member_cpp}>(%{e.variant_cpp}))"

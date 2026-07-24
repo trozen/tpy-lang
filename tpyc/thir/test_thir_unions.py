@@ -22,8 +22,8 @@ from .validate import (
     THIRValidationError, validate_constructor, validate_function,
 )
 from .testutil import (
-    _compile, _entry, _fn, _lower, _lower_ctor, _lower_ctx,
-    _lower_ctx_witnessed,
+    _assert_byte_identical, _compile, _entry, _fn, _lower, _lower_ctor,
+    _lower_ctx, _lower_ctx_witnessed,
 )
 
 _PRELUDE = "from tpy import Int32, Int64, Float64\n"
@@ -150,15 +150,20 @@ class TestValueUnionEligibility:
             "def f(s: str) -> Int32:\n    return take(s)\n"))
         assert _fn(thir, "f") is None
 
-    def test_str_union_narrowed_print_rejects(self):
+    def test_str_union_narrowed_print_routes_str_wrap(self):
         # Printing a narrowed union subject takes the AST's `__str__` wrap
-        # (`__str__(__r)`) even after extraction, not the member's bare stream
-        # form -- a text divergence the print slice does not reproduce.
+        # (`__str__(__v)`) even after extraction -- gen_print keys the
+        # DECLARED union (ctx.var_types) -- mirrored by PrintForm.STR keyed
+        # on `lc.narrow.subject_union`.
         thir = _lower(_PRELUDE + (
             "def f(v: Int32 | str) -> None:\n"
             "    if isinstance(v, Int32):\n        print(v)\n"
             "    else:\n        print(v)\n"))
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(_PRELUDE + (
+            "def f(v: Int32 | str) -> None:\n"
+            "    if isinstance(v, Int32):\n        print(v)\n"
+            "    else:\n        print(v)\n"))
 
     def test_member_literal_return_routes(self):
         # A member LITERAL returned into a value union renders bare -- the
@@ -641,8 +646,9 @@ class TestNarrowingEligibility:
     implicit else), while-isinstance (loop-entry extraction),
     assert-isinstance (persistent extraction + the re-assert suffix bump),
     and compound `and` conditions (inline deref reads). Writes to the
-    narrowed subject, `or` conditions, multi-subject compounds, and readonly
-    subjects stay on the AST path."""
+    narrowed subject, `or` conditions, and multi-subject compounds stay on
+    the AST path; readonly subjects route with const-qualified
+    alternatives (F2)."""
 
     def _lower(self, src: str):
         return _lower_ctx(_THREE_RECORDS + src)
@@ -904,12 +910,16 @@ class TestNarrowingEligibility:
             "    return 0\n")
         assert _fn(thir, "f") is None
 
-    def test_readonly_subject_rejects(self):
-        thir = self._lower(
+    def test_readonly_subject_routes_const_alternatives(self):
+        # F2: a readonly-qualified subject narrows with const-qualified
+        # alternatives (`std::get<const A*>`), dualgen-verified identical
+        # incl. the post-if implicit-else extraction.
+        src = _THREE_RECORDS + (
             "def f(v: readonly[A | B]) -> Int32:\n"
             "    if isinstance(v, A):\n        return v.x\n"
             "    return v.y\n")
-        assert _fn(thir, "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_while_isinstance_routes(self):
         thir = self._lower(

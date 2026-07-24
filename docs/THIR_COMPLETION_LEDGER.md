@@ -2283,3 +2283,48 @@ byte-diff itself.
   storage-call decls (the `_container_scalar_read` axis); the
   gen-method union-param narrowed/Fn residue; void-body lambda args;
   protocol-receiver subscripts; isinstance cond.call narrowing folds.
+
+- **Landed: isinstance families + arg-ladder clean tiers wave
+  (`thir-wave-next8`, 2026-07-24, 6 cells + harvests).** The round-8
+  design-track queue consumed as ordinary cells. (1) F6 wrapper-union
+  isinstance narrowing (`_eligible_wrapper_union` incl. AliasRef
+  registry resolution; `.value` variant access via
+  `_narrow_variant_cpp`; the DECLARED-union consumer keying via
+  `lc.narrow.subject_union` -- gen_print/gen_subscript read
+  ctx.var_types, so a narrowed alias prints through the `__str__`
+  visitor / subscripts through the fi-fallback raw `recv[idx]`);
+  narrowed-alias setitem + qualcall wrapper-slot args + the
+  wrapper-elem REF_ALIAS decl (local subjects only). (2) F1 folded
+  isinstance (`if (true)/(false)` + the shadowing re-extraction from
+  the ORIGINAL union; folded-FALSE extracts the CHECKED member) + F2
+  readonly-qualified subjects (const-pointee spellings, sync +
+  resumable lanes). (3) Arg-ladder clean tiers: iter-rvalue auto
+  temps (gen-factory / iter() / dict-view at structural slots, the
+  coro-factory temp's sibling, init under ITERABLE use); deref-coerce
+  args (inline Ptr deref_check / slot-typed `__deref__()` copy temp);
+  Optional[Own] last-use bare moves; native-protocol value args
+  (__hash__); readonly empty-container inline binds (the temp arms
+  now exclude declared-readonly slots -- dualgen caught the inline
+  `take_ro({1, 2, 3})`). (4) Void print-body lambdas
+  (THIRPrintChain body, args TEMP-FREE -- an enclosing-statement
+  flush would miscompile; sep/end/file + non-print + self-capture
+  stay AST) + ctor lambda args + callable-field calls. (5) F4
+  dynamic_cast: Ptr / Optional-ptr / readonly subjects on the if-init
+  form; THIRDynIsinstanceMulti for the tuple OR-chain + root-class
+  identity check; the value-position chain (CONDITION/TRUTHY uses
+  excluded -- the negated form's post-if alias is unmirrored); the
+  `_ptr_read_derefs` guard closes the double-deref / receiver-arrow
+  seam for spelled subjects. (6) Subscript receiver families:
+  protocol template-param receivers (the shared checked dunder),
+  varargs views with range-PROVEN indexes, Own[container] param
+  READS (position-pinned name; writes keep the Own exclusion).
+  DIVERGENCES caught en route (corpus + dualgen): the for-each over a
+  narrowed alias (AST renders the generic __iter__ loop --
+  foreach.narrowed_src reject), the readonly-slot literal temp, the
+  const-alias write/elem-decl AST bugs (filed in BUGS.md; THIR
+  gate-rejects both), the func_ref_callable `(*this)` receiver.
+  PARKED: overload per-stub emission (round-8 decision 9,
+  APPROVED-UNCONSUMED -- the next wave's opening deep cell);
+  traits_records (a generics-lane field rung); the negated poly cond
+  (post-if alias); unproven varargs indexes; F5 constexpr folds
+  (design).
