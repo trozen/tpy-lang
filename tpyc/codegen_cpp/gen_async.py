@@ -29,7 +29,7 @@ from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyWithItem,
-    TpyTupleUnpack, TpyNestedDef,
+    TpyTupleUnpack, TpyNestedDef, TpySubscript,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
@@ -353,6 +353,21 @@ class AsyncCoroCodegen:
                     f"{escape_cpp_name(name)}")
         return f"{prefix}{escape_cpp_name(name)}"
 
+    def _frame_deep_const_verdict(
+            self, func: TpyFunction,
+            record_name: 'str | None') -> 'frozenset[int] | None':
+        """The per-param deep-const verdict off the RAW fi (methods: the
+        registry method fi; free defs: overloads[-1], the implementation).
+        Drives the frame-field const spelling for pointer-repr tuple/union
+        captures; the CFG-window const-set seeding must read the same
+        source so alias-local classification agrees with the field."""
+        if record_name:
+            _ri = self.ctx.analyzer.registry.get_record(record_name)
+            _mfi = _ri.get_method(func.name) if _ri else None
+            return _mfi.deep_const_borrow_params if _mfi else None
+        _fis = self.ctx.analyzer.registry.get_function(func.name)
+        return _fis[-1].deep_const_borrow_params if _fis else None
+
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None = None
                           ) -> list[_CoroParam]:
@@ -383,11 +398,7 @@ class AsyncCoroCodegen:
         # the resolved FunctionInfo. An inferred-readonly method does NOT wrap
         # its params in ReadonlyType, so the factory field must consult the
         # verdict, not just the param type, to match the call site + body.
-        _deep_const: 'frozenset[int] | None' = None
-        if record_name:
-            _ri = self.ctx.analyzer.registry.get_record(record_name)
-            _mfi = _ri.get_method(func.name) if _ri else None
-            _deep_const = _mfi.deep_const_borrow_params if _mfi else None
+        _deep_const = self._frame_deep_const_verdict(func, record_name)
         if record_name:
             # Match the factory-site spelling (generator.py:1177, :1252):
             # convert dotted nested-class names to C++ scope syntax (`Outer.Inner`
@@ -460,12 +471,16 @@ class AsyncCoroCodegen:
                 elif isinstance(actual, TupleType):
                     # Borrow form: std::tuple<..., T*> (readonly -> const T*).
                     # The pointers alias the caller; stored by value in the
-                    # frame so they survive suspension. The INFERRED verdict
-                    # is deliberately not consulted here (unlike the union
-                    # arm below): it wrongly deep-consts yield-escaped
-                    # params, so applying it would break mutation-through-
-                    # yield generators (see BUGS.md).
-                    field_type = ctor_type = ptype_inner.to_cpp_return()
+                    # frame so they survive suspension. Deep-const when the
+                    # param is `readonly[...]` OR the inferred verdict
+                    # deep-consts it (mirrors the union arm below and the
+                    # sync signature + call site; yield-escaped params are
+                    # excluded by the verdict itself).
+                    spell = ptype_inner
+                    if (spell is actual and _deep_const is not None
+                            and _pidx in _deep_const):
+                        spell = ReadonlyType(actual)
+                    field_type = ctor_type = spell.to_cpp_return()
                 else:
                     # Non-value union: the pointer-variant borrow form
                     # (`std::variant<A*, B*>`) is the shape every other param
@@ -2013,17 +2028,28 @@ class AsyncCoroCodegen:
         # hold the previous function's values -- seed FRAME-CAPTURE constness,
         # not the sync signature inference: the frame stores `const Self&`
         # for a readonly method and `const T&` for explicit readonly[T]
-        # params, but captures inferred-const reference params as mutable
+        # params, but captures inferred-const REFERENCE params as mutable
         # `T&`, so sync const sets would over-mark param-rooted sources.
+        # Pointer-repr tuple/union captures are the exception: their frame
+        # fields spell the inferred verdict (`_classify_params`), so the
+        # window must agree or alias locals type against the wrong field.
         saved_crp = self.ctx.const_ref_params
         saved_dcbp = self.ctx.deep_const_borrow_params
         crp: set[str] = set()
         dcbp: set[str] = set()
         if func.is_readonly and (record_name is not None or func.is_method):
             crp.add("self")
-        for pname, ptype in func.params:
+        _fdc = self._frame_deep_const_verdict(func, record_name)
+        for _pidx, (pname, ptype) in enumerate(func.params):
             if isinstance(unwrap_ref_type(ptype), ReadonlyType):
                 crp.add(pname)
+                dcbp.add(pname)
+                continue
+            bare = unwrap_readonly(unwrap_ref_type(ptype))
+            if (_fdc is not None and _pidx in _fdc
+                    and ((isinstance(bare, TupleType)
+                          and bare.has_pointer_repr_element())
+                         or self.ctx.is_ptr_variant_union(bare))):
                 dcbp.add(pname)
         self.ctx.const_ref_params = crp
         self.ctx.deep_const_borrow_params = dcbp
@@ -2268,11 +2294,27 @@ class AsyncCoroCodegen:
                     # is_const_storage_source: a field chain rooted at a
                     # const receiver (self.field in a readonly method)
                     # renders const; sync locals pick that up via auto
-                    # deduction, but the frame field must spell it.
+                    # deduction, but the frame field must spell it. An
+                    # element read off a deep-const-verdict param (the
+                    # seeded name set) is a const source too -- the frame
+                    # field spells the verdict, so the alias must match.
                     def init_is_const(s=s, ltype_bare=ltype_bare):
-                        return (self.statements._is_const_indirect(
+                        if (self.statements._is_const_indirect(
                                     ltype_bare, s.init, s)
-                                or self.ctx.is_const_storage_source(s.init))
+                                or self.ctx.is_const_storage_source(s.init)):
+                            return True
+                        src = s.init
+                        if isinstance(src, TpyCoerce):
+                            src = src.expr
+                        if not (isinstance(src, TpySubscript)
+                                and isinstance(src.obj, TpyName)
+                                and src.obj.name
+                                in self.ctx.deep_const_borrow_params):
+                            return False
+                        root_t = self.ctx.var_types.get(src.obj.name)
+                        return isinstance(
+                            unwrap_readonly(unwrap_ref_type(root_t)),
+                            TupleType) if root_t is not None else False
                     if (ltype is not None and s.init is not None
                             and not src_is_exc
                             and not isinstance(ltype_bare, OwnType)
@@ -4354,13 +4396,9 @@ class AsyncCoroCodegen:
             is_readonly_target=(_dcbp is not None and arg_index in _dcbp))
         if union_arg is not None:
             return union_arg
-        # The verdict deliberately does NOT thread into the plain tail
-        # (sync threads target_const_borrow there): the coro/gen factory
-        # spelling doesn't apply the inferred verdict to non-union params,
-        # and completing that convention is blocked on the yield-escape
-        # verdict gap (see BUGS.md) -- a const arg against the non-const
-        # factory param would not compile.
-        return self.expressions.gen_call_arg(arg, ptype)
+        return self.expressions.gen_call_arg(
+            arg, ptype,
+            target_const_borrow=(_dcbp is not None and arg_index in _dcbp))
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',

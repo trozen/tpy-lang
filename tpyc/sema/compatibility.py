@@ -52,7 +52,7 @@ def _peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
-from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker
+from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
@@ -3154,12 +3154,15 @@ class TypeCompatibility:
         owning = False
         borrow_into_own: list[int] = []
         copies_into_own: list[int] = []
+        borrow_roots: frozenset[str] = frozenset()
         if init_expr is not None and var_type is not None:
             tt = unwrap_readonly(var_type)
             if isinstance(tt, TupleType):
                 fresh = self._derive_tuple_member_hazards(tt, init_expr)
                 if tt.has_pointer_repr_element():
                     owning = self._derive_owning_storage(init_expr)
+                    borrow_roots = self._derive_tuple_borrow_sources(
+                        name, tt, init_expr)
                 borrow_into_own = self._derive_borrow_into_own_hazards(init_expr)
                 copies_into_own = self._derive_copies_into_own_hazards(init_expr)
         # All four tuple-member hazard fields are (re)derived together and
@@ -3174,7 +3177,28 @@ class TypeCompatibility:
             owning_storage=owning,
             borrow_into_own_idxs=frozenset(borrow_into_own),
             copies_into_own_idxs=frozenset(copies_into_own),
+            borrow_source_roots=borrow_roots,
         )
+
+    def _derive_tuple_borrow_sources(self, name: str, tt: 'TupleType',
+                                     init_expr: TpyExpr) -> frozenset[str]:
+        """The storage roots a borrow-form tuple local's element pointers
+        alias, so the mark functions can trace a later yield/return of the
+        bare name back to the aliased params. Roots are expanded through
+        already-recorded tuple locals at record time (values stay terminal,
+        so mark-time lookup is single-level and cycle-free); a
+        self-assignment keeps the old sources via the derive-before-clear
+        order above. Stored on BindingProvenance (UNION-merged at branch
+        joins), so branch-divergent binds accumulate both arms' sources.
+        """
+        sources: set[str] = set()
+        for root, _grants_write in tuple_borrow_escape_roots(
+                init_expr, tt, False):
+            expanded = self.ctx.func.bp_borrow_source_roots(root)
+            for s in (expanded if expanded else (root,)):
+                if s != name:
+                    sources.add(s)
+        return frozenset(sources)
 
     @staticmethod
     def _is_owning_tuple_call(expr: TpyExpr) -> bool:

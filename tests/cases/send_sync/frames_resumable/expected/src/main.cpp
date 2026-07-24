@@ -174,7 +174,7 @@ __gen_gen_own gen_own(std::vector<int32_t> xs) {
 
 
 // async def tup_ref(pair: tuple[Counter, Counter]) -> Int32:  # tpyc: frame_send(no)
-__coro_tup_ref tup_ref(std::tuple<Counter*, Counter*> pair) {
+__coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair) {
     return __coro_tup_ref(pair);
 }
 

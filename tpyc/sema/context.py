@@ -33,7 +33,7 @@ from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
-    TpyUnaryOp, TpyIfExpr,
+    TpyUnaryOp, TpyIfExpr, TpyTupleLiteral,
     TpyNestedDef, TpyNamedExpr,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
@@ -64,6 +64,27 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
     if isinstance(expr, TpyIfExpr):
         return addr_taken_roots(expr.then_expr) + addr_taken_roots(expr.else_expr)
     return []
+
+
+def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType',
+                              ro_tuple: bool) -> list[tuple[str, bool]]:
+    """(root, grants_write) pairs for a borrow-form tuple escaping through a
+    yield/return slot. A tuple literal borrows exactly its pointer-repr
+    elements' roots (addr_taken_roots has no tuple-literal case; value
+    elements are copied into the slot); a readonly slot or element records
+    provenance without granting write access.
+    """
+    inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+    if isinstance(inner, TpyTupleLiteral):
+        return [
+            (root, not ro_tuple and not isinstance(
+                tuple_bare.element_types[i], ReadonlyType))
+            for i, el in enumerate(inner.elements)
+            if i < len(tuple_bare.element_types)
+            and TupleType._element_is_pointer_repr(tuple_bare.element_types[i])
+            for root in addr_taken_roots(el)
+        ]
+    return [(root, not ro_tuple) for root in addr_taken_roots(expr)]
 
 
 def _storage_key(expr: TpyExpr) -> str | None:
@@ -581,6 +602,10 @@ class BindingProvenance:
     owning_storage: bool = False
     borrow_into_own_idxs: frozenset[int] = frozenset()
     copies_into_own_idxs: frozenset[int] = frozenset()
+    # HAZARD (UNION): storage roots a borrow-form tuple local's element
+    # pointers alias (terminal roots, pre-expanded at record time). The
+    # mark functions trace a yield/return of the bare name through it.
+    borrow_source_roots: frozenset[str] = frozenset()
 
 
 _DEFAULT_PROVENANCE = BindingProvenance()
@@ -916,8 +941,9 @@ class FunctionTrackingState:
         owning_storage: bool,
         borrow_into_own_idxs: frozenset[int],
         copies_into_own_idxs: frozenset[int],
+        borrow_source_roots: frozenset[str],
     ) -> None:
-        # All four tuple-member hazard fields are (re)derived together per
+        # All tuple-member hazard fields are (re)derived together per
         # binding -- replacing them atomically preserves the rebind discipline
         # (`t = t` re-installs its own facts) while leaving the return-safety
         # fields, managed separately, untouched.
@@ -927,7 +953,12 @@ class FunctionTrackingState:
             owning_storage=owning_storage,
             borrow_into_own_idxs=borrow_into_own_idxs,
             copies_into_own_idxs=copies_into_own_idxs,
+            borrow_source_roots=borrow_source_roots,
         )
+
+    def bp_borrow_source_roots(self, name: str) -> frozenset[str]:
+        bp = self.binding_provenance.get(name)
+        return bp.borrow_source_roots if bp is not None else frozenset()
 
 
 @dataclass
@@ -1595,6 +1626,8 @@ class SemanticContext:
         if iterable is not None:
             # Field-path iterables ("c.items") need root extraction for param lookup
             self.mark_param_mutated(_storage_root(iterable), through_field=through_field)
+        for src in self.func.bp_borrow_source_roots(name):
+            self.mark_param_mutated(src, through_field=through_field)
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
@@ -1647,6 +1680,8 @@ class SemanticContext:
         iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             self.mark_param_returned(_storage_root(iterable))
+        for src in self.func.bp_borrow_source_roots(name):
+            self.mark_param_returned(src)
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""

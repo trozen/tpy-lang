@@ -29,7 +29,7 @@ __coro_borrowing borrowing(std::vector<int32_t>& xs);
 __coro_chained chained(int32_t n);
 __gen_gen_str gen_str(std::string_view s);
 __gen_gen_own gen_own(std::vector<int32_t> xs);
-__coro_tup_ref tup_ref(std::tuple<Counter*, Counter*> pair);
+__coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair);
 __coro_tup_val tup_val(std::tuple<int32_t, int32_t> pair);
 void main();
 
@@ -175,14 +175,14 @@ struct __coro_chained {
 struct __coro_tup_ref {
     int32_t __state;
     bool __cancel_pending;
-    std::tuple<Counter*, Counter*> pair;
+    std::tuple<const Counter*, const Counter*> pair;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_tup_ref(std::tuple<Counter*, Counter*> pair_)
+    __coro_tup_ref(std::tuple<const Counter*, const Counter*> pair_)
         : __state(S_INITIAL), __cancel_pending(false), pair(pair_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);

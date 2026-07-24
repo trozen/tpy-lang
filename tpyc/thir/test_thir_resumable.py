@@ -4482,15 +4482,11 @@ class TestAwaitArgDcbpConstWrap:
                   + "    def __init__(self, a: Own[A], b: Own[A]) -> None:\n"
                   + "        self.pair = (a, b)\n\n")
 
-    def test_tuple_param_factory_and_arg_agree_nonconst(self):
-        # AGREEMENT pin for the inferred deep-const tuple shape: the coro
-        # factory/frame spelling does not consult the inferred verdict for
-        # non-union params, so the emplace-arg tail must stay unthreaded --
-        # both sides spell the MUTABLE borrow form and the TU stays
-        # consistent. Threading either side alone breaks compilation; the
-        # const completion is blocked on the yield-escape verdict gap
-        # (BUGS.md), and this pin holds the two sides in lockstep until
-        # both flip together.
+    def test_tuple_param_factory_and_arg_agree_const(self):
+        # An inferred deep-const tuple param (no yield escape): the coro
+        # factory/frame spelling and the emplace arg BOTH carry the const
+        # slots -- the factory consults the verdict like the union arm, the
+        # arg threads target_const_borrow like the sync call site.
         src = (self._TUPLE_PRE
                + "    async def total(self, p: tuple[A, A]) -> Int32:\n"
                + "        return p[0].x + p[1].x\n\n"
@@ -4501,6 +4497,173 @@ class TestAwaitArgDcbpConstWrap:
         _assert_identical(src)
         _, hpp, cpp = _gen(src, thir=True)
         both = hpp + cpp
+        assert "std::tuple<const A*, const A*>" in both
+        assert "tuple_to_pointer<std::tuple<const A*, const A*>>" in both
+        assert "std::tuple<A*, A*>" not in both
+
+    def test_free_fn_tuple_param_agrees_const(self):
+        # Free async defs read the same verdict off their registry fi.
+        src = (self._TUPLE_PRE
+               + "async def total(p: tuple[A, A]) -> Int32:\n"
+               + "    return p[0].x + p[1].x\n\n"
+               + "async def go() -> Int32:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    return await total(k.pair)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        assert "std::tuple<const A*, const A*>" in both
+        assert "std::tuple<A*, A*>" not in both
+
+    def test_generator_tuple_param_agrees_const(self):
+        # The __gen_ frame shares _classify_params: a generator method's
+        # inferred deep-const tuple param spells const like its sync call
+        # site (which threads target_const_borrow) -- the two must agree.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "    def vals(self, p: tuple[A, A]) -> Iterator[Int32]:\n"
+               + "        yield p[0].x\n"
+               + "        yield p[1].x\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    for v in k.vals(k.pair):\n"
+               + "        print(v)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        assert "std::tuple<const A*, const A*>" in both
+        assert "std::tuple<A*, A*>" not in both
+
+    def test_yield_escaping_tuple_param_stays_mutable(self):
+        # BOUNDARY: a generator that yields its tuple param hands out
+        # mutable element pointers -- the verdict excludes it (the yield
+        # branch's borrow-tuple escape marking), so factory, call-site
+        # lift, and frame all stay the MUTABLE spelling in agreement.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "def relay(p: tuple[A, A]) -> Iterator[tuple[A, A]]:\n"
+               + "    yield p\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    for pair in relay(k.pair):\n"
+               + "        print(pair[0].x)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
         assert "std::tuple<A*, A*>" in both
-        assert "tuple_to_pointer<std::tuple<A*, A*>>" in cpp
         assert "std::tuple<const A*, const A*>" not in both
+
+    def test_ternary_alias_yield_stays_mutable(self):
+        # A ternary-bound alias of the tuple param yielded by name: the
+        # bind-time source recording reaches p through the local, so the
+        # verdict stays mutable everywhere.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "def relay(p: tuple[A, A], q: tuple[A, A], cond: bool) -> Iterator[tuple[A, A]]:\n"
+               + "    u = p if cond else q\n"
+               + "    yield u\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    k2 = Keeper(A(), A())\n"
+               + "    for pair in relay(k.pair, k2.pair, True):\n"
+               + "        print(pair[0].x)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        assert "std::tuple<A*, A*>" in both
+        assert "std::tuple<const A*, const A*>" not in both
+
+    def test_branch_alias_yield_marks_both_params(self):
+        # BOUNDARY (the flow-merge regression): an if/else binding the alias
+        # to a DIFFERENT param per branch must mark BOTH -- the source roots
+        # ride BindingProvenance's union-merge at the join, so neither param
+        # may keep the const verdict.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "def relay(t1: tuple[A, A], t2: tuple[A, A], cond: bool) -> Iterator[tuple[A, A]]:\n"
+               + "    if cond:\n"
+               + "        u = t1\n"
+               + "    else:\n"
+               + "        u = t2\n"
+               + "    yield u\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    k2 = Keeper(A(), A())\n"
+               + "    for pair in relay(k.pair, k2.pair, True):\n"
+               + "        print(pair[0].x)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        assert "std::tuple<A*, A*>" in both
+        assert "std::tuple<const A*, const A*>" not in both
+
+    def test_method_self_yield_drops_readonly(self):
+        # A method generator yielding a self-sourced borrow tuple hands the
+        # consumer a writable path into self -- the method must NOT infer
+        # readonly (a const receiver could not source the mutable slot).
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "    def items(self) -> Iterator[tuple[A, A]]:\n"
+               + "        yield self.pair\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    for pair in k.items():\n"
+               + "        print(pair[0].x)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        assert "__gen_Keeper_items items();" in hpp + cpp
+        assert "items() const" not in hpp + cpp
+
+    def test_overloaded_generator_reads_impl_verdict(self):
+        # The free-fn verdict lookup takes overloads[-1] (the implementation)
+        # -- an @overload'd generator with an unmutated, non-escaping tuple
+        # param renders the impl's const verdict at the factory.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator, overload\nfrom tpy import Own")
+               + "@overload\n"
+               + "def vals(p: tuple[A, A]) -> Iterator[Int32]: ...\n"
+               + "@overload\n"
+               + "def vals(p: tuple[A, A], n: Int32) -> Iterator[Int32]: ...\n"
+               + "def vals(p: tuple[A, A], n: Int32 = 1) -> Iterator[Int32]:\n"
+               + "    yield p[0].x * n\n\n"
+               + "def main() -> None:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    for v in vals(k.pair):\n"
+               + "        print(v)\n\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        # The factory reads the impl's verdict (overloads[-1]) -> const;
+        # the sync call-site lift reads the resolved STUB's empty verdict
+        # -> mutable, absorbed by std::tuple's converting ctor (the same
+        # benign class as the tuple-literal render gap; see TODO.md).
+        assert "std::tuple<const A*, const A*> p" in both
+        assert "tuple_to_pointer<std::tuple<A*, A*>>" in cpp
+
+    def test_verdict_const_tuple_element_alias_field_spelling(self):
+        # TEXT-LEVEL pin for the alias-facing verdict sync: an element alias
+        # of a verdict-const tuple param gets a `const A*` frame field (the
+        # CFG-window seeding + the classifier's verdict-subscript rule).
+        # Emission-only -- the shape's ASSIGNMENT still mis-renders as
+        # address-of the element slot (the pre-existing &-wrap defect in
+        # BUGS.md, g++-caught), so no runnable corpus case can guard this
+        # until that fix lands; this pin keeps the const half from
+        # regressing invisibly in the meantime.
+        src = (self._TUPLE_PRE.replace(
+                   "from tpy import Own",
+                   "from typing import Iterator\nfrom tpy import Own")
+               + "def show(p: tuple[A, A]) -> Iterator[Int32]:\n"
+               + "    a = p[0]\n"
+               + "    yield a.x\n"
+               + "    yield a.x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "std::tuple<const A*, const A*> p" in hpp
+        assert "const A* a" in hpp

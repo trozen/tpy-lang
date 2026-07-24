@@ -54,7 +54,7 @@ from ..prescan import (
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate)
 from ..parse.nodes import VarLinkage
-from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding
+from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding, tuple_borrow_escape_roots
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -1336,30 +1336,14 @@ class StatementAnalyzer:
                         and expected_bare.has_pointer_repr_element())
                     if (not expected.is_value_type() or returns_borrowing_view
                             or returns_borrow_tuple):
-                        ret_lit = (stmt.value.expr
-                                   if isinstance(stmt.value, TpyCoerce)
-                                   else stmt.value)
                         # A readonly tuple return hands out const element
                         # pointers -- borrow provenance is recorded but no
                         # write access is granted (like a borrowing view).
                         ro_tuple = (returns_borrow_tuple
                                     and isinstance(expected, ReadonlyType))
-                        if (returns_borrow_tuple
-                                and isinstance(ret_lit, TpyTupleLiteral)):
-                            # addr_taken_roots has no tuple-literal case; the
-                            # borrow roots are exactly the pointer-repr
-                            # elements' roots (value elements are copied into
-                            # the slot, not borrowed).
-                            ret_roots = [
-                                (root, not ro_tuple and not isinstance(
-                                    expected_bare.element_types[i],
-                                    ReadonlyType))
-                                for i, el in enumerate(ret_lit.elements)
-                                if i < len(expected_bare.element_types)
-                                and TupleType._element_is_pointer_repr(
-                                    expected_bare.element_types[i])
-                                for root in addr_taken_roots(el)
-                            ]
+                        if returns_borrow_tuple:
+                            ret_roots = tuple_borrow_escape_roots(
+                                stmt.value, expected_bare, ro_tuple)
                         else:
                             ret_roots = [(root, not ro_tuple)
                                          for root in addr_taken_roots(stmt.value)]
@@ -3770,6 +3754,20 @@ class StatementAnalyzer:
                 and not isinstance(unwrap_ref_type(elem_type), ReadonlyType)):
             for root in addr_taken_roots(stmt.value):
                 self.ctx.mark_param_mutated(root)
+                self.ctx.mark_param_returned(root)
+        # A tuple is a value type, but its borrow-form yield slot hands out
+        # mutable element pointers into the source storage -- the same escape
+        # as the mutable-borrow yield above, missed by the is_value_type()
+        # guard. Mirrors the TpyReturn borrow-tuple branch: a readonly tuple
+        # (or element) grants no write access, so it records provenance only.
+        elem_bare = unwrap_readonly(unwrap_ref_type(elem_type))
+        if (isinstance(elem_bare, TupleType)
+                and elem_bare.has_pointer_repr_element()):
+            ro_tuple = isinstance(unwrap_ref_type(elem_type), ReadonlyType)
+            for root, grants_write in tuple_borrow_escape_roots(
+                    stmt.value, elem_bare, ro_tuple):
+                if grants_write:
+                    self.ctx.mark_param_mutated(root, through_field=True)
                 self.ctx.mark_param_returned(root)
         # The yield value above was analyzed pre-suspension; everything
         # after the yield runs post-resume, when the caller may have

@@ -172,6 +172,7 @@ def _combine_bp(
         owning_storage=a.owning_storage or b.owning_storage,
         borrow_into_own_idxs=a.borrow_into_own_idxs | b.borrow_into_own_idxs,
         copies_into_own_idxs=a.copies_into_own_idxs | b.copies_into_own_idxs,
+        borrow_source_roots=a.borrow_source_roots | b.borrow_source_roots,
     )
 
 
