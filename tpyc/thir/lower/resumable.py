@@ -92,6 +92,7 @@ from ...typesys import (
 from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
+from ...codegen_cpp.gen_async import collect_frame_nested_defs
 from ..nodes import Form
 from .checks import (
     _assert_narrow_info,
@@ -801,7 +802,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # value): sources ride the position-blind tail (a last-use
                 # movable name with a THIRMove wrap), except the empty
                 # literal the return arm rejects.
-                or _res_container_return(rt, analyzer) is not None):
+                or _res_container_return(rt, analyzer) is not None
+                # Own[F1-record] slot (`Poll<Box>` payload, `<Box>
+                # __tpy_async_ret = std::move(...)`): STORAGE form, so the
+                # position-blind tail's last-use move serves the sources;
+                # bare reference-type returns stay on return.borrow_form.
+                or (isinstance(rt_inner, OwnType)
+                    and _f1_record(_unwrap_own(rt_inner), analyzer))
+                # Bare F1-record slot (Poll<T*> pointer payload): the value
+                # tail admits only the SELF lift rung (`&(__self)`); every
+                # other source keeps the return.borrow_form fence.
+                or _f1_record(rt_inner, analyzer)):
             return _reject("res.return_type")
     if func.forwarded_locals:
         return _reject("res.forwarded_local")
@@ -1043,6 +1054,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # R1c: frame_slot local reads render `(*name)` (THIRName.deref) and writes
     # `name.emplace(value)` (THIRFrameSlotWrite).
     lc.frame_slots = frame_slots
+    # Frame nested defs are struct members callable from EVERY resume
+    # case, so their names register up front (the AST's
+    # collect_frame_nested_defs pass), not just at their statement.
+    for _nd in collect_frame_nested_defs(list(func.body)):
+        lc.nested_def_locals.add(_nd.func.name)
     # Pointer-form loop vars and Optional-ptr locals ride the same pointer
     # arms as the Optional-ptr params seeded in _LowerCtx; their writes are
     # not plain-field assigns (skeleton binds / pointer-slot sources), so

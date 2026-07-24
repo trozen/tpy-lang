@@ -182,6 +182,7 @@ from ..nodes import (
     THIRNestedDef,
     THIRConceptTest,
     THIRFoldedBlock,
+    THIRFrameNestedDef,
     THIRNoOpStmt,
     THIROptionalPtrArg,
     THIROptViewArg,
@@ -3680,10 +3681,20 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
     form = async_return_form(lc.func.return_type)
     if form is AsyncReturnForm.BORROW:
-        # The pointer-payload family (bare reference-type returns; the
-        # pointer-repr Optional slot already rejects upstream at the
-        # return-type admission): the `&(...)` lift and its alias-source
-        # renders are a later rung -- whole-body fallback.
+        # Pointer-payload family (bare reference-type returns): the SELF
+        # rung -- `return self` lifts the receiver lvalue
+        # (`Res* __tpy_async_ret = &(__self);`). Every other source (alias
+        # names, the return-await forward's `__ret0` scaffolding) is a
+        # later rung -- whole-body fallback.
+        if (isinstance(ret.value, TpyName)
+                and ret.value.name == lc.self_receiver
+                and not lc.self_is_pointer):
+            _witness("res.return_self_borrow")
+            return THIRCoerce(
+                result_type=value.result_type, expr=value,
+                coercion_name="async_ret_addr_of",
+                wrap="&({0})",
+                loc=getattr(ret, "loc", None))
         note_detail("return.borrow_form")
         raise ThirUnsupported(stmt_reject_reason(ret))
     if form is AsyncReturnForm.TRAIT:
@@ -4316,7 +4327,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if isinstance(stmt, TpyMatch):
             raise ThirUnsupported("res.leaf_match")
         if isinstance(stmt, TpyNestedDef):
-            raise ThirUnsupported("res.nested_def")
+            # A frame body's nested def is a struct MEMBER (declared and
+            # emitted by the gen_async scaffolding); the statement position
+            # keeps only the marker line. Registration mirrors the AST arm
+            # (belt-and-suspenders on top of the setup's up-front pass).
+            lc.nested_def_locals.add(stmt.func.name)
+            _witness("res.nested_def_member")
+            return THIRFrameNestedDef(
+                name_cpp=escape_cpp_name(stmt.func.name),
+                loc=getattr(stmt, "loc", None))
     if isinstance(stmt, TpyNestedDef):
         return _lower_nested_def(stmt, scope)
     if isinstance(stmt, TpyVarDecl):

@@ -2459,3 +2459,45 @@ byte-diff itself.
   (optional-element unpack rungs), gen_tuple_yield_ref (generic Box
   element rung), standalone-unpack rungs (optional/rvalue/fixed-int
   targets -- distinct renders each).
+
+- **Wave-next11 -- ctor renderer, async return slots, frame nested defs
+  (`thir-wave-next11`, 2026-07-24, 4 cells + 3 harvests, +14 flips,
+  dial 2439 -> 2453/3570).**
+  (1) lower_constructor threads render_concept (ctor-body concept-ifs
+  route; zero corpus witnesses -- every committed ctor constexpr body is
+  nullproto-guarded -- so the routing pin is the witness). The
+  verification dualgen EXPOSED+FIXED an admitted-but-unwitnessed
+  divergence: a STRUCTURAL rvalue at a ctor protocol slot took the
+  shared protocol temp row, but the AST ctor loop renders those inline
+  (_gen_protocol_arg hands single-required slots to gen_call_arg); the
+  ctor gate now admits protocol-slot args only for NAMES and @dynamic
+  slots.
+  (2) Async Own[F1-record] return slots: the return-type gate was the
+  only blocker -- the position-blind value tail already carried the
+  frame-slot deref + last-use THIRMove. 3 flips.
+  (3) Async borrow-return SELF rung: bare F1-record slots admit and the
+  BORROW arm lifts exactly the receiver (`Res* __tpy_async_ret =
+  &(__self);`, res.return_self_borrow); alias-name sources keep the
+  return.borrow_form fence. The return-await forward and
+  suspending-finally shapes route via CFG scaffolding the leaf never
+  sees -- 4 flips including chain/with-as/finally.
+  (4) Frame nested defs: a resumable-body `def` is a struct MEMBER
+  (gen_async scaffolding), so the leaf lowers THIRFrameNestedDef (the
+  marker line) with up-front name registration
+  (collect_frame_nested_defs); the sync lambda lowering is untouched.
+  7 flips.
+  FLIPS (14): async_own_return_nocopy, async_own_param_return,
+  async_own_return_run;
+  async_borrow_return_nocopy/_chain/_finally_suspend, with_as_borrow;
+  nested_def in_async_def/_capture/_method, in_generator_capture/
+  _method_mut, in_resumable_finally, in_simple_generator.
+  FRONTIER (fresh map, verified): comp tuple-unpack heads
+  (list_comp_unpack/comp_array_unpack + maybe itertools_basic -- the
+  ONE multi-case comp rung; narrowed-optional ternary elements and
+  tuple-literal elements are separate rungs) = next wave's opener.
+  PARKED: copy(self) async return (1 case, unknown chain);
+  resumable:expr.call cluster (await_task/queue/channel = the asyncio
+  sink adjacency; bind_generic/delegate = generics lane);
+  in_generic_async (chain-walked to iter.user_iterator.name);
+  res.local_storage / leaf_field_write / field.result_type
+  (per-shape classification lanes, unverified this wave).

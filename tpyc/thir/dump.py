@@ -96,6 +96,7 @@ from .nodes import (
     THIRNestedDef,
     THIRFoldedBlock,
     THIRMatchFoldBind,
+    THIRFrameNestedDef,
     THIRNoOpStmt,
     THIRParamCopy,
     THIRPtrLocalDecl,
@@ -525,6 +526,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}{_expr(stmt.expr)}"]
     if isinstance(stmt, THIRNoOpStmt):
         return [f"{pad}noop"]
+    if isinstance(stmt, THIRFrameNestedDef):
+        return [f"{pad}frame-nested-def {stmt.name_cpp}"]
     if isinstance(stmt, THIRFoldedBlock):
         burn = " [burns_match_counter]" if stmt.burns_match_counter else ""
         lines = [f"{pad}overload-fold{burn}:"]

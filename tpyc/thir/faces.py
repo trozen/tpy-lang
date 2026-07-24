@@ -1161,6 +1161,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>))
+    "res.nested_def_member",        # frame nested def -> the marker-line stmt
+    "res.return_self_borrow",       # `return self` at a Poll<T*> slot: &(__self)
     "res.return_tuple_literal",     # value-tuple literal at the async return slot
     "res.return_generic_tuple",     # generic tuple literal at the async return slot
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)

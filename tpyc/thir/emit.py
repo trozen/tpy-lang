@@ -97,6 +97,7 @@ from .nodes import (
     THIRAnyNarrowAlias,
     THIRNestedDef,
     THIRNarrowedRead,
+    THIRFrameNestedDef,
     THIRNoOpStmt,
     THIRFoldedBlock,
     THIRMatchFoldBind,
@@ -3743,6 +3744,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             raise THIRCodeGenError(
                 "THIRResumableReturn outside resumable leaf emission")
         out.write(state.resumable_return_hook(stmt.ast_stmt, indent_level))
+    elif isinstance(stmt, THIRFrameNestedDef):
+        # The member itself is scaffolding-emitted; the statement position
+        # keeps only the marker line under its source comment.
+        out.write(f"{indent}// def {stmt.name_cpp}: frame member\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc. A skipped statement's

@@ -1713,6 +1713,17 @@ class THIRAnyNarrowAlias(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRFrameNestedDef(THIRStmt):
+    """A nested `def` at its statement position inside a RESUMABLE frame
+    body: the function itself is a frame MEMBER (declared + emitted by the
+    gen_async scaffolding, callable from every resume case), so the
+    statement renders only the `// def {name}: frame member` marker line
+    under its ordinary source comment. `loc` drives the source comment;
+    the name is pre-escaped at lowering."""
+    name_cpp: str = ""
+
+
+@dataclass(frozen=True)
 class THIRNoOpStmt(THIRStmt):
     """A statement that emits no C++ code -- a `pass` or a docstring in a
     constructor body (M3c-trivia). It carries no payload; its only effect is to

@@ -102,6 +102,77 @@ class TestConceptSpelling:
         _assert_byte_identical(src)
 
 
+class TestCtorConstexpr:
+    _METER = (
+        "from typing import Sized\n"
+        "from tpy import Int32\n"
+        "class Meter:\n"
+        "    n: Int32\n"
+        "    def __init__(self, items: Sized) -> None:\n"
+        "        if isinstance(items, Sized):\n"
+        "            self.n = len(items)\n"
+        "        else:\n"
+        "            self.n = -1\n"
+    )
+
+    def test_ctor_body_constexpr_routes(self):
+        # lower_constructor threads render_concept, so a ctor-body
+        # concept-if routes like a function body's.
+        src = self._METER + (
+            "def main() -> None:\n"
+            "    xs: list[Int32] = [1, 2, 3]\n"
+            "    m = Meter(xs)\n"
+            "    print(m.n)\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert not fallback
+        assert faces.get("if.constexpr_concept", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_ctor_structural_rvalue_protocol_arg_rejects(self):
+        # A structural (non-@dynamic) RVALUE at a ctor protocol slot is
+        # ctor-INLINE on the AST path (no temp arm in the ctor loop);
+        # the shared protocol temp row must not fire -- the body falls
+        # back and keeps the inline render.
+        src = self._METER + (
+            "def main() -> None:\n"
+            "    m = Meter([1, 2, 3])\n"
+            "    print(m.n)\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert any("expr.call" in r for r in fallback)
+        assert "Meter(std::array<int32_t, 3>{1, 2, 3})" in out
+        _assert_byte_identical(src)
+
+    def test_ctor_dynamic_rvalue_protocol_arg_routes(self):
+        # A @dynamic-slot ctor arg RVALUE keeps the adapter temp row (the
+        # AST ctor loop runs _gen_dynamic_protocol_arg) -- witnessed here,
+        # since no corpus case passes a direct rvalue conformer.
+        src = (
+            "from typing import Protocol\n"
+            "from tpy import dynamic, Int32\n"
+            "@dynamic\n"
+            "class Greeter(Protocol):\n"
+            "    def hello(self) -> Int32: ...\n"
+            "class En(Greeter):\n"
+            "    def hello(self) -> Int32:\n"
+            "        return 1\n"
+            "class Holder:\n"
+            "    n: Int32\n"
+            "    def __init__(self, g: Greeter) -> None:\n"
+            "        self.n = g.hello()\n"
+            "def main() -> None:\n"
+            "    h = Holder(En())\n"
+            "    print(h.n)\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert not fallback
+        _assert_byte_identical(src)
+
+
 class TestConstexprBoundaries:
     def test_dynamic_protocol_stays_off_arm(self):
         # sema sets isinstance_is_protocol only for the static concept

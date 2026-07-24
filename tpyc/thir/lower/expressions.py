@@ -824,11 +824,17 @@ def _record_ctor_arg_supported(
                                      temps_ok=temps_ok)
                 # A protocol-conformer arg into a @dynamic/structural protocol
                 # ctor slot: a bare NAME / already-protocol lvalue passes
-                # through, a conformer RVALUE hoists the adapter temp
-                # (`_protocol_arg_temp` -- flush-gated). Lowered by
-                # `_lower_call_arg`'s protocol pre-arm (protocol_slots=True).
-                or _protocol_slot_arg(arg, param_type, declared, analyzer,
-                                      temps_ok=temps_ok)
+                # through, and a @dynamic RVALUE hoists the adapter temp
+                # (`_gen_dynamic_protocol_arg` runs in the ctor loop too).
+                # A STRUCTURAL rvalue is ctor-inline on the AST path
+                # (`_gen_protocol_arg` hands single-required slots back to
+                # gen_call_arg, and the ctor loop has no structural temp
+                # arm) -- the shared temp row would diverge, so it rejects.
+                or ((_pslot := _protocol_arg_slot(param_type)) is not None
+                    and (isinstance(arg, TpyName)
+                         or is_dyn_protocol(_pslot))
+                    and _protocol_slot_arg(arg, param_type, declared,
+                                           analyzer, temps_ok=temps_ok))
                 # A concrete conformer into an `Own[@dynamic P]` ctor slot
                 # (`Box(Dog(...))`): the make_unique / make_adapter wrap,
                 # verdict-keyed via the shared classifier (the

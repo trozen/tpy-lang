@@ -1227,6 +1227,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                       native_globals: 'Mapping[str, str]' = {},
                       render_type_stored=None,
                       render_resolve=None,
+                      render_concept=None,
                       ) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
@@ -1306,7 +1307,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name,
                    render_type_stored=render_type_stored,
-                   render_resolve=render_resolve)
+                   render_resolve=render_resolve,
+                   render_concept=render_concept)
     # Global seeding, like lower_function's: read-only value globals plus
     # `global`-declared write names (the AST's global-write arm is
     # function-kind-blind, so a ctor's `g = v;` renders exactly like a

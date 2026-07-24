@@ -573,7 +573,8 @@ class CodeGenerator:
                                       self_type=self_type,
                                       native_globals=_ng,
                                       render_type_stored=self.types.type_to_cpp_stored,
-                                      render_resolve=self.types.resolve_type)
+                                      render_resolve=self.types.resolve_type,
+                                      render_concept=_render_concept)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
                     record_shape(init, "ctor", routed=True)

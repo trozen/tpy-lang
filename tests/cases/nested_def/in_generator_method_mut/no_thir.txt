@@ -1,1 +1,0 @@
-self-capturing nested def / lambda (THIR rejects self captures)
