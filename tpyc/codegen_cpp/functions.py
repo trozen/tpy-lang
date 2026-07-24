@@ -74,6 +74,85 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     return None
 
 
+def _narrow_overload_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
+    """Return concrete when it tightens impl_ptype for dead-branch elim."""
+    if isinstance(impl_ptype, UnionType) and not isinstance(concrete, UnionType):
+        return concrete
+    if isinstance(impl_ptype, OptionalType) and not isinstance(concrete, OptionalType):
+        # Concrete is either the inner T, NoneType, or a Literal of the inner.
+        if isinstance(concrete, NoneType):
+            return concrete
+        if isinstance(concrete, LiteralType):
+            return concrete
+        if concrete == impl_ptype.inner:
+            return concrete
+        return None
+    if isinstance(concrete, (LiteralType, IntLiteralType)) and not isinstance(impl_ptype, (LiteralType, IntLiteralType)):
+        return concrete
+    return None
+
+
+def build_overload_narrowing(
+    impl: TpyFunction, stub: TpyFunction,
+    missing_params: list[tuple[str, TpyType]],
+    impl_defaults: list,
+) -> dict[str, TpyType]:
+    """Build the overload_param_types map for dead-branch elim in a spec.
+
+    Shared by the AST per-stub specializers and THIR's per-stub lowering, so
+    both paths resolve the same facts from one map.
+
+    - Stub-shadowed union impl params narrow to the stub's concrete member.
+    - Stub-shadowed Optional impl params narrow to the stub's non-Optional
+      type (inner T or NoneType).
+    - Stub-shadowed non-union impl params narrow to a LiteralType stub type.
+    - Missing impl params narrow to the default expression's concrete type
+      where that gives information beyond the declared impl param type.
+    """
+    narrowing: dict[str, TpyType] = {}
+    for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
+        narrow = _narrow_overload_param(impl_ptype, stub_ptype)
+        if narrow is not None:
+            narrowing[stub_pname] = narrow
+    for i, (pname, ptype) in enumerate(missing_params,
+                                       start=len(impl.params) - len(missing_params)):
+        default_expr = impl_defaults[i] if i < len(impl_defaults) else None
+        if default_expr is None:
+            continue
+        default_type = _infer_literal_default_type(default_expr)
+        if default_type is None:
+            continue
+        narrow = _narrow_overload_param(ptype, default_type)
+        if narrow is not None:
+            narrowing[pname] = narrow
+    return narrowing
+
+
+def overload_stubs_are_literal_only(
+    stubs: 'list', impl: TpyFunction,
+) -> bool:
+    """Check if overload stubs differ from the impl only by Literal annotations.
+
+    When all stubs have the same C++ parameter types as the implementation
+    (because they only differ by LiteralType vs base type), per-stub
+    specialization would produce duplicate C++ definitions. In that case,
+    emit just the implementation function. Shared with THIR's per-stub gate
+    (a literal-only group emits through the mangled-name path, which never
+    sets the per-stub interception key).
+    """
+    for stub in stubs:
+        for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
+            if isinstance(stub_ptype, LiteralType):
+                continue
+            if stub_ptype != impl_ptype:
+                return False
+    return any(
+        isinstance(ptype, LiteralType)
+        for stub in stubs
+        for _, ptype in stub.params
+    )
+
+
 def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInfo) -> str:
     """Generate a mangled C++ name for a literal-specialized function.
 
@@ -780,7 +859,10 @@ class FunctionGenerator:
 
     def _signature_is_template(self, func: TpyFunction) -> bool:
         """Per-signature template test -- the building block of the group-aware
-        is_template_function, which also folds in an @overload group's stubs."""
+        is_template_function, which also folds in an @overload group's stubs.
+        THIR's per-stub admission mirrors this analyzer-purely as
+        `_stub_signature_is_template` (thir/lower/functions.py) -- keep the
+        two in sync when widening either."""
         if func.type_params:
             return True
         if self.protocols.get_all_protocol_params(func.params):
@@ -1086,27 +1168,7 @@ class FunctionGenerator:
 
         out.write("}\n")
 
-    def _overload_stubs_are_literal_only(
-        self, stubs: list[TpyFunction], impl: TpyFunction,
-    ) -> bool:
-        """Check if overload stubs differ from the impl only by Literal annotations.
-
-        When all stubs have the same C++ parameter types as the implementation
-        (because they only differ by LiteralType vs base type), per-stub
-        specialization would produce duplicate C++ definitions. In that case,
-        emit just the implementation function.
-        """
-        for stub in stubs:
-            for (_, impl_ptype), (_, stub_ptype) in zip(impl.params, stub.params):
-                if isinstance(stub_ptype, LiteralType):
-                    continue
-                if stub_ptype != impl_ptype:
-                    return False
-        return any(
-            isinstance(ptype, LiteralType)
-            for stub in stubs
-            for _, ptype in stub.params
-        )
+    _overload_stubs_are_literal_only = staticmethod(overload_stubs_are_literal_only)
 
     _literal_mangled_name = staticmethod(literal_mangled_name)
 
@@ -1233,6 +1295,7 @@ class FunctionGenerator:
         crp, dcbp = self._build_param_const_sets(
             stub.params, mp, rp, use_const_params=stub.is_readonly,
             use_readonly_params=stub.is_readonly)
+        self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
@@ -1243,6 +1306,7 @@ class FunctionGenerator:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
             self.ctx.literal_overload_facts = {}
+            self.ctx.thir_overload_key = None
 
         out.write("}\n")
 
@@ -1265,50 +1329,8 @@ class FunctionGenerator:
         missing_params: list[tuple[str, TpyType]],
         impl_defaults: list,
     ) -> dict[str, TpyType]:
-        """Build the overload_param_types map for dead-branch elim in a spec.
-
-        - Stub-shadowed union impl params narrow to the stub's concrete member.
-        - Stub-shadowed Optional impl params narrow to the stub's non-Optional
-          type (inner T or NoneType).
-        - Stub-shadowed non-union impl params narrow to a LiteralType stub type.
-        - Missing impl params narrow to the default expression's concrete type
-          where that gives information beyond the declared impl param type.
-        """
-        narrowing: dict[str, TpyType] = {}
-        for (impl_pname, impl_ptype), (stub_pname, stub_ptype) in zip(impl.params, stub.params):
-            narrow = self._narrow_param(impl_ptype, stub_ptype)
-            if narrow is not None:
-                narrowing[stub_pname] = narrow
-        for i, (pname, ptype) in enumerate(missing_params,
-                                           start=len(impl.params) - len(missing_params)):
-            default_expr = impl_defaults[i] if i < len(impl_defaults) else None
-            if default_expr is None:
-                continue
-            default_type = _infer_literal_default_type(default_expr)
-            if default_type is None:
-                continue
-            narrow = self._narrow_param(ptype, default_type)
-            if narrow is not None:
-                narrowing[pname] = narrow
-        return narrowing
-
-    @staticmethod
-    def _narrow_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
-        """Return concrete when it tightens impl_ptype for dead-branch elim."""
-        if isinstance(impl_ptype, UnionType) and not isinstance(concrete, UnionType):
-            return concrete
-        if isinstance(impl_ptype, OptionalType) and not isinstance(concrete, OptionalType):
-            # Concrete is either the inner T, NoneType, or a Literal of the inner.
-            if isinstance(concrete, NoneType):
-                return concrete
-            if isinstance(concrete, LiteralType):
-                return concrete
-            if concrete == impl_ptype.inner:
-                return concrete
-            return None
-        if isinstance(concrete, (LiteralType, IntLiteralType)) and not isinstance(impl_ptype, (LiteralType, IntLiteralType)):
-            return concrete
-        return None
+        return build_overload_narrowing(impl, stub, missing_params,
+                                        impl_defaults)
 
     @staticmethod
     def _missing_param_local_specs(
@@ -1383,6 +1405,7 @@ class FunctionGenerator:
         self._inject_literal_overload_facts(overload_types)
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
             missing_params, impl_defaults, start_idx=len(stub.params))
+        self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
@@ -1391,6 +1414,7 @@ class FunctionGenerator:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
             self.ctx.literal_overload_facts = {}
+            self.ctx.thir_overload_key = None
 
     def _gen_literal_specialized_method(
         self, out: TextIO, impl: TpyFunction, stub: TpyFunction,

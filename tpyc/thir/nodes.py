@@ -1720,6 +1720,38 @@ class THIRNoOpStmt(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRFoldedBlock(THIRStmt):
+    """The surviving statements of a per-@overload-stub dead-branch fold,
+    spliced flat at the enclosing block's indent (the AST emits them via
+    direct `gen_stmt` calls, no brace scope). An if-chain fold carries
+    `no_source_comment=True` (the AST fold flattens with no `// if` line);
+    a match fold keeps the match stmt's `loc` so its `// match ...` source
+    comment emits before the spliced bindings. Inner statements carry their
+    own locs/comments. May be empty (an all-dead chain with no else).
+
+    `burns_match_counter` marks a folded MATCH: the AST's `gen_match` bumps
+    `ctx.match_counter` before the fold dispatch, so a later match in the
+    same body numbers its `__match_subject_N` past the folded one -- the
+    emit arm must consume one counter slot without emitting a subject."""
+    stmts: tuple[THIRStmt, ...] = ()
+    burns_match_counter: bool = False
+
+
+@dataclass(frozen=True)
+class THIRMatchFoldBind(THIRStmt):
+    """One capture binding of a folded @overload match arm: the AST's
+    `_emit_binding` free-binding forms -- `auto {name} = {source};` when
+    sema's per-capture bind_by_value fact is set (a free-copy scalar),
+    `auto& {name} = {source};` otherwise. Pre-declared/hoisted targets are
+    gate-rejected, so only the fresh-declaration forms exist here. Never
+    carries a source comment (the AST emits bindings comment-less between
+    the match's source comment and the arm body)."""
+    name_cpp: str
+    source_cpp: str
+    by_value: bool = True
+
+
+@dataclass(frozen=True)
 class THIRParamCopy(THIRStmt):
     """The mutable owned copy of a reassigned const-ref param --
     `{cpp_type} {name} = __param_{name};` at the top of the body, before any
@@ -2707,6 +2739,11 @@ class THIRFunction:
     body: tuple[THIRStmt, ...]
     layout: THIRFunctionLayout
     error_return_cpp: 'str | None' = None
+    # A per-@overload-stub body whose dead-branch fold ended in a terminating
+    # True branch: the AST suppresses the function-level trailing-comment scan
+    # (the emitted stmts come from a then_body, so scanning forward from the
+    # TpyIf's line would pick up comments from inside the dead branches).
+    suppress_trailing_comments: bool = False
 
 
 @dataclass(frozen=True)

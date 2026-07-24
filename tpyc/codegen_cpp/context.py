@@ -1083,10 +1083,11 @@ class CodeGenContext:
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
     # THIR migration dual-mode: when set, functions in `thir_functions`
-    # (keyed by id() of the source TpyFunction) emit their bodies from THIR
+    # (keyed by id() of the source TpyFunction, or by (id(impl), id(stub))
+    # for a per-@overload-stub specialization) emit their bodies from THIR
     # instead of the AST path. Populated per-module in CodeGenerator.generate.
     thir_codegen: bool = False
-    thir_functions: dict[int, "THIRFunction"] = field(default_factory=dict)
+    thir_functions: dict["int | tuple[int, int]", "THIRFunction"] = field(default_factory=dict)
     # THIR ctor frontier (M3): an eligible constructor's member-init-list + body
     # tail emits from its THIRConstructor (the signature stays on the AST path).
     # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.
@@ -1354,6 +1355,12 @@ class CodeGenContext:
     # StatementGenerator.gen_body right after the opening brace and then
     # cleared so inner bodies don't re-emit them.
     overload_missing_param_locals: list[tuple[str, 'TpyType', object]] = field(default_factory=list)
+    # THIR interception key for the per-stub emission in flight:
+    # (id(impl), id(stub)). id(func) alone cannot key a specialization --
+    # the impl body is emitted once per stub, and the method path emits a
+    # synthetic clone whose id matches nothing. gen_body CONSUMES the key
+    # on entry so bodies nested under the specialization never inherit it.
+    thir_overload_key: tuple[int, int] | None = None
 
     # --- Iterator loop counter ---
     iter_counter: int = 0

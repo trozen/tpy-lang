@@ -46,6 +46,9 @@ from ...typesys import (
     CONST_PARAMS_METHODS,
     IntLiteralType,
     is_any_str_type,
+    is_dyn_protocol,
+    is_fn_type,
+    is_protocol_type,
     NominalType,
     OptionalType,
     OwnType,
@@ -67,6 +70,10 @@ from ...codegen_cpp.context import (
     imported_variable_cpp,
     module_native_global_names,
     qualify_native_name,
+)
+from ...codegen_cpp.functions import (
+    build_overload_narrowing,
+    overload_stubs_are_literal_only,
 )
 from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
@@ -196,9 +203,52 @@ def _overload_reject_detail(func: TpyFunction, stubs) -> str:
     return "sig.overload_set.plain"
 
 
+def _stub_signature_is_template(fi) -> bool:
+    """Analyzer-pure over-approximation of _signature_is_template: a stub
+    with type params or any protocol-/Fn-typed param (bare or under
+    readonly/Own/Optional shells) emits through the template-header path --
+    unmirrored per-stub territory. _overload_reject_detail's type_params
+    check misses protocol-param templates (no synthesized type_params), so
+    admission needs its own test."""
+    if getattr(fi, "type_params", None):
+        return True
+    for _n, pt in fi.params:
+        t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+             if isinstance(pt, TpyType) else None)
+        if isinstance(t, (OwnType, OptionalType)):
+            t = unwrap_readonly(t.inner)
+        if t is None:
+            continue
+        if is_fn_type(t) or is_protocol_type(t) or is_dyn_protocol(t):
+            return True
+    return False
+
+
+def _admit_overload_stub(func: TpyFunction, group, analyzer) -> None:
+    """Per-stub lowering admission for a multi-entry @overload set.
+
+    The db_isinstance and ret_mismatch families route (the per-stub fold /
+    return-coercion increments); every other sub-reason keeps rejecting
+    with its tag. Literal-only groups emit through the AST's mangled-name
+    path -- which never sets the per-stub interception key -- so seeding
+    them would count bodies migrated while emission stays AST; they keep
+    the db_compare reject."""
+    stubs = analyzer.overload_groups.get(id(func)) or []
+    if any(_stub_signature_is_template(fi) for fi in stubs) \
+            or _stub_signature_is_template(func):
+        raise ThirUnsupported("sig.overload_set.generic_stub")
+    if overload_stubs_are_literal_only(stubs, func):
+        raise ThirUnsupported("sig.overload_set.db_compare")
+    detail = _overload_reject_detail(func, group)
+    if detail not in ("sig.overload_set.db_isinstance",
+                      "sig.overload_set.ret_mismatch"):
+        raise ThirUnsupported(detail)
+
+
 def _check_callable_structure(func: TpyFunction, analyzer,
                               self_type: 'TpyType | None' = None,
-                              *, allow_resumable: bool = False) -> None:
+                              *, allow_resumable: bool = False,
+                              stub: 'TpyFunction | None' = None) -> None:
     # `allow_resumable` is passed by `lower_resumable` and
     # `lower_simple_generator`: the async/generator arms below are those
     # entries' whole point, but every other signature check (overloads,
@@ -283,7 +333,11 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                 and (func.auto_readonly_params_resolved
                      or func.is_auto_own_borrowing_clone))
             if not (is_property_pair or is_clone_pair):
-                raise ThirUnsupported(_overload_reject_detail(func, overloads))
+                if stub is not None:
+                    _admit_overload_stub(func, overloads, analyzer)
+                else:
+                    raise ThirUnsupported(
+                        _overload_reject_detail(func, overloads))
         # A member shadowing a same-named local type forces the AST path to
         # render that type fully-qualified inside the record's scope (the
         # member-name/type-name collision fix). THIR renders local ctor callees
@@ -293,7 +347,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     else:
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
-            raise ThirUnsupported(_overload_reject_detail(func, fis))
+            if stub is not None:
+                _admit_overload_stub(func, fis, analyzer)
+            else:
+                raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         raise ThirUnsupported("sig.builtin_decorator")
     if not allow_resumable:
@@ -351,7 +408,8 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                     raise ThirUnsupported("sig.param_reassign_copy")
 
 def _param_reassign_copies(func: TpyFunction,
-                           analyzer) -> 'tuple[THIRParamCopy, ...]':
+                           analyzer,
+                           params=None) -> 'tuple[THIRParamCopy, ...]':
     """The mutable-owned-copy prologue for reassigned const-ref params -- the
     mirror of `_gen_buffered_body`'s `_reassigned_param_copies` emit (param
     order): `{to_cpp} {name} = __param_{name};`, no source comment. The AST's
@@ -367,7 +425,10 @@ def _param_reassign_copies(func: TpyFunction,
     if scan is None or not scan.reassigned:
         return ()
     copies: list[THIRParamCopy] = []
-    for name, ptype in func.params:
+    # `params` overrides the type source for a per-@overload-stub lowering
+    # (the AST prologue keys on the STUB's param types); the scan facts stay
+    # the impl's, matching gen_body's scan/params split.
+    for name, ptype in (params if params is not None else func.params):
         pt = ptype if isinstance(ptype, TpyType) else None
         if not (name in scan.reassigned and pt is not None
                 and pt.param_needs_copy_for_reassign()):
@@ -613,7 +674,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    self_type: 'TpyType | None' = None,
                    native_globals: 'Mapping[str, str]' = {},
                    render_type_stored=None,
-                   render_resolve=None) -> THIRFunction | None:
+                   render_resolve=None,
+                   stub: 'TpyFunction | None' = None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
@@ -625,9 +687,21 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     type when `func` is a record method: for kinds with a receiver (instance /
     property / dunder) `self` is seeded as an F1-record receiver (a `this`
     pointer) so its field reads route the same as a param's; a static method
-    keeps only the record for its param-const lookups."""
+    keeps only the record for its param-const lookups. `stub` is the
+    @overload stub whose per-stub facts this lowering specializes (the
+    driver seeds one entry per (impl, stub) pair); None for an ordinary
+    single-signature body."""
     try:
-        _check_callable_structure(func, analyzer, self_type)
+        _check_callable_structure(func, analyzer, self_type, stub=stub)
+        if stub is not None:
+            # The body references impl param names while the AST binds the
+            # stub's; the two coincide in practice (zip-keyed narrowing
+            # depends on it) -- reject the divergent spelling rather than
+            # lower reads against the wrong names. arity is gate-rejected,
+            # so the zip is total. A stub cannot re-spell @error_return.
+            if ([n for n, _t in func.params] != [n for n, _t in stub.params]
+                    or func.error_return is not None):
+                raise ThirUnsupported("sig.overload_set.param_names")
     except ThirUnsupported as ex:
         note(ex.reason)
         return None
@@ -644,11 +718,28 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
-                   render_resolve=render_resolve)
+                   render_resolve=render_resolve,
+                   params_override=(stub.params if stub is not None else None),
+                   return_type_override=(
+                       stub.return_type
+                       if stub is not None
+                       and isinstance(stub.return_type, TpyType) else None))
     if func.error_return is not None:
         lc.error_return_cpp = error_return_to_cpp(
             func.error_return, analyzer.ctx.module_name, analyzer.registry)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
+    if stub is not None:
+        # Per-stub specialization: the AST binds the STUB's param types
+        # (gen_body receives stub.params), so every binding class, borrow
+        # form, and narrowing decision keys on them -- a union impl param
+        # narrowed to a concrete stub member is a plain record param here,
+        # not a ptr-variant (the _LowerCtx/_Prescan overrides re-key the
+        # signature-derived facts the same way).
+        params_set = {n: t for n, t in stub.params}
+        lc.overload_narrowing = build_overload_narrowing(func, stub, [], [])
+        lc.overload_stub_return = (stub.return_type
+                                   if isinstance(stub.return_type, TpyType)
+                                   else None)
     _seed_int_kind_tparams(func, record_name, analyzer, params_set)
     if has_self:
         params_set["self"] = self_type  # the record receiver, a field source
@@ -658,13 +749,15 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             # receiver being in const_locals -- see _f1_is_const).
             lc.const_locals.add("self")
     _seed_global_scope(func, analyzer, lc, params_set, native_globals)
-    params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
-    rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
+    src_params = func.params if stub is None else stub.params
+    src_rt = func.return_type if stub is None else stub.return_type
+    params = tuple(THIRParam(name=n, type=t) for n, t in src_params)
+    rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
     try:
-        param_copies = _param_reassign_copies(func, analyzer)
-        body = _lower_stmts(func.body, lc, declared)
+        param_copies = _param_reassign_copies(func, analyzer, params=src_params)
+        body = _lower_stmts(func.body, lc, declared, top_level=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(
@@ -674,6 +767,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             body=param_copies + body,
             layout=THIRFunctionLayout(),
             error_return_cpp=lc.error_return_cpp,
+            suppress_trailing_comments=lc.overload_terminated,
         )
         validate_function(fn)
         return fn
@@ -1768,6 +1862,17 @@ def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
     out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
     ng = module_native_globals(module)
     for func, self_type in iter_module_callables(module, analyzer):
+        stubs = analyzer.overload_groups.get(id(func))
+        if stubs:
+            # Mirror the codegen driver's per-stub seeding (all-or-nothing):
+            # an @overload impl lowers once per stub with that stub's facts.
+            entries = [lower_function(func, analyzer, render_type,
+                                      self_type=self_type, native_globals=ng,
+                                      stub=s)
+                       for s in stubs]
+            if all(e is not None for e in entries):
+                out.functions.extend(entries)
+            continue
         thir_fn = lower_function(func, analyzer, render_type, self_type=self_type,
                                  native_globals=ng)
         if thir_fn is not None:

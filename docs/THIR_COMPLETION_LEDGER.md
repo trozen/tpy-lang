@@ -2328,3 +2328,69 @@ byte-diff itself.
   traits_records (a generics-lane field rung); the negated poly cond
   (post-if alias); unproven varargs indexes; F5 constexpr folds
   (design).
+
+- **Landed: overload per-stub + combinator/dataclass rows wave
+  (`thir-wave-next9`, 2026-07-24, 4 cells + a mini-cell + harvests).**
+  The round-9 approvals consumed. (1) Per-@overload-stub lowering
+  (decisions 9+13): the `thir_overload_key` interception seam --
+  `(id(impl), id(stub))` ctx key set in both per-stub try/finally
+  blocks, a CONSUMING gen_body lookup (nested bodies never inherit
+  it), driver/lower_module all-or-nothing seeding -- verified
+  ZERO-CHURN standalone by a full-corpus byte-diff before the
+  lowering landed; then per-stub `_LowerCtx`/`_Prescan` signature
+  overrides (stub param types drive binding classes, stub return
+  type the return slots), the shared `build_overload_narrowing` map,
+  isinstance-if and match dead-branch folds (THIRFoldedBlock splice;
+  match folds burn a `__match_subject` counter slot; a
+  folded-terminating True branch truncates enclosing lists and sets
+  `THIRFunction.suppress_trailing_comments`), and per-stub return
+  coercion (wrong-target strip incl. the Optional-inner KEEP).
+  Boundaries: generic_stub (admission-side template test --
+  protocol-param stubs carry no type_params), arity, db_compare
+  (literal groups emit via the mangled path, which never sets the
+  key), narrow_param, partial folds, match guards/sub-patterns all
+  keep rejecting. (2) Combinator admission rungs (decision 14; the
+  "machinery" refuted -- plain @cpp_template stubs): range /
+  nested-combinator / gen-factory rvalues at native Iterable slots,
+  and the instantiation ladder's combinator + genexpr rows
+  (`list(map(f, xs))` -- inner container names stay bare, no
+  own_iter). (3) Dataclass dunder-pair rows (decision 15): the
+  fstring wrap-table's readonly-TypeParamRef unwrap; bare member
+  reads at SUBSTITUTED protocol slots (whole-optional /
+  optional-record / value-container / F1-record fields --
+  `::tpy::repr_of(this->label)`); bare field-eq pairs
+  (optional-str / optional-record / value-element list+set --
+  sema tags no optional_safe_eq for the record pairs). (4) D-tier
+  record-borrow args: inline T&-returning calls and checked
+  record-element subscripts at record ref slots, the record-getitem
+  `auto` protocol temp (BORROW_BIND record-getitem result row).
+  (5) The comprehension/borrow-tuple arg mini-cell: a list/set/dict
+  comprehension at a plain container ref slot hoists the slot-typed
+  `({...})` ArgTemp; a storage F3-tuple FIELD read at a borrow-tuple
+  slot wraps `tuple_to_pointer` with the AST's want_const pair (the
+  threaded deep-const verdict OR a const-rooted source -- the dualgen
+  smoke caught the missing caller-side disjunct). Parked there:
+  stdlib/os_fs (the inline comp render), set/set_comp_owned_move (the
+  comp-internal ctor temp seam).
+  DIVERGENCE-CLASS finds: the AST fold's body-global
+  overload_terminated truncation drops post-loop statements (filed
+  in BUGS.md -- THIR mirrors byte-identically; fix AST-first);
+  record-element list eq turned out pre-existing-routed (pinned).
+  REVIEW ROUND (7 specialists, applied autonomously): the terminated
+  truncation re-scoped to the function-level list only (the AST's
+  _gen_buffered_body break never applies to nested bodies --
+  probe-confirmed byte divergence on fold-in-loop-with-trailing
+  statements, fixed + smoked); _written_names widened to compound
+  statements' own binding targets and walrus targets (the by-ref
+  match-capture rebind write-through -- the pre-existing plain-match
+  AST flavor is FILED in BUGS.md); the borrow-tuple const verdict
+  gained the const-rooted-source disjunct; local imports hoisted;
+  boundary pins added (literal sub-pattern, return-mismatch,
+  write-guard units, non-F1 repr field).
+  PARKED: overload arity increment-3 (2 sole cases) + the
+  method.overload_set family tail (re-price now the machinery
+  exists); elem-receiver field writes (recursive_record_mutual,
+  nested elem-of-elem); enumerate_rvalue (genexpr element lane);
+  filter_none (print lane); container_literal / expr.coerce /
+  optional_other_nonetype / decl.tuple_literal_shape families
+  (verified 3+-way fragmenting -- dropped per doctrine).

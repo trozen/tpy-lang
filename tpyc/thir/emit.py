@@ -97,6 +97,8 @@ from .nodes import (
     THIRNestedDef,
     THIRNarrowedRead,
     THIRNoOpStmt,
+    THIRFoldedBlock,
+    THIRMatchFoldBind,
     THIROptionalPtrArg,
     THIRParamCopy,
     THIRPrint,
@@ -3740,6 +3742,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # leading trivia (trivia_loc) emits inline comments only.
         if stmt.trivia_loc is not None:
             state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
+    elif isinstance(stmt, THIRFoldedBlock):
+        # Per-@overload-stub fold splice: the surviving statements emit flat
+        # at the enclosing indent (the AST's direct gen_stmt calls).
+        _witness("fold.overload_block")
+        if stmt.burns_match_counter:
+            state.match_counter += 1
+        _emit_stmts(out, stmt.stmts, indent_level, state)
+    elif isinstance(stmt, THIRMatchFoldBind):
+        _witness("fold.overload_bind")
+        binder = "auto" if stmt.by_value else "auto&"
+        out.write(f"{INDENT * indent_level}{binder} {stmt.name_cpp}"
+                  f" = {stmt.source_cpp};\n")
     else:
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 

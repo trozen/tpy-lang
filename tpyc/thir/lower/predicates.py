@@ -4870,6 +4870,19 @@ def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     return (is_list(at) or is_dict(at) or is_set(at) or is_array(at)
             or is_span(at))
 
+def _native_iterable_range_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """A `range(...)` rvalue into a NATIVE builtin's structural `Iterable[T]`
+    / `Sequence[T]` slot (`zip(range(3), names)` ->
+    `::tpy::Range<int32_t>(3)` bound bare by the template): the
+    instantiation ladder's range row on the native ladder. Shape (arity /
+    counter-scalar) is validated at the render branch, which mirrors the
+    instantiation arm's checks and falls the body back outside them."""
+    if not _is_range_call(a):
+        return False
+    pb = _protocol_binding(ptype)
+    return pb is not None and pb.name in ("Iterable", "Sequence")
+
+
 def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A generator expression into a NATIVE builtin's `Iterable[T]` slot
     (`all(x > 0 for x in xs)`): the make_generator IIFE binds directly. Admitted

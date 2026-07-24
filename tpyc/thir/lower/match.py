@@ -17,6 +17,7 @@ from ...parse.nodes import (
     TpyName,
     TpyOrPattern,
     TpySubscript,
+    iter_capture_bindings,
     TpyValuePattern,
     TpyWildcardPattern,
 )
@@ -39,7 +40,7 @@ from ...type_def_registry import is_bool_type, is_fixed_int_type
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ...codegen_cpp.types import resolve_pending_container
 from ...value_category import is_rvalue_source
-from ...codegen_cpp.context import cpp_string_literal_expr
+from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.match import (
     MatchGenerator,
     _match_subject_is_lvalue,
@@ -55,9 +56,11 @@ from ...codegen_cpp.string_dispatch import (
 )
 from ...liveness import stmts_terminate
 from ..faces import witness as _witness
-from ..fallback import ThirUnsupported
+from ..fallback import ThirUnsupported, note_detail, stmt_reject_reason
 from ..nodes import (
     Form,
+    THIRFoldedBlock,
+    THIRMatchFoldBind,
     THIRExpr,
     THIRFormConvert,
     THIRMatch,
@@ -2501,3 +2504,105 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                         else False),
         loc=loc,
     )
+
+
+def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
+                                 in_branch: bool, loop_depth: int):
+    """Mirror of _gen_match_overload_specialized's witnessed slice: a match
+    on a union param narrowed to a concrete per-@overload-stub type folds to
+    the matching arm -- capture field bindings (`auto`/`auto&` name =
+    subject.field) followed by the arm body, spliced flat. The match stmt's
+    loc rides the block (its `// match ...` source comment emits), and the
+    fold burns one `__match_subject_N` counter slot exactly like the AST's
+    `gen_match` pre-dispatch bump.
+
+    Returns None when the AST guard would not take the fold (non-union
+    subject / non-name subject / subject not narrowed) -- the regular match
+    routes take over. Un-mirrored fold shapes reject: guards (the AST fold
+    silently drops them), literal/value/nested sub-patterns, as-names,
+    whole-subject captures, non-value-typed field captures, and by-ref
+    capture binds."""
+    if not isinstance(stmt.subject, TpyName) or lc.overload_narrowing is None:
+        return None
+    subject_type = (unwrap_readonly(stmt.subject_type)
+                    if stmt.subject_type is not None else None)
+    if not isinstance(subject_type, UnionType):
+        return None
+    concrete = lc.overload_narrowing.get(stmt.subject.name)
+    if concrete is None:
+        return None
+    subject_name = stmt.subject.name
+
+    def _reject(detail: str):
+        note_detail(detail)
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+
+    def _splice(pattern: TpyClassPattern, case) -> 'THIRFoldedBlock':
+        bind_modes = {n.name: n.bind_by_value
+                      for n in iter_capture_bindings(case.pattern)}
+        binds: list = []
+        for field_name, sub_pattern in pattern.keywords:
+            if isinstance(sub_pattern, TpyWildcardPattern):
+                continue
+            if not isinstance(sub_pattern, TpyCapturePattern):
+                # Literal sub-patterns silently DROP their field condition
+                # on the AST fold path; nested class/as sub-patterns are
+                # un-mirrored renders. All fall back.
+                _reject("match.overload_fold_subpattern")
+            ft = _match_record_field_type(pattern, field_name, lc.analyzer)
+            if ft is None or not ft.is_value_type():
+                # A non-value capture aliases record storage (`auto&`) --
+                # the body's reads would need the alias binding class.
+                _reject("match.overload_fold_capture")
+            by_value = bind_modes.get(sub_pattern.name)
+            if by_value is None:
+                _reject("match.overload_fold_bind_mode")
+            if not by_value and _statements._body_writes_name(
+                    case.body, sub_pattern.name):
+                # The AST's `auto&` capture would write through to the
+                # field; reads-only bodies render identically either way.
+                _reject("match.overload_fold_ref_write")
+            if (sub_pattern.name in declared
+                    or sub_pattern.name in lc.prescan.hoisted):
+                # Pre-declared/hoisted targets take the assignment forms.
+                _reject("match.overload_fold_predeclared")
+            binds.append(THIRMatchFoldBind(
+                name_cpp=escape_cpp_name(sub_pattern.name),
+                source_cpp=f"{subject_name}.{field_name}",
+                by_value=bool(by_value),
+                no_source_comment=True))
+            declared[sub_pattern.name] = ft
+        body = _statements._lower_stmts(case.body, lc, declared,
+                                        in_branch=in_branch,
+                                        loop_depth=loop_depth)
+        return THIRFoldedBlock(stmts=tuple(binds) + body, loc=loc,
+                               burns_match_counter=True)
+
+    for case in stmt.cases:
+        if case.guard is not None:
+            _reject("match.overload_fold_guard")
+        pattern = case.pattern
+        if isinstance(pattern, TpyAsPattern):
+            _reject("match.overload_fold_as")
+        if isinstance(pattern, TpyClassPattern):
+            if pattern.resolved_type is not None \
+                    and pattern.resolved_type == concrete:
+                return _splice(pattern, case)
+        elif isinstance(pattern, TpyOrPattern):
+            for alt in pattern.patterns:
+                if (isinstance(alt, TpyClassPattern)
+                        and alt.resolved_type == concrete):
+                    return _splice(alt, case)
+        elif isinstance(pattern, TpyWildcardPattern):
+            body = _statements._lower_stmts(case.body, lc, declared,
+                                            in_branch=in_branch,
+                                            loop_depth=loop_depth)
+            return THIRFoldedBlock(stmts=body, loc=loc,
+                                   burns_match_counter=True)
+        else:
+            # Capture patterns bind the whole subject; value/literal
+            # patterns compare it -- both un-mirrored on this tier.
+            _reject("match.overload_fold_pattern")
+    # No arm matched: the AST fold raises AssertionError here; falling back
+    # keeps that failure on the emission path.
+    _reject("match.overload_fold_arm")

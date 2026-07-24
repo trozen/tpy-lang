@@ -122,17 +122,22 @@ class _Prescan:
                  "global_cpp", "global_write_cpp", "native_globals",
                  "global_slots")
 
-    def __init__(self, func: TpyFunction, analyzer) -> None:
+    def __init__(self, func: TpyFunction, analyzer,
+                 params_override=None, return_type_override=None) -> None:
+        # `params_override` / `return_type_override` carry a per-@overload
+        # STUB's signature: the AST emits the impl body against the stub's
+        # types, so every signature-derived fact here must key on them.
+        src_params = func.params if params_override is None else params_override
         # Param names, for checks that must tell a param from a local (a str
         # param's aug-assign would need the owned-copy prologue -- see
         # _str_aug_append_ok).
-        self.param_names = {n for n, _t in func.params}
+        self.param_names = {n for n, _t in src_params}
         # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
         # `return <param>` into a value-optional return slot passes the WHOLE
         # optional bare (deref-on-narrow stripped), so return lowering keys on
         # this to admit a narrowed param name the generic tail would deref.
         self.value_opt_params = {
-            n for n, t in func.params
+            n for n, t in src_params
             if _value_opt_scalar(t, analyzer) is not None}
         # Whether the callable has a `self` receiver (instance method) -- the
         # lowering arms that treat the name `self` specially (the return-self arm,
@@ -188,7 +193,10 @@ class _Prescan:
         # (`Own[T] | None` -> `std::optional<T>`), so a `return None` /
         # `return <borrow T*>` lowers to `std::nullopt` / `ptr_to_optional`. None
         # for every other return type (the value-scalar/pointer-repr paths).
-        rt = func.return_type if isinstance(func.return_type, TpyType) else None
+        rt = (return_type_override
+              if return_type_override is not None
+              else (func.return_type
+                    if isinstance(func.return_type, TpyType) else None))
         self.ret_storage_opt = _storage_optional_return_type(rt, analyzer)
         # The pointer-repr Optional[F1-record] return slot, if any
         # (`A | None` -> a borrow `A*` returned by value): `None` ->
@@ -428,7 +436,9 @@ class _LowerCtx:
                  "unhandled_hoists", "narrow",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp",
-                 "walrus_predeclared", "walrus_slot_locals")
+                 "walrus_predeclared", "walrus_slot_locals",
+                 "overload_narrowing", "overload_stub_return",
+                 "overload_terminated")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -436,10 +446,14 @@ class _LowerCtx:
                  render_type_stored=None,
                  self_cpp: str = "this",
                  self_is_pointer: bool = True,
-                 render_resolve=None) -> None:
+                 render_resolve=None,
+                 params_override=None,
+                 return_type_override=None) -> None:
         self.analyzer = analyzer
         self.func = func
-        self.prescan = _Prescan(func, analyzer)
+        self.prescan = _Prescan(func, analyzer,
+                                params_override=params_override,
+                                return_type_override=return_type_override)
         self.render_type = render_type or (lambda t: t.to_cpp())
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))
@@ -475,6 +489,16 @@ class _LowerCtx:
                 self.tparam_bounds.update(ri.type_param_bounds)
         if getattr(func, "type_param_bounds", None):
             self.tparam_bounds.update(func.type_param_bounds)
+        # Per-@overload-stub lowering: the dead-branch-elim narrowing map
+        # (build_overload_narrowing's stub-name -> concrete type) and the
+        # stub's return type (overriding func.return_type at the return
+        # arms). Both None for an ordinary single-signature body.
+        # `overload_terminated` mirrors ctx.overload_terminated: a folded
+        # True branch ending in return/raise truncates every enclosing
+        # statement list and suppresses the trailing-comment scan.
+        self.overload_narrowing: 'dict[str, TpyType] | None' = None
+        self.overload_stub_return: 'TpyType | None' = None
+        self.overload_terminated: bool = False
         self.const_locals: set[str] = set()
         # Names whose C++ binding is a bare `T*` -- F2 pointer-locals
         # (reseatable, recorded at first decl so a later reseat lowers
@@ -487,7 +511,8 @@ class _LowerCtx:
         # slots. The GATE side has no pointer-set analog for the Optional
         # names -- its faces key on the declared type in `ws.declared`.
         self.pointers: set[str] = set()
-        for pname, ptype in func.params:
+        for pname, ptype in (func.params if params_override is None
+                             else params_override):
             if _optional_ptr_borrow(ptype, analyzer) is not None:
                 self.pointers.add(pname)
         # Walrus targets already pre-declared this FUNCTION -- the AST's

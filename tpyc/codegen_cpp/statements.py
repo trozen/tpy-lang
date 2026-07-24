@@ -468,7 +468,16 @@ class StatementGenerator:
         # THIR dual-mode: an eligible function emits its body from THIR, with no
         # analyzer/scope setup. Byte-identical to the AST path for the slice.
         if self.ctx.thir_codegen:
-            thir_fn = self.ctx.thir_functions.get(id(func))
+            overload_key = self.ctx.thir_overload_key
+            if overload_key is not None:
+                # Per-stub specialization in flight: only the (impl, stub)
+                # entry may route this body -- falling back to id(func)
+                # would hijack the specialization with the unspecialized
+                # lowering. Consume the key so nested bodies never see it.
+                self.ctx.thir_overload_key = None
+                thir_fn = self.ctx.thir_functions.get(overload_key)
+            else:
+                thir_fn = self.ctx.thir_functions.get(id(func))
             if thir_fn is not None:
                 from ..thir.emit import (emit_thir_body, CtxCommentSink,
                                          CtxCounter, CtxTempSink)
@@ -483,8 +492,13 @@ class StatementGenerator:
                                return_cpp=return_cpp)
                 # The function-level trailing-comment walk runs for THIR
                 # bodies too (this early return skips the AST tail's call).
-                self.ctx.emit_block_trailing_comments(
-                    out, body, INDENT * indent_level)
+                # A folded-terminating per-stub body suppresses it exactly
+                # like the AST's overload_terminated skip (the emitted stmts
+                # come from a then_body -- scanning forward from the TpyIf's
+                # line would pick up dead-branch comments).
+                if not thir_fn.suppress_trailing_comments:
+                    self.ctx.emit_block_trailing_comments(
+                        out, body, INDENT * indent_level)
                 return
 
         scan = self.setup_body_scope(

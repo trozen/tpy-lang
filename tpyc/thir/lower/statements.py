@@ -3,9 +3,11 @@ branches, loops, with, try, raise, and narrowing statements.
 """
 
 from __future__ import annotations
+import copy
 from collections.abc import Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
+from ...diagnostics import SemanticError
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssert,
@@ -63,9 +65,12 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     AnyType,
+    BIGINT,
     FloatLiteralType,
     IntLiteralType,
+    LiteralType,
     NominalType,
+    NoneType,
     OptionalType,
     OwnType,
     PendingListType,
@@ -77,6 +82,7 @@ from ...typesys import (
     UnionType,
     VoidType,
     contains_pending_leaf,
+    is_void_like_type,
     error_return_to_cpp,
     is_dyn_protocol,
     is_protocol_type,
@@ -169,6 +175,7 @@ from ..nodes import (
     THIRName,
     THIRNarrowAlias,
     THIRNestedDef,
+    THIRFoldedBlock,
     THIRNoOpStmt,
     THIROptionalPtrArg,
     THIROptViewArg,
@@ -2948,7 +2955,8 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
 def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
                  *, in_branch: bool = False,
                  branch_decls_ok: bool = False,
-                 loop_depth: int = 0) -> tuple[THIRStmt, ...]:
+                 loop_depth: int = 0,
+                 top_level: bool = False) -> tuple[THIRStmt, ...]:
     """Lower a statement list, appending the U3 post-if extraction after an
     early-return narrowing `if` (`_gen_if`'s post-narrowing arm: a persistent,
     comment-less, statement-level alias) and extending the narrowing scope /
@@ -2956,12 +2964,23 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
     save-restore pops both (the AST's scope-snapshot semantics)."""
     out: list[THIRStmt] = []
     for s in body:
+        # A folded-True terminating @overload branch truncates the
+        # FUNCTION-LEVEL statement list ONLY: the AST's
+        # ctx.overload_terminated break lives in _gen_buffered_body, which
+        # runs once for the outermost body -- nested loop/branch bodies
+        # never consult the flag, so their trailing statements still emit.
+        if top_level and lc.overload_terminated:
+            break
         out.append(_lower_stmt(s, lc, declared, in_branch=in_branch,
                                branch_decls_ok=branch_decls_ok,
                                loop_depth=loop_depth))
         if isinstance(s, TpyAssert):
             _append_assert_narrow(s, out, lc, declared)
         if not isinstance(s, TpyIf):
+            continue
+        if isinstance(out[-1], THIRFoldedBlock):
+            # A per-stub dead-branch fold emits no `if` -- the AST's
+            # post-if narrowing machinery never runs on it.
             continue
         pf = _chain_post_if_fact(s, declared, lc.narrow.narrowed, lc.analyzer)
         if pf is None:
@@ -3449,21 +3468,46 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
 
 def _written_names(stmt: TpyStmt) -> set[str]:
     """Roots written AT NAME LEVEL -- a rebind, bare-name value write,
-    re-decl, unpack target, or `del name`. Field/subscript writes THROUGH a
-    root (`bb.val = 9`, `del bb[k]`) are excluded: a match binding aliases
-    its extraction exactly like the AST's `auto&` emit, so a through-write
-    lowers identically -- only writes to the binding NAME itself have no
-    mirrored render (the forbidden_writes gate's purpose)."""
+    re-decl, unpack target, `del name`, a compound statement's OWN binding
+    targets (a for-loop's loop var, a `with ... as` name), or a walrus
+    target anywhere in the statement's expressions. Field/subscript writes
+    THROUGH a root (`bb.val = 9`, `del bb[k]`) are excluded: a match
+    binding aliases its extraction exactly like the AST's `auto&` emit, so
+    a through-write lowers identically -- only writes to the binding NAME
+    itself have no mirrored render (the forbidden_writes gate's purpose).
+    The compound own-targets matter for the same reason: `for v in xs:`
+    re-binding a by-ref capture writes through the alias in C++ where
+    CPython re-binds a local."""
+    out: set[str] = set()
     if isinstance(stmt, (TpyAssign, TpyAugAssign)):
-        return ({stmt.target.name} if isinstance(stmt.target, TpyName)
-                else set())
-    if isinstance(stmt, TpyVarDecl):
-        return {stmt.name}
-    if isinstance(stmt, TpyTupleUnpack):
-        return {name for name in stmt.targets if name is not None}
-    if isinstance(stmt, TpyDelVar):
-        return set(stmt.names)
-    return set()
+        if isinstance(stmt.target, TpyName):
+            out.add(stmt.target.name)
+    elif isinstance(stmt, TpyVarDecl):
+        out.add(stmt.name)
+    elif isinstance(stmt, TpyTupleUnpack):
+        out.update(name for name in stmt.targets if name is not None)
+    elif isinstance(stmt, TpyDelVar):
+        out.update(stmt.names)
+    elif isinstance(stmt, TpyForEach):
+        # A tuple-destructuring loop's real targets land as a synthetic
+        # TpyTupleUnpack in the body (covered by the sub_bodies recursion);
+        # the loop var itself is the name-level bind either way.
+        out.add(stmt.var)
+    elif isinstance(stmt, TpyWith):
+        out.update(item.target for item in stmt.items
+                   if item.target is not None)
+    elif isinstance(stmt, TpyTry):
+        # `except E as v:` binds v -- sub_bodies() covers the handler
+        # BODIES only, not the binding names.
+        out.update(h.binding for h in stmt.handlers
+                   if h.binding is not None)
+    elif isinstance(stmt, TpyNestedDef):
+        out.add(stmt.func.name)
+    for e in stmt.exprs():
+        for node in _walk(e):
+            if isinstance(node, TpyNamedExpr):
+                out.add(node.target)
+    return out
 
 
 def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
@@ -3971,6 +4015,169 @@ def _value_opt_target_binding(name: str, lc: '_LowerCtx') -> bool:
     the deref strip); keep them agreeing through this one predicate."""
     return (_value_opt_scalar_binding(name, lc)
             or _value_opt_view_binding(name, lc))
+
+
+def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
+    """The body's declared return type: the per-@overload stub's when this
+    is a per-stub lowering (the AST emits against it), else the func's."""
+    if lc.overload_stub_return is not None:
+        return lc.overload_stub_return
+    return (lc.func.return_type
+            if isinstance(lc.func.return_type, TpyType) else None)
+
+
+def _overload_is_elif(outer: TpyIf, inner: TpyIf) -> bool:
+    """Mirror of StatementGenerator._is_elif: elif keeps the outer's column;
+    a nested `else: if` is indented deeper. Loc-stripped (macro) chains
+    fall back to elif."""
+    if outer.loc is None and inner.loc is None:
+        return True
+    if outer.loc is None or inner.loc is None:
+        return False
+    return inner.loc.column == outer.loc.column
+
+
+def _overload_concrete_facts(type_facts) -> bool:
+    """Mirror of _has_concrete_isinstance_facts (the chain-collection
+    guard: intermediate else-facts with concrete extractions stop the
+    flatten)."""
+    return any(
+        not (isinstance(ty, (UnionType, LiteralType)) or is_void_like_type(ty))
+        and not is_protocol_type(ty)
+        for ty in type_facts.values()
+    )
+
+
+def _overload_resolve_static(cond: TpyExpr, narrowing) -> 'bool | None':
+    """Mirror of _resolve_isinstance_statically for the per-stub fold.
+
+    The literal-fact half is structurally absent here: literal-only groups
+    and short-arity stubs are gate-rejected, so literal_overload_facts is
+    empty for every admitted body -- only the isinstance / is-None /
+    boolean-chain resolution can fire."""
+    if narrowing:
+        if isinstance(cond, TpyCall) and cond.isinstance_var is not None:
+            concrete = narrowing.get(cond.isinstance_var)
+            check_type = cond.isinstance_type
+            if concrete is not None and check_type is not None:
+                if concrete == check_type:
+                    return True
+                if (isinstance(check_type, UnionType)
+                        and concrete in check_type.members):
+                    return True
+                return False
+        if isinstance(cond, TpyBinOp) and cond.op in ("is", "is not"):
+            for var_side, none_side in ((cond.left, cond.right),
+                                        (cond.right, cond.left)):
+                if (isinstance(var_side, TpyName)
+                        and isinstance(none_side, TpyNoneLiteral)
+                        and var_side.name in narrowing):
+                    concrete = narrowing[var_side.name]
+                    is_none = isinstance(concrete, NoneType)
+                    return is_none if cond.op == "is" else not is_none
+    if isinstance(cond, TpyBinOp) and cond.op in ("&&", "||"):
+        left = _overload_resolve_static(cond.left, narrowing)
+        right = _overload_resolve_static(cond.right, narrowing)
+        if cond.op == "||":
+            if left is True or right is True:
+                return True
+            if left is False and right is False:
+                return False
+        else:
+            if left is False or right is False:
+                return False
+            if left is True and right is True:
+                return True
+        return None
+    if isinstance(cond, TpyUnaryOp) and cond.op == "!":
+        inner = _overload_resolve_static(cond.operand, narrowing)
+        if inner is not None:
+            return not inner
+    return None
+
+
+def _lower_overload_folded_if(stmt: TpyIf, lc: _LowerCtx,
+                              declared: dict[str, TpyType], *,
+                              in_branch: bool,
+                              loop_depth: int) -> 'THIRFoldedBlock | None':
+    """Mirror of _gen_if_overload_specialized's fully-static paths: the
+    surviving branch's statements splice flat (direct gen_stmt calls, no
+    `// if` comment, no brace scope), and a terminating True branch sets
+    the body-global truncation flag. Returns None when no chain condition
+    resolves -- the AST falls through to regular emission there, so the
+    ordinary narrowing arms take over. A partially-resolved chain (a
+    dynamic branch among folded ones) rejects: the AST's trimmed live
+    chain (branch decls + extraction aliases) is an unmirrored render --
+    only fully-static folds are in the mirrored slice."""
+    chain: list[TpyIf] = [stmt]
+    current = stmt
+    while (len(current.else_body) == 1
+           and isinstance(current.else_body[0], TpyIf)
+           and _overload_is_elif(current, current.else_body[0])
+           and not _overload_concrete_facts(current.else_type_facts)):
+        current = current.else_body[0]
+        chain.append(current)
+    res = [_overload_resolve_static(n.condition, lc.overload_narrowing)
+           for n in chain]
+    if all(r is None for r in res):
+        return None
+    for node, resolved in zip(chain, res):
+        if resolved is True:
+            body = _lower_stmts(node.then_body, lc, declared,
+                                in_branch=in_branch, loop_depth=loop_depth)
+            if node.then_body and isinstance(node.then_body[-1],
+                                             (TpyReturn, TpyRaise)):
+                lc.overload_terminated = True
+            return THIRFoldedBlock(stmts=body, no_source_comment=True)
+        if resolved is False:
+            continue
+        note_detail("if.overload_partial_fold")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    last = chain[-1]
+    if last.else_body:
+        body = _lower_stmts(last.else_body, lc, declared,
+                            in_branch=in_branch, loop_depth=loop_depth)
+        return THIRFoldedBlock(stmts=body, no_source_comment=True)
+    return THIRFoldedBlock(stmts=(), no_source_comment=True)
+
+
+def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
+    """Mirror of the AST return arm's @overload specialization pair:
+    _check_overload_return_type (compat validation against the stub's
+    return type) + _strip_wrong_overload_coerce (sema coerced against the
+    impl's union return, which may target a different member than this
+    stub). An incompatible return rejects, so the AST path keeps raising
+    its return-type-mismatch CodeGenError; a stripped value shallow-copies
+    the node -- the shared AST must never be mutated."""
+    stub_ret = lc.overload_stub_return
+    if stmt.value is None or stmt.value_type is None:
+        return stmt
+    rt = stub_ret
+    if isinstance(rt, ReadonlyType) and isinstance(rt.wrapped, OptionalType):
+        rt = rt.wrapped
+    vt = stmt.value_type
+    if isinstance(vt, IntLiteralType):
+        vt = BIGINT
+    elif isinstance(vt, PendingViewType):
+        vt = vt.family.owned_type
+    try:
+        lc.analyzer.compat.check_type_compatible(
+            vt, rt, "return value", loc=stmt.loc, is_return=True)
+    except SemanticError:
+        note_detail("return.overload_mismatch")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    value = stmt.value
+    if isinstance(value, TpyCoerce):
+        keep = (value.expected_type == rt
+                or (isinstance(rt, OptionalType)
+                    and value.expected_type == rt.inner))
+        if not keep:
+            value = value.expr
+    if value is stmt.value:
+        return stmt
+    adjusted = copy.copy(stmt)
+    adjusted.value = value
+    return adjusted
 
 
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
@@ -5902,6 +6109,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
     if isinstance(stmt, TpyReturn):
         begin_stmt()
+        if lc.overload_stub_return is not None:
+            stmt = _overload_adjusted_return(stmt, lc)
         if stmt.finally_deferred_capture:
             # Finally-deferred return capture (borrow before the inline
             # finally chain, materialize after) has no THIR emit recipe yet;
@@ -5921,8 +6130,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("error_return.ret_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 _reject_nested_error_return_arg(stmt, stmt.value, analyzer)
-                rtb = (unwrap_readonly(unwrap_ref_type(lc.func.return_type))
-                       if isinstance(lc.func.return_type, TpyType) else None)
+                rtb = (unwrap_readonly(unwrap_ref_type(_fn_return_type(lc)))
+                       if _fn_return_type(lc) is not None else None)
                 if (lc.func.is_property_getter
                         or isinstance(rtb, OptionalType)
                         or (rtb is not None and is_ptr_variant_union(rtb))):
@@ -5944,8 +6153,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # (`return self._data[name];` -> the bare checked
             # `::tpy::__getitem__(recv, k)` rvalue, no wrap -- both slot and
             # value are already Any, so no coercion can fire on either path).
-            ret_t = (lc.func.return_type
-                     if isinstance(lc.func.return_type, TpyType) else None)
+            ret_t = _fn_return_type(lc)
             if (_is_any_type(ret_t)
                     and isinstance(stmt.value, TpySubscript)
                     and _is_any_type(analyzer.get_expr_type(stmt.value))
@@ -6451,8 +6659,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                  if stmt.value else None)
         # A float literal returned from a Float32 function takes the `f`
         # suffix (the AST threads the return type into the render).
-        ret_t = lc.func.return_type if isinstance(lc.func.return_type,
-                                                  TpyType) else None
+        ret_t = _fn_return_type(lc)
         value = _slot_literal_retype(value, ret_t, lc)
         # An expensive-copy value-Optional PARAM (`int | None`) returned at its
         # narrowed last use moves the unwrapped value (`return std::move((*p));`,
@@ -6475,6 +6682,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRReturn(value=value, loc=loc)
     if isinstance(stmt, TpyIf):
         begin_stmt()
+        if lc.overload_narrowing:
+            folded = _lower_overload_folded_if(
+                stmt, lc, declared, in_branch=scope.in_branch,
+                loop_depth=scope.loop_depth)
+            if folded is not None:
+                return folded
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         ainfo = (None if info is not None
                  else _any_narrow_cond_info(stmt.condition, declared,
@@ -7471,6 +7684,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                           loop_depth=scope.loop_depth)
     if isinstance(stmt, TpyMatch):
         begin_stmt()
+        if lc.overload_narrowing:
+            folded = _match._lower_overload_folded_match(
+                stmt, lc, declared, loc, in_branch=scope.in_branch,
+                loop_depth=scope.loop_depth)
+            if folded is not None:
+                return folded
         match_route = _match._select_match_route(
                 stmt, analyzer, declared, scope.admission_pointers(),
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,

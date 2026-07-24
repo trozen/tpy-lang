@@ -22,17 +22,20 @@ from ...parse.nodes import (
     TpyBytesLiteral,
     TpyCall,
     TpyCoerce,
+    TpyDictComprehension,
     TpyDictLiteral,
     TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyIntLiteral,
     TpyLambda,
+    TpyListComprehension,
     TpyListRepeat,
     TpyMethodCall,
     TpyName,
     TpyNamedExpr,
     TpyNoneLiteral,
+    TpySetComprehension,
     TpySetLiteral,
     TpySlice,
     TpyStrLiteral,
@@ -128,6 +131,7 @@ from ..nodes import (
 )
 from .predicates import (
     _callable_value,
+    _f1_tuple,
     _arg_ptr_union_slot,
     _bigint_index_disposition,
     _bytes_concat_operand,
@@ -139,6 +143,7 @@ from .predicates import (
     _container_pass_through_arg,
     _native_iterable_container_arg,
     _native_iterable_call_arg,
+    _native_iterable_range_arg,
     _native_iterable_genexpr_arg,
     _container_record_elem,
     _container_ref_alias_elem,
@@ -2369,6 +2374,70 @@ def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
 
 
 
+def _native_iterable_iterator_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                       analyzer) -> bool:
+    """An iterator-producing call rvalue into a NATIVE builtin's structural
+    `Iterable[T]` slot: a nested combinator (`zip(enumerate(names), xs)` --
+    an Iterator-protocol-returning @cpp_template call) or a generator
+    factory (`map(f, gen())`). Both render bare in iterable position; the
+    inner call's own lowering re-validates its args (container names stay
+    bare there -- no own_iter wrap fires outside the instantiation arm's
+    last-use handling)."""
+    pb = _protocol_binding(ptype)
+    if pb is None or pb.name not in ("Iterable", "Sequence"):
+        return False
+    if not isinstance(a, TpyCall) or a.resolved_function_info is None:
+        return False
+    fi = a.resolved_function_info
+    if fi.is_generator:
+        return _free_callee_kind(a, analyzer, generator_ok=True) is not None
+    if not fi.cpp_template:
+        return False
+    rt = analyzer.get_expr_type(a)
+    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+          if rt is not None else None)
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.name == "Iterator")
+
+
+def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """A field-access arg at a native/template callee's monomorphized
+    protocol slot whose bare member read the slot binds directly
+    (`repr(self.label)` -> `::tpy::repr_of(this->label)`): a value-repr
+    Optional field passed WHOLE (repr_of/std::format take the optional
+    directly), an Optional[F1-record] field (storage-form
+    `std::optional<T>`), or an F1-record field (the ADL overload binds
+    the record). The slot arrives SUBSTITUTED (Representable ->
+    Optional[str]), so the protocol-ness is gone -- key on the slot
+    matching the arg's analyzed type exactly. Value-typed fields already
+    ride `_native_protocol_value_arg`; a NARROWED optional field's
+    analyzed type is its inner, so it takes those value rows' deref
+    render, not this bare-optional one."""
+    if not isinstance(a, TpyFieldAccess):
+        return False
+    at = analyzer.get_expr_type(a)
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+         if at is not None else None)
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if t is None or slot is None or t != slot:
+        return False
+    if isinstance(t, OptionalType):
+        inner = unwrap_readonly(t.inner)
+        return bool(inner.is_value_type() or _f1_record(inner, analyzer))
+    if is_list(t) or is_set(t):
+        # A value-element container field (`repr(self.items)` ->
+        # `::tpy::repr_of(this->items)`): the runtime repr/str overloads
+        # take the container directly.
+        args = getattr(t, "type_args", ())
+        return bool(args) and all(
+            _eligible_scalar(unwrap_readonly(x))
+            or _owned_str_slot(unwrap_readonly(x), analyzer) is not None
+            for x in args if isinstance(x, TpyType))
+    return _f1_record(t, analyzer)
+
+
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                         locals_: dict[str, TpyType], analyzer) -> bool:
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
@@ -2381,6 +2450,8 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _native_iterable_container_arg(a, ptype, locals_)
             or _native_iterable_call_arg(a, ptype, analyzer)
+            or _native_iterable_range_arg(a, ptype)
+            or _native_iterable_iterator_call_arg(a, ptype, analyzer)
             or _native_iterable_genexpr_arg(a, ptype)
             or _native_iterable_literal_arg(a, ptype, analyzer)
             or _native_value_call_arg(a, ptype, analyzer)
@@ -2395,6 +2466,7 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # protocol slot (`hash("hello")` -> `::tpy::__hash__("hello")`):
             # the native loop renders the value bare, position-independent.
             or _native_protocol_value_arg(a, ptype, analyzer)
+            or _native_protocol_field_arg(a, ptype, analyzer)
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
 
 
@@ -2589,6 +2661,10 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # raises inside lowering and falls the body back whole) -- the
             # gate checks only the slot/arity pairing.
             or _tuple_literal_arg(a, ptype)
+            or _record_borrow_call_arg(a, ptype, analyzer)
+            or _record_elem_subscript_arg(a, ptype, analyzer)
+            or (temps_ok and _container_comp_arg(a, ptype))
+            or _borrow_tuple_field_arg(a, ptype, analyzer) is not None
             or _record_field_ref_arg(a, ptype, locals_, analyzer)
             # The deref auto-coercion name: inline Ptr deref_check, or the
             # slot-typed wrapper-`__deref__()` copy temp (flush-gated).
@@ -2598,6 +2674,107 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _readonly_container_rvalue_arg(a, ptype, analyzer) is not None
             or note_detail(
                 "call.arg_shape." + _type_family_tag(ptype, analyzer)))
+
+def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                            analyzer) -> bool:
+    """A borrow-returning call arg at a record ref slot
+    (`bump(find_first(pts))` / `bump(holder.get())` -- the T&-returning
+    call binds the ref param directly, no temp): the call's F1-record
+    result is a BORROW into caller-owned storage, so it renders inline.
+    Rvalue-returning calls keep their ArgTemp row (a prvalue bound to a
+    mutable ref slot needs the named temp)."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if not _f1_record(slot, analyzer):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return (atu == slot and not is_rvalue_source(analyzer, a))
+
+
+def _container_comp_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """A list/set/dict comprehension at a plain callee's concrete container
+    ref slot (`accept_wide([x for x in items])`): the slot-typed
+    `std::vector<int64_t> __tmp_N = ({ ... });` ArgTemp, its init the same
+    stmt-expr the decl-init arm renders."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if slot is None:
+        return False
+    if isinstance(a, TpyListComprehension):
+        return is_list(slot)
+    if isinstance(a, TpySetComprehension):
+        return is_set(slot)
+    if isinstance(a, TpyDictComprehension):
+        return is_dict(slot)
+    return False
+
+
+def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
+                            analyzer) -> 'TupleType | None':
+    """A storage F3-tuple FIELD read at a borrow-tuple param slot
+    (`bump(h.pair)` -> `::tpy::tuple_to_pointer<std::tuple<int32_t,
+    Box*>>(h.pair)`): the bare member read feeds the storage->borrow
+    wrap. Returns the slot's TupleType, or None."""
+    if not isinstance(a, TpyFieldAccess):
+        return None
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if not isinstance(slot, TupleType):
+        return None
+    if _f1_tuple(slot, analyzer) is None:
+        return None
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return slot if atu == slot else None
+
+
+def _record_getitem_rvalue_arg(a: TpyExpr, analyzer) -> bool:
+    """A user-record `recv[index]` returning an F1 record: the raw
+    operator[] read (a `T&` borrow for the default record return, a
+    prvalue for an explicit value return) binds the protocol arg's
+    `auto __tmp_N = container[i];` temp -- `auto` deduces the value
+    either way, so the temp owns a copy exactly as the AST emits."""
+    if not isinstance(a, TpySubscript) or isinstance(a.index, TpySlice):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if not _f1_record(atu, analyzer):
+        return False
+    rt_recv = analyzer.get_expr_type(a.obj)
+    ru = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt_recv)))
+          if rt_recv is not None else None)
+    if not isinstance(ru, NominalType):
+        return False
+    ri = analyzer.registry.get_record_for_type(ru)
+    if ri is None:
+        return False
+    return bool(analyzer.registry.get_method_overloads_with_parents(
+        ri, "__getitem__"))
+
+
+def _record_elem_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """A record-element container subscript at a record ref slot
+    (`add_a(a.bs[0], ..)` -> `add_a(::tpy::__getitem__(a.bs, 0), ..)`):
+    the checked element read is an lvalue into the container's storage,
+    binding the ref param inline like the borrow-returning call row."""
+    if not isinstance(a, TpySubscript) or isinstance(a.index, TpySlice):
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if not _f1_record(slot, analyzer):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return atu == slot
+
 
 def _tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     if not isinstance(a, TpyTupleLiteral):
@@ -3255,6 +3432,12 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         # The iterator sibling (gen-factory / iter() / dict-view rvalues):
         # the same un-spelled auto temp, always hoisted.
         return temps_ok and _witness("argtemp.iter_proto")
+    elif (isinstance(a, TpySubscript) and not is_dyn_protocol(proto)
+          and _record_getitem_rvalue_arg(a, analyzer)):
+        # A by-value record-getitem subscript rvalue at a STRUCTURAL slot
+        # (`show(container[1])`): the raw operator[] prvalue hoists the
+        # `auto __tmp_N = container[1];` temp.
+        rvalue = True
     elif (isinstance(a, TpyArrayLiteral) and not is_dyn_protocol(proto)):
         # A container literal into a STRUCTURAL slot (`math.dist([0.0, 0.0],
         # ..)`): the resolved literal hoists the un-spelled `auto __tmp_N =
@@ -6581,8 +6764,8 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
     """The Python-compatible formatting wrapper for one interpolated f-string
     arg, as a positional `{0}` template (None = pass through bare) -- the
     mirrored subset of `_gen_fstring`'s per-arg table -- or `_FSTRING_INELIGIBLE`
-    for any row the slice does not reproduce (user/union `__str__`,
-    containers, Any, type params). The mirrored-type row is established first:
+    for any row the slice does not reproduce. The mirrored-type row is
+    established first:
     `!r` then overrides it with `repr_of` (the AST chain's conv row precedes
     every type row, and no mirrored type is a container, so `repr_of` fires
     for all of them); `!s` is a no-op outside the user-type row, which is not
@@ -6641,10 +6824,13 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
             _witness("fstr.any_arg")
             row = None
         elif (isinstance(t, NominalType) and t.is_user_record) \
-                or isinstance(t, TypeParamRef):
+                or isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(t))), TypeParamRef):
             # A user record / bound type param renders via __str__ (its ADL
             # override binds the per-record definition); a !r conversion
             # overrides it with repr_of below, mirroring the AST's conv row.
+            # The type-param half unwraps readonly/Send shells -- a const
+            # method's `self.value: T` read arrives readonly-wrapped.
             _witness("fstr.user_arg")
             row = "::tpy::__str__({0})"
         elif isinstance(t, UnionType):

@@ -994,6 +994,28 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # brace-init literal / nested comp value
     "comp.nested",                  # comprehension VALUE inside a dict comp ->
                                     # the recursive stmt-expr render
+    "argtemp.comprehension",        # slot-typed comp ArgTemp at a plain
+                                    # container ref slot (accept([x for ..]))
+    "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
+                                    # tuple_to_pointer at a borrow-tuple slot
+    "subscript.record_elem_borrow", # checked F1-record element lvalue at a
+                                    # BORROW_BIND sink (record ref-slot arg)
+    "arg.record_borrow_call",       # T&-returning call bound inline at a
+                                    # record ref slot (bump(find_first(..)))
+    "arg.native_protocol_field",    # bare optional/record field read at a
+                                    # native protocol slot (repr_of(this->f))
+    "call.native_range_arg",        # range(...) rvalue bare at a native
+                                    # builtin's Iterable slot (zip(range..))
+    "call.native_iter_call_arg",    # nested combinator / gen-factory rvalue
+                                    # at a native builtin's Iterable slot
+    "call.inst_iter_arg",           # combinator rvalue in a container
+                                    # instantiation (list(map(f, xs)))
+    "call.inst_genexpr_arg",        # genexpr rvalue in a container
+                                    # instantiation (list(x for ...))
+    "fold.overload_block",          # per-@overload-stub dead-branch fold splice
+                                    # (if-chain flatten / folded match arm)
+    "fold.overload_bind",           # folded match arm's capture binding
+                                    # (`auto`/`auto&` name = subject.field)
     "fn.param_copy",                # reassigned const-ref param -> the mutable
                                     # owned-copy prologue (THIRParamCopy)
     "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->

@@ -519,6 +519,35 @@ class CodeGenerator:
                         record_arm_residual(f.body)
                         record_shape(f, "body", routed=False)
                     continue
+                stubs = self.analyzer.overload_groups.get(id(f))
+                if stubs:
+                    # Per-stub seeding: an @overload impl body is emitted
+                    # once per stub, so each (impl, stub) pair lowers with
+                    # that stub's facts and keys its own entry (the
+                    # thir_overload_key seam). All-or-nothing: the body
+                    # routes only when EVERY stub's specialization lowers
+                    # (a partial set would leave hybrid per-stub emission).
+                    entries = []
+                    for stub in stubs:
+                        stf = _thir_lower(
+                            f, self.analyzer, self.types.type_to_cpp,
+                            self_type=self_type, native_globals=_ng,
+                            render_type_stored=self.types.type_to_cpp_stored,
+                            render_resolve=self.types.resolve_type,
+                            stub=stub)
+                        if stf is None:
+                            entries = None
+                            break
+                        entries.append((stub, stf))
+                    if entries is not None:
+                        for stub, stf in entries:
+                            self.ctx.thir_functions[(id(f), id(stub))] = stf
+                        record_shape(f, "body", routed=True)
+                    else:
+                        fold_attempt("body", f)
+                        record_arm_residual(f.body)
+                        record_shape(f, "body", routed=False)
+                    continue
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                  self_type=self_type, native_globals=_ng,
                                  render_type_stored=self.types.type_to_cpp_stored,

@@ -93,6 +93,8 @@ from .nodes import (
     THIRListRepeat,
     THIRMembership,
     THIRNestedDef,
+    THIRFoldedBlock,
+    THIRMatchFoldBind,
     THIRNoOpStmt,
     THIRParamCopy,
     THIRPtrLocalDecl,
@@ -520,6 +522,15 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}{_expr(stmt.expr)}"]
     if isinstance(stmt, THIRNoOpStmt):
         return [f"{pad}noop"]
+    if isinstance(stmt, THIRFoldedBlock):
+        burn = " [burns_match_counter]" if stmt.burns_match_counter else ""
+        lines = [f"{pad}overload-fold{burn}:"]
+        for s in stmt.stmts:
+            lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRMatchFoldBind):
+        binder = "auto" if stmt.by_value else "auto&"
+        return [f"{pad}{binder} %{stmt.name_cpp} = {stmt.source_cpp}"]
     if isinstance(stmt, THIRStmtSeq):
         # A transparent carrier: emit its members at the same depth so the
         # dump mirrors the emitted statement sequence.
@@ -724,8 +735,16 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
     seen_any = False
     for func, _self_type in iter_module_callables(module_ast, analyzer):
         key = id(func)
+        stubs = analyzer.overload_groups.get(key)
+        stub_fns = ([ctx.thir_functions.get((key, id(s))) for s in stubs]
+                    if stubs else [])
         if key in ctx.thir_functions:
             lines.extend(_function_lines(ctx.thir_functions[key]))
+        elif stub_fns and all(fn is not None for fn in stub_fns):
+            for fn in stub_fns:
+                lines.extend(_function_lines(fn))
+                lines.append("")
+            lines.pop()
         elif ctx.thir_resumables.get(key) is not None:
             lines.extend(_resumable_lines(func.name, ctx.thir_resumables[key]))
         elif key in ctx.thir_simple_gens:
