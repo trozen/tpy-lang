@@ -11,10 +11,12 @@ module's imports light (stdlib only).
 from __future__ import annotations
 import functools
 import glob
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -24,6 +26,28 @@ class CompilerNotFoundError(Exception):
     def __init__(self, cxx: str):
         self.cxx = cxx
         super().__init__(f"C++ compiler '{cxx}' not found")
+
+
+class ToolchainUnsupportedError(Exception):
+    """Raised when a resolved C++ compiler cannot build TPy output (C++23)."""
+    def __init__(self, compiler: list[str], log_path: Path | None = None,
+                 also_rejected: tuple[str, ...] = ()):
+        self.compiler = compiler
+        self.log_path = log_path
+        name = os.path.basename(compiler[0])
+        msg = (
+            f"C++ compiler '{name}' cannot build TurboPython output "
+            "(C++23 required: std::expected, std::ranges).\n"
+            "Install g++ >= 13 or clang++ >= 19, or add the bundled zig "
+            "toolchain:\n"
+            '    pip install "tpy-lang[bundled]"\n'
+            "or pick one explicitly: tpy --cxx zig ..."
+        )
+        if also_rejected:
+            msg += "\nAlso probed and rejected: " + ", ".join(also_rejected)
+        if log_path is not None:
+            msg += f"\n(probe log: {log_path})"
+        super().__init__(msg)
 
 
 def _find_all_versioned(prefix: str) -> list[tuple[str, str, int]]:
@@ -195,12 +219,13 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
             return [cxx]
         return None
 
+    # Family aliases pick the best VIABLE version (self-heal on mixed
+    # installs); a specific version (gcc-12) is honored and rejected
+    # loudly by the capability check if non-viable.
     if cxx in ("gcc", "g++"):
-        name = _find_best_versioned("g++")
-        return [name] if name else None
+        return _find_best_viable("g++")
     if cxx in ("clang", "clang++"):
-        name = _find_best_versioned("clang++")
-        return [name] if name else None
+        return _find_best_viable("clang++")
     if cxx == "zig":
         zig = _find_zig()
         return [zig, "c++"] if zig else None
@@ -231,19 +256,192 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
 
 
 def _auto_detect_compiler() -> list[str]:
-    """Auto-detect the best available C++ compiler for building."""
+    """Auto-detect the best available C++ compiler for building.
+
+    Candidates are capability-probed (C++23); non-viable ones (e.g. a
+    sub-13 g++) are skipped so a box with only an old system compiler
+    falls through to a viable clang++ or the known-good zig toolchain.
+    """
+    rejected: list[str] = []
     for prefix in ["g++", "clang++"]:
-        name = _find_best_versioned(prefix)
-        if name:
-            return [name]
+        for name, _path, _ver in _find_all_versioned(prefix):
+            if toolchain_is_viable([name]):
+                return [name]
+            rejected.append(name)
     zig = _find_zig()
     if zig:
         return [zig, "c++"]
+    if rejected:
+        raise ToolchainUnsupportedError(
+            [rejected[0]], also_rejected=tuple(rejected[1:]))
     return ["g++"]
 
 
 def _is_zig(compiler: list[str]) -> bool:
     return "zig" in os.path.basename(compiler[0])
+
+
+def shared_cache_root() -> Path:
+    """Shared cache root: $TPYC_SHARED_CACHE_DIR override, else XDG Base
+    Directory / %LOCALAPPDATA%.
+
+    Single source of truth -- the test harness derives its stdlib-objs/ /
+    pch/ / exec-results/ cache root from this too, so probe markers live
+    next to them and an override redirects everything together.
+    """
+    override = os.environ.get("TPYC_SHARED_CACHE_DIR")
+    if override:
+        return Path(override)
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    if xdg:
+        return Path(xdg) / "tpyc"
+    if sys.platform == "win32":
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            return Path(local_app) / "tpyc" / "cache"
+    return Path.home() / ".cache" / "tpyc"
+
+
+# Known force-enable for clang < 19 + libstdc++ (compile-verified):
+# -D__cpp_concepts=202002L unlocks libstdc++'s <expected>; deliberately
+# not suggested in the diagnostic -- an explicit --cxx selection already
+# proceeds past the probe for users who wire that up themselves.
+#
+# The minimum surface TPy-generated code needs: the CONTENTS of every
+# C++23 header the runtime includes (<expected>, <ranges>, <format> --
+# each with a real use: clang 18 + libstdc++ ships the <expected> header
+# but its __cpp_concepts value keeps the contents preprocessed away, and
+# g++-12 has <expected> but not <format>) and the GCC statement-expression
+# extension. Keep in sync with the runtime's include floor.
+_PROBE_SOURCE = """\
+#include <expected>
+#include <format>
+#include <ranges>
+int main() {
+    std::expected<int, int> e{1};
+    auto v = std::views::iota(0, 3);
+    auto f = std::format("{}", *v.begin());
+    int s = ({ int x = e.value_or(0); x; });
+    return s + static_cast<int>(f.size());
+}
+"""
+
+
+def _toolchain_probe_id(compiler: list[str]) -> str | None:
+    """Probe-cache key: resolved binary path + stat + probe source + flags.
+
+    Same identity notion as build_cache.toolchain_entry: a replaced binary
+    at the same path (new size/mtime) re-probes; an untouched one never
+    does. None when the binary cannot be resolved at all.
+    """
+    argv0 = compiler[0]
+    if os.path.sep in argv0:
+        resolved = argv0 if os.path.isfile(argv0) else None
+    else:
+        resolved = shutil.which(argv0)
+    if not resolved:
+        return None
+    try:
+        st = os.stat(resolved)
+    except OSError:
+        return None
+    key = "\0".join(
+        [resolved, str(st.st_size), str(st.st_mtime_ns),
+         *compiler[1:], _PROBE_SOURCE])
+    return hashlib.sha256(key.encode()).hexdigest()[:24]
+
+
+def _probe_toolchain(compiler: list[str]) -> tuple[bool, Path | None]:
+    """Cached C++23 capability probe. Returns (viable, failure_log_path).
+
+    zig is exempt (its bundled libc++ is known-good); an unresolvable
+    binary reports viable so the build path raises its own not-found
+    error instead of a misleading capability message.
+    """
+    if _is_zig(compiler):
+        return True, None
+    probe_id = _toolchain_probe_id(compiler)
+    if probe_id is None:
+        return True, None
+    cache_dir = shared_cache_root() / "toolchain-probes"
+    ok = cache_dir / f"{probe_id}.ok"
+    fail = cache_dir / f"{probe_id}.fail"
+    log = cache_dir / f"{probe_id}.log"
+    if ok.exists():
+        return True, None
+    if fail.exists():
+        return False, log if log.exists() else None
+
+    with tempfile.TemporaryDirectory(prefix="tpyc-probe-") as td:
+        src = Path(td) / "probe.cpp"
+        src.write_text(_PROBE_SOURCE)
+        try:
+            r = subprocess.run(
+                [*compiler, "-std=c++23", "-fsyntax-only", str(src)],
+                capture_output=True, text=True, timeout=60,
+            )
+            viable = r.returncode == 0
+            log_text = "" if viable else (r.stderr or "") + (r.stdout or "")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            viable, log_text = False, str(e)
+    # An unwritable cache root (read-only HOME/XDG_CACHE_HOME) must not
+    # turn the probe into a crash -- degrade to probe-without-caching.
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if viable:
+            ok.touch()
+        else:
+            log.write_text(log_text)
+            fail.touch()
+    except OSError:
+        return viable, None
+    return viable, (None if viable else log)
+
+
+def toolchain_is_viable(compiler: list[str]) -> bool:
+    return _probe_toolchain(compiler)[0]
+
+
+def _probe_is_cached(compiler: list[str]) -> bool:
+    """True when calling the probe would not compile anything."""
+    if _is_zig(compiler):
+        return True
+    probe_id = _toolchain_probe_id(compiler)
+    if probe_id is None:
+        return True
+    cache_dir = shared_cache_root() / "toolchain-probes"
+    return ((cache_dir / f"{probe_id}.ok").exists()
+            or (cache_dir / f"{probe_id}.fail").exists())
+
+
+def _find_best_viable(prefix: str) -> list[str] | None:
+    """Best-versioned binary that passes the capability probe; falls back
+    to the best-versioned one so the capability diagnostic (not a
+    misleading not-found) reports when none is viable."""
+    entries = _find_all_versioned(prefix)
+    for name, _path, _ver in entries:
+        if toolchain_is_viable([name]):
+            return [name]
+    return [entries[0][0]] if entries else None
+
+
+def warn_toolchain_unsupported(compiler: list[str]) -> None:
+    """Warn (stderr) when an EXPLICITLY selected compiler fails the probe.
+
+    An explicit --cxx/$CXX choice is honored -- warn and proceed, so the
+    user keeps an escape hatch past the probe and the build failure that
+    likely follows has an explanation above it. Only auto-detect (which
+    has alternatives to fall through to) hard-rejects.
+    """
+    viable, log = _probe_toolchain(compiler)
+    if not viable:
+        err = ToolchainUnsupportedError(compiler, log)
+        msg = (f"Warning: {err}\nProceeding with the explicit selection; "
+               "the build will likely fail.")
+        # Per-line prefix so the block stands out above the build output
+        # (and the compile-error wall that likely follows).
+        print("\n".join(f"!! {line}" for line in msg.splitlines()),
+              file=sys.stderr)
 
 
 def third_party_source_driver(src: Path, cxx: list[str], std: str) -> list[str]:
@@ -335,51 +533,87 @@ def _cxx_aliases(binary: str, is_best: bool, family_prefix: str) -> list[str]:
 
 def list_compilers() -> None:
     """Print available C++ compilers to stdout."""
-    auto = _auto_detect_compiler()
-    auto_display = os.path.basename(auto[0])
-    if len(auto) > 1:
-        auto_display += " " + " ".join(auto[1:])
+    probe_dir = shared_cache_root() / "toolchain-probes"
+    family_rows = [(prefix, _find_all_versioned(prefix))
+                   for prefix in ["g++", "clang++"]]
+    if any(not _probe_is_cached([name])
+           for _prefix, rows in family_rows for name, _p, _v in rows):
+        print(f"Probing C++ toolchains (one-time per compiler; cached in "
+              f"{probe_dir}) ...", flush=True)
 
-    entries: list[tuple[str, str, list[str], str]] = []  # (binary, path, aliases, note)
+    try:
+        auto = _auto_detect_compiler()
+        auto_display = os.path.basename(auto[0])
+        if len(auto) > 1:
+            auto_display += " " + " ".join(auto[1:])
+    except ToolchainUnsupportedError:
+        auto_display = None
 
-    for prefix in ["g++", "clang++"]:
-        all_vers = _find_all_versioned(prefix)
-        for i, (name, path, _ver) in enumerate(all_vers):
-            aliases = _cxx_aliases(name, is_best=(i == 0), family_prefix=prefix)
-            entries.append((name, path, aliases, ""))
+    entries: list[tuple[str, list[str], str]] = []      # (binary, aliases, note)
+    unsupported: list[tuple[str, list[str]]] = []       # (binary, aliases)
 
+    for prefix, rows in family_rows:
+        viability = [toolchain_is_viable([name]) for name, _p, _v in rows]
+        # The family alias (gcc / clang) sits on the row _resolve_compiler
+        # actually picks -- same helper, so the two cannot desync.
+        best = _find_best_viable(prefix)
+        best_name = best[0] if best else None
+        for i, (name, path, _ver) in enumerate(rows):
+            aliases = _cxx_aliases(name, is_best=(name == best_name),
+                                   family_prefix=prefix)
+            if viability[i]:
+                entries.append((name, aliases, ""))
+            else:
+                unsupported.append((name, aliases))
+
+    # clang-repl is a JIT with its own CLI -- the batch probe doesn't apply.
     for i, (name, path, _ver) in enumerate(_find_all_versioned("clang-repl")):
         if i == 0:
             aliases = ["clang-repl", name] if name != "clang-repl" else ["clang-repl"]
         else:
             aliases = [name]
-        entries.append((name, path, aliases, "REPL JIT"))
+        entries.append((name, aliases, "REPL JIT"))
 
     system_zig, bundled_zig = _find_all_zig()
     if system_zig:
-        entries.append(("zig c++", system_zig, ["zig"], "system"))
+        entries.append(("zig c++", ["zig"], "system"))
     if bundled_zig:
         aliases = ["zig", "zig-bundled"] if not system_zig else ["zig-bundled"]
-        entries.append(("zig c++", bundled_zig, aliases, "bundled"))
+        entries.append(("zig c++", aliases, "bundled"))
 
-    if not entries:
+    if not entries and not unsupported:
         print("No C++ compilers found.")
         print("Install g++, clang++, or: uv tool install \"tpy-lang[bundled]\"")
         return
 
-    name_width = max(len(b) for b, _, _, _ in entries)
-    print("Available C++ compilers:")
-    for binary, path, aliases, note in entries:
-        marker = "*" if binary == auto_display else " "
-        parts = []
-        if aliases:
-            parts.append("--cxx " + ", ".join(aliases))
-        if note:
-            parts.append(f"({note})")
-        detail = "  ".join(parts)
-        print(f"  {marker} {binary:<{name_width}}  {detail}")
-    print(f"\n  auto selects: {auto_display}")
-    print("  A path to any C++ compiler binary is also accepted.")
+    name_width = max(len(b) for b, _, _ in entries) if entries else 0
+    if unsupported:
+        name_width = max(name_width, max(len(b) for b, _ in unsupported))
+
+    if entries:
+        print("Available C++ compilers:")
+        for binary, aliases, note in entries:
+            marker = "*" if binary == auto_display else " "
+            parts = []
+            if aliases:
+                parts.append("--cxx " + ", ".join(aliases))
+            if note:
+                parts.append(f"({note})")
+            print(f"  {marker} {binary:<{name_width}}  {'  '.join(parts)}")
+    if unsupported:
+        print("\nUnsupported (cannot compile TurboPython's C++23 "
+              "requirements):")
+        for binary, aliases in unsupported:
+            detail = "--cxx " + ", ".join(aliases) if aliases else ""
+            print(f"    {binary:<{name_width}}  {detail}")
+
+    if auto_display is not None:
+        print(f"\nDefault (--cxx auto): {auto_display}")
+    else:
+        print("\nDefault (--cxx auto): none viable -- install g++ >= 13, "
+              "clang++ >= 19, or \"tpy-lang[bundled]\"")
+    print(f"Probe results cached in: {probe_dir}  (delete to re-probe)")
+    print("A path to any C++ compiler binary is also accepted.")
 
 
 def discover_runtime_cpp_sources(runtime_cpp_dir: Path) -> list[Path]:
@@ -592,10 +826,15 @@ class CppCompilerConfig:
             resolved = _resolve_compiler(cxx)
             if resolved is None:
                 raise CompilerNotFoundError(cxx)
+            warn_toolchain_unsupported(resolved)
             compiler = resolved
         else:
             env_cxx = os.environ.get("CXX", "")
-            compiler = env_cxx.split() if env_cxx else _auto_detect_compiler()
+            if env_cxx:
+                compiler = env_cxx.split()
+                warn_toolchain_unsupported(compiler)
+            else:
+                compiler = _auto_detect_compiler()
         compiler = [*compiler, *darwin_version_min_flags(compiler)]
         ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
         return cls(compiler=compiler, ccache=ccache)

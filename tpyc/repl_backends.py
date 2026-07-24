@@ -946,30 +946,28 @@ def detect_backend(
         print(f"Warning: C++ compiler '{cxx}' not found, falling back to auto-detect",
               file=sys.stderr)
         return _auto_detect(temp_dir, module_name, verbose)
+    from .toolchain import warn_toolchain_unsupported
+    warn_toolchain_unsupported(resolved)
     return CompileBackend(resolved, temp_dir, module_name, verbose=verbose)
 
 
 def _auto_detect(temp_dir: Path, module_name: str, verbose: int = 0) -> REPLBackend:
     """Auto-detect the best available backend.
 
-    Prefers g++ for incremental compile backend (fastest with PCH + split .o),
-    then clang++, then zig (system or bundled).
+    Shares the CLI's capability-probed chain: best viable g++, then
+    clang++, then zig (system or bundled).
     """
-    from .compiler import _find_best_versioned, _find_all_zig
+    from .toolchain import (
+        _auto_detect_compiler, ToolchainUnsupportedError,
+    )
 
-    gpp = _find_best_versioned("g++")
-    if gpp:
-        return CompileBackend([gpp], temp_dir, module_name, verbose=verbose)
-
-    clangpp = _find_best_versioned("clang++")
-    if clangpp:
-        return CompileBackend([clangpp], temp_dir, module_name, verbose=verbose)
-
-    system_zig, bundled_zig = _find_all_zig()
-    zig = system_zig or bundled_zig
-    if zig:
-        return CompileBackend([zig, "c++"], temp_dir, module_name, verbose=verbose)
-
-    print("Error: no C++ compiler found (tried g++, clang++, zig)",
-          file=sys.stderr)
-    sys.exit(1)
+    try:
+        compiler = _auto_detect_compiler()
+    except ToolchainUnsupportedError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    if shutil.which(compiler[0]) is None:
+        print("Error: no C++ compiler found (tried g++, clang++, zig)",
+              file=sys.stderr)
+        sys.exit(1)
+    return CompileBackend(compiler, temp_dir, module_name, verbose=verbose)
