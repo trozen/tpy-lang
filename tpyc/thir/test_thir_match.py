@@ -18,7 +18,10 @@ non-name subjects, or-pattern bindings, nested field sub-patterns)."""
 
 from __future__ import annotations
 
+import pytest
+
 from ..codegen_cpp.context import CodeGenOptions
+from ..diagnostics import SemanticError
 from .nodes import THIRMatch
 from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
 
@@ -2881,9 +2884,12 @@ class TestMatchStorageFormSubjects:
                 "::tpy::optional_to_ptr(h.opt);") in cpp
         assert "bb.val = 99;" in cpp
 
-    def test_binding_rebind_still_rejects(self):
-        # A NAME-level write to the O1 arm binding has no mirrored render;
-        # the narrowed forbidden_writes gate must still catch it.
+    def test_binding_rebind_reference_rejected_at_sema(self):
+        # A NAME-level rebind of a REFERENCE-typed O1 binding is now rejected
+        # at sema (the `auto&` alias would corrupt the matched object) before
+        # THIR is reached -- so the shape never gets to the forbidden_writes
+        # gate. (A VALUE-typed capture rebind is instead forced by-value and
+        # routes fine, e.g. tests/cases/match/capture_rebind_for_loop.)
         src = (
             "from tpy import Int32\n"
             "class Box:\n"
@@ -2901,7 +2907,8 @@ class TestMatchStorageFormSubjects:
             "            bb = other\n"
             "            print(bb.val)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        with pytest.raises(SemanticError, match="aliases the matched object"):
+            _compile(src)
 
     def test_scalar_tier_field_subject_rejects(self):
         # The scalar tiers stay name-only.

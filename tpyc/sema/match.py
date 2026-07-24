@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType,
     NominalType, AliasRef, RecursiveAliasInstanceType,
-    NoneType, OptionalType, UnionType, PendingStrType,
+    NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_own, make_union,
     is_float_type, is_any_str_type, is_protocol_type,
@@ -32,7 +32,9 @@ from ..parse import (
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
-from ..parse.nodes import stmt_has_any_suspension, iter_capture_bindings
+from ..parse.nodes import (
+    stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
+)
 from ..value_category import is_rvalue_source
 from .context import record_stmt_borrow_binding
 
@@ -339,7 +341,7 @@ class MatchAnalyzer:
             # the common path, a view still dangles, a reference type diverges
             # from CPython aliasing). Returns whether any binding aliases.
             aliasing_bindings = self._annotate_capture_bind_modes(
-                case.pattern, pattern_bindings)
+                case.pattern, pattern_bindings, case.body)
             # An aliasing capture of an lvalue subject borrows it (pointer form),
             # exactly like `q = subject` -- record the stmt-borrow fact so the
             # branch-decl hoist picks the alias (T*) form rather than copying
@@ -517,16 +519,50 @@ class MatchAnalyzer:
 
     def _annotate_capture_bind_modes(
         self, pattern: TpyPattern, bindings: dict[str, TpyType],
+        arm_body: list[TpyStmt],
     ) -> bool:
         """Set `bind_by_value` on every capture node in `pattern` from its
         bound type. The flag is the single source of truth read by both codegen
         (auto vs auto&) and the dangle warning, so they cannot drift. Returns
         True if any capture binds by reference (the warning's aliasing verdict).
+
+        A by-reference capture aliases the subject storage (`auto&`); if the
+        arm REBINDS that name (`for v in xs`, `v = ...`, walrus, ...), the C++
+        write goes THROUGH the alias into the subject, where CPython rebinds a
+        fresh local. A value-typed capture is forced by-value (a copy the
+        rebind mutates harmlessly); a reference-typed one is rejected -- the
+        parity-correct render is an aliasing-then-reseated pointer local, not
+        yet modeled, and neither a copy (silent divergence: pre-rebind
+        mutation-through would be lost) nor the alias (write-through) matches.
         """
         aliases = False
         for node in iter_capture_bindings(pattern):
-            node.bind_by_value = self._capture_binds_by_value(bindings.get(node.name))
-            if not node.bind_by_value:
+            ty = bindings.get(node.name)
+            by_value = self._capture_binds_by_value(ty)
+            if not by_value and body_writes_name(arm_body, node.name):
+                bare = (unwrap_readonly(unwrap_ref_type(ty))
+                        if ty is not None else None)
+                # A tuple whose elements are reference/pointer-repr is
+                # is_value_type() True but a blind copy would deep-copy (or
+                # mis-render) the aliased elements, so it aliases like a
+                # reference type -- reject it, don't copy.
+                copy_safe = (
+                    bare is not None and bare.is_value_type()
+                    and not (isinstance(bare, TupleType)
+                             and (bare.has_ref_elements()
+                                  or bare.has_pointer_repr_element())))
+                if copy_safe:
+                    by_value = True
+                else:
+                    raise self.ctx.error(
+                        f"match capture '{node.name}' aliases the matched "
+                        f"object (a reference type, or a tuple with reference "
+                        f"elements) and is rebound in this arm; rebinding it "
+                        f"would corrupt that object (CPython rebinds a local). "
+                        f"Bind a different name, or copy before rebinding",
+                        node)
+            node.bind_by_value = by_value
+            if not by_value:
                 aliases = True
         return aliases
 

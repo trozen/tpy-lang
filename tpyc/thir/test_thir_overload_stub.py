@@ -309,6 +309,21 @@ class TestWriteGuard:
             handlers=[TpyExceptHandler(exception_type="ValueError",
                                        binding="e", body=[])])
         assert "e" in _written_names(try_stmt)
+        from tpyc.parse.nodes import (
+            TpyWith, TpyWithItem, TpyTupleUnpack,
+        )
+        with_stmt = TpyWith(
+            items=[TpyWithItem(context_expr=TpyName(name="cm"),
+                               target="p")],
+            body=[])
+        assert "p" in _written_names(with_stmt)
+        unpack = TpyTupleUnpack(targets=["a", None, "b"],
+                                value=TpyName(name="src"))
+        assert _written_names(unpack) == {"a", "b"}  # None target discarded
+        # A rebind nested inside a compound body counts (sub_bodies recursion).
+        nested = TpyIf(condition=TpyIntLiteral(value=1),
+                       then_body=[loop], else_body=[])
+        assert _body_writes_name([nested], "v")
 
     def test_match_fold_literal_subpattern_keeps_rejecting(self):
         # The AST fold silently DROPS a literal field condition

@@ -1,0 +1,1 @@
+main.py:21: error: match capture 'p' aliases the matched object (a reference type, or a tuple with reference elements) and is rebound in this arm; rebinding it would corrupt that object (CPython rebinds a local). Bind a different name, or copy before rebinding

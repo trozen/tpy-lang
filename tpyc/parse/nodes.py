@@ -1911,6 +1911,64 @@ def stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
     return False
 
 
+def written_names(stmt: TpyStmt) -> set[str]:
+    """Roots written AT NAME LEVEL by `stmt` itself (not its sub-bodies) --
+    a rebind, bare-name value write, re-decl, unpack target, `del name`, a
+    compound statement's OWN binding targets (a for-loop's loop var, a
+    `with ... as` name, an `except ... as` name), or a walrus target anywhere
+    in the statement's expressions. Field/subscript writes THROUGH a root
+    (`bb.val = 9`, `del bb[k]`) are excluded: an aliasing binding (a match
+    capture's `auto&`) lowers a through-write identically -- only a write to
+    the binding NAME itself has no aliasing render. Comprehension loop vars
+    are their own scope in Python 3 and are correctly NOT surfaced (they are
+    not statement-level for-targets and not walrus targets)."""
+    out: set[str] = set()
+    if isinstance(stmt, (TpyAssign, TpyAugAssign)):
+        if isinstance(stmt.target, TpyName):
+            out.add(stmt.target.name)
+    elif isinstance(stmt, TpyVarDecl):
+        out.add(stmt.name)
+    elif isinstance(stmt, TpyTupleUnpack):
+        out.update(name for name in stmt.targets if name is not None)
+    elif isinstance(stmt, TpyDelVar):
+        out.update(stmt.names)
+    elif isinstance(stmt, TpyForEach):
+        out.add(stmt.var)
+    elif isinstance(stmt, TpyWith):
+        out.update(item.target for item in stmt.items
+                   if item.target is not None)
+    elif isinstance(stmt, TpyTry):
+        # `except E as v:` binds v -- sub_bodies() covers the handler
+        # BODIES only, not the binding names.
+        out.update(h.binding for h in stmt.handlers
+                   if h.binding is not None)
+    elif isinstance(stmt, TpyNestedDef):
+        out.add(stmt.func.name)
+
+    def collect_walrus(e: TpyExpr) -> None:
+        if isinstance(e, TpyNamedExpr):
+            out.add(e.target)
+        for c in (e.children() if hasattr(e, "children") else ()):
+            collect_walrus(c)
+
+    for e in stmt.exprs():
+        collect_walrus(e)
+    return out
+
+
+def body_writes_name(body: list[TpyStmt], var: str) -> bool:
+    """Whether any statement in `body` (compound bodies included via
+    sub_bodies) writes `var` at name level. See written_names for exactly
+    what counts as a name-level write."""
+    for s in body:
+        if var in written_names(s):
+            return True
+        for inner in s.sub_bodies():
+            if body_writes_name(inner, var):
+                return True
+    return False
+
+
 def walk_body_stmts(
     stmts: list[TpyStmt],
     on_expr: Callable[[TpyExpr], None],

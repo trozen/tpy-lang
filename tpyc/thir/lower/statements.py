@@ -12,6 +12,8 @@ from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssert,
     TpyAssign,
+    body_writes_name as _body_writes_name,
+    written_names as _written_names,
     TpyAugAssign,
     TpyAwait,
     TpyBinOp,
@@ -3339,21 +3341,6 @@ def _reject_const_narrowed_write_recv(tobj, lc: _LowerCtx, stmt) -> None:
         raise ThirUnsupported(stmt_reject_reason(stmt))
 
 
-def _body_writes_name(body, var: str) -> bool:
-    """Whether any statement in `body` (compound bodies included) writes
-    `var` at name level -- the fold arm's stale-alias guard: a re-extraction
-    from the original union must not coexist with an in-branch subject
-    rebind. Walks via `sub_bodies()`, which every compound statement
-    implements completely (TpyTry includes its handler bodies)."""
-    for s in body:
-        if var in _written_names(s):
-            return True
-        for inner in s.sub_bodies():
-            if _body_writes_name(inner, var):
-                return True
-    return False
-
-
 def _lower_folded_narrow_if(stmt: TpyIf, finfo, lc: _LowerCtx,
                             declared: dict[str, TpyType], loc, *,
                             loop_depth: int = 0) -> THIRIf:
@@ -3485,50 +3472,6 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
 
     return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
                                   declared, loc, loop_depth=loop_depth)
-
-
-def _written_names(stmt: TpyStmt) -> set[str]:
-    """Roots written AT NAME LEVEL -- a rebind, bare-name value write,
-    re-decl, unpack target, `del name`, a compound statement's OWN binding
-    targets (a for-loop's loop var, a `with ... as` name), or a walrus
-    target anywhere in the statement's expressions. Field/subscript writes
-    THROUGH a root (`bb.val = 9`, `del bb[k]`) are excluded: a match
-    binding aliases its extraction exactly like the AST's `auto&` emit, so
-    a through-write lowers identically -- only writes to the binding NAME
-    itself have no mirrored render (the forbidden_writes gate's purpose).
-    The compound own-targets matter for the same reason: `for v in xs:`
-    re-binding a by-ref capture writes through the alias in C++ where
-    CPython re-binds a local."""
-    out: set[str] = set()
-    if isinstance(stmt, (TpyAssign, TpyAugAssign)):
-        if isinstance(stmt.target, TpyName):
-            out.add(stmt.target.name)
-    elif isinstance(stmt, TpyVarDecl):
-        out.add(stmt.name)
-    elif isinstance(stmt, TpyTupleUnpack):
-        out.update(name for name in stmt.targets if name is not None)
-    elif isinstance(stmt, TpyDelVar):
-        out.update(stmt.names)
-    elif isinstance(stmt, TpyForEach):
-        # A tuple-destructuring loop's real targets land as a synthetic
-        # TpyTupleUnpack in the body (covered by the sub_bodies recursion);
-        # the loop var itself is the name-level bind either way.
-        out.add(stmt.var)
-    elif isinstance(stmt, TpyWith):
-        out.update(item.target for item in stmt.items
-                   if item.target is not None)
-    elif isinstance(stmt, TpyTry):
-        # `except E as v:` binds v -- sub_bodies() covers the handler
-        # BODIES only, not the binding names.
-        out.update(h.binding for h in stmt.handlers
-                   if h.binding is not None)
-    elif isinstance(stmt, TpyNestedDef):
-        out.add(stmt.func.name)
-    for e in stmt.exprs():
-        for node in _walk(e):
-            if isinstance(node, TpyNamedExpr):
-                out.add(node.target)
-    return out
 
 
 def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,

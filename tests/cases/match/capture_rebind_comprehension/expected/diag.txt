@@ -1,0 +1,1 @@
+main.py:16: warning: copies Pet into field; use copy() to make this explicit

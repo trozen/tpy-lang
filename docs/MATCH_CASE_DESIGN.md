@@ -450,6 +450,31 @@ is live dangles it and is warned on the visible shapes; the durable fix is a
 compile-time loan check (never a runtime copy) -- see BUGS.md. The examples
 above predate this split and show `auto&` uniformly for brevity.
 
+**Capture rebinds.** The `auto&` alias is correct only while the binding NAME
+is read, not re-assigned. If the arm rebinds the name itself -- `for v in xs`,
+`v = ...`, an aug-assign, a walrus, `with ... as v`, an unpack target -- the
+C++ write goes THROUGH the reference into the subject's storage, whereas
+CPython rebinds a fresh local and leaves the matched object untouched. Sema
+detects a name-level rebind anywhere in the arm (the shared `written_names`
+predicate in `parse/nodes.py`, reused by the THIR match lowering's
+`forbidden_writes` gate so the two paths agree on what counts) and resolves
+it by binding type: a value-typed capture is forced *by value* (the copy
+absorbs the rebind, exactly matching CPython), and a reference-typed capture
+-- or a tuple with reference-typed elements, which aliases the same way --
+is *rejected* with a located error -- the parity-correct render is an
+aliasing-until-rebind, then re-seated, pointer local, which is not modeled
+yet; neither a plain copy (a pre-rebind mutation through the alias would be
+silently lost) nor the `auto&` alias (post-rebind write-through corrupts the
+subject) matches CPython. A field/subscript write THROUGH the capture
+(`v.x = 1`, `v[0] = 1`) is legitimate CPython-visible aliasing and is NOT a
+rebind; a comprehension's own loop var (`[v for v in ...]`) is a separate
+Python-3 scope and is not one either. The value-typed force-by-value is only
+end-to-end correct for reassignment forms codegen already emits as real
+assignments (for-loop var, aug-assign, tuple-unpack); a bare-name / walrus /
+`with`-as / nested-block reassignment of a capture still hits a pre-existing
+codegen gap (the capture is redeclared, not assigned -- loud at arm top level,
+silently shadowed when nested), tracked in BUGS.md.
+
 A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
 matches only when the variant type *and* the field value match. Such an arm
 routes to the guarded switch path, which emits the field comparison as an
