@@ -1,5 +1,105 @@
 # Release Notes
 
+## 0.5.0 (2026-07-24)
+
+309 commits since 0.4.0.
+
+### Language and compiler
+
+- **Threads and shared state**: OS threads (`tpy.thread.spawn` /
+  `JoinHandle`, Send+move API with full inference), `Atomic[T]`
+  (`tpy.atomic`), atomic shared ownership `Arc[T]` / `Weak[T]`
+  (`tplib.arc`), blocking locks `Mutex[T]` / `RwLock[T]` and `Condvar`
+  (`tpy.sync`), and a blocking cross-thread MPSC channel
+  (`tplib.channel`). Cross-thread safety is compile-checked via the
+  Send/Sync marker layer; canonical shared-mutable form is
+  `Arc[Mutex[T]]`.
+- **Exception-cleanup correctness cluster**: `finally` / `with
+  __exit__` cleanup runs exactly once when it raises, a terminating
+  `finally` runs on the try's fall-through path, reference-type
+  return materialization defers past inline `finally` chains,
+  exceptions escaping `__del__` fail fast (noexcept boundary,
+  declared divergence), and the `except (A, B)` tuple form parses.
+- **Operator semantics**: borrow-returning dunders alias like method
+  calls (CPython aliasing, not silent copies), integer-division
+  parity, and a value-union argument double-evaluation fix.
+- **Optional/narrowing fixes**: the missing value-Optional deref
+  family + narrow kills (suspension points, sinks), narrowed
+  storage-Optional fields consumed correctly, accessor codegen for
+  generic and Optional returns, and protocol-iterator view dangling.
+- **Nested functions**: nested defs and lambdas in methods can access
+  `self`; nested defs in resumable (async/generator) bodies emit as
+  frame member functions; nested generator defs are cleanly rejected.
+- **Generics**: multi-param generic-protocol bound inference,
+  associated-type inference (`spawn(task)` fully inferred),
+  class-shadowed method bounds through subclass receivers, sibling
+  type params substituted into bounds, and inherited-ctor using-decls
+  for generic bases.
+- **Async**: bound coroutines (`await obj.method()` across modules),
+  `Own[T]` returns move out of the coroutine frame instead of
+  copying, and the async borrow-return ABI mirrors the sync
+  convention.
+- **Exceptions**: `OSError` with CPython-exact constructors,
+  `str(e)`, and errno-to-subclass mapping; a
+  `ConnectionError`/`BrokenPipeError` taxonomy; `ValueError` for a
+  negative user `__len__`.
+- **Enums**: `match` on alias-imported enums (exhaustiveness +
+  identity), enum members as default parameter values, `.name`
+  returns `StrView`.
+- **Macros**: `@function_macro` extends to record methods; type args
+  flow through `TypeInfo.type_args`.
+- `@hotpath` decorator parsed (reserved; no effect yet).
+
+### CPython extension authoring (new)
+
+TPy source can now compile to an importable CPython extension module:
+mark a module `# tpy: ext_module` and its `@export` surface crosses
+the boundary -- functions (bool / fixed-width ints / float / str /
+bytes / containers / enums / kwargs; `Span[T]` numeric params via the
+buffer protocol), user classes via `PyType_FromSpec` (methods,
+dunders, `@property` getsets, inheritance, identity-preserving borrow
+returns), and exceptions (built-in and user-defined, with faithful
+data fields). Ships with a dedicated ext-exec test harness and a
+`Python.h` facade self-check. See `docs/CPYTHON_INTEROP.md`.
+
+### Library
+
+- **HTTPS / networking stack**: `ssl` on vendored mbedTLS 3.6.6
+  (client and server-side TLS, bundled Mozilla CA store + system
+  trust store), `http.client` with HTTPS and keep-alive,
+  `urllib.parse` / `urllib.request.urlopen`, and `tplib.requests`
+  (redirects, `Session` connection pooling, cookies, streaming,
+  form/multipart uploads, timeouts) with CPython-parity networking
+  errno mapping; `SIGPIPE` ignored so closed-peer writes raise.
+- **`datetime` v1-v4**: `date` / `time` / `datetime` / `timedelta`
+  (including float operators), formatting and parsing, `zoneinfo`.
+- **Additions**: `io.FileIO` / `io.BufferedReader`, `http.HTTPStatus`,
+  `socket.settimeout` + `makefile()`, `tplib.json` bare-number
+  BigInt in `@model`.
+
+### Tooling and packaging
+
+- **Whole-run build cache**: an unchanged `tpy prog.py` rerun skips
+  the entire pipeline and execs the cached binary (~100ms).
+- **Nightly CI**: a Linux build matrix, macOS rows (osxcross
+  cross-compile + best-effort native), and a CPython 3.12/3.13/3.14
+  axis; macOS codegen fixes (BigInt literal ambiguity).
+- **Packaging**: sdists no longer silently drop `lib/tpy/tplib`
+  (hatchling symlink/inode-dedup workaround) -- guarded by a
+  packaging smoke test; project metadata gained the repository URL.
+- Internal: the THIR codegen migration advanced across ~150 commits
+  (per-case byte-diff + ratchet keep it invisible: emitted C++ is
+  byte-identical to the AST path).
+
+### Known issues
+
+Tracked in `BUGS.md`. The borrow/view-lifetime cluster (use-after-free
+shapes under aliasing + mutation) ships as a known limitation -- it is
+retired wholesale by the planned MIR ownership checker rather than
+patched piecemeal. Escaping closures keep capture-by-value snapshot
+semantics (inherent to the zero-cost closure model; a stale-capture
+warning extension is queued for 0.6.0).
+
 ## 0.4.0 (2026-06-24)
 
 235 commits since 0.3.0.
