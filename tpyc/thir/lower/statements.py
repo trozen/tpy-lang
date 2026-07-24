@@ -1497,13 +1497,20 @@ def _standalone_unpack_target_binds(
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
         if i < len(stmt.is_ref) and stmt.is_ref[i]:
-            # `auto&& a = unwrap_ref(tuple_elem_ref(std::get<i>(__tup)))` over
-            # the borrow pointer tuple: a fresh F1-record alias only. The caller
-            # gates the source form (must be a storage-form pointer-repr tuple).
-            if not (stmt.is_new[i] and name not in declared
-                    and _f1_record(tt, analyzer)):
+            # A fresh borrow target off the pointer tuple. Two shapes:
+            #   * F1-record -> `auto&& a = unwrap_ref(tuple_elem_ref(get))`,
+            #     the alias arm;
+            #   * pointer-repr Optional[F1-record] -> `const T* a = get;`, a
+            #     plain nullable-pointer local (the opt_ptr arm). The caller
+            #     gates the source form (a borrow-form pointer-repr tuple).
+            if not (stmt.is_new[i] and name not in declared):
                 return None
-            out.append((tt, "ref"))
+            if _f1_record(tt, analyzer):
+                out.append((tt, "ref"))
+            elif _optional_ptr_borrow(tt, analyzer) is not None:
+                out.append((tt, "opt_ptr"))
+            else:
+                return None
             continue
         if not stmt.is_new[i] or name in declared:
             # A reused name, or a FRESH target already declared by an
@@ -1610,10 +1617,33 @@ def _tuple_unpack_source(
                or _f1_record(
                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))),
                    analyzer)
+               # A pointer-repr `Optional[F1-record]` element: the borrow tuple
+               # already holds a nullable `T*`, so the target binds it as a
+               # plain pointer local (`const T* a = std::get<i>(__tup);` -- the
+               # opt_ptr target arm); its None-test / narrowed reads ride the
+               # pointer-optional-record local machinery.
+               or _optional_ptr_borrow(
+                   unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))),
+                   analyzer) is not None
                for e in src_t.element_types):
         note_detail("tuple_unpack.source_family")
         return None
     return src_t
+
+def _borrow_form_tuple_param(name: str, lc: '_LowerCtx') -> bool:
+    """A function parameter whose C++ binding is already a borrow-form
+    (pointer-repr) tuple: `tuple[T, ...]` with a reference-type element passes
+    as `const std::tuple<T*, ...>&`. Its standalone `a, b = p` unpack binds the
+    source by ref directly (`auto& __tup = p`), no `tuple_to_pointer` lift --
+    the AST's `not is_storage_form_source` name arm. A value-tuple storage
+    LOCAL (which needs the lift) rides the `storage_tuple_locals` arm; a global
+    or borrow-form-local source stays on the AST path (`is_storage_form_source`
+    claims globals, and borrow-form locals are not tracked here)."""
+    pt = next((t for n, t in lc.func.params if n == name), None)
+    if pt is None:
+        return False
+    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    return isinstance(tu, TupleType) and tu.has_pointer_repr_element()
 
 def _iteration_yields_const(it: TpyExpr, lc: '_LowerCtx', analyzer) -> bool:
     """Whether iterating `it` binds the loop var const (element pointers spell
@@ -6465,6 +6495,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("ret.value_opt_view_literal")
         if (stmt.value is not None
+                and lc.prescan.ret_record_storage is not None):
+            # `return copy(p)` of a plain F1-record: the copy-construct rvalue
+            # (`return Point(p);`, _gen_copy_expr's bare-record arm) -- the
+            # return twin of the decl/assign copy_record rows. The special-
+            # builtin call gate rejects copy() in the generic tail, so
+            # intercept it here (a pointer-local source is excluded by
+            # copy_plain_record_source, whose `(*p)` render is a later rung).
+            copy_rec = copy_plain_record_source(stmt.value, analyzer, pointers)
+            if copy_rec is not None:
+                _witness("ret.copy_record")
+                src = _lower_expr(
+                    stmt.value.args[0], lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                return THIRReturn(
+                    value=THIRCopy(result_type=copy_rec, value=src,
+                                   cpp_type=lc.render_type(copy_rec),
+                                   form=Form.STORAGE, loc=loc),
+                    loc=loc)
+        if (stmt.value is not None
                 and (lc.prescan.ret_record_borrow is not None
                      or lc.prescan.ret_record_storage is not None)):
             record_ok = False
@@ -7188,6 +7237,32 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 bind_tags.append(bind)
                 _witness("stmt.tuple_unpack.assign_target")
                 continue
+            if bind == "opt_ptr":
+                # Pointer-repr Optional[F1-record] target: a plain nullable
+                # pointer local (`const T* a = std::get<i>(__tup);`). The
+                # element pointer's const-ness tracks the borrow-form source
+                # (a readonly tuple param yields `const T*`), so key it on the
+                # source param's const verdict. Register the name as a
+                # pointer-optional local so its None-test / narrowed reads ride
+                # the same arms as a `T | None` param.
+                opt = _optional_ptr_borrow(tt, analyzer)
+                # The target classifier admitted opt_ptr only when this was
+                # non-None; `_optional_ptr_borrow` peels an outer readonly, so
+                # re-deriving the bare Optional keeps a readonly-wrapped tt from
+                # tripping the OptionalType assumption below.
+                assert opt is not None
+                tt = opt
+                const_src = (isinstance(stmt.value, TpyName)
+                             and _param_is_const(stmt.value.name, lc.func,
+                                                 analyzer, lc.record_name))
+                inner_cpp = lc.render_type(unwrap_readonly(tt.inner))
+                target_cpps.append(f"const {inner_cpp}*" if const_src
+                                   else f"{inner_cpp}*")
+                bind_tags.append("opt_ptr")
+                declared[name] = tt
+                lc.pointers.add(name)
+                _witness("stmt.tuple_unpack.opt_ptr_target")
+                continue
             # A str target's type is still a PendingStrType (params never
             # resolve it in place); resolve it to the concrete view before
             # render, else `render_type` raises. Scalars/records pass through.
@@ -7203,20 +7278,35 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("stmt.tuple_unpack.cref_target")
         _witness("stmt.tuple_unpack")
         source_wrap_cpp = None
-        if any(b == "ref" for b in bind_tags):
-            # Ref targets alias the source tuple elements: the source must be a
-            # storage-form pointer-repr tuple NAME, lifted via tuple_to_pointer
-            # so `std::get<i>` yields the `T*` each ref target aliases. Only a
-            # name source routes here -- its const-ness (const element pointers)
-            # is known via `const_storage_tuple_locals`; a field / subscript
-            # source's const-ness is not tracked, so it defers.
-            const_src = (isinstance(stmt.value, TpyName)
-                         and stmt.value.name in lc.const_storage_tuple_locals)
-            source_wrap_cpp = _borrow_tuple_wrap_cpp(
-                stmt.target_types, analyzer, const_source=const_src)
-            if not (isinstance(stmt.value, TpyName)
-                    and stmt.value.name in lc.storage_tuple_locals
-                    and source_wrap_cpp is not None):
+        ref_name_source = False
+        if any(b in ("ref", "opt_ptr") for b in bind_tags):
+            # Borrow/opt-ptr targets read `std::get<i>` off the borrow pointer
+            # tuple. Two source forms qualify, both name-only:
+            #   * a value-tuple STORAGE local -- lifted via tuple_to_pointer to
+            #     the borrow pointer tuple (its const-ness comes from
+            #     `const_storage_tuple_locals`);
+            #   * an already-borrow-form tuple PARAM (`tuple[T, ...]` passes as
+            #     `const std::tuple<T*, ...>&`) -- bound by ref directly
+            #     (`auto& __tup = p`), no lift (the AST's non-storage-form arm).
+            # A field / subscript / global source's const-ness is not tracked,
+            # so it defers. An opt_ptr target's `const T*` spelling keys on the
+            # source PARAM's const verdict, so it rides the NAME_REF param arm
+            # only (a storage-local lift would need optional_to_ptr, out of
+            # slice).
+            has_opt_ptr = any(b == "opt_ptr" for b in bind_tags)
+            if (not has_opt_ptr and isinstance(stmt.value, TpyName)
+                    and stmt.value.name in lc.storage_tuple_locals):
+                const_src = stmt.value.name in lc.const_storage_tuple_locals
+                source_wrap_cpp = _borrow_tuple_wrap_cpp(
+                    stmt.target_types, analyzer, const_source=const_src)
+                if source_wrap_cpp is None:
+                    note_detail("tuple_unpack.ref_source_form")
+                    raise ThirUnsupported("stmt.tuple_unpack")
+            elif (isinstance(stmt.value, TpyName)
+                  and _borrow_form_tuple_param(stmt.value.name, lc)):
+                ref_name_source = True
+                _witness("stmt.tuple_unpack.ref_param_source")
+            else:
                 note_detail("tuple_unpack.ref_source_form")
                 raise ThirUnsupported("stmt.tuple_unpack")
             _witness("stmt.tuple_unpack.ref_target")
@@ -7224,13 +7314,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # A spelled imported/native tuple global source renders its fixed
             # qualification (the same THIRName.cpp spelling a scalar global
             # read carries).
+            if source_wrap_cpp is not None:
+                src_bind = TupleSourceBind.STORAGE_WRAP
+            elif ref_name_source:
+                src_bind = TupleSourceBind.NAME_REF
+            else:
+                src_bind = TupleSourceBind.NAME_CREF
             return THIRTupleUnpack(
                 source=stmt.value.name, targets=tuple(stmt.targets),
                 target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
                 source_cpp=lc.prescan.global_cpp.get(stmt.value.name),
-                source_bind=(TupleSourceBind.STORAGE_WRAP
-                             if source_wrap_cpp is not None
-                             else TupleSourceBind.NAME_CREF),
+                source_bind=src_bind,
                 source_wrap_cpp=source_wrap_cpp,
                 loc=loc)
         # A free call hoists its arg temps (temp_args, inert for a field read).

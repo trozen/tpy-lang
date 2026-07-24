@@ -2501,3 +2501,57 @@ byte-diff itself.
   in_generic_async (chain-walked to iter.user_iterator.name);
   res.local_storage / leaf_field_write / field.result_type
   (per-shape classification lanes, unverified this wave).
+
+- **Wave-next12 -- tuple-unpack borrow-form param sources + return copy
+  (`thir-wave-next12`, 2026-07-24, 3 cells + harvests, +8 flips,
+  dial 2455 -> 2463/3573; full exec suite 9473 green; 7-specialist review
+  applied, 0 Critical).**
+  OPENER DISSOLVED: the queued "comp tuple-unpack heads" premise was
+  stale -- the comp route already lowers `for k, v in ...` heads
+  (comprehensions.py handles unpack); the witness cases were blocked on
+  UNRELATED constructs (list_comp_unpack on a `list[String]` owned-string
+  element, comp_array_unpack on array-comp unpack + tuple-literal
+  elements, itertools_basic on a call iterable). Textbook verify-first
+  save.
+  (1) Standalone `a, b = p` where `p` is an already-borrow-form tuple
+  PARAM (`tuple[T,...]` passes `const std::tuple<T*,...>&`): bind
+  NAME_REF (`auto& __tup = p;`) with no tuple_to_pointer lift, mirroring
+  the AST's `not is_storage_form_source` name arm. GATE-ONLY -- the
+  NAME_REF bind + ref-alias emit already existed (for-each iter-proto
+  head). +2 (tuple_rvalue_ref, tuple_param_const_inferred). Two stale
+  boundary pins (record-element param "ineligible") updated to the
+  now-lifted routing.
+  (2) New opt_ptr bind: pointer-repr Optional[F1-record] tuple elements
+  bind a plain nullable pointer local (`const T* a = std::get<i>(__tup);`,
+  const from `_param_is_const`), registered lc.pointers + declared so the
+  None-test / `->` reads ride the existing `T | None` param machinery --
+  no new downstream arms; the emitter's default decl arm renders it. +3
+  (tuple_optional_param, tuple_rvalue_optional, tuple_optional_param_mutate).
+  (3) `return copy(p)` of a plain F1-record intercepted before the
+  record-return arm -> THIRReturn(THIRCopy) (`return Point(p);`), mirroring
+  the decl/assign copy_record rows (the special-builtin call gate rejects
+  copy() in the generic tail). +3 (own_param, own_to_ref_param,
+  return_own).
+  FLIPS (8): tuple_rvalue_ref, tuple_param_const_inferred,
+  tuple_optional_param, tuple_rvalue_optional, tuple_optional_param_mutate,
+  own_param, own_to_ref_param, return_own.
+  REVIEW: codegen/safety/parity/arch/convention/docs clean; safety fix
+  (opt_ptr re-derives the bare Optional via _optional_ptr_borrow so a
+  readonly-wrapped target can't crash lowering) + 2 test-coverage pin
+  promotions (opt_ptr storage-local boundary, mixed record+scalar order
+  byte-identity). Arch reuse-helper suggestion skipped (explicit form
+  clearer; linear scan is the idiom).
+  PARKED (verified rungs for a future wave): opt_ptr for-each mirror
+  (`for a, b in list[tuple[T|None,...]]` -- the storage-source
+  optional_to_ptr lift, meatier than the already-borrow param; any
+  borrow-LOCAL opt_ptr source rung MUST keep the has_opt_ptr param-only
+  gate -- a storage-local `std::optional` element bound as a bare `T*`
+  would dangle, UAF); subscript
+  tuple source (`_, np = addrs[0]`, tuple_unpack.src_subscript, +1 with a
+  value-scalar-tuple rvalue-source widen, kitchen-sink case may not flip);
+  copy(record) in append/setitem positions (unprobed). AVOIDED per queue:
+  overload-fold arms (bug #2 in flight). NOT clean this wave (fragment /
+  meaty / design): is-not-None non-record optionals (net ~0 -- bodies
+  reject downstream), aug_assign (atomic/subscript/field split), genexpr
+  (make_generator vs list/set-materialize lane), sig.special_callable
+  (consuming-method model), nesteddef.self_capture.

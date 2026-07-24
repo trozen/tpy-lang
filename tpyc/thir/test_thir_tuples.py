@@ -9,11 +9,11 @@ from .dump import dump_thir
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRFieldAccess, THIRFormConvert, THIRName,
     THIRReturn, THIRSubscript, THIRTupleLiteral, THIRTupleMembership,
-    THIRTupleUnpack, THIRVarDecl,
+    THIRTupleUnpack, THIRVarDecl, TupleSourceBind,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
-    _lower_ctx_witnessed, _PRELUDE,
+    _lower_ctx_witnessed, _assert_byte_identical, _PRELUDE,
 )
 
 # --- F3 form rung: storage->borrow tuple read (tuple_to_pointer) ---
@@ -1284,16 +1284,20 @@ class TestStandaloneTupleUnpack:
             + "    for name, count in pairs:\n        print(name, count)\n")
         assert _fn(thir, "f") is not None
 
-    def test_record_target_still_ineligible(self):
-        # The deferred rung: a record (borrow) target takes the `&std::get<i>`
-        # alias arm -- stays AST.
+    def test_record_target_param_source_routes(self):
+        # A record (borrow) target off a borrow-form tuple PARAM now routes via
+        # the NAME_REF source bind + unwrap_ref/tuple_elem_ref ref-alias arm
+        # (see TestStandaloneUnpackRefParamSource); the mixed record+scalar
+        # ordering binds the record "ref" and the scalar "value".
         thir = _lower_ctx(
             "from tpy import Int32\n"
             "class Leaf:\n    n: Int32\n"
             "    def __init__(self, n: Int32):\n        self.n = n\n"
             "def f(t: tuple[Leaf, Int32]) -> Int32:\n"
             "    a, b = t\n    return b\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].binds == ("ref", "value")
 
     def test_discard_slot_skips(self):
         # A `_` discard slot carries None through targets/target_cpps (its
@@ -1416,13 +1420,16 @@ class TestStandaloneTupleUnpack:
         assert "head = std::get<0>(__tup_1);" in thir_cpp
 
 
-    def test_record_element_source_ineligible(self):
-        # A pointer-repr (record-element) tuple source is not a value-scalar
-        # tuple -- the borrow/std::move unpack arms are deferred.
+    def test_record_element_param_source_routes(self):
+        # A pointer-repr (record-element) tuple PARAM source now routes: the
+        # borrow-form param binds NAME_REF and the record element aliases via
+        # the ref arm (scalar-first ordering here binds "value" then "ref").
         thir = _lower_ctx(
             _F3_RECORDS
             + "def f(t: tuple[Int32, Leaf]) -> Int32:\n    a, b = t\n    return a\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].binds == ("value", "ref")
 
 
 class TestStandaloneTupleUnpackEmit:
@@ -1483,6 +1490,149 @@ class TestStandaloneTupleUnpackEmit:
         assert "auto __tup_1 = mk(n);" in cpp
         assert "auto __tup_1 = h.pair;" in cpp
         assert "const auto& __tup_1 = mk(n);" not in cpp
+
+
+class TestStandaloneUnpackRefParamSource:
+    # `a, b = p` where `p` is an already-borrow-form tuple PARAM
+    # (`tuple[Leaf, Leaf]` passes as `const std::tuple<Leaf*, Leaf*>&`): the
+    # source binds `auto& __tup = p` (NAME_REF, no tuple_to_pointer lift) and
+    # each ref target aliases via unwrap_ref/tuple_elem_ref.
+    def test_ref_param_source_routes_name_ref(self):
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def show(p: tuple[Leaf, Leaf]) -> Int32:\n"
+            + "    a, b = p\n    return a.n + b.n\n")
+        fn = _fn(thir, "show")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source_bind is TupleSourceBind.NAME_REF
+        assert up.source_wrap_cpp is None
+        assert up.binds == ("ref", "ref")
+
+    def test_ref_param_source_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(
+            _F3_RECORDS
+            + "def show(p: tuple[Leaf, Leaf]) -> Int32:\n"
+            + "    a, b = p\n    return a.n + b.n\n")
+        assert faces.get("stmt.tuple_unpack.ref_param_source", 0) >= 1
+
+    def test_ref_param_source_byte_identical(self):
+        # Both a read-only (`auto&` still, ref targets) and a mutating body:
+        # the element-pointer const-ness lives in the param type, so the
+        # NAME_REF render is identical for const and mutable.
+        _assert_byte_identical(
+            _F3_RECORDS
+            + "def show(p: tuple[Leaf, Leaf]) -> None:\n"
+            + "    a, b = p\n    print(a.n + b.n)\n"
+            + "def bump(p: tuple[Leaf, Leaf]) -> None:\n"
+            + "    a, b = p\n    a.n = a.n + 1\n"
+            + "def main() -> None:\n"
+            + "    x = Leaf(1)\n    y = Leaf(2)\n"
+            + "    show((x, y))\n    bump((x, y))\n"
+            + "main()\n")
+
+    def test_mixed_record_scalar_order_byte_identical(self):
+        # Both mixed orders off a borrow-form param: a record element binds
+        # "ref" (alias) and a scalar binds "value" -- the NAME_REF source with a
+        # per-element mix. No corpus case covers this exact ordering, so pin the
+        # emit here.
+        _assert_byte_identical(
+            _F3_RECORDS
+            + "def recfirst(p: tuple[Leaf, Int32]) -> None:\n"
+            + "    a, n = p\n    print(a.n)\n    print(n)\n"
+            + "def scalarfirst(p: tuple[Int32, Leaf]) -> None:\n"
+            + "    n, a = p\n    print(n)\n    print(a.n)\n"
+            + "def main() -> None:\n"
+            + "    x = Leaf(1)\n"
+            + "    recfirst((x, 5))\n    scalarfirst((5, x))\n"
+            + "main()\n")
+
+    def test_storage_local_source_stays_storage_wrap(self):
+        # BOUNDARY: a value-tuple STORAGE local source with ref targets keeps
+        # the tuple_to_pointer lift (STORAGE_WRAP) -- it must NOT take the
+        # borrow-form-param NAME_REF arm.
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def use() -> Int32:\n"
+            + "    x = Leaf(1)\n    y = Leaf(2)\n    t = (x, y)\n"
+            + "    a, b = t\n    return a.n + b.n\n")
+        fn = _fn(thir, "use")
+        assert fn is not None
+        up = next(s for s in fn.body if isinstance(s, THIRTupleUnpack))
+        assert up.source_bind is TupleSourceBind.STORAGE_WRAP
+        assert up.source_wrap_cpp is not None
+
+
+class TestStandaloneUnpackOptPtrTarget:
+    # `a, b = p` where `p: tuple[T | None, ...]` is a borrow-form param
+    # (`const std::tuple<const T*, ...>&`): each optional-record element binds a
+    # plain nullable pointer local (`const T* a = std::get<i>(__tup);`), NOT the
+    # record ref-alias arm. The None-test / narrowed reads ride the pointer-
+    # optional-record local machinery.
+    OPT = (
+        _F3_RECORDS
+        + "def show(p: tuple[Leaf | None, Leaf | None]) -> Int32:\n"
+        + "    a, b = p\n"
+        + "    if a is not None:\n        return a.n\n    return 0\n")
+
+    def test_opt_ptr_target_routes(self):
+        thir = _lower_ctx(self.OPT)
+        fn = _fn(thir, "show")
+        assert fn is not None
+        up = fn.body[0]
+        assert isinstance(up, THIRTupleUnpack)
+        assert up.source_bind is TupleSourceBind.NAME_REF
+        assert up.binds == ("opt_ptr", "opt_ptr")
+        # readonly-inferred param -> const element pointers
+        assert up.target_cpps == ("const Leaf*", "const Leaf*")
+
+    def test_opt_ptr_target_mutable_param(self):
+        # A mutating body keeps the param non-const -> `Leaf*` (no const).
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def bump(p: tuple[Leaf | None, Leaf | None]) -> None:\n"
+            + "    a, b = p\n"
+            + "    if a is not None:\n        a.n = a.n + 1\n")
+        fn = _fn(thir, "bump")
+        assert fn is not None
+        up = fn.body[0]
+        assert up.binds == ("opt_ptr", "opt_ptr")
+        assert up.target_cpps == ("Leaf*", "Leaf*")
+
+    def test_opt_ptr_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(self.OPT)
+        assert faces.get("stmt.tuple_unpack.opt_ptr_target", 0) >= 1
+
+    def test_opt_ptr_byte_identical(self):
+        # Const (read-only) + mutable + mixed opt/scalar: the emitted pointer
+        # spelling tracks the source param's const verdict on both paths.
+        _assert_byte_identical(
+            _F3_RECORDS
+            + "def show(p: tuple[Leaf | None, Leaf | None]) -> None:\n"
+            + "    a, b = p\n"
+            + "    if a is not None:\n        print(a.n)\n"
+            + "    if b is not None:\n        print(b.n)\n"
+            + "def bump(p: tuple[Leaf | None, Int32]) -> None:\n"
+            + "    a, n = p\n"
+            + "    if a is not None:\n        a.n = a.n + n\n"
+            + "def main() -> None:\n"
+            + "    x = Leaf(1)\n    y = Leaf(2)\n"
+            + "    show((x, y))\n    bump((x, 5))\n"
+            + "main()\n")
+
+    def test_storage_local_optional_source_stays_ast(self):
+        # BOUNDARY: opt_ptr targets ride the NAME_REF param source only. A
+        # value-tuple STORAGE local of optional records would need an
+        # optional_to_ptr lift (out of slice), so it stays AST.
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def use() -> Int32:\n"
+            + "    x = Leaf(1)\n    y = Leaf(2)\n"
+            + "    t: tuple[Leaf | None, Leaf | None] = (x, y)\n"
+            + "    a, b = t\n"
+            + "    if a is not None:\n        return a.n\n    return 0\n")
+        assert _fn(thir, "use") is None
 
 
 # --- Standalone unpack target rungs: is_const_ref + Own move-out ---

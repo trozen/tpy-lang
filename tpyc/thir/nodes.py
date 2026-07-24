@@ -2044,7 +2044,7 @@ class THIRTupleUnpack(THIRStmt):
     source_wrap_cpp: str | None = None
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
-        "value", "cref", "move", "assign", "ref",
+        "value", "cref", "move", "assign", "ref", "opt_ptr",
         "frame_assign", "frame_emplace", "frame_ptr_addr", "frame_ptr_elem",
     })
 

@@ -561,6 +561,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # is the only distinguishing site).
     "ret.record_borrow",
     "ret.record_storage",
+    "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
@@ -977,6 +978,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # head binds `auto& __tup_N` (no lift) and ref targets alias via
     # unwrap_ref/tuple_elem_ref (statement lowering).
     "stmt.tuple_unpack.ref_target_iter",
+    # Standalone `a, b = p` where `p` is an already-borrow-form tuple PARAM
+    # (`tuple[T, ...]` passes as `const std::tuple<T*, ...>&`): the source binds
+    # `auto& __tup_N = p` (NAME_REF, no tuple_to_pointer lift) and ref targets
+    # alias via unwrap_ref/tuple_elem_ref.
+    "stmt.tuple_unpack.ref_param_source",
+    # A pointer-repr Optional[F1-record] unpack target off a borrow-form tuple
+    # param: a plain nullable-pointer local `const T* a = std::get<i>(__tup_N);`
+    # (const tracks the source param), registered as a pointer-optional local so
+    # its None-test / narrowed reads ride the `T | None` param machinery.
+    "stmt.tuple_unpack.opt_ptr_target",
     # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
     # -- the AST's declared-name assign tail, no decl.
     "stmt.tuple_unpack.assign_target",
