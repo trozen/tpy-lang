@@ -460,7 +460,11 @@ class AsyncCoroCodegen:
                 elif isinstance(actual, TupleType):
                     # Borrow form: std::tuple<..., T*> (readonly -> const T*).
                     # The pointers alias the caller; stored by value in the
-                    # frame so they survive suspension.
+                    # frame so they survive suspension. The INFERRED verdict
+                    # is deliberately not consulted here (unlike the union
+                    # arm below): it wrongly deep-consts yield-escaped
+                    # params, so applying it would break mutation-through-
+                    # yield generators (see BUGS.md).
                     field_type = ctor_type = ptype_inner.to_cpp_return()
                 else:
                     # Non-value union: the pointer-variant borrow form
@@ -4341,12 +4345,21 @@ class AsyncCoroCodegen:
         dynamic_arg = self.expressions._gen_dynamic_protocol_arg(arg, ptype)
         if dynamic_arg is not None:
             return dynamic_arg
-        _dcbp = fi.deep_const_borrow_params
+        # The const verdict lives on the RAW fi only (populated at the end of
+        # sema Phase-2; substitution never copies it) -- a substituted fi for
+        # a generic receiver reads None and drops the const wrap.
+        _dcbp = fi.root.deep_const_borrow_params
         union_arg = self.expressions._gen_union_arg(
             arg, ptype,
             is_readonly_target=(_dcbp is not None and arg_index in _dcbp))
         if union_arg is not None:
             return union_arg
+        # The verdict deliberately does NOT thread into the plain tail
+        # (sync threads target_const_borrow there): the coro/gen factory
+        # spelling doesn't apply the inferred verdict to non-union params,
+        # and completing that convention is blocked on the yield-escape
+        # verdict gap (see BUGS.md) -- a const arg against the non-const
+        # factory param would not compile.
         return self.expressions.gen_call_arg(arg, ptype)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,

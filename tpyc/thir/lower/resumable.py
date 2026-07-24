@@ -91,7 +91,7 @@ from ...typesys import (
 )
 from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
-from ...codegen_cpp.forms import is_plain_nonvalue
+from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..nodes import Form
 from .checks import (
     _assert_narrow_info,
@@ -1588,12 +1588,22 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc, declared)
                     _witness("res.suspend_expr")
                 lowered_args = []
+                # The const verdict lives on the RAW fi only (substitution
+                # never copies it) -- mirror the AST emplace-arg read. Like
+                # the AST, it reaches ONLY pointer-variant union slots (the
+                # plain tail stays unthreaded until the factory spelling
+                # applies the verdict to non-union params; see BUGS.md).
+                dcbp = fi.root.deep_const_borrow_params
                 for i, a in enumerate(operand.args):
                     # An awaited callee is a coro factory -- always
                     # frame-capturing for its ref args.
+                    pt = fi.params[i].type
+                    ro = (dcbp is not None and i in dcbp
+                          and is_ptr_variant_union(
+                              unwrap_readonly(unwrap_ref_type(pt))))
                     lowered_args.append(_lower_call_arg(
-                        a, fi.params[i].type, lc, declared,
-                        frame_capturing=True))
+                        a, pt, lc, declared,
+                        frame_capturing=True, readonly_target=ro))
                 await_args[id(operand)] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")

@@ -5393,6 +5393,8 @@ class FunctionInfo:
     # addr_escapes_params. None = not yet computed (consumers fall back to
     # mutable spellings). Distinguished from sema facts (mutated_params,
     # return_borrows_from): these never feed back into mutation analysis.
+    # Populated on the RAW fi only -- substitution does not copy them, so
+    # call sites must read via `fi.root`.
     const_borrow_params: Optional[frozenset[int]] = None
     deep_const_borrow_params: Optional[frozenset[int]] = None
     # Send/Sync frame facts (docs/SEND_SYNC_DESIGN.md OQ3). frame_type is the

@@ -3108,7 +3108,7 @@ class ExpressionGenerator:
                     fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
 
             gen_args = []
-            dcbp = func_info.deep_const_borrow_params
+            dcbp = func_info.root.deep_const_borrow_params
             repr_subst = self._representational_param_subst(expr, func_info)
             for _pidx, (arg, (pname, ptype)) in enumerate(zip(expr.args, func_info.params)):
                 # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
@@ -3549,7 +3549,7 @@ class ExpressionGenerator:
             if not _skip_first_pass and _fi:
                 params = expr.resolved_function_info.params
                 gen_args = []
-                dcbp = _fi.deep_const_borrow_params
+                dcbp = _fi.root.deep_const_borrow_params
                 for i, arg in enumerate(expr.args):
                     ptype = params[i].type if i < len(params) else None
                     if isinstance(arg, TpyTypeParamConstruct):

@@ -4399,3 +4399,108 @@ class TestResForHeadDictViewIterable:
                "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestAwaitArgDcbpConstWrap:
+    _SRC = (_PRE
+            + "from tpy import Own\n\n"
+            + "class A:\n"
+            + "    x: Int32\n"
+            + "    def __init__(self) -> None:\n        self.x = 1\n\n"
+            + "class B:\n"
+            + "    y: Int32\n"
+            + "    def __init__(self) -> None:\n        self.y = 2\n\n"
+            + "class Holder[T]:\n"
+            + "    v: T\n"
+            + "    def __init__(self, v: Own[T]) -> None:\n        self.v = v\n\n"
+            + "    async def show(self, u: A | B) -> Int32:\n"
+            + "        if isinstance(u, A):\n            return u.x\n"
+            + "        return u.y\n\n"
+            + "class PlainHolder:\n"
+            + "    v: Int32\n"
+            + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n\n"
+            + "    async def show(self, u: A | B) -> Int32:\n"
+            + "        if isinstance(u, A):\n            return u.x\n"
+            + "        return u.y\n\n"
+            + "async def go() -> Int32:\n"
+            + "    h = Holder(Int32(5))\n"
+            + "    a = A()\n"
+            + "    p = PlainHolder(7)\n"
+            + "    b = B()\n"
+            + "    r1 = await h.show(a)\n"
+            + "    r2 = await p.show(b)\n"
+            + "    return r1 + r2\n\n"
+            + "def main() -> None:\n    pass\nmain()\n")
+
+    def test_generic_receiver_keeps_const_wrap(self):
+        # The deep-const verdict lives on the RAW fi; a generic receiver's
+        # substituted fi reads None and used to drop the const wrap at the
+        # sub-coro emplace arg (both paths -- the AST read the substituted
+        # fi, the THIR await-arg lowering never consulted the verdict).
+        witnesses, fallback = _assert_identical(self._SRC)
+        assert witnesses.get("res.await_args", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        assert cpp.count("std::variant<const A*, const B*>{") >= 2
+        assert "std::variant<A*, B*>{" not in cpp
+
+    def test_mutating_method_stays_nonconst(self):
+        # Inverse: a self-mutating method is not readonly, so its union
+        # param carries no deep-const verdict -- the emplace arg must keep
+        # the mutable ptr-variant spelling.
+        src = (_PRE
+               + "class A:\n"
+               + "    x: Int32\n"
+               + "    def __init__(self) -> None:\n        self.x = 1\n\n"
+               + "class B:\n"
+               + "    y: Int32\n"
+               + "    def __init__(self) -> None:\n        self.y = 2\n\n"
+               + "class Counter:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self) -> None:\n        self.n = 0\n\n"
+               + "    async def poke(self, u: A | B) -> Int32:\n"
+               + "        self.n = self.n + 1\n"
+               + "        if isinstance(u, A):\n            return u.x\n"
+               + "        return u.y\n\n"
+               + "async def go() -> Int32:\n"
+               + "    c = Counter()\n"
+               + "    a = A()\n"
+               + "    return await c.poke(a)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::variant<A*, B*>{" in cpp
+        assert "std::variant<const A*, const B*>{" not in cpp
+
+    _TUPLE_PRE = (_PRE
+                  + "from tpy import Own\n\n"
+                  + "class A:\n"
+                  + "    x: Int32\n"
+                  + "    def __init__(self) -> None:\n        self.x = 1\n\n"
+                  + "class Keeper:\n"
+                  + "    pair: tuple[A, A]\n"
+                  + "    def __init__(self, a: Own[A], b: Own[A]) -> None:\n"
+                  + "        self.pair = (a, b)\n\n")
+
+    def test_tuple_param_factory_and_arg_agree_nonconst(self):
+        # AGREEMENT pin for the inferred deep-const tuple shape: the coro
+        # factory/frame spelling does not consult the inferred verdict for
+        # non-union params, so the emplace-arg tail must stay unthreaded --
+        # both sides spell the MUTABLE borrow form and the TU stays
+        # consistent. Threading either side alone breaks compilation; the
+        # const completion is blocked on the yield-escape verdict gap
+        # (BUGS.md), and this pin holds the two sides in lockstep until
+        # both flip together.
+        src = (self._TUPLE_PRE
+               + "    async def total(self, p: tuple[A, A]) -> Int32:\n"
+               + "        return p[0].x + p[1].x\n\n"
+               + "async def go() -> Int32:\n"
+               + "    k = Keeper(A(), A())\n"
+               + "    return await k.total(k.pair)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        _, hpp, cpp = _gen(src, thir=True)
+        both = hpp + cpp
+        assert "std::tuple<A*, A*>" in both
+        assert "tuple_to_pointer<std::tuple<A*, A*>>" in cpp
+        assert "std::tuple<const A*, const A*>" not in both

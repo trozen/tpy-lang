@@ -4231,7 +4231,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # zip-truncates): the arity gate admits omitted trailing defaults.
         params = (fi.params if fi is not None
                   and len(fi.params) >= len(e.args) else None)
-        dcbp = fi.deep_const_borrow_params if fi is not None else None
+        dcbp = fi.root.deep_const_borrow_params if fi is not None else None
         # The callee's emit kind: the same classification validation admitted
         # on (`_free_callee_kind`) -- cross-module spelling on callee_cpp,
         # a C++ @native symbol on native_name (joining the len hardcode),
