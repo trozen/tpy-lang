@@ -490,6 +490,9 @@ class CodeGenerator:
             from ..thir.shape import record_shape
 
             _ng = _thir_native_globals(module)
+
+            _render_concept = self.protocols.concept_test_cpp
+
             self.ctx.thir_functions = {}
             self.ctx.thir_resumables = {}
             self.ctx.thir_simple_gens = {}
@@ -534,7 +537,7 @@ class CodeGenerator:
                             self_type=self_type, native_globals=_ng,
                             render_type_stored=self.types.type_to_cpp_stored,
                             render_resolve=self.types.resolve_type,
-                            stub=stub)
+                            stub=stub, render_concept=_render_concept)
                         if stf is None:
                             entries = None
                             break
@@ -551,7 +554,8 @@ class CodeGenerator:
                 tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                  self_type=self_type, native_globals=_ng,
                                  render_type_stored=self.types.type_to_cpp_stored,
-                                 render_resolve=self.types.resolve_type)
+                                 render_resolve=self.types.resolve_type,
+                                 render_concept=_render_concept)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
                     record_shape(f, "body", routed=True)

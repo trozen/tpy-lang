@@ -25,6 +25,7 @@ from .nodes import (
     THIRWalrus,
     THIRValueSelect,
     THIRClassConstant,
+    THIRConceptTest,
     THIRCoerce,
     THIRCtorCall,
     THIREnumMember,
@@ -133,6 +134,8 @@ def _expr(e: THIRExpr) -> str:
         return f"*%{e.name}" if e.deref else f"%{e.name}"
     if isinstance(e, THIRSelf):
         return "%self"
+    if isinstance(e, THIRConceptTest):
+        return f"concept({e.cpp})"
     if isinstance(e, THIRLiteral):
         # The form is load-bearing for a None literal (STORAGE -> std::nullopt
         # vs VALUE/BORROW -> nullptr), so surface it like the other form tags.

@@ -2394,3 +2394,68 @@ byte-diff itself.
   filter_none (print lane); container_literal / expr.coerce /
   optional_other_nonetype / decl.tuple_literal_shape families
   (verified 3+-way fragmenting -- dropped per doctrine).
+
+- **Wave-next10 -- F5 constexpr + M4c wrapper match + unpack/deref rows
+  (`thir-wave-next10`, 2026-07-24, 4 cells + 2 harvests, +14 flips,
+  dial 2425 -> 2439/3569).**
+  (1) F5 constexpr concept-if (decision 16), probe-first verification
+  of the parked inc-1 arm: the committed arm had a fatal missing
+  import (BOOL) -- the "green baseline" was a stale-tree artifact, the
+  arm had never run. Fixes: negation moved into the render_concept
+  hook mirroring gen_truthy_expr's exact pairs (`(!(concept))` wrap
+  vs the nullable-single-protocol same_as polarity flip); the hook
+  reads the RAW param type (current_func_params), not the
+  branch-retyped binding; the nullable-protocol `is not None`
+  statement guard (`_get_nullproto_constexpr_guards` -- constexpr
+  nullptr_t + deref reads, unmirrored) rejects; protocol-member union
+  None-tests reject at the monostate arm (the AST's protocol
+  ptr-compare arm precedes it at EVERY position -- the F5 admission
+  had newly routed protocol_union_optional into a silent
+  holds_alternative divergence, caught by the census byte-diff).
+  Census 13/13 IDENTICAL. Inc-2: NativeIterable/Spannable protocol
+  params route the begin/end range-for via the container route
+  (foreach.native_proto_param); the two still-defers pins flipped to
+  routing pins.
+  (2) M4c wrapper match (decision 17): switch_union admits value-repr
+  non-generic wrapper NAME subjects on the unguarded tier
+  (THIRMatch.wrapper_value threads `.value` through the switch head +
+  std::get positions); the wrapper member-init decl row
+  (`Tree a = Leaf(42);`), wrapper container-literal elements, and the
+  free-call wrapper arg rows (same-wrapper bare name; member-name
+  typed temp with the _maybe_move mirror -- the AST's value branch has
+  NO membership check, so the row keys already_union only).
+  (3) Ref-container unpack targets (os.walk-family loop heads): the
+  for-head "ref" bind widens from F1 records to reference-family
+  containers (type-agnostic emit; the name arm's source gate cannot
+  produce container elements). EXPOSED + FENCED a pre-existing latent
+  divergence, reachable pre-wave through the name arm with no corpus
+  witness: a PENDING-str unpack target at an Own[str] sink -- the
+  AST's _is_str_view_source misses the view binding (unpack targets
+  absent from its runtime-view bookkeeping) and hoists the owned
+  copy+move temp, while THIR's S1 arm inline-converted. Pending-str
+  unpack targets now register per-function and the S1 arm rejects
+  them (call.arg_unpack_pending_view). Reconciling the AST-side
+  bookkeeping (the temp is arguably an accident -- the binding IS a
+  view) is a DESIGN item: AST-first snapshot-churning change.
+  (4) deref_to_target Ptr template row: `_deref_codegen`'s PtrType arm
+  is position-uniform (`::tpy::deref_check(x)`), so the coerce joins
+  the {0}-template family; the record-wrapper `.__deref__()` flavor
+  keeps its dedicated arg row. Unlocked the generics bound-chain
+  family (5 flips).
+  FLIPS (14): isinstance_protocol(+_cross), iterable_native_
+  narrowing_bare, union_recursive(+_bare), isinstance_narrows_to_
+  child_proto, span_like_builtin, union_user_ptr_indirect (bonus 3),
+  yield_frame_local_borrow, bound_chain_triple(+_hint,quad_hint),
+  bound_factory_inference, covariant_custom.
+  FRONTIER VERIFIED-AND-DROPPED (3+-way fragmenting): container_
+  literal (13: protocol-slot float lists / generic-T Own returns /
+  ptr-variant union elements / nested tuple-dict), call.native_arg.
+  record_nonf1 (str(Span)/hash(enum)/len(subscript) arg rows),
+  field_write_shape. PARKED with verified blockers: res.return_type
+  (10 async own/borrow returns -- tpy-m2 fix-yield-escape avoid-zone
+  overlap), expr.lambda 9 (overload_fn_param family -- deferred with
+  the overload tail re-price), os_walk trio (the pending-view design
+  item above + method_call rungs), tuple_optional_yield pair
+  (optional-element unpack rungs), gen_tuple_yield_ref (generic Box
+  element rung), standalone-unpack rungs (optional/rvalue/fixed-int
+  targets -- distinct renders each).

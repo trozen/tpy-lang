@@ -301,6 +301,12 @@ def _coerce_wrap(e: TpyCoerce) -> 'str | None':
         return "::tpy::BigInt(static_cast<int64_t>({0}))"
     if name in _ADDR_PTR_COERCIONS:
         return "&{0}"
+    # `deref_to_target` over a Ptr[T] source is position-uniform
+    # (`_deref_codegen`'s PtrType arm: arg/return/init all render
+    # `::tpy::deref_check(x)`); the record-wrapper `.__deref__()` flavor
+    # keeps its dedicated arg row / AST path.
+    if name == "deref_to_target" and isinstance(e.actual_type, PtrType):
+        return "::tpy::deref_check({0})"
     if name in _SPANLIKE_COERCIONS and not is_span(e.actual_type):
         # A span-typed actual is identity (handled in _coerce_disposition,
         # never a wrap). An array-literal inner takes the same helper wrap;
@@ -519,6 +525,27 @@ def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
                or is_void_like_type(m) for m in t.members):
         return None
     return t
+
+def _wrapper_member_ctor_slot(init, t: 'TpyType | None',
+                              analyzer) -> bool:
+    """M4c: an annotated recursive-alias wrapper decl initialized with a
+    member-record ctor rvalue (`a: Tree = Leaf(42)` -> `Tree a =
+    Leaf(...);`). The wrapper struct's template converting ctor absorbs
+    the member, so the init renders bare -- the wrapper twin of the
+    value-union converting-ctor row. Non-ctor sources (names, calls,
+    container literals) stay out."""
+    if t is None or not isinstance(init, TpyCall):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, UnionType) or not t.needs_wrapper():
+        return False
+    it = unwrap_readonly(analyzer.get_expr_type(init))
+    if not (isinstance(it, NominalType) and it.is_user_record):
+        return False
+    wrapper = t.wrapper_info()
+    members = wrapper.full_members if wrapper is not None else t.members
+    return any(m == it for m in members)
+
 
 def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None':
     """An `Own[A | B]` return slot over F1-RECORD members: a by-value
@@ -4446,6 +4473,33 @@ def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         return (any(dt == m for m in ut.members if not is_void_like_type(m))
                 and _witness("arg.ru_wrapper_narrowed"))
     return dt == ut
+
+def _ru_wrapper_member_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                locals_: dict[str, TpyType],
+                                narrowed: 'AbstractSet[str]',
+                                ) -> 'UnionType | None':
+    """A member-typed NAME into a wrapper-union slot (`head(b)` on
+    `b: list[Tree]`): `_gen_union_arg`'s value branch hoists the typed
+    temp (`Tree __tmp_N = <name>;`, create_typed `= init` form) and passes
+    the bare temp name; the init takes the `_maybe_move` wrap at a movable
+    last use (mirrored at lowering). A same-union name is already_union
+    (bare, no temp) and rides `_ru_wrapper_name_arg`; narrowed names keep
+    rejecting (the AST's already_union verdict reads the C++ DECLARED
+    type, while the lowered read is the extraction alias)."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None or not isinstance(a, TpyName) or a.name not in locals_:
+        return None
+    if a.name in narrowed:
+        return None
+    dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    # The AST's value branch has NO membership check (sema already typed
+    # the arg against the union) -- only already_union routes it elsewhere:
+    # a union binding (bare pass-through) or a same-alias AliasRef
+    # self-reference (also bare). Everything else hoists the typed temp.
+    if isinstance(dt, (UnionType, AliasRef)):
+        return None
+    return ut
+
 
 def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
     """A list/dict literal coercible into a recursive-union wrapper slot,

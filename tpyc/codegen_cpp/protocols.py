@@ -533,6 +533,24 @@ class ProtocolGenerator:
             return f"{concept_name}<T_{pname}, {type_args_cpp}>"
         return f"{concept_name}<T_{pname}>"
 
+    def concept_test_cpp(self, var_name: str, check_type: NominalType,
+                         declared_type: 'TpyType | None',
+                         negated: bool) -> str:
+        """The compile-time protocol-isinstance test spelling, both
+        polarities. An Optional[Protocol] param (single protocol + None)
+        uses the nullptr_t same_as guard instead of the concept -- some
+        concepts (e.g. Sized) accidentally match nullptr_t via char*
+        conversion -- and `not` flips the same_as polarity DIRECTLY (no
+        `(!(...))` wrap); protocol unions with None keep concept checks to
+        differentiate members, wrapped `(!(C))` under negation."""
+        if declared_type is not None:
+            infos = self.get_all_protocol_params([(var_name, declared_type)])
+            if infos and infos[0].has_none and len(infos[0].protocols) == 1:
+                pol = "" if negated else "!"
+                return f"{pol}std::same_as<T_{var_name}, std::nullptr_t>"
+        cpp = self._concept_constraint(var_name, check_type)
+        return f"(!({cpp}))" if negated else cpp
+
     def gen_combined_template_header(
         self,
         type_params: list[str],

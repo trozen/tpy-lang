@@ -57,6 +57,7 @@ from .nodes import (
     THIRContinue,
     THIRDelVar,
     THIRCtorCall,
+    THIRConceptTest,
     THIREnumMember,
     THIREnumWrap,
     THIRErrorReturnBind,
@@ -1531,6 +1532,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             recv = e.recv_wrap.format(_emit_expr(e.recv_eval, state))
             return f"({{ {recv}; {e.cpp}; }})"
         return e.cpp
+    if isinstance(e, THIRConceptTest):
+        _witness("if.constexpr_concept")
+        return e.cpp
     if isinstance(e, (THIREnumMember, THIRModuleVar)):
         return e.cpp
     if isinstance(e, THIREnumWrap):
@@ -1652,10 +1656,13 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     # same `__tmp_N` names the AST's discard-and-regenerate produces).
     extra_closes: list[str] = []
     for i, node in enumerate(chain):
+        # The AST's per-node keyword choice: a protocol-isinstance
+        # condition compiles `if constexpr`.
+        if_kw = "if constexpr" if node.is_constexpr else "if"
         if i == 0:
             cond = _emit_expr(node.condition, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}if ({cond}) {{\n")
+            out.write(f"{indent}{if_kw} ({cond}) {{\n")
         else:
             state.comments.elif_(out, node.loc, indent)
             cp = state.temps.checkpoint()
@@ -1668,9 +1675,9 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
                 indent = INDENT * indent_level
                 body_indent = INDENT * (indent_level + 1)
                 state.temps.flush(out, indent)
-                out.write(f"{indent}if ({cond}) {{\n")
+                out.write(f"{indent}{if_kw} ({cond}) {{\n")
             else:
-                out.write(f"{indent}}} else if ({cond}) {{\n")
+                out.write(f"{indent}}} else {if_kw} ({cond}) {{\n")
         _emit_stmts(out, node.then_body, indent_level + 1, state)
         state.comments.trailing(out, node.then_body, body_indent)
     last = chain[-1]
@@ -2544,11 +2551,11 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
     # narrowing drew one (`auto& __case_i = [*]std::get<idx>(subject);`),
     # the `as` binding against the alias (or the composed get), stacked
     # index labels for binding-free or-patterns, and the unconditional
-    # `break;` per arm. Wrapper subjects (`.value` indirection) are
-    # gate-rejected, so the variant expression is the bare subject.
+    # `break;` per arm. A wrapper subject dispatches through its `.value`
+    # variant member (both the switch head and the get positions).
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
-    variant = subject
+    variant = f"{subject}.value" if stmt.wrapper_value else subject
     out.write(f"{indent}switch ({variant}.index()) {{\n")
     state.switch_depth += 1
     deref = "*" if stmt.is_ptr_variant else ""

@@ -1080,6 +1080,17 @@ class THIREnumMember(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRConceptTest(THIRExpr):
+    """A compile-time protocol-isinstance condition -- the concept
+    constraint an `if constexpr` tests (`::tpy::Sized<T_items>`, the
+    Optional[Protocol] `!std::same_as<T_x, std::nullptr_t>` special, or
+    either under `(!...)` negation). `cpp` is the full rendered spelling,
+    computed at lowering via the codegen concept renderer hook (the same
+    _concept_constraint the AST arm calls)."""
+    cpp: str
+
+
+@dataclass(frozen=True)
 class THIRClassConstant(THIRExpr):
     """Class-constant read `C.X` / `c.X` / `mod.C.X` -> the bare qualified
     static (`C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X`). `cpp`
@@ -1830,6 +1841,11 @@ class THIRIf(THIRStmt):
     else_is_nested: bool = False
     hoist_decls: tuple[tuple[str, str], ...] = ()
     hoist_slots: tuple[tuple[str, str], ...] = ()
+    # A protocol-isinstance condition compiles to a CONCEPT test: the
+    # keyword renders `if constexpr` (the AST's
+    # _is_protocol_isinstance_condition keyword choice). Per-node -- an
+    # elif chain can mix constexpr and runtime members.
+    is_constexpr: bool = False
 
 
 @dataclass(frozen=True)
@@ -2549,11 +2565,13 @@ class THIRMatch(THIRStmt):
     # switch head).
     default_goto: bool = False
     # switch_union: the subject's runtime form -- `*std::get<I>(...)` vs
-    # `std::get<I>(...)` (`_subject_is_ptr_variant` folded at lowering;
-    # recursive-alias wrapper subjects, the `.value` indirection, are
-    # parked against the wrapper-form rung -- wrapper params/locals are
-    # function-gated, so no wrapper match can reach this node yet).
+    # `std::get<I>(...)` (`_subject_is_ptr_variant` folded at lowering).
     is_ptr_variant: bool = False
+    # switch_union: a recursive-alias wrapper subject dispatches through
+    # its `.value` variant member (`switch (subj.value.index())`, `std::get`
+    # over `subj.value`); always value-variant, so is_ptr_variant stays
+    # False (is_ptr_variant_union excludes needs_wrapper).
+    wrapper_value: bool = False
     # optional_partition (O1): `_gen_match_optimized_optional` over a
     # pointer-repr `Optional[F1-record]` name subject. The None prefix arm
     # (body/loc; bindings gate-rejected -- a None-arm `as` is a sema error

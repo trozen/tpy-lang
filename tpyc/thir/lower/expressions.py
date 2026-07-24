@@ -342,6 +342,7 @@ from .predicates import (
     _value_tuple_global,
     _value_tuple_return,
     _ru_container_literal_ok,
+    _ru_wrapper_member_name_arg,
     _ru_wrapper_arg_slot,
     _value_union_temp_slot,
     _union_binding_divergent,
@@ -1910,6 +1911,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     or operand.name in lc.inline_narrowed
                     or operand.name in lc.narrow.spelled):
                 raise ThirUnsupported("binop.union_none_narrowed_subject")
+            # A protocol-member union is no variant: the AST's protocol
+            # ptr-compare arm precedes the monostate arm (both polarities,
+            # every position), so route-and-diverge is the alternative.
+            if any(is_protocol_type(m) for m in ut_none.members):
+                raise ThirUnsupported("binop.union_none_protocol_subject")
             _witness("isnone.union_monostate")
             return THIRIsNone(
                 result_type=rtype,
@@ -7305,6 +7311,21 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                init=_lower_ru_literal(a, ru, lc, declared),
                                form=Form.VALUE,
                                loc=getattr(a, "loc", None))
+        # M4c: a member-typed NAME into the wrapper slot hoists the typed
+        # temp (`Tree __tmp_N = std::move(b);`), the init `_maybe_move`-
+        # wrapped at a movable last use.
+        ru_m = _ru_wrapper_member_name_arg(a, ptype, declared, frozenset())
+        if ru_m is not None and not (a.name in lc.narrow.narrowed
+                                     or a.name in lc.inline_narrowed):
+            _witness("argtemp.ru_wrapper_member")
+            init = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+            if _is_move_source(a, lc):
+                init = THIRMove(result_type=init.result_type, value=init,
+                                form=init.form, loc=getattr(a, "loc", None))
+            return THIRArgTemp(result_type=ru_m,
+                               cpp_type=lc.render_type(ru_m),
+                               init=init, form=Form.VALUE,
+                               loc=getattr(a, "loc", None))
     # A str-slice arg into an `Own[str]` container element slot
     # (`xs.append(s)`): a VIEW-form source (BORROW -- a str param / StrView
     # local) materializes an owned copy `std::string(x)` via the S1 view->owned
@@ -7314,6 +7335,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # takes gen_call_arg's copy+move temp cascade, left on the AST path.
     ow_str = _plain_own_slot(ptype)
     if ow_str is not None and is_str_type(ow_str):
+        if (isinstance(a, TpyName)
+                and a.name in lc.pending_view_unpack_targets):
+            # The AST's _is_str_view_source misses an unpack target's view
+            # binding (pending-typed, absent from its runtime-view
+            # bookkeeping) and takes the owned copy+move temp cascade --
+            # unmirrored, so reject rather than route-and-diverge.
+            note_detail("call.arg_unpack_pending_view")
+            raise ThirUnsupported("call.arg_unpack_pending_view")
         lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
         if lowered.form is Form.BORROW:
             return THIRFormConvert(result_type=ow_str, value=lowered,

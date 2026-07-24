@@ -1546,18 +1546,16 @@ class ExpressionGenerator:
         For Optional value types, truthiness means "has value and contained value is truthy".
         """
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            # Avoid double negation for `not isinstance(x, Proto)` on Optional protocol params.
-            # The positive form already emits `!std::same_as<T_x, std::nullptr_t>`, so negating
-            # that should yield `std::same_as<T_x, std::nullptr_t>` directly.
+            # `not isinstance(x, Proto)` takes the shared negated spelling
+            # (the Optional[Protocol] arm flips same_as polarity directly
+            # rather than double-negating; see concept_test_cpp).
             operand = expr.operand
             if (isinstance(operand, TpyCall) and operand.isinstance_var is not None
                     and operand.isinstance_is_protocol and operand.isinstance_type is not None):
                 var_name = operand.isinstance_var
-                declared = self.ctx.current_func_params.get(var_name)
-                if declared is not None:
-                    infos = self.protocols.get_all_protocol_params([(var_name, declared)])
-                    if infos and infos[0].has_none and len(infos[0].protocols) == 1:
-                        return f"std::same_as<T_{var_name}, std::nullptr_t>"
+                return self.protocols.concept_test_cpp(
+                    var_name, operand.isinstance_type,
+                    self.ctx.current_func_params.get(var_name), True)
             operand_truthy = self.gen_truthy_expr(operand)
             return f"(!({operand_truthy}))"
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
@@ -2883,19 +2881,13 @@ class ExpressionGenerator:
                 target_cpp = expr.cast_target_type.to_cpp()
                 return f"::tpy::any_cast_or_panic<{target_cpp}>({source_code})"
             return source_code
-        # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
+        # isinstance(x, Protocol) -> Concept<T_x>  (compile-time; the
+        # Optional[Protocol] nullptr_t special lives in concept_test_cpp)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
             var_name = expr.isinstance_var
-            # For Optional[Protocol] params (single protocol + None), use
-            # !same_as<nullptr_t> guard instead of concept check because some
-            # concepts (e.g. Sized) accidentally match nullptr_t via char* conversion.
-            # Protocol unions with None still need concept checks to differentiate members.
-            declared = self.ctx.current_func_params.get(var_name)
-            if declared is not None:
-                infos = self.protocols.get_all_protocol_params([(var_name, declared)])
-                if infos and infos[0].has_none and len(infos[0].protocols) == 1:
-                    return f"!std::same_as<T_{var_name}, std::nullptr_t>"
-            return self.protocols._concept_constraint(expr.isinstance_var, expr.isinstance_type)
+            return self.protocols.concept_test_cpp(
+                var_name, expr.isinstance_type,
+                self.ctx.current_func_params.get(var_name), False)
         # isinstance(x, C) on a generic type-param subject -> per-instantiation
         # compile-time trait. Sema restricts this to non-polymorphic class
         # bounds, so same-or-derived against the instantiated decltype(x) is

@@ -699,24 +699,25 @@ def test_for_each_user_iterator_name_routes():
     assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
 
 
-def test_for_each_spannable_protocol_param_still_defers():
-    # The Spannable sibling of the NativeIterable exclusion: the AST's
-    # begin/end range-for peephole covers `tpy.Spannable[T]` params too, so
-    # routing the universal `__iter__` loop would diverge.
+def test_for_each_spannable_protocol_param_routes_begin_end():
+    # The Spannable sibling of the NativeIterable peephole: a
+    # `tpy.Spannable[T]` param takes the begin/end range-for (records.py
+    # synthesizes begin()/end() for conformers), mirrored via the
+    # container route -- routed since the native-proto-param widening.
     compiler, entry, f = _fn_body(
         "from tpy import Int32, Spannable\n"
-        "def rejected(it: Spannable[Int32]) -> Int32:\n"
+        "def routed(it: Spannable[Int32]) -> Int32:\n"
         "    total = 0\n"
         "    for v in it:\n"
         "        total = total + v\n"
         "    return total\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
             fold_attempt("body")
-    assert fn is None
+    assert fn is not None
 
 
 def test_for_each_own_elem_protocol_param_still_defers():
@@ -743,26 +744,25 @@ def test_for_each_own_elem_protocol_param_still_defers():
     assert fn is None
 
 
-def test_for_each_native_iterable_protocol_param_still_defers():
-    # The residual of the protocol-param loop widening: a
-    # `tpy.NativeIterable[T]` / `tpy.Spannable[T]` param takes the AST's
-    # begin/end range-for peephole (NOT the universal `__iter__` loop), so
-    # it must keep falling back -- routing it emitted the wrong loop shape
-    # (caught by the corpus byte-diff on protocols/span_like_*).
+def test_for_each_native_iterable_protocol_param_routes_begin_end():
+    # A `tpy.NativeIterable[T]` param takes the AST's begin/end range-for
+    # peephole, mirrored via the container route (THIRForEach) -- routed
+    # since the native-proto-param widening; byte-identity is pinned by
+    # iterators/iterable_native_narrowing_bare and the wave test file.
     compiler, entry, f = _fn_body(
         "from tpy import Int32, NativeIterable\n"
-        "def rejected(it: NativeIterable[Int32]) -> Int32:\n"
+        "def routed(it: NativeIterable[Int32]) -> Int32:\n"
         "    total = 0\n"
         "    for v in it:\n"
         "        total = total + v\n"
         "    return total\n",
-        "rejected")
+        "routed")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
             fold_attempt("body")
-    assert fn is None
+    assert fn is not None
 
 
 def test_for_each_plain_call_iterable_routes():

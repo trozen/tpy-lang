@@ -160,6 +160,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
+    _wrapper_member_ctor_slot,
     _enum_neg_wrap,
     _enum_truthy_wrap,
     _f1_record,
@@ -205,6 +206,7 @@ from .predicates import (
     _resolve_literal_seeded,
     _ru_container_literal_ok,
     _ru_wrapper_arg_slot,
+    _ru_wrapper_member_name_arg,
     _ru_wrapper_name_arg,
     _resolved_bytes_value,
     _resolved_scalar,
@@ -582,6 +584,11 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         if (_eligible_value_union(su) is not None
                 and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
                                    TpyBoolLiteral, TpyStrLiteral))):
+            return True
+        # M4c: a wrapper element slot absorbs a member-record ctor rvalue
+        # via the wrapper's template converting ctor -- bare render on both
+        # paths (`{Leaf(1), Leaf(2)}` into `std::vector<Tree>`).
+        if _wrapper_member_ctor_slot(e, su, analyzer):
             return True
         return note_detail("container_lit.elem.union") if note else False
     if fam == "tuple":
@@ -2649,6 +2656,12 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _union_pass_through_arg(a, ptype, locals_, analyzer)
             or _union_member_lift_arg(a, ptype, locals_, analyzer)
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer)
+            # M4c wrapper-slot rows (the free-call twins of the qualcall
+            # ladder's): a same-wrapper NAME passes bare; a member-typed
+            # NAME hoists the typed temp (flush-gated).
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
+            or (temps_ok and _ru_wrapper_member_name_arg(
+                a, ptype, locals_, narrowed) is not None)
             or _own_union_ctor_arg(a, ptype, locals_, analyzer)
             or _dyn_own_coro_factory_arg(a, ptype, analyzer) is not None
             or _dyn_own_handle_arg(a, ptype, locals_, analyzer) is not None

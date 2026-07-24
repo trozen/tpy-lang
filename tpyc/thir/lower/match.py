@@ -122,13 +122,11 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     if isinstance(t, LiteralType):
         return None
     if isinstance(t, UnionType):
-        # Recursive-alias wrappers (bare `Tree` unions, `Tree[Int32]`
-        # instances -- the `.value` indirection) are PARKED against the
-        # wrapper-form rung: wrapper-typed params/locals are themselves
-        # unsupported at the callable boundary, so no wrapper match can route
-        # until that form lands.
-        if t.needs_wrapper():
-            return None
+        # A recursive-alias wrapper (bare `Tree` alias) dispatches on its
+        # `.value` variant member -- the M4c slice admits NAME subjects on
+        # the unguarded tier only (_route_match narrows); a generic
+        # instance (`Tree[Int32]`) is a RecursiveAliasInstanceType, which
+        # never reaches this branch and keeps rejecting.
         return "switch_union"
     if _eligible_enum(t, analyzer) is not None:
         return "switch_enum"
@@ -748,6 +746,14 @@ def _match_route(
     if kind == "switch_union":
         u = unwrap_readonly(stmt.subject_type)
         union_route = _match_union_route(stmt, u)
+        if u.needs_wrapper():
+            # M4c: wrapper subjects are NAME-only (a field/subscript
+            # source would compose `.value` over a member read -- out of
+            # slice) and unguarded-tier only (the guarded emit's get
+            # positions are not wrapper-aware).
+            if (not isinstance(subj, TpyName)
+                    or union_route != "switch_union"):
+                return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
                           union_route=union_route)
     if kind in ("if_elif_record", "guarded_record"):
@@ -2197,6 +2203,8 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
     U3 slice's ptr/value split)."""
     u = unwrap_readonly(stmt.subject_type)
     _witness("match.switch_union")
+    if u.needs_wrapper():
+        _witness("match.union_wrapper_value")
     members = _union_index_members(u)
     if members is None:
         raise ThirUnsupported("stmt.match")
@@ -2331,6 +2339,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         # arms); the admitted bare names keep the type-level fold.
         is_ptr_variant=(is_ptr_variant_union(u) if subj_name is not None
                         else False),
+        wrapper_value=u.needs_wrapper(),
         loc=loc,
     )
 

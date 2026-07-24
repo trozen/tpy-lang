@@ -35,6 +35,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
                                     # union wrapper slot (json.dumps([...]))
+    "argtemp.ru_wrapper_member",    # member-typed NAME into a wrapper slot
+                                    # (`Tree __tmp_N = std::move(b);`)
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
     # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
     # materialization, and the structural slot's `auto __tmp_N` rvalue temp.
@@ -1012,6 +1014,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # instantiation (list(map(f, xs)))
     "call.inst_genexpr_arg",        # genexpr rvalue in a container
                                     # instantiation (list(x for ...))
+    "if.constexpr_concept",         # protocol-isinstance -> if constexpr
+                                    # over the concept test
     "fold.overload_block",          # per-@overload-stub dead-branch fold splice
                                     # (if-chain flatten / folded match arm)
     "fold.overload_bind",           # folded match arm's capture binding
@@ -1085,6 +1089,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.switch_guard_chain",     # in-switch guard chain (grouped entries)
     "match.default_goto",           # all-guarded group -> goto __match_default_N
     "match.switch_union",           # switch (subject.index()) over variant tags
+    "match.union_wrapper_value",    # wrapper subject: switch/get over `.value`
     "match.union_alias",            # `auto& __case_i = [*]std::get<idx>(...)`
     "match.union_none_arm",         # `case None:` -> the monostate index
     "match.union_default",          # wildcard/capture -> `default:` in place
@@ -1192,6 +1197,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # iterator-returning-call / user-iterator-name iterables --
     # _gen_direct_next_loop_with_iter).
     "foreach.iter_proto",
+    # A NativeIterable[T]/Spannable[T] protocol PARAM iterable: the AST's
+    # NativeIterable peephole (plain begin/end range-for over the deduced
+    # template-param lvalue), not the universal loop.
+    "foreach.native_proto_param",
     # Tuple-unpack head over the universal loop (`for a, b in zip(..)` /
     # a tuple-yield generator call -- the same head decls as the container
     # tuple-unpack, THIRForIterProto instead of begin/end).

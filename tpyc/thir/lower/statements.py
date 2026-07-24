@@ -66,6 +66,7 @@ from ...parse.nodes import (
 from ...typesys import (
     AnyType,
     BIGINT,
+    BOOL,
     FloatLiteralType,
     IntLiteralType,
     LiteralType,
@@ -74,6 +75,7 @@ from ...typesys import (
     OptionalType,
     OwnType,
     PendingListType,
+    PendingStrType,
     PendingViewType,
     ReadonlyType,
     TpyType,
@@ -120,6 +122,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...codegen_cpp.context import escape_cpp_name
 from ...codegen_cpp.protocols import narrow_cast_rhs
+from ...prescan import match_is_none
 from ...typesys import polymorphic_source_inner, polymorphic_source_is_pointer
 from ...codegen_cpp.types import resolve_pending_container
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
@@ -175,6 +178,7 @@ from ..nodes import (
     THIRName,
     THIRNarrowAlias,
     THIRNestedDef,
+    THIRConceptTest,
     THIRFoldedBlock,
     THIRNoOpStmt,
     THIROptionalPtrArg,
@@ -224,6 +228,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
+    _wrapper_member_ctor_slot,
     _value_record_member,
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
@@ -1245,13 +1250,11 @@ def _for_iter_proto_route(
             # the loop captures it bare (`auto& __src_N = it;`) and
             # `::tpy::__iter__` resolves via ADL -- the same render as a
             # user-iterator record name. Excluded (mirroring _gen_for_each's
-            # NativeIterable peephole and its universal-default split):
-            # `tpy.NativeIterable` / `tpy.Spannable` params (the AST emits
-            # the begin/end range-for), any native-iterable verdict, an
-            # `Own[...]`-element loop (the consuming render), @dynamic
-            # bindings (adapter dispatch), and resumable bodies
-            # (protocol_param_ok is threaded False there -- the frame
-            # emitters have no witnessed protocol-loop shape).
+            # NativeIterable peephole and its universal-default split): any
+            # native-iterable verdict, an `Own[...]`-element loop (the
+            # consuming render), @dynamic bindings (adapter dispatch), and
+            # resumable bodies (protocol_param_ok is threaded False there --
+            # the frame emitters have no witnessed protocol-loop shape).
             elem = _resolved_loop_elem_type(stmt, analyzer)
             elem_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 elem))) if elem is not None else None)
@@ -1260,11 +1263,23 @@ def _for_iter_proto_route(
             # relying on the elem-binding gate downstream.
             if isinstance(elem_bare, OptionalType):
                 elem_bare = unwrap_readonly(elem_bare.inner)
-            if (not protocol_param_ok
-                    or u.qualified_name() in ("tpy.NativeIterable",
-                                              "tpy.Spannable")
-                    or is_native_iterable(u, analyzer.registry)
-                    or isinstance(elem_bare, OwnType)):
+            if not protocol_param_ok or isinstance(elem_bare, OwnType):
+                return None
+            if u.qualified_name() in ("tpy.NativeIterable", "tpy.Spannable"):
+                # The AST's NativeIterable peephole: these protocol params
+                # take the plain begin/end range-for (records.py synthesizes
+                # begin/end for Spannable conformers), not the universal
+                # `::tpy::__iter__` loop.
+                et = _resolved_loop_elem_type(stmt, analyzer)
+                if not _for_each_elem_binding_ok(et):
+                    note_detail("foreach.elem_family."
+                                + _type_family_tag(et, analyzer))
+                    return None
+                _witness("foreach.native_proto_param")
+                return _ForEachRoute(
+                    route="container", elem_type=et, iterable_lvalue=True,
+                    value_tuple_elem=_value_tuple(et, analyzer) is not None)
+            if is_native_iterable(u, analyzer.registry):
                 return None
         elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
@@ -1428,8 +1443,14 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
             return None
         tt = unwrap_ref_type(stmt.target_types[i])
         if i < len(stmt.is_ref) and stmt.is_ref[i]:
-            # Borrow F1-record target -> the "ref" alias bind.
-            if not _f1_record(tt, analyzer):
+            # Borrow F1-record target -> the "ref" alias bind. A
+            # reference-family CONTAINER element (os.walk's list[str]
+            # yields) takes the same type-agnostic alias emit
+            # (`auto&& = unwrap_ref(tuple_elem_ref(...))`); only the
+            # iter_proto arm can reach it -- the name arm's source gate
+            # (_container_scalar_tuple_iter) has no container elements.
+            if not (_f1_record(tt, analyzer)
+                    or is_list(tt) or is_dict(tt) or is_set(tt)):
                 return None
             types.append(tt)
             continue
@@ -4017,6 +4038,93 @@ def _value_opt_target_binding(name: str, lc: '_LowerCtx') -> bool:
             or _value_opt_view_binding(name, lc))
 
 
+def _protocol_constexpr_info(cond: TpyExpr):
+    """(var, check_type, negated) for a protocol-isinstance condition --
+    the mirror of _is_protocol_isinstance_condition (negation included).
+    None for every other condition, incl. @dynamic protocol checks (sema
+    sets isinstance_is_protocol only for the static concept family)."""
+    neg = False
+    c = cond
+    if isinstance(c, TpyUnaryOp) and c.op == "!":
+        neg = True
+        c = c.operand
+    if (isinstance(c, TpyCall)
+            and getattr(c, "isinstance_is_protocol", False)
+            and c.isinstance_var is not None
+            and c.isinstance_type is not None):
+        return (c.isinstance_var, c.isinstance_type, neg)
+    return None
+
+
+def _nullproto_guard_condition(cond: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Mirror of _get_nullproto_constexpr_guards' trigger: `x is not None`
+    on a nullable protocol PARAM swaps the runtime condition for an
+    `if constexpr (!std::same_as<T_x, nullptr_t>)` guard and derefs the
+    branch reads -- an unmirrored render, so the whole if rejects.
+    Type-level approximation of is_static_protocol_param: over-fires for
+    @dynamic protocol members, where reject just means fallback."""
+    m = match_is_none(cond)
+    if m is None:
+        return False
+    var, is_not_none = m
+    if not is_not_none or "." in var:
+        return False
+    pt = next((t for n, t in lc.func.params if n == var), None)
+    if pt is None:
+        return False
+    dt = _unwrap_own(unwrap_readonly(unwrap_ref_type(pt)))
+    if isinstance(dt, OptionalType):
+        return is_protocol_type(dt.inner)
+    if isinstance(dt, UnionType):
+        return (any(is_void_like_type(mm) for mm in dt.members)
+                and any(is_protocol_type(mm) for mm in dt.members))
+    return False
+
+
+def _lower_constexpr_if(stmt: TpyIf, info, lc: _LowerCtx,
+                        declared: dict[str, TpyType], loc, *,
+                        loop_depth: int) -> THIRIf:
+    """`if isinstance(x, Protocol):` -> `if constexpr (<concept>)` -- the
+    AST's keyword-swap arm over the ordinary if chain. The concept cpp
+    comes from the render_concept hook (the same helpers the AST calls);
+    the protocol path never extracts, so each branch lowers with the
+    subject DECLARED-retyped to its branch fact (member dispatch resolves
+    against the checked protocol -- the child-protocol retype)."""
+    var, check_type, negated = info
+    if lc.render_concept is None:
+        note_detail("if.constexpr_no_renderer")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if lc.analyzer.if_branch_decls.get(id(stmt)):
+        note_detail("if.constexpr_hoist")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if (var in lc.narrow.narrowed or var in lc.narrow.spelled
+            or any(k != var for k in stmt.then_type_facts)
+            or any(k != var for k in stmt.else_type_facts)):
+        note_detail("if.constexpr_shape")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    # The AST consults current_func_params (the RAW param type) for the
+    # nullptr_t special, never the branch-retyped binding.
+    param_ty = next((t for n, t in lc.func.params if n == var), None)
+    cpp = lc.render_concept(var, check_type, param_ty, negated)
+    cond = THIRConceptTest(result_type=BOOL, cpp=cpp,
+                           loc=getattr(stmt.condition, "loc", None))
+    then_declared = dict(declared)
+    tf = stmt.then_type_facts.get(var)
+    if tf is not None:
+        then_declared[var] = tf
+    then_body = _lower_stmts(stmt.then_body, lc, then_declared,
+                             in_branch=True, loop_depth=loop_depth)
+    else_declared = dict(declared)
+    ef = stmt.else_type_facts.get(var)
+    if ef is not None:
+        else_declared[var] = ef
+    else_body = (_lower_stmts(stmt.else_body, lc, else_declared,
+                              in_branch=True, loop_depth=loop_depth)
+                 if stmt.else_body else ())
+    return THIRIf(condition=cond, then_body=then_body,
+                  else_body=else_body, is_constexpr=True, loc=loc)
+
+
 def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
     """The body's declared return type: the per-@overload stub's when this
     is a per-stub lowering (the AST emits against it), else the func's."""
@@ -5208,6 +5316,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or _resolved_bytes_value(vtype, analyzer) is not None
                     or _is_string_owned(vtype)
                     or _eligible_value_union(vtype) is not None
+                    # M4c: `a: Tree = Leaf(42)` -- the wrapper's template
+                    # converting ctor absorbs the member ctor rvalue, so
+                    # the decl is the plain spelled copy.
+                    or _wrapper_member_ctor_slot(stmt.init, vtype, analyzer)
                     # A value-repr Optional[scalar] slot (`y: Int32 | None =
                     # items[i]`): the whole `std::optional<T>` lands bare, the
                     # value-repr twin of the plain-scalar decl. The owned-view
@@ -6688,6 +6800,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 loop_depth=scope.loop_depth)
             if folded is not None:
                 return folded
+        cx = _protocol_constexpr_info(stmt.condition)
+        if cx is not None:
+            return _lower_constexpr_if(stmt, cx, lc, declared, loc,
+                                       loop_depth=scope.loop_depth)
+        if _nullproto_guard_condition(stmt.condition, lc):
+            note_detail("if.constexpr_nullproto_guard")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         ainfo = (None if info is not None
                  else _any_narrow_cond_info(stmt.condition, declared,
@@ -7106,6 +7225,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # A str target's type is still a PendingStrType (params never
             # resolve it in place); resolve it to the concrete view before
             # render, else `render_type` raises. Scalars/records pass through.
+            if isinstance(tt, PendingStrType):
+                lc.pending_view_unpack_targets.add(name)
             tt, cpp = _unpack_target_decl(tt, analyzer, lc.render_type)
             declared[name] = tt
             target_cpps.append(cpp)
@@ -7265,6 +7386,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     else:
                         target_cpps.append(cpp)
                         target_binds.append("value")
+                    if isinstance(up.target_types[i], PendingStrType):
+                        lc.pending_view_unpack_targets.add(name)
                     body_declared[name] = tt
                 head_wrap_cpp = None
                 head_bind = TupleSourceBind.NAME_CREF

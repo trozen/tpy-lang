@@ -395,10 +395,13 @@ _BRANCH_SCOPED_SETS = (
 #   walrus_slot_locals -- the owned-slot walrus targets: the decl is
 #       function-scoped (named row) and the binding outlives its branch
 #       (Python scoping), so reads after the branch keep the `(*n)` render.
+#   pending_view_unpack_targets -- unpack targets outlive the loop (Python
+#       scoping, like the AST's var_types); a stale entry only over-rejects
+#       at Own[str] sinks (fallback), never mis-renders.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
-    "walrus_slot_locals",
+    "walrus_slot_locals", "pending_view_unpack_targets",
 )
 
 
@@ -437,8 +440,9 @@ class _LowerCtx:
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp",
                  "walrus_predeclared", "walrus_slot_locals",
+                 "pending_view_unpack_targets",
                  "overload_narrowing", "overload_stub_return",
-                 "overload_terminated")
+                 "overload_terminated", "render_concept")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -448,7 +452,8 @@ class _LowerCtx:
                  self_is_pointer: bool = True,
                  render_resolve=None,
                  params_override=None,
-                 return_type_override=None) -> None:
+                 return_type_override=None,
+                 render_concept=None) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer,
@@ -463,6 +468,12 @@ class _LowerCtx:
         # Identity for analyzer-only callers, whose value-scalar fixtures
         # never carry a Pending type.
         self.render_resolve = render_resolve or (lambda t: t)
+        # The codegen concept renderer for `if constexpr` conditions
+        # (protocol-isinstance): a (var_name, check_type, declared_type) ->
+        # cpp callable built at the driver seam from the SAME helpers the
+        # AST arm calls. None for analyzer-only callers -- the constexpr
+        # arm rejects without it.
+        self.render_concept = render_concept
         # The receiver name (`self`) when `func` is an instance method, else
         # None: it lowers to a THIRSelf and, unlike `pointers`, is not a
         # liftable borrow source (`_is_borrow_ptr_local` must never treat it
@@ -525,6 +536,13 @@ class _LowerCtx:
         # AST's register_walrus_deref substitution, NOT the pointer-local
         # arrow model. Function-scoped like the decl itself.
         self.walrus_slot_locals: set[str] = set()
+        # Tuple-unpack targets whose element type is a PENDING view (str
+        # family): the binding emits as a view, but the AST's
+        # _is_str_view_source misses it (unpack targets are absent from its
+        # runtime-view bookkeeping) and takes the owned copy+move cascade
+        # at Own[str] sinks -- an unmirrored render, so those sinks reject
+        # on these names. Function-scoped (Python names outlive the loop).
+        self.pending_view_unpack_targets: set[str] = set()
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()

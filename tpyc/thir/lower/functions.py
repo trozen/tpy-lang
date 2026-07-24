@@ -675,7 +675,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    native_globals: 'Mapping[str, str]' = {},
                    render_type_stored=None,
                    render_resolve=None,
-                   stub: 'TpyFunction | None' = None) -> THIRFunction | None:
+                   stub: 'TpyFunction | None' = None,
+                   render_concept=None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
@@ -719,6 +720,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve,
+                   render_concept=render_concept,
                    params_override=(stub.params if stub is not None else None),
                    return_type_override=(
                        stub.return_type
