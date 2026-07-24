@@ -5393,10 +5393,11 @@ class FunctionInfo:
     # addr_escapes_params. None = not yet computed (consumers fall back to
     # mutable spellings). Distinguished from sema facts (mutated_params,
     # return_borrows_from): these never feed back into mutation analysis.
-    # Populated on the RAW fi only -- substitution does not copy them, so
-    # call sites must read via `fi.root`.
-    const_borrow_params: Optional[frozenset[int]] = None
-    deep_const_borrow_params: Optional[frozenset[int]] = None
+    # Populated on the RAW fi only; the public accessors below forward
+    # through `root`, so a substituted fi transparently reads the raw
+    # fi's verdict -- writers go through `set_const_borrow_verdict`.
+    _const_borrow_params: Optional[frozenset[int]] = None
+    _deep_const_borrow_params: Optional[frozenset[int]] = None
     # Send/Sync frame facts (docs/SEND_SYNC_DESIGN.md OQ3). frame_type is the
     # memoized own-slot classification, computed lazily by sema/frame_traits.py
     # from the raw materials below (lazy because awaited sub-frames may
@@ -5420,6 +5421,21 @@ class FunctionInfo:
     @property
     def root(self) -> 'FunctionInfo':
         return self.canonical_fi or self
+
+    @property
+    def const_borrow_params(self) -> Optional[frozenset[int]]:
+        return self.root._const_borrow_params
+
+    @property
+    def deep_const_borrow_params(self) -> Optional[frozenset[int]]:
+        return self.root._deep_const_borrow_params
+
+    def set_const_borrow_verdict(self, sig: frozenset[int],
+                                 deep: frozenset[int]) -> None:
+        """Store the per-param const ABI verdict on THIS fi (the raw fi --
+        `populate_const_borrow_params` runs before any substitution)."""
+        self._const_borrow_params = sig
+        self._deep_const_borrow_params = deep
 
     @property
     def has_fstr_param(self) -> bool:

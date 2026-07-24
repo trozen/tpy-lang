@@ -178,5 +178,4 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
         if decision.deep_borrow_const:
             deep.add(i)
 
-    fi.const_borrow_params = frozenset(sig)
-    fi.deep_const_borrow_params = frozenset(deep)
+    fi.set_const_borrow_verdict(frozenset(sig), frozenset(deep))
