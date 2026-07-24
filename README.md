@@ -62,6 +62,8 @@ for e in batch:
 
 Where TurboPython would silently copy what CPython shares by reference (e.g. storing a parameter into a field or container), the compiler warns and suggests an explicit `copy()` -- so dual-target code behaves identically under both runtimes.
 
+There is no GIL: real OS threads with compile-checked safety (`spawn`, `Arc[Mutex[T]]`, atomics, cross-thread channels -- a non-thread-safe capture is a compile error, not a race). A TPy module can also compile into a regular CPython extension: mark it `# tpy: ext_module` and import the built `.so` from ordinary Python.
+
 Source files are valid Python -- your IDE, linter, and type checker work as-is.
 
 ## Installation
@@ -171,6 +173,10 @@ them before writing TPy code. Re-run after upgrading `tpy-lang` to refresh.
 
 - Python 3.12+
 - A C++23 compiler: g++ 13+, clang++ 19+, or zig (auto-detected)
+
+Compilers below the floor are skipped during auto-detection (falling
+through to the next viable one, e.g. the `[bundled]` zig toolchain); an
+explicit `--cxx`/`$CXX` selection is honored with a warning.
 
 No external C/C++ libraries are required by the runtime.
 

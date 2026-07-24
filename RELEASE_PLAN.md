@@ -10,7 +10,5 @@ there). When a release ships, delete its section and promote the next one.
 - `collections.defaultdict` + `deque` (+ `OrderedDict`)
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs)
 - `input(prompt)` -- fix the opaque "No matching overload" diagnostic
-- Toolchain preflight: reject clang < 19 with libstdc++; add the Python
-  3.12+ floor guard
 - Extend the stale-capture warning to in-place mutation of captured
   containers (the fixable half of the closure-snapshot divergence)

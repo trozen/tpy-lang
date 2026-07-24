@@ -1,5 +1,23 @@
 # Release Notes
 
+## 0.5.1 (2026-07-24)
+
+Toolchain-preflight patch release.
+
+- **C++ toolchain capability preflight**: every resolved compiler is
+  probed once (cached; ~200ms, then a file stat) against the runtime's
+  actual C++23 floor (`<expected>`, `<format>`, `<ranges>`, statement
+  expressions). Auto-detection skips non-viable compilers -- a box
+  whose only system compiler is too old (e.g. g++-11/12, clang 18)
+  self-heals to the next viable one or the `[bundled]` zig toolchain
+  instead of dying mid-build in template errors. An explicit
+  `--cxx`/`$CXX` selection is always honored, with a prominent
+  warning when it fails the probe. `--cxx list` now separates
+  unsupported compilers into their own section, names the default
+  auto selection, and prints the probe-cache location.
+- **Python 3.12+ floor guard** at CLI entry: a clear requirement
+  message instead of an opaque `SyntaxError` under older interpreters.
+
 ## 0.5.0 (2026-07-24)
 
 309 commits since 0.4.0.

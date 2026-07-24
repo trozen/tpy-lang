@@ -49,7 +49,7 @@ from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
-from tpyc.toolchain import compiler_target_os, host_os
+from tpyc.toolchain import compiler_target_os, host_os, shared_cache_root
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
@@ -380,31 +380,10 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
                         link_flags=list(third_party_plan.extra_link_flags))
 
 
-_SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
-
-
-def _default_shared_cache_root() -> Path:
-    """Default shared-cache root, following XDG Base Directory on Linux/macOS
-    and %LOCALAPPDATA% on Windows.
-
-    Preference order: `$XDG_CACHE_HOME/tpyc` > `%LOCALAPPDATA%\\tpyc\\cache`
-    (Windows) > `~/.cache/tpyc`. Matches ccache / cargo / uv / pip convention;
-    persists across reboots, unlike /tmp.
-    """
-    xdg = os.environ.get("XDG_CACHE_HOME")
-    if xdg:
-        return Path(xdg) / "tpyc"
-    if sys.platform == "win32":
-        local_app = os.environ.get("LOCALAPPDATA")
-        if local_app:
-            return Path(local_app) / "tpyc" / "cache"
-    return Path.home() / ".cache" / "tpyc"
-
-
 def _shared_cache_root() -> Path:
-    """Root dir for shared caches (overridable via TPYC_SHARED_CACHE_DIR)."""
-    override = os.environ.get(_SHARED_CACHE_ROOT_ENV)
-    return Path(override) if override else _default_shared_cache_root()
+    """Root dir for shared caches -- the compiler's derivation
+    ($TPYC_SHARED_CACHE_DIR override, else XDG / %LOCALAPPDATA%)."""
+    return shared_cache_root()
 
 
 @functools.cache

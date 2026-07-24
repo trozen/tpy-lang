@@ -49,7 +49,8 @@ from .macro_loader import MacroRegistry, is_macro_module_source
 from .build_cache import capture_input
 from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init__ (light CLI import)
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
-    CompilerNotFoundError, CppCompilerConfig, list_compilers,
+    CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
+    list_compilers,
     strict_warn_flags, get_or_build_pch, discover_runtime_cpp_sources,
     third_party_source_driver, darwin_cross_ld_flags, _derive_c_compiler, _is_zig,
     _find_all_versioned, _find_best_versioned, _find_all_zig, _find_zig,

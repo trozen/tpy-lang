@@ -58,7 +58,8 @@ from . import (
     get_lib_dir, get_docs_dir,
 )
 from .toolchain import (
-    CompilerNotFoundError, CppCompilerConfig, list_compilers, get_or_build_pch,
+    CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
+    list_compilers, get_or_build_pch,
 )
 
 
@@ -96,6 +97,9 @@ def _print_info(prog_name: str) -> None:
         print(f"cxx:       {cxx_desc} ({' '.join(config.compiler)})")
     except CompilerNotFoundError:
         print("cxx:       not found")
+    except ToolchainUnsupportedError:
+        print("cxx:       found but unsupported (C++23 required; "
+              "see `tpy --cxx list`)")
     print()
 
     # Python
@@ -701,7 +705,7 @@ def _run_cli(is_runner: bool) -> int:
         from . import build_cache
         try:
             key_config = CppCompilerConfig.from_env(cxx=args.cxx)
-        except CompilerNotFoundError:
+        except (CompilerNotFoundError, ToolchainUnsupportedError):
             key_config = None  # cold path reports the error properly
         if key_config is not None:
             if args.ccache is not None:
@@ -1098,7 +1102,7 @@ def _run_cli(is_runner: bool) -> int:
 
         return 0
 
-    except CompilerNotFoundError as e:
+    except (CompilerNotFoundError, ToolchainUnsupportedError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     except CompileError as e:
@@ -1126,13 +1130,25 @@ def _run_cli(is_runner: bool) -> int:
         return 1
 
 
+def _require_python_floor() -> None:
+    # requires-python in pyproject gates pip installs only; a source
+    # checkout run under an older interpreter would otherwise die with an
+    # opaque SyntaxError on PEP-695 syntax in the compiler modules.
+    if sys.version_info < (3, 12):
+        raise SystemExit(
+            "TurboPython requires Python 3.12+ "
+            f"(running {sys.version.split()[0]})")
+
+
 def main_tpyc() -> int:
     """Entry point for the `tpyc` command (compiler mode)."""
+    _require_python_floor()
     return _run_cli(is_runner=False)
 
 
 def main_tpy() -> int:
     """Entry point for the `tpy` command (runner mode)."""
+    _require_python_floor()
     return _run_cli(is_runner=True)
 
 
