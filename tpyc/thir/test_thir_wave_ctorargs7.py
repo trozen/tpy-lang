@@ -478,3 +478,191 @@ class TestDictViewItemsInstArg:
         assert _fn(thir, "use") is not None
         assert w.get("call.inst_view_arg", 0) >= 1
         _assert_byte_identical(src)
+
+
+class TestFieldReadRefCtorArg:
+    # A bare FIELD read into a ctor REF slot of the field's OWN declared type
+    # binds the `const T&` slot directly, so the emit is the bare member read
+    # (`Sink(this->xs)`). The rule is slot/field type EQUALITY, which is why
+    # one row covers containers and open-T alike.
+    _SRC = (
+        "from tpy import Int32, Own\n"
+        "class Sink:\n"
+        "    items: list[Int32]\n"
+        "    def __init__(self, items: list[Int32]) -> None:\n"
+        "        self.items = items\n"
+        "class Holder:\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self, xs: Own[list[Int32]]) -> None:\n"
+        "        self.xs = xs\n"
+        "    def make(self) -> Own[Sink]:\n"
+        "        return Sink(self.xs)\n")
+
+    def test_container_field_ctor_arg_routes(self):
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert w.get("ctor.field_read_ref_arg", 0) == 1
+        _assert_byte_identical(
+            self._SRC
+            + "def main() -> None:\n    print(len(Holder([1, 2]).make().items))\n"
+            + "main()\n")
+
+    def test_open_t_field_ctor_arg_routes(self):
+        # Same row, open-T slot: `Grid<T, N>(this->_value)`.
+        src = ("from tpy import Int32, Own\n"
+               "class Grid[T]:\n"
+               "    _value: T\n"
+               "    def __init__(self, value: T) -> None:\n"
+               "        self._value = value\n"
+               "    def clone(self) -> Own[Grid[T]]:\n"
+               "        return Grid[T](self._value)\n")
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.field_read_ref_arg", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n"
+            "    print(Grid[Int32](Int32(1)).clone()._value)\nmain()\n")
+
+    def test_mutated_slot_still_defers(self):
+        # BOUNDARY: type equality cannot see whether the callee writes through
+        # the `T&`, so a MUTATED ctor slot keeps falling back.
+        src = ("from tpy import Int32, Own\n"
+               "class MutSink:\n"
+               "    items: list[Int32]\n"
+               "    def __init__(self, items: list[Int32]) -> None:\n"
+               "        items.append(99)\n        self.items = items\n"
+               "class Holder:\n"
+               "    xs: list[Int32]\n"
+               "    def __init__(self, xs: Own[list[Int32]]) -> None:\n"
+               "        self.xs = xs\n"
+               "    def make(self) -> Own[MutSink]:\n"
+               "        return MutSink(self.xs)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.field_read_ref_arg", 0) == 0
+        assert _fn(thir, "make") is None
+
+    def test_narrowed_optional_field_still_defers(self):
+        # BOUNDARY: the row keys on the DECLARED field type, so a narrowed
+        # `list | None` field (whose EXPR type is the bare container) stays
+        # out -- its AST render takes the unwrap.
+        src = ("from tpy import Int32, Own\n"
+               "class Sink:\n"
+               "    items: list[Int32]\n"
+               "    def __init__(self, items: list[Int32]) -> None:\n"
+               "        self.items = items\n"
+               "class Holder:\n"
+               "    opt: list[Int32] | None\n"
+               "    def __init__(self) -> None:\n        self.opt = None\n"
+               "    def make(self) -> Own[Sink] | None:\n"
+               "        if self.opt is not None:\n"
+               "            return Sink(self.opt)\n"
+               "        return None\n")
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.field_read_ref_arg", 0) == 0
+
+
+class TestDictSetLiteralCtorArg:
+    # A dict / set literal at a ctor container slot renders SPELLED and
+    # INLINE (`Config(::tpy::ordered_map<std::string, Int32>({{..}}))`) --
+    # the stub-method twin's render, not the list arm's bare brace, and
+    # without the `__tmp_N` hoist a plain FREE call would take.
+    _SRC = (
+        "from tpy import Int32, Own, readonly\n"
+        "class DictSink:\n"
+        "    d: dict[str, Int32]\n"
+        "    def __init__(self, d: dict[str, Int32]) -> None:\n"
+        "        self.d = d\n"
+        "class SetSink:\n"
+        "    s: set[Int32]\n"
+        "    def __init__(self, s: set[Int32]) -> None:\n"
+        "        self.s = s\n")
+
+    def test_dict_literal_ctor_arg_routes_spelled(self):
+        src = (self._SRC
+               + "def build() -> Int32:\n"
+               + '    s = DictSink({"a": 1, "b": 2})\n'
+               + "    return len(s.d)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "build") is not None
+        assert w.get("ctor.container_literal_arg", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n    print(build())\nmain()\n")
+
+    def test_set_literal_ctor_arg_routes(self):
+        src = (self._SRC
+               + "def build() -> Int32:\n"
+               + "    s = SetSink({1, 2, 3})\n"
+               + "    return len(s.s)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "build") is not None
+        assert w.get("ctor.container_literal_arg", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n    print(build())\nmain()\n")
+
+    def test_other_dict_slot_flavors_stay_identical(self):
+        # BOUNDARY sweep: the row keeps its Own / Optional / readonly /
+        # mutated exclusions, and a plain FREE call still takes the ref-param
+        # temp hoist rather than this inline render. Each of these reaches a
+        # DIFFERENT pre-existing row (or falls back); what must hold either
+        # way is byte-identity -- this pin fails if the widened ctor arm ever
+        # swallows one of them.
+        src = (self._SRC
+               + "class OwnSink:\n"
+               + "    d: dict[str, Int32]\n"
+               + "    def __init__(self, d: Own[dict[str, Int32]]) -> None:\n"
+               + "        self.d = d\n"
+               + "class RoSink:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, d: readonly[dict[str, Int32]]) -> None:\n"
+               + "        self.n = len(d)\n"
+               + "class MutSink:\n"
+               + "    d: dict[str, Int32]\n"
+               + "    def __init__(self, d: dict[str, Int32]) -> None:\n"
+               + '        d["extra"] = 1\n        self.d = d\n'
+               + "def free_takes_dict(d: dict[str, Int32]) -> Int32:\n"
+               + "    return len(d)\n"
+               + "def main() -> None:\n"
+               + '    print(len(OwnSink({"c": 3}).d))\n'
+               + '    print(RoSink({"d": 4}).n)\n'
+               + '    print(len(MutSink({"e": 5}).d))\n'
+               + '    print(free_takes_dict({"f": 6}))\n'
+               + "main()\n")
+        _assert_byte_identical(src)
+
+
+class TestBytearrayTypeCtor:
+    # `bytearray()` / `bytearray(n)` expand through the type-ctor template to
+    # the plain `std::vector<uint8_t>(...)` construction -- the same kind as
+    # the scalar ctors beside them; the result kind was simply missing.
+    def test_zero_arg_bytearray_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> Int32:\n"
+               "    ba = bytearray()\n"
+               "    ba.append(65)\n"
+               "    return len(ba)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("call.type_ctor.bytearray", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n    print(f())\nmain()\n")
+
+    def test_argful_bytearray_takes_the_plain_call_path(self):
+        # BOUNDARY, and the reason the row is arg-less: `bytearray(n)` and
+        # `bytearray(b"..")` never reach the type-ctor arm -- they resolve as
+        # plain calls, so the free-call arg ladder decides them (the sized
+        # form is rejected there today; the bytes form already routes). An
+        # arg rule on this row would therefore be dead code.
+        sized = ("from tpy import Int32\n"
+                 "def f() -> Int32:\n"
+                 "    ba = bytearray(3)\n"
+                 "    return len(ba)\n")
+        thir, w = _lower_ctx_witnessed(sized)
+        assert _fn(thir, "f") is None
+        assert w.get("call.type_ctor.bytearray", 0) == 0
+        from_bytes = ("from tpy import Int32\n"
+                      "def f() -> Int32:\n"
+                      '    ba = bytearray(b"abc")\n'
+                      "    return len(ba)\n")
+        thir2, w2 = _lower_ctx_witnessed(from_bytes)
+        assert _fn(thir2, "f") is not None
+        assert w2.get("call.type_ctor.bytearray", 0) == 0
+        _assert_byte_identical(
+            from_bytes + "def main() -> None:\n    print(f())\nmain()\n")

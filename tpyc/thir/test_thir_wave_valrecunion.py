@@ -475,9 +475,12 @@ class TestModuleQualifiedCtorArgTemp:
         thir = _lower_ctx(src)
         assert _fn(thir, "via") is None
 
-    def test_strview_field_return_still_defers(self):
-        # A str field returned as StrView takes the view-form split, not
-        # the spanlike helper -- stays AST.
+    def test_strview_field_return_takes_the_str_arm(self):
+        # A str field returned as StrView takes the view-form split, NOT the
+        # spanlike helper -- the invariant this pin has always guarded. The
+        # shape now routes (via the view-target str coerce, coerce.str_field
+        # _view); what must never happen is the spanlike field branch
+        # claiming it, which would wrap the member read in as_span.
         src = (
             "from tpy import StrView\n"
             "class W:\n"
@@ -486,8 +489,11 @@ class TestModuleQualifiedCtorArgTemp:
             "        self.s = s\n"
             "    def get_view(self) -> StrView:\n"
             "        return self.s\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "get_view") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "get_view") is not None
+        assert faces.get("coerce.str_field_view", 0) == 1
+        assert faces.get("coerce.span_array_literal", 0) == 0
+        _assert_byte_identical(src)
 
     def test_qualified_ctor_at_mutated_ctor_slot_still_defers(self, tmp_path):
         # The module-qualified ctor slice is const-slot-only: at a MUTATED

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRReturn
-from .testutil import _compile, _entry, _fn, _lower_ctx, _assert_byte_identical
+from .testutil import (
+    _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
+    _assert_byte_identical,
+)
 
 
 class TestGenericFreeFunction:
@@ -1492,3 +1495,61 @@ class TestGenericCompositionWitnesses:
         assert _fn(thir, "idpass") is not None
         assert _fn(thir, "main") is not None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestOpenTOwnReturnValidation:
+    # `Own[T]` with T an open type param materializes storage from a borrow
+    # source exactly like `Own[Record]` does (`val_or_cref_t<T>` -> `T`, the
+    # same NRVO / implicit move), but TypeParamRef is not a NominalType, so
+    # the validator's row missed it and a routed body FAILED the walk
+    # (THIRValidationError) instead of falling back.
+    def test_open_t_marker_ret_row_is_witnessed(self):
+        # The gate row itself (not just the validator): an open-T method
+        # result at a marker/qualcall slot. Without a face this row was
+        # invisible to the faces coverage metric and pinned only by the
+        # corpus ratchet.
+        src = ("from tpy import Int32, Ptr\n"
+               "class Store[T]:\n"
+               "    _v: T\n"
+               "    def __init__(self, v: T) -> None:\n        self._v = v\n"
+               "    def load(self) -> T:\n        return self._v\n"
+               "class Holder[T]:\n"
+               "    _s: Ptr[Store[T]]\n"
+               "    def __init__(self, p: Ptr[Store[T]]) -> None:\n"
+               "        self._s = p\n"
+               "    def load_at(self) -> T:\n"
+               "        return self._s.load()\n")
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("method.qualcall.ret_tparam", 0) >= 1
+
+    def test_own_open_t_return_is_borrow_legal(self):
+        from ..typesys import NominalType, OwnType, TypeParamRef, UnionType
+        from .validate import _borrow_legal_return
+        t = TypeParamRef(name="T", bound=None)
+        assert _borrow_legal_return(OwnType(wrapped=t)) is True
+
+    def test_bare_open_t_return_legal_via_the_nonvalue_row(self):
+        # NOT a boundary, though it looks like one: a BARE open-T return
+        # was already legal before this change, via the
+        # pre-existing not-a-value-type row (TypeParamRef.is_value_type() is
+        # False). Only the Own-WRAPPED form reached the failure, because
+        # OwnType(T).is_value_type() is True and so skips that row.
+        from ..typesys import OwnType, TypeParamRef
+        from .validate import _borrow_legal_return
+        t = TypeParamRef(name="T", bound=None)
+        assert t.is_value_type() is False
+        assert _borrow_legal_return(t) is True
+        assert OwnType(wrapped=t).is_value_type() is True
+
+    def test_own_union_return_still_illegal(self):
+        # BOUNDARY, pre-existing and explicitly documented: an Own[union]
+        # (non-Nominal wrapped) needs its own conversion arm, and this check
+        # must keep catching a missing one. It is a real boundary precisely
+        # because OwnType(union).is_value_type() is True, so it too skips the
+        # not-a-value-type row and depends on the Nominal/TypeParamRef rows
+        # NOT admitting it.
+        from ..typesys import NominalType, OwnType, UnionType
+        from .validate import _borrow_legal_return
+        u = UnionType(members=(NominalType("A", ()), NominalType("B", ())))
+        assert OwnType(wrapped=u).is_value_type() is True
+        assert _borrow_legal_return(OwnType(wrapped=u)) is False

@@ -2647,3 +2647,190 @@ byte-diff itself.
   ptr_field_method_call / for_generic_iter_protocol (a TypeParamRef
   marker result at a T-SLOT sink -- the M5 return-slot duality, which
   fails THIR validation if admitted).
+
+- **Wave-next14 -- str-family field reads at the return/yield sinks
+  (`thir-copy-row-unify`, 2026-07-25, 4 cells + 3 harvests, +9 flips,
+  dial 2494 -> 2503/3579; full exec suite 9527 green; two review rounds,
+  7 + 3 specialists, 1 Critical -- a wrong claim in a test comment of
+  mine -- and 3 Warnings, all applied).**
+  SELECTION: the 9 `field.result_type` sole-blocker cases (5 resumable +
+  4 body) split on inspection into THREE shapes, not one -- 5 sharing a
+  str-family field read at a str/view return-or-yield sink, 3 container
+  field reads (arg / for-head iterable / membership needle), 1 narrowing
+  edge (`b.value + 1` after an invalidating call). Took the 5; the other
+  two groups stay open.
+  (1) A str-family FIELD inner under a view-TARGET coerce: `return
+  self.s` at a `StrView` slot arrives as a str_to_strview coerce, and the
+  coerce threaded `field_owned_str_ok` for its MATERIALIZING disposition
+  only, so the identity view-target form rejected at the field result
+  ladder. Threaded for the view-target pair, keyed on the DECLARED field
+  type (`_field_decl_type`). New face coerce.str_field_view. +2
+  (return_view_through_method, overload_method_nested_generic_ctor).
+  (2) The same read at both RESUMABLE str sinks -- the async return
+  scaffolding's `__tpy_async_ret` decl and the value-yield tail -- via
+  the `_str_field_value_read` + field_prechecked precheck the SYNC return
+  tail already ran. New faces res.return_str_field / res.yield_str_field.
+  +3 (with_nested, gen_union_param_readonly, narrowed_str_field_yield).
+  HARVEST BONUS: async_borrowed_rvalue_arg (+1, unprobed).
+  BROKEN AST ORACLE FOUND (filed in BUGS.md): a NARROWED `str | None`
+  field at a VIEW return slot emits a bare `return this->opt;` --
+  `std::optional<std::string>` does not convert to `std::string_view`,
+  g++-confirmed. THIR would emit the correct `(*this->opt)`, so the
+  declared-type keying in (1) is LOAD-BEARING, not tidiness: it keeps the
+  shape unrouted rather than silently diverging-and-fixing. The sibling
+  sinks (sync return, yield) render the same shape correctly, so the
+  defect is specific to the view-return arm.
+  STALE BOUNDARY PIN: `test_strview_field_return_still_defers`
+  (test_thir_wave_valrecunion.py) asserted exactly the shape cell 1
+  routes. It was written to stop the SPANLIKE field branch claiming the
+  str case -- that invariant is still real, so the pin was re-pointed to
+  assert it positively (coerce.str_field_view fires, span face does not,
+  byte-identical) rather than deleted. NB it did not surface in a grep of
+  the obvious vocabulary (str_to_strview / field_owned_str / str_field):
+  wave-named test files carry their own naming.
+  SPLIT WORTH REMEMBERING: a StrView member at an OWNED-str slot needs
+  the view->owned copy, so sema wraps a MATERIALIZING coerce -- it never
+  reaches the bare-field arms. Only same-family (no-conversion) reads do.
+  (3) CONTAINER field bare reads (+2). The container-field trio's
+  predicate question -- does a container field read bare at these
+  positions? -- is YES at two of the three: the RESUMABLE for-head
+  iterable (`(__self.nodes).begin()`; the sync for-head has its own
+  pre-existing arm, foreach.container_field, so only the resumable one
+  reaches the ladder) and the `std::ranges::contains` haystack
+  (`item in self.xs`). The first is a ladder arm scoped to ITERABLE; the
+  second is a precheck at the ranges-contains arm rather than a RECEIVER
+  widening, which would also re-route method receivers that arm says
+  nothing about. New predicate _plain_container_read; faces
+  field.container_iterable / binop.membership_container_field.
+  DECLARED-type keyed, and an EXISTING pin caught the expr-typed version
+  over-admitting: test_optional_container_field_rejects fired on a
+  narrowed `Optional[list]` field, a shape no corpus case covers, so the
+  byte-diff could not have. Same rule as cell 1, found the hard way twice.
+  Also hardened _field_decl_type to answer None for a non-NAME receiver
+  instead of raising AttributeError -- its contract assumes the receiver
+  gate ran first, and a caller that gets the order wrong should reject.
+  THIRD case of the trio DROPPED: a container field as an AWAIT arg
+  lowers through the resumable await-args path, and the sync call form
+  does not route either -- it sits behind expr.call.
+  (4) Leaf try/FINALLY in a resumable when nothing crosses it (+1). The
+  finally tier rejected wholesale as "interlocks the finally-frame stack
+  with the async return scaffolding". Reading the oracle shows that
+  interlock only materializes when a control transfer CROSSES the
+  finally; without one the emit is the plain sync duplicated-body try --
+  the same reasoning that already admits the except-only leaf try. Admit
+  when no return/break/continue appears inside (_leaf_finally_crossing,
+  walking sub_bodies()). Conservative about break: it does not track
+  which loop a break binds to. Face res.leaf_try_finally. The other three
+  res.leaf_try cases all return from inside the try -- that IS the
+  genuine named rung, unchanged.
+  TWO MORE STALE PINS re-pointed (four this wave): the mid-frame leaf
+  finally now routes, and a frame-slot decl inside such a try now reaches
+  the branch arm. REVIEW CAUGHT ME OVERCLAIMING on the second: I wrote
+  that it emits the BUGS.md try-body broken slot type; it does not (slot
+  and write agree). That defect needs a try/EXCEPT pair declaring one
+  name with differently-shaped literals per arm. Inferred from a memory
+  note instead of dumping the C++ -- the exact habit the wave doctrine
+  warns about, applied to my own comment rather than a target.
+  OPEN residue on the field.result_type tag:
+  warn_expr_narrowing_invalidated_by_call (a post-invalidation Optional
+  field read, its own narrowing lane), and the await-arg container field.
+  DROPPED AFTER VERIFYING (do not re-price without new information):
+  res.narrowed_resume (3) is the explicitly-parked list in
+  _entry_narrowings_reject -- the polymorphic-self dynamic_cast family
+  and Optional narrowing, each needing its own render mirror; and
+  list_comp (5), which wave-next12 already documented as fragmented.
+
+- **Wave-next15 -- the expr.call partition opens
+  (`thir-copy-row-unify`, 2026-07-25, 7 cells + 4 harvests, +16 flips,
+  dial 2503 -> 2519/3579; full exec suite 9547 green; codegen + safety
+  review clean, 0 findings).**
+  Built entirely from design round 12's pre-approved bundle. The premise
+  that made it possible: `expr.call` is raised from THIRTY distinct
+  sites, so the "65-case unfragmentable elephant" was a tag artifact --
+  63 of 64 cases reject at exactly ONE gate. Every cell below turned out
+  to be a ROUTING gap with the render machinery already built.
+  (1) Bare FIELD read at a ctor REF slot whose referent IS the field's
+  declared type (+4: generic_parent_protocol{,_concrete},
+  generic_func_multi, generic_int_param_method_return). New predicate
+  `_field_read_ref_ctor_arg`, face ctor.field_read_ref_arg. The rule is
+  slot/field type EQUALITY, not a family list, which is why one row
+  covers containers and open-T alike. The gate alone was not enough --
+  the arg loop lowers through the generic VALUE position where the
+  ladder re-asks the result-type question -- so the shape lowers
+  directly, scoped to the ctor position the gate validated.
+  (2) Dict/set literals at a ctor container slot (+2 of 4:
+  getattr_basic, narrow_via_local; the other two chain-walk into the
+  method-call lane). `_container_literal_arg` was list-only by
+  docstring; the ctor position emits dict/set INLINE exactly like its
+  stub-method twin. What separates a ctor arg from a FREE-call arg here
+  is the temp hoist, not the container family.
+  (3) Arg-less `bytearray()` at the type-ctor arm (+2). ARG-LESS is
+  evidence, not caution: `bytearray(n)` / `bytearray(b"..")` never reach
+  this arm (they resolve as plain calls). An arg rule shipped first and
+  was found unreachable -- removed and pinned.
+  (4) Vararg pack at a GENERIC callee slot (+2 probed, +2 harvest
+  bonus). `_lower_vararg_pack` already did the array temp, the ref/value
+  split and the readonly const override; the generic arg loop simply
+  never called it. Face call.generic_vararg_pack.
+  (5) Open-T method results: `_tparam_value(ret)` in the marker-call
+  gate (the record-method sibling has had it since it was written) plus
+  `Own[TypeParamRef]` in `_borrow_legal_return` (+2). The second was a
+  CRASH not a fallback -- an admitted body failed the validator walk.
+  M5 IS DE-LISTED FROM THE DESIGN QUEUE: it was two rows, never a
+  slot-model decision, and the "prerequisite for several parked rungs"
+  claim was false.
+  MEMO CORRECTIONS FOUND WHILE BUILDING (the memos were right about
+  structure, wrong on two prices): the list_comp "cheapest fragment"
+  (list_comp_unpack) is NOT cheap -- its element slot is `String`, i.e.
+  the parked 129-call-site family; and the itertools call-iterable
+  fragment did not yield on drilling (the iterable is not the node kind
+  assumed) -- reverted rather than chased.
+  STALE PIN re-pointed (a fifth this session):
+  test_dict_literal_ctor_arg_stays_ast -> the dict literal must render
+  SPELLED and INLINE, asserted positively with the exact render text.
+  A PREDICTED BOUNDARY THAT DOES NOT EXIST, recorded so it is not
+  re-asserted: "bare open-T must keep failing `_borrow_legal_return`" is
+  false -- it was already legal via the not-a-value-type row, since
+  TypeParamRef.is_value_type() is False while OwnType(T) reports True.
+  Own[union] IS a real boundary for exactly that reason.
+  (6) Narrowing `assert isinstance` in a resumable FLAT BB (+1,
+  gen_while_assert_narrow_suspend). The flat walk rejected because only
+  the compound-body walk mirrored the alias _gen_assert emits inline --
+  it would otherwise have silently DROPPED it. Append it via
+  _append_assert_narrow. The emitted ALIAS is BB-local, and the oracle
+  says why: the CFG flows the assert's then_type_facts into every
+  successor's entry_narrowings, and each resume case re-emits
+  `const auto& __a = std::get<..>(a);`. Carries the frame-field
+  alias-collision fence its sibling arms have. Face
+  res.flat_assert_narrow.
+  CORRECTION -- READ THIS BEFORE WIDENING THIS ARM (review Critical, found
+  independently by safety AND codegen, fixed in-branch): a BB-local ALIAS
+  does NOT mean "no scope guard". The arm MUST snapshot `lc.narrow` and
+  record `declared[var]` through `postif_saved` BEFORE calling
+  `_append_assert_narrow`, which mutates both IN PLACE with no restore of
+  its own. The BB driver's `saved_narrow = lc.narrow` holds a REFERENCE,
+  so without the snapshot its restore is a no-op and the narrowing leaks
+  into every later BB -- emitting an out-of-scope `__a` from a sibling
+  branch. The driver's own snapshot does not cover it: it sits inside
+  `if env:`, and the asserting BB's entry env is empty by construction.
+  `_apply_leaf_post_if` had always snapshotted for exactly this reason.
+  COST of the fix: a re-assert after a suspension now falls back (the BB
+  restore pops the persistent-narrowing fact `_reassert_bump_info` reads). A SIXTH stale pin
+  (test_narrowing_assert_leaf_defers) re-pointed: it guarded that the
+  alias must not go MISSING, which appending satisfies more directly
+  than rejecting did.
+  DESIGN FORK FOUND, PARKED (do not build without a decision): the
+  stub-ret `_f1_record` row (list_pop_ref_type). The memo said "key it on
+  the sink"; on drilling, the sink flag reaching that gate is
+  `storage_ret_ok = result_use is STORAGE`, and the witness arrives with
+  result_use = **BORROW_BIND** -- the very sink the memo warns aliases a
+  temp -- while the oracle still emits an owned copy (`Box second =
+  ::tpy::pop_back(heap);`) because the DECL materializes. No flag
+  currently threaded to that gate distinguishes "owned decl that
+  materializes" from "borrow binding that would alias". Fencing it needs
+  a NEW sink signal threaded through, which is a design decision, not an
+  arm. Everything needed to resume is here.
+  STILL OPEN from the bundle (no decision needed): drops A residue
+  (self/dynamic_cast render mirror, 2) and B (leaf_try return-crossing,
+  3 -- the suspending half already routes; the missing half is the
+  sync-rendered chain arm at statements.py:4234-4270).

@@ -95,6 +95,7 @@ from ...type_def_registry import (
     is_bool_type,
     is_bytes_type,
     is_bytes_view_type,
+    is_bytearray_type,
     is_dict,
     is_float32_type,
     is_fixed_int_type,
@@ -240,8 +241,10 @@ from .predicates import (
     _enum_truthy_wrap,
     _truthiness_mode,
     _f1_const_rooted_source,
+    _plain_container_read,
     _f1_record,
     _f1_tuple,
+    _field_read_ref_ctor_arg,
     _field_over_global_record_ok,
     _field_over_subscript_ok,
     _field_markers_clean,
@@ -268,6 +271,7 @@ from .predicates import (
     _PTR_IDENTITY_COERCIONS,
     _SPANLIKE_COERCIONS,
     _SPAN_METHOD_COERCIONS,
+    _VIEW_TARGET_STR_COERCIONS,
     _is_string_owned,
     _mixed_sign_compare,
     _module_var_read_cpp,
@@ -501,7 +505,15 @@ def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
     `slot_type` is the sink's own type when it differs from the source
     record's (the C++ spelling always follows the SOURCE); `exact` also
     demands the source match `slot_type` nominally; `pointers` overrides the
-    excluded-source set for a sink whose admission uses a narrower one."""
+    excluded-source set for a sink whose admission uses a narrower one.
+
+    Exactly ONE caller passes `pointers`: the return sink, which classifies
+    against `scope.admission_pointers()`. That is not a knob to propagate --
+    it is preserved verbatim because changing it would alter behaviour inside
+    a no-behaviour-change fold, and the narrower set is itself the subject of
+    a filed defect (BUGS.md: `copy()` of a narrowed pointer-repr
+    `Optional[record]` at that sink drops the deref). Delete the parameter
+    when that is fixed rather than adding a second user."""
     crec = copy_plain_record_source(
         e, lc.analyzer, lc.pointers if pointers is None else pointers)
     if crec is None or (exact and crec != slot_type):
@@ -790,6 +802,9 @@ def _record_ctor_arg_supported(
                 # exactly the free/method plain-arg row -- same predicate,
                 # same bare render in `_lower_call_arg`'s Own-slot arms.
                 or _own_record_rvalue_arg(arg, param_type, declared, analyzer)
+                or (_field_read_ref_ctor_arg(arg, param_type, declared,
+                                             analyzer, mutated=is_mutated)
+                    and _witness("ctor.field_read_ref_arg"))
                 or (not is_mutated
                     and _container_literal_arg(arg, param_type, analyzer)
                     and _witness("ctor.container_literal_arg"))
@@ -1877,9 +1892,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             loc=loc)
     if e.op in _MEMBERSHIP_OPS and ranges_contains:
         _witness("binop.set_ranges_membership")
+        # A container FIELD haystack (`item in self.xs`) reads bare into
+        # `std::ranges::contains(this->xs, item)` -- prechecked here rather
+        # than admitted at RECEIVER in the ladder, which would also re-route
+        # method receivers this arm says nothing about.
+        recv_prechecked = (
+            isinstance(e.right, TpyFieldAccess)
+            and _plain_container_read(
+                _field_decl_type(e.right, declared, analyzer))
+            and _field_receiver_ok(e.right, declared, analyzer)
+            and _witness("binop.membership_container_field"))
         return THIRMembership(
             result_type=rtype,
-            receiver=_lower_expr(e.right, lc, declared),
+            receiver=_lower_expr(e.right, lc, declared,
+                                 field_prechecked=recv_prechecked),
             needle=_lower_expr(e.left, lc, declared),
             method_cpp="",
             negate=e.op == "not in",
@@ -2589,6 +2615,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     or (use.result in (_ExprResultUse.ITERABLE,
                                        _ExprResultUse.BORROW_BIND)
                         and _f1_record(rtype, analyzer))
+                    # A CONTAINER field in a for-head that reaches the generic
+                    # iterable position -- the RESUMABLE frame's
+                    # (`(__self.nodes).begin()`). The sync for-head and the
+                    # simple-generator peephole have their own arms and never
+                    # land here. The bare member read is what begin()/end()
+                    # are taken off, so the read itself is the whole render.
+                    # ITERABLE only -- at the generic VALUE position a
+                    # container field read is a copy-vs-alias decision its own
+                    # consumers make.
+                    # DECLARED-type keyed: a NARROWED `Optional[list]` field
+                    # types as a plain container on the expr, but the AST
+                    # unwraps that read -- keep it out (same rule as the
+                    # str-family field rows).
+                    or (use.result is _ExprResultUse.ITERABLE
+                        and _plain_container_read(
+                            _field_decl_type(e, declared, analyzer))
+                        and _witness("field.container_iterable"))
                     # An F3 tuple FIELD read consumed by a borrow lift
                     # (`t = h.pair` -> `tuple_to_pointer<..>(h.pair)`): the
                     # bare member read feeds the wrap.
@@ -4055,6 +4098,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         result_type=rec, cpp_type=rec.to_cpp(),
                         init=_lower_expr(a, lc, declared), form=Form.BORROW,
                         loc=getattr(a, "loc", None)))
+                elif _field_read_ref_ctor_arg(a, p.type, declared, analyzer,
+                                              mutated=i in ctor_mut):
+                    # The gate admitted this exact shape (declared field type
+                    # == slot referent), so the render IS the bare member
+                    # read. Lower it directly: the generic VALUE position the
+                    # arg loop would use re-asks the result-type question and
+                    # rejects a container field there, for copy-vs-alias
+                    # reasons that cannot arise at a same-type ref slot.
+                    args.append(_lower_expr(a, lc, declared,
+                                            field_prechecked=True))
                 else:
                     # temp_args is scoped to the specific temp-hoisting rows
                     # the gate admitted: the Own-slot copy cascade and the
@@ -4270,10 +4323,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             scalar_ctor = _eligible_scalar(rtype)
             slice_ctor = _slice_object_type(rtype)
             owned_str_ctor = _is_string_owned(rtype)
+            # `bytearray()` -- the template expands to the plain
+            # `std::vector<uint8_t>()` construction, no different in kind from
+            # the scalar ctors above; it was simply absent from the result-kind
+            # list. ARG-LESS only: `bytearray(n)` / `bytearray(b"..")` never
+            # reach this arm at all (they resolve as plain calls and are
+            # decided by the free-call arg ladder), so an arg rule here would
+            # be dead code.
+            bytearray_ctor = (not e.args and rtype is not None
+                              and is_bytearray_type(unwrap_readonly(
+                                  unwrap_ref_type(unwrap_send_sync(rtype)))))
             if not (scalar_ctor or slice_ctor or owned_str_ctor
+                    or bytearray_ctor
                     or _resolved_viewfam_value(rtype, analyzer) is not None):
                 note_detail("call.type_ctor.result_kind")
                 raise ThirUnsupported("expr.call")
+            if bytearray_ctor:
+                _witness("call.type_ctor.bytearray")
             lowered_args = []
             for a, p in zip(e.args, template_fi.params):
                 if scalar_ctor and not (
@@ -5285,10 +5351,26 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 e.expr, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.RECEIVER))
         else:
+            # A str-family FIELD inner is admitted under a view-TARGET coerce
+            # too (`return self.s` at a StrView slot): the coerce renders its
+            # inner bare, so the member read IS the emitted form -- the same
+            # read the materializing sink already threads, minus the copy.
+            # Typed on the DECLARED field type: a NARROWED `str | None` field
+            # would render `(*recv.field)` here, while the AST spells the bare
+            # member read (uncompilable -- BUGS.md), so it must stay unrouted.
+            view_str_field = (
+                isinstance(e.expr, TpyFieldAccess)
+                and e.coercion.name in _VIEW_TARGET_STR_COERCIONS
+                and _resolved_str_value(
+                    _field_decl_type(e.expr, declared, lc.analyzer),
+                    lc.analyzer) is not None
+                and _witness("coerce.str_field_view"))
             inner = _lower_expr(
                 e.expr, lc, declared,
-                field_owned_str_ok=(disp == "materialize"
-                                    and isinstance(e.expr, TpyFieldAccess)))
+                field_owned_str_ok=(
+                    view_str_field
+                    or (disp == "materialize"
+                        and isinstance(e.expr, TpyFieldAccess))))
         if (e.coercion.name in _INDIRECT_DEREF_COERCIONS
                 and isinstance(e.expr, TpyName)
                 and isinstance(inner, THIRName)
@@ -6393,6 +6475,17 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     for i, (a, p) in enumerate(zip(e.args, root.params)):
         ptype = unwrap_ref_type(p.type)
         resolved = substitute_type_params_simple(ptype, subst)
+        if isinstance(a, TpyVarargPack):
+            # The pack render is callee-kind-independent (`std::array<const
+            # T*, N> __tmp_N{...}` + `::tpy::varargs<const T>(__tmp_N)`) and
+            # `_lower_vararg_pack` already applies the readonly-slot const
+            # override; the generic path just never routed to it. The slot is
+            # passed UNSUBSTITUTED like the plain path -- the element spelling
+            # comes from the pack, the slot supplies only const-ness.
+            _witness("call.generic_vararg_pack")
+            args.append(_lower_vararg_pack(a, ptype, lc, declared,
+                                           temp_args=temp_args))
+            continue
         if not _generic_plain_arg_ok(
                 a, ptype, subst, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed)):

@@ -2318,7 +2318,12 @@ class TestCtorListLiteralArg:
         assert witnesses.get("ctor.container_literal_arg", 0) >= 1
         assert "Numbers n = Numbers({1, 2, 3});" in _cpp(self.SRC, thir=True)
 
-    def test_dict_literal_ctor_arg_stays_ast(self):
+    def test_dict_literal_ctor_arg_spelled_inline(self):
+        # A dict literal at a ctor slot renders SPELLED and INLINE -- neither
+        # the list arm's bare brace nor the free call's `__tmp_N` hoist (its
+        # sibling below still pins that). This is what the pin has always
+        # guarded; the shape routes now that the ctor arm carries the
+        # dict/set arms its stub-method twin already had.
         src = (
             "from tpy import Int32\n"
             "class Table:\n"
@@ -2326,9 +2331,14 @@ class TestCtorListLiteralArg:
             "    def __init__(self, m: dict[str, Int32]):\n        self.m = m\n"
             "def use() -> Int32:\n"
             "    t = Table({\"a\": 1})\n    return len(t.m)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert witnesses.get("ctor.container_literal_arg", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert ('Table t = Table(::tpy::ordered_map<std::string, int32_t>'
+                '({{"a", 1}}));') in cpp
+        assert "__tmp" not in cpp
+        assert cpp == _cpp(src, thir=False)
 
     def test_free_call_list_literal_arg_hoists_temp(self):
         # A free-call list-literal arg in a flush position (here a return)
@@ -2771,3 +2781,57 @@ class TestInplaceDunderAdmission:
         thir = _lower_ctx(self._SRC)
         assert _fn(thir, "__iadd__") is not None
         _assert_byte_identical(self._SRC)
+
+
+class TestGenericVarargPack:
+    # A `*args` pack at a GENERIC callee's vararg slot renders exactly like
+    # the plain path's (`std::array<const T*, N> __tmp_N{..}` +
+    # `::tpy::varargs<const T>(__tmp_N)`); the generic arg loop simply never
+    # routed to _lower_vararg_pack, which already applies the readonly-slot
+    # const override.
+    _SRC = (
+        "from tpy import Int32, readonly\n"
+        "class Box:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "def count_them[T](*items: T) -> Int32:\n    return len(items)\n"
+        "def count_ro[T](*items: readonly[T]) -> Int32:\n    return len(items)\n")
+
+    def test_generic_vararg_record_pack_routes(self):
+        src = (self._SRC
+               + "def via(b: Box, c: Box) -> Int32:\n"
+               + "    return count_them(b, c)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "via") is not None
+        assert w.get("call.generic_vararg_pack", 0) == 1
+        full = (src + "def main() -> None:\n"
+                "    print(via(Box(1), Box(2)))\nmain()\n")
+        cpp = _cpp(full, thir=True)
+        assert "std::array<const Box*, 2> __tmp_1{&b, &c};" in cpp
+        assert "count_them<Box>(::tpy::varargs<const Box>(__tmp_1))" in cpp
+        _assert_byte_identical(full)
+
+    def test_generic_readonly_slot_pack_adds_const(self):
+        # The readonly slot's const override is the helper's, not the caller's
+        # -- it must survive the generic route.
+        src = (self._SRC
+               + "def via(b: Box, c: Box) -> Int32:\n"
+               + "    return count_ro(b, c)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "via") is not None
+        assert w.get("call.generic_vararg_pack", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n"
+            "    print(via(Box(1), Box(2)))\nmain()\n")
+
+    def test_generic_scalar_and_empty_packs_route(self):
+        src = (self._SRC
+               + "def scalars() -> Int32:\n    return count_them(1, 2, 3)\n"
+               + "def empty() -> Int32:\n    return count_them[Box]()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "scalars") is not None
+        assert _fn(thir, "empty") is not None
+        assert w.get("call.generic_vararg_pack", 0) == 2
+        _assert_byte_identical(
+            src + "def main() -> None:\n"
+            "    print(scalars())\n    print(empty())\nmain()\n")

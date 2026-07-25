@@ -3010,9 +3010,13 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     brace-init in place (probe-verified for scalar, str, and record-rvalue
     elements), which `_lower_expr`'s container-literal arm reproduces. CTOR
     args only -- a FREE-call literal arg hoists the ref-param `__tmp_N` temp
-    on the AST path (probe-verified for const AND mutated slots), and dict /
-    set / Array literals take spelled renders (`::tpy::ordered_map<...>({{..}})`)
-    this arm does not mirror. A MUTATED ctor slot rejects (a prvalue into a
+    on the AST path (probe-verified for const AND mutated slots). Dict / set
+    literals take the SPELLED render (`::tpy::ordered_map<...>({{..}})`)
+    rather than the list arm's bare brace, but the ctor position emits them
+    INLINE like the stub-method twin (`_container_literal_method_arg`) --
+    oracle `Config(::tpy::ordered_map<std::string, ::tpy::Any>({{..}}))`, no
+    temp hoist -- so they ride this arm too. Array literals still do not.
+    A MUTATED ctor slot rejects (a prvalue into a
     non-const `T&`). Element shapes are pre-checked so admission tracks
     lowerability; the make_vector element path is rejected at lowering (its
     ctor-arg render is unverified). A DECLARED-readonly slot binds the
@@ -3028,6 +3032,10 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     if isinstance(a, TpyArrayLiteral):
         return is_list(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    if isinstance(a, TpyDictLiteral):
+        return is_dict(pt) and _container_literal_shape_ok(a, pt, analyzer)
+    if isinstance(a, TpySetLiteral):
+        return is_set(pt) and _container_literal_shape_ok(a, pt, analyzer)
     return False
 
 def _container_literal_method_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5055,6 +5063,12 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
             or _eligible_ptr_value(ret, analyzer)
+            # An open-T result (`val_or_cref_t<T> load_at(..)`): the
+            # form-neutral slot renders the bare call, exactly as the
+            # record-method gate's own `_tparam_value` row does. The two
+            # gates' result disjunctions must stay in step.
+            or (_tparam_value(ret)
+                and _witness("method.qualcall.ret_tparam"))
             # The field-receiver position (`p.Box(10).n`): an F1-record
             # result renders bare under the postfix member.
             or (record_ret_ok and _f1_record(ret, analyzer))

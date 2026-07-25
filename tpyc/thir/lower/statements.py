@@ -3612,6 +3612,25 @@ def _list_inplace_extend(stmt: TpyAugAssign, lc: _LowerCtx,
     )
 
 
+def _leaf_finally_crossing(stmt: TpyTry) -> bool:
+    """Whether a leaf try/finally CONTAINS a `return` / `break` / `continue`.
+    Those are what tie the finally frame to the resumable return
+    scaffolding; a finally without one renders as the plain sync try. The
+    walk covers every nested compound body, since a crossing buried in an
+    inner `if` binds the same scaffolding as a top-level one -- and it does
+    not track which loop a break binds to, so a break bound by a loop INSIDE
+    the try rejects too. Deliberately conservative: over-rejecting costs a
+    fallback, under-rejecting costs a divergence."""
+    stack = [s for body in stmt.sub_bodies() for s in body]
+    while stack:
+        s = stack.pop()
+        if isinstance(s, (TpyReturn, TpyBreak, TpyContinue)):
+            return True
+        for body in s.sub_bodies():
+            stack.extend(body)
+    return False
+
+
 def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
                             loc) -> 'THIRExpr | None':
     """An owned-str/bytes return slot (std::string / std::vector<uint8_t> by
@@ -3719,8 +3738,18 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         value = _lower_generic_tuple_literal(ret.value, ret_gt, lc, declared)
         _witness("res.return_generic_tuple")
         return value
+    # A str-family FIELD source reads bare into the scaffolding's
+    # `<ret_cpp> __tpy_async_ret = <value>;` decl (`__self.name`), the same
+    # read the sync return tail prechecks -- the frame's receiver respelling
+    # is the receiver machinery's job, not this arm's.
+    res_str_field = (isinstance(ret.value, TpyFieldAccess)
+                     and lc.prescan.ret_str is not None
+                     and _str_field_value_read(ret.value, declared,
+                                               lc.analyzer)
+                     and _witness("res.return_str_field"))
     value = _wrap_view_owned_return(
-        _lower_expr(ret.value, lc, declared), lc, getattr(ret, "loc", None))
+        _lower_expr(ret.value, lc, declared, field_prechecked=res_str_field),
+        lc, getattr(ret, "loc", None))
     form = async_return_form(lc.func.return_type)
     if form is AsyncReturnForm.BORROW:
         # Pointer-payload family (bare reference-type returns): the SELF
@@ -4435,13 +4464,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # An except-only leaf try pushes NO finally frame, so its emit
             # never touches __state / finally_stack / pending-return slots
             # -- the sync tiers render it byte-identically mid-state; let it
-            # fall through to the sync try arm. A finally tier interlocks
-            # the finally-frame stack with the async return scaffolding
-            # (_push_finally <-> _make_async_return's chain walk) -- a
-            # named rung.
+            # fall through to the sync try arm.
+            #
+            # A finally tier is admitted on the same reasoning ONLY when no
+            # control transfer leaves the try: what interlocks the finally
+            # frame with the async return scaffolding (_push_finally <->
+            # _make_async_return's chain walk) is a return/break/continue
+            # crossing it. Without one the finally emits as the plain sync
+            # duplicated-body try, byte-identical mid-state.
             if stmt.finally_body:
-                raise ThirUnsupported("res.leaf_try")
-            _witness("res.leaf_try_except")
+                if _leaf_finally_crossing(stmt):
+                    raise ThirUnsupported("res.leaf_try")
+                _witness("res.leaf_try_finally")
+            else:
+                _witness("res.leaf_try_except")
         if isinstance(stmt, TpyWith):
             raise ThirUnsupported("res.leaf_with")
         if isinstance(stmt, TpyMatch):

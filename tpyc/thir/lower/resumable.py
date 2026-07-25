@@ -57,6 +57,7 @@ from ...parse.nodes import (
     TpyCall,
     TpyDelVar,
     TpyExpr,
+    TpyFieldAccess,
     TpyForEach,
     TpyFunction,
     TpyIf,
@@ -131,6 +132,7 @@ from .predicates import (
     _res_container_return,
     _resolved_bytes_value,
     _resolved_str_value,
+    _str_field_value_read,
     _unwrap_own,
     _value_opt_scalar,
     _value_opt_view,
@@ -139,6 +141,7 @@ from .predicates import (
     _value_tuple_return,
 )
 from .statements import (
+    _append_assert_narrow,
     _handler_binding_type,
     _lower_alias_bind,
     _lower_borrow_tuple_frame_write,
@@ -314,6 +317,15 @@ def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
     return et if isinstance(et, TpyType) else None
 
 
+def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
+    """Whether the `__{var}` extraction alias would collide with a real frame
+    field (or `self`). On a collision the AST bumps the alias name
+    (`_fresh_alias_local`'s `__{var}_narrowed` rename), which none of the THIR
+    narrowing arms reproduce -- so every one of them rejects the shape
+    instead. Shared so the three arms cannot drift apart."""
+    return f"__{var}" in frame_fields or var == "self"
+
+
 def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                              param_types: 'dict[str, TpyType]',
                              gen_local_types: 'dict[str, TpyType]',
@@ -340,9 +352,7 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
             return "res.narrowed_resume"
         if not isinstance(fact, NominalType) or is_protocol_type(fact):
             return "res.narrowed_resume"
-        # `_fresh_alias_local` renames on a frame-field collision
-        # (`__{var}_narrowed`); mirror by rejecting the rare shape instead.
-        if f"__{var}" in frame_fields or var == "self":
+        if _alias_frame_collision(var, frame_fields):
             return "res.narrowed_resume"
     return None
 
@@ -1298,10 +1308,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if not isinstance(bb.terminator, (rcfg.ReturnT, rcfg.RaiseT)):
             raise ThirUnsupported("res.narrowed_resume")
         var, u, post = pf
-        if f"__{var}" in frame_fields or var == "self":
-            # Mirror _entry_narrowings_reject: the AST bumps a frame-field-
-            # colliding alias (_fresh_alias_local's rename arm) -- reject
-            # rather than mirror the rename.
+        if _alias_frame_collision(var, frame_fields):
             raise ThirUnsupported("res.narrowed_resume")
         saved = postif_saved[0]
         assert saved is not None
@@ -1358,7 +1365,43 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Pure skeleton (pending-return replay + exc rethrow); no leaf.
                 continue
             if _flat_narrowing_assert(stmt):
-                raise ThirUnsupported("res.narrowed_resume")
+                # The alias the AST appends inline after the assert. It does
+                # NOT need to survive the BB: the CFG flows the assert's
+                # then_type_facts into every successor's entry_narrowings
+                # (resumable_cfg's _active_narrowings), and each resume case
+                # re-establishes ALL its stamped facts as `__{var}` -- which
+                # is exactly what `_resume_narrow_envs` walks. So the alias
+                # is BB-local here, unlike the post-`if` fact, whose scope
+                # the env walk does not model.
+                av = _assert_narrow_info(stmt, declared, analyzer)
+                rv = _reassert_bump_info(
+                    stmt, declared, lc.narrow.persistent_narrowed, analyzer)
+                nvar = (av or rv or (None,))[0]
+                if nvar is None or _alias_frame_collision(nvar, frame_fields):
+                    raise ThirUnsupported("res.narrowed_resume")
+                # SNAPSHOT before mutating, and record the declared entry --
+                # `_append_assert_narrow` mutates lc.narrow IN PLACE and
+                # rebinds declared[var] with no restore of its own. The BB
+                # driver's `saved_narrow = lc.narrow` holds a REFERENCE, so
+                # without the snapshot its restore is a no-op and the
+                # narrowing would leak into every later BB in the walk (the
+                # driver's own snapshot at the narrowed-BB scope is inside
+                # `if env:`, which is empty for the BB that does the
+                # asserting). Same discipline as `_apply_leaf_post_if`.
+                saved = postif_saved[0]
+                if saved is None:
+                    raise ThirUnsupported("res.narrowed_resume")
+                lc.narrow = lc.narrow.snapshot()
+                if nvar not in saved:
+                    saved[nvar] = declared.get(nvar)
+                leaf = _lower_leaf(stmt)
+                post: list[THIRStmt] = []
+                _append_assert_narrow(stmt, post, lc, declared)
+                if not post:
+                    raise ThirUnsupported("res.narrowed_resume")
+                _witness("res.flat_assert_narrow")
+                leaves[id(stmt)] = THIRStmtSeq(stmts=(leaf, *post))
+                continue
             leaf = _lower_leaf(stmt)
             if isinstance(stmt, TpyIf):
                 leaf = _apply_leaf_post_if(stmt, leaf, bb)
@@ -1497,7 +1540,18 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 yield_values[id(ys)] = yv_lowered
                 _witness("res.yield_record_borrow")
                 return
-            yv_lowered = _lower_expr(ys.value, lc, declared)
+            # A str-family FIELD at a str yield slot reads bare (`return
+            # __case_0.name;`), the same precheck the return sinks thread. A
+            # slot needing conversion arrives as a coerce, not a bare field,
+            # so this admits only the no-conversion form.
+            yv_str_field = (isinstance(ys.value, TpyFieldAccess)
+                            and _resolved_str_value(yt_bare,
+                                                    analyzer) is not None
+                            and _str_field_value_read(ys.value, declared,
+                                                      analyzer)
+                            and _witness("res.yield_str_field"))
+            yv_lowered = _lower_expr(ys.value, lc, declared,
+                                     field_prechecked=yv_str_field)
             if (isinstance(ys.value, TpyName)
                     and ys.value.name in ptr_frame_locals
                     and isinstance(yv_lowered, THIRName)

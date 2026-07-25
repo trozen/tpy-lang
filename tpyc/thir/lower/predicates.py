@@ -59,6 +59,7 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
+    RefType,
     PendingDictType,
     PendingListType,
     PendingSetType,
@@ -203,11 +204,15 @@ _FLOAT_LIT_COERCION = "float_literal_to_float"
 # (materializing at some sinks) -- see _coerce_disposition.
 _STRING_TO_STR_COERCION = "string_to_str"
 
+# Str-family coercions whose target is a VIEW: the result borrows the source's
+# buffer, so the coerce renders its inner bare at every position.
+_VIEW_TARGET_STR_COERCIONS = frozenset({"str_to_strview", "string_to_strview"})
+
 # Str-family coercions that are identity in EVERY position (no codegen lambda):
 # both sides of string_to_str spell std::string; the two *_to_strview arms feed
 # a std::string_view slot every source converts into implicitly.
-_IDENTITY_STR_COERCIONS = frozenset(
-    {_STRING_TO_STR_COERCION, "str_to_strview", "string_to_strview"})
+_IDENTITY_STR_COERCIONS = (frozenset({_STRING_TO_STR_COERCION})
+                           | _VIEW_TARGET_STR_COERCIONS)
 
 # Scalar-cast coercions whose codegen lambda is a fixed template around the
 # inner render, position-independent -- mirrored here as `{0}` templates and
@@ -2414,6 +2419,18 @@ def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
         return None
     return u if (is_list(u) or is_dict(u) or is_set(u)) else None
 
+def _plain_container_read(t: TpyType | None) -> bool:
+    """A plain (non-`Own`) list/dict/set read at a position where the bare
+    read IS the whole render -- the for-head, whose begin()/end() are taken
+    off it directly, and the `std::ranges::contains` haystack. `Own` is
+    excluded: a consuming iteration moves the container
+    (`own_iter(std::move(..))`), a different render."""
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return (not isinstance(u, OwnType)
+            and (is_list(u) or is_dict(u) or is_set(u)))
+
 def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None':
     """The resolved owned str/bytes family behind an `Own[str]` / `Own[bytes]`
     return slot, or None. The slot spells the same owned storage type the bare
@@ -3627,7 +3644,13 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
     declared type). Consumers type on it rather than the flow-narrowed expr
     type, so a narrowed Optional/union field -- whose AST render takes the
     `(*recv.field)` unwrap -- types at the un-narrowed declared type and
-    rejects at the caller's family check."""
+    rejects at the caller's family check.
+
+    A non-NAME receiver (a nested `a.b.c` chain) has no declared entry to read,
+    so it answers None -- a caller that has not run the receiver gate first
+    gets a reject rather than an AttributeError."""
+    if not isinstance(e.obj, TpyName):
+        return None
     base = declared.get(e.obj.name)
     if base is None:
         return None
@@ -4857,6 +4880,35 @@ def _scalar_pass_through_slot(ptype: TpyType | None, analyzer) -> bool:
     if isinstance(t, OwnType):
         t = unwrap_readonly(t.wrapped)
     return _resolved_scalar(t, analyzer)
+
+def _field_read_ref_ctor_arg(a: TpyExpr, ptype: TpyType | None,
+                             locals_: dict[str, TpyType], analyzer,
+                             *, mutated: bool = False) -> bool:
+    """A bare FIELD read into a ctor REF slot whose referent is the field's own
+    declared type (`IntListIter(this->items)`, `Pair<B, A>(p.second, p.first)`,
+    `Grid<T, N>(this->_value)`): the member read binds the `const T&` slot
+    directly, so the emit is the bare read on both paths -- the field twin of
+    `_container_pass_through_arg`'s bare-NAME row, and the reason it covers
+    containers and open-T alike is that the rule is slot/field type EQUALITY,
+    not a family list.
+
+    Keyed on the DECLARED field type, so a narrowed field types at its
+    un-narrowed type and stays out (its AST render takes the unwrap). A
+    MUTATED slot is excluded: the equality rule cannot see whether the callee
+    writes through the `T&`, so the conservative fence is the same one the
+    shared rows use."""
+    if mutated or not isinstance(a, TpyFieldAccess):
+        return False
+    if not _field_receiver_ok(a, locals_, analyzer):
+        return False
+    if not isinstance(unwrap_send_sync(ptype), RefType):
+        return False
+    ft = _field_decl_type(a, locals_, analyzer)
+    if ft is None:
+        return False
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    return unwrap_readonly(ft) == slot
+
 
 def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                                 locals_: dict[str, TpyType], analyzer) -> bool:

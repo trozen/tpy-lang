@@ -3958,3 +3958,51 @@ class TestStructProtoUnionArg:
         assert _fn(thir, "use") is not None
         assert faces.get("method.struct_proto_union_arg")
         _assert_byte_identical(src)
+
+
+class TestContainerFieldBareRead:
+    # A container FIELD reads bare at the two positions where the read IS the
+    # whole render: the for-head (begin()/end() taken off it) and the
+    # `std::ranges::contains` haystack. Both key on `_field_receiver_ok`, so a
+    # nested receiver chain stays out.
+    _BAG = (
+        "from tpy import Int32\n"
+        "class Node:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+        "class Bag:\n"
+        "    nodes: list[Node]\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.nodes = [Node(1)]\n        self.xs = [1, 2]\n")
+
+    def test_container_field_membership_routes(self):
+        src = (self._BAG
+               + "    def has(self, item: Int32) -> bool:\n"
+               + "        return item in self.xs\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("binop.membership_container_field", 0) == 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n    print(Bag().has(1))\nmain()\n")
+
+    def test_nested_field_receiver_still_defers(self):
+        # BOUNDARY: both arms ride `_field_receiver_ok`, which admits a bare
+        # NAME receiver only -- a nested `self.inner.xs` chain is unvetted and
+        # must keep falling back at both positions.
+        src = ("from tpy import Int32\n"
+               "class Inner:\n"
+               "    xs: list[Int32]\n"
+               "    def __init__(self) -> None:\n        self.xs = [1, 2]\n"
+               "class Outer:\n"
+               "    inner: Inner\n"
+               "    def __init__(self) -> None:\n"
+               "        self.inner = Inner()\n"
+               "    def has(self, item: Int32) -> bool:\n"
+               "        return item in self.inner.xs\n"
+               "    def total(self) -> Int32:\n"
+               "        n = 0\n"
+               "        for x in self.inner.xs:\n            n = n + x\n"
+               "        return n\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "has") is None
+        assert _fn(thir, "total") is None

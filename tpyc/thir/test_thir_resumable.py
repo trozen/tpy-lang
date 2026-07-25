@@ -1776,19 +1776,23 @@ class TestNarrowedResume:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "__a.sound()" in cpp
 
-    def test_narrowing_assert_leaf_defers(self):
+    def test_narrowing_assert_leaf_routes(self):
         # A top-level narrowing assert in the flat BB walk: the AST's
-        # _gen_assert emits the persistent extraction inline; only
-        # _lower_stmts' post-assert arm mirrors that (compound bodies), so
-        # the flat walk rejects rather than silently dropping the alias.
+        # _gen_assert emits the persistent extraction inline. The flat walk
+        # used to reject rather than silently DROP that alias; it now
+        # appends it (res.flat_assert_narrow), which is what the pin was
+        # really guarding -- the alias must not go missing.
         src = (self._UNION
                + "async def f(a: Dog | Cat) -> str:\n"
                + "    await step(0)\n"
                + "    assert isinstance(a, Dog)\n"
                + "    return a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.narrowed_resume") == 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.flat_assert_narrow", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__a.sound()" in cpp
 
     def test_postif_crossing_suspension_defers(self):
         # The post-if scope is BB-LOCAL: a suspension after the narrowing
@@ -2718,7 +2722,11 @@ class TestLeafTryExcept:
         assert witnesses.get("res.leaf_try_except") == 1
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_finally_leaf_try_defers(self):
+    def test_finally_leaf_try_mid_frame_routes(self):
+        # A leaf finally MID-FRAME (an await before it, so the try is a leaf
+        # inside a multi-state frame) still renders as the plain sync try --
+        # no crossing, so no finally-frame scaffolding is involved. A
+        # crossing keeps rejecting; TestResumableLeafFinally pins that.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -2727,8 +2735,9 @@ class TestLeafTryExcept:
                + "    finally:\n        print(0)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.leaf_try") == 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_finally", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 _ALIAS_PRE = ("import asyncio\nfrom tpy import Int32\n\n"
@@ -3805,10 +3814,14 @@ class TestBranchFrameDecls:
         assert _res_fallback(src).get("res.leaf_field_write") == 1
         _assert_identical(src)
 
-    def test_try_finally_frame_decl_defers(self):
-        # BOUNDARY: a try with a FINALLY interlocks the finally-frame stack
-        # with the return scaffolding -- the whole leaf keeps rejecting, so
-        # the decl inside it never reaches the branch arm.
+    def test_try_finally_frame_decl_routes(self):
+        # A frame-slot decl inside a crossing-free leaf finally now reaches
+        # the branch arm (the enclosing leaf no longer rejects wholesale):
+        # the slot type and the write agree here (`frame_slot<std::vector<
+        # int32_t>>` / `.emplace(std::vector<int32_t>{..})`). The BUGS.md
+        # try-body slot-type defect needs a try/EXCEPT pair declaring the
+        # same name with differently-shaped literals per arm, which this
+        # single-decl try/finally never forms.
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -3819,8 +3832,10 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return n + len(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.leaf_try") == 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_finally", 0) == 1
+        assert witnesses.get("res.branch_frame_slot_write", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestFinallyHelper:
@@ -4780,3 +4795,270 @@ class TestAwaitArgDcbpConstWrap:
         _, hpp, _cpp = _gen(src, thir=True)
         assert "std::tuple<const A*, const A*> p" in hpp
         assert "const A* a" in hpp
+
+
+class TestResumableStrFieldSinks:
+    # A str-family FIELD reads bare at both resumable str sinks -- the async
+    # return's `__tpy_async_ret` decl and the yield expression -- the same
+    # `_str_field_value_read` precheck the sync return tail threads. A slot
+    # needing conversion arrives as a coerce instead, so these arms admit
+    # only the no-conversion form.
+    _BOX = (
+        "from typing import Iterator\n"
+        "from tpy import StrView\n"
+        "class Box:\n"
+        "    s: str\n"
+        "    v: StrView\n"
+        "    opt: str | None\n"
+        "    def __init__(self, s: str, v: StrView) -> None:\n"
+        "        self.s = s\n        self.v = v\n        self.opt = None\n")
+
+    def test_async_return_str_field_routes(self):
+        src = (self._BOX
+               + "    async def own(self) -> str:\n        return self.s\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.return_str_field", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_yield_str_field_routes(self):
+        # Owned member and a NARROWED `str | None` member (whose read renders
+        # the `(*__self.opt)` unwrap on both paths) take this arm. The StrView
+        # member at an OWNED-str slot does not: it needs the view->owned copy,
+        # so sema wraps a materializing coerce and it rides the coerce arm's
+        # own str-field threading -- routed either way, hence the flat count.
+        src = (self._BOX
+               + "    def gen(self) -> Iterator[str]:\n"
+               + "        yield self.s\n        yield self.v\n"
+               + "        if self.opt is not None:\n"
+               + "            yield self.opt\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.yield_str_field", 0) == 2
+        assert witnesses.get("field.narrowed_deref", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_nested_field_receiver_still_defers(self):
+        # BOUNDARY: the precheck rides `_str_field_value_read`, whose receiver
+        # gate admits a bare NAME only -- a nested `self.inner.s` receiver has
+        # no admitted binding, so the body must keep falling back rather than
+        # render an unvetted receiver chain.
+        src = ("from typing import Iterator\n"
+               "class Inner:\n"
+               "    s: str\n"
+               "    def __init__(self, s: str) -> None:\n        self.s = s\n"
+               "class Outer:\n"
+               "    inner: Inner\n"
+               "    def __init__(self, i: Inner) -> None:\n"
+               "        self.inner = i\n"
+               "    def gen(self) -> Iterator[str]:\n"
+               "        yield self.inner.s\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        assert "field.result_type" in str(_res_fallback(src))
+
+
+class TestResumableContainerFieldForHead:
+    # A container FIELD as the for-head iterable inside a RESUMABLE frame:
+    # begin()/end() are taken off the bare member read (`(__self.xs).begin()`).
+    # The sync for-head and the simple-generator peephole have their own arms,
+    # so this needs a frame-forcing shape (a yield before the loop).
+    _BAG = (
+        "from typing import Iterator\n"
+        "from tpy import Int32\n"
+        "class Bag:\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self) -> None:\n        self.xs = [1, 2]\n")
+
+    def test_container_field_for_head_routes(self):
+        src = (self._BAG
+               + "    def gen(self) -> Iterator[Int32]:\n"
+               + "        yield 0\n"
+               + "        for x in self.xs:\n            yield x\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("field.container_iterable", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_narrowed_optional_container_field_still_defers(self):
+        # BOUNDARY: a NARROWED `Optional[list]` field types as a plain
+        # container on the EXPR but the AST unwraps that read, so the arm
+        # keys on the DECLARED type and this must keep falling back.
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32\n"
+               "class H:\n"
+               "    xs: Optional[list[Int32]]\n"
+               "    def __init__(self) -> None:\n        self.xs = None\n"
+               "    def gen(self) -> Iterator[Int32]:\n"
+               "        yield 0\n"
+               "        if self.xs is not None:\n"
+               "            for x in self.xs:\n                yield x\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src)
+
+
+class TestResumableLeafFinally:
+    # A leaf try/FINALLY in a resumable renders as the plain sync
+    # duplicated-body try -- no finally-frame scaffolding -- as long as no
+    # return/break/continue crosses it. A crossing is exactly what ties the
+    # finally frame to the async return chain, and stays rejected.
+    _PRE = "from tpy import Int32\n\n"
+
+    def test_leaf_finally_without_crossing_routes(self):
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    try:\n        total = total + n\n"
+               + "    finally:\n        print('cleanup')\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_finally", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_leaf_finally_with_except_routes(self):
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    try:\n        total = total + n\n"
+               + "    except ValueError:\n        print('handler')\n"
+               + "    finally:\n        print('cleanup')\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, _fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_try_finally", 0) == 1
+
+    def test_return_inside_try_still_defers(self):
+        # BOUNDARY: the return is what binds the finally frame to
+        # _make_async_return's chain walk -- the named rung.
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        return n\n"
+               + "    finally:\n        print('cleanup')\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert "leaf_try" in str(_res_fallback(src))
+
+    def test_self_contained_break_still_defers(self):
+        # The walk does not track which loop a break binds to, so a break
+        # bound by a loop INSIDE the try rejects even though it never leaves
+        # the finally. Pinned as the deliberate over-rejection it is: cheap
+        # to relax later, and a fallback costs nothing but coverage.
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    try:\n"
+               + "        for i in range(n):\n"
+               + "            if i > 2:\n                break\n"
+               + "            total = total + i\n"
+               + "    finally:\n        print('cleanup')\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert "leaf_try" in str(_res_fallback(src))
+
+    def test_escaping_continue_still_defers(self):
+        # A continue bound by a loop OUTSIDE the try genuinely crosses the
+        # finally -- the case the conservative walk exists for.
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for i in range(n):\n"
+               + "        try:\n"
+               + "            if i > 2:\n                continue\n"
+               + "            total = total + i\n"
+               + "        finally:\n            print('cleanup')\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert "leaf_try" in str(_res_fallback(src))
+
+    def test_nested_return_inside_try_still_defers(self):
+        # The crossing is found through nested compound bodies too.
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        if n > 0:\n            return n\n"
+               + "        print('zero')\n"
+               + "    finally:\n        print('cleanup')\n"
+               + "    return 0\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert "leaf_try" in str(_res_fallback(src))
+
+
+class TestResumableFlatAssertNarrow:
+    # A top-level narrowing `assert isinstance` in a resumable flat BB: the
+    # AST appends the extraction alias inline, and the alias is BB-LOCAL --
+    # the CFG flows the assert's then_type_facts into every successor's
+    # entry_narrowings, and each resume case re-establishes its stamped facts
+    # as `__{var}`. That is why this needs no scope guard, unlike the post-if
+    # fact whose live scope the env walk does not model.
+    _PRE = "from typing import Iterator\n\n"
+
+    def test_flat_assert_narrow_routes(self):
+        src = (self._PRE
+               + "def checked(a: int | str) -> Iterator[str]:\n"
+               + "    assert isinstance(a, int)\n"
+               + '    yield "checked"\n'
+               + "    yield str(a + 100)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.flat_assert_narrow", 0) == 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_reassert_after_suspension_defers(self):
+        # BOUNDARY, and the cost of the scope fix: a SECOND assert on the
+        # same subject lands in a later BB, whose boundary restore has
+        # already popped the persistent-narrowing fact `_reassert_bump_info`
+        # needs -- so it no longer classifies as a bump and the body falls
+        # back. That is the safe direction: the alternative was leaking the
+        # narrowing across BBs, which emitted an out-of-scope alias.
+        src = (self._PRE
+               + "def reassert(a: int | str) -> Iterator[str]:\n"
+               + "    assert isinstance(a, int)\n"
+               + "    yield str(a + 1)\n"
+               + "    assert isinstance(a, int)\n"
+               + "    yield str(a + 2)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src)
+        _assert_identical(src)
+
+    def test_frame_field_alias_collision_still_defers(self):
+        # BOUNDARY: when the alias name `__{var}` collides with a real frame
+        # field, the AST bumps it via _fresh_alias_local's rename, which this
+        # mirror does not reproduce -- the same fence _apply_leaf_post_if and
+        # the entry-narrowing gate carry.
+        src = (self._PRE
+               + "def gen(a: int | str) -> Iterator[str]:\n"
+               + "    __a = 5\n"
+               + "    assert isinstance(a, int)\n"
+               + "    yield str(a + __a)\n"
+               + "    yield str(__a)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.narrowed_resume") == 1
+
+
+class TestFlatAssertNarrowScoping:
+    # REGRESSION for the BB-scope leak: `_append_assert_narrow` mutates
+    # lc.narrow in place and rebinds declared[var] with no restore of its
+    # own, and the BB driver's `saved_narrow = lc.narrow` holds a REFERENCE
+    # -- so without the arm's own snapshot the restore is a no-op and the
+    # narrowing leaks into every later BB (the driver's snapshot sits inside
+    # `if env:`, and the asserting BB's entry env is empty by construction).
+    def test_narrowing_does_not_leak_past_its_bb(self):
+        # `a` is narrowed only inside the if-arm; the else-arm reads it
+        # UN-narrowed, which the print sink cannot route -- so the body must
+        # FALL BACK at the union-name print. MUTATION-CHECKED: with the
+        # snapshot removed this same body ROUTES (fallback {}) because the
+        # leaked narrowing makes the else-arm read look narrowed. Asserting
+        # the reason, not merely "identical", is what makes this fail.
+        src = (self._PRE
+               + "def gen(a: int | str, flag: bool) -> Iterator[str]:\n"
+               + "    if flag:\n"
+               + "        assert isinstance(a, int)\n"
+               + "        yield str(a + 1)\n"
+               + "    else:\n"
+               + "        print(a)\n"
+               + '    yield "end"\n\n'
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert "print.arg.union_name" in str(fb), fb
+        _assert_identical(src)
+
+    _PRE = "from typing import Iterator\n\n"

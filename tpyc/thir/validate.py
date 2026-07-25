@@ -48,6 +48,7 @@ from ..type_def_registry import (
 )
 from ..typesys import (
     AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
@@ -146,6 +147,15 @@ def _borrow_legal_return(rt) -> bool:
     if (isinstance(t, OwnType)
             and isinstance(unwrap_readonly(t.wrapped), NominalType)
             and not t.wrapped.is_value_type()):
+        return True
+    # `Own[T]` with T an open type param: the C++ argument above is the same
+    # at every instantiation (`val_or_cref_t<T>` -> `T` is the same NRVO /
+    # implicit-move materialization), but a TypeParamRef is not a
+    # NominalType, so the row above misses it and the walk FAILS instead of
+    # falling back. Deliberately narrow: a non-Own open-T return and an
+    # Own[union] (non-Nominal wrapped) must keep failing here.
+    if (isinstance(t, OwnType)
+            and isinstance(unwrap_readonly(t.wrapped), TypeParamRef)):
         return True
     if not t.is_value_type():
         return True

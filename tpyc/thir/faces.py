@@ -623,6 +623,46 @@ THIR_FACES: frozenset[str] = frozenset({
     # A spanlike coerce over an array-literal inner: the helper wraps the
     # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
     "coerce.span_array_literal",
+    # A leaf try/FINALLY in a resumable with no return/break/continue
+    # crossing it: renders as the plain sync duplicated-body try, so no
+    # finally-frame scaffolding is involved.
+    "res.leaf_try_finally",
+    # A top-level narrowing `assert isinstance` in a resumable flat BB: the
+    # alias is appended after the assert and is BB-local (each resume case
+    # re-establishes the stamped fact).
+    "res.flat_assert_narrow",
+    # A CONTAINER field at the RESUMABLE for-head's iterable position: the
+    # bare member read is what begin()/end() are taken off
+    # (`(__self.nodes).begin()`). The sync for-head has its own arm.
+    "field.container_iterable",
+    # A CONTAINER field as the `std::ranges::contains` haystack
+    # (`item in self.xs` -> `std::ranges::contains(this->xs, item)`).
+    "binop.membership_container_field",
+    # A str-family FIELD source at a RESUMABLE str return slot: the bare
+    # member read feeds the `<ret_cpp> __tpy_async_ret = <value>;` decl.
+    "res.return_str_field",
+    # A str-family FIELD at a str YIELD slot: the bare member read is the
+    # yielded expression (`return __case_0.name;`).
+    "res.yield_str_field",
+    # A str-family FIELD read under a view-TARGET coerce (`return self.s` at a
+    # StrView slot): the coerce renders its inner bare, so the member read is
+    # the emitted form. Declared-type keyed -- a narrowed `str | None` field
+    # stays unrouted (its AST render is broken, see BUGS.md).
+    "coerce.str_field_view",
+    # An open-T result at a marker/qualcall slot (`val_or_cref_t<T>`): the
+    # form-neutral slot renders the bare call.
+    "method.qualcall.ret_tparam",
+    # A bare FIELD read into a ctor REF slot of the field's own declared type
+    # (`IntListIter(this->items)` / `Pair<B, A>(p.second, p.first)`): the
+    # member read binds the `const T&` slot directly.
+    "ctor.field_read_ref_arg",
+    # `bytearray()` -- the type-ctor template expands to the plain
+    # `std::vector<uint8_t>()` construction. Arg-less only; `bytearray(n)`
+    # resolves as a plain call and never reaches this arm.
+    "call.type_ctor.bytearray",
+    # A `*args` pack at a GENERIC callee's vararg slot -- the same
+    # `std::array` temp + `::tpy::varargs<..>` render the plain path uses.
+    "call.generic_vararg_pack",
     # `into_any` coercion: a scalar / str / bytes / None value wrapped into a
     # `tpy::Any` cell via `make_any` (`x: Any = 42` / `Any(v)`).
     "coerce.into_any",

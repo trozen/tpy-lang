@@ -144,6 +144,54 @@ class TestStrValues:
         assert ret.form is Form.BORROW
         assert _emit_expr(ret) == "a"
 
+    # `return self.s` at a StrView slot: the str_to_strview coerce renders its
+    # inner bare, so the member read is the emitted form (`return this->s;`).
+    _VIEW_FIELD = (
+        "from tpy import StrView\n"
+        "class Box:\n"
+        "    s: str\n"
+        "    v: StrView\n"
+        "    opt: str | None\n"
+        "    def __init__(self, s: str, v: StrView) -> None:\n"
+        "        self.s = s\n        self.v = v\n        self.opt = None\n")
+
+    def test_view_coerce_str_field_inner_routes(self):
+        # Only the OWNED `str` member needs the coerce arm: a StrView member
+        # at a StrView slot needs no conversion, so sema wraps no TpyCoerce
+        # and it rides the sync return's own str-field arm (ret.str_field).
+        thir, faces = _lower_ctx_witnessed(
+            self._VIEW_FIELD
+            + "    def own(self) -> StrView:\n        return self.s\n"
+            + "    def view(self) -> StrView:\n        return self.v\n")
+        assert faces.get("coerce.str_field_view", 0) == 1
+        assert faces.get("ret.str_field", 0) == 1
+
+    def test_view_coerce_str_field_byte_identical(self):
+        # Both receiver shapes (self and a record param) and both field
+        # families (owned `str` member, `StrView` member).
+        _assert_byte_identical(
+            self._VIEW_FIELD
+            + "    def own(self) -> StrView:\n        return self.s\n"
+            + "    def view(self) -> StrView:\n        return self.v\n"
+            + "def param_recv(b: Box) -> StrView:\n    return b.s\n"
+            + "def main() -> None:\n"
+            + '    b = Box("hello", "vv")\n'
+            + "    print(b.own())\n    print(b.view())\n"
+            + "    print(param_recv(b))\n"
+            + "main()\n")
+
+    def test_narrowed_optional_str_field_stays_ast(self):
+        # BOUNDARY: a NARROWED `str | None` field renders `(*this->opt)`, but
+        # the AST emits the bare member read there -- uncompilable (BUGS.md).
+        # The admission types on the DECLARED field type so the shape stays
+        # unrouted instead of diverging from (and silently fixing) the oracle.
+        thir = _lower_ctx(
+            self._VIEW_FIELD
+            + "    def opt_view(self) -> StrView:\n"
+            + "        if self.opt is not None:\n            return self.opt\n"
+            + '        return "empty"\n')
+        assert _fn(thir, "opt_view") is None
+
     def test_string_param_print_routes(self):
         thir = _lower(
             "from tpy import String\n"
