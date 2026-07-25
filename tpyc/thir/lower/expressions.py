@@ -12,6 +12,7 @@ from ...parse.nodes import (
     FSTRING_CONV_NONE,
     FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
+    SourceLocation,
     TpyArrayLiteral,
     TpyBinOp,
     TpyBoolLiteral,
@@ -477,6 +478,37 @@ from .checks import (
     _value_tuple_pass_through_arg,
     _value_union_temp_arg,
 )
+
+
+_COPY_SRC_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND)
+
+
+def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
+                       declared: dict[str, TpyType], *,
+                       slot_type: 'TpyType | None' = None,
+                       exact: bool = False,
+                       pointers: 'set[str] | None' = None,
+                       use: _ExprUse = _COPY_SRC_USE,
+                       loc: 'SourceLocation | None' = None
+                       ) -> 'THIRCopy | None':
+    """`copy(name)` of a plain F1-record as the copy-construct rvalue (`T(x)`,
+    _gen_copy_expr's bare-record arm). Every sink that takes this row has to
+    intercept it itself -- the special-builtin call gate rejects `copy()` in
+    the generic call tail -- so decl init, setitem value, return and the
+    `Own[record]` arg slot all land here. None = not this shape; the caller
+    falls through to its own tail.
+
+    `slot_type` is the sink's own type when it differs from the source
+    record's (the C++ spelling always follows the SOURCE); `exact` also
+    demands the source match `slot_type` nominally; `pointers` overrides the
+    excluded-source set for a sink whose admission uses a narrower one."""
+    crec = copy_plain_record_source(
+        e, lc.analyzer, lc.pointers if pointers is None else pointers)
+    if crec is None or (exact and crec != slot_type):
+        return None
+    return THIRCopy(result_type=crec if slot_type is None else slot_type,
+                    value=_lower_expr(e.args[0], lc, declared, use=use),
+                    cpp_type=lc.render_type(crec), form=Form.STORAGE, loc=loc)
 
 
 def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
@@ -7416,16 +7448,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # `T&&` slot directly -- no temp, no move. Re-runs the source check with
     # the live pointer set (the gate could not see it); a pointer-local
     # source falls through to the tail and rejects.
-    crec = copy_plain_record_source(a, lc.analyzer, lc.pointers)
-    if crec is not None:
-        w = _plain_own_slot(ptype)
-        if w is not None and crec == w:
-            return THIRCopy(
-                result_type=w,
-                value=_lower_expr(a.args[0], lc, declared,
-                                  use=_NESTED_ARG_USE),
-                cpp_type=lc.render_type(crec), form=Form.STORAGE,
-                loc=getattr(a, "loc", None))
+    own_slot = _plain_own_slot(ptype)
+    if own_slot is not None:
+        crow = _lower_copy_record(a, lc, declared, slot_type=own_slot,
+                                  exact=True, use=_NESTED_ARG_USE,
+                                  loc=getattr(a, "loc", None))
+        if crow is not None:
+            return crow
     # The Own-slot copy+move row: `auto __tmp_N = <arg>;` + the move wrap
     # at the arg position -- or the temp-free `std::move(name)` when the
     # name is movable at its last use (`_maybe_move` fires before the

@@ -163,7 +163,6 @@ from ..nodes import (
     THIRExprStmt,
     THIRFieldAccess,
     THIRConsumingIter,
-    THIRCopy,
     THIRForEach,
     THIRForIterProto,
     THIRForRange,
@@ -328,7 +327,6 @@ from .checks import (
     _bytearray_recv,
     _container_setitem_ok,
     _user_record_setitem_ok,
-    copy_plain_record_source,
     _func_ref_routable,
     _print_kwarg_token,
     _setitem_widened_elem_ok,
@@ -379,6 +377,7 @@ from .expressions import (
     _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target,
+    _lower_copy_record,
     _lower_ctor_call_args,
     _lower_expr,
     lower_print_sink,
@@ -4679,20 +4678,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # `b = copy(a)` of a plain F1-record source: an owned record local
             # from the copy-construct rvalue (`T b = T(a);`, _gen_copy_expr's
             # bare-record arm). The source stays live (copy, not move).
-            copy_rec = (copy_plain_record_source(stmt.init, lc.analyzer,
-                                                 lc.pointers)
+            copy_row = (_lower_copy_record(stmt.init, lc, declared,
+                                           slot_type=vtype, loc=loc)
                         if fn_top else None)
-            if copy_rec is not None:
+            if copy_row is not None:
                 _witness("decl.copy_record")
-                src = _lower_expr(
-                    stmt.init.args[0], lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
-                    name=stmt.name, resolved_type=vtype,
-                    init=THIRCopy(result_type=vtype, value=src,
-                                  cpp_type=lc.render_type(copy_rec),
-                                  form=Form.STORAGE, loc=loc),
+                    name=stmt.name, resolved_type=vtype, init=copy_row,
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
             # Owned record local: `Box b = Box(n);` -- the plain value decl,
             # cpp_type spelled the way codegen does (render_type qualifies
@@ -5863,20 +5856,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # use (the AST's `_maybe_move`), exact-type like the
                 # field-write twin. Other sources stay AST.
                 v = stmt.value
-                copy_rec = copy_plain_record_source(v, analyzer, lc.pointers)
                 vt = analyzer.get_expr_type(v)
                 vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
                        if vt is not None else None)
                 if isinstance(vtu, OwnType):
                     vtu = unwrap_readonly(vtu.wrapped)
-                if copy_rec is not None:
-                    value = THIRCopy(
-                        result_type=eu,
-                        value=_lower_expr(
-                            v.args[0], lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-                        cpp_type=lc.render_type(copy_rec),
-                        form=Form.STORAGE, loc=loc)
+                copy_row = _lower_copy_record(v, lc, declared, slot_type=eu,
+                                              loc=loc)
+                if copy_row is not None:
+                    value = copy_row
                     _witness("setitem.record_copy")
                 elif (isinstance(v, TpyName) and v.name in declared
                       and v.name not in lc.pointers
@@ -6589,23 +6577,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("ret.value_opt_view_literal")
         if (stmt.value is not None
                 and lc.prescan.ret_record_storage is not None):
-            # `return copy(p)` of a plain F1-record: the copy-construct rvalue
-            # (`return Point(p);`, _gen_copy_expr's bare-record arm) -- the
-            # return twin of the decl/assign copy_record rows. The special-
-            # builtin call gate rejects copy() in the generic tail, so
-            # intercept it here (a pointer-local source is excluded by
-            # copy_plain_record_source, whose `(*p)` render is a later rung).
-            copy_rec = copy_plain_record_source(stmt.value, analyzer, pointers)
-            if copy_rec is not None:
+            # `return copy(p)` (`return Point(p);`) -- the shared copy row at
+            # the storage-return slot, whose result type IS the source
+            # record's. Excluded sources follow this statement's admission
+            # set, not the raw `lc.pointers`.
+            copy_row = _lower_copy_record(stmt.value, lc, declared,
+                                          pointers=pointers, loc=loc)
+            if copy_row is not None:
                 _witness("ret.copy_record")
-                src = _lower_expr(
-                    stmt.value.args[0], lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-                return THIRReturn(
-                    value=THIRCopy(result_type=copy_rec, value=src,
-                                   cpp_type=lc.render_type(copy_rec),
-                                   form=Form.STORAGE, loc=loc),
-                    loc=loc)
+                return THIRReturn(value=copy_row, loc=loc)
         if (stmt.value is not None
                 and (lc.prescan.ret_record_borrow is not None
                      or lc.prescan.ret_record_storage is not None)):
