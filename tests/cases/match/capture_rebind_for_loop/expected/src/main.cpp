@@ -7,10 +7,11 @@ namespace tpyapp::main {
 // def use_for(a: Cat) -> int:
 ::tpy::BigInt use_for(const Cat& a) {
     // match a:
+    ::tpy::BigInt v;
     auto& __match_subject_1 = a;
     // case Cat(lives=v):
     {
-        auto v = __match_subject_1.lives;
+        v = __match_subject_1.lives;
         // before = v            # read the capture before the rebind
         ::tpy::BigInt before = v;
         // xs: list[int] = [1, 2, 3]
@@ -34,10 +35,11 @@ namespace tpyapp::main {
 // def use_aug(a: Cat) -> int:
 ::tpy::BigInt use_aug(const Cat& a) {
     // match a:
+    ::tpy::BigInt v;
     auto& __match_subject_1 = a;
     // case Cat(lives=v):
     {
-        auto v = __match_subject_1.lives;
+        v = __match_subject_1.lives;
         // v += 100
         v = (v) + (::tpy::BigInt(100));
         // return v              # 9 + 100

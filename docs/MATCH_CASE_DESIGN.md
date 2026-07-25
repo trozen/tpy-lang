@@ -468,12 +468,26 @@ silently lost) nor the `auto&` alias (post-rebind write-through corrupts the
 subject) matches CPython. A field/subscript write THROUGH the capture
 (`v.x = 1`, `v[0] = 1`) is legitimate CPython-visible aliasing and is NOT a
 rebind; a comprehension's own loop var (`[v for v in ...]`) is a separate
-Python-3 scope and is not one either. The value-typed force-by-value is only
-end-to-end correct for reassignment forms codegen already emits as real
-assignments (for-loop var, aug-assign, tuple-unpack); a bare-name / walrus /
-`with`-as / nested-block reassignment of a capture still hits a pre-existing
-codegen gap (the capture is redeclared, not assigned -- loud at arm top level,
-silently shadowed when nested), tracked in BUGS.md.
+Python-3 scope and is not one either. A rebound capture is additionally
+HOISTED: sema adds it to the match's branch-decl predecl set (regardless of
+whether the arms terminate, unlike the post-match-read hoist), so the capture
+declares once in the enclosing scope and both its own binding and every rebind
+emit assignments. Without that, codegen renders the capture block-scoped and a
+declare-shaped rebind (bare name, walrus, or any rebind nested in an
+inner block) emits a fresh declaration -- a loud redeclaration at arm top level,
+a silent shadow when nested. Hoisting matches CPython, where `match` is not its
+own scope and the capture is an ordinary function local; it costs nothing
+semantically because a rebound capture is always value-typed (the reference case
+is rejected above) and so was already bound by copy. A `with ... as
+<capture>` rebind remains blocked by a separate pre-existing gap -- the
+`with`-as target emit takes the address of `__enter__()`'s result for a
+predeclared local (BUGS.md), independent of `match`. The hoist also requires
+every arm binding the name to agree on its TYPE -- a name bound `int` in one
+arm and `str` in another keeps its per-arm block-scoped binding, since one
+shared slot cannot hold both. The hoist is semantics-free, not cost-free: it
+turns copy-init into default-construct + copy-assign, extends the capture's
+live range to the enclosing scope, and makes a sibling arm binding the same
+name assign into the shared slot (a copy) rather than take its own `auto&`.
 
 A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
 matches only when the variant type *and* the field value match. Such an arm

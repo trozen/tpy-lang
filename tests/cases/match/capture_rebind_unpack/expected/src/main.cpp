@@ -7,10 +7,11 @@ namespace tpyapp::main {
 // def unpack_rebind(a: Cat) -> int:
 ::tpy::BigInt unpack_rebind(const Cat& a) {
     // match a:
+    ::tpy::BigInt v;
     auto& __match_subject_1 = a;
     // case Cat(lives=v):
     {
-        auto v = __match_subject_1.lives;
+        v = __match_subject_1.lives;
         // xs: tuple[int, int] = (5, 6)
         std::tuple<::tpy::BigInt, ::tpy::BigInt> xs = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(5), ::tpy::BigInt(6)};
         // v, w = xs             # tuple-unpack rebinds the capture v

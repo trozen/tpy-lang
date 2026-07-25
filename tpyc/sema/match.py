@@ -197,6 +197,8 @@ class MatchAnalyzer:
         arm_bindings: list[dict[str, TpyType]] = []
         consumed_before = self.ctx.func.current_consumed_own_params.copy()
         arm_consumed: list[tuple[set[str], bool]] = []  # (consumed_set, terminated)
+        rebound_captures: set[str] = set()
+        capture_bind_types: dict[str, list[TpyType | None]] = {}
 
         for case in stmt.cases:
             if had_wildcard:
@@ -340,8 +342,17 @@ class MatchAnalyzer:
             # is copied; everything else borrows (copying str/BigInt pessimizes
             # the common path, a view still dangles, a reference type diverges
             # from CPython aliasing). Returns whether any binding aliases.
-            aliasing_bindings = self._annotate_capture_bind_modes(
+            aliasing_bindings, arm_rebinds = self._annotate_capture_bind_modes(
                 case.pattern, pattern_bindings, case.body)
+            # A capture the arm REBINDS must be hoisted (see the predecl block
+            # below): CPython's `match` is not its own scope, so the rebind
+            # targets the same local the capture bound. Record each capture's
+            # bound type too -- the hoist needs every arm to agree on it.
+            for cap_name, is_rebound in arm_rebinds.items():
+                capture_bind_types.setdefault(cap_name, []).append(
+                    pattern_bindings.get(cap_name))
+                if is_rebound:
+                    rebound_captures.add(cap_name)
             # An aliasing capture of an lvalue subject borrows it (pointer form),
             # exactly like `q = subject` -- record the stmt-borrow fact so the
             # branch-decl hoist picks the alias (T*) form rather than copying
@@ -498,6 +509,25 @@ class MatchAnalyzer:
             predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
         else:
             predecl = set()
+        # A rebound capture hoists on its own account, whatever the arms'
+        # termination: the hoist above serves post-match reads, but a rebind
+        # needs the binding to be an ASSIGNMENT within its own arm -- a
+        # block-scoped decl would redeclare (a loud collision at arm top level,
+        # a silent shadow in a nested block). Only value-typed captures get
+        # here; a rebound reference capture is rejected in
+        # _annotate_capture_bind_modes, and a by-value binding is already a
+        # copy, so hoisting moves the declaration without changing semantics.
+        # Only a name every binding arm agrees on the TYPE for can share one
+        # hoisted slot; a name bound at different types per arm (`case
+        # Cat(lives=v)` int / `case Dog(nick=v)` str) must keep its per-arm
+        # block-scoped binding, or both arms would assign into one wrongly
+        # typed decl.
+        hoistable = {
+            n for n in rebound_captures
+            if all(t == capture_bind_types[n][0] for t in capture_bind_types[n])
+        }
+        predecl |= ((hoistable & set(self.ctx.func.current_scope.bindings))
+                    - self.ctx.func.global_declarations)
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: self.ctx.func.current_scope.lookup(name)
@@ -520,11 +550,13 @@ class MatchAnalyzer:
     def _annotate_capture_bind_modes(
         self, pattern: TpyPattern, bindings: dict[str, TpyType],
         arm_body: list[TpyStmt],
-    ) -> bool:
+    ) -> tuple[bool, dict[str, bool]]:
         """Set `bind_by_value` on every capture node in `pattern` from its
         bound type. The flag is the single source of truth read by both codegen
         (auto vs auto&) and the dangle warning, so they cannot drift. Returns
-        True if any capture binds by reference (the warning's aliasing verdict).
+        whether any capture binds by reference (the warning's aliasing verdict)
+        and, per capture name, whether the arm rebinds it (the hoist fact) --
+        both from this one walk, so the arm body is scanned once.
 
         A by-reference capture aliases the subject storage (`auto&`); if the
         arm REBINDS that name (`for v in xs`, `v = ...`, walrus, ...), the C++
@@ -536,10 +568,13 @@ class MatchAnalyzer:
         mutation-through would be lost) nor the alias (write-through) matches.
         """
         aliases = False
+        rebound: dict[str, bool] = {}
         for node in iter_capture_bindings(pattern):
             ty = bindings.get(node.name)
             by_value = self._capture_binds_by_value(ty)
-            if not by_value and body_writes_name(arm_body, node.name):
+            writes = body_writes_name(arm_body, node.name)
+            rebound[node.name] = writes
+            if not by_value and writes:
                 bare = (unwrap_readonly(unwrap_ref_type(ty))
                         if ty is not None else None)
                 # A tuple whose elements are reference/pointer-repr is
@@ -564,7 +599,7 @@ class MatchAnalyzer:
             node.bind_by_value = by_value
             if not by_value:
                 aliases = True
-        return aliases
+        return aliases, rebound
 
     def _warn_arm_subject_mutation(
         self, case: TpyMatchCase, subject: TpyExpr,
