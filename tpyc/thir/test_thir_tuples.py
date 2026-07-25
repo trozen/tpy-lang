@@ -15,6 +15,9 @@ from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
     _lower_ctx_witnessed, _assert_byte_identical, _PRELUDE,
 )
+from ..codegen_cpp.forms import is_ptr_variant_union
+from ..typesys import TupleType, unwrap_readonly, unwrap_ref_type
+from .lower.predicates import _param_is_const, _param_is_deep_const
 
 # --- F3 form rung: storage->borrow tuple read (tuple_to_pointer) ---
 
@@ -1587,18 +1590,41 @@ class TestStandaloneUnpackOptPtrTarget:
         # readonly-inferred param -> const element pointers
         assert up.target_cpps == ("const Leaf*", "const Leaf*")
 
+    MUT = (
+        _F3_RECORDS
+        + "def bump(p: tuple[Leaf | None, Leaf | None]) -> None:\n"
+        + "    a, b = p\n"
+        + "    if a is not None:\n        a.n = a.n + 1\n")
+
     def test_opt_ptr_target_mutable_param(self):
         # A mutating body keeps the param non-const -> `Leaf*` (no const).
-        thir = _lower_ctx(
-            _F3_RECORDS
-            + "def bump(p: tuple[Leaf | None, Leaf | None]) -> None:\n"
-            + "    a, b = p\n"
-            + "    if a is not None:\n        a.n = a.n + 1\n")
+        thir = _lower_ctx(self.MUT)
         fn = _fn(thir, "bump")
         assert fn is not None
         up = fn.body[0]
         assert up.binds == ("opt_ptr", "opt_ptr")
         assert up.target_cpps == ("Leaf*", "Leaf*")
+
+    def test_source_param_const_axes_agree(self):
+        # The `const T*` element spelling keys on `_param_is_const`
+        # (signature_const), but what it actually spells is the POINTEE's
+        # const-ness -- the deep verdict. decide_param_const splits those two
+        # axes for exactly one shape, a pointer-variant union, which a
+        # TupleType never is. The arm is exact only while that holds, so pin
+        # it: were a tuple param ever to carry signature-const without
+        # deep-const, this row would spell a mutable slot `const T*`.
+        for src, name, const in ((self.OPT, "show", True),
+                                 (self.MUT, "bump", False)):
+            _compiler, modules = _compile(src)
+            entry = _entry(modules)
+            func = next(f for f in entry.ast.functions if f.name == name)
+            ptype = func.params[0][1]
+            assert isinstance(unwrap_readonly(unwrap_ref_type(ptype)),
+                              TupleType)
+            assert not is_ptr_variant_union(
+                unwrap_readonly(unwrap_ref_type(ptype)))
+            assert _param_is_const("p", func, entry.analyzer) is const
+            assert _param_is_deep_const("p", func, entry.analyzer) is const
 
     def test_opt_ptr_face_witnessed(self):
         _thir, faces = _lower_ctx_witnessed(self.OPT)
