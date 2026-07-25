@@ -217,16 +217,14 @@ def test_family_alias_no_binaries_is_not_found(sandbox):
 def test_unwritable_cache_degrades_to_uncached_probe(sandbox, tmp_path,
                                                      monkeypatch):
     fake = _write_fake_compiler(sandbox, "g++-14", exit_code=0)
-    ro = tmp_path / "ro-cache"
-    ro.mkdir()
-    ro.chmod(0o555)
-    monkeypatch.setenv("XDG_CACHE_HOME", str(ro))
-    try:
-        assert toolchain_is_viable(["g++-14"])
-        assert toolchain_is_viable(["g++-14"])
-        assert _invocations(fake) == 2      # no cache -> re-probed, no crash
-    finally:
-        ro.chmod(0o755)
+    # A plain file as the cache root makes mkdir() fail with NotADirectoryError
+    # for every user -- mode bits alone wouldn't, since root ignores them.
+    blocked = tmp_path / "blocked-cache"
+    blocked.write_text("not a directory\n")
+    monkeypatch.setenv("XDG_CACHE_HOME", str(blocked))
+    assert toolchain_is_viable(["g++-14"])
+    assert toolchain_is_viable(["g++-14"])
+    assert _invocations(fake) == 2          # no cache -> re-probed, no crash
 
 
 def test_python_floor_message(monkeypatch):
