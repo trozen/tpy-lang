@@ -3337,6 +3337,16 @@ def _container_value_opt_scalar_elem(t: TpyType | None, analyzer) -> bool:
     return _container_elem_family(
         t, analyzer, lambda a: _value_opt_scalar(a, analyzer) is not None)
 
+def _container_value_tuple_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a VALUE tuple
+    (`list[tuple[str, Int32]]`): the element is a self-contained
+    `std::tuple<...>`, so the subscript read hands out the whole tuple bare
+    exactly like a scalar element. Pointer-repr (reference-element) tuples
+    stay out -- their reads carry the borrow/storage lift."""
+    return _container_elem_family(
+        t, analyzer, lambda a: _value_tuple(a, analyzer) is not None)
+
+
 def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value subscript READ renders bare in a value
     position -- the compositional replacement for the enumerated

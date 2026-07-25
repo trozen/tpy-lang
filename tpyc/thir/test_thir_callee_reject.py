@@ -52,10 +52,10 @@ class TestIsinstanceValueRejects:
         assert detail == "call.special_form.isinstance"
 
 
-class TestStrLitOverloadPinRejects:
+class TestStrLitOverloadPinRoutes:
     # A str literal into a str/StrView slot of a MULTI-overload callee takes
-    # gen_call_arg's `param_view_t("...")` pin -- a spelling the arg lowering
-    # does not reproduce, so the whole call stays AST.
+    # gen_call_arg's `param_view_t("...")` pin, mirrored per-arg: the literal
+    # is `const char[N]` in C++, whose conversions outrank string_view's.
     SRC = (
         "from typing import overload\n"
         "from tpy import Int32\n"
@@ -66,11 +66,9 @@ class TestStrLitOverloadPinRejects:
         "def f() -> str:\n    return h(1, \"hi\")\n"
     )
 
-    def test_rejects_with_strlit_pin_detail(self):
-        routed, reason, detail = _reject_detail(self.SRC, "f")
-        assert routed is False
-        assert reason == "expr.call"
-        assert detail == "call.strlit_overload_pin"
+    def test_routes_with_pin(self):
+        routed, _reason, _detail = _reject_detail(self.SRC, "f")
+        assert routed is True
 
 
 class TestLiteralOverloadMangleRejects:

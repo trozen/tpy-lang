@@ -398,10 +398,14 @@ _BRANCH_SCOPED_SETS = (
 #   pending_view_unpack_targets -- unpack targets outlive the loop (Python
 #       scoping, like the AST's var_types); a stale entry only over-rejects
 #       at Own[str] sinks (fallback), never mis-renders.
+#   frame_local_types -- the frame's resolved slot types, seeded once by
+#       lower_resumable (the AST frame ctx's var_types); a frame field's
+#       slot is one type for the whole body, position-blind.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
     "walrus_slot_locals", "pending_view_unpack_targets",
+    "frame_local_types",
 )
 
 
@@ -429,11 +433,14 @@ class _LowerCtx:
                  "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals",
                  "value_opt_record_locals", "movable_locals",
+                 "params",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "const_storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
-                 "plain_frame_fields", "value_tuple_frame_locals",
+                 "plain_frame_fields", "borrow_tuple_frame_locals",
+                 "coro_handle_slots", "frame_local_types",
+                 "value_tuple_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
                  "unpack_ptr_targets",
                  "unhandled_hoists", "narrow",
@@ -456,6 +463,13 @@ class _LowerCtx:
                  render_concept=None) -> None:
         self.analyzer = analyzer
         self.func = func
+        # The SIGNATURE params this body is lowered against: a per-@overload
+        # stub's when one is being specialized (the AST binds the stub's
+        # types), the impl's otherwise. Every param-type lookup must read
+        # this, not `func.params` -- a stub-narrowed param is concrete here
+        # while the impl declares it Optional.
+        self.params = tuple(func.params if params_override is None
+                            else params_override)
         self.prescan = _Prescan(func, analyzer,
                                 params_override=params_override,
                                 return_type_override=return_type_override)
@@ -522,8 +536,7 @@ class _LowerCtx:
         # slots. The GATE side has no pointer-set analog for the Optional
         # names -- its faces key on the declared type in `ws.declared`.
         self.pointers: set[str] = set()
-        for pname, ptype in (func.params if params_override is None
-                             else params_override):
+        for pname, ptype in self.params:
             if _optional_ptr_borrow(ptype, analyzer) is not None:
                 self.pointers.add(pname)
         # Walrus targets already pre-declared this FUNCTION -- the AST's
@@ -621,6 +634,20 @@ class _LowerCtx:
         # differ). The branch-nested decl arm keys on it; populated only by
         # `lower_resumable`, empty for every sync body.
         self.plain_frame_fields: frozenset = frozenset()
+        # Borrow-form tuple frame fields (`std::tuple<..., T*>` bare members)
+        # and concrete-coro handle slots -- the two frame_slot-adjacent
+        # families whose write render differs from both the plain assign and
+        # the bare emplace. The branch-nested decl arm keys on them;
+        # populated only by `lower_resumable`, empty for every sync body.
+        self.borrow_tuple_frame_locals: frozenset = frozenset()
+        self.coro_handle_slots: frozenset = frozenset()
+        # Resolved frame-local types (the AST frame ctx's `var_types`): the
+        # slot's declared C++ shape, which is NOT the first decl's expression
+        # type -- a branch-declared container literal can resolve to a sized
+        # Array at one decl site while the frame slot is the merged list.
+        # Renders that spell the SLOT (the frame_slot brace-init prefix) must
+        # read this, not `declared`. Populated only by `lower_resumable`.
+        self.frame_local_types: dict = {}
         # Value/storage tuple frame fields (`std::tuple<...>` bare members):
         # the unpack arm ref-binds one as a name source
         # (`const auto& __tup_N = <name>;`). Populated only by
@@ -679,7 +706,7 @@ class _LowerCtx:
         # (a view-resolved promoted str) over-moves. The value-Optional param
         # arm below is the deliberate exception: seed_param_locals adds it to
         # codegen's movable set too, so it moves at its narrowed last-use read.
-        for pname, ptype in func.params:
+        for pname, ptype in self.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():
                 self.movable_locals.add(pname)

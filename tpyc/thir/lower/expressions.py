@@ -465,6 +465,8 @@ from .checks import (
     _native_ctx_manager_ok,
     _shared_pass_through_arg,
     _str_pass_through_arg,
+    _strlit_method_pin_arg,
+    _strlit_overload_pin_arg,
     _strlit_overload_pin_fires,
     _subscript_elem_reject,
     _subscript_recv_reject,
@@ -1162,7 +1164,7 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is an `Own[...]`-declared param of the function being
     lowered (incl. the own-optional shapes) -- the storage-owning binding."""
-    for n, t in lc.func.params:
+    for n, t in lc.params:
         if n == name:
             return (isinstance(t, TpyType)
                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
@@ -1359,7 +1361,7 @@ def _sv_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
     StrView value; and/or / ternary chains recurse)."""
     analyzer = lc.analyzer
     if isinstance(e, TpyName):
-        pt = next((t for n, t in lc.func.params if n == e.name), None)
+        pt = next((t for n, t in lc.params if n == e.name), None)
         if pt is not None and is_str_type(
                 unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))):
             return True
@@ -2117,7 +2119,7 @@ def _value_opt_scalar_binding(name: str, lc: '_LowerCtx') -> bool:
     guard (codegen never seeds a loop var or capture movable)."""
     if name in lc.value_opt_locals:
         return True
-    for n, t in lc.func.params:
+    for n, t in lc.params:
         if n == name:
             return _value_opt_scalar(t, lc.analyzer) is not None
     return False
@@ -2244,7 +2246,7 @@ def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
     """The declared type of param `name` on the function being lowered, or None
     when `name` is not a param -- the source-type lookup the arg-split shim keys
     its family match on."""
-    for n, t in lc.func.params:
+    for n, t in lc.params:
         if n == name:
             return t if isinstance(t, TpyType) else None
     return None
@@ -3146,7 +3148,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     unwrap_send_sync(rtype))), analyzer)
                 and index_ok
                 and bool(_witness("subscript.record_elem_borrow")))
+            # A VALUE-tuple element read consumed whole by the standalone
+            # unpack capture (`a, b = addrs[0]` -> `auto __tup_N =
+            # ::tpy::__getitem__(addrs, 0);`): the element is a
+            # self-contained `std::tuple<...>`, so the checked read renders
+            # bare. Scoped to the tuple-source position -- a value-position
+            # tuple element keeps its own rows.
+            tuple_elem_src_ok = (
+                use.tuple_source
+                and recv_t is not None
+                and (is_list(recv_peeled) or is_array(recv_peeled)
+                     or is_dict(recv_peeled))
+                and _value_tuple(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(rtype))), analyzer) is not None
+                and index_ok
+                and bool(_witness("subscript.value_tuple_source")))
             if not (container_ok or str_ok or bytes_ok or nested_ok
+                    or tuple_elem_src_ok
                     or record_recv_ok or tuple_elem_recv or proto_ok
                     or varargs_ok or record_elem_ok):
                 if recv_t is None:
@@ -3687,7 +3705,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # A bytes-family ternary (`a if a is not None else b`); the
                 # both-view arm shape is the only one lowered (see
                 # `_lower_if_expr`), mixed/owned arms defer there.
-                or bytes_rt is not None):
+                or bytes_rt is not None
+                # A tuple ternary renders bare (both arms target the
+                # ternary's own type, no per-arm conversion); off-slice arm
+                # shapes reject in their own lowering.
+                or isinstance(unwrap_readonly(unwrap_ref_type(rtype)),
+                              TupleType)):
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc,
@@ -4330,14 +4353,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if not _call_arity_ok(e, fi):
                 note_detail("call.arity_defaults")
                 raise ThirUnsupported("expr.call")
-            if _strlit_overload_pin_fires(e, fi, analyzer):
-                # A str literal into a str/StrView slot of a multi-overload
-                # callee takes gen_call_arg's `param_view_t("...")` pin, a
-                # spelling the arg lowering does not reproduce. A str literal
-                # into ANY other slot (a `Literal[...]` mode selector, `Char`,
-                # `String`) renders through its own arm and routes.
-                note_detail("call.strlit_overload_pin")
-                raise ThirUnsupported("expr.call")
+            # A str literal into a str/StrView slot of a multi-overload callee
+            # takes gen_call_arg's `param_view_t("...")` pin (mirrored per-arg
+            # in `_lower_free_call_arg`); a str literal into ANY other slot (a
+            # `Literal[...]` mode selector, `Char`, `String`) renders through
+            # its own arm.
         native_name = fi.native_name if _is_len_native(e) else None
         if native_name is not None and isinstance(e.args[0], TpyFieldAccess):
             _witness("len.field_recv")
@@ -4824,6 +4844,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # is not an rvalue source and stays AST (the decl sink copies it
             # through machinery this arm does not mirror).
             record_ret = (result_use is _ExprResultUse.RECEIVER
+                          # A with-manager rvalue (`with io.StringIO(s) as f:`):
+                          # the record lands in the owned `auto __ctx_N` capture
+                          # -- the record-method ladder's ctx_manager twin.
+                          or use.ctx_manager
                           or (result_use in (_ExprResultUse.BORROW_BIND,
                                              _ExprResultUse.STORAGE)
                               and is_rvalue_source(analyzer, e)))
@@ -4840,6 +4864,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     storage_ret_ok=result_use is _ExprResultUse.STORAGE,
                     value_opt_ret_ok=allow_whole_optional,
                     coro_factory_ok=use.coro_factory,
+                    iterable_ret_ok=result_use is _ExprResultUse.ITERABLE,
                     narrowed=frozenset(lc.narrow.narrowed))):
                 if mk is None:
                     note_detail(_marker_reject(e, analyzer))
@@ -5033,6 +5058,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                           temp_args=temp_args)
             _require_method_call_arg(
                 e, a, ptype, index, lc, declared, temp_args=temp_args)
+            pin_slot = _strlit_method_pin_arg(
+                e, e.resolved_function_info, a, ptype, lc.analyzer)
+            if pin_slot is not None:
+                # The method-side twin of the free call's str-literal pin: an
+                # overloaded callee would bind a competing overload through
+                # the `const char[N]` conversions.
+                _witness("call.strlit_overload_pin")
+                pinned = _lower_expr(a, lc, declared)
+                return THIRCoerce(
+                    result_type=ptype, expr=pinned,
+                    coercion_name="strlit_overload_pin",
+                    wrap=f"{pin_slot.to_cpp_param_type()}({{0}})",
+                    form=pinned.form, loc=getattr(a, "loc", None))
             if temp_args:
                 ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
                 if ut is not None and not (isinstance(a, TpyName)
@@ -6551,6 +6589,19 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                 ok = True  # witnessed at the ArgTemp arm (argtemp.container_call)
         if not ok:
             raise ThirUnsupported("expr.call")
+    pin_slot = _strlit_overload_pin_arg(e, _callee_fi, a, ptype, analyzer)
+    if pin_slot is not None:
+        # A bare str literal is `const char[N]`, whose array-to-pointer /
+        # boolean conversions outrank the user-defined string_view one, so an
+        # overloaded callee would bind a competing overload: pin the literal
+        # to its slot's view form (gen_call_arg's `overloaded_call` branch).
+        _witness("call.strlit_overload_pin")
+        pinned = _lower_expr(a, lc, declared)
+        return THIRCoerce(
+            result_type=ptype, expr=pinned,
+            coercion_name="strlit_overload_pin",
+            wrap=f"{pin_slot.to_cpp_param_type()}({{0}})",
+            form=pinned.form, loc=getattr(a, "loc", None))
     if (kind is not None and kind[0] in ("native", "native_c", "template")
             and isinstance(a, (TpyCall, TpyMethodCall))
             and _native_container_call_arg(a, ptype, analyzer)):
@@ -7003,10 +7054,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         _witness("call.record_field_arg")
         return _lower_expr(a, lc, declared, field_prechecked=True)
     if (isinstance(a, TpyName)
+            and not method_arg
             and _protocol_union_ctor_arg(a, ptype, declared, lc.analyzer)
             == "addr"):
         # A Span name into an all-protocols union ctor slot: the address-of
-        # lift (`&(s)` -- the Spannable overload binds the pointer).
+        # lift (`&(s)` -- the Spannable overload binds the pointer). CTOR
+        # positions only: a user METHOD over the same union slot is a C++
+        # template whose concept picks the branch, so its arg renders bare
+        # (`a.extend(b)`) -- the address-of would bind the wrong overload.
         return THIROptionalPtrArg(
             result_type=ptype, value=_lower_expr(a, lc, declared),
             addr_of=True, form=Form.BORROW, loc=getattr(a, "loc", None))
@@ -8115,7 +8170,7 @@ def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
         return (_str_view_arm(e.then_expr, lc)
                 and _str_view_arm(e.else_expr, lc))
     if isinstance(e, TpyName) and e.name in lc.prescan.param_names:
-        pt = next((t for n, t in lc.func.params if n == e.name), None)
+        pt = next((t for n, t in lc.params if n == e.name), None)
         if is_str_type(pt) or (isinstance(pt, LiteralType)
                                and pt.is_str_base()):
             return True
@@ -8147,7 +8202,7 @@ def _bytes_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
         return (_bytes_view_arm(e.then_expr, lc)
                 and _bytes_view_arm(e.else_expr, lc))
     if isinstance(e, TpyName) and e.name in lc.prescan.param_names:
-        pt = next((t for n, t in lc.func.params if n == e.name), None)
+        pt = next((t for n, t in lc.params if n == e.name), None)
         if is_bytes_type(pt) or is_bytes_view_type(pt):
             return True
         if _value_opt_bytes(pt, lc.analyzer) is not None:
@@ -8217,6 +8272,15 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             raise ThirUnsupported("ifexpr.bytes_mixed")
         form = Form.BORROW
         _witness("ifexpr.bytes")
+    elif isinstance(unwrap_readonly(unwrap_ref_type(slot)), TupleType):
+        # A tuple ternary carries its ARMS' form: the render is form-blind
+        # (`((c) ? (a) : (b))`), but a storage-form arm makes the whole
+        # result storage, and sinks that lift (tuple_to_pointer) must see
+        # that. Without the propagation a storage arm would report VALUE
+        # and slip past a lifting sink's admission check.
+        form = (Form.STORAGE
+                if Form.STORAGE in (then.form, orelse.form) else form)
+        _witness("ifexpr.tuple")
     else:
         _witness("ifexpr.value")
     return THIRIfExpr(result_type=slot if slot is not None else rtype,

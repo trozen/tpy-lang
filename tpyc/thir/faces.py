@@ -100,6 +100,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # sema-checked, zero emission (NoOp)
     "ctor.union_pass_arg",          # already-union NAME bare into a
                                     # same-union record-ctor slot
+    "method.struct_proto_union_arg",  # NAME into a structural-protocol union slot
     "method.union_pass_arg",        # already-union NAME bare into a non-
                                     # dcbp pointer-variant method slot
     "dynown.make_unique",           # inheritance conformer into Own[dyn P]:
@@ -170,6 +171,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.qualcall.record_storage",  # record-family qualcall rvalue at a
                                        # storage sink: bare call into the slot
     "method.container_iterable",    # container method result as a for-head iterable
+    "method.qualcall.container_iterable",  # marker-call container as a for-head iterable
+    "method.qualcall.container_discard",  # discarded marker-call container result
     "method.consuming_move",        # consuming method: std::move(name) receiver wrap
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
@@ -183,6 +186,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.imported",                # cross-module callee -> pre-rendered
                                     # `::tpyapp::mod::f` (callee_cpp)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
+    "call.strlit_overload_pin",     # str literal pinned to its overloaded slot
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
@@ -242,6 +246,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `::tpy::any_cast_or_panic<T>(x)`
     # Ptr[T]-receiver Deref method calls (lowering; the THIRMethodCall
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
+    "method.overload_set_call",     # genuine (non-mangled) method stub set call
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
     "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
     "method.user_deref_chain",      # `r.__deref__()...m(args)` user Deref proxy
@@ -834,6 +839,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.str",                   # str-family result (form-tagged)
     "ifexpr.str_mixed",             # mixed view/owned arms: view-arm wrap
     "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
+    "ifexpr.tuple",                 # tuple result: arms' form propagates
     "ifexpr.cond_pos",              # bool ternary as an if/while condition
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
@@ -1011,6 +1017,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # container ref slot (accept([x for ..]))
     "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
                                     # tuple_to_pointer at a borrow-tuple slot
+    "subscript.value_tuple_source",  # value-tuple element as an unpack source
     "subscript.record_elem_borrow", # checked F1-record element lvalue at a
                                     # BORROW_BIND sink (record ref-slot arg)
     "arg.record_borrow_call",       # T&-returning call bound inline at a
@@ -1166,7 +1173,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.postif_narrow",            # early-return narrowing leaf if (post-if alias)
     "res.finally_stop",             # generator helper return (__finally_stop pair)
     "res.branch_frame_write",       # branch-nested plain frame-field decl
+    "res.branch_btuple_write",      # branch-nested borrow-tuple frame decl
+    "res.branch_frame_slot_write",  # branch-nested frame_slot emplace decl
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
+    "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
     "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)

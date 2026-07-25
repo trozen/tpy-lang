@@ -3657,7 +3657,7 @@ class TestBranchFrameDecls:
         # is a BB chain (MatchDispatch hook mode), so the decl is a
         # top-level BB leaf taking the pre-existing frame arm -- pinning
         # the match-territory composition (a non-suspending leaf match
-        # still rejects whole via res.leaf_match).
+        # takes the sync tiers instead -- pinned below).
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -3686,12 +3686,10 @@ class TestBranchFrameDecls:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.finally_return") == 1
 
-    def test_branch_frame_slot_decl_defers(self):
+    def test_branch_frame_slot_decl_routes(self):
         # A frame_slot local (owning non-value, `.emplace()` render) first-
-        # declared in a branch stays a named reject -- only the PLAIN
-        # member-assign family routes in branch position. (A record local
-        # pins the frame_slot family directly; the list-literal flavor is
-        # covered end-to-end by cases/async/branch_decl_pending_list_frame.)
+        # declared in a branch: every frame write is position-blind, so the
+        # branch arm reuses the leaf arm's `_lower_frame_slot_write`.
         src = (_PRE
                + "class Holder:\n"
                + "    v: Int32\n"
@@ -3706,7 +3704,122 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return n + b.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_frame_slot_write", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_branch_borrow_tuple_decl_routes(self):
+        # A borrow-form tuple frame field (`std::tuple<int32_t, Holder*>`)
+        # bound on each branch: the bare member assign, shared with the leaf
+        # arm via `_lower_borrow_tuple_frame_write`.
+        src = (_PRE
+               + "from typing import Iterator\n\n"
+               + "class Holder:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def gen(b: Holder, c: Holder, cond: bool)"
+               + " -> Iterator[tuple[Int32, Holder]]:\n"
+               + "    if cond:\n"
+               + "        t = (1, b)\n"
+               + "    else:\n"
+               + "        t = (2, c)\n"
+               + "    yield t\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_btuple_write", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_try_body_frame_slot_decl_routes(self):
+        # An except-only leaf try routes through the sync tiers, so a frame
+        # decl inside its body reaches lowering -- and the nested pass-1
+        # walk must have registered its type (try_body is part of the walk).
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        xs = [n, n]\n"
+               + "    except ValueError:\n"
+               + "        xs = [0]\n"
+               + "    n = await step(n)\n"
+               + "    return n + len(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.branch_frame_slot_write", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_leaf_match_routes_through_sync_tiers(self):
+        # A NON-SUSPENDING match in a resumable body is suspension-free by
+        # construction (the CFG builder turns a suspending match into a
+        # MatchDispatch terminator), and its dispatch touches no __state /
+        # finally scaffolding -- so the sync match tiers render it
+        # byte-identically mid-state, like the except-only leaf try.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    match n:\n"
+               + "        case 0:\n            r = 100\n"
+               + "        case _:\n            r = n + 1\n"
+               + "    n = await step(n)\n"
+               + "    return r + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.leaf_match_sync", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_leaf_match_unmirrored_arm_body_defers(self):
+        # BOUNDARY: the fall-through does not blanket-admit match -- an arm
+        # body carrying a shape the sync tiers reject still falls back.
+        src = (_PRE
+               + "class Guard:\n"
+               + "    def __enter__(self) -> Int32:\n        return 1\n"
+               + "    def __exit__(self, exc_type, exc_val, exc_tb)"
+               + " -> None:\n        pass\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    match n:\n"
+               + "        case 0:\n"
+               + "            with Guard() as g:\n                r = g\n"
+               + "        case _:\n            r = n + 1\n"
+               + "    n = await step(n)\n"
+               + "    return r + n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert sum(_res_fallback(src).values()) >= 1
+        _assert_identical(src)
+
+    def test_branch_coro_handle_decl_defers(self):
+        # BOUNDARY: a concrete-coro handle slot keeps the named reject in
+        # branch position -- its leaf arm gates on a factory-call source and
+        # its NAME-source render is the two-statement emplace/reset pair.
+        src = ("import asyncio\n" + _PRE
+               + "async def step(n: Int32) -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    if n > 2:\n"
+               + "        h = step(1)\n"
+               + "    else:\n"
+               + "        h = step(2)\n"
+               + "    return await h\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.leaf_field_write") == 1
+        _assert_identical(src)
+
+    def test_try_finally_frame_decl_defers(self):
+        # BOUNDARY: a try with a FINALLY interlocks the finally-frame stack
+        # with the return scaffolding -- the whole leaf keeps rejecting, so
+        # the decl inside it never reaches the branch arm.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        xs = [n, n]\n"
+               + "    finally:\n"
+               + "        print(\"done\")\n"
+               + "    n = await step(n)\n"
+               + "    return n + len(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src).get("res.leaf_try") == 1
         _assert_identical(src)
 
 

@@ -3842,3 +3842,119 @@ class TestInstantiationGenFactoryArg:
         assert faces.get("call.inst_iter_arg")
         assert not faces.get("call.inst_gen_arg")
         _assert_byte_identical(src)
+
+
+class TestOwnElementSlotArgs:
+    """Container-method args at `Own[T]` element slots: a dict/set literal
+    renders its own spelled container, and a scalar into a value-repr
+    `Optional[scalar]` slot passes bare (std::optional converts)."""
+
+    def test_dict_literal_own_slot_routes(self):
+        src = ("def main() -> None:\n"
+               "    ds = [{1: 2}]\n"
+               "    ds.append({3: 4})\n"
+               "    print(len(ds))\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        _assert_byte_identical(src)
+
+    def test_set_literal_own_slot_routes(self):
+        src = ("def main() -> None:\n"
+               "    ss = [{1, 2}]\n"
+               "    ss.append({3, 4})\n"
+               "    print(len(ss))\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        _assert_byte_identical(src)
+
+    def test_scalar_into_value_opt_element_routes(self):
+        src = ("from tpy import Int32\n"
+               "def main() -> None:\n"
+               "    xs: list[Int32 | None] = []\n"
+               "    xs.append(Int32(1))\n"
+               "    xs.append(None)\n"
+               "    print(len(xs))\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "main") is not None
+        _assert_byte_identical(src)
+
+    def test_record_element_literal_still_defers(self):
+        # BOUNDARY: the coincidence this row rests on (the literal renders
+        # the same off the slot and off its own type) holds only for the
+        # container families -- a record-element source keeps its own rows.
+        src = ("from tpy import Int32\n"
+               "class P:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "def main() -> None:\n"
+               "    ps = [[P(1)]]\n"
+               "    ps.append([P(2)])\n"
+               "    print(len(ps))\n"
+               "main()\n")
+        _assert_byte_identical(src)
+
+
+class TestStructProtoUnionArg:
+    """A NAME into a slot that is a union of STRUCTURAL protocols
+    (`ArrayList.extend`'s `Spannable[T] | Iterable[Own[T]]`) renders BARE at a
+    user-method call: the C++ method is a template whose concept picks the
+    branch. The CTOR position keeps its address-of lift."""
+
+    _AL = ("from tpy import Int32, UInt32\n"
+           "from tplib.array_list import ArrayList\n")
+
+    def test_method_union_slot_arg_routes_bare(self):
+        src = (self._AL
+               + "def use() -> Int32:\n"
+               + "    a = ArrayList[Int32, 8]()\n"
+               + "    b = ArrayList[Int32, 8]()\n"
+               + "    b.append(1)\n"
+               + "    a.extend(b)\n"
+               + "    return Int32(len(a))\n"
+               + "print(use())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("method.struct_proto_union_arg")
+        _assert_byte_identical(src)
+        from .testutil import _compile, _entry
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(src)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert "a.extend(b);" in cpp
+        assert "a.extend(&(b));" not in cpp
+
+    def test_span_name_union_slot_arg_routes_bare(self):
+        # The Span source flavor at the same method slot.
+        src = (self._AL
+               + "from tpy import Array, span\n"
+               + "def use() -> Int32:\n"
+               + "    c = ArrayList[Int32, 8]()\n"
+               + "    arr: Array[Int32, 3] = [1, 2, 3]\n"
+               + "    s = span(arr)\n"
+               + "    c.extend(s)\n"
+               + "    return Int32(len(c))\n"
+               + "print(use())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("method.struct_proto_union_arg")
+        _assert_byte_identical(src)
+
+    def test_movable_last_use_container_source_routes_bare(self):
+        # The load-bearing coincidence: a LAST-USE (movable) container into a
+        # union carrying `Iterable[Own[T]]` renders bare on both paths only
+        # because the AST's consuming own_iter rewrite is keyed on a BARE
+        # protocol ptype. This pin fails the day that keying widens.
+        src = (self._AL
+               + "def use() -> Int32:\n"
+               + "    a = ArrayList[Int32, 8]()\n"
+               + "    src: list[Int32] = [1, 2]\n"
+               + "    a.extend(src)\n"
+               + "    return Int32(len(a))\n"
+               + "print(use())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("method.struct_proto_union_arg")
+        _assert_byte_identical(src)

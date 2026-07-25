@@ -1517,23 +1517,23 @@ class TestStrCrossTypeCoercions:
             "def f(s: str) -> None:\n    take(s[1:])\n")
         assert _fn(thir, "f") is None
 
-    def test_coerced_literal_multi_overload_pin_ineligible(self):
-        # The AST pins a str literal (COERCE-PEELED, gen_call_arg) to its
-        # param's view form for a multi-overload callee
-        # (`std::string_view("lit")`); the bare THIRCall emit does not
-        # reproduce the pin -> AST path. A non-literal arg still routes.
-        thir = _lower(
-            "from typing import overload\n"
-            "from tpy import Int32, StrView\n"
-            "@overload\n"
-            "def pick(x: StrView) -> Int32: ...\n"
-            "@overload\n"
-            "def pick(x: Int32) -> Int32: ...\n"
-            "def pick(x: StrView | Int32) -> Int32:\n    return 1\n"
-            'def caller() -> Int32:\n    return pick("lit")\n'
-            "def caller2(s: str) -> Int32:\n    return pick(s)\n")
-        assert _fn(thir, "caller") is None
+    def test_coerced_literal_multi_overload_pin_routes(self):
+        # A str literal (COERCE-PEELED) into a multi-overload callee's view
+        # slot takes gen_call_arg's pin (`std::string_view("lit")`), mirrored
+        # per-arg; a non-literal arg renders bare through the same loop.
+        src = ("from typing import overload\n"
+               "from tpy import Int32, StrView\n"
+               "@overload\n"
+               "def pick(x: StrView) -> Int32: ...\n"
+               "@overload\n"
+               "def pick(x: Int32) -> Int32: ...\n"
+               "def pick(x: StrView | Int32) -> Int32:\n    return 1\n"
+               'def caller() -> Int32:\n    return pick("lit")\n'
+               "def caller2(s: str) -> Int32:\n    return pick(s)\n")
+        thir = _lower(src)
+        assert _fn(thir, "caller") is not None
         assert _fn(thir, "caller2") is not None
+        _assert_byte_identical(src)
 
 
 

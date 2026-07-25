@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRRaise, THIRTry
-from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
+                       _lower_ctx, _lower_ctx_witnessed)
 
 
 def _cpp(src: str, thir: bool):
@@ -743,3 +744,37 @@ class TestExcConstruction:
     # constructs -- see TODO). `_lower_ctx` here cannot exercise native-exception
     # ctors (an isolated lower leaves a builtin exception's NominalType
     # unqualified, so `_f1_record` sees is_user_record False).
+
+
+class TestRaiseCallReceiverPosition:
+    """A CALL source under `raise` sits in receiver position (the postfix
+    `.__raise__()`), so its result never reaches a value slot -- the same
+    admission the field-receiver position gets."""
+
+    def test_raise_ctor_call_routes_byte_identical(self):
+        src = (_EXC
+               + "def f(code: Int32) -> None:\n"
+               + "    raise AppError(code)\n"
+               + "def main() -> None:\n"
+               + "    try:\n        f(1)\n"
+               + "    except AppError as e:\n        print(e.code)\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_raise_name_source_keeps_value_use(self):
+        # The NAME source keeps the plain value use: its pointer deref is
+        # applied by the raise arm itself, mirroring gen_expr_deref.
+        src = (_EXC
+               + "def f(cond: bool) -> None:\n"
+               + "    b = AppError(0)\n"
+               + "    if cond:\n        b = AppError(1)\n"
+               + "    raise b\n"
+               + "def main() -> None:\n"
+               + "    try:\n        f(True)\n"
+               + "    except AppError as e:\n        print(e.code)\n"
+               + "main()\n")
+        r = [s for s in _fn(_lower_ctx(src), "f").body
+             if isinstance(s, THIRRaise)][0]
+        assert isinstance(r.raise_expr, THIRName) and r.raise_expr.deref
+        _assert_byte_identical(src)

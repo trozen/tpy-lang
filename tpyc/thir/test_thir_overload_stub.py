@@ -192,7 +192,11 @@ class TestPerStubBoundaries:
         assert results and all(fn is None for fn, _ in results)
         assert all(r == "sig.overload_set.generic_stub" for _, r in results)
 
-    def test_arity_keeps_rejecting(self):
+    def test_arity_live_default_local_keeps_rejecting(self):
+        # A missing param with a LIVE default (`loud: bool = False`) needs
+        # the AST's prologue local (`bool loud = false;`) -- unmirrored, so
+        # the SHORT stub keeps the arity reject. The full-length stub has no
+        # missing param and routes on the isinstance fold.
         src = _PRELUDE + (
             "@overload\n"
             "def greet(a: Dog) -> str: ...\n"
@@ -204,8 +208,10 @@ class TestPerStubBoundaries:
             "    return str(a.lives)\n"
         )
         results = _per_stub_results(src, "greet")
-        assert results and all(fn is None for fn, _ in results)
-        assert all(r == "sig.overload_set.arity" for _, r in results)
+        assert len(results) == 2
+        assert results[0] == (None, "sig.overload_set.arity") or (
+            results[0][0] is None and results[0][1] == "sig.overload_set.arity")
+        assert results[1][0] is not None
 
     def test_literal_stubs_keep_db_compare_reject(self):
         # Literal-only groups emit via the AST's mangled-name path (the
@@ -226,9 +232,11 @@ class TestPerStubBoundaries:
         assert results and all(fn is None for fn, _ in results)
         assert all(r == "sig.overload_set.db_compare" for _, r in results)
 
-    def test_narrow_param_keeps_rejecting(self):
-        # A union impl param with NO isinstance/match in the body: the
-        # narrowing extraction skips differently per stub -- unmirrored.
+    def test_optional_narrow_param_routes(self):
+        # An OPTIONAL impl param shadowed by a stub's concrete type narrows
+        # through the shared `build_overload_narrowing`, and the body lowers
+        # against the STUB's params (lc.params), so the read renders bare --
+        # no `(*a)` deref off the impl's Optional spelling.
         src = _PRELUDE + (
             "@overload\n"
             "def tag(a: Dog) -> int: ...\n"
@@ -237,6 +245,21 @@ class TestPerStubBoundaries:
             "def tag(a: Dog | None) -> int:\n"
             "    if a is None:\n"
             "        return 0\n"
+            "    return 1\n"
+        )
+        results = _per_stub_results(src, "tag")
+        assert results and all(fn is not None for fn, _ in results)
+        _assert_byte_identical(src)
+
+    def test_multi_member_union_param_keeps_rejecting(self):
+        # BOUNDARY: a genuine multi-member UNION impl param keeps the family
+        # reject -- its per-stub narrowing extraction is unmirrored.
+        src = _PRELUDE + (
+            "@overload\n"
+            "def tag(a: Dog, b: Dog) -> int: ...\n"
+            "@overload\n"
+            "def tag(a: Cat, b: Cat) -> int: ...\n"
+            "def tag(a: Dog | Cat, b: Dog | Cat) -> int:\n"
             "    return 1\n"
         )
         results = _per_stub_results(src, "tag")
@@ -392,3 +415,48 @@ class TestPerStubReturnMismatch:
         assert any(fn is None for fn, _ in results)
         assert any(r is not None and "return.overload_mismatch" in r
                    for _, r in results)
+
+
+class TestShortStubArity:
+    """A short @overload stub routes when its omitted impl params need NO
+    prologue local -- the AST emits none for a param that narrows to NoneType
+    and is never reassigned (the `is not None` guard folds to False and dead-
+    branch elim strips every use)."""
+
+    def test_none_default_short_stub_routes(self):
+        src = (
+            "from typing import overload\n"
+            "@overload\n"
+            "def fmt(v: int) -> str: ...\n"
+            "@overload\n"
+            "def fmt(v: int, tag: str) -> str: ...\n"
+            "def fmt(v: int, tag: str | None = None) -> str:\n"
+            "    if tag is None:\n"
+            "        return str(v)\n"
+            "    return tag + str(v)\n"
+            "print(fmt(1))\n"
+            "print(fmt(1, 'x'))\n"
+        )
+        results = _per_stub_results(src, "fmt")
+        assert len(results) == 2
+        assert all(fn is not None for fn, _ in results)
+        _assert_byte_identical(src)
+
+    def test_reassigned_missing_param_keeps_rejecting(self):
+        # BOUNDARY: the missing param is REASSIGNED, so the AST emits the
+        # local after all (the NoneType-narrowing skip is gated on it).
+        src = (
+            "from typing import overload\n"
+            "@overload\n"
+            "def fmt(v: int) -> str: ...\n"
+            "@overload\n"
+            "def fmt(v: int, tag: str | None) -> str: ...\n"
+            "def fmt(v: int, tag: str | None = None) -> str:\n"
+            "    if tag is None:\n"
+            "        tag = 'd'\n"
+            "    return tag + str(v)\n"
+            "print(fmt(1))\n"
+        )
+        results = _per_stub_results(src, "fmt")
+        assert results[0][0] is None
+        assert results[0][1] == "sig.overload_set.arity"

@@ -2875,16 +2875,17 @@ class TestQualcallRecordDiscard:
         assert faces.get("method.qualcall.record_discard")
         _assert_byte_identical(src)
 
-    def test_discarded_container_qualcall_still_defers(self):
-        # BOUNDARY: re.split returns list[str] -- the container family
-        # keeps its storage/borrow duality out of the discard row.
+    def test_discarded_container_qualcall_routes(self):
+        # A DISCARDED container result has no consumer, so the storage/borrow
+        # duality that keeps containers out of the value positions cannot
+        # bite -- the render is the same bare call statement.
         src = ("import re\n"
                "def f() -> None:\n"
                '    re.split(",", "a,b")\n'
                '    print("done")\n')
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("method.qualcall.record_discard")
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.qualcall.container_discard")
         _assert_byte_identical(src)
 
 
@@ -2904,4 +2905,123 @@ class TestQualcallRecordStorageSync:
                "    print(d.year > 1970)\n")
         thir, _faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+
+class TestQualcallAutoCapturePositions:
+    """Marker-call results consumed by an `auto` capture -- the with-manager
+    slot and the for-head iterable -- take the bare call whatever the result
+    family: no typed value slot is involved."""
+
+    def test_ctx_manager_record_qualcall_routes(self):
+        src = ("import io\n"
+               "def f() -> None:\n"
+               '    with io.StringIO("ctx") as s:\n'
+               "        print(s.read())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.marker_qualified")
+        _assert_byte_identical(src)
+
+    def test_iterable_container_qualcall_routes(self):
+        src = ("import re\n"
+               "def f() -> None:\n"
+               '    for part in re.split(",", "a,b"):\n'
+               "        print(part)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.qualcall.container_iterable")
+        _assert_byte_identical(src)
+
+    def test_container_qualcall_borrow_bind_still_defers(self):
+        # BOUNDARY: a container result at a BORROW_BIND sink (an alias local
+        # off the call) keeps rejecting -- binding a reference to the
+        # temporary is the storage/borrow duality the capture rows dodge.
+        src = ("import re\n"
+               "def f() -> None:\n"
+               '    parts = re.split(",", "a,b")\n'
+               "    alias = parts\n"
+               "    print(len(alias))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("method.qualcall.container_iterable")
+        _assert_byte_identical(src)
+
+
+class TestGenuineMethodOverloadCallSite:
+    """A genuine (non-literal-mangled, non-template) method stub set renders
+    the plain `recv.method(args)` -- C++ overload resolution picks the
+    specialization the AST emitted per stub."""
+
+    def test_plain_stub_set_call_routes(self):
+        src = ("from tpy import Int32\n"
+               "from typing import overload\n"
+               "class W:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n        self.n = 0\n"
+               "    @overload\n"
+               "    def m(self, x: Int32) -> Int32: ...\n"
+               "    @overload\n"
+               "    def m(self, x: str) -> Int32: ...\n"
+               "    def m(self, x: Int32 | str) -> Int32:\n"
+               "        return self.n\n"
+               "def f(w: W) -> Int32:\n    return w.m(1)\n"
+               "print(f(W()))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.overload_set_call")
+        _assert_byte_identical(src)
+
+    def test_literal_stub_set_call_still_defers(self):
+        # BOUNDARY: a LITERAL-typed stub set mangles the callee name at the
+        # call site -- a name divergence no byte-diff of one side catches.
+        src = ("from tpy import Int32\n"
+               "from typing import Literal, overload\n"
+               "class W:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n        self.n = 0\n"
+               "    @overload\n"
+               "    def m(self, x: Literal[\"a\"]) -> Int32: ...\n"
+               "    @overload\n"
+               "    def m(self, x: Literal[\"b\"]) -> Int32: ...\n"
+               "    def m(self, x: str) -> Int32:\n"
+               "        return self.n\n"
+               "def f(w: W) -> Int32:\n    return w.m(\"a\")\n"
+               "print(f(W()))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("method.overload_set_call")
+        _assert_byte_identical(src)
+
+    def test_method_strlit_arg_takes_the_pin(self):
+        # The method-side twin of the free call's str-literal pin: an
+        # overloaded callee binds the wrong overload through the bare
+        # `const char[N]` conversions, so the arg spells its slot's view.
+        src = ("from tpy import Int32\n"
+               "from typing import overload\n"
+               "class W:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n        self.n = 0\n"
+               "    @overload\n"
+               "    def m(self, x: Int32) -> Int32: ...\n"
+               "    @overload\n"
+               "    def m(self, x: str) -> Int32: ...\n"
+               "    def m(self, x: Int32 | str) -> Int32:\n"
+               "        return self.n\n"
+               "def f(w: W) -> Int32:\n    return w.m(\"hi\")\n"
+               "print(f(W()))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.strlit_overload_pin")
+        _assert_byte_identical(src)
+
+    def test_builtin_method_strlit_arg_takes_no_pin(self):
+        # BOUNDARY: a builtin/@native method emits through gen_call_from_fi,
+        # which never applies the pin -- spelling one would diverge.
+        src = ("from tpy import Int32\n"
+               "def f(d: dict[str, Int32]) -> Int32:\n"
+               "    return d.pop(\"gone\", 0)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert not faces.get("call.strlit_overload_pin")
         _assert_byte_identical(src)

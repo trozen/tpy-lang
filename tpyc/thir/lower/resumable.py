@@ -141,7 +141,9 @@ from .predicates import (
 from .statements import (
     _handler_binding_type,
     _lower_alias_bind,
+    _lower_borrow_tuple_frame_write,
     _lower_frame_field_assign,
+    _lower_frame_slot_write,
     _lower_narrow_cond,
     _lower_resumable_return_value,
     _lower_stmt,
@@ -1083,6 +1085,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         frame_fields - frame_slots - borrow_tuple_locals - coro_handle_slots
         - ptr_frame_locals - opt_ptr_locals - alias_ptr_locals
         - unpack_ptr_targets)
+    lc.borrow_tuple_frame_locals = frozenset(borrow_tuple_locals)
+    lc.coro_handle_slots = frozenset(coro_handle_slots)
+    lc.frame_local_types = dict(gen_local_types)
+    # The AST's frame ctx seeds var_types from generator_locals and then
+    # OVERWRITES each branch-first-declared name with the sema branch-decl
+    # snapshot (`_emit_branch_decls`), whose container types are forced off
+    # the fixed-size Array optimization (sibling arms may bind different
+    # lengths). Renders spelling the slot must see the same override.
+    for _stmt in _iter_nested_stmts(list(func.body)):
+        for _bname, _btype in (analyzer.if_branch_decls.get(id(_stmt))
+                               or {}).items():
+            if _bname in frame_fields and _btype is not None:
+                lc.frame_local_types[_bname] = unwrap_ref_type(_btype)
     lc.resumable_leaf_mode = True
     declared: dict[str, TpyType] = {
         n: unwrap_ref_type(t) for n, t in func.params
@@ -1193,59 +1208,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # gen_expr's stale-coerce arm) -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
                 stmt.init, declared[stmt.name], analyzer)
-            # A borrow-form tuple frame field writes bare (`t =
-            # std::tuple<int32_t, Box*>{1, &(b)};` -- the AST's position-blind
-            # gen_expr; `_maybe_wrap_tuple_to_pointer` is a no-op for a
-            # literal). Only LITERAL inits are admitted: a CALL init could be
-            # the skeleton's third OWNING signal (storage-form source ->
-            # frame_slot emplace), and name/storage sources need the F3
-            # pointer lift -- both named rungs.
             if stmt.name in borrow_tuple_locals:
-                if isinstance(stmt.init, TpyTupleLiteral):
-                    value = _lower_borrow_tuple_literal(
-                        stmt.init, declared[stmt.name], lc, declared)
-                elif isinstance(stmt.init, TpyName):
-                    # A borrow-FORM NAME source writes BARE -- the AST's
-                    # _maybe_wrap_tuple_to_pointer no-ops for a non-storage
-                    # source. Key on the lowered form fact (the
-                    # _wrap_view_owned_return precedent); STORAGE-form
-                    # sources (the tuple_to_pointer lift) stay a named rung.
-                    # NAME-only deliberately: ternary/call sources reject
-                    # upstream today (expr.ifexpr / call gates), and their
-                    # form tagging defaults to VALUE -- admitting them here
-                    # without verified tagging could slip a storage source
-                    # past the wrap.
-                    value = _lower_expr(stmt.init, lc, declared)
-                    if value.form is Form.STORAGE:
-                        raise ThirUnsupported("res.btuple_source")
-                elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                        and _f1_tuple(analyzer.get_expr_type(stmt.init),
-                                      analyzer) is not None
-                        and not _own_declared_call_ret(stmt.init)):
-                    # A borrow-FORM tuple-returning CALL writes bare too
-                    # (`t = first_two(items);` -- the C++ return type IS
-                    # the borrow tuple, so _maybe_wrap_tuple_to_pointer
-                    # no-ops). The skeleton's third OWNING signal -- an
-                    # `Own[tuple[...]]`-declared callee, whose slot is a
-                    # frame_slot with emplace/(*t) renders -- must be read
-                    # off the callee's DECLARED return: sema stamps the
-                    # call EXPR with the peeled tuple, so the expr-type
-                    # predicates cannot see the Own. The callee otherwise
-                    # gates in _lower_expr.
-                    value = _lower_expr(
-                        stmt.init, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     allow_temps=True, tuple_source=True))
-                else:
-                    raise ThirUnsupported("res.btuple_source")
-                _witness("res.btuple_write")
-                return THIRAssign(
-                    target=THIRName(name=stmt.name,
-                                    result_type=declared[stmt.name],
-                                    loc=stmt.loc),
-                    value=value, loc=stmt.loc,
-                    no_source_comment=getattr(stmt, "no_source_comment",
-                                              False))
+                return _lower_borrow_tuple_frame_write(stmt, lc, declared)
             # A concrete-coro handle slot (`c = add_one(1)`) admits ONLY a
             # factory-call source: `_gen_concrete_coro_write`'s call arm is
             # `c.emplace(<gen_expr(call)>)` -- byte-equal to the frame_slot
@@ -1269,27 +1233,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     name=stmt.name, value=value, cpp_type=None, loc=stmt.loc,
                     no_source_comment=getattr(stmt, "no_source_comment",
                                               False))
-            # A frame_slot's emplace arg is a storage sink (the owned payload
-            # constructs in place), so admission matches the sync storage
-            # decl's -- record-rvalue qualified calls included -- minus the
-            # temp hoist (allow_temps stays off; leaf temp discipline is its
-            # own rung). STORAGE-vs-VALUE is admission-only in the expression
-            # arms, so the render stays the AST's position-blind gen_expr.
             if stmt.name in frame_slots:
-                # R1c: a frame_slot local write is `name.emplace(value)`
-                # (first init and reassign alike -- emplace destroys any prior
-                # payload). The value is the owning source (a record ctor /
-                # container literal / by-value call). cpp_type reproduces the
-                # AST's typed_brace_init prefix for a brace-init value.
-                value = _lower_expr(
-                    init, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.STORAGE))
-                _witness("res.frame_slot_write")
-                slot_t = unwrap_readonly(unwrap_ref_type(declared[stmt.name]))
-                return THIRFrameSlotWrite(
-                    name=stmt.name, value=value,
-                    cpp_type=lc.render_type(slot_t), loc=stmt.loc,
-                    no_source_comment=getattr(stmt, "no_source_comment", False))
+                return _lower_frame_slot_write(stmt, lc, declared)
             # An Optional-ptr frame local writes through the SYNC ladder's
             # reseat arms: pass-1 registered the name, so the sync dispatch
             # sees a reassign and takes the assign-only renders --
@@ -1714,16 +1659,14 @@ def _reject(reason: str):
 def _iter_nested_stmts(stmts):
     """Source-order walk of a statement list INCLUDING compound bodies --
     the pass-1 registration scope for branch-nested frame-field decls (a
-    local first-assigned inside an if/match arm is still a frame field).
-    The attribute set mirrors `_rebinds_narrowed`'s recursion. try_body is
-    deliberately absent: TpyTry is wholesale-rejected in leaf mode
-    (res.leaf_try), so a decl inside it never reaches lowering -- widening
-    that reject must add try_body here or under-registration crashes the
-    frame arm's declared[] read."""
+    local first-assigned inside an if/match/try arm is still a frame field).
+    The attribute set mirrors `_rebinds_narrowed`'s recursion; try_body is
+    included because an except-only leaf try routes through the sync tiers
+    (res.leaf_try_except), so its decls do reach lowering."""
     for s in stmts:
         yield s
         for attr in ("then_body", "else_body", "body", "orelse",
-                     "finally_body"):
+                     "try_body", "finally_body"):
             sub = getattr(s, attr, None)
             if sub:
                 yield from _iter_nested_stmts(sub)

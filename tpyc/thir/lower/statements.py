@@ -34,6 +34,7 @@ from ...parse.nodes import (
     TpyForEach,
     TpyGlobal,
     TpyIf,
+    TpyIfExpr,
     TpyIntLiteral,
     TpyLambda,
     TpyMatch,
@@ -183,6 +184,7 @@ from ..nodes import (
     THIRConceptTest,
     THIRFoldedBlock,
     THIRFrameNestedDef,
+    THIRFrameSlotWrite,
     THIRNoOpStmt,
     THIROptionalPtrArg,
     THIROptViewArg,
@@ -217,6 +219,7 @@ from .predicates import (
     _chain_post_if_fact,
     _const_exact_field_receiver_ok,
     _opt_view_arg_shim,
+    _own_declared_call_ret,
     _container_enum_spell,
     _container_scalar_read,
     _dict_view_iterable_ok,
@@ -1580,6 +1583,12 @@ def _tuple_unpack_source(
             _kind_detail("tuple_unpack.src_", v)
             return None
         call_src = True
+    elif isinstance(v, TpySubscript):
+        # A container element read (`a, b = addrs[0]`) binds the same
+        # `auto __tup_N = ::tpy::__getitem__(addrs, 0);` rvalue capture as a
+        # call source; the source expr lowers through the ordinary subscript
+        # arm, which gates its own receiver/index shapes.
+        src_raw = analyzer.get_expr_type(v)
     elif (isinstance(v, TpyFieldAccess)
           and (_field_receiver_ok(v, declared, analyzer)
                # A value-tuple class constant (`Version.SEMVER`): the same
@@ -1639,7 +1648,7 @@ def _borrow_form_tuple_param(name: str, lc: '_LowerCtx') -> bool:
     LOCAL (which needs the lift) rides the `storage_tuple_locals` arm; a global
     or borrow-form-local source stays on the AST path (`is_storage_form_source`
     claims globals, and borrow-form locals are not tracked here)."""
-    pt = next((t for n, t in lc.func.params if n == name), None)
+    pt = next((t for n, t in lc.params if n == name), None)
     if pt is None:
         return False
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
@@ -3982,6 +3991,75 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
         no_source_comment=getattr(stmt, "no_source_comment", False))
 
 
+def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
+                                    declared: dict[str, TpyType]) -> THIRStmt:
+    """Borrow-form tuple frame-field write (`t = std::tuple<int32_t, Box*>{1,
+    &(b)};`): the AST's position-blind gen_expr, where
+    `_maybe_wrap_tuple_to_pointer` no-ops for a borrow-form source. Only
+    LITERAL, borrow-form NAME and borrow-form CALL sources are admitted: a
+    STORAGE-form source needs the F3 `tuple_to_pointer` lift, and an
+    `Own[tuple[...]]`-declared callee is the skeleton's third OWNING signal
+    (a frame_slot with emplace renders) -- both named rungs. Shared by the
+    top-level leaf decl arm and the branch-nested decl arm."""
+    analyzer = lc.analyzer
+    if isinstance(stmt.init, TpyTupleLiteral):
+        value = _lower_borrow_tuple_literal(
+            stmt.init, declared[stmt.name], lc, declared)
+    elif isinstance(stmt.init, (TpyName, TpyIfExpr)):
+        # Key on the LOWERED form fact (the _wrap_view_owned_return
+        # precedent) rather than the source shape: a storage-form source
+        # would need the wrap. A ternary qualifies because its lowering
+        # propagates its arms' form for tuple results.
+        value = _lower_expr(stmt.init, lc, declared)
+        if value.form is Form.STORAGE:
+            raise ThirUnsupported("res.btuple_source")
+    elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+            and _f1_tuple(analyzer.get_expr_type(stmt.init),
+                          analyzer) is not None
+            and not _own_declared_call_ret(stmt.init)):
+        # The C++ return type IS the borrow tuple, so the wrap no-ops. The
+        # Own signal must be read off the callee's DECLARED return: sema
+        # stamps the call EXPR with the peeled tuple, so the expr-type
+        # predicates cannot see the Own.
+        value = _lower_expr(
+            stmt.init, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                         allow_temps=True, tuple_source=True))
+    else:
+        raise ThirUnsupported("res.btuple_source")
+    _witness("res.btuple_write")
+    return THIRAssign(
+        target=THIRName(name=stmt.name, result_type=declared[stmt.name],
+                        loc=stmt.loc),
+        value=value, loc=stmt.loc,
+        no_source_comment=getattr(stmt, "no_source_comment", False))
+
+
+def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
+                            declared: dict[str, TpyType]) -> THIRStmt:
+    """R1c frame_slot write (`xs.emplace(std::vector<int32_t>{1, 2});` --
+    first init and reassign alike, emplace destroys any prior payload). The
+    emplace arg is a storage sink (the owned payload constructs in place),
+    so admission matches the sync storage decl's minus the temp hoist
+    (allow_temps stays off -- leaf temp discipline is its own rung).
+    Shared by the top-level leaf decl arm and the branch-nested decl arm."""
+    init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
+                                         lc.analyzer)
+    value = _lower_expr(init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE))
+    _witness("res.frame_slot_write")
+    # The brace-init prefix spells the SLOT, so it reads the resolved frame
+    # local type (the AST's `ctx.var_types`) -- a branch-declared container
+    # literal can carry a sized Array decl-site type at one arm while the
+    # slot itself is the merged list.
+    slot_t = unwrap_readonly(unwrap_ref_type(
+        lc.frame_local_types.get(stmt.name, declared[stmt.name])))
+    return THIRFrameSlotWrite(
+        name=stmt.name, value=value, cpp_type=lc.render_type(slot_t),
+        loc=stmt.loc,
+        no_source_comment=getattr(stmt, "no_source_comment", False))
+
+
 def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
                               declared: dict[str, TpyType]) -> THIRStmt:
     """Position-blind plain frame-field write (`name = expr;` -- first decl
@@ -4057,7 +4135,7 @@ def _nullproto_guard_condition(cond: TpyExpr, lc: '_LowerCtx') -> bool:
     var, is_not_none = m
     if not is_not_none or "." in var:
         return False
-    pt = next((t for n, t in lc.func.params if n == var), None)
+    pt = next((t for n, t in lc.params if n == var), None)
     if pt is None:
         return False
     dt = _unwrap_own(unwrap_readonly(unwrap_ref_type(pt)))
@@ -4092,7 +4170,7 @@ def _lower_constexpr_if(stmt: TpyIf, info, lc: _LowerCtx,
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # The AST consults current_func_params (the RAW param type) for the
     # nullptr_t special, never the branch-retyped binding.
-    param_ty = next((t for n, t in lc.func.params if n == var), None)
+    param_ty = next((t for n, t in lc.params if n == var), None)
     cpp = lc.render_concept(var, check_type, param_ty, negated)
     cond = THIRConceptTest(result_type=BOOL, cpp=cpp,
                            loc=getattr(stmt.condition, "loc", None))
@@ -4330,18 +4408,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return node
         if scope.in_branch and isinstance(stmt, TpyVarDecl):
             begin_stmt()
-            # A branch-nested decl of a PLAIN frame field (a local
-            # first-assigned inside an if/match arm that survives a
-            # suspension) is the same position-blind member assign as the
-            # top-level leaf decl arm; the type was registered by
-            # lower_resumable's nested pass-1 walk. The frame_slot /
-            # borrow-tuple / coro-handle families and true C++-block branch
+            # A branch-nested decl of a frame field (a local first-assigned
+            # inside an if/match/try arm that survives a suspension) renders
+            # exactly like the top-level leaf decl -- every frame write is
+            # position-blind -- so the three families share the leaf arm's
+            # lowerings; the type was registered by lower_resumable's nested
+            # pass-1 walk. Coro-handle slots (factory-call-only contract),
+            # pointer/alias families (their leaf arm re-enters the sync
+            # dispatch, which would recurse here) and true C++-block branch
             # locals keep the named reject.
-            if (stmt.name in lc.plain_frame_fields and stmt.init is not None
-                    and stmt.name in declared
+            if (stmt.init is not None and stmt.name in declared
                     and stmt.name not in lc.narrow.narrowed):
-                _witness("res.branch_frame_write")
-                return _lower_frame_field_assign(stmt, lc, declared)
+                if stmt.name in lc.plain_frame_fields:
+                    _witness("res.branch_frame_write")
+                    return _lower_frame_field_assign(stmt, lc, declared)
+                if stmt.name in lc.borrow_tuple_frame_locals:
+                    _witness("res.branch_btuple_write")
+                    return _lower_borrow_tuple_frame_write(stmt, lc, declared)
+                if (stmt.name in lc.frame_slots
+                        and stmt.name not in lc.coro_handle_slots):
+                    _witness("res.branch_frame_slot_write")
+                    return _lower_frame_slot_write(stmt, lc, declared)
             raise ThirUnsupported("res.leaf_field_write")
         if isinstance(stmt, TpyTupleUnpack):
             return _lower_frame_tuple_unpack(stmt, scope)
@@ -4359,7 +4446,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if isinstance(stmt, TpyWith):
             raise ThirUnsupported("res.leaf_with")
         if isinstance(stmt, TpyMatch):
-            raise ThirUnsupported("res.leaf_match")
+            # A leaf match is suspension-free by construction (the CFG
+            # builder turns any suspending match into a MatchDispatch
+            # terminator), and the dispatch touches no __state / finally
+            # scaffolding -- so the sync match tiers render it byte-
+            # identically mid-state, like the except-only leaf try. Arm
+            # bodies with unmirrored shapes keep rejecting inside the tiers.
+            _witness("res.leaf_match_sync")
         if isinstance(stmt, TpyNestedDef):
             # A frame body's nested def is a struct MEMBER (declared and
             # emitted by the gen_async scaffolding); the statement position
@@ -8024,7 +8117,15 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         # increment -- see TODO.md.
         if lc.resumable_leaf_mode or lc.error_return_cpp is not None:
             raise ThirUnsupported("stmt.raise")
-        raised = _lower_expr(stmt.raise_expr, lc, declared)
+        # A CALL source sits under the postfix `.__raise__()` member, so it
+        # lowers in receiver position (`ea.Err(9).__raise__();` -- the result
+        # never reaches a value slot). Name sources keep the plain value use:
+        # their deref is applied below, mirroring gen_expr_deref.
+        raised = _lower_expr(
+            stmt.raise_expr, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.RECEIVER)
+            if isinstance(stmt.raise_expr, (TpyCall, TpyMethodCall))
+            else _ExprUse())
         # A pointer-repr record local (rebind-slot reseat -> `Rec* e`) derefs
         # to a reference before the `.__raise__()` member call (`(*e).__raise__()`,
         # the AST's gen_expr_deref) -- the `_lower_expr` name arm leaves it bare

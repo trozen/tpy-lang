@@ -50,6 +50,7 @@ from ...typesys import (
     is_fn_type,
     is_protocol_type,
     NominalType,
+    NoneType,
     OptionalType,
     OwnType,
     UnionType,
@@ -137,6 +138,7 @@ from .context import (
 from .checks import (
     _container_literal_shape_ok,
     _record_rvalue_source_shape,
+    _stub_template_param,
     _nondef_ctor_field,
     _ptr_union_source_ok,
 )
@@ -150,7 +152,10 @@ from .statements import (
     _lower_stmts,
 )
 
-def _overload_reject_detail(func: TpyFunction, stubs) -> str:
+def _overload_reject_detail(func: TpyFunction, stubs, *,
+                            allow_arity: bool = False,
+                            allow_narrow_params: frozenset = frozenset()
+                            ) -> str:
     """Sub-classify an overload-set reject by WHICH per-stub emission fact
     the impl body is sensitive to -- the slice-1 routing frontier. First
     match wins, ordered by disqualification severity; `plain` marks the
@@ -174,7 +179,8 @@ def _overload_reject_detail(func: TpyFunction, stubs) -> str:
     (which is fallback.py's auto-composed form, never hand-built)."""
     if any(getattr(fi, "type_params", None) for fi in stubs):
         return "sig.overload_set.generic_stub"
-    if any(len(fi.params) != len(func.params) for fi in stubs):
+    if not allow_arity and any(len(fi.params) != len(func.params)
+                               for fi in stubs):
         return "sig.overload_set.arity"
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
     for fi in stubs:
@@ -196,6 +202,8 @@ def _overload_reject_detail(func: TpyFunction, stubs) -> str:
     if detail is not None:
         return detail
     for _n, pt in func.params:
+        if _n in allow_narrow_params:
+            continue
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt))) \
             if isinstance(pt, TpyType) else None
         if isinstance(u, (UnionType, OptionalType)):
@@ -212,19 +220,46 @@ def _stub_signature_is_template(fi) -> bool:
     admission needs its own test."""
     if getattr(fi, "type_params", None):
         return True
-    for _n, pt in fi.params:
-        t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-             if isinstance(pt, TpyType) else None)
-        if isinstance(t, (OwnType, OptionalType)):
-            t = unwrap_readonly(t.inner)
-        if t is None:
-            continue
-        if is_fn_type(t) or is_protocol_type(t) or is_dyn_protocol(t):
-            return True
-    return False
+    return any(_stub_template_param(pt) for _n, pt in fi.params)
 
 
-def _admit_overload_stub(func: TpyFunction, group, analyzer) -> None:
+def _overload_missing_params(func: TpyFunction, stub: TpyFunction) -> list:
+    """The impl params a SHORT stub omits -- the AST's `missing_params`
+    (`impl.params[len(stub.params):]`), whose defaults it emits as locals."""
+    return list(func.params[len(stub.params):])
+
+
+def _short_stub_missing_ok(func: TpyFunction, stub: TpyFunction) -> bool:
+    """Whether a short @overload stub's omitted impl params need NO prologue
+    local -- the only arity shape mirrored.
+
+    The AST emits one local per missing param (`T x = <default>;`) EXCEPT
+    when the param narrows to NoneType and the body never reassigns it: the
+    `is not None` guard then folds to False and dead-branch elim strips
+    every use. Any other missing param (a literal/typed default that stays
+    live, or a reassigned one) needs that prologue render."""
+    if len(stub.params) > len(func.params):
+        return False
+    impl_names = [n for n, _t in func.params]
+    if impl_names[:len(stub.params)] != [n for n, _t in stub.params]:
+        return False
+    missing = _overload_missing_params(func, stub)
+    if not missing:
+        return True
+    narrowing = build_overload_narrowing(func, stub, missing,
+                                         func.defaults or [])
+    # Params pre-declared, like the sema scan codegen reads: a write to a
+    # param name is a REASSIGNMENT, not a first decl.
+    reassigned = scan_reassigned_vars(
+        list(func.body),
+        pre_declared={n for n, _t in func.params}).reassigned
+    return all(isinstance(narrowing.get(pname), NoneType)
+               and pname not in reassigned
+               for pname, _pt in missing)
+
+
+def _admit_overload_stub(func: TpyFunction, group, analyzer,
+                         stub: 'TpyFunction | None' = None) -> None:
     """Per-stub lowering admission for a multi-entry @overload set.
 
     The db_isinstance and ret_mismatch families route (the per-stub fold /
@@ -239,9 +274,21 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer) -> None:
         raise ThirUnsupported("sig.overload_set.generic_stub")
     if overload_stubs_are_literal_only(stubs, func):
         raise ThirUnsupported("sig.overload_set.db_compare")
-    detail = _overload_reject_detail(func, group)
+    short_ok = stub is not None and _short_stub_missing_ok(func, stub)
+    # An Optional impl param SHADOWED by a stub's concrete type (or omitted
+    # by a short stub) narrows through `build_overload_narrowing`, which both
+    # paths now share -- so the narrowing extraction cannot diverge for it.
+    # Union params (multi-member) keep the family reject.
+    narrow_ok = frozenset(
+        n for n, pt in func.params
+        if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+                      if isinstance(pt, TpyType) else None, OptionalType)
+    ) if stub is not None else frozenset()
+    detail = _overload_reject_detail(
+        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok)
     if detail not in ("sig.overload_set.db_isinstance",
-                      "sig.overload_set.ret_mismatch"):
+                      "sig.overload_set.ret_mismatch",
+                      "sig.overload_set.plain"):
         raise ThirUnsupported(detail)
 
 
@@ -334,7 +381,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                      or func.is_auto_own_borrowing_clone))
             if not (is_property_pair or is_clone_pair):
                 if stub is not None:
-                    _admit_overload_stub(func, overloads, analyzer)
+                    _admit_overload_stub(func, overloads, analyzer, stub)
                 else:
                     raise ThirUnsupported(
                         _overload_reject_detail(func, overloads))
@@ -348,7 +395,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
             if stub is not None:
-                _admit_overload_stub(func, fis, analyzer)
+                _admit_overload_stub(func, fis, analyzer, stub)
             else:
                 raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
@@ -698,9 +745,12 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             # The body references impl param names while the AST binds the
             # stub's; the two coincide in practice (zip-keyed narrowing
             # depends on it) -- reject the divergent spelling rather than
-            # lower reads against the wrong names. arity is gate-rejected,
-            # so the zip is total. A stub cannot re-spell @error_return.
-            if ([n for n, _t in func.params] != [n for n, _t in stub.params]
+            # lower reads against the wrong names. A SHORT stub binds a
+            # prefix; its omitted params are admitted only when they need no
+            # prologue local. A stub cannot re-spell @error_return.
+            _impl_names = [n for n, _t in func.params]
+            _stub_names = [n for n, _t in stub.params]
+            if (_impl_names[:len(_stub_names)] != _stub_names
                     or func.error_return is not None):
                 raise ThirUnsupported("sig.overload_set.param_names")
     except ThirUnsupported as ex:
@@ -738,7 +788,11 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         # not a ptr-variant (the _LowerCtx/_Prescan overrides re-key the
         # signature-derived facts the same way).
         params_set = {n: t for n, t in stub.params}
-        lc.overload_narrowing = build_overload_narrowing(func, stub, [], [])
+        # A short stub's omitted params narrow from the impl's defaults, so
+        # the dead-branch fold sees the same facts the AST specializer does.
+        lc.overload_narrowing = build_overload_narrowing(
+            func, stub, _overload_missing_params(func, stub),
+            func.defaults or [])
         lc.overload_stub_return = (stub.return_type
                                    if isinstance(stub.return_type, TpyType)
                                    else None)

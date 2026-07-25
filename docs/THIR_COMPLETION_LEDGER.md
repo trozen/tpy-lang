@@ -2555,3 +2555,95 @@ byte-diff itself.
   reject downstream), aug_assign (atomic/subscript/field split), genexpr
   (make_generator vs list/set-materialize lane), sig.special_callable
   (consuming-method model), nesteddef.self_capture.
+
+- **Wave-next13 -- resumable branch decls, leaf matches, marker-call
+  capture positions, overload rows (`design-round11-corrections`,
+  2026-07-24/25, 8 cells + 5 harvests, 29 markers deleted, dial 2463 -> 2493 (corpus 3573 -> 3578 after merging master's 4 new marked cases, so the +30 dial delta includes one case that became
+  unmarked-clean outside this branch's deletions)).**
+  (1) Branch-nested frame decls: the frame_slot emplace and borrow-tuple
+  write families route inside if/match/try arms -- every frame write is
+  position-blind, so the branch arm reuses the leaf arm's lowerings
+  (extracted as `_lower_frame_slot_write` /
+  `_lower_borrow_tuple_frame_write`). Coro-handle slots and the pointer
+  families keep their named reject; the pass-1 registration walk now
+  descends try bodies (an except-only leaf try reaches lowering).
+  The frame_slot brace-init prefix reads the RESOLVED frame local type
+  with the sema branch-decl override applied (the AST's `var_types`
+  chain), not the first decl's expression type. +5.
+  (2) Non-suspending leaf matches fall through to the sync match tiers
+  (a suspending match is a MatchDispatch terminator, so a leaf match is
+  suspension-free by construction) -- the landed leaf_try_except mirror.
+  +3.
+  (3) Tuple-result ternaries lower, propagating their arms' form so a
+  storage arm still rejects at the lifting sinks. +2.
+  (4) Marker-call result POSITIONS with no typed value slot: the `with`
+  manager, the for-head iterable, and a discarded container statement;
+  a CALL source under `raise` lowers in receiver position. +4.
+  (5) Overload rows (decision 20 + the chain it opened): short stubs whose
+  omitted params need no prologue local; the real
+  missing_params/impl_defaults into `build_overload_narrowing`; Optional
+  impl params shadowed by a stub's concrete type (multi-member unions
+  still reject); the `plain` family; genuine (non-mangled, non-template)
+  method stub sets at the CALL SITE; the str-literal `param_view_t("..")`
+  pin mirrored per-arg at free AND method call sites. `_LowerCtx.params`
+  now carries the SIGNATURE params a body is lowered against, so a
+  stub-narrowed read no longer derefs the impl's Optional spelling. +8
+  (the kwarg trio came free with the call-site row).
+  (6) Own[T] ELEMENT-SLOT args (method_call M1a): a dict/set LITERAL
+  into an `Own[container]` slot renders off its own resolved type (the
+  same coincidence the list-literal row rested on -- the shape check
+  pins the literal's family to the peeled slot's), and a scalar VALUE
+  into a value-repr `Optional[scalar]` element slot passes bare
+  (`xs.append(Int32(1))` -> `push_back(1)`, std::optional converts).
+  +2. The ctor-side dict-literal boundary pin became a routing pin.
+  Residue: `Own[str]` enum-name sources and the USER-record `Own[T]`
+  slot (tplib ArrayList.append) are separate gates, unbuilt.
+  (7) VALUE-TUPLE container elements (+1): a `list[tuple[str, Int32]]`
+  receiver joins the method-receiver family whitelist, and the
+  subscript arm admits a value-tuple element read in the standalone
+  unpack-SOURCE position (`a, b = addrs[0]` -> the existing
+  `auto __tup_N = ::tpy::__getitem__(addrs, 0);` capture) with
+  `_tuple_unpack_source` accepting the subscript that feeds it. This
+  is the round-11 rung-2 park, unblocked: the element read -- not the
+  source gate -- was the real blocker. Value-POSITION tuple element
+  reads keep rejecting; the fallback-machinery test re-keyed onto a
+  reference-element tuple.
+  (8) STRUCTURAL-PROTOCOL UNION method args (method_call M1b, +4): a
+  NAME into a slot that is a union of structural protocols
+  (`ArrayList.extend`'s `Spannable[T] | Iterable[Own[T]]`) passes bare
+  -- the C++ method is a template whose concept picks the branch, so
+  there is no variant to lift and no span conversion. The `&(b)` that
+  blocked this came from a CTOR-position face
+  (`_protocol_union_ctor_arg` == 'addr', where the Spannable overload
+  really does bind a pointer); it is now scoped to non-method args.
+  Dynamic-protocol and non-protocol union members stay out, and the
+  SOURCE families are restricted to container/span/record (defensive
+  today -- sema type-errors an off-family source at these slots).
+  LOAD-BEARING COINCIDENCE, pinned: a movable last-use container
+  renders bare on both paths only because the AST's consuming
+  `own_iter(std::move(..))` rewrite keys on a BARE `Iterable[Own[T]]`
+  ptype and misses a UnionType -- widening that keying means this row
+  needs the same rewrite.
+  MERGE (master 06ce56980, narrowed-union subscript keying): its THIR
+  hunk and cell 7's subscript admission are DISJOINT (the new arm
+  keys on the declared receiver family, so a narrowed-union receiver
+  falls through to the narrowed-member arm), and master's 4 new
+  marked cases were byte-diffed by the overlay in the post-merge run
+  (9510 passed, full exec).
+  DEBUGGING TRAIL (two refuted hypotheses, both cheap to re-walk):
+  the union LIFT (`_arg_ptr_union_slot`) is never consulted for this
+  slot, and neither optptr slot predicate can match a None-less union
+  -- the spy on `_lower_call_arg` (arg node + form) is what localized
+  the real face. Reach for that spy first next time.
+  FILED (AST-side, pre-existing): a container literal first declared in a
+  TRY body of a resumable types its frame slot from one arm's fixed-size
+  Array while the writes emplace a vector (uncompilable) -- BUGS.md.
+  FIXED in-flight: `_stub_template_param` read `.inner` off an OwnType
+  (crash on an `Own[P]` stub param); the two copies are now one helper.
+  PARKED (verified, flips nothing alone): the subscript tuple-unpack
+  source (`_, np = addrs[0]`) needs the subscript arm to admit a
+  VALUE-TUPLE element read first (`subscript.elem.tuple`); the
+  `for_each:tuple.ref_target` pair (counter, dict_readonly_view_read);
+  ptr_field_method_call / for_generic_iter_protocol (a TypeParamRef
+  marker result at a T-SLOT sink -- the M5 return-slot duality, which
+  fails THIR validation if admitted).

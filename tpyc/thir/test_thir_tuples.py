@@ -1621,10 +1621,12 @@ class TestStandaloneUnpackOptPtrTarget:
             + "    show((x, y))\n    bump((x, 5))\n"
             + "main()\n")
 
-    def test_storage_local_optional_source_stays_ast(self):
-        # BOUNDARY: opt_ptr targets ride the NAME_REF param source only. A
-        # value-tuple STORAGE local of optional records would need an
-        # optional_to_ptr lift (out of slice), so it stays AST.
+    def test_local_optional_source_stays_ast(self):
+        # BOUNDARY: opt_ptr targets ride the NAME_REF *param* source only.
+        # The local below is not storage form -- the AST renders it borrow
+        # form (`auto t = std::tuple<Leaf*, Leaf*>{&(x), &(y)};` then
+        # `auto& __tup_1 = t;`), so no lift is involved; admitting it needs a
+        # _borrow_form_tuple_local sibling to _borrow_form_tuple_param.
         thir = _lower_ctx(
             _F3_RECORDS
             + "def use() -> Int32:\n"
@@ -1732,16 +1734,31 @@ class TestStandaloneUnpackTargetRungs:
             "def mk() -> tuple[Own[str], Int32]:\n    return (\"x\", 1)\n")
         assert _fn(thir, "mk") is None
 
-    def test_subscript_source_ineligible(self):
-        # A subscript unpack source (`a, b = xs[i]`) stays AST -- the source
-        # widening admits calls/globals/class-consts only (the container
-        # tuple-element read is its own rung).
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "def f(xs: list[tuple[Int32, Int32]]) -> Int32:\n"
-            "    a, b = xs[0]\n"
-            "    return a + b\n")
-        assert _fn(thir, "f") is None
+    def test_subscript_source_routes(self):
+        # A subscript unpack source binds the same `auto __tup_N =
+        # ::tpy::__getitem__(xs, 0);` rvalue capture as a call source; the
+        # value-tuple ELEMENT read is admitted only in this position.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[tuple[Int32, Int32]]) -> Int32:\n"
+               "    a, b = xs[0]\n"
+               "    return a + b\n"
+               "print(f([(1, 2)]))\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert witnesses.get("subscript.value_tuple_source", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_subscript_tuple_elem_value_position_still_defers(self):
+        # BOUNDARY: the same element read in a VALUE position (not the
+        # unpack capture) keeps rejecting -- only the tuple-source sink
+        # takes the whole tuple bare.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[tuple[Int32, Int32]]) -> Int32:\n"
+               "    t = xs[0]\n"
+               "    return t[0]\n"
+               "print(f([(1, 2)]))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
 
     def test_reused_scalar_beside_own_target_routes(self):
         # A reused scalar target beside a fresh Own element: the Own moves
@@ -2061,3 +2078,65 @@ class TestSetitemMethodRvalueMismatch:
         )
         assert _fn(_lower_ctx(src), "seed") is None
         _both_cpp(src)
+
+
+def _gen_witnessed(source: str):
+    """Generate through THIR and return (face witnesses, fallback). Resumable
+    bodies lower at generation time (the emit hook), so `lower_module`-based
+    helpers never see their faces."""
+    compiler, modules = _compile(source)
+    compiler.generate_code_to_strings(
+        _entry(modules),
+        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+    return compiler._thir_face_witnesses, compiler._thir_fallback
+
+
+class TestTupleTernary:
+    """Tuple-result ternaries: the render is bare (`((c) ? (a) : (b))`), and
+    the lowered form propagates from the arms so a lifting sink still sees a
+    storage source."""
+
+    def test_value_tuple_ternary_routes(self):
+        src = (_F3_RECORDS
+               + "def pick(c: bool) -> Int32:\n"
+               + "    a = (1, 2)\n    b = (3, 4)\n"
+               + "    t = a if c else b\n"
+               + "    return t[0] + t[1]\n"
+               + "print(pick(True))\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert witnesses.get("ifexpr.tuple", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_borrow_tuple_ternary_frame_write_routes(self):
+        # The generator frame write takes the ternary as a borrow-form
+        # source: bare `u = ((cond) ? (t) : (t2));`, no tuple_to_pointer.
+        src = (_F3_RECORDS
+               + "from typing import Iterator\n"
+               + "def gen(b: Leaf, c: Leaf, cond: bool)"
+               + " -> Iterator[tuple[Int32, Leaf]]:\n"
+               + "    t = (1, b)\n    t2 = (2, c)\n"
+               + "    u = t if cond else t2\n"
+               + "    yield u\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _gen_witnessed(src)
+        assert witnesses.get("res.btuple_write", 0) >= 3
+        assert witnesses.get("ifexpr.tuple", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _assert_byte_identical(src)
+
+    def test_storage_arm_ternary_frame_write_defers(self):
+        # BOUNDARY: an arm reading a STORAGE-form tuple (a record's tuple
+        # field alias) makes the whole ternary storage, so the frame write
+        # keeps its named reject -- the bare assign would drop the lift.
+        src = (_F3_RECORDS
+               + "from typing import Iterator\n"
+               + "def gen(h: Holder, b: Leaf, cond: bool)"
+               + " -> Iterator[tuple[Int32, Leaf]]:\n"
+               + "    s = h.pair\n"
+               + "    t = (1, b)\n"
+               + "    u = s if cond else t\n"
+               + "    yield u\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _fn(_lower_ctx(src), "gen") is None
+        _assert_byte_identical(src)

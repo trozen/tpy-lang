@@ -74,9 +74,10 @@ class TestCtorOwnListLiteral:
                 emit_source_comments=False, thir_codegen=True))
         assert "Bag b = Bag({1, 2, 3});" in cpp
 
-    def test_own_dict_literal_stays_ast(self):
-        # Only the list face is mirrored; an Own[dict] literal keeps the
-        # AST's spelled ordered_map render.
+    def test_own_dict_literal_routes(self):
+        # The dict face renders off the literal's own resolved type -- the
+        # same coincidence the list face rests on (the shape check pins the
+        # literal's family to the peeled slot's, so the two agree).
         src = ("from tpy import Int32, Own\n"
                "class M:\n"
                "    d: dict[str, Int32]\n"
@@ -86,7 +87,7 @@ class TestCtorOwnListLiteral:
                "    m = M({\"a\": 1})\n"
                "    return len(m.d)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
 

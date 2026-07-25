@@ -925,11 +925,16 @@ def test_for_each_tuple_unpack_ref_target_routes():
 
 
 def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
+    # A REFERENCE-element tuple keeps the unpack source rejecting (only
+    # VALUE-tuple elements render bare at the capture).
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "def rejected(pairs: list[tuple[Int32, Int32]]) -> Int32:\n"
+        "class Box:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "def rejected(pairs: list[tuple[Int32, Box]]) -> Int32:\n"
         "    a, b = pairs[0]\n"
-        "    return a + b\n"
+        "    return a + b.n\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )
