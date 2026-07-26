@@ -1,0 +1,6 @@
+main.py:19: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')
+main.py:28: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')
+main.py:34: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')
+main.py:42: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')
+main.py:51: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')
+main.py:59: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'v')

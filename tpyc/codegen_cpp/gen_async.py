@@ -3804,7 +3804,7 @@ class AsyncCoroCodegen:
                 if self.ctx.thir_resumable_leaf is not None:
                     cond_cpp = self.ctx.thir_resumable_leaf.render_cond(t.cond)
                 else:
-                    cond_cpp = self.expressions.gen_expr(t.cond)
+                    cond_cpp = self.expressions.gen_truthy_expr(t.cond)
                 self.ctx.temps.flush(out, body_indent)
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1

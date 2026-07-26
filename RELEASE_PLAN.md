@@ -4,6 +4,11 @@ The milestone slice of `BUGS.md` / `TODO.md`. Short bullets only -- each
 item's full entry lives in the file it points to (search the quoted phrase
 there). When a release ships, delete its section and promote the next one.
 
+## 0.6.0 must-fix bugs (details in BUGS.md; search the quoted phrase)
+
+- "A plain-enum-returning CALL in a truthiness context is dropped entirely"
+- "A plain-user-record-returning CALL in a truthiness context is dropped entirely"
+
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 
 - `@classmethod` / `cls` -- alternate constructors

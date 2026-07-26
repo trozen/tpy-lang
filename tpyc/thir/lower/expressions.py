@@ -8246,14 +8246,6 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 # inner __bool__/__len__); THIR has no matching node yet, so
                 # fall back for this shape.
                 raise ThirUnsupported("truthy.optional_ptr_record")
-    if (isinstance(e, TpyName) and mode is TruthinessMode.IS_TRUTHY
-            and lc.resumable_leaf_mode):
-        # The AST's resumable emit renders a value-repr optional frame field's
-        # truthiness as the bare `if (v)` -- a has_value test, where the sync
-        # path emits `::tpy::is_truthy(v)` (engaged AND inner truthy). The two
-        # disagree for a falsy payload; BUGS.md carries the AST-side defect, so
-        # the shape stays AST rather than THIR mirroring a miscompile.
-        raise ThirUnsupported("truthy.res_value_opt_name")
     if isinstance(e, TpyName) and e.name in declared:
         du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[e.name])))

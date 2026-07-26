@@ -1172,6 +1172,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 - logging, stream object printing, to log instead of __str__
 
 ## tplib (TPy standard library)
+- **[stdlib][cosmetic] `itertools.cycle`'s `while len(saved) > 0:` can become `while bstack:`-style container truthiness, and a generic generator is unwitnessed.** The two `os.walk` explicit-stack loops dropped this workaround once container truthiness of a frame-resident generator local started compiling; `lib/tpy/itertools.py`'s `cycle` carries the same shape (`saved: list[T]`, a frame local in a GENERIC generator) and was left converted-not. Probed: `while saved:` compiles and matches CPython. Worth doing for consistency, and worth pairing with a test case -- no case in the truthiness set uses a generic generator, so the type-param element flavour of the container truthiness render has no witness. Surfaced by the /tpy-ready second opinion on the resumable-truthiness fix.
 - Protobuf macro (tplib.protobuf) — designed in the doc, would be the next real use case for the macro system
 
 ## Standard Library

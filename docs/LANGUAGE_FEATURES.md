@@ -2019,7 +2019,7 @@ def is_truthy(x: Truthy) -> bool:
 
 Generated C++ uses `::tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The compiler generates a `Truthy` concept to constrain generic parameters.
 
-Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
+Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy. The same lowering applies in every boolean context, including a `match` case guard (`case p if obj:`) and a condition inside a generator or `async def` frame -- a value-repr `Optional[T]` there is truthy only when engaged *and* its payload is truthy, as in CPython.
 
 #### Working: Built-in `Hashable` Protocol
 

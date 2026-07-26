@@ -1,0 +1,17 @@
+list [3, 2, 1]
+drained []
+empty []
+dict [20, 10] {}
+dict0 []
+set [7, 9] set()
+set0 []
+str [1, 2] [2]
+bytes [1, 2] [2]
+len [1, 2] [2]
+bool [1, 2] [2]
+enum [1, 2] [1, 2]
+intenum [1, 2] [2]
+plain [1, 2]
+any [1, 2] [2]
+and [1, 2] [2] [2]
+or [1] []

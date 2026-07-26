@@ -337,7 +337,7 @@ class GeneratorCodegen:
         self.ctx.indent_level = 3 + extra
         cond_checkpoint = self.ctx.temps.checkpoint()
         cond_code = (leaf.render_cond() if leaf is not None
-                     else self.expressions.gen_expr(while_stmt.condition))
+                     else self.expressions.gen_truthy_expr(while_stmt.condition))
         # Condition-registered decls have no statement flush inside the
         # lambda: walrus pre-decls go at lambda scope, and anonymous temps
         # (re-evaluated per iteration, like _gen_while's restructured head)

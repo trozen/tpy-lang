@@ -1,0 +1,6 @@
+zero 2
+none 2
+five 1
+list 1 2
+str 1 0
+and 1 2 2

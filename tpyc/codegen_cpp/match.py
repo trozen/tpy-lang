@@ -660,7 +660,7 @@ class MatchGenerator:
             elif isinstance(pattern, TpyOrPattern):
                 cond = self._poly_or_condition(pattern, ctx)
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     cond = f"({cond}) && {guard_code}"
                 out.write(f"{indent}if ({cond}) {{\n")
@@ -677,7 +677,7 @@ class MatchGenerator:
                                        pattern.name, ctx.subject_read, indent)
                 self._emit_binding(out, as_name, as_raw, ctx.subject_read, indent)
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}if ({guard_code}) {{\n")
                     self.ctx.indent_level += 1
@@ -709,7 +709,7 @@ class MatchGenerator:
         self._set_arm_bind_modes(case)
         cond_parts = list(field_conds)
         if guard is not None:
-            guard_code = self.expressions.gen_expr(guard)
+            guard_code = self.expressions.gen_truthy_expr(guard)
             self.ctx.temps.flush(out, inner)
             cond_parts.append(guard_code)
         if cond_parts:
@@ -1093,7 +1093,7 @@ class MatchGenerator:
                 if_opened = False
                 for _j, (guard, body, _cap, _as, _raw, _loc, _tf, _bm) in enumerate(entries):
                     if guard is not None:
-                        guard_code = self.expressions.gen_expr(guard)
+                        guard_code = self.expressions.gen_truthy_expr(guard)
                         self.ctx.temps.flush(out, inner)
                         keyword = "if" if not if_opened else "} else if"
                         if_opened = True
@@ -1473,7 +1473,7 @@ class MatchGenerator:
         if guard is not None or field_conds:
             cond_parts: list[str] = list(field_conds)
             if guard is not None:
-                guard_code = self.expressions.gen_expr(guard)
+                guard_code = self.expressions.gen_truthy_expr(guard)
                 self.ctx.temps.flush(out, bind_indent)
                 cond_parts.append(guard_code)
             out.write(f"{bind_indent}if ({' && '.join(cond_parts)}) {{\n")
@@ -1596,7 +1596,7 @@ class MatchGenerator:
         guard check (if any), the body, the `goto end`, and close the block.
         A failed guard falls out of the block to the next standalone arm."""
         if case.guard is not None:
-            guard_code = self.expressions.gen_expr(case.guard)
+            guard_code = self.expressions.gen_truthy_expr(case.guard)
             self.ctx.temps.flush(out, inner)
             out.write(f"{inner}if ({guard_code}) {{\n")
             self.ctx.indent_level += 2
@@ -1894,7 +1894,7 @@ class MatchGenerator:
                 self._gen_match_field_bindings(out, pattern, self.subject, inner)
                 self._emit_binding(out, as_name, as_raw, self.subject, inner)
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, inner)
                     out.write(f"{inner}if ({guard_code}) {{\n")
                     self.ctx.indent_level += 2
@@ -1938,13 +1938,13 @@ class MatchGenerator:
                 if or_parts:
                     cond = " || ".join(or_parts)
                     if guard is not None:
-                        guard_code = self.expressions.gen_expr(guard)
+                        guard_code = self.expressions.gen_truthy_expr(guard)
                         self.ctx.temps.flush(out, indent)
                         cond = f"({cond}) && {guard_code}"
                     out.write(f"{indent}if ({cond}) {{\n")
                 else:
                     if guard is not None:
-                        guard_code = self.expressions.gen_expr(guard)
+                        guard_code = self.expressions.gen_truthy_expr(guard)
                         self.ctx.temps.flush(out, indent)
                         out.write(f"{indent}if ({guard_code}) {{\n")
                     else:
@@ -2001,7 +2001,7 @@ class MatchGenerator:
                     self.ctx.emit_source_comment(out, case.loc, inner)
                 pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
                 if case.guard is not None:
-                    guard_code = self.expressions.gen_expr(case.guard)
+                    guard_code = self.expressions.gen_truthy_expr(case.guard)
                     self.ctx.temps.flush(out, inner)
                     kw = "if" if j == 0 else "} else if"
                     out.write(f"{inner}{kw} ({guard_code}) {{\n")
@@ -2062,7 +2062,7 @@ class MatchGenerator:
                 field_conds = self._record_field_conditions(pattern, subject_expr)
                 cond = " && ".join(field_conds) if field_conds else "true"
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     cond = f"{cond} && {guard_code}" if field_conds else guard_code
                 if not field_conds and guard is None:
@@ -2108,7 +2108,7 @@ class MatchGenerator:
                 if or_conds:
                     cond = " || ".join(or_conds)
                     if guard is not None:
-                        guard_code = self.expressions.gen_expr(guard)
+                        guard_code = self.expressions.gen_truthy_expr(guard)
                         self.ctx.temps.flush(out, indent)
                         cond = f"({cond}) && {guard_code}"
                     out.write(f"{indent}{keyword} ({cond}) {{\n")
@@ -2145,7 +2145,7 @@ class MatchGenerator:
             if isinstance(pattern, TpyLiteralPattern):
                 cond = self._gen_literal_cond(pattern, deref)
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     cond = f"{cond} && {guard_code}"
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
@@ -2159,7 +2159,7 @@ class MatchGenerator:
                 self.ctx.temps.flush(out, indent)
                 cond = f"{deref} == {val_code}"
                 if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
+                    guard_code = self.expressions.gen_truthy_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     cond = f"{cond} && {guard_code}"
                 out.write(f"{indent}{keyword} ({cond}) {{\n")
@@ -2199,7 +2199,7 @@ class MatchGenerator:
                 if or_conds:
                     cond = " || ".join(or_conds)
                     if guard is not None:
-                        guard_code = self.expressions.gen_expr(guard)
+                        guard_code = self.expressions.gen_truthy_expr(guard)
                         self.ctx.temps.flush(out, indent)
                         cond = f"({cond}) && {guard_code}"
                     out.write(f"{indent}{keyword} ({cond}) {{\n")

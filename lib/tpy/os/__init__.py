@@ -161,9 +161,7 @@ def walk(top: str, topdown: bool = True,
         # children (reversed -> they pop in scandir order).
         bstack: list[_WalkExpand | _WalkEmit] = []
         bstack.append(_WalkExpand(top))
-        # `len(bstack) > 0`, not `while bstack:` -- container truthiness of a
-        # frame-resident generator local fails the C++ build (BUGS.md).
-        while len(bstack) > 0:
+        while bstack:
             item = bstack.pop()
             if isinstance(item, _WalkEmit):
                 bdirs = list(item.dirnames)
@@ -201,7 +199,7 @@ def walk(top: str, topdown: bool = True,
         return
     stack: list[str] = []
     stack.append(top)
-    while len(stack) > 0:
+    while stack:
         cur = stack.pop()
         dirnames: list[str] = []
         filenames: list[str] = []

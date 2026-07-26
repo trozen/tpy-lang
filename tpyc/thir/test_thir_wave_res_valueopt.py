@@ -7,9 +7,10 @@ reads as a reassign and never registered the binding, and the plain
 frame-field write lowered its init without the whole-optional admission the
 sync decl sink threads (`v = __self.f;` is a whole-optional copy).
 
-Truthiness of such a name stays AST on purpose -- the AST emits a bare
-`if (v)` there (has_value only) where the sync path emits `is_truthy`; that
-is a live CPython divergence tracked in BUGS.md, not a render THIR mirrors.
+Truthiness of such a name routes too, now that the resumable condition
+renderer applies the truthiness lowering instead of the bare value render
+(it used to emit `if (v)` -- has_value only -- against the sync path's
+`is_truthy`).
 """
 
 from __future__ import annotations
@@ -78,27 +79,36 @@ class TestResumableValueOptLocal:
                       "        yield -1\n")
         assert _fallback(src)
 
-    def test_truthiness_of_a_value_opt_frame_name_stays_ast(self):
-        # BUGS.md: the AST renders `if (v)` (has_value) here, which disagrees
-        # with Python for a falsy payload. Both the param and the local form
-        # must keep rejecting until that is fixed.
+    def test_truthiness_of_a_value_opt_frame_name_routes(self):
+        # A resumable branch condition takes the truthiness lowering, so a
+        # value-repr optional tests engaged-AND-payload like the sync path.
+        # Both the param and the frame-local form must route and render it.
         param_src = ("from tpy import Int32\n"
                      "from typing import Iterator\n"
                      "def g(v: Int32 | None) -> Iterator[Int32]:\n"
                      "    if v:\n"
                      "        yield v\n"
                      "    yield -1\n")
-        # The statement-level key is what survives (the truthiness detail is
-        # swallowed by the condition's own reject reason).
-        assert list(_fallback(param_src)) == ["resumable:res.cond"]
+        assert not _fallback(param_src)
+        assert "if (::tpy::is_truthy(v))" in _thir_cpp(param_src)
+        _assert_byte_identical(param_src)
         local_src = _BOX + ("    def gen(self) -> Iterator[Int32]:\n"
                             "        v = self.f\n"
                             "        if v:\n"
                             "            yield v\n"
                             "        yield -1\n")
-        assert list(_fallback(local_src)) == ["resumable:res.cond"]
-        # ... and the same body with an explicit None test DOES route, so the
-        # reject above is the truthiness render, not the binding.
-        none_test = local_src.replace("        if v:\n",
-                                      "        if v is not None:\n")
-        assert not _fallback(none_test)
+        assert not _fallback(local_src)
+        assert "if (::tpy::is_truthy(v))" in _thir_cpp(local_src)
+        _assert_byte_identical(local_src)
+
+    def test_none_test_keeps_its_engagement_render(self):
+        # The boundary: `is not None` must stay a bare has_value test, not
+        # get swept into the truthiness render by the widening above.
+        src = _BOX + ("    def gen(self) -> Iterator[Int32]:\n"
+                      "        v = self.f\n"
+                      "        if v is not None:\n"
+                      "            yield v\n"
+                      "        yield -1\n")
+        cpp = _thir_cpp(src)
+        assert "is_truthy" not in cpp
+        assert not _fallback(src)
