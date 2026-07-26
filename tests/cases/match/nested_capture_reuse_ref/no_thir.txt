@@ -1,0 +1,4 @@
+A nested match rebinds its outer arm's capture, which THIR's arm-body gate
+(forbidden_writes) rejects; the reference captures additionally hoist to the
+const pointer-local rung THIR's hoist admission does not carry.
+Auto-managed by --thir-classify; --thir-check-flip lists it once clean.

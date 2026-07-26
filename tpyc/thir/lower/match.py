@@ -645,7 +645,13 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         if name in prescan.move_through:
             return None
         if borrow_decls.get(name, False):
-            # The borrow-decl const bit is the const-indirect rung.
+            # The borrow-decl const bit is the const-indirect rung. NB it is
+            # the Phase-1 verdict, which understates const for a capture of a
+            # never-mutated param; the AST re-asks at the decl site
+            # (`_match_capture_borrows_const`). Nested-reuse arms only avoid
+            # divergence here because `forbidden_writes` rejects them first --
+            # widening that gate without carrying the const rung would emit
+            # `T*` against the AST's `const T*`.
             return None
         if name in borrow_decls and name not in ever_owned:
             if name in prescan.rvalue_reassigned:
@@ -2571,9 +2577,11 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
             if by_value is None:
                 _reject("match.overload_fold_bind_mode")
             if not by_value and _statements._body_writes_name(
-                    case.body, sub_pattern.name):
+                    case.body, sub_pattern.name, match_binds=False):
                 # The AST's `auto&` capture would write through to the
                 # field; reads-only bodies render identically either way.
+                # match_binds=False mirrors sema: a nested match REBINDS the
+                # name without writing through this arm's alias.
                 _reject("match.overload_fold_ref_write")
             if (sub_pattern.name in declared
                     or sub_pattern.name in lc.prescan.hoisted):

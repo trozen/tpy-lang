@@ -1,0 +1,4 @@
+The reference capture aliasing the outer subject hoists to a pointer-local,
+outside THIR's hoist admission (stmt.match) -- the nested match binding a
+different name is what this case guards, and it routes on its own.
+Auto-managed by --thir-classify; --thir-check-flip lists it once clean.

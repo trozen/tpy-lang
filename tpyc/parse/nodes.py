@@ -1116,6 +1116,10 @@ class TpyCapturePattern(TpyPattern):
     # sema's annotation pass misses degrades to a warned `auto&`, never a
     # silent alias. Single source of truth for codegen and the dangle warning.
     bind_by_value: bool = False
+    # Sema-assigned type this capture binds. A nested match rebinds the
+    # ENCLOSING local, so the hoist compares its binds against the outer
+    # arm's: one slot cannot hold two types.
+    bound_type: TpyType | None = None
 
 
 def iter_capture_bindings(
@@ -1180,6 +1184,8 @@ class TpyAsPattern(TpyPattern):
     binds_full_optional: bool = False
     # See TpyCapturePattern.bind_by_value: the `as` binding's form.
     bind_by_value: bool = False
+    # See TpyCapturePattern.bound_type: the `as` binding's bound type.
+    bound_type: TpyType | None = None
 
 
 @dataclass
@@ -1911,17 +1917,26 @@ def stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
     return False
 
 
-def written_names(stmt: TpyStmt) -> set[str]:
+def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
     """Roots written AT NAME LEVEL by `stmt` itself (not its sub-bodies) --
     a rebind, bare-name value write, re-decl, unpack target, `del name`, a
     compound statement's OWN binding targets (a for-loop's loop var, a
-    `with ... as` name, an `except ... as` name), or a walrus target anywhere
-    in the statement's expressions. Field/subscript writes THROUGH a root
-    (`bb.val = 9`, `del bb[k]`) are excluded: an aliasing binding (a match
-    capture's `auto&`) lowers a through-write identically -- only a write to
-    the binding NAME itself has no aliasing render. Comprehension loop vars
-    are their own scope in Python 3 and are correctly NOT surfaced (they are
-    not statement-level for-targets and not walrus targets)."""
+    `with ... as` name, an `except ... as` name, a `match` arm's capture
+    patterns), or a walrus target anywhere in the statement's expressions.
+    Field/subscript writes THROUGH a root (`bb.val = 9`, `del bb[k]`) are
+    excluded: an aliasing binding (a match capture's `auto&`) lowers a
+    through-write identically -- only a write to the binding NAME itself has
+    no aliasing render. Comprehension loop vars are their own scope in
+    Python 3 and are correctly NOT surfaced (they are not statement-level
+    for-targets and not walrus targets).
+
+    `match_binds=False` drops the match-capture names, leaving only the binds
+    that WRITE THROUGH an enclosing alias. A match arm binds its captures by
+    re-seating (pointer form) or assigning (value form) the binding itself, so
+    it rebinds the name without writing through an outer alias of it; every
+    other form here writes through. Callers asking "is this name rebound?" for
+    scoping want the default; callers asking "would this corrupt the object an
+    outer alias points at?" want False."""
     out: set[str] = set()
     if isinstance(stmt, (TpyAssign, TpyAugAssign)):
         if isinstance(stmt.target, TpyName):
@@ -1944,6 +1959,12 @@ def written_names(stmt: TpyStmt) -> set[str]:
                    if h.binding is not None)
     elif isinstance(stmt, TpyNestedDef):
         out.add(stmt.func.name)
+    elif isinstance(stmt, TpyMatch) and match_binds:
+        # A `match` is not its own scope in Python: an arm's captures bind the
+        # ENCLOSING function's locals, so a nested match reusing an outer
+        # capture name rebinds it rather than shadowing it.
+        for case in stmt.cases:
+            out.update(n.name for n in iter_capture_bindings(case.pattern))
 
     def collect_walrus(e: TpyExpr) -> None:
         if isinstance(e, TpyNamedExpr):
@@ -1956,15 +1977,16 @@ def written_names(stmt: TpyStmt) -> set[str]:
     return out
 
 
-def body_writes_name(body: list[TpyStmt], var: str) -> bool:
+def body_writes_name(body: list[TpyStmt], var: str,
+                     *, match_binds: bool = True) -> bool:
     """Whether any statement in `body` (compound bodies included via
     sub_bodies) writes `var` at name level. See written_names for exactly
-    what counts as a name-level write."""
+    what counts as a name-level write and what `match_binds` selects."""
     for s in body:
-        if var in written_names(s):
+        if var in written_names(s, match_binds=match_binds):
             return True
         for inner in s.sub_bodies():
-            if body_writes_name(inner, var):
+            if body_writes_name(inner, var, match_binds=match_binds):
                 return True
     return False
 

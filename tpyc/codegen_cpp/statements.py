@@ -35,7 +35,7 @@ from ..parse import (
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
     TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
-    TpyMatch, TpyNamedExpr,
+    TpyMatch, TpyNamedExpr, iter_capture_bindings,
 )
 from dataclasses import fields as dc_fields
 from ..namespace import Namespace
@@ -5612,6 +5612,36 @@ class StatementGenerator:
             for ty in type_facts.values()
         )
 
+    def _match_capture_borrows_const(self, stmt: TpyStmt, name: str) -> bool:
+        """Whether capture `name` is re-seated by a NESTED match and any match
+        binding it reads a const subject, so the shared slot must be
+        `const T*`. Re-asked here because sema fixes its stmt-borrow const
+        verdict in Phase 1, before mutation propagation settles whether a
+        borrowed param renders `const T&`. Scoped to match-rooted nested reuse:
+        the single-match shape is a separate pre-existing defect (BUGS.md), and
+        widening would change the emit for shapes THIR routes without a const
+        rung to mirror. See docs/MATCH_CASE_DESIGN.md.
+        """
+        if not isinstance(stmt, TpyMatch):
+            return False
+        found_nested = False
+        const = False
+
+        def visit(s: TpyStmt, nested: bool) -> None:
+            nonlocal found_nested, const
+            if (isinstance(s, TpyMatch)
+                    and any(name == n.name
+                            for case in s.cases
+                            for n in iter_capture_bindings(case.pattern))):
+                found_nested = found_nested or nested
+                const = const or self.ctx.is_const_storage_source(s.subject)
+            for body in s.sub_bodies():
+                for inner in body:
+                    visit(inner, True)
+
+        visit(stmt, False)
+        return found_nested and const
+
     def _emit_branch_decls(self, out: TextIO, stmt: TpyStmt, indent: str) -> None:
         """Pre-declare variables first declared inside if/elif/match branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
@@ -5721,7 +5751,9 @@ class StatementGenerator:
                     # rvalue slots into pending_hoist_decls (not block-scoped).
                     self.ctx.pointer_locals.add(name)
                     self.ctx.branch_hoisted_vars.add(name)
-                    is_const = is_const or self.ctx.sema_stmt_borrow_decls.get(name, False)
+                    is_const = (is_const
+                                or self.ctx.sema_stmt_borrow_decls.get(name, False)
+                                or self._match_capture_borrows_const(stmt, name))
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
                     if name in self.ctx.sema_movable_locals:

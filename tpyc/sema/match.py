@@ -6,7 +6,7 @@ Semantic analysis for match/case statements and pattern matching.
 
 from __future__ import annotations
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 from ..typesys import (
     TpyType,
@@ -513,10 +513,10 @@ class MatchAnalyzer:
         # termination: the hoist above serves post-match reads, but a rebind
         # needs the binding to be an ASSIGNMENT within its own arm -- a
         # block-scoped decl would redeclare (a loud collision at arm top level,
-        # a silent shadow in a nested block). Only value-typed captures get
-        # here; a rebound reference capture is rejected in
-        # _annotate_capture_bind_modes, and a by-value binding is already a
-        # copy, so hoisting moves the declaration without changing semantics.
+        # a silent shadow in a nested block). A rebound reference capture is
+        # rejected in _annotate_capture_bind_modes unless a nested match is
+        # what rebinds it (that re-seats the binding rather than writing
+        # through it), so hoisting only relocates the declaration.
         # Only a name every binding arm agrees on the TYPE for can share one
         # hoisted slot; a name bound at different types per arm (`case
         # Cat(lives=v)` int / `case Dog(nick=v)` str) must keep its per-arm
@@ -526,6 +526,7 @@ class MatchAnalyzer:
             n for n in rebound_captures
             if all(t == capture_bind_types[n][0] for t in capture_bind_types[n])
         }
+        self._reject_nested_capture_retype(stmt, hoistable, capture_bind_types)
         predecl |= ((hoistable & set(self.ctx.func.current_scope.bindings))
                     - self.ctx.func.global_declarations)
         if predecl:
@@ -534,6 +535,44 @@ class MatchAnalyzer:
                 for name in sorted(predecl)
             })
             self.stmts.deduction.promote_predecl_view_targets(predecl)
+
+    def _reject_nested_capture_retype(
+        self, stmt: TpyMatch, hoistable: set[str],
+        capture_bind_types: dict[str, list[TpyType | None]],
+    ) -> None:
+        """Reject a nested match that rebinds a hoisted capture at a DIFFERENT
+        type. The arms' own disagreement keeps a name block-scoped, but a
+        nested match binds the same enclosing local, so the two would share one
+        slot: C++ then truncates silently wherever an implicit conversion
+        exists (Int32 <- Int64) instead of failing. The cross-arm shape is
+        already rejected, so this closes the same hole on the nested route.
+        """
+        def nested_binds(
+            body: list[TpyStmt],
+        ) -> Iterator[TpyCapturePattern | TpyAsPattern]:
+            for s in body:
+                if isinstance(s, TpyMatch):
+                    for case in s.cases:
+                        yield from iter_capture_bindings(case.pattern)
+                for inner in s.sub_bodies():
+                    yield from nested_binds(inner)
+
+        for case in stmt.cases:
+            for node in nested_binds(case.body):
+                if node.name not in hoistable:
+                    continue
+                outer = capture_bind_types[node.name][0]
+                # An untyped side is sema's own gap, not a disagreement --
+                # claiming one would reject on a message naming no type.
+                if (outer is None or node.bound_type is None
+                        or node.bound_type == outer):
+                    continue
+                raise self.ctx.error(
+                    f"match capture '{node.name}' is bound as "
+                    f"'{outer}' by the enclosing arm and '{node.bound_type}' "
+                    f"here; a nested match rebinds the same local (a 'match' "
+                    f"is not its own scope), so one binding cannot hold both. "
+                    f"Bind a different name", node)
 
     @staticmethod
     def _capture_binds_by_value(ty: TpyType | None) -> bool:
@@ -572,8 +611,16 @@ class MatchAnalyzer:
         for node in iter_capture_bindings(pattern):
             ty = bindings.get(node.name)
             by_value = self._capture_binds_by_value(ty)
-            writes = body_writes_name(arm_body, node.name)
-            rebound[node.name] = writes
+            # Two distinct questions, one walk each. `writes` is the
+            # write-through hazard (a rebind that lands in the subject via the
+            # `auto&`); `rebound` is the weaker "the arm binds this name
+            # again", which is all the hoist needs. A nested match's capture
+            # re-seats/assigns the binding itself, so it hoists without being
+            # a hazard -- forcing it by-value (or rejecting a reference
+            # capture) would break shapes that render correctly today.
+            writes = body_writes_name(arm_body, node.name, match_binds=False)
+            rebound[node.name] = (
+                writes or body_writes_name(arm_body, node.name))
             if not by_value and writes:
                 bare = (unwrap_readonly(unwrap_ref_type(ty))
                         if ty is not None else None)
@@ -597,6 +644,7 @@ class MatchAnalyzer:
                         f"Bind a different name, or copy before rebinding",
                         node)
             node.bind_by_value = by_value
+            node.bound_type = ty
             if not by_value:
                 aliases = True
         return aliases, rebound

@@ -1,0 +1,1 @@
+main.py:15: warning: copies Inner into field; use copy() to make this explicit

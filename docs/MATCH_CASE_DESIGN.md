@@ -463,9 +463,9 @@ absorbs the rebind, exactly matching CPython), and a reference-typed capture
 -- or a tuple with reference-typed elements, which aliases the same way --
 is *rejected* with a located error -- the parity-correct render is an
 aliasing-until-rebind, then re-seated, pointer local, which is not modeled
-yet; neither a plain copy (a pre-rebind mutation through the alias would be
-silently lost) nor the `auto&` alias (post-rebind write-through corrupts the
-subject) matches CPython. A field/subscript write THROUGH the capture
+for these forms; neither a plain copy (a pre-rebind mutation through the alias
+would be silently lost) nor the `auto&` alias (post-rebind write-through
+corrupts the subject) matches CPython. A field/subscript write THROUGH the capture
 (`v.x = 1`, `v[0] = 1`) is legitimate CPython-visible aliasing and is NOT a
 rebind; a comprehension's own loop var (`[v for v in ...]`) is a separate
 Python-3 scope and is not one either. A rebound capture is additionally
@@ -488,6 +488,32 @@ shared slot cannot hold both. The hoist is semantics-free, not cost-free: it
 turns copy-init into default-construct + copy-assign, extends the capture's
 live range to the enclosing scope, and makes a sibling arm binding the same
 name assign into the shared slot (a copy) rather than take its own `auto&`.
+
+**Nested matches reusing a capture name.** A `match` nested in an arm is not a
+new scope either, so `case Cat(lives=v): match b: case Cat(lives=v): ...` has
+the inner arm rebind the *same* local -- its value is what flows out of the
+outer arm. `written_names` therefore counts a `match`'s own capture patterns as
+name-level binds, which hoists the name exactly as an ordinary rebind does.
+The two are not the same hazard, though, and `match_binds=False` selects
+between them: an ordinary rebind writes THROUGH an enclosing alias, whereas a
+capture bind re-seats (pointer form) or assigns (value form) the binding
+itself. So a nested-match reuse hoists *without* forcing the capture by value
+or rejecting a reference-typed one -- a reference capture hoists to a pointer
+local that both binds re-seat, which is precisely the parity-correct render.
+One slot serving every bind also means they must agree on the TYPE: a nested
+match binding the name at a different type is rejected at the nested capture
+(`_reject_nested_capture_retype`), mirroring the cross-arm rule -- without it,
+C++ silently truncates wherever an implicit conversion exists. The check needs
+both types known, so an untyped binding passes rather than reject on a message
+naming no type.
+Because one slot serves every bind, its const-ness is the OR over all of them:
+codegen re-asks each binding subject's const verdict at the decl site
+(`_match_capture_borrows_const`), since sema fixes its stmt-borrow const flag
+in Phase 1, before mutation propagation has decided whether a borrowed param
+renders `const T&`. That re-ask is deliberately NOT widened to the plain
+single-match hoist, which drops const the same way (BUGS.md): widening it
+would change the emit for shapes THIR still routes, and THIR's hoist admission
+rejects the const-indirect rung rather than carrying it.
 
 A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
 matches only when the variant type *and* the field value match. Such an arm

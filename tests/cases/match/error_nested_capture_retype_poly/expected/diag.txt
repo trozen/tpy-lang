@@ -1,0 +1,1 @@
+main.py:34: error: match capture 'p' is bound as 'Square' by the enclosing arm and 'Circle' here; a nested match rebinds the same local (a 'match' is not its own scope), so one binding cannot hold both. Bind a different name
