@@ -2834,3 +2834,87 @@ byte-diff itself.
   (self/dynamic_cast render mirror, 2) and B (leaf_try return-crossing,
   3 -- the suspending half already routes; the missing half is the
   sync-rendered chain arm at statements.py:4234-4270).
+
+- **WAVE-NEXT16 -- the round-13 approved queue, built end to end
+  (`design-round13-corrections`, 2026-07-25/26, 11 cells + 3 harvests,
+  +40 flips, dial 2522 -> 2562/3585; full exec suite 9591 green with
+  every case rebuilt and run).**
+  Built from design round 13's four standing approvals (decisions 24-27)
+  plus three rows the grind found on the way.
+  (1) **Container METHOD receivers, element axis** (decision 26 G1): a
+  method receiver renders bare whatever its element is, so the element
+  families the READ-shaped predicates must exclude (open `T`, unit,
+  `Callable`, non-wrapper union) get their own front,
+  `_container_method_elem`, consumed only by the method-receiver
+  classification. The matching insert-arg rows already existed as
+  helpers (`_none_unit_arg`, `_tparam_name_pass_arg`,
+  `_union_member_ctor_rvalue`) -- they had simply never been wired into
+  `_container_method_arg_ok`.
+  (2) **The decl storage sink** (decision 24, memo XXXI's 7 measured
+  flips): `storage_call` generalised from `_native_record_rvalue_call_shape`
+  (@native free calls only) to any F1-record / owned-container rvalue
+  call or record-returning dunder binop, keeping the existing
+  reassigned/hoisted/move_through + `is_rvalue_source` guards; plus the
+  generic value-record decl slot and the reference-element span slot.
+  (3) **Generic free-call args** (decision 26, K1): the TypeParamRef
+  branch gained value-tuple pass-through, the container-literal ref-slot
+  temp and the exact-type F1-record rvalue temp.
+  (4) **Receiver chains** (decision 26 G2/G5): a container-returning
+  inner call composes as a receiver, a field off a call / element result
+  is an admitted receiver, and an owned rvalue result lands in the
+  borrow/storage value sinks. THE PARKED DESIGN FORK FROM WAVE-NEXT15 IS
+  RESOLVED and needed no new sink signal: the discriminator for
+  `Box second = ::tpy::pop_back(heap);` is the CALLEE's return
+  convention (`is_rvalue_source`), not the consumer's sink flag -- a
+  borrow-returning stub still rejects, which is exactly the aliasing
+  case the memo feared.
+  (5) **`tpy.String` in the str slice** (decision 25, memo XXXV): the
+  docstring blocker ("String params spell `const std::string&`, a shape
+  the param emit does not reproduce") was measured false -- that
+  signature comes from the SKELETON emitter, so no body arm renders it.
+  Four rows, and the O2 String-ctor scalar-arg row on top.
+  (6) **Nested defs capturing the receiver**: a captured `self` spells
+  `this` in the capture list and the lowering scope keeps the receiver
+  alive for exactly that case.
+  (7) **Three small rows the grind found on the way**: a Callable-typed
+  binding returns bare (`return f;` -- the plain-name twin of the
+  closure-name arm), a span NAME passes bare into the same span slot,
+  and an `Array` result joins the rvalue-call decl families.
+  (8) **Ptr-variant union returns**: the variant holds POINTERS, so a
+  member-typed record binding returns its address (`return &(d);`) and
+  an isinstance-narrowed subject returns the extraction alias's
+  (`return &(__pet);`). This is the RETURN half of the narrowing fence
+  below; the for-loop / container-element binding half is still open.
+  THREE RENDER SPLITS THE HARVEST CAUGHT (each was a real divergence, not
+  a pin artifact): a BORROW-returning dunder binop aliases an operand
+  (`const Acc& c = ((a) + (b));`), a same-union NAME into a union element
+  slot lifts through `::tpy::to_value_variant`, and the span decl slot
+  must not swallow nested spans.
+  ONE LATENT DIVERGENCE FOUND BY DUALGEN AND FENCED: union isinstance
+  narrowing keyed `std::get<T*>` on the union TYPE while codegen keys it
+  on the BINDING (`ctx.ptr_variant_locals` -- params and pointer-variant
+  local decls only). A for-loop element over `list[A | B]` therefore
+  rendered a pointer variant where the AST reads the value variant. No
+  corpus case witnessed it; cell 1's union-element admission would have
+  made it reachable. THIR now tracks the binding set and REJECTS the
+  bindings it cannot classify -- the value-variant render for those
+  bindings is a follow-up row, not a fence.
+  THE SAME FOLD SURVIVED AT TWO MORE SITES, caught by the readiness
+  retrospective's second opinion and fixed here: both union MATCH tiers
+  (`match.py`'s unguarded and guarded arms) re-derived `is_ptr_variant`
+  from the union TYPE for NAME subjects, with a comment asserting that
+  "the admitted bare names keep the type-level fold" -- exactly the claim
+  dualgen had just refuted. That one was not latent-by-luck: a for-each
+  element match over `list[A | B]` ROUTED and emitted `*std::get<N>` where
+  the AST emits `std::get<N>`, on master too. Both tiers now consult the
+  binding set through the same helpers. THE GENERALIZABLE DEFECT CLASS,
+  worth an audit of its own: THIR deriving a BINDING fact from a TYPE
+  where codegen keys on a binding SET.
+  STALE PINS re-pointed (SIX): the record-element container decl pin (its
+  "stays AST" was a gate statement, not a render split -- the shape is
+  byte-identical when routed), the generator-method nested-def pin (that
+  nested def is not a lambda at all; it becomes a frame member), three
+  "String stays AST" pins (ctor param, field-over-call read, with-target
+  -- all three byte-identical under dualgen), and the member-name union
+  return pin, whose own comment already quoted the `&(d)` render it was
+  guarding against.

@@ -503,6 +503,36 @@ def _value_record_member(m: 'TpyType') -> bool:
     return (isinstance(m, NominalType) and m.is_user_record
             and m.is_value_type() and not m.type_args)
 
+def _value_record_slot(t: 'TpyType | None') -> bool:
+    """A user VALUE-record DECL slot -- `_value_record_member` widened to
+    generic instantiations (`Pair<int32_t> q = p;`). The union-member
+    predicate excludes those because a variant member's spelling recurses
+    through the type args; a decl spells its slot through `render_type`,
+    which already renders the instantiation."""
+    return (isinstance(t, NominalType) and t.is_user_record
+            and t.is_value_type())
+
+
+def _span_slot(t: 'TpyType | None', analyzer) -> bool:
+    """A `Span[T]` DECL slot over a scalar or plain-record element
+    (`std::span<Node> s = ::tpy::as_mut_span(b);`): the decl only spells the
+    slot, and the local's own reads gate themselves, so the reference-element
+    span decls as the same plain copy the scalar one does. `_span_value` stays
+    the narrower READ/pass slice (element-dependent renders live there);
+    nested-span and other composite elements keep rejecting -- their reads
+    have no admitted arm to gate against."""
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType) or not is_span(u):
+        return False
+    args = getattr(u, "type_args", None)
+    if not args:
+        return False
+    elem = unwrap_readonly(args[0])
+    return _eligible_scalar(elem) or _f1_record(elem, analyzer)
+
+
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     """The F4 U1 slice: a value-form union of scalar / Char / str / StrView /
     value-record members (`Int32 | Float64 [| None]`, `Int32 | str`,
@@ -1069,17 +1099,22 @@ def _resolve_pending_view(t: TpyType | None, analyzer) -> TpyType | None:
 
 def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
     """The sema-RESOLVED str-slice type -- owned `str` (`std::string` storage /
-    `std::string_view` param) or `StrView` (`std::string_view`) -- or None
-    outside the slice. A str local's binding type stays `PendingStrType` on the
-    AST/sema side; resolve it like `_resolve_pending_view` does. `String`,
-    `Char`, `Literal[str]`-annotated bindings, and the bytes family stay on the
-    AST path (later cells)."""
+    `std::string_view` param), `StrView` (`std::string_view`), or `tpy.String`
+    (`std::string` everywhere, including the `const std::string&` param slot
+    the SKELETON emitter spells -- no body arm renders it) -- or None outside
+    the slice. A str local's binding type stays `PendingStrType` on the
+    AST/sema side; resolve it like `_resolve_pending_view` does. `Char`,
+    `Literal[str]`-annotated bindings and the bytes family stay on the AST
+    path. Callers that key on the FORM axis must treat String as owned:
+    `is_str_type` is False for it, so a bare `is_str_type(resolved)` test
+    reads it as a view -- see `_str_name_form`."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(t, PendingViewType):
         return _resolve_pending_view(t, analyzer) if t.family is STR_FAMILY else None
-    if isinstance(t, NominalType) and (is_str_type(t) or is_str_view_type(t)):
+    if isinstance(t, NominalType) and (is_str_type(t) or is_str_view_type(t)
+                                       or is_string_type(t)):
         return t
     return None
 
@@ -1128,11 +1163,13 @@ def _str_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
 
 def _is_string_owned(t: TpyType | None) -> bool:
     """A `tpy.String` value -- the owned std::string type a str-family concat
-    produces (and the resulting type of a local bound to one). Kept separate
-    from `_resolved_str_value` deliberately: String PARAMS spell
-    `const std::string&` in the signature, a shape the S1 param emit does not
-    reproduce, so the param/return/call gates must keep rejecting String while
-    the concat slice admits it for operands, locals, len and print args."""
+    produces (and the resulting type of a local bound to one). String is now
+    INSIDE `_resolved_str_value`'s slice (its `const std::string&` param slot
+    is spelled by the skeleton emitter, so no body arm renders it), which
+    makes most `or _is_string_owned(...)` disjuncts redundant; this predicate
+    survives for the places that must tell String apart from `str` on the
+    FORM axis -- the STORAGE name form, the in-place append target, and the
+    `Optional[String]` exclusion from the value-optional view family."""
     if t is None:
         return False
     return is_string_type(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
@@ -1189,9 +1226,12 @@ def _owned_str_append_target(t: TpyType | None, analyzer) -> bool:
     shape that reaches lowering (the very reassign/aug-assign being checked
     forces the owned resolution) and keeps the emitted `t += v;` honest."""
     st = _resolved_str_value(t, analyzer)
-    if st is not None:
-        return is_str_type(st)
-    return _is_string_owned(t)
+    if st is not None and is_str_type(st):
+        return True
+    # A String binding resolves INSIDE the str slice now, so the owned check
+    # must run on the resolved type too -- otherwise `s += v` on a String
+    # target reads as a view and loses the in-place append.
+    return _is_string_owned(st if st is not None else t)
 
 def _str_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
     """The C++ shape of a str-slice NAME read -- mirrors the AST's
@@ -1199,7 +1239,11 @@ def _str_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
     (the signature spells `std::string_view`) are view/BORROW; an owned local is
     `std::string` (STORAGE). The owned-sink copy (`std::string(x)` at a decl
     init / return) fires only on a BORROW source; a str literal is const
-    char[N] (implicitly convertible both ways) and stays VALUE, never wrapped."""
+    char[N] (implicitly convertible both ways) and stays VALUE, never wrapped.
+    A `String` binding is owned in EVERY position -- its param slot is
+    `const std::string&`, so the param arm must not read it as a view."""
+    if is_string_type(resolved):
+        return Form.STORAGE
     if is_str_view_type(resolved) or name in param_names:
         return Form.BORROW
     return Form.STORAGE
@@ -1775,13 +1819,12 @@ def _span_value(t: TpyType | None) -> bool:
     copies, decls and returns all render bare (no owning wrap, no per-element
     convert), the same on both paths. Only byte-identical SOURCES actually
     route: a bare span name / call result / storage-form field read whose
-    spelling already matches. A `Spannable`->span conversion source (an Array
-    field -> `::tpy::as_mut_span`, a list -> `::tpy::as_span`) carries the
-    `spanlike_to_span` coerce, and the `Span[T]`->`Span[readonly[T]]`
-    widen carries `span_to_readonly_span`; neither is in `_coerce_disposition`,
-    so those bodies reject at the coerce gate and stay on the AST path. Element
-    restricted to the eligible scalars -- matching the span param / read
-    slice's `_container_elem_family` span arm."""
+    spelling already matches, or a `Spannable`->span / const-widening coerce
+    (`::tpy::as_mut_span(b)` / `as_span`), whose own arm renders the call. The
+    DECL slot is `_span_slot`'s (element-blind by design); this predicate
+    stays restricted to the eligible scalars for the READ / pass positions,
+    matching the span param / read slice's `_container_elem_family` span
+    arm."""
     if t is None:
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -2781,7 +2824,13 @@ def _value_opt_str(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     t = unwrap_readonly(unwrap_send_sync(t))
     if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
         return None
-    return t if _resolved_str_value(t.inner, analyzer) is not None else None
+    inner = t.inner
+    if _is_string_owned(inner):
+        # `Optional[String]` is NOT part of this borrow/owned split: the AST
+        # MOVES its narrowed deref at an owned sink (`return std::move((*x));`)
+        # rather than taking the view->owned copy the family's emit spells.
+        return None
+    return t if _resolved_str_value(inner, analyzer) is not None else None
 
 def _value_opt_bytes(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[bytes]` type: `bytes | None` / `BytesView | None`,
@@ -3394,6 +3443,9 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
                 # An open-T element inside the generic body: the bare
                 # checked-dunder read, form-neutral per instantiation.
                 or _is_type_param_slot(a)
+                # A `Callable` element (`list[Callable[[Int32], Int32]]`):
+                # the `std::function` value lands bare like a scalar.
+                or _callable_value(a)
                 or (bt is not None and is_bytes_type(bt)))
 
     return _container_elem_family(t, analyzer, leaf, span_ok=True)
@@ -3535,7 +3587,9 @@ def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
     that admit it fire the explicit view->owned copy (`std::string(...)` at
     the return convert) -- both byte-identical at the positions that admit
     the read (the str-family return slot, a print / f-string arg). A `String`
-    field resolves outside the str slice -- excluded."""
+    field resolves INSIDE the slice but is excluded here by the
+    `is_str_type`/`is_str_view_type` filter below -- its owned form has no
+    view sink to convert at."""
     if not (isinstance(e, TpyFieldAccess)
             and _field_receiver_ok(e, declared, analyzer)):
         return False
@@ -3646,12 +3700,18 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
     `(*recv.field)` unwrap -- types at the un-narrowed declared type and
     rejects at the caller's family check.
 
-    A non-NAME receiver (a nested `a.b.c` chain) has no declared entry to read,
-    so it answers None -- a caller that has not run the receiver gate first
-    gets a reject rather than an AttributeError."""
-    if not isinstance(e.obj, TpyName):
-        return None
-    base = declared.get(e.obj.name)
+    A non-NAME receiver reads its own expression type instead of `declared`
+    (the receiver gate pinned the shape); a chain whose type does not resolve
+    to a record answers None, so a caller that has not run the receiver gate
+    first gets a reject rather than an AttributeError."""
+    if isinstance(e.obj, TpyName):
+        base = declared.get(e.obj.name)
+    else:
+        # A call / element receiver (`h.get().field`) has no declared entry;
+        # its own gate pinned the shape, and its RESULT type carries the
+        # record whose field declaration this reads -- so the narrowed-field
+        # guards downstream stay live for those receivers too.
+        base = analyzer.get_expr_type(e.obj)
     if base is None:
         return None
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base)))
@@ -4930,7 +4990,9 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(a, TpyName) or a.name not in locals_:
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    if not (is_list(at) or is_dict(at) or is_set(at) or is_array(at)):
+    span_src = is_span(at)
+    if not (span_src or is_list(at) or is_dict(at)
+            or is_set(at) or is_array(at)):
         return False
     if ptype is None:
         return False
@@ -4940,6 +5002,11 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     # should be self-evident, mirroring gen_call_arg's own Own detection.
     if isinstance(pt, (OwnType, OptionalType)):
         return False
+    if span_src:
+        # A span NAME into the SAME span slot: both sides are the by-value
+        # view, so the arg renders bare (no as_span / const widen -- those
+        # arrive as coerces and ride `_span_coerce_arg`).
+        return at == pt
     return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
 
 def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',

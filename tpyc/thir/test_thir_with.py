@@ -510,9 +510,9 @@ class TestValueEnterTargets:
         assert _fn(thir, "enum_target") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_string_enter_type_stays_ast(self):
-        # `String` (owned const-ref-param family) is outside the widened
-        # value-target set -- its name-form classification is a later cell.
+    def test_string_enter_type_routes(self):
+        # `String` is inside the resolved str slice: it binds STORAGE like an
+        # owned `str`, so the with-target renders the same value binding.
         src = (
             "from tpy import String\n"
             "class GCM:\n"
@@ -524,7 +524,7 @@ class TestValueEnterTargets:
             + "        print(g)\n"
             + "f()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 

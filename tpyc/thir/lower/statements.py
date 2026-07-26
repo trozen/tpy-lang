@@ -234,7 +234,7 @@ from .predicates import (
     _eligible_scalar,
     _eligible_value_union,
     _wrapper_member_ctor_slot,
-    _value_record_member,
+    _value_record_slot,
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
     _f1_record,
@@ -292,7 +292,7 @@ from .predicates import (
     _owned_tuple_call_ret,
     _storage_call_container,
     _storage_call_ret,
-    _span_value,
+    _span_slot,
     _str_field_value_read,
     _str_self_append_rhs,
     _type_family_tag,
@@ -353,6 +353,8 @@ from .checks import (
     _ctor_shape_ok,
     _native_ctx_manager_ok,
     _native_record_rvalue_call_shape,
+    _rvalue_storage_decl_binop,
+    _rvalue_storage_decl_call,
     _record_field_write_ok,
     _scalar_aug_assign_ok,
     _scalar_field_write_ok,
@@ -366,8 +368,10 @@ from .checks import (
 from .expressions import (
     _container_slice_recv_ok,
     _flush_witness,
+    _narrow_binding_supported,
     _narrow_member_cpp,
     _narrow_subject_const,
+    _narrow_subject_is_ptr,
     _narrow_variant_cpp,
     _poly_cast_checks,
     _poly_cast_context,
@@ -2798,16 +2802,16 @@ def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
 
 
 @contextmanager
-def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
+def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
+                               self_captured: bool = False):
     """The mirror of codegen's `nested_def_emission_scope` + the local-scope
     snapshot: swap in the nested function's per-function state (its own
     prescan return slots / reassigned sets, param-seeded pointer and movable
     entries), INHERIT the outer classification sets (the AST lambda body
     inherits ctx local state -- a captured name keeps its outer render), and
     restore everything after so body-added classifications don't leak out.
-    The receiver is cleared: a `self` read inside the lambda has no capture
-    (gate-rejected up front; clearing keeps a slipped-through read failing
-    loudly instead of spelling `this->`)."""
+    `self_captured` keeps the receiver alive for a lambda whose capture list
+    spells `this`."""
     saved = (lc.func, lc.prescan, lc.self_receiver, dict(lc.inline_narrowed))
     # The hoist-residue bookkeeping is per-function: seed the NESTED
     # function's own hoist facts (its try lowering drains them;
@@ -2834,7 +2838,13 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction):
     prescan.move_through = outer_prescan.move_through
     lc.func = func
     lc.prescan = prescan
-    lc.self_receiver = None
+    # The receiver survives ONLY when the capture list carries it: a captured
+    # `self` renders `this->` inside the lambda exactly as in the enclosing
+    # method body (the AST's name renderer is scope-independent). Without the
+    # capture, clearing keeps a slipped-through read failing loudly instead of
+    # spelling a `this` the lambda does not hold.
+    if not self_captured:
+        lc.self_receiver = None
     # Deliberately NO param seeding: the AST's `_gen_nested_def` never runs
     # `seed_param_locals` for a lambda (it only adds names to
     # local_scope_names), so a nested param must not enter `pointers` /
@@ -2878,7 +2888,14 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     if analyzer.function_global_decls.get(id(func)):
         note_detail("nesteddef.global_decl")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    if "self" in stmt.captured_names:
+    # A captured `self` spells `this` in the capture list (the AST's
+    # `self_captures_this`: the body renders the receiver through `this`, so
+    # the capture is the pointer -- alias semantics in every capture mode).
+    # Only the PLAIN method receiver is mirrored; the resumable `__self` frame
+    # member and the simple-generator `(*this)` wrapper spell their own forms.
+    self_capture_this = (lc.self_receiver == "self" and lc.self_cpp == "this"
+                         and lc.self_is_pointer)
+    if "self" in stmt.captured_names and not self_capture_this:
         note_detail("nesteddef.self_capture")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # A narrowed capture's reads rename to an OUTER extraction alias (or the
@@ -2893,6 +2910,9 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
         if stmt.escapes:
             parts = []
             for n in stmt.captured_names:
+                if n == "self":
+                    parts.append("this")
+                    continue
                 cpp_n = escape_cpp_name(n)
                 if n in stmt.ref_captures:
                     parts.append(f"&{cpp_n}")
@@ -2903,7 +2923,8 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             capture = f"[{', '.join(parts)}]"
         else:
             capture = "[" + ", ".join(
-                f"&{escape_cpp_name(n)}" for n in stmt.captured_names) + "]"
+                "this" if n == "self" else f"&{escape_cpp_name(n)}"
+                for n in stmt.captured_names) + "]"
     else:
         capture = "[]"
     # A nested func whose name collides with a registry function (or the
@@ -2948,7 +2969,8 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # The name binds BEFORE the body (matching the AST) and survives the
     # scope restore -- a later sibling closure captures it like any local.
     lc.nested_def_locals.add(func.name)
-    with _nested_def_lowering_scope(lc, func):
+    with _nested_def_lowering_scope(
+            lc, func, self_captured="self" in stmt.captured_names):
         body = _lower_stmts(func.body, lc, body_declared)
         # lower_function's hoist-residue mirror: a nested-body hoisted name
         # no try predecl accounted for is a shape THIR does not reproduce.
@@ -3208,7 +3230,10 @@ def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
     result_type = lc.analyzer.get_expr_type(condition)
     if folded:
         return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
-    is_ptr = is_ptr_variant_union(u)
+    if not _narrow_binding_supported(var, u, lc):
+        note_detail("narrow.union_binding_form")
+        raise ThirUnsupported("stmt.if")
+    is_ptr = _narrow_subject_is_ptr(var, u, lc)
     const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
     if u.needs_wrapper():
         _witness("narrow.wrapper_union")
@@ -5115,6 +5140,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if in_branch_first:
                 note_detail("decl.branch_ptr_union")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            # Every arm below binds the name as `std::variant<A*, B*>` --
+            # the AST's `ptr_variant_locals` registration, which the narrow
+            # arms read to pick `std::get<T*>` over `std::get<T>`.
+            lc.ptr_variant_locals.add(stmt.name)
             if not isinstance(stmt.init, TpyNoneLiteral) and not _ptr_union_source_ok(
                     stmt.init, declared, analyzer, ptr_u,
                     allow_field=stmt.name not in lc.prescan.reassigned):
@@ -5269,14 +5298,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # the AST's pointer-local form -- the reassigned/hoisted/move_through
         # guards exclude those; a branch-FIRST inline decl (the block-local
         # `open()` in a try body) still emits the plain value decl (oracle).
-        if (not storage_call and isinstance(stmt.init, TpyCall)
+        if (not storage_call
                 and not is_reassign
                 and stmt.name not in lc.prescan.reassigned
                 and stmt.name not in lc.prescan.hoisted
-                and stmt.name not in lc.prescan.move_through
-                and _native_record_rvalue_call_shape(stmt.init, analyzer)):
-            storage_call = True
-            _witness("decl.native_record_call")
+                and stmt.name not in lc.prescan.move_through):
+            if (isinstance(stmt.init, TpyCall)
+                    and _native_record_rvalue_call_shape(stmt.init, analyzer)):
+                storage_call = True
+                _witness("decl.native_record_call")
+            elif (_rvalue_storage_decl_call(stmt.init, analyzer)
+                  or _rvalue_storage_decl_binop(stmt.init, analyzer)):
+                storage_call = True
+                _witness("decl.rvalue_storage_call")
         # An iterator-object decl (`it = g()` / `it = obj.gen()`): the
         # generator/iterator factory result lands in an `auto` local that
         # feeds the universal __iter__/__next__ loop -- the AST's plain
@@ -5453,7 +5487,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # Value-form slots where borrow/storage coincide: a
                     # span and a value tuple both decl as the plain spelled
                     # copy (`std::span<T> s = sp;` / `std::tuple<...> u = t;`).
-                    or _span_value(vtype)
+                    or _span_slot(vtype, analyzer)
                     # An `Any` slot (`a: Any = 42`): a value-type cell whose
                     # init is the `into_any` make_any wrap (or an already-Any
                     # source). The plain-copy decl spells `::tpy::Any a = ...`.
@@ -5470,7 +5504,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # rides its own arms (ctor/dunder-binop/method rvalues).
                     or (isinstance(vtype, NominalType)
                         and _f1_record(vtype, analyzer)
-                        and _value_record_member(vtype)))
+                        and _value_record_slot(vtype)))
                 if not slot_ok:
                     # Branch-first REBIND_SLOT and owned-record decls are
                     # handled by the borrow cascade above (its per-arm
@@ -6791,6 +6825,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("ret.closure_ref")
                 return THIRReturn(
                     value=_lower_expr(stmt.value, lc, declared), loc=loc)
+            if (isinstance(stmt.value, TpyName)
+                    and stmt.value.name in declared
+                    and stmt.value.name not in lc.nested_def_locals
+                    and _callable_value(declared[stmt.value.name])):
+                # `return f;` where f is itself a `std::function` binding (a
+                # Callable param / local): the value returns bare, no
+                # conversion -- the plain-name twin of the closure-name arm.
+                _witness("ret.callable_name")
+                return THIRReturn(
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
             if not (isinstance(stmt.value, TpyName)
                     and stmt.value.name in lc.nested_def_locals):
                 note_detail("return.callable_source")
@@ -6839,11 +6883,42 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         analyzer.get_expr_type(source), analyzer) is not None):
                 note_detail("return.union_view_insert")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-        if (stmt.value is not None and lc.prescan.ret_ptr_union is not None
+        ret_pu = lc.prescan.ret_ptr_union
+        member_lvalue_ret = (
+            stmt.value is not None and ret_pu is not None
+            and isinstance(stmt.value, TpyName)
+            and stmt.value.name in declared
+            and stmt.value.name not in lc.narrow.narrowed
+            and stmt.value.name not in lc.pointers
+            # A plain record BINDING whose type is exactly one member: the
+            # variant holds pointers, so the AST takes its address
+            # (`return &(d);`). A pointer-shaped binding already IS the
+            # pointer and rides its own row.
+            and any(m == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                declared[stmt.value.name]))) for m in ret_pu.members)
+            and _f1_record(declared[stmt.value.name], analyzer))
+        if (stmt.value is not None and ret_pu is not None
+                and (member_lvalue_ret
+                     or (isinstance(stmt.value, TpyName)
+                         and stmt.value.name in lc.narrow.narrowed
+                         and lc.narrow.subject_union.get(stmt.value.name)
+                         == ret_pu))):
+            # `return pet` on an isinstance-NARROWED ptr-variant union: the
+            # variant holds POINTERS and the live binding is the extraction
+            # alias (a member lvalue), so the AST returns its address --
+            # `return &(__pet);`.
+            _witness("ret.narrowed_union_addr")
+            return THIRReturn(
+                value=THIROptionalPtrArg(
+                    result_type=ret_pu,
+                    value=_lower_expr(stmt.value, lc, declared),
+                    addr_of=True, form=Form.BORROW, loc=loc),
+                loc=loc)
+        if (stmt.value is not None and ret_pu is not None
                 and not isinstance(stmt.value, TpyNoneLiteral)
                 and not _ptr_union_source_ok(
-                    stmt.value, declared, analyzer,
-                    lc.prescan.ret_ptr_union, allow_field=False)):
+                    stmt.value, declared, analyzer, ret_pu,
+                    allow_field=False)):
             raise ThirUnsupported(stmt_reject_reason(stmt))
         if (stmt.value is not None and lc.prescan.ret_char
                 and isinstance(stmt.value, TpyStrLiteral)):
@@ -6886,6 +6961,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             result=_ExprResultUse.STORAGE,
                             allow_temps=True),
                         field_prechecked=field_prechecked,
+                        # The str-family member read the return slot admits is
+                        # exactly `field_prechecked`'s row, so grant the field
+                        # arm the same owned-str admission the decl / f-string
+                        # sinks already thread.
+                        field_owned_str_ok=field_prechecked,
                         target_type=(lc.prescan.ret_container_storage
                                      if isinstance(
                                          stmt.value,

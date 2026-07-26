@@ -148,10 +148,10 @@ class TestFieldOverCallRead:
         assert "return make(10, 20).x;" in cpp
         assert "return h.get().x;" in cpp
 
-    def test_unsupported_field_family_falls_back(self):
-        # A `String` field resolves outside the routed result families, so
-        # the read off a call receiver rejects at the family gate before the
-        # receiver widening is even consulted -- the body stays AST.
+    def test_string_field_over_call_recv_routes(self):
+        # A `String` field is inside the resolved str slice (it renders
+        # `std::string` like an owned `str`), so the read off a call receiver
+        # takes the same bare member render the family's other members do.
         src = (
             "from tpy import Own, String\n"
             "class P:\n"
@@ -164,5 +164,7 @@ class TestFieldOverCallRead:
             "f()\n"
         )
         thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert witnessed.get("field.call_recv", 0) == 0
+        assert _fn(thir, "f") is not None
+        assert witnessed.get("field.call_recv", 0) >= 1
+        assert "std::cout << make().s" in self._emit(src, thir=True)
+        assert self._emit(src, thir=True) == self._emit(src, thir=False)

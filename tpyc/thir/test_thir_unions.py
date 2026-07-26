@@ -361,13 +361,15 @@ class TestPtrUnionEligibility:
         thir = self._lower("def w2(h: H, a2: A) -> None:\n    h.u = a2\n")
         assert _fn(thir, "w2") is None
 
-    def test_member_name_return_rejects(self):
+    def test_member_name_return_takes_address(self):
         # `return d` (a MEMBER record name) takes the AST's `&(d)` address-of
-        # lift into the pointer variant -- caught by the corpus byte-diff
-        # (union_return_concrete_param / match_ptr_variant_call); the return
-        # gate admits same-union names only.
+        # lift into the pointer variant, which the return arm now mirrors
+        # (`ret.narrowed_union_addr`); the address is a param's, so nothing
+        # local escapes. Same-union names keep returning bare.
         thir = self._lower("def wrap(a2: A) -> A | B:\n    return a2\n")
-        assert _fn(thir, "wrap") is None
+        fn = _fn(thir, "wrap")
+        assert fn is not None
+        assert fn.body[0].value.addr_of
 
     def test_storage_field_return_rejects(self):
         # `return h.u` emits the plain `&(...)` lift on the AST path (invalid

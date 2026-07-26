@@ -2358,12 +2358,12 @@ class TestContainerCallSlots:
         assert cpp_t == cpp_a
         assert "std::vector<int32_t>* xs" in cpp_t  # the AST pointer-local shape
 
-    def test_record_element_container_decl_ineligible_return_routes(self):
-        # `list[record]` DECL stays AST (the local slot is outside the
-        # literal-decl families -- `use` rejects at `decl.slot_type`). The
-        # container-of-records RETURN from a call lands bare, though: the whole
-        # container returns by value with no per-element conversion, so `fwd`
-        # routes byte-identically to the AST's `return make(n);`.
+    def test_record_element_container_call_decl_and_return_route(self):
+        # A container-of-records RETURN from a call lands bare (the whole
+        # container returns by value, no per-element conversion), and so does
+        # the DECL: the element family decides the local's downstream reads,
+        # not the slot spelling, so `xs = make(n)` is the plain copy the
+        # generalised rvalue-call storage row admits.
         src = (
             _F1_RECORDS
             + "def make(n: Int32) -> Own[list[Leaf]]:\n    return [Leaf(n)]\n"
@@ -2373,7 +2373,7 @@ class TestContainerCallSlots:
             + "def fwd(n: Int32) -> Own[list[Leaf]]:\n    return make(n)\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
         assert _fn(thir, "fwd") is not None
 
 

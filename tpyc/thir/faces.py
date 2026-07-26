@@ -267,6 +267,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.method",
     "method.recv.protocol",         # inner call yields a protocol borrow
                                     # (`box.get()` -> `Pet&`) -> `.` outer call
+    # Inner call yields a CONTAINER borrow (`b1.take().append(4)`,
+    # `groups.setdefault("a", []).append(1)`) -> the stub method composes
+    # onto the bare call render with `.`.
+    "method.recv.container_method",
     # Value-record field method receiver (`self.field.m()` -> the user-record
     # arm over a bare `this->field` / `p->field` THIRFieldAccess receiver). The
     # field's record spells byte-identically (`_f1_record`: same-module,
@@ -590,6 +594,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # stmt-expr render at the return slot
     "ret.closure_name",             # `return add;` -- a closure local's bare
                                     # name at a Callable return slot
+    "ret.callable_name",            # `return f;` -- a std::function-typed
+                                    # param/local returned bare
+    # `return pet;` on an isinstance-narrowed ptr-variant union: the
+    # extraction alias returned by address (`return &(__pet);`).
+    "ret.narrowed_union_addr",
     "ret.closure_lambda",           # `return lambda x: ...;` -- a direct
                                     # escaping closure at a Callable return slot
     "ret.closure_ref",              # `return double;` -- a bare func-ref name
@@ -741,6 +750,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # `::tpy::TextFile f = ::tpy::builtin_open(path);`) -- a plain-value decl,
     # single-assignment rvalue only.
     "decl.native_record_call",
+    # The general rvalue-call storage decl (`Animal parent = cast(Animal, a);`,
+    # `std::vector<uint8_t> data = r.read();`): an F1-record / owned container
+    # result by value, single-assignment only.
+    "decl.rvalue_storage_call",
     # Iterator-object local decl (`it = g()` / `it = obj.gen()` -> `auto it
     # = g();`): a generator/iterator factory result feeding the universal
     # __iter__/__next__ loop; single-assignment only.
@@ -826,6 +839,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A same-module function used as a value (`apply(double, ...)`): the bare
     # escaped-name render on THIRName.cpp (_function_ref_name's plain arm).
     "name.func_ref",
+    # A nested def's closure local read as a value (`push_back(add_offset)`):
+    # the bare local name the nested def bound, not the module spelling.
+    "name.closure_local",
     # A read of a read-only-seeded NATIVE-linkage value global (lowering;
     # the pre-rendered `::symbol` spelling on THIRName.cpp).
     "name.global_native",

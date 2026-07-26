@@ -17,6 +17,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_send_sync,
 )
+from ...codegen_cpp.forms import is_ptr_variant_union
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
@@ -371,7 +372,8 @@ class _NarrowScope:
 # for-each shadow REMOVES names for the body -- the same symmetric restore
 # re-adds them at the pop.
 _BRANCH_SCOPED_SETS = (
-    "const_locals", "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+    "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
+    "dyn_protocol_locals",
     "optional_locals", "branch_hoisted", "iterator_object_locals",
     "ref_alias_locals", "value_opt_locals", "value_opt_view_locals",
     "value_opt_record_locals",
@@ -427,7 +429,8 @@ class _LowerCtx:
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
-                 "pointers", "rebind_slot_locals", "dyn_protocol_locals",
+                 "pointers", "ptr_variant_locals", "rebind_slot_locals",
+                 "dyn_protocol_locals",
                  "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
@@ -539,6 +542,15 @@ class _LowerCtx:
         for pname, ptype in self.params:
             if _optional_ptr_borrow(ptype, analyzer) is not None:
                 self.pointers.add(pname)
+        # Names BOUND as `std::variant<A*, B*>` -- codegen's
+        # `ctx.ptr_variant_locals`, which is a BINDING set, not a type
+        # verdict: a ptr-variant-typed union reaching a name through a
+        # container element / loop variable still binds the value variant.
+        # The narrow arms key their `std::get<T*>` render on this.
+        self.ptr_variant_locals: set[str] = set()
+        for pname, ptype in self.params:
+            if is_ptr_variant_union(unwrap_readonly(unwrap_send_sync(ptype))):
+                self.ptr_variant_locals.add(pname)
         # Walrus targets already pre-declared this FUNCTION -- the AST's
         # walrus_pre_declared asymmetry (function-scoped, never
         # branch-restored, unlike the branch-copied `declared` dict): a

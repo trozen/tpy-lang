@@ -37,7 +37,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
-from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...value_category import is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
@@ -89,6 +89,8 @@ from .context import (
 from .expressions import (
     _lower_expr,
     _lower_field_source,
+    _narrow_binding_supported,
+    _narrow_subject_is_ptr,
 )
 from . import statements as _statements
 
@@ -2212,6 +2214,14 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                  else None)
     subj_type = (declared.get(subj_name) if subj_name is not None
                  else stmt.subject_type)
+    if subj_name is not None and not _narrow_binding_supported(
+            subj_name, u, lc):
+        # A ptr-variant-TYPED union bound some other way (a for-each element
+        # over `list[A | B]` binds the VALUE variant) extracts without the
+        # `*std::get<N*>` deref -- the isinstance arm's binding rule, which
+        # this tier shares.
+        note_detail("match.union_binding_form")
+        raise ThirUnsupported("stmt.match")
     arms: list[THIRMatchArm] = []
     seen: set[int] = set()
     for i, case in enumerate(stmt.cases):
@@ -2336,9 +2346,10 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         synthetic_default=False,
         # A field/subscript subject stores VALUE-variant regardless of the
         # type's primary repr (`is_ptr_variant_source`'s field/subscript
-        # arms); the admitted bare names keep the type-level fold.
-        is_ptr_variant=(is_ptr_variant_union(u) if subj_name is not None
-                        else False),
+        # arms). A NAME's verdict is its BINDING's, not its type's -- the
+        # gate above rejected the bindings THIR cannot classify.
+        is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
+                        if subj_name is not None else False),
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )
@@ -2377,6 +2388,10 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                  else None)
     subj_type = (declared.get(subj_name) if subj_name is not None
                  else stmt.subject_type)
+    if subj_name is not None and not _narrow_binding_supported(
+            subj_name, u, lc):
+        note_detail("match.union_binding_form")
+        raise ThirUnsupported("stmt.match")
 
     type_arms: dict[int, list] = {i: [] for i in range(n)}
     for case in stmt.cases:
@@ -2508,9 +2523,11 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         emit_unreachable=emit_unreachable,
         synthetic_default=False,
         # Field/subscript subjects store VALUE-variant (the unguarded
-        # tier's fold, mirrored -- `is_ptr_variant_source`).
-        is_ptr_variant=(is_ptr_variant_union(u) if subj_name is not None
-                        else False),
+        # tier's fold, mirrored -- `is_ptr_variant_source`); a NAME reads
+        # its BINDING's verdict, the gate above having rejected the
+        # bindings THIR cannot classify.
+        is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
+                        if subj_name is not None else False),
         loc=loc,
     )
 

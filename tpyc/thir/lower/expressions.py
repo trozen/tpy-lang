@@ -2199,6 +2199,26 @@ def _value_opt_view_binding(name: str, lc: '_LowerCtx') -> bool:
     (STORAGE, no copy) -- the read arm branches on `param_names` for that."""
     return name in lc.value_opt_view_locals or _value_opt_view_param(name, lc)
 
+def _narrow_subject_is_ptr(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
+    """Whether a narrowing SUBJECT's `std::get` reads the POINTER variant.
+    The verdict is the binding's, not the type's: codegen keys its extraction
+    on `ctx.ptr_variant_locals` (params and pointer-variant local decls), so a
+    ptr-variant-TYPED union reaching a name some other way -- a for-loop
+    element over `list[A | B]`, whose storage form is the value variant --
+    still extracts by value. Un-mirrored bindings of a ptr-variant union
+    reject rather than guess (`_narrow_binding_supported`)."""
+    return is_ptr_variant_union(u) and var in lc.ptr_variant_locals
+
+
+def _narrow_binding_supported(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
+    """A narrowing subject whose BINDING form THIR has established: a
+    value/wrapper union (one render), or a ptr-variant union bound as a
+    pointer variant. A ptr-variant-typed union bound some other way takes the
+    AST's value-variant extraction off a binding set THIR does not track
+    yet -- defer the body instead of rendering the wrong `std::get`."""
+    return not is_ptr_variant_union(u) or var in lc.ptr_variant_locals
+
+
 def _narrow_subject_const(var: str, lc: '_LowerCtx') -> bool:
     """Whether a pointer-variant narrowing SUBJECT spells const pointees: a
     const local (the U2 field-lift chain), or a param the function's
@@ -2268,8 +2288,11 @@ def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
     (`_narrow_subject_const`) applied at lowering. Shared by the extraction
     alias, the compound-condition inline read, and the assign-narrowed
     field-receiver read."""
+    if not _narrow_binding_supported(var, u, lc):
+        note_detail("narrow.union_binding_form")
+        raise ThirUnsupported("expr.narrowed_read")
     member_cpp = lc.render_type(member)
-    is_ptr = is_ptr_variant_union(u)
+    is_ptr = _narrow_subject_is_ptr(var, u, lc)
     if is_ptr:
         const = "const " if _narrow_subject_const(var, lc) else ""
         member_cpp = f"{const}{member_cpp}*"
@@ -2352,6 +2375,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             _witness("name.func_ref")
             return THIRName(result_type=rtype, name=e.name, cpp=cpp,
                             form=Form.VALUE, loc=loc)
+        if e.is_function_ref and e.name in lc.nested_def_locals:
+            # A closure local read as a value (`callbacks.append(add_offset)`):
+            # the nested def bound a lambda under its own name, so the read is
+            # the bare local -- never `_function_ref_name`'s module spelling.
+            # The return arm's `ret.closure_name` shape at expression level.
+            _witness("name.closure_local")
+            return THIRName(result_type=rtype, name=e.name, form=Form.VALUE,
+                            loc=loc)
         if e.name in lc.forbidden_reads:
             raise ThirUnsupported("stmt.match")
         if e.name not in declared:
@@ -3119,6 +3150,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # renders the bare checked dunder, landing form-neutrally in
                 # its T sink.
                 or _is_type_param_slot(rtype)
+                # A `Callable` element read (`callbacks[0]`): the
+                # `std::function` element is a value, so the checked read
+                # lands bare in its own value slot.
+                or _callable_value(rtype)
                 # A value-repr Optional[scalar] element (`items[i]` off
                 # `list[Int32 | None]`) read into a WHOLE-optional consumer
                 # (a value-opt decl slot): the bare `std::optional<T>` element.
@@ -4354,8 +4389,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                             analyzer.get_expr_type(a), analyzer)):
                     note_detail("call.type_ctor.slice_arg")
                     raise ThirUnsupported("expr.call")
-                if owned_str_ctor and not _str_pass_through_arg(
-                        a, p.type, declared, analyzer):
+                if owned_str_ctor and not (
+                        _str_pass_through_arg(a, p.type, declared, analyzer)
+                        # `String(Int32(42))` / `String(True)`: sema resolved
+                        # the numeric ctor overload, whose own template does
+                        # the conversion (`::tpy::fixed_to_str<int32_t>({0})`,
+                        # `std::string(::tpy::bool_to_str({0}))`), so the
+                        # scalar arg renders bare inside it.
+                        or (_ctor_arg_slot_ok(p.type, analyzer)
+                            and _resolved_scalar(
+                                analyzer.get_expr_type(a), analyzer))):
                     # `String(view)` -- the positional `std::string({0})`
                     # expansion over a bare str-family arg.
                     note_detail("call.type_ctor.owned_str_arg")
@@ -5062,7 +5105,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 shape_ok = fam.shape_ok(
                     e, fi, declared, analyzer,
                     stmt_position=stmt_position,
-                    storage_ret_ok=storage_ret_ok)
+                    storage_ret_ok=storage_ret_ok,
+                    borrow_ret_ok=result_use in (_ExprResultUse.RECEIVER,
+                                                 _ExprResultUse.BORROW_BIND))
                 stub_recv = fam.stub_recv
             elif recv_type is not None and recv_type.is_pointer():
                 shape_ok = _ptr_template_method_supported(
@@ -5358,17 +5403,24 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # Typed on the DECLARED field type: a NARROWED `str | None` field
             # would render `(*recv.field)` here, while the AST spells the bare
             # member read (uncompilable -- BUGS.md), so it must stay unrouted.
-            view_str_field = (
+            str_field_inner = (
                 isinstance(e.expr, TpyFieldAccess)
-                and e.coercion.name in _VIEW_TARGET_STR_COERCIONS
                 and _resolved_str_value(
                     _field_decl_type(e.expr, declared, lc.analyzer),
-                    lc.analyzer) is not None
+                    lc.analyzer) is not None)
+            view_str_field = (
+                str_field_inner
+                and e.coercion.name in _VIEW_TARGET_STR_COERCIONS
                 and _witness("coerce.str_field_view"))
             inner = _lower_expr(
                 e.expr, lc, declared,
+                # Whatever the str-family coerce does with it, the member read
+                # itself renders bare -- the wrap (materializing copy or
+                # nothing) composes around it. Typed on the DECLARED field
+                # type, so a narrowed `str | None` field stays unrouted.
                 field_owned_str_ok=(
                     view_str_field
+                    or str_field_inner
                     or (disp == "materialize"
                         and isinstance(e.expr, TpyFieldAccess))))
         if (e.coercion.name in _INDIRECT_DEREF_COERCIONS
@@ -6522,6 +6574,14 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             # A str literal / by-value call into a T slot: the init renders
             # bare (`std::string __tmp_N = "hello";` / `= make_str();`).
             _ref_slot_temp(_lower_expr(a, lc, declared))
+        elif (isinstance(ptype, TypeParamRef)
+              and isinstance(peeled, TpyArrayLiteral)):
+            # A container literal into a T slot (`use([1, 2])` ->
+            # `std::vector<int32_t> __tmp_2 = {1, 2};`): the same ref-slot
+            # temp, its init the target-typed brace the decl sink renders.
+            _ref_slot_temp(_lower_expr(a, lc, declared, target_type=resolved,
+                                       use=_ExprUse(
+                                           result=_ExprResultUse.STORAGE)))
         else:
             args.append(_lower_call_arg(
                 a, resolved, lc, declared, temp_args=temp_args,

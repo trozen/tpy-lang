@@ -964,15 +964,17 @@ class TestCtorViewFamilyFields:
             "P")
         assert ctor is None
 
-    def test_string_param_stays_ast(self):
-        # A `String` param spells `const std::string&` -- rejected by the ctor
-        # param gate before the field arm is consulted.
+    def test_string_param_routes(self):
+        # A `String` param spells `const std::string&` in the SKELETON, which
+        # no ctor body arm renders: the field init is the same bare member
+        # init a `str` param takes, so the ctor routes.
         ctor = _lower_ctor(
             "from tpy import String\n"
             "class N:\n    name: str\n"
             "    def __init__(self, name: String):\n        self.name = name\n",
             "N")
-        assert ctor is None
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : name(name) {}\n"
 
     def test_param_reassigned_in_body_stays_ast(self):
         # The AST DEMOTES an init whose RHS references a top-level body
