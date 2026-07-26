@@ -38,7 +38,10 @@ def sandbox(tmp_path, monkeypatch):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     monkeypatch.setenv("PATH", str(bin_dir))
-    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    # TPYC_SHARED_CACHE_DIR outranks XDG_CACHE_HOME in shared_cache_root(), and
+    # CI containers set it -- pin the winning knob or the ambient shared cache
+    # answers the probes.
+    monkeypatch.setenv("TPYC_SHARED_CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.delenv("CXX", raising=False)
     return bin_dir
 
@@ -221,7 +224,7 @@ def test_unwritable_cache_degrades_to_uncached_probe(sandbox, tmp_path,
     # for every user -- mode bits alone wouldn't, since root ignores them.
     blocked = tmp_path / "blocked-cache"
     blocked.write_text("not a directory\n")
-    monkeypatch.setenv("XDG_CACHE_HOME", str(blocked))
+    monkeypatch.setenv("TPYC_SHARED_CACHE_DIR", str(blocked))
     assert toolchain_is_viable(["g++-14"])
     assert toolchain_is_viable(["g++-14"])
     assert _invocations(fake) == 2          # no cache -> re-probed, no crash
