@@ -538,6 +538,14 @@ class _LowerCtx:
         # method access, the `(*p)` value deref, and the bare pass into `T*`
         # slots. The GATE side has no pointer-set analog for the Optional
         # names -- its faces key on the declared type in `ws.declared`.
+        # PARTIAL against `seed_param_locals`: its nullable-static-protocol and
+        # `Own[Optional[T_ref]]` arms (the latter also an `optional_locals`
+        # seed) are NOT mirrored -- both bind a pointer whose declared type
+        # `_optional_ptr_borrow` rejects. Nothing here fences them: they stay
+        # unreachable because every arm such a param can reach (the None test,
+        # the Optional arg shape) rejects a binding it cannot classify, so
+        # widening one of those must seed here in the same change
+        # (test_thir_binding_facts).
         self.pointers: set[str] = set()
         for pname, ptype in self.params:
             if _optional_ptr_borrow(ptype, analyzer) is not None:
@@ -547,6 +555,10 @@ class _LowerCtx:
         # verdict: a ptr-variant-typed union reaching a name through a
         # container element / loop variable still binds the value variant.
         # The narrow arms key their `std::get<T*>` render on this.
+        # Codegen registers from four producers; the two unmirrored ones cannot
+        # reach a routed body -- a union-typed tuple-unpack target is not in the
+        # unpack classifier's admitted shapes, and a short @overload stub whose
+        # omitted params need a prologue local rejects at admission.
         self.ptr_variant_locals: set[str] = set()
         for pname, ptype in self.params:
             if is_ptr_variant_union(unwrap_readonly(unwrap_send_sync(ptype))):
@@ -578,6 +590,13 @@ class _LowerCtx:
         # if-head predecl, the AST's ctx.optional_locals): a subset of
         # `pointers` for the read side (deref reads, `->` access); assigns
         # write PLAIN into the optional (`name = <storage rvalue>;`).
+        # Mirrors the branch-decl producer only -- codegen's `Own[Opt[T_ref]]`
+        # param seed has no entry here (see `pointers`). Its SIBLING
+        # set `storage_form_optional_locals` (the storage-optional loop var /
+        # unpack target -- storage form like these, but NOT pointer-accessed,
+        # so it lifts via `optional_to_ptr` at a `T*` slot) has no mirror at
+        # all; the for-each Optional element family rejects before one can be
+        # bound.
         self.optional_locals: set[str] = set()
         # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
         # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
@@ -686,6 +705,11 @@ class _LowerCtx:
             analyzer.function_hoisted_vars.get(id(func), ()))
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
+        # PARTIAL against codegen's `storage_form_tuple_locals`: the owned-tuple
+        # PARAM seeds and the generator/resumable frame-local registrations are
+        # not mirrored, so a name from either would read BORROW here off
+        # `_is_borrow_form_name`'s type verdict. Both stay unreachable via the
+        # call/subscript arms rejecting an owned-tuple source.
         self.storage_tuple_locals: set[str] = set()
         # Subset of storage_tuple_locals iterated from a const source (a const
         # loop var): the borrow tuple wrap spells `const T*` element pointers.

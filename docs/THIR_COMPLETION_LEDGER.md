@@ -2122,7 +2122,10 @@ byte-diff itself.
   (`timezone(timedelta(...))` -- temp-free). PARKED with verified
   blockers: value-opt RECORD bindings (`Fx | None` params -- the
   `_value_opt_scalar` 32-consumer widening, a future cell);
-  print.arg.scalar_bin_op (fragments 3+ operand families);
+  print.arg.scalar_bin_op (RETIRED as a tag: the print arm's own
+  shape label overwrote the inner reject reason, so the "3+ operand
+  families" reading was the catch-all, not the blocker; the arm now
+  reports the inner reason and this tag no longer appears);
   bounded-T method receivers (`factory.create_point(x, y)` -- generics
   lane); negated 3-member isinstance ifs (if.narrow_shape,
   member-count-driven); consuming @native free-form methods
@@ -2449,9 +2452,15 @@ byte-diff itself.
   bound_factory_inference, covariant_custom.
   FRONTIER VERIFIED-AND-DROPPED (3+-way fragmenting): container_
   literal (13: protocol-slot float lists / generic-T Own returns /
-  ptr-variant union elements / nested tuple-dict), call.native_arg.
-  record_nonf1 (str(Span)/hash(enum)/len(subscript) arg rows),
-  field_write_shape. PARKED with verified blockers: res.return_type
+  ptr-variant union elements / nested tuple-dict),
+  field_write_shape. **The `call.native_arg.record_nonf1` drop verdict
+  was WITHDRAWN: the "fragmenting" reading was an artifact of a missing
+  container guard, which filed lists/dicts/sets under the record branch
+  of `_native_arg_reject`. Those args now tag `call.native_arg.
+  container`, and a spy over the family found ZERO record args -- one
+  coherent `_is_len_call` frontier (non-name reads into a Sized/Iterable
+  slot), NOT three rows. Its own cited example, `len(subscript)`, is a
+  container.** PARKED with verified blockers: res.return_type
   (10 async own/borrow returns -- tpy-m2 fix-yield-escape avoid-zone
   overlap), expr.lambda 9 (overload_fn_param family -- deferred with
   the overload tail re-price), os_walk trio (the pending-view design

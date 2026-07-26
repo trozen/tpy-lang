@@ -89,7 +89,6 @@ from .context import (
 from .expressions import (
     _lower_expr,
     _lower_field_source,
-    _narrow_binding_supported,
     _narrow_subject_is_ptr,
 )
 from . import statements as _statements
@@ -2214,14 +2213,6 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                  else None)
     subj_type = (declared.get(subj_name) if subj_name is not None
                  else stmt.subject_type)
-    if subj_name is not None and not _narrow_binding_supported(
-            subj_name, u, lc):
-        # A ptr-variant-TYPED union bound some other way (a for-each element
-        # over `list[A | B]` binds the VALUE variant) extracts without the
-        # `*std::get<N*>` deref -- the isinstance arm's binding rule, which
-        # this tier shares.
-        note_detail("match.union_binding_form")
-        raise ThirUnsupported("stmt.match")
     arms: list[THIRMatchArm] = []
     seen: set[int] = set()
     for i, case in enumerate(stmt.cases):
@@ -2388,10 +2379,6 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                  else None)
     subj_type = (declared.get(subj_name) if subj_name is not None
                  else stmt.subject_type)
-    if subj_name is not None and not _narrow_binding_supported(
-            subj_name, u, lc):
-        note_detail("match.union_binding_form")
-        raise ThirUnsupported("stmt.match")
 
     type_arms: dict[int, list] = {i: [] for i in range(n)}
     for case in stmt.cases:

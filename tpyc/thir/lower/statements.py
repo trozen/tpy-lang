@@ -368,7 +368,6 @@ from .checks import (
 from .expressions import (
     _container_slice_recv_ok,
     _flush_witness,
-    _narrow_binding_supported,
     _narrow_member_cpp,
     _narrow_subject_const,
     _narrow_subject_is_ptr,
@@ -3031,7 +3030,7 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
     # unions (both bind `const auto&` from the const signature slot).
     const_ref = (var in lc.prescan.param_names
                  and (u.is_value_type() or u.needs_wrapper()))
-    return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u),
+    return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u, lc),
                            member_cpp=member_cpp,
                            is_ptr_variant=is_ptr, const_ref=const_ref,
                            no_source_comment=True, loc=loc)
@@ -3230,16 +3229,13 @@ def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
     result_type = lc.analyzer.get_expr_type(condition)
     if folded:
         return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
-    if not _narrow_binding_supported(var, u, lc):
-        note_detail("narrow.union_binding_form")
-        raise ThirUnsupported("stmt.if")
     is_ptr = _narrow_subject_is_ptr(var, u, lc)
     const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
     if u.needs_wrapper():
         _witness("narrow.wrapper_union")
     return THIRIsinstance(
         result_type=result_type,
-        variant_cpp=_narrow_variant_cpp(var, u),
+        variant_cpp=_narrow_variant_cpp(var, u, lc),
         member_cpps=tuple(
             f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
             for m in members),
@@ -7994,10 +7990,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 try:
                     lowered_args.append(
                         _lower_print_arg(arg, lc, declared, pointers))
-                except ThirUnsupported:
-                    fam = _type_family_tag(
-                        analyzer.get_expr_type(arg), analyzer)
-                    _kind_detail(f"print.arg.{fam}_", arg)
+                except ThirUnsupported as exc:
+                    # The inner reject already names the blocker, but it
+                    # travels in the exception -- the detail slot is
+                    # first-wins, so a shape tag composed here would win by
+                    # default and hide it.
+                    note_detail(exc.reason)
                     raise ThirUnsupported(stmt_reject_reason(stmt)) from None
             return THIRPrint(args=tuple(lowered_args), sep_expr=sep_expr,
                              end_expr=end_expr, sep_value=sep_value,

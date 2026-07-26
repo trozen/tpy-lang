@@ -2759,10 +2759,14 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     ..., T*>`, value-typed yet with distinct borrow and storage forms). Used to keep
     a THIRName's form tag honest so a convert source is never mislabeled VALUE.
 
-    Precondition: callers must first exclude a STORAGE-form pointer-repr tuple (an F3
-    `auto&&` alias local), which has the same type but reads as STORAGE -- this query
-    keys on the type alone and would mistag it BORROW. The name-read call site checks
-    `storage_tuple_locals` before falling through here. The other call site -- the
+    This is the type-level stand-in for codegen's `local_cpp_form` ladder, which
+    keys on BINDING-set membership; it agrees only for the rungs whose set the
+    name-read arm has already consulted. Precondition: callers must first exclude
+    a STORAGE-form pointer-repr tuple (an F3 `auto&&` alias local), which has the
+    same type but reads as STORAGE -- this query keys on the type alone and would
+    mistag it BORROW. The name-read call site checks `storage_tuple_locals` (and
+    the Own-param / value-opt / opt-record bindings) before falling through here.
+    The other call site -- the
     `TpySubscript` branch tagging a subscript *result* -- is safe without that check
     because an admitted element is only ever a value scalar or a plain record, never
     itself a pointer-repr tuple (a nested-tuple element is not in the admitted set), so

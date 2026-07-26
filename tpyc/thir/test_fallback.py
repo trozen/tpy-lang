@@ -82,6 +82,27 @@ def test_arm_residual_records_deduped(monkeypatch):
     assert r["if"] == 1 and r["return"] == 1
 
 
+def test_arm_residual_sees_nested_container_fields(monkeypatch):
+    # A class-pattern KEYWORD sub-pattern hangs off `list[tuple[str, pattern]]`,
+    # so a walk that only recurses into node-valued list elements never reaches
+    # it and the arm reads as deletable when it is not.
+    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
+    compiler, _, f = _fn_body(
+        "from tpy import Int32\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "def f(d: Dog) -> Int32:\n"
+        "    match d:\n"
+        "        case Dog(n=k):\n            return k\n"
+        "    return 0\n", "f")
+    with activate_compiler(compiler):
+        record_arm_residual(f.body)
+    r = compiler._thir_arm_residual
+    assert r["match"] == 1
+    assert r["capture_pattern"] == 1
+
+
 def test_arm_residual_inert_when_gate_off(monkeypatch):
     monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", False)
     compiler, _, f = _fn_body(
@@ -1395,3 +1416,41 @@ def test_branch_first_iterator_object_decl_falls_back():
         if fn is None:
             fold_attempt("body")
     assert fn is None
+
+
+def _reasons(src: str) -> dict:
+    from ..codegen_cpp import CodeGenOptions
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False,
+                                      thir_codegen=True))
+    return dict(compiler._thir_fallback)
+
+
+def test_native_arg_container_is_not_labelled_a_record():
+    # Containers are NominalType, so without a guard they fall into the record
+    # split and a whole family reads as blocked on the non-F1-record frontier.
+    src = ("from tpy import Int32\n"
+           "def f(groups: dict[str, list[Int32]]) -> None:\n"
+           "    print(len(groups[\"a\"]))\n"
+           "def main() -> None:\n    pass\nmain()\n")
+    reasons = _reasons(src)
+    assert any(k.endswith("call.native_arg.container") for k in reasons), reasons
+    assert not any("record_nonf1" in k for k in reasons), reasons
+
+
+def test_print_arg_reports_the_inner_reject_not_its_own_shape():
+    # The print arm's own shape tag is composed AFTER the inner lowering
+    # rejects; since the detail slot is first-wins, a tag composed here would
+    # win by default and bury the reason that actually blocked the body.
+    src = ("from tpy import Int32\n"
+           "class Item:\n"
+           "    tags: set[str]\n"
+           "    def __init__(self) -> None:\n        self.tags = set()\n"
+           "def f(item: Item) -> None:\n"
+           "    print(\"fruit\" in item.tags)\n"
+           "def main() -> None:\n    pass\nmain()\n")
+    reasons = _reasons(src)
+    assert any("binop.shape.in" in k for k in reasons), reasons
+    assert not any("print.arg." in k for k in reasons), reasons

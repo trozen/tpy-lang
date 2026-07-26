@@ -1416,6 +1416,38 @@ by theme; each is a rule the next cell should apply.
   dominated at 70 slots), and static-protocol params -- filed as needing a new capture tier
   -- were probe-verified byte-identical with the gate simply removed.
 
+**Binding facts vs type facts (the mirror ledger).** Codegen classifies a local
+through per-name `*_locals` SETS (`pointer_locals`, `ptr_variant_locals`,
+`optional_locals`, `storage_form_tuple_locals`, `const_indirect_locals`, ... --
+`local_cpp_form` is the ordered ladder over them). A type predicate is not a
+substitute: the same declared type can arrive through a binding with a different
+C++ form (a ptr-variant union as a container element binds the VALUE variant; a
+pointer-repr `Optional` as a loop var binds storage). Two divergences of exactly
+this shape were found by accident in wave 16 (union isinstance narrowing, then
+both union match tiers), which motivated a full sweep of the remaining sets.
+
+- Rule: a THIR render that codegen keys on set membership must key on the mirror
+  set (`_narrow_subject_is_ptr` is the pattern), never on the type verdict. Where
+  the mirror is not yet known complete, REJECT rather than guess -- but that fence
+  is a stopgap, and it over-rejects: the union-narrowing one cost every
+  value-variant element binding until the mirror was audited and it came out.
+- The sweep (every producer of the pointer / ptr-variant / optional / storage-tuple
+  sets, dual-path probed) found no further live divergence. It did find that several
+  unmirrored registrations are unreachable only *emergently* -- the fence belongs to
+  a gate that exists for another reason (an Optional binding the None-test arm cannot
+  classify, an owned-tuple source the call/subscript arms reject, a union element
+  the unpack target classifier never admits). Those are now pinned in
+  `tpyc/thir/test_thir_binding_facts.py`, and each partial mirror names its
+  unmirrored producers where it is declared.
+- Not swept to the same depth, and the place to look first if this class resurfaces:
+  `const_borrow_form_tuple_locals`, whose const verdict comes from a whole-body
+  fixpoint pre-pass (`_compute_borrow_tuple_const`) that THIR has no analog for --
+  its name-chain rung is fenced only by the storage-tuple alias arm requiring a
+  field source. `movable_locals` carries its own partiality caveats in `_LowerCtx`.
+- Consequence for future cells: widening one of those gates is not a local change
+  -- it un-fences a binding whose mirror does not exist yet. Seed the mirror in
+  `_LowerCtx` in the same cell.
+
 ---
 
 ## MIR Design

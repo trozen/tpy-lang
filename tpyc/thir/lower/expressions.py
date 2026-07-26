@@ -2205,18 +2205,10 @@ def _narrow_subject_is_ptr(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
     on `ctx.ptr_variant_locals` (params and pointer-variant local decls), so a
     ptr-variant-TYPED union reaching a name some other way -- a for-loop
     element over `list[A | B]`, whose storage form is the value variant --
-    still extracts by value. Un-mirrored bindings of a ptr-variant union
-    reject rather than guess (`_narrow_binding_supported`)."""
+    still extracts by value, which is what a False here selects. The verdict
+    is only as good as the mirror: `lc.ptr_variant_locals` must stay complete
+    against codegen's registrations (see its declaration)."""
     return is_ptr_variant_union(u) and var in lc.ptr_variant_locals
-
-
-def _narrow_binding_supported(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
-    """A narrowing subject whose BINDING form THIR has established: a
-    value/wrapper union (one render), or a ptr-variant union bound as a
-    pointer variant. A ptr-variant-typed union bound some other way takes the
-    AST's value-variant extraction off a binding set THIR does not track
-    yet -- defer the body instead of rendering the wrong `std::get`."""
-    return not is_ptr_variant_union(u) or var in lc.ptr_variant_locals
 
 
 def _narrow_subject_const(var: str, lc: '_LowerCtx') -> bool:
@@ -2272,13 +2264,16 @@ def _ptr_read_derefs(name: str, lc: '_LowerCtx') -> bool:
             and name not in lc.narrow.narrowed)
 
 
-def _narrow_variant_cpp(var: str, u: UnionType) -> str:
+def _narrow_variant_cpp(var: str, u: UnionType, lc: '_LowerCtx') -> str:
     """The C++ expression yielding the narrowing subject's `std::variant`: a
     recursive-alias wrapper union (F6) reaches it via `.value` (the
     VariantAccess.variant_expr indirection); every other routed union is the
-    variant itself. Shared by the isinstance condition and the extraction
-    alias so the two spellings cannot drift."""
-    return f"{var}.value" if u.needs_wrapper() else var
+    variant itself. A POINTER-bound subject (a resumable pointer-form loop var
+    over `list[A | B]`) derefs first, like any other read of it. Shared by the
+    isinstance condition and the extraction alias so the two spellings cannot
+    drift."""
+    base = f"(*{var})" if _ptr_read_derefs(var, lc) else var
+    return f"{base}.value" if u.needs_wrapper() else base
 
 
 def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
@@ -2288,9 +2283,6 @@ def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
     (`_narrow_subject_const`) applied at lowering. Shared by the extraction
     alias, the compound-condition inline read, and the assign-narrowed
     field-receiver read."""
-    if not _narrow_binding_supported(var, u, lc):
-        note_detail("narrow.union_binding_form")
-        raise ThirUnsupported("expr.narrowed_read")
     member_cpp = lc.render_type(member)
     is_ptr = _narrow_subject_is_ptr(var, u, lc)
     if is_ptr:
@@ -7201,6 +7193,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _lower_expr(a, lc, declared, allow_whole_optional=True),
             deref=False)
     if (isinstance(a, TpyName)
+            and not method_arg
             and _opt_view_arg_shim(_param_declared_type(a.name, lc), ptype,
                                    lc.analyzer)):
         # A value-repr Optional[str] name into another value-repr Optional[str]
@@ -7209,6 +7202,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # -> the owned `optional<string>` the slot needs (`s ? std::make_optional(
         # std::string(*s)) : std::nullopt`). The family match (str inner, not the
         # bare `StrView` spelling) is pinned by `_opt_view_arg_shim`.
+        # A RECORD-method arg is excluded because the AST's `_args()` loop
+        # passes `target_type=None` there, so the shim sees no target and the
+        # optional goes BARE. Stub receivers are subsumed by `method_arg`, and
+        # DO thread `ptype` -- they are safe only because their arg gates
+        # (`_container_method_arg_ok` / `_view_method_arg_ok`) admit no such
+        # row, so widening either gate must revisit this exclusion.
         return THIROptViewArg(
             result_type=ptype, name=a.name, form=Form.VALUE,
             loc=getattr(a, "loc", None))

@@ -385,12 +385,12 @@ class TestRecordBinopDecl:
         _assert_byte_identical(src)
 
 
-class TestUnionNarrowBindingFence:
-    def test_for_each_element_union_narrow_stays_ast(self):
+class TestUnionNarrowBindingVerdict:
+    def test_for_each_element_union_narrow_extracts_by_value(self):
         # A ptr-variant-TYPED union reached through a for-each element binds
-        # the VALUE variant, which codegen extracts with `std::get<T>`; THIR
-        # tracks pointer-variant BINDINGS (params + ptr-variant local decls)
-        # and rejects the ones it cannot classify rather than guessing.
+        # the VALUE variant, which codegen extracts with `std::get<T>`. THIR
+        # keys the same verdict on pointer-variant BINDINGS (params +
+        # ptr-variant local decls), so the element renders without the `*`.
         src = _UNION_RECS + (
             "def show(xs: list[Dog | Cat]) -> None:\n"
             "    for u in xs:\n"
@@ -403,7 +403,7 @@ class TestUnionNarrowBindingFence:
             "main()\n"
         )
         out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        assert not fallback
         assert "std::holds_alternative<Dog>(u)" in out
         _assert_byte_identical(src)
 
@@ -452,10 +452,10 @@ class TestUnionNarrowBindingFence:
         assert fallback
         _assert_byte_identical(src)
 
-    def test_for_each_element_union_match_stays_ast(self):
+    def test_for_each_element_union_match_extracts_by_value(self):
         # The MATCH tiers share the isinstance arm's binding rule: a
         # ptr-variant-TYPED union bound as a for-each element extracts
-        # WITHOUT the `*std::get<N*>` deref, so the subject must reject.
+        # WITHOUT the `*std::get<N*>` deref.
         src = _UNION_RECS + (
             "def show(xs: list[Dog | Cat]) -> None:\n"
             "    for u in xs:\n"
@@ -469,7 +469,7 @@ class TestUnionNarrowBindingFence:
             "main()\n"
         )
         out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        assert not fallback
         assert "auto& __case_0 = std::get<1>(__match_subject_1);" in out
         _assert_byte_identical(src)
 

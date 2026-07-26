@@ -2944,6 +2944,11 @@ def _native_arg_reject(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> str:
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
+    if is_list(at) or is_dict(at) or is_set(at):
+        # Containers are NominalType too, so they must be split off before the
+        # record branch below -- labelling them "record" sent a whole family
+        # (non-name reads into a Sized/Iterable slot) to the wrong frontier.
+        return "call.native_arg.container"
     if isinstance(at, NominalType):
         # Split F1 vs non-F1: an F1 record name here means a slot mismatch
         # (readonly/Own/unrelated slot); a non-F1 record is blocked on the

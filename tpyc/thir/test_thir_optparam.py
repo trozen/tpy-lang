@@ -1463,3 +1463,50 @@ class TestOwnedViewOptWholeSrc:
                "        if y is not None:\n            print(y)\n")
         assert _fn(_lower_ctx(src), "relay") is None
         _assert_byte_identical(src)
+
+
+class TestOptViewArgMethodPositionStaysBare:
+    """The arg-split shim is FREE-CALL only. `gen_call_arg` suppresses the
+    target hint at a record method arg, so the AST reaches
+    `_maybe_convert_opt_view_param` with target=None and passes the whole
+    optional BARE -- mirroring the split there would emit a copy the AST
+    never makes (a copy-vs-alias divergence)."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Sink:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n        self.n = 0\n"
+        "    def take(self, b: bytes | None) -> Int32:\n"
+        "        if b is None:\n            return -1\n"
+        "        return len(b)\n"
+        "def free_take(b: bytes | None) -> Int32:\n"
+        "    if b is None:\n        return -1\n"
+        "    return len(b)\n"
+        "def via_method(s: Sink, b: bytes | None) -> Int32:\n"
+        "    return s.take(b)\n"
+        "def via_free(b: bytes | None) -> Int32:\n"
+        "    return free_take(b)\n"
+        "def main() -> None:\n"
+        "    s = Sink()\n"
+        "    print(via_method(s, b\"xy\"))\n"
+        "    print(via_free(b\"xy\"))\n"
+        "main()\n"
+    )
+
+    def _emit(self, thir: bool) -> str:
+        compiler, modules = _compile(self.SRC)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_byte_identical(self):
+        assert self._emit(thir=True) == self._emit(thir=False)
+
+    def test_method_arg_bare_free_arg_split(self):
+        out = self._emit(thir=True)
+        assert "return s.take(b);" in out
+        assert ("return free_take(b ? std::make_optional(::tpy::bytes_copy(*b))"
+                " : std::nullopt);" in out)

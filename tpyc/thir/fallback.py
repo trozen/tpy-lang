@@ -178,7 +178,7 @@ def record_arm_residual(body: 'list') -> None:
         return
     kinds: set[str] = set()
     for stmt in body:
-        for node in _walk(stmt):
+        for node in _walk_deep(stmt):
             kinds.add(_CAMEL_SPLIT.sub("_", type(node).__name__
                                       .removeprefix("Tpy")).lower())
     r = compiler._thir_arm_residual
@@ -206,6 +206,33 @@ def _walk(root: object):
                 stack.extend(x for x in v if _is_node(x))
             elif _is_node(v):
                 stack.append(v)
+
+
+def _walk_deep(root: object):
+    """`_walk` plus NESTED container fields: a node reached only through a
+    list of tuples (`TpyClassPattern.keywords`) is invisible to the flat walk,
+    which silently under-counts every keyword sub-pattern.
+
+    A separate function rather than a `deep=` flag on `_walk`: the two
+    consumers have incompatible stability requirements -- `classify_stmt`
+    picks the FIRST landmark it reaches, so its traversal order is part of
+    every reject tag in the corpus, while this one is a pure census that
+    wants maximum reach. A shared flag would leave the corpus-re-tagging
+    mode one keyword away from the tagger."""
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        yield node
+        for f in dataclass_fields(node):
+            _push_deep(getattr(node, f.name, None), stack)
+
+
+def _push_deep(v: object, stack: list) -> None:
+    if isinstance(v, (list, tuple)):
+        for x in v:
+            _push_deep(x, stack)
+    elif _is_node(v):
+        stack.append(v)
 
 
 def classify_stmt(stmt: TpyStmt) -> str:
