@@ -486,6 +486,25 @@ THIR_FACES: frozenset[str] = frozenset({
     # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
     # THIRFieldAccess inside the shared native-call emit).
     "len.field_recv",
+    # `len(groups["a"])` -- a nested-container ELEMENT arg to the builtin len
+    # (lowering; `::tpy::__len__(::tpy::__getitem__(groups, "a"))`, the element
+    # lvalue prechecked inside the shared native-call emit).
+    "len.elem_subscript",
+    # `for x in self.items:` on an open-T field whose bound is a structural
+    # iterable protocol (lowering; the bare member capture + the universal
+    # `::tpy::__iter__` loop, resolved through the bound).
+    "foreach.open_t_field",
+    # `self` read inside an `isinstance(self, Sub)` branch (lowering; the
+    # pre-bound cast pointer's deref `(*__self_ptr)`, not `this`).
+    "self.poly_narrowed",
+    # A non-value tuple element inside a RESUMABLE frame-emplace container
+    # literal (lowering; `std::tuple<int32_t, Box>{1, Box(5)}` bare -- the
+    # emplaced brace is already storage-typed, so no tuple_to_storage wrap).
+    "containerlit.tuple_frame_elem",
+    # `print(groups["a"])` -- the same nested-container element lvalue streamed
+    # through the kind-keyed printer wrap (lowering;
+    # `ListPrinter(::tpy::__getitem__(groups, "a"))`).
+    "print.elem_subscript",
     # Container-FIELD for-each iterable (lowering; `for x in self.xs:` -- the
     # field renders inside the same lvalue `auto& __obj_N =` capture a name
     # takes; str/bytes fields ride the older viewfam admission).

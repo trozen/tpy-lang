@@ -36,7 +36,8 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...type_def_registry import is_bool_type, is_fixed_int_type
+from ...type_def_registry import (is_bool_type, is_dict, is_fixed_int_type,
+                                  is_list, is_set)
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...value_category import is_rvalue_source
@@ -79,6 +80,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _value_opt_scalar,
+    _value_tuple,
 )
 from .context import (
     _ExprResultUse,
@@ -271,11 +273,17 @@ def _match_field_cond(pattern: TpyClassPattern, field_name: str, value,
 def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
     """A field capture joins the arm walk as a plain declared local, so its
     type must be one the slice's name-read classification already covers:
-    value scalars, Char, registered enums, resolved str."""
+    value scalars, Char, registered enums, resolved str, value tuples, and
+    the non-value families whose binding is the plain `auto&` alias into the
+    subject's field (an F1 record, a list/dict/set). An Optional field binds
+    a hoisted pointer instead -- its own rung."""
     t = unwrap_readonly(ft)
     return (_eligible_scalar(t) or _eligible_char(t)
             or _eligible_enum(t, analyzer) is not None
-            or _resolved_str_value(t, analyzer) is not None)
+            or _resolved_str_value(t, analyzer) is not None
+            or _value_tuple(t, analyzer) is not None
+            or _f1_record(t, analyzer)
+            or is_list(t) or is_dict(t) or is_set(t))
 
 def _match_keywords_ok(
         pattern: TpyClassPattern, analyzer, pointers: AbstractSet[str],
@@ -616,6 +624,14 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             return None
         vtype = unwrap_ref_type(raw)
         if _statements._try_hoist_type_ok(vtype, analyzer):
+            hoist_declared.append((name, vtype, "value"))
+            continue
+        if _value_tuple(vtype, analyzer) is not None:
+            # A VALUE tuple predecls through the same plain tail arm
+            # (`std::tuple<...> t;`) and its branch writes are plain assigns.
+            # Scoped to the match hoist rather than widening the shared
+            # `_try_hoist_type_ok`, whose other four call sites (if / try /
+            # with / for) would each need their own re-verification.
             hoist_declared.append((name, vtype, "value"))
             continue
         if not nonvalue_ok:
@@ -1120,6 +1136,13 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                      else "match.field_cond")
             field_conds.append(pair)
         elif isinstance(sub, TpyCapturePattern):
+            if sub.name in lc.pointers:
+                # A capture the match hoisted into a POINTER local binds by
+                # address (`q = &(__match_subject_1.inner);`) -- its own rung.
+                # Beside node construction, where every rejection check lives:
+                # the hoist registers `lc.pointers` only after the arm gate has
+                # read its snapshot, so the gate could not see this anyway.
+                raise ThirUnsupported("match.field_bind_ptr_hoist")
             mode = ("assign" if sub.name in declared
                     else "copy" if sub.bind_by_value else "ref")
             _witness("match.field_bind")

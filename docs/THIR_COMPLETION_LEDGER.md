@@ -142,6 +142,44 @@ These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 independently-deletable sub-component** -- it dies once ctor cells route (still
 gated on F3+ for non-record fields).
 
+### The cutover deletion budget -- THIR's OWN code that dies with the AST emitter
+
+Deleting `codegen_cpp`'s body/form emit is not the end of the cleanup, and the
+size numbers say why. Measured 2026-07-26 (non-test LOC):
+
+| | LOC |
+|---|---|
+| `tpyc/thir/` total | 48,567 |
+| `tpyc/codegen_cpp/` -- the emitter THIR replaces | 36,488 |
+
+THIR is **33% larger than the emitter it exists to delete**, and essentially
+all of the excess is migration scaffolding rather than compilation:
+
+- **~10,200 lines of ADMISSION logic** -- functions returning bool / a reject
+  reason that never build a node. `lower/checks.py` is ~78% this, `lower/
+  predicates.py` ~51%. Every one answers "can THIR mirror this shape?", a
+  question with **no meaning once THIR is mandatory** -- there is nothing to
+  fall back to, so the gate can only reject a program the compiler must accept.
+  These do not migrate; they DELETE, together with `ThirUnsupported` and the
+  try-lower-catch boundary at each entry point.
+- **~3,000 lines of instrumentation** -- `faces.py` (1,360), `dump.py`,
+  `validate.py`, `fallback.py`, `shape.py`: the coverage/measurement apparatus
+  the migration steers by. It has no post-cutover consumer either.
+
+Subtract both and THIR lands at ~35k against the AST emitter's ~36.5k --
+**parity**. That is the honest read of what the migration buys: STRUCTURE (a
+typed IR, one sema->codegen boundary, the cache point) at roughly equal size,
+not code reduction.
+
+The reduction is collectable only AFTER cutover, and only deliberately. While
+byte-identity is the contract, each lowering arm must reproduce the AST's
+INCIDENTAL splits rather than replace them -- `retype_scalars`,
+`field_prechecked`, `subscript_prechecked`, the resumable frame-emplace bare
+tuple element are all mirrors of emit accidents, not of semantics. Once the
+oracle is gone those arms can merge. Plan the post-cutover simplification pass
+as its own phase; "the AST emitter is deleted" is the halfway mark, not the
+finish.
+
 ## Deferred-cell registry
 
 The map; the linked `TODO.md` cells carry the per-cell detail. Status: DONE /
@@ -2927,3 +2965,72 @@ byte-diff itself.
   -- all three byte-identical under dualgen), and the member-name union
   return pin, whose own comment already quoted the `&(d)` render it was
   guarding against.
+
+- **WAVE-17 -- design round 14's decisions 28 + 29, built end to end
+  (`thir-wave17-queue`, 2026-07-26, 8 cells + 2 harvests, +32 flips,
+  dial 2562 -> 2594/3585).**
+  Round 14 was the first round whose queue was priced from VERIFICATION
+  rather than tags, and the pricing mostly held: the four verified tracks
+  landed, and the two it had NOT verified to the same depth (drop B, and
+  drop A's second half) turned out to be scaffolding rather than arms.
+  Cells, in build order:
+  (1) NESTED-CONTAINER ELEMENT LVALUES in the two native sinks that
+  consume a whole container -- `::tpy::__len__(::tpy::__getitem__(groups,
+  "a"))` and `ListPrinter(...)`, plus the field-off-element form
+  (`len(g.rows[0].cells)`). Both sinks PRECHECK the element read, because
+  the value-position element gate rejects a container result; what
+  licenses the precheck is the REF_ALIAS shape check, which excludes
+  exactly what the precheck would drop (unproven Optional element, slice,
+  unroutable index). That is why the len row keys on `_is_len_call`, not
+  on the bare `_is_len_native` symbol its field twin uses.
+  (2) GENERIC CALLEES THAT ARE OVERLOAD GROUPS. The gate rejected any
+  generic callee with more than one registered stub on the premise that
+  "overload groups literal-mangle the callee"; the oracles refute it
+  (`apply<int32_t>(f1, 5)`). What the group changes is WHICH stub supplies
+  the template args -- and the ARITY depends on it, so `fis[0]` spelled
+  the wrong list. The generic arg tail also never carried the callable
+  family, so every `Fn[...]`-slot call fell back one step later. THE
+  BIGGEST HARVEST OF THE WAVE: 12 cases beyond the 5 probed.
+  (3) VALUE-REPR `Optional[scalar]` RESUMABLE FRAME LOCALS. Pass 1
+  pre-registers every frame field in `declared`, so the decl arm read as a
+  reassign and never registered the binding; and the plain frame-field
+  write lowered its init with no whole-optional admission. DUAL GENERATION
+  FOUND A PRE-EXISTING MISCOMPILE (BUGS.md): the AST renders a value-opt
+  name's truthiness in a resumable as the bare `if (v)` -- has_value alone
+  -- where the sync path emits `::tpy::is_truthy(v)`. `g(0)` takes the
+  branch under TPy and skips it under CPython. It predates this cell (the
+  param form already routed), so THIR REJECTS the shape rather than mirror
+  a miscompile.
+  (4) FRAME-EMPLACE TUPLE ELEMENTS + MATCH KEYWORD CAPTURES + the
+  value-tuple match hoist. Dualgen caught the boundary the code comment
+  did not name: a dict VALUE keeps the `tuple_to_storage` wrap even inside
+  a frame, so the bare form keys on the same `retype_scalars` axis that
+  already splits list from dict/set elements. The capture row admits
+  records / containers / value tuples (all plain `auto&` aliases) but the
+  POINTER-HOISTED capture must reject -- and that check has to run at
+  LOWERING, because the hoist registers `lc.pointers` only after the arm
+  gate has seen a pointer snapshot.
+  (5) THREE MISSING METHOD-CALL ARG ROWS: the callable family beyond
+  lambdas, the args of a USER-deref chain (whose kind `_marker_call_kind`
+  cannot name -- it rejects every deref-marked call by construction), and
+  `copy(p)` into an `Own[record]` slot in both the record-method and
+  static-method faces.
+  (6) `isinstance(self, Sub)` IN SYNC METHOD BODIES -- NO FLIPS, and worth
+  recording why. Both self exclusions came out and the cast spelling
+  (`this` / `&__self`, const under `@readonly`) plus the narrowed read
+  (`(*__self_ptr)`, which flips the access from `this->` to `.`) are
+  mirrored and byte-identical. But the one corpus case is now blocked
+  SOLELY on the assert-position form, whose persistent `const Dog& __self
+  = *dynamic_cast<...>(this);` is a SECOND alias maker, and the resumable
+  case needs the `__self_narrowed` rename. The memo priced "both self
+  gates = 3 flips"; the gates were necessary and not sufficient.
+  (7) OPEN-T ITERABLE FIELD in a for-head. THIR had no type-param-bounds
+  threading on the for-head route at all; the bound now reaches it the way
+  the AST reads it. A NativeIterable / Spannable bound keeps rejecting
+  (the begin/end peephole), as do resumable bodies.
+  VERIFIED AND PARKED (see TODO.md's wave-17 residue entry): the leaf
+  try/finally crossed by a return is NOT arm-widening -- the AST renders a
+  `__fin_ran_N` flag, a numbered eager-capture temp and an INLINED finally
+  body before the return. An experiment that simply dropped the crossing
+  check produced exactly that divergence, which is the cheapest possible
+  proof that the rung is scaffolding.

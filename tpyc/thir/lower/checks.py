@@ -1919,7 +1919,9 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     emits the same `::tpy::__len__(items)`. A field arg types at the DECLARED
     field type, so a narrowed
     Optional[container] field (the AST's `(*recv.field)` unwrap) rejects at the
-    family check. A non-name arg (literal, subscript, call) rides a later
+    family check. The receiver may also be a container-element subscript
+    (`len(rows[0].cells)`), which renders the same bare member read off the
+    checked element lvalue. A non-name arg (literal, call) rides a later
     cell."""
     if not _is_len_native(e):
         return False
@@ -1929,7 +1931,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     if isinstance(arg, TpyName) and arg.name in locals_:
         bt = locals_[arg.name]
     elif (isinstance(arg, TpyFieldAccess)
-          and _field_receiver_ok(arg, locals_, analyzer)):
+          and (_field_receiver_ok(arg, locals_, analyzer)
+               or _field_over_container_subscript_ok(arg, locals_, analyzer))):
         bt = _field_decl_type(arg, locals_, analyzer)
         if bt is None:
             return False
@@ -1947,8 +1950,19 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     elif isinstance(arg, TpySubscript):
         # `len(s[a:b])` -> `::tpy::__len__(::tpy::str_slice(...))`: a str-slice
         # SUBSCRIPT result is a str value rendered bare, so the __len__ overload
-        # accepts it like a name/field. Non-str subscripts ride a later cell.
-        return _resolved_str_value(analyzer.get_expr_type(arg), analyzer) is not None
+        # accepts it like a name/field.
+        st = analyzer.get_expr_type(arg)
+        if _resolved_str_value(st, analyzer) is not None:
+            return True
+        # A nested-container ELEMENT read (`len(groups["a"])` ->
+        # `::tpy::__len__(::tpy::__getitem__(groups, "a"))`): the checked read
+        # is an lvalue into the container's storage, so it renders bare in the
+        # native slot like a name/field. The REF_ALIAS borrow-source shape is
+        # the same one the arg row prechecks (no optional check, no slice, a
+        # routable index off an admitted receiver), so the value-position
+        # element gate never has to see it. A SLICE result is a fresh
+        # container rvalue rather than an element lvalue -- its own cell.
+        return _container_ref_alias_elem_subscript(arg, locals_, analyzer)
     elif isinstance(arg, TpyNamedExpr):
         # `len(v := h.view())` -- a container walrus arg: the comma form's
         # `*v` result is the same container lvalue a name renders; the
@@ -2208,15 +2222,27 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     if fi.type_params or has_targs:
         # A plain TPy generic callee spells explicit template args
         # (`f<int32_t>(args)`, type_to_cpp_stored per arg) over the plain /
-        # imported spelling; the args resolve against the ROOT stub's params
-        # with the inferred substitution (the TypeParamRef ref-slot temp
-        # rule). Overload groups pick a different fi for the arg loop and
-        # literal-mangle the callee -> AST.
+        # imported spelling; the args resolve against the selected stub's
+        # params with the inferred substitution (the TypeParamRef ref-slot
+        # temp rule). An OVERLOAD GROUP resolves to the sema-selected stub --
+        # the AST's `func_info` pick, which the arity of the template-arg
+        # list depends on -- and still spells the plain name
+        # (`apply<int32_t>(f1, 5)`).
         fis = analyzer.registry.get_function(e.func_name)
-        if fis is None or len(fis) != 1:
+        if fis is None:
             note_detail("call.callee_kind.generic")
             return None
-        root = fis[0]
+        if len(fis) > 1:
+            # The AST's `is_literal_mangled` condition: a Literal-param stub
+            # in a group renames the callee. No corpus case selects one from
+            # a GENERIC group, so this mirrors the rename condition rather
+            # than relying on sema never producing that pairing.
+            if any(isinstance(p.type, LiteralType) for p in fi.params):
+                note_detail("call.callee_kind.literal_mangled")
+                return None
+            root = fi
+        else:
+            root = fis[0]
         if (not root.type_params or not e.inferred_type_args
                 or len(e.inferred_type_args) != len(root.type_params)):
             note_detail("call.callee_kind.generic")
@@ -3059,6 +3085,14 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
             return temps_ok or note_detail("call.generic_arg_shape")
         return note_detail("call.generic_arg_slot")
     return (_shared_pass_through_arg(a, resolved, locals_, analyzer)
+            # The callable family into an `Fn[...]` / `Callable` slot
+            # (`reduce(add, xs, 0)`, `apply(f1, 5)`, a lambda literal): each
+            # renders itself, independent of the slot, so the plain
+            # free-call rows carry over to the substituted slot unchanged.
+            or _lambda_routable(a, analyzer)
+            or _func_ref_routable(a, analyzer)
+            or _callable_value_pass_arg(a, locals_, analyzer)
+            or _callable_object_arg(a, resolved, locals_, analyzer)
             or _own_move_arg(a, resolved, locals_, analyzer)
             # The Own-slot copy+move row (`auto __tmp_N = v;` +
             # `std::move(__tmp_N)`, or the temp-free last-use move):
@@ -5253,6 +5287,9 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or (temps_ok and _value_union_temp_arg(
                 a, ptype, locals_, narrowed, analyzer))
             or (own_ok and _own_record_rvalue_arg(a, ptype, locals_, analyzer))
+            # `Factory.consume(copy(p))` -- the static-method face of the
+            # copy-construct rvalue row.
+            or (own_ok and _copy_record_own_arg(a, ptype, analyzer))
             or (own_ok and _own_move_arg(a, ptype, locals_, analyzer))
             or (own_ok and temps_ok and _own_lvalue_arg(
                 a, ptype, locals_, narrowed, analyzer))
@@ -5818,7 +5855,13 @@ def _method_call_arg_ok(
         # (iterable / adapter-wrap position only) -- this arg-side
         # re-derivation only picks the arg rows, which are the same for a
         # generator or coro factory as for any qualified call.
-        kind = (("qualified", "") if _ptr_deref_method_call(e, analyzer)
+        # A USER-deref chain (`r.__deref__().m(args)`) is the other marker
+        # whose args ride the same `_args()` first-pass loop; its lowering arm
+        # has already validated the call shape before reaching this gate, so
+        # the deref marker alone identifies it. `_marker_call_kind` cannot:
+        # it rejects every deref-marked call by construction.
+        kind = (("qualified", "")
+                if (_ptr_deref_method_call(e, analyzer) or e.deref_depth)
                 else _marker_call_kind(e, analyzer, generator_ok=True,
                                        coro_factory_ok=True))
         return (kind is not None
@@ -6273,6 +6316,12 @@ def _record_method_arg_ok(
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
         narrowed: 'set[str] | frozenset[str]') -> bool:
     return (_lambda_routable(a, analyzer)
+            # The rest of the callable family: each renders itself
+            # independently of the slot, so the free-call rows carry over to
+            # an `Fn[...]` / `Callable` method slot unchanged.
+            or _func_ref_routable(a, analyzer)
+            or _callable_value_pass_arg(a, locals_, analyzer)
+            or _callable_object_arg(a, ptype, locals_, analyzer)
             or (_plain_scalar_slot(ptype, analyzer)
              and _resolved_scalar(analyzer.get_expr_type(a), analyzer))
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
@@ -6286,6 +6335,10 @@ def _record_method_arg_ok(
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
+            # `h.store(copy(p))` -- the copy-construct rvalue (`Point(p)`)
+            # binds the `T&&` slot exactly like any record rvalue, which is
+            # why the container-method loop already carries the row.
+            or _copy_record_own_arg(a, ptype, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             # The Own-slot copy half (`auto __tmp_N = b;` +
             # `recv.m(std::move(__tmp_N))`): a user method's Own param is a
@@ -7008,6 +7061,18 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
             rt = unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(analyzer.get_expr_type(a))))
             if is_list(rt) or is_array(rt) or is_span(rt):
+                return PrintForm.LIST
+        # A nested-container ELEMENT read (`print(groups["a"])` ->
+        # `ListPrinter(::tpy::__getitem__(groups, "a"))`): the element lvalue
+        # streams through the same kind-keyed wrap a container name does.
+        if _container_ref_alias_elem_subscript(a, declared, analyzer):
+            et = unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(analyzer.get_expr_type(a))))
+            if is_dict(et):
+                return PrintForm.DICT
+            if is_set(et):
+                return PrintForm.SET
+            if is_list(et) or is_array(et):
                 return PrintForm.LIST
         return None
     if isinstance(a, TpyFieldAccess):

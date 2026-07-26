@@ -422,6 +422,7 @@ from .checks import (
     _field_over_walrus_ok,
     _field_over_container_subscript_ok,
     _func_ref_routable,
+    _container_ref_alias_elem_subscript,
     _lambda_routable,
     _subscript_over_container_subscript_ok,
     _field_over_field_ok,
@@ -1206,7 +1207,11 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
         return _subscript_yields_borrow_ptr(obj, lc)
     return (isinstance(obj, TpyName)
             and (_ptr_read_derefs(obj.name, lc)
-                 or (obj.name == lc.self_receiver and lc.self_is_pointer)))
+                 or (obj.name == lc.self_receiver and lc.self_is_pointer
+                     # A poly-narrowed `self` reads through the cast
+                     # pointer's DEREF (`(*__self_ptr)`), so the access is
+                     # `.` -- `this->` belongs to the un-narrowed spelling.
+                     and obj.name not in lc.narrow.spelled)))
 
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is an `Own[...]`-declared param of the function being
@@ -2236,9 +2241,19 @@ def _poly_cast_context(var: str, lc: '_LowerCtx',
     var_decl = _poly_subject_decl(var_raw)
     const = (_const_borrow_name(var, lc)
              or _poly_subject_readonly(var_raw))
-    cast_arg = (escape_cpp_name(var)
-                if polymorphic_source_is_pointer(var_decl)
-                else f"&{escape_cpp_name(var)}")
+    if var == lc.self_receiver:
+        # `self` is already pointer-shaped in a plain method (`this`) and in
+        # a simple generator (`(*this)`, whose address folds back to `this`);
+        # a resumable coro's `__self` is a `Record&` field, so it takes the
+        # address. Mirrors polymorphic_cast_arg's self arms. A readonly
+        # method's `this` is const, so the cast targets `const Sub*`.
+        cast_arg = ("this" if lc.self_cpp in ("this", "(*this)")
+                    else f"&{lc.self_cpp}")
+        const = const or "self" in lc.const_locals
+    else:
+        cast_arg = (escape_cpp_name(var)
+                    if polymorphic_source_is_pointer(var_decl)
+                    else f"&{escape_cpp_name(var)}")
     return const, cast_arg, polymorphic_source_inner(var_decl,
                                                      lc.analyzer.registry)
 
@@ -2414,6 +2429,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 and _union_binding_divergent(e, declared, analyzer)):
             raise ThirUnsupported("name.union_binding_divergent", detail=True)
         if e.name == lc.self_receiver:
+            self_spelled = lc.narrow.spelled.get(e.name)
+            if self_spelled is not None:
+                # Inside an `isinstance(self, Sub)` branch the read routes
+                # through the pre-bound cast pointer (`(*__self_ptr)`), not
+                # the receiver spelling -- the same substitution any
+                # polymorphic-narrowed name takes.
+                _witness("self.poly_narrowed")
+                return THIRName(
+                    result_type=rtype, name=e.name, cpp=self_spelled,
+                    form=Form.BORROW, loc=loc)
             # The method receiver -> `this` (plain method) or `__self` (a
             # resumable method coro's `Record&` frame field). Reached as a
             # field-access / method-call receiver and as a record call-arg
@@ -4682,7 +4707,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     allow_record=True,
                     allow_nested=not isinstance(e, TpySetLiteral),
                     allow_optional=not isinstance(e, TpySetLiteral),
-                    retype_scalars=retype)
+                    retype_scalars=retype,
+                    # SET literals excluded: this arm serves list, Array AND
+                    # set, and only the first two are probed against the AST's
+                    # frame-emplace render. A non-value tuple in a set needs a
+                    # hashable record element, so the shape may not exist at
+                    # all -- but "probably unreachable" is what made the
+                    # previous keying look safe, so it keeps the wrap.
+                    frame_bare_tuple=not isinstance(e, TpySetLiteral))
                 for x in e.elements),
             make_container=make,
             elem_cpp=elem_cpp,
@@ -5320,8 +5352,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             method_targs_cpp=method_targs,
             is_arrow=not deref_check and isinstance(e.obj, TpyName)
                      and (_ptr_read_derefs(e.obj.name, lc)
+                          # A poly-narrowed `self` reads through the cast
+                          # pointer's deref (`(*__self_ptr)`), so the call is
+                          # `.` -- the `this->` spelling is the un-narrowed
+                          # receiver's.
                           or (e.obj.name == lc.self_receiver
-                              and lc.self_is_pointer)),
+                              and lc.self_is_pointer
+                              and e.obj.name not in lc.narrow.spelled)),
             deref_check=deref_check,
             move_receiver=(bool(fi.is_consuming)
                            and isinstance(e.obj, TpyName)
@@ -5887,7 +5924,8 @@ def _lower_checked_container_elem(
         allow_record: bool = False, allow_nested: bool = False,
         allow_optional: bool = False,
         retype_scalars: bool = True,
-        suppress_move: bool = False) -> THIRExpr:
+        suppress_move: bool = False,
+        frame_bare_tuple: bool = False) -> THIRExpr:
     if not _container_lit_elem_ok(
             e, slot, declared, lc.analyzer, threaded=threaded, forced=forced,
             allow_record=allow_record, allow_nested=allow_nested,
@@ -5895,7 +5933,7 @@ def _lower_checked_container_elem(
         raise ThirUnsupported("expr.container_literal")
     return _lower_container_elem(
         e, slot, lc, declared, retype_scalars=retype_scalars,
-        suppress_move=suppress_move)
+        suppress_move=suppress_move, frame_bare_tuple=frame_bare_tuple)
 
 
 def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
@@ -5944,7 +5982,8 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType], *,
                           retype_scalars: bool = True,
                           suppress_move: bool = False,
-                          field_str_ok: bool = False) -> THIRExpr:
+                          field_str_ok: bool = False,
+                          frame_bare_tuple: bool = False) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
     a StrView-returning call) into an owned `std::string` slot copies
@@ -5980,15 +6019,17 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         # A non-value tuple element stores via `tuple_to_storage<S>(S{...})`:
         # the inner spells the storage tuple S with its members lowered as
         # storage container elements, and the STORAGE FormConvert emits the
-        # helper (mirrors the MIL pointer-repr-tuple field write). SYNC
-        # positions only: the resumable frame-emplace position spells the
-        # element BARE on the AST path (typed_brace_init, no per-element
-        # wrap) -- a merge-caught divergence between the sync cell and the
-        # resumable loop routing; the frame flavor is its own rung.
+        # helper (mirrors the MIL pointer-repr-tuple field write). The
+        # resumable frame-EMPLACE position spells a SEQUENCE element BARE
+        # instead (typed_brace_init: the emplaced brace is already
+        # storage-typed, so the AST applies no per-element wrap) -- vector
+        # and fixed-size `Array[T, N]` alike. `frame_bare_tuple` is the
+        # positive signal from the list/Array literal arm rather than a
+        # proxy: the dict VALUE position, which KEEPS the wrap, differs from
+        # a vector element on `retype_scalars` but from an Array element on
+        # nothing else.
         su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
             if slot is not None else None
-        if lc.resumable_leaf_mode and isinstance(su, TupleType):
-            raise ThirUnsupported("expr.tuple_literal.frame_elem")
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
             inner = THIRTupleLiteral(
                 result_type=su,
@@ -5997,6 +6038,9 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                                           lc, declared)
                     for i in range(len(e.elements))),
                 loc=getattr(e, "loc", None))
+            if lc.resumable_leaf_mode and frame_bare_tuple:
+                _witness("containerlit.tuple_frame_elem")
+                return inner
             _witness("containerlit.tuple_storage")
             return THIRFormConvert(result_type=su, value=inner,
                                    form=Form.STORAGE, move=False,
@@ -6873,6 +6917,15 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                            use=_ExprUse(result=_ExprResultUse.ITERABLE))
     if (_is_len_native(e) and isinstance(a, TpyFieldAccess)):
         return _lower_expr(a, lc, declared, field_prechecked=True)
+    if (len_call and isinstance(a, TpySubscript)
+            and _container_ref_alias_elem_subscript(a, declared, lc.analyzer)):
+        # `len(groups["a"])`: the nested-container element lvalue renders bare
+        # in the native slot. Prechecked like the field twin above -- but keyed
+        # on `_is_len_call` (not the bare symbol), because the precheck also
+        # skips the optional-runtime-check and index-disposition arms, and it
+        # is the gate's REF_ALIAS shape check that excludes those.
+        _witness("len.elem_subscript")
+        return _lower_expr(a, lc, declared, subscript_prechecked=True)
     if (_is_len_native(e) and isinstance(a, TpyMethodCall)
             and _dict_view_iterable_ok(
                 a, declared, analyzer, methods=("values", "keys", "items"))):
@@ -8193,6 +8246,14 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 # inner __bool__/__len__); THIR has no matching node yet, so
                 # fall back for this shape.
                 raise ThirUnsupported("truthy.optional_ptr_record")
+    if (isinstance(e, TpyName) and mode is TruthinessMode.IS_TRUTHY
+            and lc.resumable_leaf_mode):
+        # The AST's resumable emit renders a value-repr optional frame field's
+        # truthiness as the bare `if (v)` -- a has_value test, where the sync
+        # path emits `::tpy::is_truthy(v)` (engaged AND inner truthy). The two
+        # disagree for a falsy payload; BUGS.md carries the AST-side defect, so
+        # the shape stays AST rather than THIR mirroring a miscompile.
+        raise ThirUnsupported("truthy.res_value_opt_name")
     if isinstance(e, TpyName) and e.name in declared:
         du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[e.name])))

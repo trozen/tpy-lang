@@ -1431,9 +1431,12 @@ def _reasons(src: str) -> dict:
 def test_native_arg_container_is_not_labelled_a_record():
     # Containers are NominalType, so without a guard they fall into the record
     # split and a whole family reads as blocked on the non-F1-record frontier.
+    # A DOUBLY nested element (`m[0][1]`) is past the one-level receiver
+    # resolver, so it stays a rejected container arg -- the single-level form
+    # now routes through the len element row.
     src = ("from tpy import Int32\n"
-           "def f(groups: dict[str, list[Int32]]) -> None:\n"
-           "    print(len(groups[\"a\"]))\n"
+           "def f(m: list[list[list[Int32]]]) -> None:\n"
+           "    print(len(m[0][1]))\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
     assert any(k.endswith("call.native_arg.container") for k in reasons), reasons

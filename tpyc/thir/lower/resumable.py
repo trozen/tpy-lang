@@ -291,11 +291,15 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
     R1a adds str/bytes locals: a str local's frame field is a bare
     `std::string` / `std::string_view` (owned / view, sema-resolved) with
     bare reads/writes -- the same shapes THIR's ported str slice already
-    emits, no frame_slot machinery. Records / Optionals (frame_slot) and
+    emits, no frame_slot machinery. A value-repr `Optional[scalar]` local
+    joins them: its frame field is the same bare `std::optional<T>` value the
+    PARAM capture already admits, and every read gates per-shape at the
+    value-opt arms. Records / pointer-repr Optionals (frame_slot) and
     pointer-alias / tuple locals stay their own rungs (R1c)."""
     return bool(_res_value_ok(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
-                or _resolved_bytes_value(t, analyzer) is not None)
+                or _resolved_bytes_value(t, analyzer) is not None
+                or _value_opt_scalar(t, analyzer) is not None)
 
 
 def _region_reject(region: 'rcfg.Region') -> 'str | None':
@@ -1145,6 +1149,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     and stmt.name in frame_fields
                     and stmt.name not in declared):
                 declared[stmt.name] = _var_decl_type(stmt, analyzer)
+                # A value-repr `Optional[scalar]` frame field is the same
+                # bare `std::optional<T>` binding a sync local declares, but
+                # pass 1 has already put it in `declared`, so the decl arm
+                # reads as a reassign and never registers it. Register here
+                # so its reads take the binding-keyed value-opt arms.
+                if _value_opt_scalar(declared[stmt.name], analyzer) is not None:
+                    lc.value_opt_locals.add(stmt.name)
             elif (isinstance(stmt, TpyTupleUnpack)
                     and id(stmt) in top_level_ids):
                 # TOP-LEVEL frame-target unpack: register the targets from

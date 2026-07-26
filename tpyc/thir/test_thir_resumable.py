@@ -2262,13 +2262,12 @@ class TestSyncLoops:
                + "    for i, r in xs:\n        total = await step(r.v)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        # The LOOP routes (alias cell); the `[(n, R(n))]` list-literal
-        # init keeps the frame-position rung: master's sync
-        # tuple_to_storage element wrap diverges from the AST's BARE
-        # frame-emplace element spelling (merge-caught), so the frame
-        # flavor rejects by name.
-        fb = _res_fallback(src)
-        assert fb == {"expr.tuple_literal.frame_elem": 1}
+        # The LOOP routes (alias cell), and so does the `[(n, R(n))]`
+        # list-literal init: the frame-emplace position spells its tuple
+        # element BARE (no `tuple_to_storage` wrap -- the emplaced brace is
+        # already storage-typed), which is the frame flavor of the sync
+        # element row.
+        assert _res_fallback(src) == {}
         _assert_identical(src)
 
     def test_dict_items_loop_var_defers(self):

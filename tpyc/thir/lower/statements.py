@@ -322,6 +322,7 @@ from .checks import (
     _container_aug_setitem_ok,
     _container_field_write_ok,
     _container_record_elem_subscript,
+    _container_ref_alias_elem_subscript,
     _container_literal_decl_ok,
     _container_literal_shape_ok,
     _bytearray_recv,
@@ -1183,11 +1184,32 @@ def _iter_call_lvalue(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
     return not ret.is_value_type() and not is_union_or_optional_type(ret)
 
 
+def _open_t_iterable_bound(u: 'TypeParamRef', tparam_bounds: 'dict | None',
+                           analyzer) -> bool:
+    """Whether an open-T iterable's BOUND is one the universal
+    `::tpy::__iter__` loop serves: a structural non-@dynamic protocol that is
+    not native-iterable. The NativeIterable / Spannable bounds take the AST's
+    begin/end peephole instead, and a concrete bound spells its own family --
+    both keep rejecting. Mirrors `ctx.current_type_param_bounds`, which is
+    where the AST reads the same fact."""
+    b = (tparam_bounds or {}).get(u.name)
+    if b is None:
+        return False
+    bu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(b)))
+    return bool(isinstance(bu, NominalType) and bu.is_protocol
+                and not is_dyn_protocol(bu)
+                and bu.qualified_name() not in ("tpy.NativeIterable",
+                                                "tpy.Spannable")
+                and not is_native_iterable(bu, analyzer.registry)
+                and _witness("foreach.open_t_field"))
+
+
 def _for_iter_proto_route(
         stmt: TpyForEach, analyzer,
         declared: dict[str, TpyType],
         iterator_object_locals: 'AbstractSet[str]' = frozenset(),
-        *, protocol_param_ok: bool = False) -> '_ForEachRoute | None':
+        *, protocol_param_ok: bool = False,
+        tparam_bounds: 'dict | None' = None) -> '_ForEachRoute | None':
     """The universal `::tpy::__iter__` + `__next__` protocol loop
     (`_gen_direct_next_loop_with_iter`), for the iterables the container
     route's NativeIterable gate excludes. Slice: a free GENERATOR or
@@ -1230,9 +1252,20 @@ def _for_iter_proto_route(
         # user-iterator name; the field read lowers through the field arm.
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             analyzer.get_expr_type(it))))
-        if (not isinstance(u, NominalType) or u.is_protocol
-                or not _user_iterator_iterable(u, analyzer)
-                or not _field_receiver_ok(it, declared, analyzer)):
+        if not _field_receiver_ok(it, declared, analyzer):
+            return None
+        if isinstance(u, TypeParamRef):
+            # An open-T FIELD (`for x in self.items:` on `Summer[T:
+            # Iterable[Int32]]`): the C++ member is the deduced `T`, so the
+            # loop captures it bare and `::tpy::__iter__` resolves through
+            # the bound -- the same universal render a protocol-typed param
+            # name takes, and gated the same way (SYNC bodies only, no
+            # native-iterable / begin-end peephole bound).
+            if not protocol_param_ok or not _open_t_iterable_bound(
+                    u, tparam_bounds, analyzer):
+                return None
+        elif (not isinstance(u, NominalType) or u.is_protocol
+                or not _user_iterator_iterable(u, analyzer)):
             return None
         iterable_lvalue = True
     elif isinstance(it, TpyName):
@@ -1391,7 +1424,8 @@ def _select_for_each_route(
         stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
         narrowed: AbstractSet[str],
         iterator_object_locals: 'AbstractSet[str]' = frozenset(),
-        *, protocol_param_ok: bool = False) -> _ForEachRoute:
+        *, protocol_param_ok: bool = False,
+        tparam_bounds: 'dict | None' = None) -> _ForEachRoute:
     """Select the lowering strategy or reject from the lowering boundary."""
     if isinstance(stmt.iterable, TpyName) and stmt.iterable.name in narrowed:
         # The AST for-dispatch keys the DECLARED binding (get_resolved_type
@@ -1413,7 +1447,8 @@ def _select_for_each_route(
         if route is None:
             route = _for_iter_proto_route(stmt, analyzer, declared,
                                           iterator_object_locals,
-                                          protocol_param_ok=protocol_param_ok)
+                                          protocol_param_ok=protocol_param_ok,
+                                          tparam_bounds=tparam_bounds)
     if route is None:
         note_detail(_for_each_reject_detail(stmt, analyzer, declared, narrowed))
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -4135,7 +4170,12 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
                                 loc=stmt.loc),
                 value=value, loc=stmt.loc,
                 no_source_comment=getattr(stmt, "no_source_comment", False))
-    value = _lower_expr(init, lc, declared)
+    # A value-repr optional frame field takes the WHOLE optional bare
+    # (`v = __self.f;`), so the source read must not deref on narrow -- the
+    # same admission the sync decl sink threads for its optional slot.
+    value = _lower_expr(
+        init, lc, declared,
+        allow_whole_optional=_value_opt_target_binding(stmt.name, lc))
     _witness("res.decl_assign")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
@@ -7078,7 +7118,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # rebind alias) keeps rejecting.
                 or (pvar in lc.pointers
                     and not polymorphic_source_is_pointer(declared.get(pvar)))
-                or pvar == lc.self_receiver
+                # `self` is admitted: `_poly_cast_context` spells its cast
+                # arg (`this` / `&__self`). A RESUMABLE self keeps rejecting
+                # -- its `__self` alias would collide with the frame field,
+                # which the AST renames (`__self_narrowed`) and no THIR
+                # alias maker reproduces.
+                or (pvar == lc.self_receiver and lc.resumable_leaf_mode)
                 or pvar in lc.prescan.global_seeded
                 or pvar in lc.narrow.narrowed
                 or pvar in lc.narrow.spelled
@@ -7111,7 +7156,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 bool(hoists)
                 or (mvar in lc.pointers
                     and not polymorphic_source_is_pointer(declared.get(mvar)))
-                or mvar == lc.self_receiver
+                # `self` rides `_poly_cast_context`'s spelling here too; the
+                # tuple form binds no alias, so the resumable rename that
+                # gates the single-fact arm does not apply.
                 or mvar in lc.prescan.global_seeded
                 or mvar in lc.narrow.narrowed
                 or mvar in lc.narrow.spelled
@@ -7534,7 +7581,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # resumable leaf/frame emitters have no witnessed protocol-loop
             # shape, so those keep the fallback.
             protocol_param_ok=not (lc.resumable_leaf_mode
-                                   or lc.frame_slots))
+                                   or lc.frame_slots),
+            tparam_bounds=lc.tparam_bounds)
         it = stmt.iterable
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
@@ -8476,10 +8524,19 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                                      allow_temps=temps_ok)),
             wrap)
     if wrap is not None:
+        # A nested-container element source is prechecked: the wrap gate
+        # validated the REF_ALIAS shape (no optional check, no slice, routable
+        # index), which is what the value-position element gate would reject.
+        elem_sub = (isinstance(a, TpySubscript)
+                    and _container_ref_alias_elem_subscript(
+                        a, declared, lc.analyzer))
+        if elem_sub:
+            _witness("print.elem_subscript")
         return THIRPrintArg(
             _lower_expr(
                 a, lc, declared,
-                field_prechecked=isinstance(a, TpyFieldAccess)),
+                field_prechecked=isinstance(a, TpyFieldAccess),
+                subscript_prechecked=elem_sub),
             wrap)
     # resolve_int_literals: an IntLiteral-typed arg (a literal-seeded container's
     # loop var / pop result) must derive its stream form from the resolved type.

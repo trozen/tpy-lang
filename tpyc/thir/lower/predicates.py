@@ -5207,12 +5207,16 @@ def _tparam_value(t: 'TpyType | None') -> bool:
         unwrap_send_sync(t))))
 
 def _generic_root_subst(e: TpyCall, analyzer) -> 'tuple[FunctionInfo, dict[str, TpyType]]':
-    """The ROOT stub + inferred substitution for a plain generic free call
-    -- ONE derivation shared by the gate (`_generic_plain_arg_ok`) and
-    lowering (`_lower_generic_plain_call`), so the two cannot drift. The
-    kind classifier already pinned the single-stub group and the
-    targs/type-params arity."""
-    root = analyzer.registry.get_function(e.func_name)[0]
+    """The stub the args resolve against + the inferred substitution for a
+    plain generic free call -- ONE derivation shared by the gate
+    (`_generic_plain_arg_ok`) and lowering (`_lower_generic_plain_call`), so
+    the two cannot drift. An OVERLOAD GROUP resolves to the sema-selected
+    stub (the AST's `func_info` pick), a single-stub group to its only entry;
+    the kind classifier already pinned the targs/type-params arity."""
+    fis = analyzer.registry.get_function(e.func_name)
+    root = (e.resolved_function_info
+            if len(fis) > 1 and e.resolved_function_info is not None
+            else fis[0])
     return root, dict(zip(root.type_params, e.inferred_type_args))
 
 def _is_range_call(it: TpyExpr) -> bool:
