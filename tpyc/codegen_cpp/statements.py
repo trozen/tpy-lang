@@ -52,7 +52,7 @@ from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate, try_terminates_ignoring_finally
 
-from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target, contains_named_expr
+from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, module_init_targets, loop_var_binding, is_lvalue_iterable, view_key_target, contains_named_expr
 from .forms import classify_local_binding, LocalBinding
 from ..type_def_registry import (
     is_list, is_dict,
@@ -929,77 +929,15 @@ class StatementGenerator:
         elif isinstance(stmt, TpyRaise):
             return self._gen_raise(stmt, indent)
         elif isinstance(stmt, TpyImport):
-            registry = self.ctx.analyzer.registry
-            module_info = registry.get_module(stmt.module_name)
-            has_init = module_info is None or module_info.has_runtime_init
-            result = ""
-            if (module_info is not None
-                    and module_info.is_native_module
-                    and stmt.module_name in self.ctx.user_module_imports):
-                # Native facades have no __tpy_init() of their own; chain into
-                # the non-native source modules of any re-exported variables.
-                for reached in self._native_facade_init_targets(stmt.module_name):
-                    if reached in self.ctx.emitted_tpy_inits:
-                        continue
-                    result += f"{indent}{qualified_cpp_name(reached, '__tpy_init')}();\n"
-                    self.ctx.emitted_tpy_inits.add(reached)
-            if stmt.module_name in self.ctx.user_module_imports and has_init:
-                # For dotted imports, emit parent package inits first (Python semantics)
-                # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils
-                parts = stmt.module_name.split('.')
-                for i in range(1, len(parts)):
-                    parent_pkg = '.'.join(parts[:i])
-                    if parent_pkg == self.ctx.module_name:
-                        continue  # don't self-init
-                    if parent_pkg not in self.ctx.all_user_modules:
-                        continue
-                    if parent_pkg in self.ctx.emitted_tpy_inits:
-                        continue
-                    parent_info = registry.get_module(parent_pkg)
-                    if parent_info is not None and not parent_info.has_runtime_init:
-                        # Native/builtin packages have no __tpy_init symbol;
-                        # mark visited so sibling submodules don't retry.
-                        self.ctx.emitted_tpy_inits.add(parent_pkg)
-                        continue
-                    result += f"{indent}{qualified_cpp_name(parent_pkg, '__tpy_init')}();\n"
-                    self.ctx.emitted_tpy_inits.add(parent_pkg)
-                # Then init the submodule itself (skip self-init)
-                if stmt.module_name != self.ctx.module_name and stmt.module_name not in self.ctx.emitted_tpy_inits:
-                    result += f"{indent}{qualified_cpp_name(stmt.module_name, '__tpy_init')}();\n"
-                    self.ctx.emitted_tpy_inits.add(stmt.module_name)
-            return result
+            return "".join(
+                f"{indent}{qualified_cpp_name(target, '__tpy_init')}();\n"
+                for target in module_init_targets(
+                    stmt, registry=self.ctx.analyzer.registry,
+                    module_name=self.ctx.module_name,
+                    user_module_imports=self.ctx.user_module_imports,
+                    all_user_modules=self.ctx.all_user_modules,
+                    emitted=self.ctx.emitted_tpy_inits))
         return None
-
-    def _native_facade_init_targets(self, native_module: str) -> list[str]:
-        """Defining modules of variables re-exported by ``native_module``.
-
-        Records, functions, and protocols re-exported by the facade are pure
-        declarations; only re-exported variables involve runtime
-        construction the consumer must trigger.
-
-        The attribute table's VARIABLE bindings carry the chain-flattened
-        ultimate definer in `binding.defining_module`, so a single pass
-        over the facade's table yields the set of init targets.
-        """
-        registry = self.ctx.analyzer.registry
-        info = registry.get_module(native_module)
-        if info is None or info.module_attributes is None:
-            return []
-        order: list[str] = []
-        seen: set[str] = set()
-        for cell in info.module_attributes.values():
-            bd = cell.binding
-            if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
-                continue
-            ult_mod = bd.defining_module
-            if ult_mod in seen:
-                continue
-            ult_info = registry.get_module(ult_mod)
-            if ult_info is None or not ult_info.has_runtime_init:
-                continue
-            seen.add(ult_mod)
-            order.append(ult_mod)
-        return order
 
     def _is_plain_nonvalue(self, t: TpyType) -> bool:
         # Recursive-union wrappers are reference types like records: a local

@@ -19,6 +19,7 @@ from ...parse.nodes import (
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyFunction,
+    TpyImport,
     TpyIntLiteral,
     TpyMatch,
     TpyMethodCall,
@@ -69,13 +70,16 @@ from ...typesys import (
 from ...codegen_cpp.context import (
     escape_cpp_name,
     imported_variable_cpp,
+    module_init_targets,
     module_native_global_names,
+    qualified_cpp_name,
     qualify_native_name,
 )
 from ...codegen_cpp.functions import (
     build_overload_narrowing,
     overload_stubs_are_literal_only,
 )
+from ...codegen_cpp.forms import LocalBinding
 from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
@@ -87,7 +91,7 @@ from ...type_def_registry import (
 )
 from ..fallback import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
-from ..validate import validate_constructor, validate_function
+from ..validate import _iter_children, validate_constructor, validate_function
 from ..nodes import (
     Form,
     THIRBaseInit,
@@ -96,11 +100,16 @@ from ..nodes import (
     THIRFormConvert,
     THIRFunction,
     THIRFunctionLayout,
+    THIRIf,
     THIRLiteral,
     THIRMilInit,
     THIRModule,
     THIROptViewArg,
     THIRParam,
+    THIRPtrLocalDecl,
+    THIRPtrLocalRebind,
+    THIRVarDecl,
+    PtrSlotKind,
     THIRParamCopy,
     THIRRecordCopy,
     THIRTupleLiteral,
@@ -1915,9 +1924,132 @@ def module_native_globals(module: TpyModule) -> dict[str, str]:
     naming one never write-seeds (see lower_function)."""
     return module_native_global_names(module.top_level_stmts)
 
-def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
-    """Try to lower every function and method in `module`; skip fallbacks."""
+def _iter_thir(roots):
+    stack = list(roots)
+    while stack:
+        node = stack.pop()
+        yield node
+        stack.extend(_iter_children(node))
+
+
+def _rejects_global_slot(node) -> bool:
+    """A THIR statement whose emit allocates a `__slot_N` off the shared
+    counter. At module scope every slot must spell `static __global_slot_N`,
+    and only GLOBAL_RVALUE is wired for that.
+
+    THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
+    block-scoped `__slot_N` at namespace scope leaves the global pointing at a
+    dead frame the moment `__tpy_init` returns. Every emit site that calls
+    `_EmitState.next_slot()` must be represented here. The traversal is
+    generic (`validate._iter_children` walks dataclass fields), so only this
+    predicate needs maintaining; inverting it to an allowlist would make the
+    failure mode a spurious fallback instead of a dangling pointer."""
+    if isinstance(node, THIRPtrLocalDecl):
+        return node.kind is not PtrSlotKind.GLOBAL_RVALUE
+    if isinstance(node, THIRPtrLocalRebind):
+        return True
+    if isinstance(node, THIRIf):
+        return bool(node.hoist_slots)
+    if isinstance(node, THIRVarDecl):
+        # The F2d two-slot rvalue pointer-local allocates an init AND a rebind
+        # slot; it carries no `slot_cpp`, so the tail below cannot see it.
+        return node.cpp_local_representation is LocalBinding.REBIND_SLOT
+    return bool(getattr(node, "slot_cpp", None))
+
+
+def lower_top_level(module: TpyModule, analyzer, global_types, *,
+                    final_types=None,
+                    render_type=None, render_type_stored=None,
+                    render_resolve=None, render_concept=None,
+                    user_module_imports=None,
+                    all_user_modules=frozenset()) -> 'THIRFunction | None':
+    """Lower a module's top-level statements -- the `__tpy_init` body -- or
+    None if any of them falls outside the slice.
+
+    Top-level names are MODULE GLOBALS, not function locals: the generator has
+    already declared each at namespace scope, so a write is an assignment (a
+    non-value global's initializing write allocates a `static __global_slot_N`
+    instead), and `global_types` is the generator's own `seen_globals` map
+    (Final globals excluded -- they live at namespace scope). Everything below
+    that seeding reuses the ordinary statement/expression arms.
+    """
+    carrier = TpyFunction(name="__tpy_init", params=[],
+                          return_type=VoidType(),
+                          body=list(module.top_level_stmts))
+    lc = _LowerCtx(carrier, analyzer, render_type,
+                   render_type_stored=render_type_stored,
+                   render_resolve=render_resolve,
+                   render_concept=render_concept,
+                   scan_override=analyzer.top_level_scan_result,
+                   hoisted_override=analyzer.top_level_hoisted_vars,
+                   move_through_override=analyzer.top_level_move_through_vars,
+                   top_level_scope=True)
+    lc.prescan.native_globals = module_native_globals(module)
+    declared: dict[str, TpyType] = {}
+    for name, gt in global_types.items():
+        if gt is None:
+            continue
+        declared[name] = gt
+        if not gt.is_value_type() and not gt.needs_wrapper():
+            # `std::vector<T>* g{}` at namespace scope: reads deref through
+            # the pointer-local arms, writes take the static-slot render.
+            # `global_slots` too, not just `pointers`: a pointer-slot GLOBAL
+            # derefs at EVERY value position whatever its family (the AST's
+            # gen_expr_deref indirect render), where a pointer LOCAL of
+            # record type stays bare and reaches its members via `->`.
+            lc.global_ptr_slots.add(name)
+            lc.pointers.add(name)
+            lc.prescan.global_slots = lc.prescan.global_slots | {name}
+    for name, ft in (final_types or {}).items():
+        # A `Final` global lives at namespace scope as a `const T` and is
+        # never assignable, so it only needs to READ bare -- seeded like the
+        # read-only value globals a function body gets. A non-value Final
+        # keeps rejecting (no verified render for its reads here).
+        if ft is not None and ft.is_value_type():
+            declared[name] = ft
+            lc.prescan.global_readonly = lc.prescan.global_readonly | {name}
+    for name, decl_line in analyzer.ctx.top_level_decls.items():
+        imp = imported_variable_cpp(analyzer.registry, analyzer.imported_names,
+                                    name)
+        if imp is not None:
+            lc.pre_decl_import_cpp[name] = (decl_line, imp)
+    emitted: set[str] = set()
+    for stmt in carrier.body:
+        if isinstance(stmt, TpyImport):
+            lc.import_calls[id(stmt)] = tuple(
+                qualified_cpp_name(target, "__tpy_init")
+                for target in module_init_targets(
+                    stmt, registry=analyzer.registry,
+                    module_name=analyzer.ctx.module_name,
+                    user_module_imports=(module.user_module_imports
+                                         if user_module_imports is None
+                                         else user_module_imports),
+                    all_user_modules=all_user_modules, emitted=emitted))
+    try:
+        body = _lower_stmts(carrier.body, lc, declared, top_level=True)
+        if lc.unhandled_hoists:
+            raise ThirUnsupported("body.hoisted_vars")
+        fn = THIRFunction(name="__tpy_init", params=(),
+                          return_type=VoidType(), body=body,
+                          layout=THIRFunctionLayout())
+        if any(_rejects_global_slot(n) for n in _iter_thir(fn.body)):
+            raise ThirUnsupported("top_level.slot_alloc")
+        validate_function(fn)
+        return fn
+    except ThirUnsupported as ex:
+        note(ex.reason)
+        return None
+
+
+def lower_module(module: TpyModule, analyzer, render_type=None,
+                 global_types=None) -> THIRModule:
+    """Try to lower every function and method in `module`; skip fallbacks.
+    With `global_types` (the generator's global name -> type map) the module's
+    top-level statements lower too."""
     out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
+    if global_types is not None:
+        out.top_level = lower_top_level(module, analyzer, global_types,
+                                        render_type=render_type)
     ng = module_native_globals(module)
     for func, self_type in iter_module_callables(module, analyzer):
         stubs = analyzer.overload_groups.get(id(func))

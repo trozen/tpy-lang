@@ -582,6 +582,31 @@ def _wrapper_member_ctor_slot(init, t: 'TpyType | None',
     return any(m == it for m in members)
 
 
+def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
+    """A value-variant union ELEMENT slot over record members, initialized
+    with a member-record ctor rvalue (`[Dog("Rex"), Cat("W")]` into
+    `std::vector<std::variant<Cat, Dog>>`): the variant's converting ctor
+    absorbs the member, so the element renders bare on both paths.
+
+    The plain-union twin of `_wrapper_member_ctor_slot`, deliberately narrow:
+    a union with any NON-record member (`Int32 | Cat`) can need the
+    target-typed literal render, a wrapper union has its own row, and a
+    union-TYPED name source is the `to_value_variant` lift, not this."""
+    if t is None or not isinstance(init, TpyCall):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, UnionType) or t.needs_wrapper():
+        return False
+    members = [unwrap_readonly(m) for m in t.members]
+    if not members or not all(isinstance(m, NominalType) and m.is_user_record
+                              for m in members):
+        return False
+    it = unwrap_readonly(analyzer.get_expr_type(init))
+    if not (isinstance(it, NominalType) and it.is_user_record):
+        return False
+    return any(m == it for m in members)
+
+
 def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None':
     """An `Own[A | B]` return slot over F1-RECORD members: a by-value
     `std::variant<A, B>` (the storage form -- ownership makes the union a
@@ -3529,11 +3554,23 @@ def _cpp_noncopyable_type(t: 'TpyType | None', analyzer) -> bool:
     return any(_cpp_noncopyable_type(f.type, analyzer) for f in record.fields)
 
 def _container_nocopy_elem(t: 'TpyType | None', analyzer) -> bool:
-    """Mirror of the AST's `_is_nocopy_container_element` over the
-    gate-admitted element slots: the union / recursive-alias arms are
-    unreachable (those slots are not admitted into container literals), so
-    the direct record check decides the make_vector/make_ordered_* switch."""
-    return _cpp_noncopyable_type(t, analyzer)
+    """Mirror of the AST's `_is_nocopy_container_element`: a @nocopy member
+    anywhere in the element slot forces the make_vector/make_ordered_*
+    reserve+emplace switch (a `std::move` inside a brace-init would silently
+    copy). The union / alias arms became reachable with the member-record
+    union element row -- one non-copyable ALTERNATIVE makes the whole variant
+    non-copyable, so they must be walked, not assumed away."""
+    if t is None:
+        return False
+    if _cpp_noncopyable_type(t, analyzer):
+        return True
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, AliasRef):
+        u = analyzer.registry.resolve_alias_ref(u)
+    if isinstance(u, UnionType):
+        return any(_cpp_noncopyable_type(m, analyzer) for m in u.members
+                   if not is_void_like_type(m))
+    return False
 
 def _container_enum_spell(t: 'TpyType | None', analyzer) -> bool:
     """A container decl type carrying an enum anywhere in its args: the decl

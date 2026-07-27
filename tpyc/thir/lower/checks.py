@@ -162,6 +162,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
+    _union_member_ctor_slot,
     _wrapper_member_ctor_slot,
     _enum_neg_wrap,
     _enum_truthy_wrap,
@@ -591,6 +592,10 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # via the wrapper's template converting ctor -- bare render on both
         # paths (`{Leaf(1), Leaf(2)}` into `std::vector<Tree>`).
         if _wrapper_member_ctor_slot(e, su, analyzer):
+            return True
+        # The plain-union twin: a member-record ctor rvalue into an
+        # all-record value-variant element slot (`{Dog("Rex"), Cat("W")}`).
+        if _union_member_ctor_slot(e, su, analyzer):
             return True
         return note_detail("container_lit.elem.union") if note else False
     if fam == "tuple":
@@ -1136,6 +1141,10 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             or _field_over_container_subscript_ok(target, declared, analyzer)
             or _field_over_record_getitem_ok(target, declared, analyzer,
                                              pointers)
+            # `a.inner.count = v` -- the receiver is itself a field read. The
+            # aug-assign twin has always admitted it; the plain-assign half
+            # never got the row, and both render the same target string.
+            or _field_over_field_ok(target, declared, analyzer)
             or _method_recv_field_write_ok(target, declared, analyzer)):
         return False
     ftype = analyzer.get_expr_type(target)
@@ -1145,7 +1154,13 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     elif not (_eligible_scalar(ftype)
               or _eligible_enum(ftype, analyzer) is not None
               or _is_type_param_slot(ftype)
-              or _eligible_ptr_value(ftype, analyzer)):
+              or _eligible_ptr_value(ftype, analyzer)
+              # A VALUE-repr `Optional[scalar]` field (`std::optional<T>`):
+              # the scalar converts implicitly, so the store is bare like a
+              # plain scalar's. Deliberately not the pointer-repr sibling --
+              # that one needs the `ptr_to_optional` lift.
+              or (_value_opt_scalar(ftype, analyzer) is not None
+                  and not isinstance(stmt.value, TpyNoneLiteral))):
         # A generic record's `T` field write emits as a plain assign (`field = v`
         # / `field = std::move(v)`) -- the BORROW->STORAGE convert renders the
         # source bare/moved (its TypeParamRef emit arm), byte-identical to the

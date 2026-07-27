@@ -766,6 +766,26 @@ class CodeGenerator:
         # They get emitted as __tpy_init() calls in statement order (Python semantics)
         # Exclude Final globals from init pre-seeding (they live at namespace scope)
         init_globals = {k: v for k, v in seen_globals.items() if k not in self.ctx.final_globals}
+        # Top-level lowering runs HERE, not in the seeding loop above: it needs
+        # `init_globals`, the generator's own global-name/type map.
+        if self.ctx.thir_codegen:
+            from ..thir.lower import lower_top_level as _thir_lower_top
+            from ..thir.fallback import (begin_attempt, fold_attempt,
+                                         record_arm_residual)
+            begin_attempt()
+            self.ctx.thir_top_level = _thir_lower_top(
+                module, self.analyzer, init_globals,
+                final_types={k: v for k, v in seen_globals.items()
+                             if k in self.ctx.final_globals},
+                render_type=self.types.type_to_cpp,
+                render_type_stored=self.types.type_to_cpp_stored,
+                render_resolve=self.types.resolve_type,
+                render_concept=self.protocols.concept_test_cpp,
+                user_module_imports=self.ctx.user_module_imports,
+                all_user_modules=self.ctx.all_user_modules)
+            if self.ctx.thir_top_level is None:
+                fold_attempt("top_level", module)
+                record_arm_residual(module.top_level_stmts)
         self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module

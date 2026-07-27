@@ -411,6 +411,81 @@ def imported_variable_cpp(registry, imported_names: 'dict[str, tuple[str, str]]'
     return qualified_cpp_name(source_module, original_name)
 
 
+def _native_facade_init_targets(registry, native_module: str) -> list[str]:
+    """Defining modules of variables re-exported by ``native_module``.
+
+    Records, functions, and protocols re-exported by the facade are pure
+    declarations; only re-exported variables involve runtime construction the
+    consumer must trigger. The attribute table's VARIABLE bindings carry the
+    chain-flattened ultimate definer in `binding.defining_module`, so a single
+    pass over the facade's table yields the set of init targets.
+    """
+    info = registry.get_module(native_module)
+    if info is None or info.module_attributes is None:
+        return []
+    order: list[str] = []
+    seen: set[str] = set()
+    for cell in info.module_attributes.values():
+        bd = cell.binding
+        if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
+            continue
+        ult_mod = bd.defining_module
+        if ult_mod in seen:
+            continue
+        ult_info = registry.get_module(ult_mod)
+        if ult_info is None or not ult_info.has_runtime_init:
+            continue
+        seen.add(ult_mod)
+        order.append(ult_mod)
+    return order
+
+
+def module_init_targets(stmt, *, registry, module_name: str,
+                        user_module_imports, all_user_modules: 'set[str]',
+                        emitted: 'set[str]') -> list[str]:
+    """Modules whose `__tpy_init()` a top-level import chains into, in emit
+    order -- the render behind `__tpy_init`'s import statements.
+
+    Shared by the AST's `gen_stmt` import arm and THIR's top-level lowering
+    (which resolves the call list at lowering time), so the two paths cannot
+    drift; `emitted` is the caller's own once-per-module dedup set, mutated
+    here exactly as the AST arm mutated `ctx.emitted_tpy_inits`."""
+    info = registry.get_module(stmt.module_name)
+    has_init = info is None or info.has_runtime_init
+    out: list[str] = []
+    if (info is not None and info.is_native_module
+            and stmt.module_name in user_module_imports):
+        # Native facades have no __tpy_init() of their own; chain into the
+        # non-native source modules of any re-exported variables.
+        for reached in _native_facade_init_targets(registry, stmt.module_name):
+            if reached in emitted:
+                continue
+            out.append(reached)
+            emitted.add(reached)
+    if stmt.module_name not in user_module_imports or not has_init:
+        return out
+    # Dotted imports init each parent package first (Python semantics):
+    # "pkg.utils" -> pkg, then pkg.utils.
+    parts = stmt.module_name.split('.')
+    for i in range(1, len(parts)):
+        parent = '.'.join(parts[:i])
+        if (parent == module_name or parent not in all_user_modules
+                or parent in emitted):
+            continue
+        parent_info = registry.get_module(parent)
+        if parent_info is not None and not parent_info.has_runtime_init:
+            # Native/builtin packages have no __tpy_init symbol; mark visited
+            # so sibling submodules don't retry.
+            emitted.add(parent)
+            continue
+        out.append(parent)
+        emitted.add(parent)
+    if stmt.module_name != module_name and stmt.module_name not in emitted:
+        out.append(stmt.module_name)
+        emitted.add(stmt.module_name)
+    return out
+
+
 def module_native_global_names(top_level_stmts) -> dict[str, str]:
     """Python name -> C/C++ symbol for module-level vars with non-DEFAULT
     linkage -- the map behind every native-global read/write render
@@ -1088,6 +1163,10 @@ class CodeGenContext:
     # instead of the AST path. Populated per-module in CodeGenerator.generate.
     thir_codegen: bool = False
     thir_functions: dict["int | tuple[int, int]", "THIRFunction"] = field(default_factory=dict)
+    # THIR module-init frontier: the `__tpy_init` body when top-level lowering
+    # routed it (None = the AST path emits it). Seeded right before
+    # gen_module_init, which is where the generator's global-type map exists.
+    thir_top_level: "THIRFunction | None" = None
     # THIR ctor frontier (M3): an eligible constructor's member-init-list + body
     # tail emits from its THIRConstructor (the signature stays on the AST path).
     # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.

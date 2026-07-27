@@ -1478,6 +1478,14 @@ class PtrSlotKind(Enum):
     # carries the pointee T spelling. Straight-line positions only (a
     # block-scoped slot inside a branch/loop is not this slice).
     INLINE_RVALUE = auto()
+    # Module-init initializing write of a NON-VALUE global (`items:
+    # list[Int32] = [...]` at top level). The name is already declared at
+    # namespace scope (`std::vector<int32_t>* items{};`), so only the slot
+    # carries a type: `static T __global_slot_N = init;` + `items =
+    # &__global_slot_N;` -- `_gen_pointer_local_rebind`'s "first rvalue
+    # assignment (e.g. global init)" branch, whose `static` and slot prefix
+    # both come from the global scope.
+    GLOBAL_RVALUE = auto()
 
 
 @dataclass(frozen=True)
@@ -1522,6 +1530,16 @@ class THIRPtrLocalRebind(THIRStmt):
     kind: 'PtrSlotKind' = PtrSlotKind.OPT_NONE
     value: THIRExpr | None = None
     val_cpp: str | None = None
+
+
+@dataclass(frozen=True)
+class THIRImportInit(THIRStmt):
+    """A module-init import statement's `__tpy_init()` chain. `calls` holds the
+    fully-qualified callee spellings in emit order, resolved at lowering by the
+    shared `module_init_targets` (so the AST arm and this cannot drift); an
+    import that chains into nothing lowers to a plain no-op instead, keeping
+    only its source comment."""
+    calls: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2905,3 +2923,7 @@ class THIRModule:
     """
     module_name: str
     functions: list[THIRFunction] = field(default_factory=list)
+    # The `__tpy_init` body when top-level lowering routed it. Populated only
+    # when the caller supplies the generator's global-type map (production
+    # seeds `ctx.thir_top_level` directly at the gen_module_init seam).
+    top_level: 'THIRFunction | None' = None

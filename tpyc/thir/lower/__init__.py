@@ -21,6 +21,7 @@ from .functions import (
     lower_constructor,
     lower_function,
     lower_module,
+    lower_top_level,
     module_native_globals,
 )
 from .resumable import lower_resumable
@@ -33,6 +34,7 @@ __all__ = [
     "lower_constructor",
     "lower_function",
     "lower_module",
+    "lower_top_level",
     "lower_resumable",
     "lower_simple_generator",
     "module_native_globals",

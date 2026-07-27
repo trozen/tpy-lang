@@ -1985,7 +1985,24 @@ class FunctionGenerator:
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 
-        self.statements._gen_buffered_body(out, stmts, track_stmt_line=True)
+        if self.ctx.thir_top_level is not None:
+            # THIR dual-mode, the gen_body seam's module-init twin: slots
+            # spell `static __global_slot_N` at this scope. The ctx seeding
+            # above still runs -- gen_main and the record/global emitters read
+            # it after this call.
+            from ..thir.emit import (emit_thir_body, CtxCommentSink,
+                                     CtxCounter, CtxTempSink)
+            emit_thir_body(out, self.ctx.thir_top_level, 1,
+                           comments=CtxCommentSink(self.ctx),
+                           temps=CtxTempSink(self.ctx),
+                           with_counter=CtxCounter(self.ctx, "with_counter"),
+                           try_counter=CtxCounter(self.ctx,
+                                                  "try_except_counter"),
+                           finally_guard_counter=CtxCounter(
+                               self.ctx, "finally_guard_counter"),
+                           global_scope=True)
+        else:
+            self.statements._gen_buffered_body(out, stmts, track_stmt_line=True)
 
         self.ctx.current_ns = None
         if has_user_main:

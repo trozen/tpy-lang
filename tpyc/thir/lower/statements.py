@@ -59,6 +59,7 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyUnaryOp,
     TupleElemCapture,
+    TpyImport,
     TpyVarDecl,
     TpyWhile,
     TpyWith,
@@ -184,6 +185,7 @@ from ..nodes import (
     THIRFoldedBlock,
     THIRFrameNestedDef,
     THIRFrameSlotWrite,
+    THIRImportInit,
     THIRNoOpStmt,
     THIROptionalPtrArg,
     THIROptViewArg,
@@ -322,7 +324,6 @@ from .checks import (
     _container_aug_setitem_ok,
     _container_field_write_ok,
     _container_record_elem_subscript,
-    _container_ref_alias_elem_subscript,
     _container_literal_decl_ok,
     _container_literal_shape_ok,
     _bytearray_recv,
@@ -2741,6 +2742,70 @@ def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         loc=loc)
 
 
+def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
+                             declared: dict[str, TpyType],
+                             loc) -> 'THIRPtrLocalDecl':
+    """Module-init initializing write of a NON-VALUE global -- the AST's
+    "first rvalue assignment (e.g. global init)" branch of
+    `_gen_pointer_local_rebind`: `static T __global_slot_N = init;` +
+    `g = &__global_slot_N;`. The global is already declared at namespace
+    scope, so this is a REASSIGN in codegen's eyes (pre-seeded
+    `declared_vars`) that happens to allocate storage.
+
+    Only rvalue sources take the slot; an lvalue source (`g = other`) is the
+    address-of catch-all, a `None` init the nullptr arm, and a SECOND rvalue
+    write reuses the slot allocated here -- all separate renders, all
+    rejected."""
+    analyzer = lc.analyzer
+    vtype = declared.get(stmt.name)
+    if (stmt.init is None or vtype is None
+            or stmt.name in lc.global_slot_assigned
+            or stmt.name in lc.prescan.hoisted
+            or not is_rvalue_source(analyzer, stmt.init)):
+        note_detail("top_level.global_slot_shape")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                              TpySetLiteral, TpyListRepeat)):
+        if not (is_list(vtype) or is_dict(vtype) or is_set(vtype)
+                or is_array(vtype)):
+            note_detail("top_level.global_slot_shape")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if not _container_literal_shape_ok(stmt.init, vtype, analyzer):
+            note_detail("top_level.global_slot_elem")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        init = _lower_expr(stmt.init, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE),
+                           target_type=vtype)
+        if getattr(init, "make_container", False):
+            # Same unverified `make_vector` slot render the local sibling
+            # rejects.
+            note_detail("top_level.global_slot_elem")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+    elif (isinstance(vtype, NominalType) and _f1_record(vtype, analyzer)
+          and _record_rvalue_source_shape(stmt.init, analyzer)):
+        it = analyzer.get_expr_type(stmt.init)
+        it_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it))) \
+            if it is not None else None
+        if isinstance(it_u, OwnType):
+            it_u = unwrap_readonly(it_u.wrapped)
+        if it_u != vtype:
+            # A subclass rvalue retypes the slot (the polymorphic arm).
+            note_detail("top_level.global_slot_shape")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        init = _lower_expr(stmt.init, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                           target_type=vtype)
+    else:
+        note_detail("top_level.global_slot_shape")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    lc.global_slot_assigned.add(stmt.name)
+    _witness("top_level.global_slot")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=vtype,
+        kind=PtrSlotKind.GLOBAL_RVALUE, init=init,
+        cpp_type=lc.render_type(vtype), loc=loc)
+
+
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
                             lc: _LowerCtx, declared: dict[str, TpyType],
                             loc) -> 'THIRPtrLocalDecl | None':
@@ -3027,6 +3092,14 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
     scope = _LowerScope(lc, declared, in_branch=in_branch,
                         branch_decls_ok=branch_decls_ok,
                         loop_depth=loop_depth)
+    if lc.top_level_scope:
+        # The module-init walk's position, for the one order-dependent
+        # spelling it carries (see `pre_decl_import_cpp`). Mirrors gen_stmt's
+        # `current_stmt_line` stamp: EVERY statement, nested ones included,
+        # and never restored when a block ends.
+        sl = getattr(stmt, "loc", None)
+        if sl is not None:
+            lc.top_level_line = sl.line
     begin_stmt()
     try:
         result = _lower_stmt_dispatch(stmt, scope)
@@ -4561,11 +4634,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 loc=getattr(stmt, "loc", None))
     if isinstance(stmt, TpyNestedDef):
         return _lower_nested_def(stmt, scope)
+    if isinstance(stmt, TpyImport):
+        # Module-init only: an import elsewhere is not a statement position.
+        if not lc.top_level_scope:
+            note_detail("top_level.import_scope")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        begin_stmt()
+        calls = lc.import_calls.get(id(stmt), ())
+        if not calls:
+            # No chain: the AST arm's empty render still keeps the source
+            # comment (its code is `""`, not None).
+            _witness("top_level.import_init")
+            return THIRNoOpStmt(loc=loc)
+        return THIRImportInit(calls=calls, loc=loc)
     if isinstance(stmt, TpyVarDecl):
         begin_stmt()
         if stmt.linkage != VarLinkage.DEFAULT:
             note_detail("decl.linkage")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        if stmt.is_final:
+            # Final globals live at namespace scope -- `_gen_var_decl_code`
+            # returns None here, so only leading trivia survives.
+            _witness("top_level.final_skip")
+            return THIRNoOpStmt(trivia_loc=loc)
         if stmt.init is None:
             # An annotation-only decl (`x: str` / `x: Int32`) default-
             # constructs the resolved slot (`std::string x;` / `int32_t x;`)
@@ -4608,6 +4699,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if stmt.name in lc.narrow.narrowed:
             note_detail("decl.narrowed_rebind")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        if stmt.name in lc.global_ptr_slots:
+            # A non-value global's write is never a plain assign: it either
+            # allocates the static slot or rejects (see the helper).
+            if scope.in_branch:
+                note_detail("top_level.global_slot_branch")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_global_slot_write(stmt, lc, declared, loc)
         is_reassign = stmt.name in declared
         in_branch_first = scope.in_branch and not is_reassign
         if in_branch_first and not scope.branch_decls_ok:
@@ -6089,6 +6187,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                           result=_ExprResultUse.STORAGE,
                                                           allow_temps=True))),
                                       ftype, lc), loc=loc)
+            # A VALUE-repr `Optional[scalar]` field (`std::optional<int32_t>`):
+            # the scalar converts implicitly, so the store is BARE
+            # (`s.count = 42;`). The generic tail's `ptr_to_optional` lift
+            # belongs to the POINTER-repr Optional and would be wrong here;
+            # a `None` value took the nullopt arm above.
+            if (_value_opt_scalar(ftype, analyzer) is not None
+                    and not isinstance(stmt.value, TpyNoneLiteral)):
+                _witness("field_write.value_opt_scalar")
+                return THIRAssign(
+                    target=_lower_field_write_target(stmt, lc, declared),
+                    value=_slot_literal_retype(
+                        _flush_witness(
+                            "flush.field_write",
+                            _lower_expr(stmt.value, lc, declared,
+                                        use=_ExprUse(
+                                            result=_ExprResultUse.STORAGE,
+                                            allow_temps=True))),
+                        ftype, lc), loc=loc)
             # A plain F1-record field write (`_record_field_write_ok`): a
             # record rvalue -- a ctor (STORAGE) or a by-value record-returning
             # call (VALUE) of the field's own type -- copies bare into the
@@ -6229,7 +6345,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                                              allow_temps=True)))
             else:
-                lowered = _lower_expr(stmt.value, lc, declared)
+                # A pointer-slot GLOBAL source feeds the `ptr_to_optional`
+                # lift as a POINTER (`h->v = ptr_to_optional(g);`), so the
+                # value-position deref it takes at every other sink must not
+                # fire -- RECEIVER says exactly that. Pointer LOCALS are
+                # unaffected (they never deref at a name read of record type).
+                ptr_src = (isinstance(stmt.value, TpyName)
+                           and stmt.value.name in lc.prescan.global_slots)
+                lowered = _lower_expr(
+                    stmt.value, lc, declared,
+                    use=(_ExprUse(result=_ExprResultUse.RECEIVER)
+                         if ptr_src else _ExprUse()))
                 mv = _is_move_source(stmt.value, lc)
                 # A storage-form source of the field's own type needing no move
                 # is a bare copy (`field = v`); the borrow->storage convert would
@@ -8524,19 +8650,10 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                                      allow_temps=temps_ok)),
             wrap)
     if wrap is not None:
-        # A nested-container element source is prechecked: the wrap gate
-        # validated the REF_ALIAS shape (no optional check, no slice, routable
-        # index), which is what the value-position element gate would reject.
-        elem_sub = (isinstance(a, TpySubscript)
-                    and _container_ref_alias_elem_subscript(
-                        a, declared, lc.analyzer))
-        if elem_sub:
-            _witness("print.elem_subscript")
         return THIRPrintArg(
             _lower_expr(
                 a, lc, declared,
-                field_prechecked=isinstance(a, TpyFieldAccess),
-                subscript_prechecked=elem_sub),
+                field_prechecked=isinstance(a, TpyFieldAccess)),
             wrap)
     # resolve_int_literals: an IntLiteral-typed arg (a literal-seeded container's
     # loop var / pop result) must derive its stream form from the resolved type.

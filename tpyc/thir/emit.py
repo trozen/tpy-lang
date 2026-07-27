@@ -98,6 +98,7 @@ from .nodes import (
     THIRNestedDef,
     THIRNarrowedRead,
     THIRFrameNestedDef,
+    THIRImportInit,
     THIRNoOpStmt,
     THIRFoldedBlock,
     THIRMatchFoldBind,
@@ -405,6 +406,12 @@ class _EmitState:
     resumable_return_hook: 'Callable[[object, int], str] | None' = None
     iter_counter: int = 0
     slot_counter: int = 0
+    # Slot spelling for the module-init walk: codegen's SlotState switches the
+    # prefix to `__global_slot` and every slot decl gains `static` there
+    # (`slots.reset(global_scope=True)`). Only the GLOBAL_RVALUE arm reads
+    # these -- top-level lowering rejects every other slot-allocating shape.
+    slot_prefix: str = "__slot"
+    slot_static: str = ""
     unpack_counter: int = 0
     # Function-top hoist lines (content only, no indent/newline): a @dynamic
     # rebind slot's `std::optional<slot> __slot_N;` is allocated at the reassign
@@ -471,6 +478,21 @@ class _EmitState:
     def next_slot(self) -> int:
         self.slot_counter += 1  # pre-increment: first slot is __slot_1
         return self.slot_counter
+
+    def global_slot(self) -> str:
+        """The module-init slot spelling (`static __global_slot_N`). Every
+        OTHER slot site spells a bare `__slot_N`, which at namespace scope
+        would leave the global pointing at a dead frame once `__tpy_init`
+        returns -- so those sites assert instead (see `assert_local_slot`).
+        Lowering rejects such a body first; this is the independent backstop
+        that turns a missed reject into a loud failure, not silent UB."""
+        return f"{self.slot_prefix}_{self.next_slot()}"
+
+    def assert_local_slot(self) -> None:
+        assert self.slot_prefix == "__slot", (
+            "a block-scoped __slot_N allocated at module scope: it needs "
+            "`static __global_slot_N` lifetime (lowering should have rejected "
+            "this body -- see _rejects_global_slot)")
 
     def next_unpack(self) -> int:
         # Reproduces ctx.unpack_counter: per-function, pre-incremented (first
@@ -1301,7 +1323,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             # read) and declared on the named row next to the target.
             slot_n = state.rebind_slots.get(e.name)
             if slot_n is None:
-                slot_n = state.next_slot()
+                slot_n = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[e.name] = slot_n
                 state.btuple_slot_locals.add(e.name)
                 state.temps.declare_named(
@@ -1639,7 +1661,7 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     slot_types = dict(stmt.hoist_slots)
     for name, cpp_type in stmt.hoist_decls:
         if name in slot_types:
-            slot = state.next_slot()
+            slot = (state.assert_local_slot() or state.next_slot())
             state.rebind_slots[name] = slot
             out.write(f"{indent}std::optional<{slot_types[name]}> "
                       f"__slot_{slot};\n")
@@ -3160,8 +3182,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # `std::optional<T>` rebind slot reused on each reseat. Mirrors
             # _gen_pointer_local_init's rvalue branch: the init slot is allocated
             # before the rebind slot.
-            init_slot = state.next_slot()
-            rebind_slot = state.next_slot()
+            init_slot = (state.assert_local_slot() or state.next_slot())
+            rebind_slot = (state.assert_local_slot() or state.next_slot())
             state.rebind_slots[stmt.name] = rebind_slot
             cpp = stmt.cpp_type
             const_pfx = "const " if stmt.is_const else ""
@@ -3214,7 +3236,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         cpfx = "const " if stmt.is_const else ""
         if stmt.kind is PtrSlotKind.OPT_NONE:
             if stmt.needs_rebind_slot:
-                slot = state.next_slot()
+                slot = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = slot
                 out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                           f"__slot_{slot};\n")
@@ -3225,16 +3247,26 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (its needs_rebind_slot is always False -- an rvalue-reassigned
             # record is the REBIND_SLOT binding, not this kind).
             init_cpp = _emit_expr(stmt.init, state)
-            init_slot = state.next_slot()
+            init_slot = (state.assert_local_slot() or state.next_slot())
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
                       f"{init_cpp};\n")
             if stmt.needs_rebind_slot:
-                rebind = state.next_slot()
+                rebind = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = rebind
                 out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                           f"__slot_{rebind};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
+        elif stmt.kind is PtrSlotKind.GLOBAL_RVALUE:
+            # Module-init global init: the name is pre-declared at namespace
+            # scope, so only the `static` slot carries a type.
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            slot = state.global_slot()
+            out.write(f"{indent}{state.slot_static}{stmt.cpp_type} {slot} = "
+                      f"{init_cpp};\n")
+            out.write(f"{indent}{name} = &{slot};\n")
+            _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot
             # pre-decl rides the function-top hoist lines; the decl statement
@@ -3242,13 +3274,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (`T* x = &*(__slot_N = init);` -- _gen_pointer_local_init's
             # hoisted rvalue branch via _ptr_from_rvalue_slot).
             init_cpp = _emit_expr(stmt.init, state)
-            init_slot = state.next_slot()
+            init_slot = (state.assert_local_slot() or state.next_slot())
             assert state.hoist_drainable, (
                 "RECORD_HOISTED decl hoist reached a non-draining leaf emitter")
             state.hoist_lines.append(
                 f"std::optional<{stmt.cpp_type}> __slot_{init_slot};")
             if stmt.needs_rebind_slot:
-                rebind = state.next_slot()
+                rebind = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = rebind
                 state.hoist_lines.append(
                     f"std::optional<{stmt.cpp_type}> __slot_{rebind};")
@@ -3262,9 +3294,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"&*(__slot_{init_slot} = {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
-            slot = state.next_slot()
+            slot = (state.assert_local_slot() or state.next_slot())
             if stmt.needs_rebind_slot:
-                rebind = state.next_slot()
+                rebind = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = rebind
                 state.union_slot_locals.add(stmt.name)
                 out.write(f"{indent}std::optional<{stmt.val_cpp}> "
@@ -3279,7 +3311,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # emitting the init, matching the oracle's `next_slot()`-then-
             # `gen_expr` order, so the numbering stays aligned even if an init
             # ever consumes a slot of its own.
-            init_slot = state.next_slot()
+            init_slot = (state.assert_local_slot() or state.next_slot())
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot}"
                       f"{{{init_cpp}}};\n")
@@ -3293,7 +3325,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
             if stmt.needs_rebind_slot:
-                rebind = state.next_slot()
+                rebind = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = rebind
                 state.union_slot_locals.add(stmt.name)
                 out.write(f"{indent}std::optional<{stmt.val_cpp}> "
@@ -3309,7 +3341,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # type per target). Slot drawn before the value (oracle order); its
             # decl hoists to the function top, the emplace + `p = &*slot` reseat
             # stay inline. `val_cpp` carries the slot (concrete/adapter) spelling.
-            slot = state.next_slot()
+            slot = (state.assert_local_slot() or state.next_slot())
             val_cpp = _emit_expr(stmt.value, state)
             # Backstop: this hoist has no drain point in a leaf emitter; lowering
             # defers generator/async bodies, so reaching here undrainable is a bug.
@@ -3335,7 +3367,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             val_cpp = _emit_expr(stmt.value, state)
             slot = state.rebind_slots.get(stmt.name)
             if slot is None:
-                slot = state.next_slot()
+                slot = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = slot
                 out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = "
                           f"{val_cpp};\n")
@@ -3352,7 +3384,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             val_cpp = _emit_expr(stmt.value, state)
             slot = state.rebind_slots.get(stmt.name)
             if slot is None:
-                slot = state.next_slot()
+                slot = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = slot
                 assert state.hoist_drainable, (
                     "BRANCH_RVALUE rebind hoist reached a non-draining "
@@ -3748,6 +3780,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # The member itself is scaffolding-emitted; the statement position
         # keeps only the marker line under its source comment.
         out.write(f"{indent}// def {stmt.name_cpp}: frame member\n")
+    elif isinstance(stmt, THIRImportInit):
+        _witness("top_level.import_init")
+        for call in stmt.calls:
+            out.write(f"{indent}{call}();\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc. A skipped statement's
@@ -3871,7 +3907,8 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    with_counter: ModuleCounter | None = None,
                    try_counter: ModuleCounter | None = None,
                    finally_guard_counter: ModuleCounter | None = None,
-                   return_cpp: 'str | None' = None) -> None:
+                   return_cpp: 'str | None' = None,
+                   global_scope: bool = False) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
     `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink,
@@ -3881,14 +3918,18 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     implementations (CtxTempSink / CtxCounter); the defaults are fresh local
     sinks (standalone/unit callers). `return_cpp` is the signature's return
     spelling (`ctx.current_return_cpp` at the seam), read only by the
-    finally-chain return temp decl."""
+    finally-chain return temp decl. `global_scope` emits the module-init body
+    (`__tpy_init`), whose slots spell `static __global_slot_N`."""
     state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
                        with_counter=with_counter or ModuleCounter(),
                        try_counter=try_counter or ModuleCounter(),
                        finally_guard_counter=(finally_guard_counter
                                               or ModuleCounter()),
                        return_cpp=return_cpp,
-                       error_return_cpp=fn.error_return_cpp)
+                       error_return_cpp=fn.error_return_cpp,
+                       slot_prefix=("__global_slot" if global_scope
+                                    else "__slot"),
+                       slot_static=("static " if global_scope else ""))
     # Buffer the body so function-top hoists (@dynamic rebind slots, allocated
     # mid-body) can be prepended in the AST's `pending_hoist_decls` position.
     body_buf = io.StringIO()

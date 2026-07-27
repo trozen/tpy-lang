@@ -222,6 +222,7 @@ from .predicates import (
     _container_nocopy_elem,
     _container_record_elem,
     _container_ref_alias_elem,
+    _union_storage_val_cpp,
     _set_method_recv,
     _container_scalar_read,
     _container_value_leaf_read,
@@ -422,7 +423,6 @@ from .checks import (
     _field_over_walrus_ok,
     _field_over_container_subscript_ok,
     _func_ref_routable,
-    _container_ref_alias_elem_subscript,
     _lambda_routable,
     _subscript_over_container_subscript_ok,
     _field_over_field_ok,
@@ -2448,6 +2448,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return THIRSelf(result_type=rtype, form=Form.BORROW,
                             cpp=lc.self_cpp, loc=loc)
         gcpp = lc.prescan.global_cpp.get(e.name)
+        if gcpp is None and lc.top_level_scope:
+            # Module init reads an imported name that this module REDEFINES
+            # later: statements before the redefinition still see the import
+            # (the AST's `current_stmt_line >= decl_line` test -- the one
+            # order-dependent spelling in the module-init walk, resolved
+            # against the statement line lowering is at).
+            pre = lc.pre_decl_import_cpp.get(e.name)
+            if pre is not None and lc.top_level_line < pre[0]:
+                gcpp = pre[1]
         if e.name in lc.prescan.global_slots:
             # A read-only-seeded pointer-slot global: rides the pointer-local
             # arms via lc.pointers (`(*g)` derefs below, `->` receivers, the
@@ -3149,10 +3158,31 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     loc=loc)
             recv_t = _subscript_container_recv_type(
                 e.obj, declared, analyzer)
+            recv_peeled = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                recv_t))) if recv_t is not None else None)
+            own_recv = isinstance(recv_peeled, OwnType)
+            if own_recv:
+                # An `Own[list[T]]` PARAM's subscript READ renders exactly
+                # the borrow shape (`::tpy::__getitem__(items, 0)` off the
+                # bare name) -- the Own ABI difference is the param slot's,
+                # not the read's. The name read is position-pinned bare
+                # (allow_unrouted_name below, the truthiness precedent).
+                recv_peeled = unwrap_readonly(recv_peeled.wrapped)
+            # A NESTED-CONTAINER element (`groups["a"]` off
+            # `dict[str, list[T]]`): the checked dunder yields the element's
+            # `T&` lvalue. The AST has ONE element emitter and it is
+            # consumer-blind, so this read lands bare in every value position
+            # -- there is no per-sink render to mirror, and admitting it here
+            # replaces the per-sink `subscript_prechecked` bypasses (which
+            # skipped the unproven-Optional receiver guard the gate applies).
+            nested_container_elem = (
+                _container_ref_alias_elem(recv_peeled, analyzer)
+                and bool(_witness("subscript.container_elem")))
             index_ok = (
                 _bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
                                           analyzer) != "reject")
             ret_ok = (
+                nested_container_elem or
                 _resolved_scalar(rtype, analyzer)
                 or _eligible_char(rtype)
                 or _eligible_enum(rtype, analyzer) is not None
@@ -3179,19 +3209,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # never reaches this bare read.
                 or (allow_whole_optional
                     and _value_opt_scalar(rtype, analyzer) is not None))
-            recv_peeled = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                recv_t))) if recv_t is not None else None)
-            own_recv = isinstance(recv_peeled, OwnType)
-            if own_recv:
-                # An `Own[list[T]]` PARAM's subscript READ renders exactly
-                # the borrow shape (`::tpy::__getitem__(items, 0)` off the
-                # bare name) -- the Own ABI difference is the param slot's,
-                # not the read's. The name read is position-pinned bare
-                # (allow_unrouted_name below, the truthiness precedent).
-                recv_peeled = unwrap_readonly(recv_peeled.wrapped)
             container_ok = (
                 recv_t is not None
                 and (_container_value_leaf_read(recv_peeled, analyzer)
+                     or nested_container_elem
                      or (allow_whole_optional
                          and _container_value_opt_scalar_elem(
                              recv_t, analyzer)))
@@ -4690,7 +4711,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     # (the AST's types.type_to_cpp); make_ordered_set derives
                     # its spelling from result_type in the emit (to_cpp, like
                     # the brace arm).
-                    elem_cpp = lc.render_type(slot)
+                    _su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        slot))) if slot is not None else None
+                    # A UNION element slot spells its ALIAS name
+                    # (`make_vector<Item>`) -- but `union_alias_names`, which
+                    # the resolver reads, is only populated at header
+                    # emission, after lowering. The sema-time display map is
+                    # the lowering-visible source of the same name.
+                    elem_cpp = (_union_storage_val_cpp(_su)
+                                if isinstance(_su, UnionType)
+                                else lc.render_type(slot))
         return THIRContainerLiteral(
             result_type=container_type,
             elements=tuple(
@@ -5333,16 +5363,28 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             method_targs = tuple(
                 lc.render_type(unwrap_ref_type(t))
                 for t in e.inferred_type_args)
-        return THIRMethodCall(
-            result_type=rtype if rtype is not None else VoidType(),
+        recv_lowered = _lower_expr(
+            e.obj, lc, declared,
             # A call-shaped receiver's own arg temps flush at the enclosing
             # statement like any nested arg's, so allow_temps rides through.
-            receiver=_lower_expr(
-                e.obj, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             allow_temps=temp_args),
-                field_prechecked=isinstance(e.obj, TpyFieldAccess),
-                subscript_prechecked=isinstance(e.obj, TpySubscript)),
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         allow_temps=temp_args),
+            field_prechecked=isinstance(e.obj, TpyFieldAccess),
+            subscript_prechecked=isinstance(e.obj, TpySubscript))
+        if (isinstance(e.obj, TpyName) and isinstance(recv_lowered, THIRName)
+                and not recv_lowered.deref
+                and (fi.cpp_template is not None
+                     or (fi.native_function and fi.native_name))
+                and _ptr_read_derefs(e.obj.name, lc)):
+            # A cpp_template expansion and an @native free function both
+            # consume the receiver as an ARGUMENT, a value position -- so an
+            # indirect name derefs there (`::tpy::__len__((*xs))`), where a
+            # real member call spells `->` instead. Both emit branches ignore
+            # `is_arrow`, so the deref has to ride the name.
+            recv_lowered = replace(recv_lowered, deref=True)
+        return THIRMethodCall(
+            result_type=rtype if rtype is not None else VoidType(),
+            receiver=recv_lowered,
             method_cpp=member,
             args=tuple(
                 _method_arg(a, params[i].type if params else None, i)
@@ -6917,15 +6959,6 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                            use=_ExprUse(result=_ExprResultUse.ITERABLE))
     if (_is_len_native(e) and isinstance(a, TpyFieldAccess)):
         return _lower_expr(a, lc, declared, field_prechecked=True)
-    if (len_call and isinstance(a, TpySubscript)
-            and _container_ref_alias_elem_subscript(a, declared, lc.analyzer)):
-        # `len(groups["a"])`: the nested-container element lvalue renders bare
-        # in the native slot. Prechecked like the field twin above -- but keyed
-        # on `_is_len_call` (not the bare symbol), because the precheck also
-        # skips the optional-runtime-check and index-disposition arms, and it
-        # is the gate's REF_ALIAS shape check that excludes those.
-        _witness("len.elem_subscript")
-        return _lower_expr(a, lc, declared, subscript_prechecked=True)
     if (_is_len_native(e) and isinstance(a, TpyMethodCall)
             and _dict_view_iterable_ok(
                 a, declared, analyzer, methods=("values", "keys", "items"))):
@@ -7890,9 +7923,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         elif opt_face == 'pass' or (isinstance(a, TpyName)
                                     and a.name in lc.pointers):
             _witness("optptr.pass")
+            # Already `T*` -- bare, no deref retag. RECEIVER is what SAYS
+            # that: the slot binds the pointer itself, so the value-position
+            # deref (which a pointer-slot GLOBAL takes at every other value
+            # sink) must not fire here.
             return _lower_expr(
                 a, lc, declared,
-                use=_NESTED_ARG_USE)  # already `T*` -- bare, no deref retag
+                use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                             record_ctor=_RecordCtorUse.NESTED_ARG))
         else:  # 'name': a plain record lvalue takes the address-of
             _witness("optptr.name")
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW,
@@ -8669,8 +8707,12 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
         _witness("field.narrowed_deref")
     return THIRFieldAccess(
         result_type=rtype,
+        # RECEIVER, like every sibling field arm: an indirect receiver reaches
+        # its member through `is_arrow`, so a value-position deref here would
+        # compose into `(*h)->value`.
         receiver=_lower_expr(
             e.obj, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.RECEIVER),
             field_prechecked=isinstance(e.obj, TpyFieldAccess),
             subscript_prechecked=isinstance(e.obj, TpySubscript)),
         field_cpp=_field_cpp(e),

@@ -97,6 +97,7 @@ from .nodes import (
     THIRFoldedBlock,
     THIRMatchFoldBind,
     THIRFrameNestedDef,
+    THIRImportInit,
     THIRNoOpStmt,
     THIRParamCopy,
     THIRPtrLocalDecl,
@@ -526,6 +527,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}{_expr(stmt.expr)}"]
     if isinstance(stmt, THIRNoOpStmt):
         return [f"{pad}noop"]
+    if isinstance(stmt, THIRImportInit):
+        return [f"{pad}import-init [{', '.join(stmt.calls)}]"]
     if isinstance(stmt, THIRFrameNestedDef):
         return [f"{pad}frame-nested-def {stmt.name_cpp}"]
     if isinstance(stmt, THIRFoldedBlock):
@@ -739,6 +742,19 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
 
     lines: list[str] = []
     seen_any = False
+    # The module-init body first, in source order: it runs before every
+    # callable and is a lowering unit like them, so omitting it would read as
+    # "top-level does not lower" rather than "top-level is not shown".
+    if module_ast.top_level_stmts:
+        top = getattr(ctx, "thir_top_level", None)
+        if top is not None:
+            lines.extend(_function_lines(top))
+        else:
+            why = reasons.get(id(module_ast))
+            lines.append("top-level __tpy_init: <fell back to AST"
+                         + (f": {why}>" if why else ">"))
+        lines.append("")
+        seen_any = True
     for func, _self_type in iter_module_callables(module_ast, analyzer):
         key = id(func)
         stubs = analyzer.overload_groups.get(key)

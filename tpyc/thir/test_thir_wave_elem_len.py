@@ -1,14 +1,17 @@
-"""Nested-container ELEMENT lvalues in the two native sinks that consume a
-whole container: the builtin `len(...)` arg and the kind-keyed print wrap.
+"""Nested-container ELEMENT lvalues in value positions.
 
 `groups["a"]` off `dict[str, list[Int32]]` is a checked read into the
-container's own storage (`::tpy::__getitem__(groups, "a")`), so it renders
-bare where a container NAME does. Both sinks precheck the element read: the
-value-position element gate would reject it (its result is a container), and
-the REF_ALIAS shape check (`_container_ref_alias_elem_subscript`) is what
-licenses skipping that gate -- it excludes exactly the shapes the precheck
-would otherwise drop (an unproven Optional element read, a slice, an
-unroutable index).
+container's own storage (`::tpy::__getitem__(groups, "a")`). The AST has ONE
+element emitter and it is consumer-blind, so the read lands bare in every
+value position -- one general gate arm covers all of them, and the two sinks
+that used to precheck the read (the builtin `len(...)` arg, the kind-keyed
+print wrap) now go through that gate like everything else.
+
+The gate is what these units are for: it applies the checks a precheck
+skipped, so a slice result and an unproven-Optional receiver must still
+reject. A routing pin here asserts on the lowered function, not on emitted
+text -- fallback emits byte-identical AST, which a text assertion cannot
+tell apart.
 """
 
 from __future__ import annotations
@@ -45,7 +48,7 @@ class TestLenElementSubscript:
                "    return len(groups[\"a\"])\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
-        assert faces.get("len.elem_subscript")
+        assert faces.get("subscript.container_elem")
         assert ("::tpy::__len__(::tpy::__getitem__(groups, \"a\"))"
                 in _body(thir, "f"))
         _assert_byte_identical(src)
@@ -54,6 +57,7 @@ class TestLenElementSubscript:
         src = ("from tpy import Int32\n"
                "def f(m: list[list[Int32]], i: Int32) -> Int32:\n"
                "    return len(m[0]) + len(m[i])\n")
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
     def test_field_receiver_element_arg_routes(self):
@@ -76,13 +80,11 @@ class TestLenElementSubscript:
 
     def test_slice_arg_stays_ast(self):
         # A slice yields a fresh container RVALUE, not an element lvalue --
-        # the element row must not claim it.
+        # the gate must not claim it.
         src = ("from tpy import Int32\n"
                "def f(m: list[list[Int32]]) -> Int32:\n"
                "    return len(m[0:2])\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("len.elem_subscript")
+        assert _fn(_lower_ctx(src), "f") is None
 
     def test_doubly_nested_element_stays_ast(self):
         # `m[0][1]`: the receiver is itself an element subscript, which the
@@ -98,13 +100,15 @@ class TestPrintElementSubscript:
         src = ("from tpy import Int32\n"
                "def f(groups: dict[str, list[Int32]]) -> None:\n"
                "    print(groups[\"a\"])\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("print.elem_subscript")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
         assert ("::tpy::ListPrinter(::tpy::__getitem__(groups, \"a\"))"
                 in _body(thir, "f"))
         _assert_byte_identical(src)
 
     def test_set_and_dict_elements_pick_their_own_printer(self):
+        # The printer KIND selection stays where it is -- it is semantic
+        # routing, not a gate bypass.
         src = ("from tpy import Int32\n"
                "def f(a: dict[str, set[Int32]],\n"
                "      b: dict[str, dict[str, Int32]]) -> None:\n"
@@ -120,6 +124,68 @@ class TestPrintElementSubscript:
         src = ("from tpy import Int32\n"
                "def f(m: list[Int32]) -> None:\n"
                "    print(m[0])\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("print.elem_subscript")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
+
+
+class TestGeneralValuePositions:
+    """What the ONE gate arm covers, and what still has its own row.
+
+    The bind and the method-receiver positions route through rows that never
+    consulted this gate (`LocalBinding.REF_ALIAS`, the container-method
+    receiver), so they are pinned as already-routing, not as this arm's work.
+    The call-arg and for-head positions still REJECT: their own gates -- not
+    `ret_ok` -- decide them, which is what "the arm is position-blind but the
+    positions are not all open" means here.
+    """
+
+    def test_local_bind_routes_through_its_own_row(self):
+        src = ("from tpy import Int32\n"
+               "def f(g: dict[str, list[Int32]]) -> Int32:\n"
+               "    row = g[\"a\"]\n"
+               "    return len(row)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_method_receiver_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f(g: dict[str, list[Int32]]) -> None:\n"
+               "    g[\"a\"].append(4)\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_call_arg_position_still_rejects(self):
+        # The free-call arg gate, not `ret_ok`, decides this one.
+        src = ("from tpy import Int32\n"
+               "def take(xs: list[Int32]) -> Int32:\n"
+               "    return len(xs)\n"
+               "def f(g: dict[str, list[Int32]]) -> Int32:\n"
+               "    return take(g[\"a\"])\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_for_head_position_still_rejects(self):
+        src = ("from tpy import Int32\n"
+               "def f(g: dict[str, list[Int32]]) -> Int32:\n"
+               "    total = 0\n"
+               "    for v in g[\"a\"]:\n"
+               "        total += v\n"
+               "    return total\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestGateBoundaries:
+    """The shapes the gate excludes.
+
+    An unproven-Optional RECEIVER is NOT pinned here because the shape is
+    unreachable: sema rejects subscripting a nullable container before
+    lowering ever sees it, so the runtime-check guard the deleted per-sink
+    bypasses skipped has no witness to assert on. The slice and doubly-nested
+    exclusions below are the ones this gate actually decides.
+    """
+
+    def test_slice_result_rejects_at_the_len_sink(self):
+        src = ("from tpy import Int32\n"
+               "def f(m: list[list[Int32]]) -> Int32:\n"
+               "    return len(m[0:2])\n")
+        assert _fn(_lower_ctx(src), "f") is None

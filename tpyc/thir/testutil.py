@@ -76,6 +76,23 @@ def _assert_byte_identical(source: str, default_int: str = "Int32"):
     assert thir == ast
 
 
+def _top_level(source: str, default_int: str = "Int32"):
+    """Lower a module's `__tpy_init` body through the REAL generator seeding
+    (the global-type map only the generator builds) and return
+    (thir_top_level_or_None, face witnesses, fallback tally).
+
+    A routing pin asserts the first is not None; a boundary pin asserts it IS
+    None and names the `top_level:` reject in the tally."""
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(source, default_int=default_int)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(
+        entry, options=CodeGenOptions(emit_source_comments=False,
+                                      thir_codegen=True))
+    return (ctx.thir_top_level, dict(compiler._thir_face_witnesses),
+            dict(compiler._thir_fallback))
+
+
 def _lower_ctor(source: str, record_name: str, extra_lib_dirs=None):
     """Lower one record's constructor to its THIRConstructor (or None if outside
     the M3 slice). Within the compiler context -- records resolve through the live

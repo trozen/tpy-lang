@@ -486,10 +486,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # (lowering; `::tpy::__len__(this->xs)`, the field renders as its own
     # THIRFieldAccess inside the shared native-call emit).
     "len.field_recv",
-    # `len(groups["a"])` -- a nested-container ELEMENT arg to the builtin len
-    # (lowering; `::tpy::__len__(::tpy::__getitem__(groups, "a"))`, the element
-    # lvalue prechecked inside the shared native-call emit).
-    "len.elem_subscript",
+    # A NESTED-CONTAINER element read in a value position (`groups["a"]` off
+    # `dict[str, list[Int32]]`): the checked dunder's element lvalue, which
+    # lands bare in every value sink because the AST's single element emitter
+    # is consumer-blind. Replaced the per-sink `subscript_prechecked` bypasses
+    # at len/print, so the gate's receiver checks now apply there too.
+    "subscript.container_elem",
     # `for x in self.items:` on an open-T field whose bound is a structural
     # iterable protocol (lowering; the bare member capture + the universal
     # `::tpy::__iter__` loop, resolved through the bound).
@@ -501,10 +503,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # literal (lowering; `std::tuple<int32_t, Box>{1, Box(5)}` bare -- the
     # emplaced brace is already storage-typed, so no tuple_to_storage wrap).
     "containerlit.tuple_frame_elem",
-    # `print(groups["a"])` -- the same nested-container element lvalue streamed
-    # through the kind-keyed printer wrap (lowering;
-    # `ListPrinter(::tpy::__getitem__(groups, "a"))`).
-    "print.elem_subscript",
     # Container-FIELD for-each iterable (lowering; `for x in self.xs:` -- the
     # field renders inside the same lvalue `auto& __obj_N =` capture a name
     # takes; str/bytes fields ride the older viewfam admission).
@@ -1344,6 +1342,18 @@ THIR_FACES: frozenset[str] = frozenset({
     # `.field` auto-dereffed through a USER Deref wrapper -> `r.__deref__().x`
     # (N = deref_depth). Bare `.` receiver; read and scalar-write target alike.
     "field.user_deref_chain",
+    # A VALUE-repr `Optional[scalar]` field write (lowering; `s.count = 42;`
+    # -- the scalar converts implicitly into `std::optional<int32_t>`, so no
+    # `ptr_to_optional` lift, which is the POINTER-repr sibling's).
+    "field_write.value_opt_scalar",
+    # Module-init (`__tpy_init`) statements. `global_slot` is a non-value
+    # global's initializing write (`static T __global_slot_N = init;` +
+    # `g = &__global_slot_N;`); `import_init` an import's `__tpy_init()`
+    # chain (or its comment-only empty render); `final_skip` a `Final`
+    # global, whose definition lives at namespace scope.
+    "top_level.global_slot",
+    "top_level.import_init",
+    "top_level.final_skip",
 })
 
 

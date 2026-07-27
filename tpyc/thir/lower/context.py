@@ -124,7 +124,9 @@ class _Prescan:
                  "global_slots")
 
     def __init__(self, func: TpyFunction, analyzer,
-                 params_override=None, return_type_override=None) -> None:
+                 params_override=None, return_type_override=None,
+                 scan_override=None, hoisted_override=None,
+                 move_through_override=None) -> None:
         # `params_override` / `return_type_override` carry a per-@overload
         # STUB's signature: the AST emits the impl body against the stub's
         # types, so every signature-derived fact here must key on them.
@@ -175,15 +177,22 @@ class _Prescan:
         # the try hoist arm rejects a colliding predecl name, and the
         # spelled-read witness keys native vs imported on membership.
         self.native_globals: 'Mapping[str, str] | frozenset[str]' = frozenset()
-        scan = analyzer.function_scan_results.get(id(func))
+        # The module-init walk has no per-function scan entry -- its facts come
+        # from the analyzer's top_level_* results, passed in as overrides
+        # (gen_module_init seeds ctx from exactly those three).
+        scan = (analyzer.function_scan_results.get(id(func))
+                if scan_override is None else scan_override)
         global_decls = analyzer.function_global_decls.get(id(func), set())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()
         # F2d: the subset reassigned with an rvalue source (the rebind-slot
         # trigger -- mirrors codegen's `ctx.rvalue_reassigned_vars` seeding).
         self.rvalue_reassigned = (
             (scan.rvalue_reassigned - global_decls) if scan else set())
-        self.hoisted = analyzer.function_hoisted_vars.get(id(func), set())
-        self.move_through = analyzer.function_move_through_vars.get(id(func), set())
+        self.hoisted = (analyzer.function_hoisted_vars.get(id(func), set())
+                        if hoisted_override is None else hoisted_override)
+        self.move_through = (
+            analyzer.function_move_through_vars.get(id(func), set())
+            if move_through_override is None else move_through_override)
         # Alias facts for the `del x` move-sink skips: names some alias binds
         # to (codegen's `ctx.aliased_vars` -- moving from them would gut the
         # alias) and names whose FIRST binding was an alias (`ctx.alias_names`
@@ -408,6 +417,14 @@ _FUNCTION_SCOPED_STATE = (
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
     "walrus_slot_locals", "pending_view_unpack_targets",
     "frame_local_types",
+    # Module-init facts: seeded once from the module's globals / import list
+    # and never branch-scoped -- a global's slot identity and an import's
+    # chain do not change inside a branch. `global_slot_assigned` is the one
+    # that GROWS during the walk, and deliberately does not restore: a slot
+    # emitted inside a branch is still emitted after it (the second write
+    # rejects either way).
+    "global_ptr_slots", "global_slot_assigned", "import_calls",
+    "pre_decl_import_cpp",
 )
 
 
@@ -452,7 +469,9 @@ class _LowerCtx:
                  "walrus_predeclared", "walrus_slot_locals",
                  "pending_view_unpack_targets",
                  "overload_narrowing", "overload_stub_return",
-                 "overload_terminated", "render_concept")
+                 "overload_terminated", "render_concept",
+                 "top_level_scope", "global_ptr_slots", "global_slot_assigned",
+                 "import_calls", "pre_decl_import_cpp", "top_level_line")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -463,7 +482,11 @@ class _LowerCtx:
                  render_resolve=None,
                  params_override=None,
                  return_type_override=None,
-                 render_concept=None) -> None:
+                 render_concept=None,
+                 scan_override=None,
+                 hoisted_override=None,
+                 move_through_override=None,
+                 top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
         # The SIGNATURE params this body is lowered against: a per-@overload
@@ -475,7 +498,34 @@ class _LowerCtx:
                             else params_override)
         self.prescan = _Prescan(func, analyzer,
                                 params_override=params_override,
-                                return_type_override=return_type_override)
+                                return_type_override=return_type_override,
+                                scan_override=scan_override,
+                                hoisted_override=hoisted_override,
+                                move_through_override=move_through_override)
+        # Module-init walk: names live at NAMESPACE scope (pre-declared by the
+        # generator, so every write is an assignment), slot temps are `static
+        # __global_slot_N`, and non-value globals are writable pointer slots --
+        # the global variable model, not a function-local one.
+        self.top_level_scope = top_level_scope
+        # Non-value module globals (`std::vector<T>* g{}` at namespace scope):
+        # their initializing write emits the static-slot pair, their reads ride
+        # the pointer-local arms. Empty outside the module-init walk.
+        self.global_ptr_slots: set[str] = set()
+        # Pointer-slot globals whose static slot has already been emitted -- a
+        # SECOND rvalue write would have to reuse that slot (the AST's
+        # rebind_slots lookup), a render this slice does not reproduce.
+        self.global_slot_assigned: set[str] = set()
+        # Per-import `__tpy_init()` chain, keyed by statement id and resolved
+        # up-front by `lower_top_level` (the AST arm's dedup is order- and
+        # state-dependent, so it is replayed once over the whole list rather
+        # than re-derived mid-walk).
+        self.import_calls: dict[int, tuple[str, ...]] = {}
+        # Imported names this module redefines at top level: name ->
+        # (decl_line, qualified import spelling). Reads BEFORE decl_line
+        # take the import; `top_level_line` is the module-init walk's
+        # position (the AST's ctx.current_stmt_line).
+        self.pre_decl_import_cpp: dict[str, tuple[int, str]] = {}
+        self.top_level_line: int = 0
         self.render_type = render_type or (lambda t: t.to_cpp())
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))
@@ -701,8 +751,15 @@ class _LowerCtx:
         # re-points via `= &(std::get<i>(__tup_N));` off the deref'd
         # pointer holder. Populated only by `lower_resumable`.
         self.unpack_ptr_targets: frozenset = frozenset()
+        # The residue ledger must read the SAME facts `prescan.hoisted` does:
+        # the module-init walk's carrier is synthetic, so its `id(func)` has no
+        # analyzer entry and only the override carries its hoisted set. Left
+        # unseeded, this reject backstop silently admits a body it should
+        # reject (top-level hoisting is reachable -- `module_init_local` temps
+        # are locals of `__tpy_init`, not globals).
         self.unhandled_hoists = set(
-            analyzer.function_hoisted_vars.get(id(func), ()))
+            analyzer.function_hoisted_vars.get(id(func), ())
+            if hoisted_override is None else hoisted_override)
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
         # PARTIAL against codegen's `storage_form_tuple_locals`: the owned-tuple

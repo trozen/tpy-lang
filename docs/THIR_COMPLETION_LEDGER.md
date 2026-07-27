@@ -174,11 +174,21 @@ not code reduction.
 The reduction is collectable only AFTER cutover, and only deliberately. While
 byte-identity is the contract, each lowering arm must reproduce the AST's
 INCIDENTAL splits rather than replace them -- `retype_scalars`,
-`field_prechecked`, `subscript_prechecked`, the resumable frame-emplace bare
-tuple element are all mirrors of emit accidents, not of semantics. Once the
-oracle is gone those arms can merge. Plan the post-cutover simplification pass
-as its own phase; "the AST emitter is deleted" is the halfway mark, not the
-finish.
+`field_prechecked`, the resumable frame-emplace bare tuple element are all
+mirrors of emit accidents, not of semantics. Once the oracle is gone those
+arms can merge. Plan the post-cutover simplification pass as its own phase;
+"the AST emitter is deleted" is the halfway mark, not the finish.
+
+`subscript_prechecked` used to be listed alongside those; design round 15
+verified it is NOT one. The AST has a single consumer-blind element emitter
+(`codegen_cpp/expressions.py:6098 _gen_subscript`) with no `len`/`print`
+split to mirror, so the prechecked rows were THIR-internal admission
+scaffolding around `ret_ok`'s missing container arm. **COLLECTED (decision
+32):** `ret_ok` grew the container arm (face `subscript.container_elem`) and
+the two per-sink rows, their faces (`len.elem_subscript`,
+`print.elem_subscript`) and the bypass argument are deleted. The remaining
+`subscript_prechecked=True` call sites are receiver-position prechecks, a
+different fact.
 
 ## Deferred-cell registry
 
@@ -1807,6 +1817,47 @@ transfers its coverage to THIR), so a new case's functional/exec phases only
 re-test constructs the reviewed corpus already covers. Under-routing stays
 guarded by the routes-units (invisible to the byte-diff); over-routing by the
 byte-diff itself.
+
+### D2 wave (2026-07-27): top-level statements + the value-position element gate
+
+The first lowering entry added since the three original ones. **Top-level
+statements had no THIR seam at all**, so fallback could not be registered for
+them and the per-case ratchet was structurally blind to `__tpy_init` -- a case
+could be counted migrated on its function bodies while emitting its entire
+top level from the AST path.
+
+`lower_top_level` seeds the GLOBAL variable model rather than a function-local
+one: names pre-declared at namespace scope (a write is an assign), non-value
+globals as writable pointer slots, `Final` globals read-only, slot temps as
+`static __global_slot_N`. Everything below that seeding reuses the ordinary
+statement/expression arms, which is why the construct surface was small.
+
+New renders, each mirroring an AST arm: `PtrSlotKind.GLOBAL_RVALUE`,
+`THIRImportInit` (the AST's import-chain dedup extracted into the shared
+`module_init_targets` -- neither path can drift now), the `Final` skip, and the
+order-aware import qualification. Every OTHER slot-allocating node rejects the
+whole module-init body: at namespace scope those slots need `static` too, and
+only GLOBAL_RVALUE is wired for it.
+
+**Metric impact:** +119 cases marked, -8 unmarked. The additions are the cases
+the old dial flattered. The A3 residency baseline is no longer corrupted and
+can now be spent.
+
+**The lesson worth carrying:** a rule that fires at "every value position"
+needs the opt-out list enumerated, not assumed. The pointer-slot-global deref
+broke four consumers that want the raw `T*`; the whole-corpus byte-diff found
+three, and the fourth (the F2b field-write lift, `h->v = ptr_to_optional(g)`)
+had NO corpus witness and came out of an adversarial dualgen over every
+consumption position. Byte-diff green over 3590 cases was not sufficient. The durable guard is
+`TestPointerSlotGlobalConsumers` (`tpyc/thir/test_thir_top_level.py`), which
+pins each consumer's routing AND byte-identity -- add a case there when
+adding a consumer that binds a pointer.
+
+Also landed in the same branch: the value-position container-element gate arm
+(decision 32 -- see the mirrored-accident note above), the container-literal
+union-record element row, and the two field-write rows (the field-over-field
+receiver the aug-assign twin always had, and the value-repr `Optional[scalar]`
+bare store).
 
 ## Maintaining this ledger
 
