@@ -205,7 +205,7 @@ int32_t enum_guard(int32_t k, Color c) {
     switch (__match_subject_1) {
     // case 1 if c:
     case 1: {
-        if (true) {
+        if ((static_cast<void>(c), true)) {
             // return 10
             return 10;
         }
@@ -253,7 +253,7 @@ int32_t plain_record_guard(int32_t k, const Plain& p) {
     switch (__match_subject_1) {
     // case 1 if p:
     case 1: {
-        if (true) {
+        if ((static_cast<void>(p), true)) {
             // return 10
             return 10;
         }

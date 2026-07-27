@@ -675,8 +675,8 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `PrintForm.REPR` `::tpy::__repr__` print arm), nested (`Outer::Kind`;
   sema stamps `enum_member_of` on the chained access too). New rows on
   `THIREnumWrap` `{0}` wraps: truthiness (if/while/assert/`not`; the
-  plain-enum literal-`true` fold gate-rejects CALL operands -- the AST
-  drops their side effects, BUGS.md), IntEnum unary minus, `.value`,
+  plain-enum literal-`true` fold keeps a side-effecting CALL operand as a
+  `static_cast<void>` discard), IntEnum unary minus, `.value`,
   nested `Outer.Kind(v)` from_value; IntEnum arithmetic rides
   the existing resolved-binop operand casts. `.name` (initially RETRACTED
   post-review -- sema typed it owned `str` while the value is a
@@ -1790,7 +1790,7 @@ before claiming `gen_body`/`gen_expr` deletion is near.
    filed in BUGS.md ("mirrored, not endorsed") -- when the AST fix lands,
    both paths change together under the byte-diff. A shape whose AST render
    is ILL-FORMED C++ or where a byte-identical mirror is impossible (the
-   literal BigInt slice bounds, the truthiness CALL-operand drop) is
+   literal BigInt slice bounds) is
    GATE-REJECTED with the re-admission trigger noted at the gate and in
    BUGS.md -- never mirrored (reproducing a build failure or a lost side
    effect), never silently fixed (breaking byte-parity). The enum `.name`

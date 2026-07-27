@@ -9,11 +9,11 @@ void test_in_total_true() {
     // r = Required(name="Alice", age=Int32(30))
     Required r = Required("Alice", 30);
     // print("name" in r)   # always True for total=True
-    std::cout << ::tpy::print_bool(true) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
     // print("age" in r)
-    std::cout << ::tpy::print_bool(true) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
     // print("name" not in r)  # always False
-    std::cout << ::tpy::print_bool(false) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(r), false)) << "\n";
 }
 
 // def test_in_nullable_field() -> None:
@@ -22,9 +22,9 @@ void test_in_nullable_field() {
     // n = NullableField(name=None, count=Int32(1))
     NullableField n = NullableField(std::nullopt, 1);
     // print("name" in n)   # True (field present, even though value is None)
-    std::cout << ::tpy::print_bool(true) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
     // print("count" in n)  # True
-    std::cout << ::tpy::print_bool(true) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
 }
 
 // def test_in_total_false() -> None:

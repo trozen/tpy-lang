@@ -1731,15 +1731,24 @@ def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None
 def _enum_truthy_wrap(t: TpyType | None, analyzer) -> 'str | None':
     """The truthiness render for an enum-typed operand, as a `{0}` wrap --
     gen_truthy_expr's enum arms: an IntEnum tests its underlying value
-    (`(static_cast<U>({0}) != 0)`); a plain enum is ALWAYS truthy and renders
-    the literal `true` with the operand dropped. None for non-enum types."""
+    (`(static_cast<U>({0}) != 0)`), while every plain enum value is truthy, so
+    the value folds to `true` and the operand rides along as a discard. None
+    for non-enum types; `_plain_enum_truthy` is the arm discriminator."""
     et = _eligible_enum(t, analyzer)
     if et is None:
         return None
     if is_int_enum_type(et):
         u_cpp = enum_info_of(et).underlying_type.to_cpp()
         return f"(static_cast<{u_cpp}>({{0}}) != 0)"
-    return "true"
+    return "(static_cast<void>({0}), true)"
+
+def _plain_enum_truthy(t: TpyType | None, analyzer) -> bool:
+    """True for a PLAIN (non-Int) enum operand -- the always-true arm. The two
+    enum arms differ in more than their render (operand use, witness, which
+    operand shapes admit), so they discriminate on this rather than on the
+    wrap text."""
+    et = _eligible_enum(t, analyzer)
+    return et is not None and not is_int_enum_type(et)
 
 def _truthiness_mode(t: TpyType | None, analyzer) -> TruthinessMode | None:
     """Mirror the non-identity arms of `_truthy_for_rendered`.

@@ -179,9 +179,6 @@ def _expr(e: THIRExpr) -> str:
         return (f"is_none({_expr(e.operand)}{', negate' if e.negate else ''}"
                 f"{', value_repr' if e.value_repr else ''})")
     if isinstance(e, THIRTruthy):
-        if e.mode is TruthinessMode.ALWAYS_TRUE:
-            return "truthy[always_true]()"
-        assert e.operand is not None
         deref = "*" if e.deref else ""
         return f"truthy[{e.mode.name.lower()}]({deref}{_expr(e.operand)})"
     if isinstance(e, THIROptViewArg):
@@ -308,10 +305,8 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRModuleVar):
         return f"module_var({e.cpp})"
     if isinstance(e, THIREnumWrap):
-        # The wrap template is the emit; a dropped operand (plain-enum
-        # truthiness) surfaces as an empty operand slot.
-        inner = "" if e.operand is None else f", {_expr(e.operand)}"
-        return f"enum_wrap({e.wrap!r}{inner})"
+        # The wrap template is the emit; the operand fills its `{0}` slot.
+        return f"enum_wrap({e.wrap!r}, {_expr(e.operand)})"
     if isinstance(e, THIRTupleLiteral):
         return f"tuple({_exprs(e.elements)})"
     if isinstance(e, THIRBorrowTupleLiteral):

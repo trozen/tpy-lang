@@ -228,7 +228,7 @@ __gen_record_bool_branch record_bool_branch(Flag& f) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        if (true) {
+        if ((static_cast<void>(c), true)) {
             // yield 1
             __state = S_RESUME_0;
             return 1;
@@ -302,7 +302,7 @@ __gen_int_enum_branch int_enum_branch(Level lv) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        if (true) {
+        if ((static_cast<void>(p), true)) {
             // yield 1
             __state = S_RESUME_0;
             return 1;

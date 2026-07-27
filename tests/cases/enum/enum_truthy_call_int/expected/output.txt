@@ -1,0 +1,7 @@
+high: 1
+zero: 2
+not zero: 3
+while: 4
+member HIGH truthy
+member ZERO falsy
+total: 4

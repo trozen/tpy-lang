@@ -1,0 +1,4 @@
+in: 1
+not in: 2
+name operand ok
+total: 2

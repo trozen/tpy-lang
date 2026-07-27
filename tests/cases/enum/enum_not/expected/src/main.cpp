@@ -51,11 +51,11 @@ void main() {
     // c: Color = Color.Red
     Color c = Color::Red;
     // print(not c)
-    std::cout << ::tpy::print_bool((!(true))) << "\n";
+    std::cout << ::tpy::print_bool((!((static_cast<void>(c), true)))) << "\n";
     // print(not Color.Green)
-    std::cout << ::tpy::print_bool((!(true))) << "\n";
+    std::cout << ::tpy::print_bool((!((static_cast<void>(Color::Green), true)))) << "\n";
     // x: bool = not Color.Blue
-    bool x = (!(true));
+    bool x = (!((static_cast<void>(Color::Blue), true)));
     // print(x)
     std::cout << ::tpy::print_bool(x) << "\n";
 }

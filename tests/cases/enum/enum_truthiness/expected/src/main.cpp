@@ -45,7 +45,7 @@ namespace tpyapp::main {
 // def check(s: Signal) -> None:
 void check(Signal s) {
     // if s:
-    if (true) {
+    if ((static_cast<void>(s), true)) {
         // print("truthy")
         std::cout << "truthy" << "\n";
     // else:

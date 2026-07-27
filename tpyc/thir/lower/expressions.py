@@ -240,6 +240,7 @@ from .predicates import (
     _enum_neg_wrap,
     _enum_prop_wrap,
     _enum_truthy_wrap,
+    _plain_enum_truthy,
     _truthiness_mode,
     _f1_const_rooted_source,
     _plain_container_read,
@@ -8257,7 +8258,11 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             loc=getattr(e, "loc", None),
         )
     wrap = _enum_truthy_wrap(et, lc.analyzer)
-    if wrap is not None and not isinstance(e, (TpyName, TpyFieldAccess)):
+    # A plain-enum operand admits any shape: the always-true render keeps a
+    # side-effecting operand alive for effect. The IntEnum wrap embeds its
+    # operand in a `!= 0` test and stays name/field-keyed.
+    if (wrap is not None and not _plain_enum_truthy(et, lc.analyzer)
+            and not isinstance(e, (TpyName, TpyFieldAccess))):
         raise ThirUnsupported("truthy.enum_shape")
     mode = _truthiness_mode(et, lc.analyzer)
     if (mode is TruthinessMode.IS_TRUTHY
@@ -8266,8 +8271,6 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         # does not carry that path fact yet, so routing the condition alone can
         # drop the AST's `(*field)` unwrap in the branch.
         raise ThirUnsupported("truthy.optional_field_narrow")
-    if mode is TruthinessMode.ALWAYS_TRUE and not isinstance(e, TpyName):
-        raise ThirUnsupported("truthy.constant_shape")
     if isinstance(e, TpyName) and et is not None:
         eu_name = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
         if isinstance(eu_name, OptionalType) and eu_name.uses_pointer_repr():
@@ -8414,14 +8417,23 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         return THIRTruthy(
             result_type=BOOL,
             mode=mode,
-            operand=None if mode is TruthinessMode.ALWAYS_TRUE else operand,
+            operand=operand,
             deref=deref,
             loc=getattr(e, "loc", None),
         )
     loc = getattr(e, "loc", None)
-    if wrap == "true":
+    if _plain_enum_truthy(et, lc.analyzer):
         _witness("enum.truthy_plain")
-        return THIREnumWrap(result_type=BOOL, wrap=wrap, operand=None, loc=loc)
+        # The kept operand is a truthiness position like the record arm's, not
+        # the IntEnum wrap's condition: a CONDITION use demands a bool result,
+        # which the enum-returning operand never has.
+        return THIREnumWrap(
+            result_type=BOOL, wrap=wrap,
+            operand=_lower_expr(
+                e, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.TRUTHY,
+                             allow_temps=temps_ok)),
+            loc=loc)
     _witness("enum.truthy_int")
     return THIREnumWrap(result_type=BOOL, wrap=wrap,
                         operand=_lower_expr(

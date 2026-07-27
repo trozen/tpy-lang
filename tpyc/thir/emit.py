@@ -1484,8 +1484,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"({inner} {op} nullptr)"
     if isinstance(e, THIRTruthy):
         if e.mode is TruthinessMode.ALWAYS_TRUE:
-            return "true"
-        assert e.operand is not None
+            return f"(static_cast<void>({_emit_expr(e.operand, state)}), true)"
         inner = _emit_expr(e.operand, state)
         if e.deref:
             inner = f"(*{inner})"
@@ -1577,8 +1576,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, (THIREnumMember, THIRModuleVar)):
         return e.cpp
     if isinstance(e, THIREnumWrap):
-        if e.operand is None:
-            return e.wrap  # plain-enum truthiness: literal `true`
         return e.wrap.format(_emit_expr(e.operand, state))
     if isinstance(e, THIRContainerLiteral):
         return _emit_container_literal(e, state)

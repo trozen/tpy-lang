@@ -468,17 +468,24 @@ generated -- `.value` codegen emits `static_cast<int32_t>(c)` directly.
 All base `Enum` values are truthy (including `value == 0`), matching CPython.
 In CPython, `Enum.__bool__` is inherited from `object` and always returns `True`.
 
-The `gen_truthy_expr` function in `codegen_cpp/expressions.py` gets a new branch
-for `EnumType` that emits `true`:
+`gen_truthy_expr` (`codegen_cpp/expressions.py`) folds the VALUE to `true` for
+an `EnumType` operand, but never drops the operand itself: CPython evaluates the
+expression before applying its always-true default, and the render can carry a
+runtime check besides. The value folds; the operand stays:
 
 ```cpp
-// if c:  where c: Color
-if (true) {  // enum values are always truthy
+// if c:      where c: Color
+if ((static_cast<void>(c), true)) {
+// if make(): where make() -> Color
+if ((static_cast<void>(make()), true)) {
 ```
 
-Since enum variables have no side effects in boolean context (just a name or
-member access), emitting `true` without evaluating the expression is safe.
-The `not` operator on enums similarly emits `false`.
+`not` on an enum negates that same wrap rather than folding to a bare `false`:
+
+```cpp
+// if not c:
+if ((!((static_cast<void>(c), true)))) {
+```
 
 ---
 

@@ -1,0 +1,2 @@
+record walrus: 7
+enum walrus: GREEN

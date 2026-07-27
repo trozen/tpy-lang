@@ -1612,16 +1612,44 @@ class ExpressionGenerator:
             if record and (record.get_method_overloads("__bool__")
                            or record.get_method_overloads("__len__")):
                 rendered = f"(*{rendered})"
-        return self._truthy_for_rendered(rendered, expr_type)
+        return self._truthy_for_rendered(rendered, expr_type, expr)
 
-    def _truthy_for_rendered(self, rendered: str, var_type: TpyType) -> str:
+    def _fold_with_operand_effect(self, expr: 'TpyExpr | None', folded: str,
+                                  rendered: str | None = None) -> str:
+        """Wrap a constant-folded bool so the discarded operand still evaluates.
+
+        The always-true / always-present arms return a bool literal and throw
+        the operand's render away, but CPython evaluates the operand first --
+        and the render can carry a runtime null check besides. Keeping it
+        unconditionally is what makes that safe: a "this operand is inert"
+        predicate has to be right about every effect a render can hide, and
+        being wrong reinstates the silent drop. Same discard idiom as the
+        class-constant access path. `expr` is None when the caller has already
+        evaluated the operand by other means.
+        """
+        if expr is None:
+            return folded
+        if rendered is None:
+            rendered = self.gen_expr(expr)
+        return f"(static_cast<void>({rendered}), {folded})"
+
+    def _truthy_for_rendered(self, rendered: str, var_type: TpyType,
+                             operand: 'TpyExpr | None') -> str:
         """Generate truthiness test for an already-rendered, already-dereferenced
-        C++ expression. For pointer-locals, dereference before calling."""
+        C++ expression. For pointer-locals, dereference before calling.
+
+        `operand` is the expression `rendered` came from. The always-true arms
+        discard `rendered`, so they re-introduce it for effect; callers whose
+        operand is already evaluated (a bare name, or a materialized temp) pass
+        None and keep the bare literal. Required, not defaulted: dropping the
+        operand is the bug this arm exists to prevent, so a new caller has to
+        say which case it is rather than inherit the drop by omission.
+        """
         if is_int_enum_type(var_type):
             cpp_underlying = enum_info_of(var_type).underlying_type.to_cpp()
             return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
         if is_enum_type(var_type):
-            return "true"
+            return self._fold_with_operand_effect(operand, "true", rendered)
         if isinstance(var_type, AnyType):
             return f"::tpy::to_bool({rendered})"
         if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
@@ -1643,7 +1671,7 @@ class ExpressionGenerator:
                 return f"(::tpy::__len__({rendered}) != 0)"
             # User records without __bool__/__len__ are always truthy (Python default).
             if isinstance(var_type, NominalType) and var_type.is_user_record:
-                return "true"
+                return self._fold_with_operand_effect(operand, "true", rendered)
         # Implicit bool conversion (ptr, etc.)
         return rendered
 
@@ -1803,7 +1831,9 @@ class ExpressionGenerator:
         else:
             lhs_ref = self.gen_expr_deref(expr.left)
 
-        truthy = self._truthy_for_rendered(lhs_ref, lhs_type)
+        # None: the LHS is a bare name, or already materialized into the temp
+        # above, so its evaluation has landed regardless of the fold.
+        truthy = self._truthy_for_rendered(lhs_ref, lhs_type, None)
         # Propagate isinstance narrowing to RHS
         inline_facts = self._collect_inline_isinstance_facts(
             expr.left, true_branch=(expr.op == "&&"))
@@ -1911,7 +1941,10 @@ class ExpressionGenerator:
             if expr.typed_dict_in_field is not None:
                 negate = expr.op == "not in"
                 if expr.typed_dict_in_always_true:
-                    return "false" if negate else "true"
+                    # The fold drops the TypedDict operand; CPython still
+                    # evaluates it before deciding the field is always present.
+                    return self._fold_with_operand_effect(
+                        expr.right, "false" if negate else "true")
                 right = self.gen_expr(expr.right)
                 if self.ctx.is_indirect_name(expr.right):
                     right = f"(*{right})"

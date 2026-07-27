@@ -96,7 +96,7 @@ namespace tpyapp::main {
         return ::tpy::BigInt(-1);
     }
     // if p:  # plain record -> always truthy
-    if (true) {
+    if ((static_cast<void>(p), true)) {
         // return 1
         return ::tpy::BigInt(1);
     }

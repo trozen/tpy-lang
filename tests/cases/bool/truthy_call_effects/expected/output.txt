@@ -1,0 +1,9 @@
+if: 1
+while: 2
+assert: 3
+and: 4
+or short-circuits: 4
+property: 5
+name operand ok
+field operand ok
+total: 5

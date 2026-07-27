@@ -6,8 +6,7 @@ there). When a release ships, delete its section and promote the next one.
 
 ## 0.6.0 must-fix bugs (details in BUGS.md; search the quoted phrase)
 
-- "A plain-enum-returning CALL in a truthiness context is dropped entirely"
-- "A plain-user-record-returning CALL in a truthiness context is dropped entirely"
+- "A chained comparison evaluates a PROPERTY-getter intermediate twice"
 
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 

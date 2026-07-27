@@ -11,7 +11,8 @@ from ..compilation_context import activate_compiler
 from .lower import lower_module
 from .nodes import THIRCall, THIREnumMember, THIREnumWrap
 from .testutil import (
-    _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn,
+    _assert_byte_identical, _compile, _entry, _lower_ctx,
+    _lower_ctx_witnessed, _fn,
 )
 
 _ENUM_PRELUDE = (
@@ -189,15 +190,18 @@ class TestEnumTruthiness:
     def test_emit_arms(self):
         cpp = _cpp(self.SRC, thir=True)
         assert cpp == _cpp(self.SRC, thir=False)
-        assert "if (true) {" in cpp                          # plain enum cond
+        # A plain enum is always truthy, so the value folds to `true` while
+        # the operand stays as a discard; IntEnum tests its underlying value.
+        assert "if ((static_cast<void>(c), true)) {" in cpp
         assert "while ((static_cast<int32_t>(p) != 0))" in cpp
         assert "bool b = (!((static_cast<int32_t>(p) != 0)));" in cpp
-        assert "if (!(true)) ::tpy::raise_assertion_error();" in cpp  # assert c
-        assert "return ((!(true)) || b);" in cpp             # `not c` value
+        assert ("if (!((static_cast<void>(c), true))) "
+                "::tpy::raise_assertion_error();") in cpp
+        assert "return ((!((static_cast<void>(c), true))) || b);" in cpp
 
-    def test_call_operand_stays_ast(self):
-        # `if make():` drops the call render on the AST path (BUGS.md) --
-        # gate-rejected, so the body stays on the AST path.
+    def test_call_operand_is_kept_for_effect(self):
+        # Every plain-enum value is truthy, so `if make():` folds to `true` --
+        # but the call has to run, so the operand rides the fold as a discard.
         src = (
             _ENUM_PRELUDE
             + "def make() -> Color:\n    return Color.RED\n"
@@ -207,7 +211,41 @@ class TestEnumTruthiness:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "make") is not None
+        cond = _fn(thir, "f").body[0].condition
+        assert isinstance(cond, THIREnumWrap)
+        assert cond.operand is not None
+        _assert_byte_identical(src)
+
+    def test_int_enum_call_operand_stays_ast(self):
+        # An IntEnum embeds its operand in the `!= 0` test, so it never had the
+        # drop bug -- but the arm lowers under a CONDITION use, which demands a
+        # bool the enum operand never has, so a CALL operand rejects and the
+        # body falls back. Pins the boundary the plain-enum sibling crossed.
+        src = (
+            _ENUM_PRELUDE
+            + "def make(v: Prio) -> Prio:\n    return v\n"
+            + "def f() -> None:\n"
+            + "    if make(Prio.HIGH):\n        print(1)\n"
+            + "def main():\n    f()\nmain()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "make") is not None
         assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_member_operand_still_evaluates(self):
+        # A member read folds to a constant too, but the operand rides along
+        # as a discard rather than vanishing.
+        src = (
+            _ENUM_PRELUDE
+            + "def f() -> None:\n"
+            + "    if Color.RED:\n        print(1)\n"
+            + "def main():\n    f()\nmain()\n"
+        )
+        cond = _fn(_lower_ctx(src), "f").body[0].condition
+        assert isinstance(cond, THIREnumWrap)
+        assert cond.wrap == "(static_cast<void>({0}), true)"
+        assert cond.operand is not None
 
 
 class TestIntEnumScalarOps:

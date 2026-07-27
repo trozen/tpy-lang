@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import fields as dataclass_fields, is_dataclass
+
 from ..codegen_cpp.context import CodeGenOptions
 from .lower import lower_module
 from .nodes import TruthinessMode, THIRTruthy, THIRUnaryNot
@@ -58,6 +60,28 @@ _SRC = (
 )
 
 
+def _truthy_nodes(node) -> list[THIRTruthy]:
+    """Every THIRTruthy under `node`, in traversal order."""
+    found: list[THIRTruthy] = []
+    seen: set[int] = set()
+
+    def walk(n) -> None:
+        if id(n) in seen:
+            return
+        seen.add(id(n))
+        if isinstance(n, THIRTruthy):
+            found.append(n)
+        if is_dataclass(n):
+            for f in dataclass_fields(n):
+                walk(getattr(n, f.name, None))
+        elif isinstance(n, (list, tuple)):
+            for item in n:
+                walk(item)
+
+    walk(node)
+    return found
+
+
 class TestStructuredTruthiness:
     def test_all_modes_route(self):
         thir, witnessed = _lower_ctx_witnessed(_SRC)
@@ -97,19 +121,103 @@ class TestStructuredTruthiness:
                 emit_source_comments=False, thir_codegen=True))
         assert thir_out == ast_out
 
-    def test_plain_record_call_stays_ast(self):
-        src = (
-            "from tpy import Int32\n"
-            "class Plain:\n"
-            "    value: Int32\n"
-            "    def __init__(self, value: Int32):\n        self.value = value\n"
-            "def identity(p: Plain) -> Plain:\n    return p\n"
-            "def probe(p: Plain) -> bool:\n"
-            "    if identity(p):\n        return True\n"
-            "    return False\n"
-        )
-        module = _entry(_compile(src)[1])
-        assert _fn(lower_module(module.ast, module.analyzer), "probe") is None
+    _EFFECT_SRC = (
+        "from tpy import Int32, Own\n"
+        "class Plain:\n"
+        "    value: Int32\n"
+        "    def __init__(self, value: Int32):\n        self.value = value\n"
+        "def make(n: Int32) -> Own[Plain]:\n    return Plain(n)\n"
+        "def probe(n: Int32) -> bool:\n"
+        "    if make(n):\n        return True\n"
+        "    return False\n"
+        "def inert(p: Plain) -> bool:\n"
+        "    if p:\n        return True\n"
+        "    return False\n"
+    )
+
+    def test_plain_record_call_is_kept_for_effect(self):
+        # The always-true arm drops its operand, so a CALL operand must stay
+        # attached -- folding it away would lose the call's side effects.
+        thir = _lower_ctx(self._EFFECT_SRC)
+        cond = _fn(thir, "probe").body[0].condition
+        assert isinstance(cond, THIRTruthy)
+        assert cond.mode is TruthinessMode.ALWAYS_TRUE
+        assert cond.operand is not None
+
+    def test_plain_record_name_still_evaluates(self):
+        # Even an inert read keeps its operand: the render is what carries any
+        # effect or runtime check, so the fold never drops it.
+        thir = _lower_ctx(self._EFFECT_SRC)
+        cond = _fn(thir, "inert").body[0].condition
+        assert isinstance(cond, THIRTruthy)
+        assert cond.mode is TruthinessMode.ALWAYS_TRUE
+        assert cond.operand is not None
+
+    def test_always_true_effect_emit_is_byte_identical(self):
+        compiler, modules = _compile(self._EFFECT_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir_out == ast_out
+        assert "static_cast<void>(make(n)), true" in "".join(
+            ast_out.values() if isinstance(ast_out, dict) else ast_out)
+
+    _POSITION_SRC = (
+        "from tpy import Int32, Own\n"
+        "class Plain:\n"
+        "    value: Int32\n"
+        "    def __init__(self, value: Int32):\n        self.value = value\n"
+        "class Holder:\n"
+        "    inner: Plain\n"
+        "    def __init__(self, inner: Plain):\n        self.inner = inner\n"
+        "class Outer:\n"
+        "    holder: Holder\n"
+        "    def __init__(self, holder: Holder):\n        self.holder = holder\n"
+        "    @property\n"
+        "    def got(self) -> Own[Holder]:\n        return Holder(Plain(1))\n"
+        "def make(n: Int32) -> Own[Plain]:\n    return Plain(n)\n"
+        "def yes() -> bool:\n    return True\n"
+        "def positions(n: Int32) -> Int32:\n"
+        "    total = 0\n"
+        "    while make(n):\n        total += 1\n        break\n"
+        "    assert make(n)\n"
+        "    if make(n) and yes():\n        total += 2\n"
+        "    if yes() or make(n):\n        total += 4\n"
+        "    return total\n"
+        "def mid_chain(o: Outer) -> Int32:\n"
+        "    if o.got.inner:\n        return 1\n"
+        "    return 0\n"
+    )
+
+    def test_effect_wrap_routes_in_every_position(self):
+        # while / assert / and / or reach the same THIRTruthy node the `if`
+        # position does; pin each one so a gate narrowing can't strand them.
+        kept = [n for n in _truthy_nodes(_fn(_lower_ctx(self._POSITION_SRC),
+                                             "positions"))
+                if n.mode is TruthinessMode.ALWAYS_TRUE]
+        assert len(kept) == 4, kept
+        assert all(n.operand is not None for n in kept)
+
+    def test_property_mid_chain_evaluates(self):
+        # `o.got.inner` buries a getter in the MIDDLE of the chain -- the
+        # render carries the call, and the fold keeps it.
+        kept = _truthy_nodes(_fn(_lower_ctx(self._POSITION_SRC), "mid_chain"))
+        assert len(kept) == 1, kept
+        assert kept[0].mode is TruthinessMode.ALWAYS_TRUE
+        assert kept[0].operand is not None
+
+    def test_position_emit_is_byte_identical(self):
+        compiler, modules = _compile(self._POSITION_SRC)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert thir_out == ast_out
 
     def test_narrowed_optional_name_dispatches_dunder(self):
         # A pointer-repr Optional[record] narrowed past None dispatches the

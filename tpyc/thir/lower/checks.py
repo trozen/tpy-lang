@@ -165,7 +165,6 @@ from .predicates import (
     _union_member_ctor_slot,
     _wrapper_member_ctor_slot,
     _enum_neg_wrap,
-    _enum_truthy_wrap,
     _f1_record,
     _field_decl_type,
     _field_markers_clean,

@@ -364,14 +364,18 @@ class THIRIsNone(THIRExpr):
 class THIRTruthy(THIRExpr):
     """A non-identity `_truthy_for_rendered` arm.
 
-    `mode` selects one analyzer-free emit spelling. `operand` is absent only
-    for the constant-true user-record arm, whose lowering admits inert reads
-    only because the AST spelling drops the operand. `deref` mirrors
+    `mode` selects one analyzer-free emit spelling. `operand` is always
+    present, including in the constant-true user-record arm, which emits it as
+    a discard rather than dropping it -- the render can carry effects and
+    runtime checks. The AST's bare-literal form (`_gen_logical_value` over an
+    already-evaluated name / hoisted-temp LHS) has no THIR shape: that whole
+    position rejects at `valuesel.lhs_truthy`, so restore an operand-less form
+    here if that gate is ever widened. `deref` mirrors
     `gen_truthy_expr`'s indirect-record adjustment before dunder dispatch.
     `result_type` is always bool; VALUE form.
     """
     mode: TruthinessMode
-    operand: THIRExpr | None = None
+    operand: THIRExpr
     deref: bool = False
 
 
@@ -1134,12 +1138,12 @@ class THIREnumWrap(THIRExpr):
       * `E[name]`        -- `::tpy::EnumUtil<E>::from_name({0})` (name-lookup
                             subscript; `{0}` is the str index).
 
-    A PLAIN-enum truthiness test renders the literal `true` with the operand
-    DROPPED (`operand is None`) -- mirroring gen_truthy_expr, which discards
-    the operand render (the gate admits only side-effect-free operands, so
-    nothing is lost)."""
+    A PLAIN-enum truthiness test is always true, so its wrap is
+    `(static_cast<void>({0}), true)` -- the value is a constant but the
+    operand still evaluates, as gen_truthy_expr does. Every arm fills the
+    `{0}` slot, so `operand` is never absent."""
     wrap: str
-    operand: THIRExpr | None = None
+    operand: THIRExpr
 
 
 @dataclass(frozen=True)
