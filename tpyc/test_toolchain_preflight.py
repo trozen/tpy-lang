@@ -4,13 +4,15 @@ import ast
 import os
 import stat
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
 from .toolchain import (
     CppCompilerConfig, ToolchainUnsupportedError,
-    _auto_detect_compiler, _probe_toolchain, toolchain_is_viable,
+    _auto_detect_compiler, _find_all_zig, _probe_toolchain,
+    toolchain_is_viable,
 )
 
 
@@ -43,6 +45,10 @@ def sandbox(tmp_path, monkeypatch):
     # answers the probes.
     monkeypatch.setenv("TPYC_SHARED_CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.delenv("CXX", raising=False)
+    # Bundled zig lives inside the ziglang package, not on PATH, so pinning
+    # PATH does not hide it -- with the [bundled] extra installed it is a
+    # probe-exempt viable toolchain, and the none-viable cases find one.
+    monkeypatch.setitem(sys.modules, "ziglang", None)
     return bin_dir
 
 
@@ -112,6 +118,53 @@ def test_zig_exempt_from_probe(sandbox):
     fake = _write_fake_compiler(sandbox, "zig", exit_code=1)  # would fail if run
     assert toolchain_is_viable([str(fake), "c++"])
     assert _invocations(fake) == 0
+
+
+def _install_bundled_zig(tmp_path: Path, monkeypatch) -> Path:
+    """Stand in for the [bundled] extra: a ziglang package holding a zig."""
+    pkg = tmp_path / "ziglang"
+    pkg.mkdir()
+    zig = _write_fake_compiler(pkg, "zig", exit_code=0)
+    mod = types.ModuleType("ziglang")
+    mod.__file__ = str(pkg / "__init__.py")
+    monkeypatch.setitem(sys.modules, "ziglang", mod)
+    return zig
+
+
+# The sandbox fixture hides the real ziglang package from every test above, so
+# the bundled-zig tests below pin the discovery it hides -- it is what the
+# nightly's zig row (--cxx zig-bundled, no system toolchain) runs on.
+def test_bundled_zig_found_off_path(sandbox, tmp_path, monkeypatch):
+    zig = _install_bundled_zig(tmp_path, monkeypatch)
+    assert _find_all_zig() == (None, str(zig))
+    assert _auto_detect_compiler() == [str(zig), "c++"]
+
+
+def test_cxx_zig_bundled_selects_the_bundled_binary(sandbox, tmp_path,
+                                                    monkeypatch):
+    zig = _install_bundled_zig(tmp_path, monkeypatch)
+    _write_fake_compiler(sandbox, "zig", exit_code=0)   # system zig loses
+    config = CppCompilerConfig.from_env(cxx="zig-bundled")
+    assert config.compiler[:2] == [str(zig), "c++"]
+
+
+def test_cxx_zig_bundled_without_the_extra_is_not_found(sandbox):
+    from .toolchain import CompilerNotFoundError
+    with pytest.raises(CompilerNotFoundError):
+        CppCompilerConfig.from_env(cxx="zig-bundled")
+
+
+def test_list_compilers_separates_system_and_bundled_zig(sandbox, tmp_path,
+                                                         capsys, monkeypatch):
+    from .toolchain import list_compilers
+    _install_bundled_zig(tmp_path, monkeypatch)
+    _write_fake_compiler(sandbox, "zig", exit_code=0)
+    list_compilers()
+    out = capsys.readouterr().out
+    assert "(system)" in out and "(bundled)" in out
+    # With a system zig present the bundled row drops the bare `zig` alias,
+    # so `--cxx zig` keeps meaning the system one.
+    assert "--cxx zig-bundled  (bundled)" in out
 
 
 def test_probe_failure_writes_log(sandbox):
