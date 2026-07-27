@@ -468,13 +468,15 @@ class TestFieldWriteFamilies:
         st = fn.body[1]
         assert isinstance(st.value, THIRName)
 
-    def test_record_copy_call_value_stays_ast(self):
-        # `self.g = copy(p)` renders `Inner(p)` via _gen_copy_expr -- an emit
-        # form the slice does not mirror; the body stays on the AST path.
-        thir = _lower_ctx(
-            _FW_RECORDS
-            + "    def set_copy(self, p: Inner):\n        self.g = copy(p)\n")
-        assert _fn(thir, "set_copy") is None
+    def test_record_copy_call_value_copy_constructs(self):
+        # `self.g = copy(p)` renders `Inner(p)` via _gen_copy_expr -- the
+        # copy-CONSTRUCT arm, mirrored by the THIRCopy field-write row (NOT a
+        # peel: the source name would render bare).
+        src = (_FW_RECORDS
+               + "    def set_copy(self, p: Inner):\n        self.g = copy(p)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "set_copy") is not None
+        _assert_byte_identical(src)
 
     def test_record_pointer_local_source_stays_ast(self):
         # A pointer-local source needs the `(*p)` deref (+ possible move) --

@@ -48,6 +48,7 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...typesys import (
+    RecursiveAliasInstanceType,
     AnyType,
     BOOL,
     CallableType,
@@ -80,6 +81,7 @@ from ...typesys import (
     is_protocol_type,
     is_void_like_type,
     make_array,
+    make_dict,
     make_list,
     resolve_int_literals,
     substitute_type_params_simple,
@@ -252,6 +254,10 @@ from .predicates import (
     _field_over_subscript_ok,
     _field_markers_clean,
     _field_receiver_ok,
+    _field_receiver_or_unbound_self_ok,
+    _tuple_literal_has_ref_elements,
+    _tuple_elem_slots_ptr_optional,
+    _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
     _ptr_value_none_field,
     _user_deref_field_recv_ok,
@@ -579,6 +585,12 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or (use.ptr_opt_passthrough
                   and _ptr_opt_borrow_call_ret(e, ret)
                   and _witness("call.ptr_opt_passthrough"))
+              # The `Optional[record]` FIELD-write sink: the same borrowed
+              # `T*` result, but lifted by the sink (`ptr_to_optional(...)`)
+              # rather than landing bare.
+              or (use.ptr_opt_lift
+                  and _ptr_opt_borrow_call_ret(e, ret)
+                  and _witness("call.ptr_opt_lift"))
               or (result is _ExprResultUse.DISCARD
                   and is_void_like_type(ret))
               or (result is _ExprResultUse.ITERABLE
@@ -1546,7 +1558,8 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
 
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
-                 fold_ok: bool = False, temps_ok: bool = False) -> THIRExpr:
+                 fold_ok: bool = False, slot_threaded: bool = False,
+                 temps_ok: bool = False) -> THIRExpr:
     # `temps_ok` rides the enclosing use's allow_temps: operand temps flush
     # at the enclosing statement, so a flushable position's right extends
     # into call-shaped operands. Cond positions thread False (unchanged).
@@ -1674,7 +1687,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # FIXED-resolvable slice routes on: slot-threaded sinks are its
             # witnessed positions (the retype rebuild), and its target-less
             # flagged sinks folded above.
-            if is_big_int_type(resolved) and (lit_val is None or fits_i64):
+            # `_gen_binop` folds ONLY when `target_type is None`, so a
+            # SLOT-THREADED position renders the full operator on both paths
+            # (`b: int = 1 << 40` -> `((BigInt(1)) << (BigInt(40)))`) and the
+            # fits-i64 slice routes there like the beyond-int64 slice already
+            # does. Target-LESS positions keep rejecting: the AST folds there,
+            # and only `fold_ok` marks the ones whose fold THIR mirrors.
+            if (is_big_int_type(resolved) and (lit_val is None or fits_i64)
+                    and not slot_threaded):
                 reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
@@ -2743,7 +2763,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 if not result_ok:
                     raise ThirUnsupported("field.result_type", detail=True)
                 if not (
-                        _field_receiver_ok(e, declared, analyzer)
+                        _field_receiver_or_unbound_self_ok(
+                            e, declared, analyzer)
                         or _ptr_value_field_recv_ok(e, declared, analyzer)
                         or _user_deref_field_recv_ok(
                             e, declared, lc.narrow.narrowed, analyzer,
@@ -2769,6 +2790,32 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         or _assign_narrowed_union_recv(e.obj, declared, lc)
                         is not None):
                     raise ThirUnsupported("field.receiver_shape", detail=True)
+        if _unbound_self_field_ok(e):
+            # `BaseN.field` -> `this->BaseN::field`: _gen_field_access's
+            # early return, which never looks at the syntactic class-name
+            # receiver (it has no value type). The explicit base qualifier
+            # picks one ancestor subobject in non-virtual MI, so the parent
+            # spelling IS the member render -- carried in `field_cpp`, the
+            # node's "rendered C++ member name". Read and write target alike.
+            if lc.self_cpp != "this":
+                # A resumable method coro spells its receiver `__self` (a
+                # `Record&`, read with `.`), but the AST hardcodes `this->`
+                # here -- an unwitnessed render, so it keeps falling back.
+                raise ThirUnsupported("field.unbound_self_receiver",
+                                      detail=True)
+            viewfam = _resolved_str_value(rtype, analyzer)
+            if viewfam is None:
+                viewfam = _resolved_bytes_value(rtype, analyzer)
+            _witness("field.unbound_self")
+            return THIRFieldAccess(
+                result_type=rtype,
+                receiver=THIRSelf(result_type=e.unbound_self_parent_type,
+                                  form=Form.BORROW, cpp=lc.self_cpp, loc=loc),
+                field_cpp=(f"{e.unbound_self_parent_type.to_cpp()}::"
+                           f"{_field_cpp(e)}"),
+                is_arrow=True,
+                form=_viewfam_result_form(viewfam),
+                loc=loc)
         if e.enum_member_of is not None:
             # Type-level enum member access: `Color.RED` -> `Color::RED`
             # (gen_expr's BindingKind.ENUM arm, spelled at lowering).
@@ -2798,7 +2845,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # subscript is a `T*` off a borrow tuple, or a `std::optional<T>` off a
             # storage alias lifted to `T*` via optional_to_ptr (the STORAGE-form
             # convert). Mirrors _gen_field_access's runtime-check path.
-            sub = _lower_expr(e.obj, lc, declared, subscript_prechecked=True)
+            # `deref_check` takes the RAW `T*` -- it applies its own null check
+            # and member access -- so a pointer-slot GLOBAL name must not carry
+            # the value-position `(*g)` deref it reads with everywhere else.
+            sub = _strip_slot_leaf_deref(
+                _lower_expr(e.obj, lc, declared, subscript_prechecked=True),
+                lc)
             recv = (THIRFormConvert(result_type=sub.result_type, value=sub,
                                     form=Form.BORROW, loc=loc)
                     if sub.form is Form.STORAGE else sub)
@@ -3491,6 +3543,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     if isinstance(e, TpyBinOp):
         return _lower_binop(e, rtype, lc, declared, loc,
                             fold_ok=use.literal_fold_ok,
+                            slot_threaded=target_type is not None,
                             temps_ok=use.allow_temps)
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the AST's
@@ -6024,18 +6077,26 @@ def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
     at = lc.analyzer.get_expr_type(e)
     at = resolve_pending_container(at, lc.analyzer) or at
     loc = getattr(e, "loc", None)
+    # A GENERIC alias instance types the literal as the WRAPPER itself
+    # (`Tree[int]`), not as `list[Tree[int]]` the way the non-generic
+    # `AliasRef` form does -- but the AST spells the same container around
+    # it, so synthesise that container for the spelling and the result type.
+    instance = isinstance(at, RecursiveAliasInstanceType)
     if isinstance(e, TpyArrayLiteral):
         elems = tuple(_lower_ru_elem(x, ut, lc, declared)
                       for x in e.elements)
+        ct = make_list(at) if instance else at
         return THIRContainerLiteral(
-            result_type=at, elements=elems,
-            typed_brace_cpp=lc.render_type(at) if e.elements else None,
+            result_type=ct, elements=elems,
+            typed_brace_cpp=lc.render_type(ct) if e.elements else None,
             loc=loc)
     assert isinstance(e, TpyDictLiteral)
     keys = tuple(_lower_expr(k, lc, declared, use=_NESTED_ARG_USE)
                  for k in e.keys)
     vals = tuple(_lower_ru_elem(v, ut, lc, declared) for v in e.values)
-    return THIRContainerLiteral(result_type=at, elements=keys, values=vals,
+    ct = (make_dict(lc.analyzer.get_expr_type(e.keys[0]), at)
+          if instance and e.keys else at)
+    return THIRContainerLiteral(result_type=ct, elements=keys, values=vals,
                                 loc=loc)
 
 
@@ -6104,6 +6165,19 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         # nothing else.
         su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
             if slot is not None else None
+        if (isinstance(su, TupleType)
+                and len(e.elements) == len(su.element_types)
+                and _tuple_literal_has_ref_elements(e, su)
+                and _tuple_elem_slots_ptr_optional(su)):
+            # `_gen_tuple_literal`'s has_ref_elements path: the inner is the
+            # BORROW form (`std::tuple<T*, T*>{&(t1), nullptr}`) and the
+            # STORAGE convert emits `tuple_to_storage<S>(...)` over it. The
+            # storage-direct sibling below serves the all-value-slot shape.
+            _witness("containerlit.tuple_borrow_storage")
+            return THIRFormConvert(
+                result_type=su,
+                value=_lower_borrow_tuple_literal(e, su, lc, declared),
+                form=Form.STORAGE, move=False, loc=getattr(e, "loc", None))
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
             inner = THIRTupleLiteral(
                 result_type=su,

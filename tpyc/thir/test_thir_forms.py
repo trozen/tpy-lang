@@ -430,13 +430,22 @@ class TestF2bWrite:
         assert isinstance(write.value, THIRFormConvert) and write.value.form is Form.STORAGE
         assert write.value.value.form is Form.BORROW  # the `p` borrow being lifted
 
-    def test_copy_acknowledged_value_is_ineligible(self):
-        # `copy(p)` (the explicit acknowledgment) is a call -- deferred to the AST path.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "from tpy import copy\n"
-            + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = copy(p)\n")
-        assert _fn(thir, "move_opt") is None
+    def test_copy_acknowledged_value_peels_to_the_same_lift(self):
+        # `copy(p)` (the explicit acknowledgment) over a pointer-repr Optional
+        # is `_gen_copy_expr`'s IDENTITY early return, so it renders exactly
+        # like the bare `dst.opt = p` above -- one `ptr_to_optional`, and
+        # never the _move variant (the AST's `_maybe_move` sees the call node,
+        # which is not a movable name).
+        src = (_F1_RECORDS
+               + "from tpy import copy\n"
+               + "def move_opt(src: Box, dst: Box):\n"
+               + "    p = src.opt\n    dst.opt = copy(p)\n")
+        thir = _lower_ctx(src)
+        write = _fn(thir, "move_opt").body[1]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.value, THIRFormConvert)
+        assert write.value.form is Form.STORAGE and not write.value.move
+        _assert_byte_identical(src)
 
     def test_scalar_field_write_routes_as_plain_assign(self):
         # A scalar (non-optional) field write is not the F2b borrow->storage shape;

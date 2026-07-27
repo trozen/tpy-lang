@@ -795,7 +795,11 @@ class TestSlicedOutShapes:
         _, fallback = _assert_identical(src)
         assert not fallback
 
-    def test_raise_lowering_reject_falls_back_after_await(self):
+    def test_raise_expr_after_await_routes(self):
+        # The `resumable_leaf_mode` guard that used to reject this was
+        # CONSERVATIVE, not required -- `_gen_raise`'s expr branch emits
+        # `<expr>.__raise__();` identically in every context (TODO.md's
+        # exceptions-trio item (1), which this closes).
         src = (_PRE
                + "err = ValueError('bad')\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -804,7 +808,7 @@ class TestSlicedOutShapes:
                + "    raise err\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:stmt.raise") == 1
+        assert not fallback
 
     def test_wide_numeric_literals_route_after_await(self):
         src = (_PRE

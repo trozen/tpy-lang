@@ -3137,3 +3137,198 @@ that exercises a read.
 **Deletion-relevant:** the imported-global seeding is now shared
 (`_seed_imported_globals`), so the function-body and module-init entries
 cannot drift on which imported globals are readable or how they spell.
+
+### Field-write + containers wave (2026-07-27): 2104 -> 2045 fallback units
+
+**Unbound-self base-class field access.** `BaseN.field` inside a descendant
+method is `_gen_field_access`'s only receiver-INDEPENDENT arm: the syntactic
+class-name receiver has no value type, so the parent spelling IS the render.
+That is why it gets its own admission predicate rather than a row inside
+`_field_receiver_ok` -- that predicate has ~70 callers and most of them read
+the receiver binding, so widening it would have opened 70 gates to a receiver
+no lowering site could lower. Seven enumerated admission sites instead.
+
+**`copy()` is three renders, not one.** The instinct "peel the copy" is wrong
+at two of the three: a plain record NAME copy-CONSTRUCTS (`T(x)`), only a
+record CONSTRUCTOR argument and a pointer-repr Optional argument are
+identities. Reading `_gen_copy_expr` before writing the arm is what caught it.
+
+**Routing exposes the neighbours.** Three defects surfaced the moment
+previously-fallback bodies started emitting: `deref_check` receiving a
+pointer-slot global with the value-position deref still attached (caught by
+the corpus byte-diff), the optrec arm claiming whole-Optional sources that
+belong to the lifting tail (caught by the THIR validator), and a whole-Optional
+field read tagged VALUE where the tail needed to know it was member STORAGE.
+None were reachable before; all three are the same shape of bug -- an arm whose
+guard was looser than its gate.
+
+**A restriction must ADD, not REPLACE.** The ref-element tuple container arm
+first returned its own verdict when `has_ref_elements` held, which turned the
+previous fall-through into a hard reject and regressed five resumable
+frame-tuple pins. The arm adds a row; the storage-direct rules still apply
+when it does not fire.
+
+**Four "stays AST" pins were scope markers, not render splits.** The two
+`copy()` field-write pins, the Span-field ctor pin and the value-opt inner
+param pin each carried a stated reason; three of the four reasons were a
+restatement of the old gate's own rule ("outside the exact same-type pin",
+"the slice does not open this"), which is a migration state, not a
+correctness bar. The fourth (a lifetime concern on the Span field) is real
+but identical on both paths and enforced by BorrowTracker in sema, before
+either emitter runs. Read the reason before widening past a pin -- and
+convert the pin rather than deleting it, so the shape keeps a guard.
+
+Only three of the four were found by reading; the fourth surfaced as a unit
+failure in the harvest run. Grepping the THIR test files for pins on the
+boundary BEFORE building the arm would have found it -- that step is in the
+wave procedure and skipping it cost a round trip.
+
+**THIR as an oracle for AST defects -- the value units cannot count.** Two
+pre-existing LOUD AST miscompiles surfaced only because this wave widened
+admission: an unbound-self read of a `@native`-RENAMED base field spells the
+unrenamed member (the early return predates its own rename override), and
+printing a NARROWED value-repr `Optional[scalar]` GLOBAL emits the bare
+optional. Neither has a corpus witness; both fail the C++ build. In both,
+THIR is already RIGHT and the AST is not.
+
+**The policy that governs those two, written down because this wave decided
+it ad hoc twice:** when the broken shape falls INSIDE an arm the wave admits,
+REJECT it (mirroring output that does not compile buys nothing, and the
+rejection is a clean un-reject point once the AST is fixed) -- that is the
+`@native`-rename case. When it merely becomes more REACHABLE because other
+bodies now route, FILE it and leave the arm alone -- that is the value-opt
+global print. Reject narrowly, file broadly.
+
+**Per-arm witness ledger for this wave** (corpus witness vs unit-pin only):
+unbound-self read/write/aug-assign, `copy()` at Optional[record] fields, the
+F2b call/field sources, ref-element tuple container elements, tuple-literal
+field writes, the Span and Send[Callable] MIL cells, value-opt args and
+globals, and the value-opt MIL inner scalar all have flipped corpus cases.
+`field_write.record_copy_ctor` (`copy(T(...))` into a PLAIN record field) has
+NO corpus witness and rests on its unit pin alone -- every corpus
+`copy(ctor)` writes an Optional field.
+
+**Second half of the wave: the SHALLOW components pay, the deep one does
+not.** After the first seven arms measured 2104 -> 2064, five more cells
+(cells 8-12) took it to 2051 and the dial from +20 to +30 flips. Where they
+landed is the whole lesson: ctor 115 -> 94 and top_level 83 -> 69 both paid
+at close to 1:1, while body moved 1783 -> 1765 across the same effort. A
+ctor or a module init is a SHALLOW body -- clearing its one blocker clears
+the unit -- where a function body has a queue behind it.
+
+The five: a fits-i64 BigInt binop at a SLOT-THREADED position (the AST
+folds only when `target_type is None`, so the reject there was over-broad);
+a global slot pointing AT a borrow-returning call's storage (`pt =
+&(points->load(0));`, the address-of catch-all the gate's own docstring
+already named); container / type-param / `String` base-init args (all bare
+param-name renders); the `Own[...]` unwrap the bare-name field write was
+missing (a property setter's param, which is also why the oracle MOVES);
+and the empty-container ctor MIL cell (`items(std::vector<T>())`).
+
+**Two cells were probed, verified BLOCKED, and reverted rather than
+landed.** `ctor.mil_field.optional.name` (12 units) and
+`ctor.mil_field.genrec_concrete.name` (5) both turned out to be blocked one
+layer BELOW the gate being ground -- at `_optional_ptr_borrow` and
+`_f1_record` respectively, binding predicates with many consumers each.
+Widening the MIL gate alone just admits a row whose lowering rejects; that
+was built, observed, and reverted. Both are filed as design-track items.
+The transferable rule: when a gate widening does not move the reject TAG
+out of the body, the blocker is not in that gate.
+
+**A row that CRASHES is worse than one that rejects.** Adding Callable to
+the bare-name field write raised `unhandled THIRFormConvert: CallableType
+Form.VALUE->Form.STORAGE` at emit rather than falling back -- the family has
+no borrow->storage convert arm. Caught by the cell's own pins; the boundary
+pin now records it so the family is not re-added without the arm.
+
+**Third pass: the two families I had wrongly called blocked.** A first
+"verified-blocked" claim was FALSE -- the resumable component (123 units)
+had never been probed at all, and `container_lit.slot_family` (24, in this
+wave's own approved track) had never been touched. Both yielded:
+
+* `container_lit.slot_family` was the largest untouched family on the
+  frontier (14 sole-blocker cases). `_lower_ru_literal` already existed but
+  was wired only at the CALL-ARG position, and its admission only covered
+  the non-generic `AliasRef` form. Sema types the three forms differently --
+  `list[AliasRef]` plain, the alias INSTANCE for an outer `Tree[int]`
+  literal, `list[Tree[int]]` for a nested one -- and all three render the
+  same spelled container, so one classifier now covers them.
+* The resumable `stmt.raise` guard was a deferral a PRIOR review had already
+  verified as unnecessary and written up in TODO.md, naming the exact tests
+  to update. Three pins keyed on it (the entry named two; the corpus run
+  found the third).
+
+**The lesson worth keeping:** "verified-blocked" has to mean PROBED, not
+"I did not get to it". Both of these were one read away from being obvious,
+and one of them was in the wave's own approved track list.
+
+**A pin caught a divergence the corpus could not.** The generic wrapper arm
+initially admitted `None` elements, which render `nullptr` instead of
+`std::monostate{}` because the monostate emit keys on the element's result
+type being the UnionType. No committed case puts `None` in a generic
+wrapper literal, so the 3600-case byte-diff was green -- the cell's own pin
+is what failed.
+
+**The reachability arithmetic, measured rather than asserted** (whole-corpus
+`THIR_FALLBACK_JSON` at 2045 units):
+
+| slice | units |
+|---|---|
+| `expr.call` + `expr.method_call` + `decl.slot_type` + `return.slot_type` | 721 |
+| everything else | 1324 |
+
+So the 105 units still needed for the wave's target are NOT arithmetically
+closed off -- the non-elephant residue is 1324. What closes them off is the
+SHAPE of that residue: after this wave the largest non-elephant tags are
+`stmt.match` 63, `stmt.return` 44, then a long tail of 23/22/21/20/18...,
+and the three biggest were each probed to a blocker one layer BELOW the
+gate:
+
+* `stmt.match` 63 -- per-arm `LiteralType` TYPE FACTS can rewrite arm
+  bodies; the top tiers reject facts. Strategy-selection widening built and
+  reverted.
+* `ctor.mil_field.optional.name` 12 -- `_optional_ptr_borrow` requires an
+  F1-record inner, so the source NAME read rejects. Built and reverted.
+* `genrec_concrete.name` 5 -- `_f1_record` rejects a generic instantiation
+  whose type arg is a recursive union. Same shape.
+
+All three are BINDING-PREDICATE widenings with many consumers each, i.e.
+design-track work of the same kind as the pointer-slot-global deref rule.
+That is the honest statement of where this frontier ends: not "no units
+left" but "no more GRIND units left -- the next 105 need a design round
+first."
+
+#### Frontier verification (2026-07-27, closing the field-write + containers wave)
+
+The wave's unit target (>=164) was missed at 59. The reason is structural
+and is now measured rather than asserted -- split every non-elephant tag by
+whether ANY case carries it as its SOLE blocker (`fallback_final.json` x
+`blockers.json`):
+
+* **437 units live in tags no case is blocked on alone.** Routing them
+  flips nothing and, under body-component interlock, moves no unit. Five of
+  the histogram's biggest apparent levers are here (`expr.fstring` 20,
+  `sig.overload_set.db_compare` 18, `stmt.tuple_unpack` 16,
+  `return:binop.shape.==` 14, `sig.member_shadows_type` 13).
+* **348 units in 17 tags of >=13 units are real levers**, and all 17 are now
+  probed to a named blocker. Two design-track predicates account for 129 of
+  them (`_optional_ptr_borrow` 85 across five tags, and the `lc.pointers`
+  keying the borrow-tuple return shares with it, 44).
+* **590 units in 200 tags of <=12 units each** (mean ~3). No single one can
+  move a wave.
+
+So on this frontier a >=100-unit target is not reachable by tag selection;
+it needs one of the two design items. Recompute the split (a five-line pass
+over the two dumps) before pricing the next wave.
+
+#### Late cells
+
+* **Non-value `try` hoists** take the OPTIONAL_STORAGE predecl
+  (`std::optional<T> name;`, engaging assigns, deref reads) that the if
+  cascade and the with family already carried -- the try path simply never
+  passed `opt_storage` to the shared `_lower_hoist_predecls`. Two of the
+  seven witnesses clear; the rest need the POINTER flavor (reassigned /
+  borrow-only names) or the in-branch scope model.
+* **Bytes loop elements** resolve through the shared view-family resolver
+  before spelling, the same resolution the str element already took -- a
+  `PendingViewType` element reached the binding unresolved and diverged.

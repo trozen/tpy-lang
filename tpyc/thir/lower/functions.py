@@ -93,6 +93,7 @@ from ..fallback import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
 from ..validate import _iter_children, validate_constructor, validate_function
 from ..nodes import (
+    THIRCall,
     Form,
     THIRBaseInit,
     THIRConstructor,
@@ -116,6 +117,7 @@ from ..nodes import (
 )
 from .predicates import (
     _callable_value,
+    _span_value,
     _coerce_disposition,
     _eligible_char,
     _eligible_enum,
@@ -1169,6 +1171,18 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             if own is not None:
                 pt = own.wrapped
             return _mil_container_field(pt) and pt.to_cpp() == ftype.to_cpp()
+        if (isinstance(source, TpyCall) and not source.args
+                and not source.kwargs
+                and isinstance(source.func, TpyName)
+                and source.func.name in ("list", "dict", "set", "Array")):
+            # The empty-container ctor call (`self.items = list()` ->
+            # `items(std::vector<T>())`): the AST's target-threaded
+            # `gen_expr(source, fld_type)` spells the FIELD's container type
+            # and default-constructs it, so the element types come from the
+            # field, not from the call. Zero-arg only -- any argument would
+            # be a range/iterable construction with its own render.
+            # `Array()` joins them: `data(std::array<T, N>())`.
+            return True
         return False
     pu = _eligible_ptr_union(ftype, analyzer)
     if pu is not None:
@@ -1268,14 +1282,21 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             return False
         dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
         if _value_opt_scalar(ftype, analyzer) is not None:
-            return dt == ftype
+            # Either the same `std::optional<T>` (a plain copy) or the bare
+            # INNER scalar, which `std::optional<T>`'s converting ctor absorbs
+            # -- the AST renders both bare (`value(value)`), no wrap either
+            # way. The inner is a cheap scalar by `_value_opt_scalar`'s own
+            # verdict, so matching it is enough to stay in the routed family.
+            return dt == ftype or dt == unwrap_readonly(
+                unwrap_ref_type(unwrap_send_sync(ftype.inner)))
         if _value_opt_view(ftype, analyzer) is not None:
             return _opt_view_arg_shim(dt, ftype, analyzer)
         return False
-    if _callable_value(ftype):
-        # A `std::function<...>` field copies bare from a same-typed callable
-        # param name (`on_event(cb)`). Lambda / mismatched-signature sources
-        # stay out (the lambda render is a body-lowering concern).
+    if _span_value(ftype):
+        # A `std::span<T>` field copies bare from a same-typed span param
+        # name (`items(items)`) -- a view, so borrow and storage coincide and
+        # no lift renders. Other sources (array locals taking the implicit
+        # span conversion, slices) keep their own renders.
         source = _unwrap_copy(stmt.value, analyzer)
         if not isinstance(source, TpyName):
             return False
@@ -1283,7 +1304,24 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if dt is None:
             return False
         dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-        return _callable_value(dt) and dt == ftype
+        return _span_value(dt) and dt == ftype
+    ft_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ftype)))
+    if _callable_value(ft_bare):
+        # A `std::function<...>` field copies bare from a same-typed callable
+        # param name (`on_event(cb)`). Lambda / mismatched-signature sources
+        # stay out (the lambda render is a body-lowering concern). The
+        # `Send[...]` wrapper is erased in storage form on BOTH sides, so it
+        # is peeled off the field type as well as the param's -- comparing a
+        # peeled param against an unpeeled field would reject the pair the
+        # AST spells identically (`std::function<void(int32_t)> cb : cb(cb)`).
+        source = _unwrap_copy(stmt.value, analyzer)
+        if not isinstance(source, TpyName):
+            return False
+        dt = declared.get(source.name)
+        if dt is None:
+            return False
+        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+        return _callable_value(dt) and dt == ft_bare
     is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
               and _f1_record(ftype.inner, analyzer))
     if not (is_opt or _f1_record(ftype, analyzer)):
@@ -1574,6 +1612,16 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[a.name])))
     if _resolved_str_value(vt, analyzer) is not None:
         return True
+    # The remaining bare-name param families. Each binds a `const T&` (never a
+    # pointer-local), so the target-less `gen_expr(name)` the AST renders is
+    # the bare name and nothing here can register a temp:
+    #   * a builtin CONTAINER (`: Parent(store)`),
+    #   * an open type param inside a generic record (`: Base<T>(val)`),
+    #   * an owned `String` (`: ::tpy::OSError(message)`) -- excluded from
+    #     `_resolved_str_value`, which is the view-family predicate.
+    if (is_list(vt) or is_dict(vt) or is_set(vt) or is_array(vt)
+            or _is_type_param_slot(vt) or _is_string_owned(vt)):
+        return True
     if _optional_ptr_borrow_name(a, declared, analyzer) is not None:
         return True
     own = unwrap_optional_own(vt)
@@ -1665,6 +1713,18 @@ def _lower_ctor_mil_init(
     loc = getattr(stmt, "loc", None)
     field_cpp = escape_cpp_name(stmt.target.field)
     source = _unwrap_copy(stmt.value, analyzer)
+    if (_mil_container_field(ftype) and isinstance(source, TpyCall)
+            and not source.args and not source.kwargs):
+        # `self.items = list()` -> `items(std::vector<T>())`: the AST threads
+        # the FIELD type as the target, so the spelling comes from the field
+        # and the call default-constructs it. Spelled here rather than lowered
+        # as a call -- the callee is a builtin type name, not a function.
+        _witness("mil.container_default")
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=THIRCall(result_type=ftype, callee=source.func.name,
+                           args=(), cpp_template=f"{lc.render_type(ftype)}()",
+                           loc=loc))
     if _mil_container_field(ftype):
         _witness("mil.container_literal"
                  if isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
@@ -1843,7 +1903,14 @@ def _lower_ctor_mil_init(
             # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
             v = _lower_expr(source, lc, declared)
         return THIRMilInit(field_cpp=field_cpp, value=v)
-    if _callable_value(ftype):
+    if _span_value(ftype):
+        # Same-typed span param name: the bare view copy (`items(items)`) --
+        # borrow and storage coincide for a view, so no lift renders.
+        _witness("mil.span_copy")
+        return THIRMilInit(field_cpp=field_cpp,
+                           value=_lower_expr(source, lc, declared))
+    if _callable_value(unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(ftype)))):
         # Same-typed callable param name: the bare `std::function` copy
         # (`on_event(cb)`), per the gate's exact-type pin.
         _witness("mil.callable_copy")
@@ -1953,8 +2020,9 @@ def _rejects_global_slot(node) -> bool:
     """A THIR statement whose emit allocates a `__slot_N` off the shared
     counter. At module scope every slot must spell `static __global_slot_N`,
     and only GLOBAL_RVALUE is wired for that -- its three sibling writes
-    (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL` and
-    `GLOBAL_PTR_COPY` allocate none) call `next_slot()` nowhere.
+    (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL`,
+    `GLOBAL_PTR_COPY` and `PTR_ADDR` allocate none) call `next_slot()`
+    nowhere.
 
     THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
     block-scoped `__slot_N` at namespace scope leaves the global pointing at a
@@ -1968,7 +2036,11 @@ def _rejects_global_slot(node) -> bool:
     if isinstance(node, THIRPtrLocalRebind):
         return node.kind not in (PtrSlotKind.GLOBAL_REBIND,
                                  PtrSlotKind.GLOBAL_NULL,
-                                 PtrSlotKind.GLOBAL_PTR_COPY)
+                                 PtrSlotKind.GLOBAL_PTR_COPY,
+                                 # `g = &(<borrow call>);` points AT
+                                 # callee-owned storage -- no slot at all,
+                                 # so nothing can outlive `__tpy_init`.
+                                 PtrSlotKind.PTR_ADDR)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):
@@ -2011,6 +2083,13 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         if gt is None:
             continue
         declared[name] = gt
+        if _value_opt_scalar(gt, analyzer) is not None:
+            # A value-repr `Optional[scalar]` global IS a `std::optional<T>`
+            # binding at namespace scope, so its reads/writes take the
+            # value-opt LOCAL arms (bare whole-optional pass, narrowed `(*g)`,
+            # `= std::nullopt`) -- the same seeding a function body gives the
+            # same global.
+            lc.value_opt_locals.add(name)
         if not gt.is_value_type() and not gt.needs_wrapper():
             # `std::vector<T>* g{}` at namespace scope: reads deref through
             # the pointer-local arms, writes take the static-slot render.

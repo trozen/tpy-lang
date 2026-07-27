@@ -106,6 +106,12 @@ class _ExprUse:
     # consumer of such a result materializes a slot or lifts through
     # `optional_to_ptr`, so they keep gating on their own rows.
     ptr_opt_passthrough: bool = False
+    # The pointer-repr `Optional[record]` FIELD-write sink only
+    # (`h.value = find_point(pts, 1);`): admit a BORROW-returning ptr-repr
+    # Optional result, which the sink then lifts through `ptr_to_optional`.
+    # Distinct from `ptr_opt_passthrough`, whose result lands BARE -- one flag
+    # cannot stand for both renders.
+    ptr_opt_lift: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

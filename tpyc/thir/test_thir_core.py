@@ -998,16 +998,15 @@ class TestForEachContainer:
         loop = next(s for s in _fn(thir, "f").body if isinstance(s, THIRForEach))
         assert loop.var == "c"
 
-    def test_bytes_element_ineligible(self):
-        # A bytes-view loop var stays on the AST path: its element `et` survives
-        # as a PendingViewType (str is pre-resolved, bytes is not), which THIR
-        # would spell before the AST's resolve_type concretizes it -- the one
-        # form the compositional gate must still exclude.
-        thir = _lower(
-            _PRELUDE
-            + "def f() -> Int32:\n    rows = [b'ab', b'cd']\n    n = 0\n"
-            + "    for r in rows:\n        n = n + 1\n    return n\n")
-        assert _fn(thir, "f") is None
+    def test_bytes_element_routes(self):
+        # A bytes-view loop var now resolves its element through the shared
+        # view-family resolver before spelling, the same pre-resolution the
+        # str element already took -- the reason this shape used to defer.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n    rows = [b'ab', b'cd']\n    n = 0\n"
+               + "    for r in rows:\n        n = n + 1\n    return n\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_value_opt_element_routes(self):
         # A value-repr Optional[scalar] loop var binds the typed

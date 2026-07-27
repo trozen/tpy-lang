@@ -427,6 +427,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare-copied from a same-typed opt param
     "mil.optview_shim",             # value-repr Optional[str/bytes] field <-
                                     # borrow optional<view> param (arg-split shim)
+    "mil.container_default",       # `items(std::vector<T>())` -- the
+                                    # empty-container ctor call in a MIL cell
+    "mil.span_copy",              # `items(items)` -- std::span field
+                                    # bare-copied from a same-typed param
     "mil.callable_copy",            # `on_event(cb)` -- std::function field
                                     # bare-copied from a same-typed param
     # An own-field init the AST demotes to the ctor body (bare non-param name /
@@ -644,7 +648,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.container_elem",  # nested list element `[[1, 2], [3]]`
     "containerlit.record_elem",     # `[P(1), p]` -- ctor rvalues / record names
     "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / bytes_copy
+    # A list/dict literal at a recursive-union WRAPPER decl slot: the
+    # non-generic `AliasRef` form and its generic alias-INSTANCE sibling.
+    "decl.ru_wrapper_literal",
+    "decl.ru_instance_literal",
     "containerlit.tuple_storage",   # `[(a, P(1)), ...]` -> tuple_to_storage<S>(S{...})
+    # The REF-element sibling: the inner is the BORROW tuple
+    # (`std::tuple<T*, ..>{&(a), nullptr}`) under the same convert --
+    # _gen_tuple_literal's has_ref_elements path.
+    "containerlit.tuple_borrow_storage",
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
     # A spanlike coerce over an array-literal inner: the helper wraps the
@@ -1338,6 +1350,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # the bare postfix member over the call render -- `f().x`,
     # `h.boxed.get().x` -- the inner call lowers through its own arms).
     "field.call_recv",
+    # Unbound-self base-class field access -> `this->BaseN::field` (lowering;
+    # the base qualifier rides `field_cpp`, the class-name receiver is never
+    # lowered). Read and write target alike.
+    "field.unbound_self",
     # `.field` through an explicit `Ptr[record]` VALUE receiver -> `p->field`
     # (proven non-null) or `::tpy::deref_check(p).field` (unproven), picked from
     # sema's `ptr_non_null`. Read and write target alike.
@@ -1345,6 +1361,19 @@ THIR_FACES: frozenset[str] = frozenset({
     # `.field` auto-dereffed through a USER Deref wrapper -> `r.__deref__().x`
     # (N = deref_depth). Bare `.` receiver; read and scalar-write target alike.
     "field.user_deref_chain",
+    # A BORROW-returning ptr-repr Optional call result at the
+    # `Optional[record]` FIELD-write sink, lifted via `ptr_to_optional`.
+    "call.ptr_opt_lift",
+    # A tuple LITERAL at a tuple field: the spelled value brace-init, plus
+    # the `tuple_to_storage` wrap at an F3 (non-value-element) slot.
+    "field_write.tuple_literal",
+    # `copy()` sources at a record / Optional[record] FIELD write: the
+    # copy-CONSTRUCT rvalue (`field = T(x);`) and the constructor-argument
+    # peel (`copy(T(...))` renders as the bare `T(...)` prvalue).
+    "field_write.record_copy",
+    "field_write.record_copy_ctor",
+    "field_write.optrec_copy",
+    "field_write.optrec_copy_ctor",
     # A VALUE-repr `Optional[scalar]` field write (lowering; `s.count = 42;`
     # -- the scalar converts implicitly into `std::optional<int32_t>`, so no
     # `ptr_to_optional` lift, which is the POINTER-repr sibling's).
@@ -1363,6 +1392,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "top_level.global_slot",
     "top_level.global_slot_reuse",  # `g = &(__global_slot_N = init);`
     "top_level.global_null",        # `g = nullptr;`
+    # A BORROW-returning method call at a global slot: the slot points AT
+    # the callee-owned storage (`pt = &(points->load(0));`), no slot alloc.
+    "top_level.global_addr_call",
     "top_level.global_ptr_copy",    # `g = other;` (pointer-slot source)
     "top_level.import_init",
     "top_level.final_skip",

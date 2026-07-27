@@ -172,6 +172,11 @@ from .predicates import (
     _field_over_subscript_ok,
     _field_over_record_getitem_ok,
     _field_receiver_ok,
+    _field_receiver_or_unbound_self_ok,
+    copy_call_arg,
+    _tuple_literal_has_ref_elements,
+    _tuple_elem_slots_ptr_optional,
+    _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
     _user_deref_field_recv_ok,
     _folded_neg_int_literal,
@@ -237,6 +242,7 @@ from .predicates import (
     _none_value_opt_arg,
     _str_literal_value_opt_arg,
     _value_opt_scalar_value_arg,
+    _value_opt_pass_through_arg,
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
@@ -642,9 +648,21 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 allow_record=True, allow_nested=True, allow_optional=True,
                 note=note)
         if (isinstance(e, TpyTupleLiteral) and isinstance(su, TupleType)
-                and len(e.elements) == len(su.element_types)
-                and all(_tuple_member_ok(i) for i in range(len(e.elements)))):
-            return True
+                and len(e.elements) == len(su.element_types)):
+            # A ref-element tuple takes the BORROW ladder
+            # (`tuple_to_storage<S>(std::tuple<T*, ..>{&(a), nullptr})`),
+            # whose per-element admission lives in `_lower_borrow_tuple_literal`
+            # and rejects there -- the storage-direct member rules below do not
+            # describe it.
+            if (_tuple_literal_has_ref_elements(e, su)
+                    and _tuple_elem_slots_ptr_optional(su)):
+                return True
+            # Otherwise the storage-DIRECT member rules still apply: this arm
+            # ADDS the borrow ladder, it does not replace the rows that were
+            # already admitted (a ref-element tuple whose members are all
+            # rvalues renders storage-direct on both paths).
+            if all(_tuple_member_ok(i) for i in range(len(e.elements))):
+                return True
         return note_detail("container_lit.elem.tuple") if note else False
     if fam == "container":
         # A nested container VALUE literal (list/array via array literal, dict
@@ -1134,7 +1152,7 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     `p->field = <value>;` (arrow via _field_receiver_ok), unproven ->
     `::tpy::deref_check(p).field = <value>;` (_optional_checked_field)."""
     target = stmt.target
-    if not (_field_receiver_ok(target, declared, analyzer)
+    if not (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
             or _ptr_value_field_recv_ok(target, declared, analyzer)
             or _optional_checked_field(target, declared, analyzer)
             or _field_over_subscript_ok(target, declared, analyzer)
@@ -1259,15 +1277,25 @@ def _record_field_write_ok(
     In a constructor body this gate sees only DEMOTED inits (the MIL hoist
     already ran in `lower_constructor`), which the AST emits via the same
     default assign -- routed, except a field type with a suppressed default
-    ctor (see `_nondef_ctor_field`: the AST raises there)."""
+    ctor (see `_nondef_ctor_field`: the AST raises there). An unbound-self
+    `BaseN.field` target joins both source rows unchanged."""
     target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
+    if not _field_receiver_or_unbound_self_ok(target, declared, analyzer):
         return False
     ftype = analyzer.get_expr_type(target)
     if not _f1_record(ftype, analyzer):
         return False
     if prescan.is_constructor and _nondef_ctor_field(ftype, analyzer):
         return False
+    # `copy(T(...))` peels to its constructor (identical render); `copy(name)`
+    # is the copy-CONSTRUCT rvalue `T(name)`. Both land at the field bare.
+    ctor_peel = copy_ctor_rvalue_source(stmt.value, analyzer)
+    if ctor_peel is not None:
+        return (_record_rvalue_source_shape(ctor_peel, analyzer)
+                and analyzer.get_expr_type(ctor_peel) == ftype)
+    crec = copy_plain_record_source(stmt.value, analyzer, pointers)
+    if crec is not None:
+        return crec == ftype
     if _record_rvalue_source_shape(stmt.value, analyzer):
         return analyzer.get_expr_type(stmt.value) == ftype
     v = stmt.value
@@ -1338,6 +1366,16 @@ def _optional_record_field_write_ok(
     if inner is None:
         return False
     v = stmt.value
+    # The `copy()` rows, exactly as at the plain-record slot: a constructor
+    # argument peels (identical render), a record NAME copy-constructs
+    # `T(name)`. `optional::operator=` absorbs either inner rvalue.
+    ctor_peel = copy_ctor_rvalue_source(v, analyzer)
+    if ctor_peel is not None:
+        return (_record_rvalue_source_shape(ctor_peel, analyzer)
+                and analyzer.get_expr_type(ctor_peel) == inner)
+    crec = copy_plain_record_source(v, analyzer, pointers)
+    if crec is not None:
+        return crec == inner
     if _record_rvalue_source_shape(v, analyzer):
         return analyzer.get_expr_type(v) == inner
     if (isinstance(v, TpyMethodCall)
@@ -1408,7 +1446,8 @@ def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                    TpySetLiteral)):
         return False
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
+    if not _field_receiver_or_unbound_self_ok(stmt.target, declared,
+                                              analyzer):
         return False
     ftype = unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(analyzer.get_expr_type(stmt.target))))
@@ -1429,7 +1468,8 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     assign render). Call sources stay on the AST path; `String`-typed
     fields/sources keep their own emit shapes (excluded by
     `_resolved_str_value`)."""
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
+    if not _field_receiver_or_unbound_self_ok(stmt.target, declared,
+                                              analyzer):
         return False
     if _resolved_str_value(analyzer.get_expr_type(stmt.target),
                            analyzer) is None:
@@ -1546,7 +1586,7 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     if isinstance(target, TpyName):
         if target.name not in declared:
             return False
-    elif not (_field_receiver_ok(target, declared, analyzer)
+    elif not (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
               or _optional_checked_field(target, declared, analyzer)
               or _field_over_subscript_ok(target, declared, analyzer)
               or _field_over_container_subscript_ok(target, declared, analyzer)
@@ -2023,16 +2063,35 @@ def copy_plain_record_source(init: TpyExpr, analyzer,
     record's TpyType, or None. Excludes a pointer-local source (`gen_expr_deref`
     would `(*p)`), an Optional-ptr / pointer-variant / tuple source (the other
     `_gen_copy_expr` branches), and a record-ctor arg (its prvalue arm)."""
-    if not isinstance(init, TpyCall):
+    arg = copy_call_arg(init, analyzer)
+    if arg is None:
         return None
-    fi = init.resolved_function_info
-    if fi is None or fi.qualified_name != qnames.COPY or len(init.args) != 1:
-        return None
-    arg = init.args[0]
     if not isinstance(arg, TpyName) or arg.name in pointers:
         return None
     at = analyzer.get_expr_type(arg)
     return at if _f1_record(at, analyzer) else None
+
+
+def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
+    """`copy(T(...))` over a record CONSTRUCTOR argument -- the prvalue arm of
+    `_gen_copy_expr`, which returns the constructor's own render UNCHANGED (a
+    prvalue is already an rvalue, so there is nothing to copy). Returns the
+    inner constructor call, so the consuming sink lowers it exactly as it
+    would the bare `T(...)` source; None when this is not that shape.
+
+    The peel is sound only because the render is literally identical -- the
+    copy-CONSTRUCT arm (`copy_plain_record_source`) spells `T(x)` and must
+    never come through here."""
+    arg = copy_call_arg(e, analyzer)
+    if arg is None:
+        return None
+    if not isinstance(arg, TpyCall) or not isinstance(arg.func, TpyName):
+        return None
+    # `_gen_copy_expr` keys the prvalue arm on the registry lookup of the
+    # callee NAME, not on the resolved fi -- mirror that exactly.
+    if analyzer.registry.get_record(arg.func_name) is None:
+        return None
+    return arg
 
 
 def _free_callee_kind(e: TpyCall, analyzer, *,
@@ -2802,6 +2861,8 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _dyn_own_handle_arg(a, ptype, locals_, analyzer) is not None
             or _dyn_own_conformer_arg(a, ptype, locals_, analyzer) is not None
             or _none_value_opt_arg(a, ptype, analyzer) is not None
+            or _value_opt_pass_through_arg(a, ptype, locals_,
+                                           narrowed, analyzer)
             or _protocol_slot_arg(a, ptype, locals_, analyzer,
                                   temps_ok=temps_ok)
             # A tuple LITERAL at a tuple param slot: the borrow/value tuple

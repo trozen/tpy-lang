@@ -615,7 +615,11 @@ class TestTryGateRejections:
         )
         assert not self._rejected(src, "f")
 
-    def test_nonvalue_hoist_rejected(self):
+    def test_nonvalue_hoist_routes(self):
+        # A single-bind non-value hoist now takes the OPTIONAL_STORAGE predecl
+        # the if cascade and the with family already carried; the reassigned /
+        # borrow-only pointer flavor still rejects (see
+        # test_thir_wave_try_hoist_nonvalue.py).
         src = (
             "def f() -> None:\n"
             "    try:\n"
@@ -625,7 +629,8 @@ class TestTryGateRejections:
             "        print(0)\n"
             "f()\n"
         )
-        assert self._rejected(src, "f")
+        assert not self._rejected(src, "f")
+        _assert_byte_identical(src)
 
     def test_fresh_hoist_in_branch_rejected(self):
         src = (
@@ -719,12 +724,12 @@ class TestExcConstruction:
         r = [s for s in _fn(thir, "f").body if isinstance(s, THIRRaise)][0]
         assert isinstance(r.raise_expr, THIRName) and r.raise_expr.deref
 
-    def test_raise_expr_in_error_return_body_defers(self):
-        # `raise <expr>` is conservatively kept off the THIR path in an
-        # @error_return body (the emit is actually identical -- a later widening
-        # can route it; see TODO). Guard companion to the resumable-frame defer
-        # pinned in test_thir_resumable.
-        thir = _lower_ctx(
+    def test_raise_expr_in_error_return_body_routes(self):
+        # `raise <expr>` renders `<expr>.__raise__();` identically in an
+        # @error_return body -- the guard that used to reject it was
+        # conservative, not required (TODO's exceptions-trio item (1)).
+        # Companion to test_thir_resumable's resumable-frame pin.
+        src = (
             _EXC
             + "from tpy import error_return, ReturnException\n"
             + "class MyErr(Exception, ReturnException):\n    pass\n"
@@ -733,7 +738,9 @@ class TestExcConstruction:
             + "    e = AppError(code)\n"
             + "    raise e\n"
             + "    return 0\n")
-        assert _fn(thir, "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     # Native-exception ctor-into-var routing (`e = ValueError("x")` ->
     # `::tpy::ValueError e = ::tpy::ValueError(...)`): only the 2-arg

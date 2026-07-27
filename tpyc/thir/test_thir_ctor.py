@@ -550,17 +550,20 @@ class TestConstructor:
             + "def main():\n    d = Derived(7)\n    print(d.a + d.b)\nmain()\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def test_non_scalar_field_is_ineligible(self):
-        # A Span field is outside the MIL slice (a Span aliasing a MIL source
-        # is a lifetime shape the slice does not open -- `_mil_container_field`
-        # keeps it out; value-repr Optional scalars route via their own arm,
-        # see TestCtorMilSmallFamilies).
+    def test_span_field_copies_the_view_bare(self):
+        # A Span field from a SAME-TYPED span param is the bare view copy
+        # (`: xs(xs)`) -- borrow and storage coincide for a view. The lifetime
+        # question this row used to be held back for (the field aliasing
+        # whatever the caller's span pointed at) is identical on both paths
+        # and belongs to the borrow checker, not to codegen; the render is
+        # byte-identical, pinned in test_thir_wave_mil_views.py along with the
+        # non-exact-type source that still defers.
         ctor = _lower_ctor(
             "from tpy import Int32, Span\n"
             + "class S:\n    xs: Span[Int32]\n"
             + "    def __init__(self, xs: Span[Int32]):\n        self.xs = xs\n",
             "S")
-        assert ctor is None
+        assert ctor is not None
 
     def test_bigint_field_routes(self):
         # A BigInt field rides the scalar MIL arm (`: n(n)`) -- BigInt is an
@@ -1303,15 +1306,17 @@ class TestCtorMilSmallFamilies:
             " : s(s ? std::make_optional(std::string(*s)) : std::nullopt) {}\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def test_value_optional_field_inner_param_stays_ast(self):
+    def test_value_optional_field_inner_param_absorbs(self):
         # A bare `Int32` param into an `Int32 | None` field takes optional's
-        # converting ctor -- outside the exact same-type pin, stays AST.
-        ctor = _lower_ctor(
-            _PRELUDE
-            + "class H:\n    value: Int32 | None\n"
-            + "    def __init__(self, value: Int32):\n        self.value = value\n",
-            "H")
-        assert ctor is None
+        # converting ctor, so the cell is the BARE `value(value)` -- the same
+        # render as the same-typed optional param, no wrap on either path.
+        src = (_PRELUDE
+               + "class H:\n    value: Int32 | None\n"
+               + "    def __init__(self, value: Int32):\n        self.value = value\n")
+        ctor = _lower_ctor(src, "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : value(value) {}\n"
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_callable_field_param_copy_routes(self):
         # A std::function field <- same-typed callable param: bare copy.

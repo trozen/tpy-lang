@@ -36,12 +36,15 @@ from ...parse.nodes import (
     TpySlice,
     TpyStrLiteral,
     TpySubscript,
+    TpyTupleLiteral,
     TpyUnaryOp,
     TpyVarDecl,
+    TupleElemCapture,
 )
 from ...modules.defs import get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...typesys import (
+    RecursiveAliasInstanceType,
     AliasRef,
     AnyType,
     CONST_PARAMS_METHODS,
@@ -135,6 +138,7 @@ from ...codegen_cpp.protocols import (
     record_inherits_dynamic,
 )
 from ...compilation_context import get_current_compiler
+from ...qnames import COPY as COPY_QNAME
 from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
@@ -2669,6 +2673,37 @@ def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
     return bool(_resolved_scalar(at, analyzer) or _eligible_char(at)
                 or _eligible_enum(at, analyzer) is not None)
 
+def _value_opt_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                locals_: dict[str, TpyType],
+                                narrowed: 'AbstractSet[str]',
+                                analyzer) -> bool:
+    """A whole value-repr `Optional[T]` NAME into a matching value-repr
+    `Optional[T]` param slot (`eq_left(some_a, a)` at a `Char | None` param):
+    `std::optional<T>` is a value type passed BY VALUE, so both paths render
+    the name bare -- no lift, no shim, no temp.
+
+    Exact-slot pin: a differing inner would carry a conversion the bare render
+    does not. NARROWED names are excluded (their read derefs), as are
+    pointer-repr Optionals (`_optional_ptr_arg`'s `T*` lift) and the `None`
+    literal (`_none_value_opt_arg`).
+
+    Scoped to the SCALAR inner so admission matches the lowering row that
+    renders it (`_value_opt_scalar_binding` in `_lower_call_arg`); the
+    str/bytes inners have their own shim rows and would only be admitted here
+    to reject again inside lowering."""
+    if _value_opt_scalar(ptype, analyzer) is None:
+        return False
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    if not isinstance(a, TpyName) or a.name in narrowed:
+        return False
+    at = locals_.get(a.name)
+    if at is None:
+        at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if isinstance(at, TpyType) else None)
+    return (isinstance(at, OptionalType) and not at.uses_pointer_repr()
+            and at == slot)
+
 def _str_literal_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A str LITERAL into a value-repr `Optional[str]` slot
     (`Info("Alice")` into `str | None` -- the total=False TypedDict ctor
@@ -3606,6 +3641,57 @@ def _container_enum_spell(t: 'TpyType | None', analyzer) -> bool:
 
     return any(has_enum(a) for a in getattr(u, "type_args", ()) or ())
 
+def _unbound_self_field_ok(e: TpyExpr) -> bool:
+    """`BaseN.field` inside a method of a descendant -- sema's unbound-self
+    field access (`unbound_self_parent_type` set), which `_gen_field_access`
+    renders through a receiver-INDEPENDENT early return,
+    `this->{parent.to_cpp()}::{field}`. The syntactic class-name receiver has
+    no value type at all, so none of the receiver-shape rows can describe it;
+    this is its own admission, deliberately NOT a row inside
+    `_field_receiver_ok` (whose 70-odd callers read the receiver binding).
+
+    Every other field marker takes its own AST emit path and is excluded:
+    property / dyn-attr are tested BEFORE the unbound-self return, module-var
+    / class-constant after it, and a deref chain or Optional null-check would
+    wrap a render this arm spells whole.
+
+    The receiver SPELLING (`this` vs a resumable frame's `__self`) is the
+    lowering arm's check, not admission's -- the AST hardcodes `this->`."""
+    if not isinstance(e, TpyFieldAccess) or e.unbound_self_parent_type is None:
+        return False
+    # A @native field RENAME is excluded: `_gen_field_access` computes
+    # `cpp_field` from the source name BEFORE its `native_field_name`
+    # override, and the unbound-self early return sits between the two -- so
+    # the AST spells the UNRENAMED member there and emits uncompilable C++
+    # (BUGS.md). Routing would silently "fix" it into a divergence, so the
+    # shape keeps falling back until the AST arm is corrected.
+    if e.native_field_name is not None:
+        return False
+    return not (e.module_var_access is not None
+                or e.class_constant_owner is not None
+                or e.property_getter_call is not None
+                or e.dyn_getattr_call is not None
+                or e.property_setter_call is not None
+                or e.dyn_setattr_call is not None
+                or e.deref_depth
+                or e.deref_narrowed_to is not None
+                or e.needs_optional_runtime_check)
+
+def _field_receiver_or_unbound_self_ok(e: TpyExpr,
+                                       declared: dict[str, TpyType],
+                                       analyzer) -> bool:
+    """`_field_receiver_ok` OR the unbound-self form -- the receiver set every
+    row shares whose render is `recv.field` / `recv->field` / the
+    base-qualified `this->BaseN::field`, all of which the field-write and
+    value-read arms spell the same way after the receiver.
+
+    Written once so a future receiver-shape row cannot forget to OR the
+    unbound-self case in; `_field_receiver_ok` itself stays narrow because its
+    ~75 other callers read the receiver BINDING, which an unbound-self access
+    does not have."""
+    return (_field_receiver_ok(e, declared, analyzer)
+            or _unbound_self_field_ok(e))
+
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """`e` is a plain field access `recv.field` off an F1-record receiver (a record
     param, REF_ALIAS local, or F2 plain `T*` pointer-local in `declared`) or a
@@ -3639,9 +3725,10 @@ def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
     the read (the str-family return slot, a print / f-string arg). A `String`
     field resolves INSIDE the slice but is excluded here by the
     `is_str_type`/`is_str_view_type` filter below -- its owned form has no
-    view sink to convert at."""
+    view sink to convert at. An unbound-self `BaseN.field` read joins the
+    row: its render is the same bare member read behind a fixed qualifier."""
     if not (isinstance(e, TpyFieldAccess)
-            and _field_receiver_ok(e, declared, analyzer)):
+            and _field_receiver_or_unbound_self_ok(e, declared, analyzer)):
         return False
     st = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
     return st is not None and (is_str_type(st) or is_str_view_type(st))
@@ -3653,9 +3740,10 @@ def _bytes_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
     `_str_field_value_read`. An owned `std::vector<uint8_t>` member reads bare
     as STORAGE, a `BytesView` (span) member as BORROW; the render is bare
     `.field` at every position that admits the read (print sink, compare/concat
-    operands, membership needle), byte-identical to the AST path."""
+    operands, membership needle), byte-identical to the AST path. An
+    unbound-self `BaseN.field` read joins the row like its str twin."""
     if not (isinstance(e, TpyFieldAccess)
-            and _field_receiver_ok(e, declared, analyzer)):
+            and _field_receiver_or_unbound_self_ok(e, declared, analyzer)):
         return False
     bt = _resolved_bytes_value(analyzer.get_expr_type(e), analyzer)
     return bt is not None and (is_bytes_type(bt) or is_bytes_view_type(bt))
@@ -3893,13 +3981,84 @@ def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
     t = declared.get(e.name)
     return isinstance(t, OptionalType) and t.uses_pointer_repr()
 
+def _tuple_literal_has_ref_elements(e: TpyTupleLiteral,
+                                    slot: 'TupleType') -> bool:
+    """`_gen_tuple_literal`'s `has_ref_elements` verdict, which picks the
+    BORROW slot ladder (`std::tuple<T*, ...>`) over the plain value tuple:
+    any sema-annotated non-VALUE capture, any TypeParamRef slot, or -- with
+    no annotation at all -- any element slot that is neither a value type nor
+    an `Own[...]`. Mirrored here so the container-element and field-write arms
+    split on the same fact the AST does."""
+    if e.elem_capture:
+        return any(c is not TupleElemCapture.VALUE for c in e.elem_capture)
+    return any(isinstance(t, TypeParamRef)
+               or (not t.is_value_type() and not isinstance(t, OwnType))
+               for t in slot.element_types)
+
+
+def _tuple_elem_slots_ptr_optional(slot: 'TupleType') -> bool:
+    """Every non-value element slot of `slot` is a pointer-repr `Optional`.
+
+    `_tuple_literal_slot_info` forces REF (non-const) for those so the slot
+    shape stays uniform, but sends any OTHER non-value simple lvalue to
+    CONST_REF in a storage context -- a rule `_lower_borrow_tuple_literal`
+    does not carry. Restricting the container-element borrow arm to the
+    all-Optional shape keeps it on the branch both ladders agree on; the
+    plain-record member (`const T*` on the AST path) stays AST."""
+    def elem_ok(t: TpyType) -> bool:
+        if t.is_value_type():
+            return True
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        return isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+
+    return all(elem_ok(t) for t in slot.element_types)
+
+
+def copy_call_arg(e: TpyExpr, analyzer) -> 'TpyExpr | None':
+    """The single argument of a `copy(x)` builtin call, or None.
+
+    The three `_gen_copy_expr` mirrors (`copy_plain_record_source`,
+    `copy_ctor_rvalue_source`, `copy_ptr_optional_peel`) each discriminate a
+    DIFFERENT branch of that emit, but they share this entry test -- keeping
+    it in one place stops the guard itself from drifting between them."""
+    if not isinstance(e, TpyCall):
+        return None
+    fi = e.resolved_function_info
+    if (fi is None or fi.qualified_name != COPY_QNAME
+            or len(e.args) != 1 or e.kwargs):
+        return None
+    return e.args[0]
+
+
+def copy_ptr_optional_peel(e: TpyExpr, analyzer) -> 'TpyExpr | None':
+    """`copy(x)` where `x` is a pointer-repr `Optional` -- `_gen_copy_expr`'s
+    identity early return, which hands `gen_expr(arg)` straight back and makes
+    no copy at all (the borrow `T*` reaches the sink unchanged; the sink's own
+    storage lift is what copies). Returns the inner expression so consumers
+    render the bare argument; None when this is not that shape."""
+    arg = copy_call_arg(e, analyzer)
+    if arg is None:
+        return None
+    at = analyzer.get_expr_type(arg)
+    return (arg if isinstance(at, OptionalType) and at.uses_pointer_repr()
+            else None)
+
+
 def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                                  pointers: set[str], analyzer) -> bool:
     """An optional-field write `recv.field = <value>`: the target is a pointer-repr
     `Optional[record]` field off an F1-record receiver and the value is either a
     bare borrow `T*` local (`recv.field = ::tpy::ptr_to_optional[_move](p)`, copy
-    or move per last-use) or a `None` literal (`recv.field = std::nullopt`). The
-    `copy()`-acknowledged and call/rvalue value sources stay on the AST path."""
+    or move per last-use), a `None` literal (`recv.field = std::nullopt`), a
+    CALL returning the same pointer-repr Optional (a borrow `T*` rvalue taking
+    the same lift -- `h.value = ptr_to_optional(find_point(pts, 1))`), or a
+    FIELD read of the same Optional (already `std::optional<T>` STORAGE, so it
+    copies bare). The generic tail picks lift-vs-bare off the LOWERED form, so
+    both new rows share one emit.
+
+    A `copy()` wrapper peels first: for a pointer-repr Optional argument
+    `_gen_copy_expr` is the identity, so `copy(src)` and `src` render the
+    same string."""
     target = stmt.target
     if not _field_receiver_ok(target, declared, analyzer):
         return False
@@ -3908,8 +4067,21 @@ def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return False
     if not _f1_record(ftype.inner, analyzer):
         return False
-    return (isinstance(stmt.value, TpyNoneLiteral)
-            or _is_borrow_ptr_local(stmt.value, declared, pointers))
+    value = copy_ptr_optional_peel(stmt.value, analyzer) or stmt.value
+    if isinstance(value, TpyNoneLiteral) or _is_borrow_ptr_local(
+            value, declared, pointers):
+        return True
+    if not isinstance(value, (TpyCall, TpyMethodCall, TpyFieldAccess)):
+        return False
+    # Same-Optional sources only: a differing inner would need a conversion
+    # neither the bare copy nor the plain lift carries.
+    vt = analyzer.get_expr_type(value)
+    if not (isinstance(vt, OptionalType) and vt.uses_pointer_repr()
+            and vt.inner == ftype.inner):
+        return False
+    if isinstance(value, TpyFieldAccess):
+        return _field_receiver_ok(value, declared, analyzer)
+    return True
 
 def _is_borrow_tuple_source(e: TpyExpr, declared: dict[str, TpyType],
                             storage_tuple_locals: set[str], analyzer) -> bool:
@@ -3931,9 +4103,37 @@ def _f1_tuple_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     target = stmt.target
     if not _field_receiver_ok(target, declared, analyzer):
         return False
-    if _f1_tuple(analyzer.get_expr_type(target), analyzer) is None:
+    ft = _f1_tuple(analyzer.get_expr_type(target), analyzer)
+    if ft is None:
         return False
+    # A tuple LITERAL renders the spelled value-form brace-init and the
+    # assign wraps it (`tuple_to_storage<S>(std::tuple<..>{std::move(a), ..})`
+    # -- `_maybe_wrap_tuple_to_storage` over `_gen_tuple_literal`'s
+    # all-VALUE-elements path). The REF-element ladder spells its slots
+    # differently and stays out.
+    if isinstance(stmt.value, TpyTupleLiteral):
+        return (len(stmt.value.elements) == len(ft.element_types)
+                and not _tuple_literal_has_ref_elements(stmt.value, ft))
     return _is_borrow_tuple_source(stmt.value, declared, storage_tuple_locals, analyzer)
+
+
+def _value_tuple_field_literal_write_ok(stmt: TpyAssign,
+                                        declared: dict[str, TpyType],
+                                        analyzer) -> bool:
+    """A VALUE-tuple field written from a tuple LITERAL (`s.auth = ("u", "p")`
+    -> `s.auth = std::tuple<std::string, std::string>{"u", "p"};`): borrow and
+    storage coincide for a value tuple, so the spelled brace-init assigns
+    directly with no `tuple_to_storage` wrap -- the F3 sibling's lift is what
+    distinguishes them."""
+    if not isinstance(stmt.value, TpyTupleLiteral):
+        return False
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return False
+    vt = _value_tuple(analyzer.get_expr_type(stmt.target), analyzer)
+    if vt is None:
+        return False
+    return (len(stmt.value.elements) == len(vt.element_types)
+            and not _tuple_literal_has_ref_elements(stmt.value, vt))
 
 def _param_const_verdict(name: str, func: TpyFunction, analyzer,
                          record_name: str | None, attr: str) -> bool:
@@ -4698,13 +4898,59 @@ def _ru_alias_copyable(et: 'AliasRef', analyzer) -> bool:
     return not any(_cpp_noncopyable_type(m, analyzer)
                    for m in alias.members if not is_void_like_type(m))
 
+def _ru_instance_literal_ok(a: TpyExpr, analyzer) -> bool:
+    """A list/dict literal whose sema type involves a GENERIC recursive-alias
+    INSTANCE -- the generic sibling of `_ru_container_literal_ok`, whose
+    literals type as `list[AliasRef]`.
+
+    Two shapes, because sema types the outer and the nested literals
+    differently: the OUTER literal at a `Tree[int]` slot types AS the wrapper
+    (`Tree[int]`), while a NESTED one types as the container of wrappers
+    (`list[Tree[int]]`). Both render the same way -- the AST spells the
+    container of wrapper members -- so the lowering synthesises the container
+    only for the first. Element rules are shared with the non-generic arm."""
+    at = analyzer.get_expr_type(a)
+    at = resolve_pending_container(at, analyzer) or at
+    if isinstance(at, RecursiveAliasInstanceType):
+        pass
+    elif isinstance(a, TpyArrayLiteral) and is_list(at):
+        args = getattr(at, "type_args", None)
+        if not (args and isinstance(args[0], RecursiveAliasInstanceType)):
+            return False
+    elif isinstance(a, TpyDictLiteral) and is_dict(at):
+        args = getattr(at, "type_args", None)
+        if not (args and len(args) > 1
+                and isinstance(args[1], RecursiveAliasInstanceType)):
+            return False
+    else:
+        return False
+    # A `None` element is EXCLUDED here, unlike the non-generic arm: the
+    # wrapper's monostate render keys on the element's result type being the
+    # UnionType, and an alias INSTANCE renders `nullptr` instead of
+    # `std::monostate{}`. Probe-verified divergence -- re-admit only with the
+    # instance's underlying union threaded into `_lower_ru_elem`.
+    def elem_ok(x: TpyExpr) -> bool:
+        return not isinstance(x, TpyNoneLiteral) and _ru_elem_ok(x, analyzer)
+
+    if isinstance(a, TpyArrayLiteral):
+        return all(elem_ok(x) for x in a.elements)
+    if isinstance(a, TpyDictLiteral):
+        return (all(isinstance(k, TpyStrLiteral) for k in a.keys)
+                and all(elem_ok(v) for v in a.values))
+    return False
+
+
 def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
     """One recursive-union container element (see `_ru_container_literal_ok`).
     Int literals stay inside int32 so the render is the bare token on both
     paths (a wider literal takes the width-pinned ctor spelling); floats stay
     finite (inf/nan take their own spellings)."""
     if isinstance(x, (TpyArrayLiteral, TpyDictLiteral)):
-        return _ru_container_literal_ok(x, analyzer)
+        # A nested literal types either way depending on whether the alias is
+        # generic -- `list[AliasRef]` for the plain form, the alias INSTANCE
+        # for `Tree[int]` -- and both render the same nested container.
+        return (_ru_container_literal_ok(x, analyzer)
+                or _ru_instance_literal_ok(x, analyzer))
     if isinstance(x, TpyNoneLiteral):
         return True
     if isinstance(x, TpyIntLiteral):
