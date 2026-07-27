@@ -3332,3 +3332,45 @@ over the two dumps) before pricing the next wave.
 * **Bytes loop elements** resolve through the shared view-family resolver
   before spelling, the same resolution the str element already took -- a
   `PendingViewType` element reached the binding unresolved and diverged.
+
+#### CORRECTION + design round: the `lc.pointers` question (2026-07-27)
+
+The wave's closing note priced `_optional_ptr_borrow` at ~111 units and
+paired it with the borrow-tuple-literal return (44) as "one shared root
+cause", on the evidence that both experiments diverged on
+`ptr_optional_collapse` and `tuple_readonly_return`.
+
+**That overlap was a bookkeeping error and the pairing is withdrawn.**
+Re-probed directly under the widening, those two cases are byte-IDENTICAL;
+they were the RETURN experiment's divergences, mis-attributed. The
+`_optional_ptr_borrow` widening diverges on exactly one case,
+`union_recursive_optional` -- and that site never reads `lc.pointers`. Its
+lossy proxy is `lc.narrow.narrowed` standing in for the AST's `already_union`
+disjunction (`codegen_cpp/expressions.py:366`), a set Optional `is None`
+narrowing never populates.
+
+What the round established instead:
+
+* **`_optional_ptr_borrow` is ~13 direct units and ZERO flips**, measured
+  base-vs-widened over 170 candidate cases (400 -> 387). ~90% of the tag
+  family is interlocked. It is an enabler, not a lever -- never price it
+  standalone.
+* **The borrow-tuple ladder's real defect is a MISSING DISJUNCT, not a
+  set-population difference.** The AST's `is_already_pointer_source`
+  (`codegen_cpp/context.py:2971`) is `is_indirect_name(expr) OR
+  isinstance(get_expr_type(expr), PtrType)`; THIR mirrors only the first.
+  `ctx.pointer_locals` is empty on the AST side at the failing site too, so
+  position has nothing to do with it. Filed in BUGS.md as a LIVE THIR-only
+  defect (a `Ptr[T]` name in a borrow-form tuple literal emits `&(p)` ->
+  `Node**` into a `Node*` slot), reproducing at the CALL-ARG position on
+  master with no corpus witness.
+* **A seed-only repair is inert and worth landing**: making `lc.pointers`'
+  seed + `admission_pointers()` filter faithful to codegen's
+  `seed_param_locals` measured 0 unit change and 0 divergence over 152
+  cases. THIR's set is a deliberately PARTIAL mirror and that narrowness is
+  currently load-bearing as an implicit fence.
+
+**The transferable lesson:** two experiments sharing a failure set is a
+strong signal -- which is exactly why the failure sets must be recorded from
+the probe output, not from memory. A phantom overlap justified a whole design
+round.
