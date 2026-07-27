@@ -1472,7 +1472,8 @@ class StatementGenerator:
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
                     self.ctx.rebind_slots[name] = rebind_slot
-                    self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                    self.ctx.deferred_rebind_slot_decls[rebind_slot] = (
+                        f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                 else:
                     self.ctx.rebind_slots[name] = init_slot
                 deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field,
@@ -1546,7 +1547,7 @@ class StatementGenerator:
         # None literal -> set to nullptr (Optional/Ptr) or monostate (Union)
         if isinstance(init, TpyNoneLiteral):
             if isinstance(target_type, UnionType):
-                rebind_slot = self.ctx.rebind_slots.get(name)
+                rebind_slot = self.ctx.use_rebind_slot(name)
                 if rebind_slot:
                     is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
                     if is_optional_slot:
@@ -1568,7 +1569,7 @@ class StatementGenerator:
         is_name_src = (isinstance(init, TpyName)
                        and self.ctx.needs_optional_to_ptr_lift(init.name))
         if is_call_src:
-            rebind_slot = self.ctx.rebind_slots.get(name)
+            rebind_slot = self.ctx.use_rebind_slot(name)
             if rebind_slot is not None:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return (f"{indent}{rebind_slot} = {init_expr};\n"
@@ -1616,7 +1617,7 @@ class StatementGenerator:
             if sub is not None:
                 self._reject_polymorphic_rvalue_into_optional_local(
                     name, target_type, sub, init.loc)
-            rebind_slot = self.ctx.rebind_slots.get(name)
+            rebind_slot = self.ctx.use_rebind_slot(name)
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,
                                                    rebind_slot not in self.ctx.plain_rebind_slots)
@@ -1735,7 +1736,7 @@ class StatementGenerator:
         if self.ctx.is_rvalue_source(stmt.init):
             # Rvalue -> use pre-declared rebind slot
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
-            rebind_slot = self.ctx.rebind_slots.get(stmt.name)
+            rebind_slot = self.ctx.use_rebind_slot(stmt.name)
             if rebind_slot:
                 return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
                         f"{indent}{cpp_name} = ::tpy::to_ptr_variant(*{rebind_slot});\n")
@@ -1866,7 +1867,7 @@ class StatementGenerator:
         straight-line local declares it inline. Reused across rebinds via
         `rebind_slots` so a later owning RHS emplaces into the same slot.
         """
-        existing = self.ctx.rebind_slots.get(name)
+        existing = self.ctx.use_rebind_slot(name)
         if existing is not None:
             return existing, ""
         storage_cpp = unwrap_readonly(unwrap_ref_type(var_type)).to_cpp_stored()
@@ -3450,7 +3451,7 @@ class StatementGenerator:
                               f"{get_expr};\n")
             else:
                 if name in self.ctx.pointer_locals:
-                    rebind_slot = self.ctx.rebind_slots.get(name)
+                    rebind_slot = self.ctx.use_rebind_slot(name)
                     if rebind_slot:
                         is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
                         deref = self._ptr_from_rvalue_slot(
@@ -4541,16 +4542,13 @@ class StatementGenerator:
         emit_finally, terminates = self._make_try_finally_emit(stmt)
 
         def emit_body(o: TextIO, body_indent: str) -> None:
-            # Persistent isinstance aliases declared inside the try body
-            # live in the C++ `try { ... }` scope; restore narrowed_vars +
-            # the alias-name set after the body so the catch/finally and
-            # post-try code don't reference out-of-scope locals.
-            narrowed_saved = dict(self.ctx.narrowed_vars)
-            alias_saved = self.ctx.declared_persistent_aliases.copy()
+            # Locals declared inside the try body (including persistent
+            # isinstance aliases) live in the C++ `try { ... }` scope, so the
+            # catch/finally and post-try code must not see them as declared.
+            body_scope = self.ctx.snapshot_local_scope()
             for s in stmt.try_body:
                 self.gen_stmt(o, s)
-            self.ctx.narrowed_vars = narrowed_saved
-            self.ctx.declared_persistent_aliases = alias_saved
+            self.ctx.restore_local_scope(body_scope)
 
         self._emit_try_with_finally(
             out, inner, stmt, emit_body, emit_finally,
@@ -4622,13 +4620,17 @@ class StatementGenerator:
                 self.ctx.indent_level += 1
                 inner2 = self.ctx.indent()
                 o.write(f"{inner2}auto& {binding} = *{err_opt_var};\n")
+                handler_scope = self.ctx.snapshot_local_scope()
                 for s in handler.body:
                     self.gen_stmt(o, s)
+                self.ctx.restore_local_scope(handler_scope)
                 self.ctx.indent_level -= 1
                 o.write(f"{body_indent}}}\n")
             else:
+                handler_scope = self.ctx.snapshot_local_scope()
                 for s in handler.body:
                     self.gen_stmt(o, s)
+                self.ctx.restore_local_scope(handler_scope)
             self.ctx.in_except_tier = prev_except_tier
 
             o.write(f"{body_indent}{after_label}:;\n")
@@ -4674,11 +4676,11 @@ class StatementGenerator:
             outer_aliases = self.ctx.declared_persistent_aliases.copy()
             o.write(f"{body_indent}try {{\n")
             self.ctx.indent_level += 1
+            body_scope = self.ctx.snapshot_local_scope()
             for s in stmt.try_body:
                 self.gen_stmt(o, s)
+            self.ctx.restore_local_scope(body_scope)
             self.ctx.indent_level -= 1
-            self.ctx.narrowed_vars = dict(outer_narrowed)
-            self.ctx.declared_persistent_aliases = outer_aliases.copy()
             o.write(f"{body_indent}}}")
 
             prev_except_tier = self.ctx.in_except_tier
@@ -4686,20 +4688,24 @@ class StatementGenerator:
                 self._emit_except_handler_header(o, h)
                 self.ctx.indent_level += 1
                 self.ctx.in_except_tier = "throw"
+                handler_scope = self.ctx.snapshot_local_scope()
                 for s in h.body:
                     self.gen_stmt(o, s)
+                self.ctx.restore_local_scope(handler_scope)
                 if has_else:
                     o.write(f"{self.ctx.indent()}goto {after_else_label};\n")
                 self.ctx.in_except_tier = prev_except_tier
                 self.ctx.indent_level -= 1
-                self.ctx.narrowed_vars = dict(outer_narrowed)
-                self.ctx.declared_persistent_aliases = outer_aliases.copy()
                 o.write(f"{body_indent}}}")
 
             o.write("\n")
 
             if has_else:
                 o.write(f"{body_indent}// else:\n")
+                # The else body is NOT scope-revoked here: it emits unbraced in
+                # the enclosing scope, so a fresh post-try declaration would be
+                # jumped over by the handlers' `goto after_else`. Fixing that
+                # needs the body braced -- see BUGS.md.
                 for s in stmt.else_body:
                     self.gen_stmt(o, s)
                 self.ctx.narrowed_vars = dict(outer_narrowed)
@@ -4850,7 +4856,7 @@ class StatementGenerator:
         # unwrap_ref_move already carries the value category (T&& owned, T&
         # borrow), so no extra std::move: it would steal from a borrowed source.
         value = self._error_return_success_expr(tmp)
-        slot = self.ctx.rebind_slots.get(name)
+        slot = self.ctx.use_rebind_slot(name)
         if name in self.ctx.pointer_locals and slot is not None:
             is_optional_slot = slot not in self.ctx.plain_rebind_slots
             rhs = self._ptr_from_rvalue_slot(
@@ -5813,9 +5819,11 @@ class StatementGenerator:
         self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
+        body_scope = self.ctx.snapshot_local_scope()
         for s in stmt.body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
+        self.ctx.restore_local_scope(body_scope)
         self.ctx.indent_level -= 1
 
         self.ctx.narrowed_vars = body_narrowed_snap
@@ -5831,9 +5839,11 @@ class StatementGenerator:
             self.ctx.emit_else_comment(out, stmt.orelse, indent)
             out.write(f"{indent}{{\n")
             self.ctx.indent_level += 1
+            else_scope = self.ctx.snapshot_local_scope()
             for s in stmt.orelse:
                 self.gen_stmt(out, s)
             self.ctx.emit_block_trailing_comments(out, stmt.orelse, self.ctx.indent())
+            self.ctx.restore_local_scope(else_scope)
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}\n")
             out.write(f"{indent}{label}:;\n")
@@ -5897,9 +5907,16 @@ class StatementGenerator:
         if range_counter is not None:
             var = escape_cpp_name(stmt.var)
             out.write(f"{self.ctx.indent()}{var} = {range_counter};\n")
+        # Locals first declared in the body live only in the loop's C++ block;
+        # without revoking them a later assignment at function scope would emit
+        # a bare assign to a name that is out of scope there. A name also used
+        # AFTER the loop is pre-declared before it (sema's pending-loop-var
+        # promotion), so it is in the snapshot and survives the restore.
+        body_scope = self.ctx.snapshot_local_scope()
         for s in stmt.body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
+        self.ctx.restore_local_scope(body_scope)
         self.ctx.indent_level -= 1
         self.ctx.local_scope_names.discard(stmt.var)
         if is_consuming and not stmt.hoist_loop_var:
@@ -6280,9 +6297,11 @@ class StatementGenerator:
             self.ctx.emit_else_comment(out, stmt.orelse, indent)
             out.write(f"{indent}{{\n")
             self.ctx.indent_level += 1
+            else_scope = self.ctx.snapshot_local_scope()
             for s in stmt.orelse:
                 self.gen_stmt(out, s)
             self.ctx.emit_block_trailing_comments(out, stmt.orelse, self.ctx.indent())
+            self.ctx.restore_local_scope(else_scope)
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}\n")
             out.write(f"{indent}{label}:;\n")

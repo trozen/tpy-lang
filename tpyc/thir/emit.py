@@ -418,6 +418,12 @@ class _EmitState:
     # point but its DECL text precedes the whole body (the AST's
     # `pending_hoist_decls`). `emit_thir_body` drains this before the body.
     hoist_lines: list[str] = field(default_factory=list)
+    # Rebind-slot hoist lines held back until a rebind consumes the slot --
+    # mirrors the AST's deferred_rebind_slot_decls. The slot is reserved at the
+    # declaration (a rebind must not emplace over an aliased init value), but a
+    # name whose every assignment is a fresh declaration in its own scope has
+    # no consumer, and emitting it there leaves a dead `std::optional<T>`.
+    deferred_rebind_hoists: dict[int, str] = field(default_factory=dict)
     # False in the generator LEAF emitters (Resumable/SimpleGen), which have no
     # drain point: a producer of `hoist_lines` asserts on it so a future
     # hoisting construct that slips past lowering's defer fails LOUD at the
@@ -1273,6 +1279,16 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
+def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
+    """The rebind slot for `name`, emitting its held-back hoist line."""
+    slot = state.rebind_slots.get(name)
+    if slot is not None:
+        line = state.deferred_rebind_hoists.pop(slot, None)
+        if line is not None:
+            state.hoist_lines.append(line)
+    return slot
+
+
 def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRName):
         # `deref`: an F2 pointer-local read in a value position (a record call
@@ -1321,7 +1337,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             # Reassigned borrow-tuple: the owning slot is allocated once per
             # target (sibling occurrences reuse it, the AST's rebind_slots
             # read) and declared on the named row next to the target.
-            slot_n = state.rebind_slots.get(e.name)
+            slot_n = _use_rebind_slot(state, e.name)
             if slot_n is None:
                 slot_n = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[e.name] = slot_n
@@ -3282,7 +3298,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = rebind
-                state.hoist_lines.append(
+                state.deferred_rebind_hoists[rebind] = (
                     f"std::optional<{stmt.cpp_type}> __slot_{rebind};")
             # Deliberately NO rebind_slots registration without a rebind
             # slot: the THIRAssign rebind-slot emit special-case is keyed on
@@ -3365,7 +3381,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # matching _gen_pointer_local_rebind's order); later rvalue
             # reseats reuse it.
             val_cpp = _emit_expr(stmt.value, state)
-            slot = state.rebind_slots.get(stmt.name)
+            slot = _use_rebind_slot(state, stmt.name)
             if slot is None:
                 slot = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = slot
@@ -3382,7 +3398,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # matching _gen_pointer_local_rebind's gen_expr-then-next_slot
             # order.
             val_cpp = _emit_expr(stmt.value, state)
-            slot = state.rebind_slots.get(stmt.name)
+            slot = _use_rebind_slot(state, stmt.name)
             if slot is None:
                 slot = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[stmt.name] = slot
@@ -3404,9 +3420,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # F2d rebind-slot pointer-local reseat reuses its optional slot:
         # `p = &*(__slot_N = <rvalue>);`.
         if (isinstance(stmt.target, THIRName)
-                and stmt.target.name in state.rebind_slots
                 and stmt.target.name not in state.union_slot_locals
-                and stmt.target.name not in state.btuple_slot_locals):
+                and stmt.target.name not in state.btuple_slot_locals
+                and _use_rebind_slot(state, stmt.target.name) is not None):
             slot = state.rebind_slots[stmt.target.name]
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
                       f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")

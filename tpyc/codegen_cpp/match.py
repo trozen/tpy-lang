@@ -1534,12 +1534,12 @@ class MatchGenerator:
         """
         proto_saved = self.ctx.save_protocol_narrowings()
         lit_saved = self.ctx.save_literal_facts()
-        # Persistent isinstance aliases (assert / early-return) emitted inside
-        # the case body live only in this case's C++ scope; restore both the
-        # alias-name set and narrowed_vars so subsequent cases / post-match
-        # code don't reference out-of-scope aliases.
-        narrowed_saved = dict(self.ctx.narrowed_vars)
-        alias_saved = self.ctx.declared_persistent_aliases.copy()
+        # Locals declared inside the case body (including persistent isinstance
+        # aliases from assert / early-return) live only in this case's C++
+        # scope, so subsequent cases and post-match code must not see them as
+        # declared -- otherwise a later assignment emits a bare assign to an
+        # out-of-scope name.
+        body_scope = self.ctx.snapshot_local_scope()
         if type_facts:
             for var_name, ty in type_facts.items():
                 if isinstance(ty, LiteralType):
@@ -1558,8 +1558,7 @@ class MatchGenerator:
                 for s in body:
                     self.stmts.gen_stmt(out, s)
         finally:
-            self.ctx.narrowed_vars = narrowed_saved
-            self.ctx.declared_persistent_aliases = alias_saved
+            self.ctx.restore_local_scope(body_scope)
             self.ctx.restore_literal_facts(lit_saved)
             self.ctx.restore_protocol_narrowings(proto_saved)
 

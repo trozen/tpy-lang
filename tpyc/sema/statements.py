@@ -4027,6 +4027,7 @@ class StatementAnalyzer:
                 return
 
         # Handle `global x` declarations: treat as reassignment of the global variable
+        prior_block_type: TpyType | None = None
         is_global_declared = stmt.name in self.ctx.func.global_declarations
         if is_global_declared:
             existing_type = self.ctx.global_scope.lookup(stmt.name)
@@ -4051,6 +4052,25 @@ class StatementAnalyzer:
             )
             if is_preregistered_global_write:
                 existing_type = None
+            if existing_type is None:
+                # A local first declared inside a block (loop body, and any
+                # block whose scope is gone by now) is not in the enclosing
+                # scope, so this reads as a fresh declaration -- but it is the
+                # SAME Python local, and one local carries one type. Capture
+                # the earlier type for that check ONLY; adopting it as
+                # `existing_type` would route this decl down the reassignment
+                # path, whose escape analysis then hoists storage the fresh
+                # binding does not need. `match` arms and `try` bodies get the
+                # check for free, since their branch-decls do enter the scope.
+                pending = self.ctx.func.pending_loop_vars.get(stmt.name)
+                if pending is not None and pending[2] is None:
+                    # Body-declared only: a loop VARIABLE's type comes from the
+                    # iterable rather than the user, so a later assignment must
+                    # not be forced to adopt the element type.
+                    prior_block_type = pending[0]
+                else:
+                    prior_block_type = self.ctx.func.first_decl_types.get(
+                        stmt.name)
 
         # Block reassignment of Final globals at module level
         # (inside functions, local shadowing is allowed)
@@ -4398,6 +4418,12 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
+        if (prior_block_type is not None and init_type is not None
+                and not self.compat.is_type_compatible(init_type, prior_block_type)):
+            raise self.ctx.error(
+                f"Type mismatch in reassignment to '{stmt.name}': expected "
+                f"{prior_block_type}, got {init_type}", stmt)
+
         # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
             var_type = self._infer_new_local_type(
@@ -4686,6 +4712,8 @@ class StatementAnalyzer:
         # Track first var_decl for later type updates on reassignment-driven inference.
         if existing_type is None:
             self.ctx.func.var_decl_by_name[stmt.name] = stmt
+            if var_type is not None:
+                self.ctx.func.first_decl_types.setdefault(stmt.name, var_type)
         # Record declared type for test type-annotation validation.
         # Strip Own[T] and Ref[T] for display -- internal annotations, not user-facing.
         if stmt.loc:

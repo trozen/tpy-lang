@@ -1336,6 +1336,13 @@ class CodeGenContext:
     slots: SlotState = field(default_factory=SlotState)
     rebind_slots: dict[str, str] = field(default_factory=dict)
     plain_rebind_slots: set[str] = field(default_factory=set)
+    # Rebind-slot declarations held back until a rebind actually consumes the
+    # slot. The slot is reserved at the declaration site (a later rebind must
+    # not emplace over the init value an alias may hold), but whether any
+    # rebind follows is not known there -- a name whose every assignment is a
+    # fresh declaration in its own scope would otherwise leave a dead
+    # `std::optional<T>` per declaration. Flushed by `use_rebind_slot`.
+    deferred_rebind_slot_decls: dict[str, str] = field(default_factory=dict)
     reassigned_vars: set[str] = field(default_factory=set)
     rvalue_reassigned_vars: set[str] = field(default_factory=set)
     lvalue_reassigned_vars: set[str] = field(default_factory=set)
@@ -1714,6 +1721,7 @@ class CodeGenContext:
         self.slots.reset()
         self.rebind_slots = {}
         self.plain_rebind_slots = set()
+        self.deferred_rebind_slot_decls = {}
         self.reassigned_vars = set()
         self.rvalue_reassigned_vars = set()
         self.lvalue_reassigned_vars = set()
@@ -1777,6 +1785,15 @@ class CodeGenContext:
     def indent(self) -> str:
         """Get current indentation string."""
         return INDENT * self.indent_level
+
+    def use_rebind_slot(self, name: str) -> str | None:
+        """The rebind slot for `name`, emitting its held-back declaration."""
+        slot = self.rebind_slots.get(name)
+        if slot is not None:
+            decl = self.deferred_rebind_slot_decls.pop(slot, None)
+            if decl is not None:
+                self.pending_hoist_decls.append(decl)
+        return slot
 
     def snapshot_local_scope(self) -> LocalScopeSnap:
         """Snapshot the local-variable declaration state (see LocalScopeSnap)."""

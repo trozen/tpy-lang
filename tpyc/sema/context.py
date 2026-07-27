@@ -842,6 +842,10 @@ class FunctionTrackingState:
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
+    # Resolved type of each name's FIRST declaration, kept even after the
+    # declaring block's scope is gone -- a later assignment in an enclosing
+    # scope is the same Python local and must still satisfy the one-type rule.
+    first_decl_types: dict[str, TpyType] = field(default_factory=dict)
 
     # --- Integer value range tracking ---
     value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)

@@ -1,0 +1,1 @@
+main.py:23: warning: 'p' is declared in a loop body; storage hoisted to function scope
