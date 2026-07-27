@@ -1490,6 +1490,15 @@ class PtrSlotKind(Enum):
     # assignment (e.g. global init)" branch, whose `static` and slot prefix
     # both come from the global scope.
     GLOBAL_RVALUE = auto()
+    # The three module-init sibling writes of a NON-VALUE global, all
+    # `_gen_pointer_local_rebind` branches at global scope: a later rvalue
+    # write reusing the slot GLOBAL_RVALUE allocated
+    # (`g = &(__global_slot_N = init);`), a `None` source (`g = nullptr;`),
+    # and a pointer-slot-global source, which is already a `T*` and copies
+    # bare (`g = other;`).
+    GLOBAL_REBIND = auto()
+    GLOBAL_NULL = auto()
+    GLOBAL_PTR_COPY = auto()
 
 
 @dataclass(frozen=True)
@@ -2410,13 +2419,17 @@ class THIRErrorReturnBind(THIRStmt):
 
     `decl_cpp` is the predecl's pre-rendered C++ type (`unwrap_ref_type(
     fi.return_type).to_cpp()`, the AST's spelling), None when the name is
-    already declared (a reassign, or a try-hoisted local). The borrow-
-    aliasing result shape (`_error_return_result_aliases`) and pointer/
-    rebind-slot targets are gate-rejected -- only the plain owned local
-    routes. `name` is raw; emit escapes."""
+    already declared (a reassign, or a try-hoisted local). `ptr_rebind`
+    switches the bind line to a rebind-slot pointer reseat
+    (`<name> = &*(__slot_N = ::tpy::unwrap_ref_move(*__try_tmp_N));`) --
+    `_error_return_assign_to_name`'s `_ptr_from_rvalue_slot` arm. The
+    borrow-aliasing result shape (`_error_return_result_aliases`) and
+    slot-less pointer targets are gate-rejected. `name` is raw; emit
+    escapes."""
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
+    ptr_rebind: bool = False
 
 
 @dataclass(frozen=True)

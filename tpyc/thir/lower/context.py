@@ -100,6 +100,12 @@ class _ExprUse:
     # positions (decl init / arg / return) render the FULL operator expr on
     # the AST path and must keep rejecting.
     literal_fold_ok: bool = False
+    # The module-init pointer-slot-global pass-through write only
+    # (`g = find(xs, k);`): admit a BORROW-returning ptr-repr Optional
+    # result, which is already the `T*` the global slot holds. Every other
+    # consumer of such a result materializes a slot or lifts through
+    # `optional_to_ptr`, so they keep gating on their own rows.
+    ptr_opt_passthrough: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

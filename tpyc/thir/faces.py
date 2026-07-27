@@ -144,6 +144,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "er.raise_args",                # `return make_unexpected(E(args))`
     "er.reraise",                   # bare `raise` in a return-tier handler
     "er.bind",                      # var-decl/assign `__try_tmp_N` block
+    "er.bind_ptr_rebind",           # bind line reseats `&*(__slot_N = ..)`
     "er.discard",                   # expr-stmt `__try_tmp_N` block
     "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
     # No corpus witness (every reaching shape needs a borrow-returning
@@ -702,6 +703,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "fstr.any_arg",
     # `Any is [not] None`: the D15 typeid probe against std::monostate.
     "isnone.any_typeid",
+    "isnone.global_slot",            # `g == nullptr` on the raw slot pointer
     "isnone.union_monostate",        # union-binding `is [not] None` ->
                                      # holds_alternative<std::monostate>
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
@@ -894,6 +896,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # the free-call twin of cond.bool_method).
     "cond.bool_call",
     # Non-identity `_truthy_for_rendered` arms carried by THIRTruthy.
+    "truthy.global_slot",           # ptr-repr Optional global: `!(g)`
     "truthy.nonempty",
     "truthy.is_truthy",
     "truthy.to_bool",
@@ -1351,7 +1354,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # `g = &__global_slot_N;`); `import_init` an import's `__tpy_init()`
     # chain (or its comment-only empty render); `final_skip` a `Final`
     # global, whose definition lives at namespace scope.
+    "top_level.native_global_skip", # `native_global(..)` decl: emits nothing
+    "ret.record_ptr_opt_local",     # `return std::move((*p));`
+    "top_level.global_opt_passthrough",  # `g = <ptr-opt call>;`
+    "call.ptr_opt_passthrough",     # free call at that write
+    "method.ptr_opt_passthrough",   # method call at that write
+    "top_level.global_no_init",     # annotation-only global: emits nothing
     "top_level.global_slot",
+    "top_level.global_slot_reuse",  # `g = &(__global_slot_N = init);`
+    "top_level.global_null",        # `g = nullptr;`
+    "top_level.global_ptr_copy",    # `g = other;` (pointer-slot source)
     "top_level.import_init",
     "top_level.final_skip",
 })

@@ -194,6 +194,7 @@ from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
     _call_ret_union_ok,
+    _ptr_opt_borrow_call_ret,
     _BIGINT_LIT_COERCION,
     _BIGINT_NARROW,
     _eligible_ptr_union,
@@ -572,6 +573,12 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # split that gates a value-slot consumer does not apply here.
               or (allow_whole_optional
                   and _value_opt_rvalue(e, analyzer) is not None)
+              # The module-init pass-through write of a pointer-slot global
+              # (`g = find(xs, k);`): a BORROW-returning ptr-repr Optional
+              # result IS the `T*` the slot holds, so it lands bare.
+              or (use.ptr_opt_passthrough
+                  and _ptr_opt_borrow_call_ret(e, ret)
+                  and _witness("call.ptr_opt_passthrough"))
               or (result is _ExprResultUse.DISCARD
                   and is_void_like_type(ret))
               or (result is _ExprResultUse.ITERABLE
@@ -957,19 +964,20 @@ def _record_ctor_arg_supported(
 def _require_method_call_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
-        temp_args: bool) -> None:
+        temp_args: bool, error_return_ok: bool = False) -> None:
     if not _method_call_arg_ok(
             e, a, ptype, index, declared, lc.analyzer,
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
             param_names=lc.prescan.param_names,
-            tparam_bounds=lc.tparam_bounds):
+            tparam_bounds=lc.tparam_bounds,
+            error_return_ok=error_return_ok):
         raise ThirUnsupported("expr.method_call")
 
 
 def _lower_marker_method_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
-        temp_args: bool) -> THIRExpr:
+        temp_args: bool, error_return_ok: bool = False) -> THIRExpr:
     if isinstance(a, TpyVarargPack):
         # A `*args` pack into a variadic module function (math.hypot(3, 4)):
         # the qualcall arg loop forwards the pack unchanged, rendered via the
@@ -977,7 +985,8 @@ def _lower_marker_method_arg(
         # validates the element shapes and raises otherwise.
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
     _require_method_call_arg(
-        e, a, ptype, index, lc, declared, temp_args=temp_args)
+        e, a, ptype, index, lc, declared, temp_args=temp_args,
+        error_return_ok=error_return_ok)
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args)
 
@@ -2022,11 +2031,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                   lc.analyzer) is not None) or (
             not isinstance(operand, (TpyName, TpyFieldAccess))
             and _value_opt_rvalue(operand, lc.analyzer) is not None)
+        lowered_operand = _lower_expr(
+            operand, lc, declared, allow_whole_optional=True,
+            field_prechecked=is_field)
+        if (isinstance(operand, TpyName)
+                and operand.name in lc.prescan.global_slots
+                and isinstance(lowered_operand, THIRName)):
+            # A pointer-slot global's None test compares the SLOT POINTER
+            # (`g == nullptr`), so this position opts out of the
+            # value-position deref the name arm applies everywhere else.
+            lowered_operand = replace(lowered_operand, deref=False)
+            _witness("isnone.global_slot")
         return THIRIsNone(
             result_type=rtype,
-            operand=_lower_expr(
-                operand, lc, declared, allow_whole_optional=True,
-                field_prechecked=is_field),
+            operand=lowered_operand,
             negate=e.op == "is not",
             value_repr=value_repr,
             form=Form.VALUE,
@@ -4228,9 +4246,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # comprehension begin/end iterable's render); every other admitted
             # arg lowers through the shared call-arg machinery.
             fam = _storage_call_ret(rtype, analyzer)
+            rt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+                       if rtype is not None else None)
             if (not e.args and not e.kwargs and e.double_star_unpack is None
                     and e.subscript_callee is None and not e.type_args
-                    and fam is not None and _storage_call_container(fam)):
+                    and ((fam is not None and _storage_call_container(fam))
+                         # The zero-arg render is the default ctor spelled off
+                         # `call_type` -- it does not read the ELEMENT type, so
+                         # the element-keyed `_storage_call_ret` verdict (which
+                         # exists for the downstream READ shapes) does not gate
+                         # it. Record-element containers route here too; their
+                         # consumers gate themselves.
+                         or (rt_bare is not None
+                             and (is_list(rt_bare) or is_dict(rt_bare)
+                                  or is_set(rt_bare))))):
                 # An EMPTY instantiation (`s = set()` / `list()` / `dict()`,
                 # element type sema-inferred): the spelled default ctor
                 # `::tpy::ordered_set<int32_t>()` -- THIRCtorCall's zero-arg
@@ -5030,7 +5059,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                             and e.resolved_function_info is not None
                             and e.resolved_function_info.is_generator)
             mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen,
-                                   coro_factory_ok=use.coro_factory)
+                                   coro_factory_ok=use.coro_factory,
+                                   error_return_ok=error_return_raw)
             # An F1-record result renders bare under a postfix member
             # (RECEIVER) and, when it is an RVALUE source, directly into the
             # owned-record decl / storage slot (`Rc<A> r = Rc.new_(...);`) --
@@ -5093,7 +5123,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 args=tuple(
                     _lower_marker_method_arg(
                         e, a, mfi.params[i].type, i, lc, declared,
-                        temp_args=temp_args)
+                        temp_args=temp_args,
+                        error_return_ok=error_return_raw)
                     for i, a in enumerate(e.args)),
                 native_name=mk[1] if mk[0] == "native" else None,
                 callee_cpp=callee_cpp,
@@ -5138,7 +5169,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if fi is None or not _plain_method_fi_ok(
                     fi, property_getter_ok=True, property_setter_ok=True,
                     coro_factory_ok=use.coro_factory,
-                    consuming_ok=consuming_ok):
+                    consuming_ok=consuming_ok,
+                    error_return_ok=error_return_raw):
                 note_detail("method.fi_kind")
                 raise ThirUnsupported("expr.method_call")
             if not _call_arity_ok(e, fi):
@@ -5192,6 +5224,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     suspend_ok=(result_use is _ExprResultUse.SUSPEND),
                     iterable_ret_ok=(result_use is _ExprResultUse.ITERABLE),
                     value_opt_ret_ok=allow_whole_optional,
+                    ptr_opt_passthrough=use.ptr_opt_passthrough,
                     narrowed=frozenset(lc.narrow.narrowed))
             if not shape_ok:
                 raise ThirUnsupported("expr.method_call")
@@ -8401,6 +8434,16 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 and isinstance(operand, THIRName)):
             operand = replace(operand, deref=False)
         if mode is None:
+            if (isinstance(e, TpyName) and isinstance(operand, THIRName)
+                    and e.name in lc.prescan.global_slots
+                    and isinstance(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(et))) if et is not None else None,
+                        OptionalType)):
+                # A pointer-repr Optional global is truthy exactly when its
+                # slot pointer is non-null (`!(g)`), so this position opts
+                # out of the value-position deref like the None test does.
+                operand = replace(operand, deref=False)
+                _witness("truthy.global_slot")
             return operand
         deref = (
             mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)

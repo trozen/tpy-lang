@@ -523,6 +523,50 @@ def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
     walk(stmts)
     return out
 
+def _seed_imported_globals(analyzer, cands: dict[str, TpyType],
+                           spelled: dict[str, str], slots: set[str],
+                           *, skip) -> None:
+    """Seed every IMPORTED module variable that reads through a fixed
+    qualified spelling (`imported_variable_cpp`, the AST's own render
+    authority) into `cands`/`spelled`, and the pointer-slot ones into
+    `slots` as well. Shared by function bodies and module init so the two
+    cannot drift on which imported globals are readable and how they spell.
+
+    A name REDEFINED in this module (`top_level_decls`) is never seeded:
+    the local definition wins from its decl line onward, and the reads
+    before it ride `pre_decl_import_cpp`. `skip` adds the caller's own
+    exclusions (params / `global`-declared / sema-hoisted names)."""
+    for n in analyzer.imported_names:
+        if (n in cands or n in analyzer.ctx.top_level_decls or skip(n)):
+            continue
+        cpp = imported_variable_cpp(analyzer.registry,
+                                    analyzer.imported_names, n)
+        if cpp is None:
+            continue
+        src_mod, orig = analyzer.imported_names[n]
+        vi = analyzer.registry.get_module(src_mod).variables[orig]
+        st = _readonly_global_type(vi.type, analyzer)
+        if st is not None and _value_opt_scalar(st, analyzer) is not None:
+            # An IMPORTED value-opt global stays unseeded: the narrowed
+            # (*qualified) render is unverified against the AST's
+            # imported-global deref sites -- same-module only for now.
+            continue
+        if st is None:
+            # An imported pointer-slot global reads through the qualified
+            # spelling with the same slot renders (`(*::tpyapp::mod::g)`);
+            # `vi.is_pointer` is the render authority the AST keys on
+            # (is_indirect_name's imported branch).
+            if (not getattr(vi, "is_pointer", False)
+                    or _pointer_slot_global_type(vi.type, analyzer) is None):
+                continue
+            cands[n] = _pointer_slot_global_type(vi.type, analyzer)
+            slots.add(n)
+            spelled[n] = cpp
+            continue
+        cands[n] = st
+        spelled[n] = cpp
+
+
 def _seed_readonly_globals(
         func: TpyFunction, analyzer, scope: dict[str, TpyType],
         native_globals: 'Mapping[str, str]',
@@ -584,36 +628,9 @@ def _seed_readonly_globals(
         cands[n] = st
         if n in native_globals:
             spelled[n] = qualify_native_name(native_globals[n])
-    for n in analyzer.imported_names:
-        if (n in scope or n in cands or n in global_decls or n in hoisted
-                or n in analyzer.ctx.top_level_decls):
-            continue
-        cpp = imported_variable_cpp(analyzer.registry,
-                                    analyzer.imported_names, n)
-        if cpp is None:
-            continue
-        src_mod, orig = analyzer.imported_names[n]
-        vi = analyzer.registry.get_module(src_mod).variables[orig]
-        st = _readonly_global_type(vi.type, analyzer)
-        if st is not None and _value_opt_scalar(st, analyzer) is not None:
-            # An IMPORTED value-opt global stays unseeded: the narrowed
-            # (*qualified) render is unverified against the AST's
-            # imported-global deref sites -- same-module only for now.
-            continue
-        if st is None:
-            # An imported pointer-slot global reads through the qualified
-            # spelling with the same slot renders (`(*::tpyapp::mod::g)`);
-            # `vi.is_pointer` is the render authority the AST keys on
-            # (is_indirect_name's imported branch).
-            if (not getattr(vi, "is_pointer", False)
-                    or _pointer_slot_global_type(vi.type, analyzer) is None):
-                continue
-            cands[n] = _pointer_slot_global_type(vi.type, analyzer)
-            slots.add(n)
-            spelled[n] = cpp
-            continue
-        cands[n] = st
-        spelled[n] = cpp
+    _seed_imported_globals(analyzer, cands, spelled, slots,
+                           skip=lambda n: (n in scope or n in global_decls
+                                           or n in hoisted))
     if not cands:
         return frozenset(), {}, frozenset()
     scan = scan_reassigned_vars(func.body, pre_declared=set(cands))
@@ -1935,7 +1952,9 @@ def _iter_thir(roots):
 def _rejects_global_slot(node) -> bool:
     """A THIR statement whose emit allocates a `__slot_N` off the shared
     counter. At module scope every slot must spell `static __global_slot_N`,
-    and only GLOBAL_RVALUE is wired for that.
+    and only GLOBAL_RVALUE is wired for that -- its three sibling writes
+    (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL` and
+    `GLOBAL_PTR_COPY` allocate none) call `next_slot()` nowhere.
 
     THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
     block-scoped `__slot_N` at namespace scope leaves the global pointing at a
@@ -1947,7 +1966,9 @@ def _rejects_global_slot(node) -> bool:
     if isinstance(node, THIRPtrLocalDecl):
         return node.kind is not PtrSlotKind.GLOBAL_RVALUE
     if isinstance(node, THIRPtrLocalRebind):
-        return True
+        return node.kind not in (PtrSlotKind.GLOBAL_REBIND,
+                                 PtrSlotKind.GLOBAL_NULL,
+                                 PtrSlotKind.GLOBAL_PTR_COPY)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):
@@ -2013,6 +2034,29 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                                     name)
         if imp is not None:
             lc.pre_decl_import_cpp[name] = (decl_line, imp)
+    # Imported globals this module never redefines read through their fixed
+    # qualified spelling here exactly as they do inside a function body --
+    # the shared seeding keeps the two in step.
+    imported: dict[str, TpyType] = {}
+    imported_cpp: dict[str, str] = {}
+    imported_slots: set[str] = set()
+    _seed_imported_globals(analyzer, imported, imported_cpp, imported_slots,
+                           skip=lambda n: n in declared)
+    declared.update(imported)
+    # Every imported global carries a spelling (`_seed_imported_globals`
+    # writes `spelled[n]` on every branch), so none of them join the
+    # bare-reading `global_readonly` set.
+    lc.prescan.global_cpp = {**lc.prescan.global_cpp, **imported_cpp}
+    lc.prescan.global_slots = lc.prescan.global_slots | frozenset(imported_slots)
+    lc.pointers.update(imported_slots)
+    # A native-linkage global splits its spelling exactly as it does inside a
+    # function body: writes take the BARE C name, reads the `::`-qualified
+    # one (the AST's `native_global_names` write target vs the qualified
+    # read).
+    for name, cname in lc.prescan.native_globals.items():
+        if name in declared:
+            lc.prescan.global_write_cpp[name] = cname
+            lc.prescan.global_cpp.setdefault(name, qualify_native_name(cname))
     emitted: set[str] = set()
     for stmt in carrier.body:
         if isinstance(stmt, TpyImport):

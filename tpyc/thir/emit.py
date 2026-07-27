@@ -1285,6 +1285,9 @@ def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
     if slot is not None:
         line = state.deferred_rebind_hoists.pop(slot, None)
         if line is not None:
+            assert state.hoist_drainable, (
+                "a deferred rebind-slot hoist reached a non-draining leaf "
+                "emitter")
             state.hoist_lines.append(line)
     return slot
 
@@ -3279,6 +3282,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{state.slot_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
             out.write(f"{indent}{name} = &{slot};\n")
+            # A later rvalue write reuses this slot (the AST registers it in
+            # `rebind_slots` at the same point); the slot is plain, not an
+            # optional, so the reseat takes `&(slot = ...)`.
+            state.rebind_slots[stmt.name] = state.slot_counter
             _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot
@@ -3372,6 +3379,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Lvalue-name reseat: address-of the bare storage read.
             out.write(f"{indent}{name} = "
                       f"&({_emit_expr(stmt.value, state)});\n")
+        elif stmt.kind is PtrSlotKind.GLOBAL_NULL:
+            out.write(f"{indent}{name} = nullptr;\n")
+            _witness("top_level.global_null")
+        elif stmt.kind is PtrSlotKind.GLOBAL_PTR_COPY:
+            # Source is another pointer-slot global: already a `T*`, so the
+            # write copies the raw pointer (NOT the value-position deref).
+            out.write(f"{indent}{name} = "
+                      f"{escape_cpp_name(stmt.value.name)};\n")
+            _witness("top_level.global_ptr_copy")
+        elif stmt.kind is PtrSlotKind.GLOBAL_REBIND:
+            # Later rvalue write: reuse the `static __global_slot_N` the
+            # first write allocated (a PLAIN slot, hence `&(slot = ..)`).
+            val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            slot = _use_rebind_slot(state, stmt.name)
+            out.write(f"{indent}{name} = "
+                      f"&({state.slot_prefix}_{slot} = {val_cpp});\n")
+            _witness("top_level.global_slot_reuse")
         elif stmt.kind is PtrSlotKind.INLINE_RVALUE:
             # Slotless local's rvalue reseat: the first allocates the plain
             # block slot in place (value renders before the slot draw,
@@ -3406,7 +3431,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                     f"std::optional<{stmt.val_cpp}> __slot_{slot};")
             out.write(f"{indent}{name} = &*(__slot_{slot} = {val_cpp});\n")
         else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
-            slot = state.rebind_slots[stmt.name]
+            slot = _use_rebind_slot(state, stmt.name)
             out.write(f"{indent}__slot_{slot}.emplace("
                       f"{_emit_expr(stmt.value, state)});\n")
             out.write(f"{indent}{name} = "
@@ -3745,7 +3770,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(f"{indent}{{\n")
         out.write(f"{inner}auto {tmp} = {call_cpp};\n")
         out.write(_er_check_stmt(tmp, inner, state))
-        out.write(f"{inner}{name} = ::tpy::unwrap_ref_move(*{tmp});\n")
+        if stmt.ptr_rebind:
+            slot = _use_rebind_slot(state, stmt.name)
+            out.write(f"{inner}{name} = &*({state.slot_prefix}_{slot} = "
+                      f"::tpy::unwrap_ref_move(*{tmp}));\n")
+            _witness("er.bind_ptr_rebind")
+        else:
+            out.write(f"{inner}{name} = ::tpy::unwrap_ref_move(*{tmp});\n")
         out.write(f"{indent}}}\n")
         _witness("er.bind")
     elif isinstance(stmt, THIRErrorReturnDiscard):

@@ -132,6 +132,7 @@ from ..nodes import (
 )
 from .predicates import (
     _callable_value,
+    _ptr_opt_borrow_call_ret,
     _f1_tuple,
     _arg_ptr_union_slot,
     _bigint_index_disposition,
@@ -4969,7 +4970,8 @@ def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
 
 def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                       generator_ok: bool = False,
-                      coro_factory_ok: bool = False) -> 'tuple[str, str] | None':
+                      coro_factory_ok: bool = False,
+                      error_return_ok: bool = False) -> 'tuple[str, str] | None':
     """Classify a marker-carrying method call whose emit is RECEIVER-LESS --
     module-qualified (`m.f(x)`) or same-module static (`Rec.m(x)`) -- into
     its THIRCall emit kind + pre-rendered payload, the ONE routing fact
@@ -5022,11 +5024,14 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     # judged by the coro-factory arg row (_dyn_own_coro_factory_arg).
     if fi.qualified_name in _SPECIAL_BUILTIN_QNAMES or fi.special_handling:
         return None
-    if (fi.is_consuming or fi.error_return_type is not None
+    if (fi.is_consuming
+            or (fi.error_return_type is not None and not error_return_ok)
             or fi.native_cpp_return_type is not None
             # `coro_factory_ok` lifts ONLY the async-callee reject (the
             # adapter-wrap position consumes the frame whole), mirroring
-            # _free_callee_kind's flag.
+            # _free_callee_kind's flag. `error_return_ok` is the
+            # statement-handled twin: the unwrap belongs to the enclosing
+            # statement, so the call renders as the bare marker call.
             or (fi.is_async and not coro_factory_ok)
             or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter
@@ -5862,7 +5867,8 @@ def _method_call_arg_ok(
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'set[str] | frozenset[str]',
-        tparam_bounds: 'dict | None' = None) -> bool:
+        tparam_bounds: 'dict | None' = None,
+        error_return_ok: bool = False) -> bool:
     if not _plain_member_call_markers_ok(e, targs_ok=True):
         # generator_ok/coro_factory_ok unconditionally: the call-level gate
         # already decided whether the generator/async fi is admitted
@@ -5877,7 +5883,8 @@ def _method_call_arg_ok(
         kind = (("qualified", "")
                 if (_ptr_deref_method_call(e, analyzer) or e.deref_depth)
                 else _marker_call_kind(e, analyzer, generator_ok=True,
-                                       coro_factory_ok=True))
+                                       coro_factory_ok=True,
+                                       error_return_ok=error_return_ok))
         return (kind is not None
                 and _marker_call_arg_ok(
                     a, ptype, kind, locals_, analyzer,
@@ -5994,6 +6001,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  suspend_ok: bool = False,
                                  iterable_ret_ok: bool = False,
                                  value_opt_ret_ok: bool = False,
+                                 ptr_opt_passthrough: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -6221,7 +6229,13 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # A value-repr Optional return at a WHOLE-optional sink
             # (`a.gettimeout() is None` / `== 0.0` -- the has_value /
             # std::optional mixed-compare renders take the bare call).
-            or (value_opt_ret_ok and _value_opt_ret(ret))):
+            or (value_opt_ret_ok and _value_opt_ret(ret))
+            # The module-init pass-through write of a pointer-slot global
+            # (`g = h.find(k);`): a BORROW-returning ptr-repr Optional
+            # result IS the `T*` the slot holds, so it lands bare -- the
+            # free-call row's method twin.
+            or (ptr_opt_passthrough and _ptr_opt_borrow_call_ret(e, ret)
+                and _witness("method.ptr_opt_passthrough"))):
         return note_detail("method.ret_type")
     return True
 

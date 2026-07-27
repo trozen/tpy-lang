@@ -4449,6 +4449,17 @@ def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
         return False
     return isinstance(unwrap_readonly(unwrap_send_sync(rt)), OwnType)
 
+def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
+                             ret: 'TpyType | None') -> bool:
+    """A call whose result is a ptr-repr `Optional[T]` the callee BORROWS
+    (its declared return is not `Own[...]`), i.e. already a `T*` at the call
+    site -- `callee_returns_own_ptr_optional`'s complement, which is what
+    picks the AST's bare pass-through over the slot + `optional_to_ptr`
+    lift."""
+    return (isinstance(ret, OptionalType) and ret.uses_pointer_repr()
+            and not _own_declared_call_ret(e))
+
+
 def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:
     """`is_lvalue_iterable`'s call arm over the admitted iterable calls: an
     `Own[...]` return is a by-value rvalue even though `get_expr_type` strips
@@ -5351,7 +5362,8 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_getter_ok: bool = False,
                         property_setter_ok: bool = False,
                         coro_factory_ok: bool = False,
-                        consuming_ok: bool = False) -> bool:
+                        consuming_ok: bool = False,
+                        error_return_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`) -- `consuming_ok` admits it (set only by the record
     method arm for a bare non-pointer, non-narrowed name receiver, whose
@@ -5364,11 +5376,16 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
     handle-binding position): an async METHOD call is a coroutine-factory
     call spelling like any plain member call; generic factories stay out
     with the free-call arm's reasoning.
+    `error_return_ok` admits a fallible fi -- set only under
+    `error_return_raw`, where a statement-level handler owns the unwrap and
+    the call renders as the bare `std::expected` member call. Expression
+    position keeps rejecting: that render is the statement-expression
+    unwrap, which this arm does not carry.
     `property_getter_ok`/`property_setter_ok` admit the accessor fis -- set
     only by the property read/write delegation, whose `c.prop` -> `c.prop()`
     and `c.prop = v` -> `c.set_prop(v)` render like any plain method."""
     return not ((fi.is_consuming and not consuming_ok)
-                or fi.error_return_type is not None
+                or (fi.error_return_type is not None and not error_return_ok)
                 or fi.native_cpp_return_type is not None
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
                 or (fi.is_async and not coro_factory_ok)

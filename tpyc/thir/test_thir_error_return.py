@@ -5,8 +5,8 @@ the expected pass-through return), the caller side (the statement-level
 statement-expression unwrap in its three dispositions), the return-tier
 try goto dispatch (`__except_N` / `__after_try_N`, the `__err_opt_N` as
 capture, the bare-raise re-raise), and the gate rejections that keep the
-un-mirrored shapes (aliasing borrow results, method-call callees,
-owned-str first-decl binds) on the AST path."""
+un-mirrored shapes (aliasing borrow results, expression-position method
+callees, coerce-wrapped inits, container bind slots) on the AST path."""
 
 from __future__ import annotations
 
@@ -361,11 +361,11 @@ class TestErrorReturnGateRejections:
         )
         assert self._rejected(src, "use")
 
-    def test_method_callee_bind_rejected(self):
-        # A METHOD @error_return callee at a statement bind: the AST
-        # statement handler covers it, so lowering must fall the body back
-        # (`error_return.stmt_shape`), never route it through the
-        # expression-unwrap face.
+    def test_expression_position_method_callee_rejected(self):
+        # A METHOD @error_return callee OUTSIDE the statement handlers (here
+        # a call argument) needs the `__er_N` statement-expression unwrap,
+        # which the plain-method arm does not render: `error_return_ok` is
+        # set only under `error_return_raw`, so this keeps falling back.
         src = (
             _ERR
             + "class Store:\n"
@@ -376,9 +376,11 @@ class TestErrorReturnGateRejections:
             + "        if self.v < 0:\n"
             + "            raise Err\n"
             + "        return self.v\n"
+            + "def twice(n: int) -> int:\n"
+            + "    return n * 2\n"
             + "def use(s: Store) -> int:\n"
             + "    try:\n"
-            + "        v = s.get()\n"
+            + "        v = twice(s.get())\n"
             + "    except Err:\n"
             + "        return -1\n"
             + "    return v\n"
@@ -386,21 +388,44 @@ class TestErrorReturnGateRejections:
         )
         assert self._rejected(src, "use")
 
-    def test_str_first_decl_bind_rejected(self):
-        # An owned-str success bound at a NON-hoisted first decl: the
-        # owned-local read model keys on the hoist machinery, so the
-        # `error_return.bind_slot` gate falls the body back.
+    def test_coerce_wrapped_bind_rejected(self):
+        # `_error_return_stmt_fi` peels a TpyCoerce, but the bind/discard/
+        # return arms admit the bare call node only -- a coerced init keeps
+        # falling back (`error_return.stmt_shape`).
         src = (
             _ERR
+            + "from tpy import Int32\n"
             + "@error_return(Err)\n"
-            + "def name_of(n: int) -> str:\n"
+            + "def small(n: Int32) -> Int32:\n"
             + "    if n < 0:\n"
             + "        raise Err\n"
-            + "    return \"x\"\n"
+            + "    return n\n"
+            + "def use(n: Int32) -> int:\n"
+            + "    try:\n"
+            + "        v: int = small(n)\n"
+            + "    except Err:\n"
+            + "        return -1\n"
+            + "    return v\n"
+            + "print(use(2))\n"
+        )
+        assert self._rejected(src, "use")
+
+    def test_container_bind_slot_rejected(self):
+        # A container success type has no default-constructible predecl slot
+        # whose later reads route off the declared type -- the
+        # `error_return.bind_slot` gate still falls the body back.
+        src = (
+            _ERR
+            + "from tpy import Int32, Own\n"
             + "@error_return(Err)\n"
-            + "def caller(n: int) -> int:\n"
-            + "    s = name_of(n)\n"
-            + "    print(s)\n"
+            + "def items(n: Int32) -> Own[list[Int32]]:\n"
+            + "    if n < 0:\n"
+            + "        raise Err\n"
+            + "    return [n]\n"
+            + "@error_return(Err)\n"
+            + "def caller(n: Int32) -> Int32:\n"
+            + "    xs = items(n)\n"
+            + "    print(len(xs))\n"
             + "    return n\n"
             + "try:\n"
             + "    print(caller(1))\n"
@@ -559,26 +584,33 @@ class TestErrorReturnDeferredGateDetails:
         assert _fn(thir, "h") is None
         assert _fn(thir, "f") is not None  # expression unwrap still routes
 
-    def test_bind_target_gated(self):
-        # A rebind-slot pointer-local target: the unwrap assign would need
-        # the slot re-point machinery.
+    def test_ptr_variant_bind_target_gated(self):
+        # A ptr-variant union local reseats through `to_ptr_variant`, not a
+        # bare slot address -- the rebind-slot bind arm excludes it.
         src = (
             _ERR32
-            + "class Box:\n"
-            + "    v: Int32\n"
-            + "    def __init__(self, v: Int32) -> None:\n"
-            + "        self.v = v\n"
-            + "@error_return(Err)\n"
-            + "def make(n: Int32) -> Own[Box]:\n"
-            + "    if n < 0:\n"
-            + "        raise Err\n"
-            + "    return Box(n)\n"
+            + "class Cat:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.n = 1\n"
+            + "class Dog:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.n = 2\n"
+            + "class Maker:\n"
+            + "    @staticmethod\n"
+            + "    @error_return(Err)\n"
+            + "    def make(n: Int32) -> Own[Cat]:\n"
+            + "        if n < 0:\n"
+            + "            raise Err\n"
+            + "        return Cat()\n"
             + "@error_return(Err)\n"
             + "def caller(n: Int32) -> Int32:\n"
-            + "    b = Box(1)\n"
-            + "    print(b.v)\n"
-            + "    b = make(n)\n"
-            + "    return b.v\n"
+            + "    p: Cat | Dog = Dog()\n"
+            + "    p = Maker.make(n)\n"
+            + "    if isinstance(p, Cat):\n"
+            + "        return p.n\n"
+            + "    return 0\n"
             + "def main() -> None:\n"
             + "    try:\n"
             + "        print(caller(2))\n"
@@ -588,6 +620,45 @@ class TestErrorReturnDeferredGateDetails:
         )
         tags = _fallback_tags(src)
         assert tags.get("body:stmt.var_decl:error_return.bind_target") == 1
+
+    def test_rebind_slot_bind_target_routes(self):
+        # The rebind-slot pointer-local reseat DOES route: the bind line
+        # takes `_ptr_from_rvalue_slot`'s `&*(__slot_N = <unwrap>)` render,
+        # slot reused across reseats.
+        src = (
+            _ERR32
+            + "class Box:\n"
+            + "    v: Int32\n"
+            + "    def __init__(self, v: Int32) -> None:\n"
+            + "        self.v = v\n"
+            + "class Maker:\n"
+            + "    @staticmethod\n"
+            + "    @error_return(Err)\n"
+            + "    def make(n: Int32) -> Own[Box]:\n"
+            + "        if n < 0:\n"
+            + "            raise Err\n"
+            + "        return Box(n)\n"
+            + "@error_return(Err)\n"
+            + "def caller(n: Int32) -> Int32:\n"
+            + "    b: Box | None = None\n"
+            + "    b = Maker.make(n)\n"
+            + "    print(b.v)\n"
+            + "    b = Maker.make(n + 1)\n"
+            + "    if b is None:\n"
+            + "        raise Err\n"
+            + "    return b.v\n"
+            + "def main() -> None:\n"
+            + "    try:\n"
+            + "        print(caller(2))\n"
+            + "    except Err:\n"
+            + "        print(\"err\")\n"
+            + "main()\n"
+        )
+        assert _fn(_lower_ctx(src), "caller") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert cpp.count("b = &*(__slot_1 = ") == 2
+        assert _emit_witnesses(src).get("er.bind_ptr_rebind", 0) > 0
 
     def test_assign_target_gated(self):
         # A field assign target: _error_return_target_assign's non-name arm.
@@ -617,8 +688,10 @@ class TestErrorReturnDeferredGateDetails:
         tags = _fallback_tags(src)
         assert tags.get("body:stmt.assign:error_return.assign_target") == 1
 
-    def test_ret_shape_gated(self):
-        # A METHOD fallible callee in a pass-through return.
+    def test_method_callee_statement_sites_route(self):
+        # A METHOD fallible callee at all three statement-handled sites
+        # (pass-through return, bind, discard): the enclosing statement owns
+        # the unwrap, so the call renders as the bare member call.
         src = (
             _ERR32
             + "class Store:\n"
@@ -630,18 +703,70 @@ class TestErrorReturnDeferredGateDetails:
             + "        if self.v < 0:\n"
             + "            raise Err\n"
             + "        return self.v\n"
+            + "    @error_return(Err)\n"
+            + "    def step(self) -> None:\n"
+            + "        if self.v < 0:\n"
+            + "            raise Err\n"
             + "@error_return(Err)\n"
             + "def read(s: Store) -> Int32:\n"
             + "    return s.get()\n"
+            + "@error_return(Err)\n"
+            + "def bind_and_discard(s: Store) -> Int32:\n"
+            + "    s.step()\n"
+            + "    v = s.get()\n"
+            + "    return v\n"
             + "def main() -> None:\n"
             + "    try:\n"
             + "        print(read(Store(2)))\n"
+            + "        print(bind_and_discard(Store(3)))\n"
             + "    except Err:\n"
             + "        print(\"err\")\n"
             + "main()\n"
         )
-        tags = _fallback_tags(src)
-        assert tags.get("body:stmt.return:error_return.ret_shape") == 1
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read") is not None
+        assert _fn(thir, "bind_and_discard") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "return s.get();" in cpp
+        w = _emit_witnesses(src)
+        assert w.get("er.bind", 0) > 0
+        assert w.get("er.discard", 0) > 0
+
+    def test_str_family_bind_slot_routes(self):
+        # An owned-str / bytes success predecls `std::string s;` before the
+        # unwrap block; every later read routes off the declared type.
+        src = (
+            _ERR32
+            + "@error_return(Err)\n"
+            + "def name_of(n: Int32) -> str:\n"
+            + "    if n < 0:\n"
+            + "        raise Err\n"
+            + "    return \"x\"\n"
+            + "@error_return(Err)\n"
+            + "def blob_of(n: Int32) -> bytes:\n"
+            + "    if n < 0:\n"
+            + "        raise Err\n"
+            + "    return b\"xy\"\n"
+            + "@error_return(Err)\n"
+            + "def caller(n: Int32) -> Int32:\n"
+            + "    s = name_of(n)\n"
+            + "    print(s)\n"
+            + "    print(len(s))\n"
+            + "    b = blob_of(n)\n"
+            + "    print(len(b))\n"
+            + "    return n\n"
+            + "def main() -> None:\n"
+            + "    try:\n"
+            + "        print(caller(1))\n"
+            + "    except Err:\n"
+            + "        print(\"err\")\n"
+            + "main()\n"
+        )
+        assert _fn(_lower_ctx(src), "caller") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "std::string s;" in cpp
 
     def test_ret_slot_gated(self):
         # An Optional return slot: the AST's Optional return arms run BEFORE
@@ -669,6 +794,58 @@ class TestErrorReturnDeferredGateDetails:
         )
         tags = _fallback_tags(src)
         assert tags.get("body:stmt.return:error_return.ret_slot") == 1
+
+
+class TestPtrOptionalRecordReturn:
+    """`return maybe;` where `maybe` is a ptr-repr `Optional[record]` LOCAL
+    at a record return slot: the AST's indirect-name arm derefs the pointer
+    and moves at a movable last use (`return std::move((*maybe));`). The
+    binding sits outside `admission_pointers`, so it reaches the record
+    ladder as a plain name -- the shape every `@model` decoder ends on."""
+
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class P:\n"
+        "    a: Int32\n"
+        "    def __init__(self, a: Int32) -> None:\n"
+        "        self.a = a\n"
+        "def make(a: Int32) -> Own[P]:\n"
+        "    return P(a)\n"
+        "def pick(flag: bool) -> Own[P]:\n"
+        "    hit: P | None = None\n"
+        "    if flag:\n"
+        "        hit = make(1)\n"
+        "    if hit is None:\n"
+        "        return P(0)\n"
+        "    return hit\n"
+        "print(pick(True).a)\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        assert _fn(_lower_ctx(self.SRC), "pick") is not None
+        w = _emit_witnesses(self.SRC)
+        assert w.get("ret.record_ptr_opt_local", 0) >= 1
+
+    def test_byte_identical_and_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert cpp == _cpp(self.SRC, thir=False)
+        assert "return std::move((*hit));" in cpp
+
+    def test_non_record_inner_still_rejects(self):
+        # The arm is RECORD-inner only: a ptr-repr Optional over a container
+        # is a different return slot family.
+        src = (
+            "from tpy import Int32, Own\n"
+            "def pick(flag: bool) -> Own[list[Int32]]:\n"
+            "    hit: list[Int32] | None = None\n"
+            "    if flag:\n"
+            "        hit = [1, 2]\n"
+            "    if hit is None:\n"
+            "        return [0]\n"
+            "    return hit\n"
+            "print(len(pick(True)))\n"
+        )
+        assert _fn(_lower_ctx(src), "pick") is None
 
 
 class TestErrorReturnNestedDef:

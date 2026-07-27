@@ -62,12 +62,14 @@ def _fn(thir, name):
     return next((f for f in thir.functions if f.name == name), None)
 
 
-def _assert_byte_identical(source: str, default_int: str = "Int32"):
+def _assert_byte_identical(source: str, default_int: str = "Int32",
+                           extra_lib_dirs=None):
     """Compile `source` through both codegen paths and assert the emitted
     (.hpp, .cpp) are byte-identical -- the routing contract for a shape a
     reject-unit used to gate."""
     from ..codegen_cpp.context import CodeGenOptions
-    compiler, modules = _compile(source, default_int=default_int)
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
     entry = _entry(modules)
     ast = compiler.generate_code_to_strings(
         entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=False))
@@ -76,7 +78,8 @@ def _assert_byte_identical(source: str, default_int: str = "Int32"):
     assert thir == ast
 
 
-def _top_level(source: str, default_int: str = "Int32"):
+def _top_level(source: str, default_int: str = "Int32",
+               extra_lib_dirs=None):
     """Lower a module's `__tpy_init` body through the REAL generator seeding
     (the global-type map only the generator builds) and return
     (thir_top_level_or_None, face witnesses, fallback tally).
@@ -84,7 +87,8 @@ def _top_level(source: str, default_int: str = "Int32"):
     A routing pin asserts the first is not None; a boundary pin asserts it IS
     None and names the `top_level:` reject in the tally."""
     from ..codegen_cpp.context import CodeGenOptions
-    compiler, modules = _compile(source, default_int=default_int)
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
     entry = _entry(modules)
     ctx = compiler.collect_thir(
         entry, options=CodeGenOptions(emit_source_comments=False,

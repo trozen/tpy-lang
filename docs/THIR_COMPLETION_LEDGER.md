@@ -3085,3 +3085,55 @@ bare store).
   body before the return. An experiment that simply dropped the crossing
   check produced exactly that divergence, which is the cheapest possible
   proof that the rung is scaffolding.
+
+### Error-return + module-init-write wave (2026-07-27): 2264 -> 2099 fallback units
+
+The first wave steered by FALLBACK UNITS rather than case flips, and the two
+metrics disagreed sharply in a way worth recording: routing the
+`@error_return` statement shapes cleared 113 first-reject units but made only
+TWO cases fully clean, because a case flips only when its LAST body routes.
+Units move per body; flips move per case. Steer by both, and never price a
+construct's flips from its first-reject count.
+
+**The @error_return statement sites.** The three statement-handled positions
+(pass-through return, bind, discard) admitted a bare `TpyCall` only, so every
+method or static callee fell its whole body back. The AST render is uniform --
+`_gen_error_return_call` sets `error_return_stmt_handled` and calls
+`gen_expr`, and that flag suppresses the expression-level unwrap for a method
+call exactly as for a free one -- so the mirror is pure admission widening,
+position-scoped to `error_return_raw` through `_plain_method_fi_ok`,
+`_marker_call_kind` and `_method_call_arg_ok`. Expression position keeps
+rejecting: there the render is the `__er_N` statement expression. Three
+sibling rows came with it -- the receiver added to the nested-call gate (a
+method call renders its receiver BEFORE its args, so it consumes the
+statement-handled flag the same way), the str/bytes bind-predecl families, and
+the rebind-slot pointer reseat (`name = &*(__slot_N = <unwrap>);`).
+
+**The module-init write faces.** `_lower_global_slot_write` carried ONE of the
+five module-scope faces of `_gen_pointer_local_rebind`. The other four (slot
+reuse on a later rvalue write, a `None` source, a pointer-slot-global source,
+any rvalue source rather than the two admitted shapes) plus the
+BORROW-returning ptr-Optional pass-through, the annotation-only global decl,
+the `native_global(...)` binding, imported-global reads, `Char` globals and
+the module-scope loop-variable shadow took the top-level component from 141
+to 83.
+
+**Two more consumers of the pointer-slot-global deref rule.** D2's lesson --
+"a rule firing at every value position needs its opt-out list ENUMERATED" --
+recurred twice as soon as the new write faces made those top levels reachable:
+`g is None` compared the DEREF where the oracle compares the slot pointer, and
+a ptr-repr Optional global in truthy position derefed for the same reason
+(`_truthiness_mode` returns None for a pointer-repr Optional, so the IS_TRUTHY
+deref-strip never saw it). Both were caught by byte-identity pins on the newly
+routed cases, not by reasoning. Consumers five and six.
+
+**The native-global spelling.** Routing the `native_global(...)` decl made its
+READS reachable at module scope, where they emitted the bare name against an
+oracle that spells `::`-qualified. A function body already got the split
+spelling; module init did not seed it. The pin caught it -- routing a DECL can
+make an unrelated READ reachable, so a new decl arm needs a byte-identity pin
+that exercises a read.
+
+**Deletion-relevant:** the imported-global seeding is now shared
+(`_seed_imported_globals`), so the function-body and module-init entries
+cannot drift on which imported globals are readable or how they spell.
