@@ -1854,12 +1854,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # routes such a body must gate those facts here (reject or fold).
         _witness("binop.tuple_membership")
         elems = e.right.elements
-        # Multiple evaluations of a non-trivial needle bind to a `__in_lhs` temp
-        # in a statement expression (mirrors _gen_binop's need_temp).
+        # A non-trivial needle binds to a `__in_lhs` temp in a statement
+        # expression (mirrors _gen_binop's need_temp).
         need_temp = (len(elems) > 1
-                     and not isinstance(e.left, (TpyName, TpyIntLiteral,
-                                                 TpyFloatLiteral, TpyStrLiteral,
-                                                 TpyBoolLiteral)))
+                     and not ExpressionGenerator._is_trivial_needle(e.left))
         return THIRTupleMembership(
             result_type=rtype,
             left=_lower_expr(e.left, lc, declared),
@@ -3533,7 +3531,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if e.pairs is None:
             raise ThirUnsupported("expr.chained_compare")
         assert e.pairs is not None
-        if all(ExpressionGenerator._is_simple_expr(c)
+        if all(ExpressionGenerator._is_duplicable_expr(c)
                for c in e.comparators[:-1]):
             # Inline arm of _gen_chained_compare: left-fold the sema pairs with
             # the bare && (resolved None), reproducing `((a < b) && (b < c))`.
@@ -6571,7 +6569,7 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
         if 0 < i < n:
             bound.append(True)
         elif i == 0:
-            bound.append(not ExpressionGenerator._is_simple_expr(all_operands[0]))
+            bound.append(not ExpressionGenerator._is_duplicable_expr(all_operands[0]))
         else:
             bound.append(False)
     return THIRChainedCompareStmtExpr(

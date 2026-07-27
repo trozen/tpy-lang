@@ -3560,13 +3560,14 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once
+- **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once, with the trailing operands short-circuited. An operand that only looks inert -- a `@property` or `__getattr__` access, which is a method call behind field-access syntax -- binds to a temp like any other call rather than being duplicated into both of the pairs it joins. Operand *order* is not yet guaranteed to match CPython's left-to-right when two operands both carry side effects (see BUGS.md).
 - **Working**: `is`, `is not` (identity comparison with `None`, enum values, and bool literals `True`/`False`)
 - **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
 - **Working**: Mixed-sign fixed-int comparisons (e.g. `Int32 < UInt32`, `Int64 >= UInt64`) -- codegen routes through `std::cmp_*` so the result is mathematically correct regardless of value range (no signed-to-unsigned reinterpretation surprises). Sema emits a warning at the comparison site naming both types and suggesting an explicit cast, except when one side is a literal or a literal-seeded local that retro-widens to the other side's type (those resolve to same-sign and don't warn).
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str, tuple literals)
+- Against a tuple literal, `x in (a, b, c)` expands to an `==` OR-chain, so the needle renders once per element. Anything but a name or literal (a call, a `@property` / `__getattr__` access, a field read) binds to a temp first so its access path runs once. The temp aliases rather than snapshots, so an element that assigns to the needle's own storage is still observed -- an evaluation-order gap tracked in BUGS.md, not a property of the temp.
 
 ### Logical
 - **Working**: `and`, `or`, `not`

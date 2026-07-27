@@ -1,0 +1,5 @@
+in range: True calls: 1
+out of range: False calls: 1
+ordered: True order: 123
+short-circuit: False calls: 0
+plain field: True calls: 0

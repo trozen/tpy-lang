@@ -548,6 +548,45 @@ class TestTupleLiteralMembership:
         m = _fn(thir, "f").body[0].value
         assert isinstance(m, THIRTupleMembership) and m.need_temp
 
+    # This site is stricter than the chained compare's duplication check:
+    # anything but a name or literal binds, so a `@property` read AND a plain
+    # field read both take the temp, and only a name inlines.
+    _RECORD = (
+        _PRELUDE
+        + "class P:\n"
+          "    plain: Int32\n"
+          "    def __init__(self) -> None:\n"
+          "        self.plain = 5\n"
+          "    @property\n"
+          "    def probe(self) -> Int32:\n"
+          "        return self.plain\n"
+    )
+
+    def _needle(self, expr: str):
+        src = (self._RECORD
+               + f"def f() -> bool:\n    p = P()\n    return {expr}\n")
+        m = _fn(_lower_ctx(src), "f").body[-1].value
+        assert isinstance(m, THIRTupleMembership)
+        return m
+
+    def test_property_needle_needs_temp(self):
+        assert self._needle("p.probe in (1, 17)").need_temp
+
+    def test_plain_field_needle_also_needs_temp(self):
+        # Duplicable in a chained compare, but not trivial enough here.
+        assert self._needle("p.plain in (1, 17)").need_temp
+
+    def test_name_needle_inlines(self):
+        thir = _lower_ctx(self._RECORD
+                          + "def f() -> bool:\n    p = P()\n    n = p.plain\n"
+                            "    return n in (1, 17)\n")
+        m = _fn(thir, "f").body[-1].value
+        assert isinstance(m, THIRTupleMembership) and not m.need_temp
+
+    def test_property_needle_single_element_inlines(self):
+        # One element renders the needle once, so there is nothing to bind.
+        assert not self._needle("p.probe in (17,)").need_temp
+
     SRC = (
         _PRELUDE
         + "def get_val() -> Int32:\n    return 17\n"

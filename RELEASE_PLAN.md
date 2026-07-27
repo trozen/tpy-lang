@@ -6,7 +6,8 @@ there). When a release ships, delete its section and promote the next one.
 
 ## 0.6.0 must-fix bugs (details in BUGS.md; search the quoted phrase)
 
-- "A chained comparison evaluates a PROPERTY-getter intermediate twice"
+- "A tuple-membership needle is not snapshotted"
+- "A PLAIN re-assignment that widens an inferred-"
 
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 

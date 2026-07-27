@@ -1,0 +1,4 @@
+coerced: True calls: 1
+nested receiver: True calls: 1
+two hidden calls: True calls: 2
+nested needle: True calls: 1

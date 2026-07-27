@@ -1959,12 +1959,8 @@ class ExpressionGenerator:
             if isinstance(expr.right, TpyTupleLiteral):
                 left = self.gen_expr(expr.left)
                 elems = [self.gen_expr(e) for e in expr.right.elements]
-                # For multi-element tuples with non-trivial LHS, bind LHS to a
-                # temp to avoid evaluating it multiple times (side effects).
                 need_temp = (len(elems) > 1
-                             and not isinstance(expr.left, (TpyName, TpyIntLiteral,
-                                                            TpyFloatLiteral, TpyStrLiteral,
-                                                            TpyBoolLiteral)))
+                             and not self._is_trivial_needle(expr.left))
                 if need_temp:
                     conditions = [f"(__in_lhs == {e})" for e in elems]
                     joined = " || ".join(conditions)
@@ -2426,8 +2422,38 @@ class ExpressionGenerator:
         return f"({left_str} {pair.op} {right_str})"
 
     @staticmethod
-    def _is_simple_expr(expr: TpyExpr) -> bool:
-        """Check if an expression is side-effect-free (safe to duplicate).
+    def _is_trivial_needle(expr: TpyExpr) -> bool:
+        """Whether a membership needle may render once per tuple element.
+
+        An ALLOWLIST, where `_is_duplicable_expr` is a denylist -- that is
+        the reason the two stay separate rather than the shapes they happen
+        to disagree on. Nothing reaches this arm unless it is named here, so
+        a node kind or a newly attached call slot binds a temp by default;
+        the denylist admits a field access unless a veto names its slot, and
+        so has to be kept in step with the node.
+
+        (The `__in_lhs` binding is `auto&&`, so on an lvalue it aliases
+        rather than snapshots. It makes the access path run once; it does not
+        make the value stable against an element that assigns to it.)
+        """
+        return isinstance(expr, (TpyName, TpyIntLiteral, TpyFloatLiteral,
+                                 TpyStrLiteral, TpyBoolLiteral))
+
+    @staticmethod
+    def _is_duplicable_expr(expr: TpyExpr) -> bool:
+        """Whether this expression's render may be emitted more than once, or
+        emitted out of source order relative to a sibling operand.
+
+        Answers duplication only. Ordering is a separate question this does
+        NOT settle: a duplicable operand can still be reordered against a
+        sibling that assigns to it, and the membership needle wants a
+        narrower test again (`_is_trivial_needle`).
+
+        A field access is duplicable only when nothing user-written runs
+        behind it -- a property or `__getattr__` access is a method call
+        wearing a field access's node kind (`hidden_call`). The remaining
+        sema markers (module/class-constant access, optional deref checks,
+        deref narrowing) render idempotently and stay duplicable.
 
         TODO: replace with an `is_pure` bit computed during sema and attached
         to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
@@ -2436,30 +2462,35 @@ class ExpressionGenerator:
         inlining still binds a temp for it.
         """
         if isinstance(expr, TpyCoerce):
-            return ExpressionGenerator._is_simple_expr(expr.expr)
+            return ExpressionGenerator._is_duplicable_expr(expr.expr)
         if isinstance(expr, (
             TpyName, TpyIntLiteral, TpyFloatLiteral,
             TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
         )):
             return True
         if isinstance(expr, TpyFieldAccess):
-            return ExpressionGenerator._is_simple_expr(expr.obj)
+            if expr.hidden_call is not None:
+                return False
+            return ExpressionGenerator._is_duplicable_expr(expr.obj)
         return False
 
     def _gen_chained_compare(self, expr: TpyChainedCompare) -> str:
         """Generate chained comparison with hybrid strategy.
 
-        Simple intermediates (names, literals): inline && chain.
-        Complex intermediates (calls, subscripts): lambda IIFE with temp vars.
+        An intermediate joins two pairs, so it renders twice in the inline
+        arm: duplicable intermediates (names, literals, plain field reads)
+        take it, anything else (calls, subscripts, property reads) goes to
+        the statement-expression arm and binds a temp.
         """
         assert expr.pairs is not None
         intermediates = expr.comparators[:-1]
-        if all(self._is_simple_expr(e) for e in intermediates):
+        if all(self._is_duplicable_expr(e) for e in intermediates):
             return self._gen_chained_compare_inline(expr)
         return self._gen_chained_compare_lambda(expr)
 
     def _gen_chained_compare_inline(self, expr: TpyChainedCompare) -> str:
-        """Simple path: all intermediates are pure, desugar to && chain."""
+        """Inline path: every intermediate is duplicable, so desugar to an &&
+        chain that renders each one into both of the pairs it joins."""
         assert expr.pairs is not None
         parts = [self._gen_binop(pair, None) for pair in expr.pairs]
         result = parts[0]
@@ -2615,7 +2646,7 @@ class ExpressionGenerator:
             if 0 < i < n:
                 must_bind = True
             elif i == 0:
-                must_bind = not self._is_simple_expr(all_operands[0])
+                must_bind = not self._is_duplicable_expr(all_operands[0])
             else:
                 must_bind = False  # last operand always inlined
             if must_bind:

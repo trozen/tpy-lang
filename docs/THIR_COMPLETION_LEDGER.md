@@ -1121,7 +1121,7 @@ emit the bare optional) with no guard firing. Make the field guard declared-type
 (symmetric with the name guard) before or with that widening. Still
 deferred: value-semantics `and`/`or` (non-bool result -> `_gen_logical_value` temp+ternary),
 the statement-expr chained arm (a
-non-`_is_simple_expr` intermediate binds `_cmp` temps), bool-literal conditions
+non-`_is_duplicable_expr` intermediate binds `_cmp` temps), bool-literal conditions
 (dead-branch elimination). The incr-36 byte-diff also exposed and closed a latent compare
 gap: the rb=None derived-comparison arm admitted RECORD operands (`not (self <= other)` from
 `@total_ordering` -- the AST derefs `(*this)`); compare operands are now pinned to resolved

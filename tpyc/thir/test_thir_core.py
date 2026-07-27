@@ -4,11 +4,14 @@ contract (THIR codegen == AST codegen for the slice)."""
 
 from __future__ import annotations
 
+import inspect
 import io
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..parse.nodes import TpyCall, TpyExceptHandler, TpyPassStmt, TpyTry
+from ..parse.nodes import (
+    TpyCall, TpyExceptHandler, TpyFieldAccess, TpyPassStmt, TpyTry,
+)
 from .dump import dump_thir
 from .emit import emit_thir_body
 from .lower import _is_len_native, lower_module
@@ -1932,6 +1935,73 @@ class TestChainedCompare:
         fn = _fn(thir, "f")
         assert fn is not None and isinstance(fn.body[0], THIRIf)
         assert fn.body[0].condition.op == "&&"
+
+
+# A `@property` / `__getattr__` read is a method call wearing field-access
+# syntax, so it is NOT duplicable even though the node is a field access.
+# Each pin has its plain-field inverse: forgetting the hidden call and
+# over-rejecting every field read are both silent regressions the corpus
+# byte-diff would report only as churn.
+class TestChainedCompareHiddenCall:
+    SRC = (
+        _PRELUDE
+        + "class P:\n"
+          "    plain: Int32\n"
+          "    def __init__(self) -> None:\n"
+          "        self.plain = 5\n"
+          "    @property\n"
+          "    def mid(self) -> Int32:\n"
+          "        return self.plain\n"
+          "    def __getattr__(self, name: str) -> Int32:\n"
+          "        return self.plain\n"
+          "def side() -> Int32:\n    return 5\n"
+    )
+
+    def test_hidden_call_covers_every_call_slot(self):
+        # The veto is a denylist over a hand-written slot list, so a sixth
+        # `*_call` field added to the node would silently stop being vetoed
+        # and reinstate the double-evaluation. Fail here instead.
+        slots = {f for f in TpyFieldAccess.__dataclass_fields__
+                 if f.endswith("_call")}
+        read = inspect.getsource(TpyFieldAccess.hidden_call.fget)
+        assert slots and {s for s in slots if s in read} == slots, (
+            f"hidden_call does not read {sorted(slots - {s for s in slots if s in read})}")
+
+    def _tail(self, body: str, name: str):
+        fn = _fn(_lower_ctx(self.SRC + body), name)
+        assert fn is not None, f"{name} fell back to the AST path"
+        return fn.body[-1].value
+
+    def test_property_intermediate_binds_temp(self):
+        v = self._tail("def f(a: Int32, c: Int32) -> bool:\n"
+                       "    p = P()\n    return a < p.mid < c\n", "f")
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (False, True, False)
+
+    def test_getattr_intermediate_binds_temp(self):
+        v = self._tail("def f(a: Int32, c: Int32) -> bool:\n"
+                       "    p = P()\n    return a < p.missing < c\n", "f")
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (False, True, False)
+
+    def test_plain_field_intermediate_stays_inline(self):
+        v = self._tail("def f(a: Int32, c: Int32) -> bool:\n"
+                       "    p = P()\n    return a < p.plain < c\n", "f")
+        assert isinstance(v, THIRBinOp) and v.op == "&&"
+
+    def test_property_first_operand_binds_before_intermediate(self):
+        # Without the bind the getter would run AFTER `side()`, the operand it
+        # precedes in source order.
+        v = self._tail("def f(c: Int32) -> bool:\n"
+                       "    p = P()\n    return p.mid < side() < c\n", "f")
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (True, True, False)
+
+    def test_plain_field_first_operand_stays_inline(self):
+        v = self._tail("def f(c: Int32) -> bool:\n"
+                       "    p = P()\n    return p.plain < side() < c\n", "f")
+        assert isinstance(v, THIRChainedCompareStmtExpr)
+        assert v.bound == (False, True, False)
 
 
 

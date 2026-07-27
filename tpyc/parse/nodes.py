@@ -446,6 +446,26 @@ class TpyFieldAccess(TpyExpr):
     native_field_name: Optional[str] = None  # Set by sema: the matched field's native_field() C++ rename (own-fields-first lookup, so a subclass redeclaration shadows an ancestor's rename)
     enum_member_of: Optional[TpyType] = None  # Set by sema: type-level enum member access (Color.RED); the enum NominalType
 
+    @property
+    def hidden_call(self) -> 'TpyMethodCall | None':
+        """The user method this access dispatches to, if any.
+
+        A property or `__getattr__`/`__setattr__`/`__delattr__` access keeps
+        the field-access node kind but renders as a method call, so a
+        consumer reading the node kind alone sees an inert field read.
+        Anything deciding whether a render may be duplicated or reordered
+        has to ask here rather than infer from the node type.
+
+        Covers the write slots too, though no current consumer can see an
+        assignment target: this is the one enumeration, so it enumerates.
+        A slot added to the node and not to this list silently un-vetoes
+        whatever it feeds -- `test_hidden_call_covers_every_call_slot`
+        fails instead.
+        """
+        return (self.property_getter_call or self.property_setter_call
+                or self.dyn_getattr_call or self.dyn_setattr_call
+                or self.dyn_delattr_call)
+
     def children(self) -> list[TpyExpr]:
         return [self.obj]
 
