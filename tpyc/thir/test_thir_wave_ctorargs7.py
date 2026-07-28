@@ -647,16 +647,18 @@ class TestBytearrayTypeCtor:
     def test_argful_bytearray_takes_the_plain_call_path(self):
         # BOUNDARY, and the reason the row is arg-less: `bytearray(n)` and
         # `bytearray(b"..")` never reach the type-ctor arm -- they resolve as
-        # plain calls, so the free-call arg ladder decides them (the sized
-        # form is rejected there today; the bytes form already routes). An
-        # arg rule on this row would therefore be dead code.
+        # plain calls, so the free-call arg ladder decides them (both forms
+        # route there now). An arg rule on this row would be dead code: what
+        # this pins is that the type-ctor face stays UNWITNESSED either way.
         sized = ("from tpy import Int32\n"
                  "def f() -> Int32:\n"
                  "    ba = bytearray(3)\n"
                  "    return len(ba)\n")
         thir, w = _lower_ctx_witnessed(sized)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         assert w.get("call.type_ctor.bytearray", 0) == 0
+        _assert_byte_identical(
+            sized + "def main() -> None:\n    print(f())\nmain()\n")
         from_bytes = ("from tpy import Int32\n"
                       "def f() -> Int32:\n"
                       '    ba = bytearray(b"abc")\n'

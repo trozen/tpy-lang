@@ -3443,3 +3443,88 @@ new rows in the receiver disjunction rather than a row inside
 `_field_receiver_ok` -- the same reasoning the unbound-self arm used one wave
 earlier: ~75 sites read that predicate and most consult the receiver BINDING,
 which a type-param receiver does not have.
+
+- **The arg-row site grind -- `expressions.py:6982`, the free-call arg
+  disjunction** (2026-07-28; commits `b6ac7ace`, `61161a55`, `c5259d50`,
+  `da5fc30e`). The first wave driven by `probe_sites.py` rather than by tag
+  selection: one raise site, its 16 sole-blocker cases ground until 15 no
+  longer reject there. Dial 2610 -> 2617/3611 (+7); `body:expr.call` 209 ->
+  204 units. Eleven new rows -- an int literal at a native fixed-int slot
+  (sema does not coerce a native callee's args, so it keeps IntLiteralType); a
+  `bytearray` name at a `bytearray` slot on both ladders; a borrow-form tuple
+  PARAM name passed bare; a Callable VALUE at a template's `Fn` slot; the
+  temp-free half of the Own cascade on the native ladder; a `self`-capturing
+  lambda inside a simple-generator method; `len()` over a `@property` read and
+  over a module variable; a NAME at a required multi-protocol union; a
+  comprehension inline at a native `Iterable` slot; a `Spannable[T]` coerce;
+  and a two-lvalue ternary at an `Own[T]` slot.
+
+  **A raise-site histogram is the measurement that makes a big tag workable.**
+  `expr.call` carries no `note_detail`, so the residual dump shows it as one
+  opaque 209-unit blob and every previous wave skipped it as "fragmenting". It
+  is not: its sole-blocker cases concentrate into four sites, and the largest
+  one turned out to be thirteen independent rows against a single disjunction
+  -- exactly the multi-cell TRACK shape, none of which is visible from the tag.
+
+  **Absence from a mirrored set is NEVER evidence -- this cost two fixes before
+  the premise itself was abandoned.** The borrow-tuple bare-pass row read "not
+  in `lc.storage_tuple_locals`" as proof of borrow form. First failure: the
+  resumable lane never fills that set (codegen keeps those names in
+  `storage_form_tuple_locals`), so an owning tuple frame local would have
+  passed bare and dropped its `tuple_to_pointer` lift; an existing fence pin
+  caught it and the row was made to decline in that lane. That patch was
+  treating a symptom. Second failure, found when the review's const-tracking
+  finding was probed: a for-each loop var over a storage container is not in
+  the set EITHER, so `peek(it)` rendered bare against an AST that lifts -- a
+  live wrong-value divergence, corpus-invisible because every case with that
+  shape falls back for an unrelated reason. The row now keys on POSITIVE
+  evidence (the name is a pointer-repr tuple param). The general rule: a
+  predicate standing in for one of codegen's `*_locals` sets must test for
+  membership in something, never for absence -- absence conflates "known not to
+  be X" with "this lane does not track X", and the second is the common case.
+
+  **An arm that pays no case and cannot be witnessed should not ship.** Two
+  storage-side lift rows were built here, then removed at review: they flipped
+  nothing (their target still falls back at `subscript.elem.tuple` regardless)
+  and no unit-sized shape witnessed them, so they would have shipped as
+  unpinned admissions in the family that had just produced the wrong render
+  above. Rebuild them with the unified classifier, alongside the element read
+  that actually unblocks the case (TODO.md carries both).
+
+  **A guard broader than its docstring is a latent divergence waiting for a
+  gate widening.** `_protocol_union_ctor_arg` said "CTOR positions only" but
+  keyed on `not method_arg`, which also holds for free calls, and returned the
+  address-of lift for REQUIRED protocol unions. The AST's `_gen_protocol_arg`
+  splits on `has_none` instead -- a required union monomorphizes to one
+  template param and renders the plain value. The arm was unreachable only
+  because the gate rejected those args; widening the gate turned it into a
+  `describe(&(nums))` divergence the corpus byte-diff caught immediately.
+
+  **A render assertion is not a routing pin, and "stays AST" is not a
+  boundary.** Two arms here move the reject one layer DOWN rather than routing
+  the body (module-var `len` -> `field.module_var_type`, ternary -> `expr.ifexpr`).
+  Their first pins asserted the emitted C++, which a fallback reproduces
+  byte-for-byte, so both passed while proving nothing; converting them to
+  `_fn(...) is not None` made them FAIL and exposed the gap. They now assert
+  the fallback REASON, which is the widening's true and complete effect.
+  Symmetrically, three boundary shapes here (bytearray into a `bytes` slot, an
+  unroutable property getter) DO route, so a `stays AST` assertion would pass
+  vacuously -- they assert the reject reason instead. Where no non-vacuous
+  assertion could be constructed (the resumable self-capturing-lambda
+  exclusion, which routes in every shape probed), no pin was written and the
+  gap was filed.
+
+  **A "the row would be dead" comment is a dated claim, not an invariant.**
+  `_coerce_wrap` guarded off the `_SPAN_METHOD_COERCIONS` protocol-actual
+  branch with "protocol params/locals reject upstream, so the row would be
+  dead". A `Spannable[T]` param inside a template body now reaches it, so the
+  row was live and rejecting a case. When a widening lands near such a comment,
+  re-test its premise rather than trusting it.
+
+  **Parked, with its blocker named:** `set/set_comp_owned_move` needs its arg
+  temp emitted INSIDE the comprehension's loop body (`if (is_small(__tmp_2))`).
+  `THIRComprehension` has no per-condition temp sink -- `state.temps.create`
+  flushes at the enclosing statement, outside the stmt-expr entirely, which is
+  the exact bug the case was written to guard. Routing it is a structural
+  addition to the comprehension node, not a gate widening, so it stops here for
+  a design decision.

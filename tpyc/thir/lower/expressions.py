@@ -337,6 +337,7 @@ from .predicates import (
     _subscript_index_and_tuple,
     _subscript_container_recv_type,
     _template_init_call_fi,
+    _view_ctor_bare_source,
     _viewfam_ctor_call_fi,
     _tuple_subscript_value_read,
     _tparam_value,
@@ -410,9 +411,11 @@ from .checks import (
     _container_method_arg_ok,
     _stub_method_ret_ok,
     _native_iterable_iterator_call_arg,
+    _native_iterable_comp_arg,
     _native_iterable_literal_arg,
     _native_protocol_field_arg,
     _borrow_tuple_field_arg,
+    _borrow_tuple_name_arg,
     _container_comp_arg,
     _record_borrow_call_arg,
     _record_elem_subscript_arg,
@@ -459,6 +462,7 @@ from .checks import (
     _native_container_call_arg,
     _native_record_call_arg,
     _optional_ptr_arg,
+    _required_protocol_union_slot,
     _union_member_lift_arg,
     _union_pass_through_arg,
     _union_coerced_literal_arg,
@@ -704,6 +708,12 @@ def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
             slot.inner)))]
     elif isinstance(slot, UnionType):
         members = [m for m in slot.members if not is_void_like_type(m)]
+        if len(members) == len(slot.members):
+            # `_gen_protocol_arg` splits on has_none, NOT on the call kind: a
+            # REQUIRED protocol union monomorphizes to one template param and
+            # takes the plain `gen_expr_deref` render. Only the nullable form
+            # (a None member, or the Optional normalization above) lifts.
+            return None
     else:
         return None
     if not members or not all(
@@ -4355,6 +4365,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     cpp_template=vf_fi.cpp_template,
                     loc=loc,
                 )
+            if _view_ctor_bare_source(e, rtype, declared, analyzer):
+                # A `Span[...]` / `Array[...]` instantiation over a bare
+                # container/view NAME (`Span[readonly[Int32]](lst)` ->
+                # `std::span<const int32_t>(lst)`): a VALUE view, so the AST
+                # spells the target type and direct-initializes it from the
+                # source -- no `make_vector` machinery, which is what the
+                # storage-container gate below exists to reach. There is no
+                # resolved ctor fi, so the arg carries no slot type; a bare
+                # name needs none.
+                _witness("call.view_instantiation")
+                return THIRCtorCall(
+                    result_type=rtype, type_cpp=lc.render_type(e.call_type),
+                    args=tuple(_lower_expr(a, lc, declared) for a in e.args),
+                    form=Form.VALUE, loc=loc)
             inst_fi = _instantiation_call_fi(e)
             if (inst_fi is None or fam is None
                     or not _storage_call_container(fam)):
@@ -5764,6 +5788,31 @@ def _lower_elem_into_any(e: TpyExpr, any_slot: TpyType, lc: '_LowerCtx',
                       form=Form.VALUE, loc=loc)
 
 
+def _borrow_tuple_param_names(lc: '_LowerCtx') -> 'frozenset[str]':
+    """Params whose C++ binding is ALREADY a borrow-form (pointer-repr) tuple
+    -- `const std::tuple<T*, ..>&`. The positive half of the storage-vs-borrow
+    split for tuple NAMES; every other tuple name (loop var, alias local,
+    frame field) is a storage source and needs the `tuple_to_pointer` lift.
+    Mirrors `_borrow_form_tuple_param`'s param scan, which the tuple-unpack
+    arm uses for the same discrimination."""
+    return frozenset(
+        n for n, t in lc.params
+        if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
+                      TupleType)
+        and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        .has_pointer_repr_element())
+
+
+def _self_captures_this(lc: '_LowerCtx') -> bool:
+    """Whether a `self` captured by a LAMBDA spells `this` in the capture
+    list. Both the plain method receiver (`this`) and the simple-generator
+    wrapper (`(*this)`) hold the receiver POINTER, so both capture it that
+    way -- only the body READ spelling differs, and that comes from
+    `lc.self_cpp`. The resumable frame's `__self` member is a different
+    receiver entirely and stays out."""
+    return lc.self_receiver == "self" and lc.self_cpp in ("this", "(*this)")
+
+
 def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
                   declared: dict[str, TpyType]) -> THIRExpr:
     """Lower a lambda expression to `_gen_lambda`'s C++ closure. Params,
@@ -5778,9 +5827,7 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     pointer-repr tuple return arm and the void-body statement render."""
     analyzer = lc.analyzer
     loc = getattr(e, "loc", None)
-    if not _lambda_routable(
-            e, analyzer,
-            self_this=(lc.self_receiver == "self" and lc.self_cpp == "this")):
+    if not _lambda_routable(e, analyzer, self_this=_self_captures_this(lc)):
         raise ThirUnsupported("expr.lambda")
     ret_type = e.inferred_return_type
     params_cpp: list[str] = []
@@ -5806,11 +5853,11 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     if e.captured_names:
         # A captured `self` IS the receiver pointer, so it spells `this` in
         # both capture modes -- alias semantics either way (the AST's
-        # `self_captures_this` arm). The gate admits the shape only where
-        # `self` renders as `this`.
+        # `self_captures_this` arm). The gate admits the shape only where the
+        # receiver IS that pointer (`_self_captures_this`).
         prefix = "" if e.captures_by_value else "&"
         capture = "[" + ", ".join(
-            "this" if (n == lc.self_receiver and lc.self_cpp == "this")
+            "this" if (n == lc.self_receiver and _self_captures_this(lc))
             else f"{prefix}{escape_cpp_name(n)}"
             for n in e.captured_names) + "]"
     else:
@@ -6960,12 +7007,23 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
     if not len_call:
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             ok = _native_call_arg_ok(a, ptype, declared, analyzer)
+            if not ok and _own_move_source_slice(a, ptype, lc, declared):
+                # The temp-free half of the Own-slot cascade also serves a
+                # native/template slot (`unsafe_store(p, 0, pt)` ->
+                # `p[0] = std::move(pt)`): `std::move(name)` is position-
+                # independent, and the Own-slot lowering arm below is
+                # kind-blind. The COPY half stays plain-only (it hoists a
+                # temp the native loop has no flush point for).
+                ok = True  # witnessed at the arm (move.own_last_use)
         else:
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
-                self_this=(lc.self_receiver == "self"
-                           and lc.self_cpp == "this"))
+                self_this=_self_captures_this(lc))
+            if not ok and _borrow_tuple_name_arg(
+                    a, ptype, declared, _borrow_tuple_param_names(lc),
+                    analyzer):
+                ok = True  # witnessed inside the predicate (arg.btuple_name)
             if not ok and _value_opt_member_arg(a, ptype, declared, analyzer):
                 ok = _witness("call.optval_member")
             if not ok and _optional_ptr_container_arg(
@@ -7007,6 +7065,18 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                                         allow_temps=temp_args))
     plain_kind = kind is None or kind[0] not in ("native", "native_c",
                                                  "template")
+    if not plain_kind:
+        comp_c = _native_iterable_comp_arg(a, ptype, lc.analyzer)
+        if comp_c is not None:
+            # The native/template twin of the ArgTemp row below: the template
+            # slot takes the stmt-expr INLINE, target-typed by the
+            # comprehension's own container rather than the protocol slot.
+            from .comprehensions import _lower_comprehension
+            pointers = {n for n in lc.pointers
+                        if _optional_ptr_borrow(declared.get(n),
+                                                lc.analyzer) is None}
+            _witness("arg.native_comprehension")
+            return _lower_comprehension(a, comp_c, lc, declared, pointers)
     if plain_kind and _container_comp_arg(a, ptype) and temp_args:
         # The slot-typed comprehension ArgTemp
         # (`std::vector<int64_t> __tmp_N = ({ ... });`) -- the init is the
@@ -7463,6 +7533,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return THIROptionalPtrArg(
             result_type=ptype, value=_lower_expr(a, lc, declared),
             addr_of=True, form=Form.BORROW, loc=getattr(a, "loc", None))
+    if _required_protocol_union_slot(ptype):
+        # Everywhere ELSE that same slot renders the plain value:
+        # `_gen_protocol_arg` claims a required multi-protocol union ahead of
+        # the Optional-ptr and union-lift arms and hands it to
+        # `gen_expr_deref` (the slot monomorphizes to one template param, so
+        # nothing lifts). The ctor arm above now early-returns for a REQUIRED
+        # union, so only the nullable form reaches its address-of lift.
+        _witness("arg.protocol_union_plain")
+        return _lower_expr(a, lc, declared)
     if (isinstance(a, TpyArrayLiteral)
             and _container_literal_arg(a, ptype, lc.analyzer)):
         # A list literal into a ctor's list slot: the bare brace-init in

@@ -131,6 +131,8 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _bare_module_recv,
+    _module_var_read_cpp,
     _callable_value,
     _ptr_opt_borrow_call_ret,
     _f1_tuple,
@@ -1957,6 +1959,19 @@ def _is_len_native(e: TpyExpr) -> bool:
     fi = e.resolved_function_info
     return fi is not None and fi.native_name == "tpy::__len__"
 
+def _module_var_len_arg(arg: TpyFieldAccess, locals_: dict[str, TpyType],
+                        analyzer) -> bool:
+    """Whether a `mod.X` field access reads a REGISTERED module variable --
+    dotted (`os.path.X`) or off a bare module binding (`os.environ`). Such a
+    read has its own render (the native symbol, the `(*slot)` pointer deref,
+    or the qualified `cpp_expr`), never a bare pointer name."""
+    if arg.module_var_access is not None:
+        return True
+    recv = _bare_module_recv(arg.obj, locals_, analyzer)
+    return (recv is not None
+            and _module_var_read_cpp(recv, arg.field, analyzer) is not None)
+
+
 def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """The eligible `len(name)` / `len(recv.field)` form: the builtin len over a
     single in-scope name -- or a one-level container/str/bytes field off an
@@ -1985,6 +2000,24 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     arg = e.args[0]
     if isinstance(arg, TpyName) and arg.name in locals_:
         bt = locals_[arg.name]
+    elif (isinstance(arg, TpyFieldAccess)
+          and _module_var_len_arg(arg, locals_, analyzer)):
+        # `len(os.environ)` -> `::tpy::__len__((*::tpystd::os::_environ::
+        # environ))`: the module-variable arm renders the pointer-slot deref
+        # ITSELF, so the family restriction's pointer-local concern does not
+        # apply -- which is why a `_Environ` record passes here but a record
+        # bound to a plain local still rejects below.
+        return True
+    elif (isinstance(arg, TpyFieldAccess)
+          and arg.property_getter_call is not None):
+        # `len(f.items)` on a @property -> `::tpy::__len__(f.items())`: the
+        # getter CALL renders in place of the member read, so the arg is a
+        # call result -- never a pointer-local, which is what the family
+        # restriction below actually guards. The method-call arm owns the
+        # receiver admission (an unroutable one falls the body back).
+        bt = analyzer.get_expr_type(arg)
+        if bt is None:
+            return False
     elif (isinstance(arg, TpyFieldAccess)
           and (_field_receiver_ok(arg, locals_, analyzer)
                or _field_over_container_subscript_ok(arg, locals_, analyzer))):
@@ -2648,6 +2681,10 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # so the plain ladder's rows serve here too.
             or _func_ref_routable(a, analyzer)
             or _lambda_routable(a, analyzer)
+            # ... and so does a Callable VALUE bound to a name (`map(h, xs)`
+            # -> `::tpy::builtin_map<..>(h, ..)`): the std::function converts
+            # implicitly into the template's Fn slot, bare on both loops.
+            or _callable_value_pass_arg(a, locals_, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _native_iterable_container_arg(a, ptype, locals_)
             or _native_iterable_call_arg(a, ptype, analyzer)
@@ -2668,7 +2705,24 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # the native loop renders the value bare, position-independent.
             or _native_protocol_value_arg(a, ptype, analyzer)
             or _native_protocol_field_arg(a, ptype, analyzer)
+            or _native_int_literal_slot_arg(a, ptype)
+            or _native_iterable_comp_arg(a, ptype, analyzer) is not None
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
+
+
+def _native_int_literal_slot_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """A bare int literal at a native/template callee's fixed-int slot
+    (`bytearray(16)` -> `::tpy::bytes_from_size(16)`). Sema does not coerce a
+    native callee's args, so the literal keeps its IntLiteralType and misses
+    the resolved-scalar row; the slot-threaded `_slot_literal_retype` at the
+    lowering tail gives it the same `render_int_literal_value` spelling
+    `_gen_call_arg`'s target threading does."""
+    if not isinstance(a, TpyIntLiteral):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    return bool(pt is not None and is_fixed_int_type(pt)
+                and _witness("arg.native_int_literal"))
 
 
 def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -2741,8 +2795,9 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
     if not isinstance(a, TpyLambda):
         return False
     # A captured `self` spells `this` in the capture list -- admitted only
-    # where the caller confirmed `self` renders as `this` (a plain method).
-    # A resumable coro's `__self` frame field is a different receiver render.
+    # where the caller confirmed the receiver IS that pointer (a plain method
+    # or the simple-generator wrapper). A resumable coro's `__self` frame
+    # field is a different receiver render.
     if "self" in a.captured_names and not self_this:
         return False
     rt = a.inferred_return_type
@@ -2851,6 +2906,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             is not None
             or _readonly_record_ctor_arg(a, ptype, locals_, analyzer)
             or _union_pass_through_arg(a, ptype, locals_, analyzer)
+            or _required_protocol_union_arg(a, ptype, locals_, analyzer)
             or _union_member_lift_arg(a, ptype, locals_, analyzer)
             or _union_coerced_literal_arg(a, ptype, locals_, analyzer)
             # M4c wrapper-slot rows (the free-call twins of the qualcall
@@ -2943,6 +2999,72 @@ def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
     return slot if atu == slot else None
+
+
+def _required_protocol_union_slot(ptype: 'TpyType | None') -> bool:
+    """A REQUIRED multi-protocol union param slot (`items: Sized |
+    Sequence[int]`). `_gen_protocol_arg` claims it BEFORE the Optional-ptr
+    and union-lift arms, and its required-union branch renders the plain
+    `gen_expr_deref` value -- so this slot must never reach THIR's
+    ptr-variant lift either, or the arg picks up a spurious `&(...)`.
+    A NULLABLE protocol union has a None member, which is not a protocol,
+    so it rejects here and keeps its own typed-null / address-of renders."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    return (isinstance(slot, UnionType) and len(slot.members) >= 2
+            and all(isinstance(m, NominalType) and m.is_protocol
+                    for m in slot.members))
+
+
+def _required_protocol_union_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                 locals_: dict[str, TpyType],
+                                 analyzer) -> bool:
+    """A bare NAME at a free call's REQUIRED multi-protocol union slot
+    (`describe(nums)` -> `describe(nums)`): the slot monomorphizes to ONE
+    template param (`const T_items&`), so the arg renders as the plain value
+    -- no adapter wrap, no address-of."""
+    if not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    if not _required_protocol_union_slot(ptype):
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    return bool((_f1_record(at, analyzer) or is_span(at) or is_list(at)
+                 or is_dict(at) or is_set(at))
+                and _witness("arg.required_protocol_union"))
+
+
+def _borrow_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           locals_: dict[str, TpyType],
+                           borrow_params: 'AbstractSet[str]',
+                           analyzer) -> bool:
+    """A ptr-repr tuple PARAM name -- already bound in BORROW form (`const
+    std::tuple<T*, ..>&`) -- at the same borrow-tuple param slot: it renders
+    BARE (`inner(p)`), no `tuple_to_pointer` lift.
+
+    Keyed on POSITIVE evidence (the name is such a param) rather than on
+    absence from `lc.storage_tuple_locals`. Absence proves borrow form only
+    where that set is populated, and it is not: a for-each loop var over a
+    storage container never lands there, and the resumable lane keeps its
+    owning tuples in codegen's `storage_form_tuple_locals` instead. Reading
+    absence as borrow form passed both shapes bare and dropped the lift --
+    a wrong-value render. Storage sources ride the lift rows instead.
+
+    Lane-blind on purpose: a resumable's params are frame fields, but they
+    reach this row through `lc.params` exactly like a plain function's and
+    render byte-identically. The absence-keyed predecessor DID need a lane
+    guard here; the positive key subsumes it, and the guard was suppressing
+    a body that routes correctly."""
+    if not isinstance(a, TpyName) or a.name not in borrow_params:
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if not isinstance(slot, TupleType) or _f1_tuple(slot, analyzer) is None:
+        return False
+    at = locals_.get(a.name)
+    if at is None:
+        return False
+    atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    return atu == slot and _witness("arg.btuple_name")
 
 
 def _record_getitem_rvalue_arg(a: TpyExpr, analyzer) -> bool:
@@ -3339,6 +3461,31 @@ def _native_iterable_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
     return _container_literal_shape_ok(a, at, analyzer)
+
+def _native_iterable_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              analyzer) -> 'TpyType | None':
+    """A container COMPREHENSION into a NATIVE builtin's structural
+    `Iterable[T]` / `Sequence[T]` slot (`sorted([n for n in os.listdir(p)])`
+    -> `::tpy::builtin_sorted<std::string>(({ ... }))`): the stmt-expr
+    renders INLINE into the template slot, target-typed by the
+    comprehension's OWN resolved container -- not by the protocol slot, and
+    with no `__tmp_N` (the named temp is the plain ladder's
+    `_container_comp_arg` row, whose concrete container slot needs one).
+    Like the genexpr row this admits broadly; an element shape
+    `_lower_comprehension` cannot render raises and falls the body back.
+    Returns the comprehension's container type, or None."""
+    if not isinstance(a, (TpyListComprehension, TpySetComprehension,
+                          TpyDictComprehension)):
+        return None
+    pb = _protocol_binding(ptype)
+    if pb is None or pb.name not in ("Iterable", "Sequence"):
+        return None
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return None
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    return at if (is_list(at) or is_set(at) or is_dict(at)) else None
+
 
 def _record_field_ref_arg(a: TpyExpr, ptype: 'TpyType | None',
                           locals_: dict[str, TpyType], analyzer) -> bool:

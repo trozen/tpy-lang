@@ -22,6 +22,7 @@ from ...parse.nodes import (
     TpyDictLiteral,
     TpyExpr,
     TpyFieldAccess,
+    TpyIfExpr,
     TpyFloatLiteral,
     TpyFunction,
     TpyIf,
@@ -324,8 +325,17 @@ def _coerce_wrap(e: TpyCoerce) -> 'str | None':
                   else "::tpy::as_mut_span")
         return helper + "({0})"
     if name in _SPAN_METHOD_COERCIONS:
-        if is_protocol_type(e.actual_type) or is_span(e.actual_type):
+        if is_span(e.actual_type):
             return None
+        if is_protocol_type(e.actual_type):
+            # `_gen_span_coercion`'s Spannable arm, checked BEFORE the
+            # user-record `.__span__()` one: a `Spannable[T]` actual always
+            # renders `::tpy::as_span(x)` -- readonly regardless of the slot's
+            # mutability, unlike the helper tail below. Any OTHER protocol
+            # falls to that tail, whose render this row does not reproduce.
+            return ("::tpy::as_span({0})"
+                    if e.actual_type.qualified_name() == "tpy.Spannable"
+                    else None)
         return "{0}.__span__()"
     return None
 
@@ -5081,7 +5091,12 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     w = _plain_own_slot(ptype)
     if w is None:
         return None
-    if not isinstance(a, (TpyName, TpyFieldAccess)):
+    # A TERNARY is admitted for the COPY half only: it binds as an lvalue
+    # reference the `T&&` slot cannot take, so `_maybe_move` never fires and
+    # the cascade always hoists `auto __tmp_N = ((c) ? (a) : (b));` + the
+    # move wrap. The move-source rows below all require a NAME, so widening
+    # the shape here cannot hand a ternary the temp-free render.
+    if not isinstance(a, (TpyName, TpyFieldAccess, TpyIfExpr)):
         return None
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -5326,7 +5341,8 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
     span_src = is_span(at)
-    if not (span_src or is_list(at) or is_dict(at)
+    ba_src = is_bytearray_type(at)
+    if not (span_src or ba_src or is_list(at) or is_dict(at)
             or is_set(at) or is_array(at)):
         return False
     if ptype is None:
@@ -5342,6 +5358,11 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         # view, so the arg renders bare (no as_span / const widen -- those
         # arrive as coerces and ride `_span_coerce_arg`).
         return at == pt
+    if ba_src:
+        # A `bytearray` name into a `bytearray` slot: the same
+        # `std::vector<uint8_t>&` bare bind. NOT into a `bytes` slot -- that
+        # pairing is the BytesView coerce, which arrives as its own node.
+        return is_bytearray_type(pt)
     return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
 
 def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5490,6 +5511,32 @@ def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     if len(e.args) != len(fi.params):
         return None
     return fi
+
+def _view_ctor_bare_source(e: TpyCall, rtype: 'TpyType | None',
+                           locals_: dict[str, TpyType],
+                           analyzer) -> bool:
+    """A `Span[...]` / `Array[...]` instantiation whose args are all bare
+    in-scope container / array / span NAMES. These are VALUE views: the AST
+    spells the target type and direct-initializes it (`std::span<const
+    int32_t>(lst)`), rather than going through the storage-container
+    `make_vector` path. No ctor fi resolves for them, so the args carry no
+    slot type -- which is why only bare names are admitted here; any shape
+    whose render depends on a target type stays out."""
+    if getattr(e, "call_type", None) is None or not e.args:
+        return False
+    if e.kwargs or getattr(e, "double_star_unpack", None) is not None:
+        return False
+    ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+    if not (is_span(ct) or is_array(ct)):
+        return False
+    for a in e.args:
+        if not isinstance(a, TpyName) or a.name not in locals_:
+            return False
+        at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+        if not (is_list(at) or is_array(at) or is_span(at)):
+            return False
+    return True
+
 
 def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
                           analyzer) -> 'FunctionInfo | None':

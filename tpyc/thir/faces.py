@@ -50,6 +50,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # Optional[Own[T]] slot (converting ctor)
     "arg.native_protocol_value",    # scalar/Char/str value at a native
                                     # protocol slot -> bare render (__hash__)
+    "arg.native_int_literal",       # int literal at a native callee's
+                                    # fixed-int slot -> slot-threaded render
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
                                     # -> inline typed rvalue (const-ref bind)
     "arg.ru_wrapper_narrowed",      # F6-narrowed member alias passed bare
@@ -751,6 +753,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
     "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
     "ret.btuple_name",              # already-borrow tuple local returned bare
+    "arg.btuple_name",              # already-borrow tuple name passed bare
+    "arg.required_protocol_union",  # name at a required multi-protocol
+                                    # union slot -> plain value render
+    "arg.protocol_union_plain",     # ... the lowering arm that renders it
+    "call.view_instantiation",       # Span/Array ctor over a bare source
+    "arg.native_comprehension",     # comprehension stmt-expr inline at a
+                                    # native/template Iterable slot
     "res.btuple_write",             # resumable borrow-tuple frame-field write
     "res.btuple_yield",             # borrow-tuple yield (literal or lifted source)
     "ret.tuple_opt_elem",
