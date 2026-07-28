@@ -55,6 +55,7 @@ progress -> ✅ done.
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *never-reassigned* reference class-typed field crosses as a READ-ONLY aliasing borrow-view getset, a *reassignable* one is rejected -- its view would read the storage slot through the rebind -- and a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; an aliasing registry-deduped borrow VIEW when it is a never-reassigned field of one; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`) |
+| 4.5 | Docstrings -> `__doc__` (module / function / class / method / property / user exception) | **v1.1** | ✅ done: the raw literal crosses into `m_doc`/`ml_doc`/`Py_tp_doc`/`PyGetSetDef.doc`/`PyErr_NewExceptionWithDoc`, so `help()` works; undocumented stays None. Excluded by design: a DUNDER's docstring (slots carry no doc field -- see below), exposed ENUM docstrings (functional-API construction takes no doc), and a NUL-bearing docstring (dropped with a warning; no doc slot can carry it) |
 | 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); enum values cross as @export fn params/returns (member round-trip, strict-by-type IN); `Final` scalar/str constants as init-time module-attribute snapshots; nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🚧 done: list/dict/set/tuple cross as @export fn AND exposed-class method/`__init__` params/returns, O(n) recursive copy-in/out (str/bytes elements + arbitrary nesting); strict-by-container-kind IN; a mutated container param warns (copy-in, not visible to caller); a borrow-form container return warns (copy-out, Own[...] acknowledges); a *container* getset field stays rejected (an enum or value-type field IS admitted -- see row 4); exposed enum/class *top-level elements* now cross (deferred: class as a tuple element, nested-in-a-container element, @nocopy element, class set-element/dict-key) |
@@ -189,6 +190,34 @@ design -- the same long pole.)
   Param forms the unpack can't cross -- defaults, `*args`/`**kwargs`,
   positional-only (`/`), keyword-only (`*`) -- are rejected at compile time
   (loud, not silently mishandled); keyword-only + defaults are the next rung.
+
+### Dunder docstrings do not cross (measured, not assumed)
+
+A dunder reaches CPython as a `PyType_Slot` entry -- a bare function pointer
+with no doc field -- so a docstring on `__init__` / `__repr__` / `__eq__` /
+the operators cannot cross, and CPython fills the gap with its own generic
+wording. Three routes were tried and rejected at the abi3 3.12 floor:
+
+- adding the dunder to `tp_methods` **alongside** the slot: no effect (the
+  slot wrapper is installed first and wins);
+- writing `__doc__` on the resulting descriptor: read-only, fails;
+- a bare `PyCFunction` in the type dict: carries the doc but never receives
+  `self`.
+
+`PyDescr_NewMethod` + `PyObject_SetAttrString` **does** work (verified for
+both `__repr__` and `__init__`: doc present, `self` bound, args delivered) --
+but installing a dict entry re-points the slot at CPython's generic
+dispatcher, turning a direct call into a dict lookup per invocation. Having
+BOTH is not possible here: the only API that writes the type dict without
+triggering slot fixup (`PyType_GetDict`) is absent under `Py_LIMITED_API`,
+and there is no public slot setter. Since documentation is not worth taxing
+operator dispatch, TPy keeps the fast slot and warns once per class.
+
+The zero-cost place for that text is the **class docstring**, which is a
+plain `const char *` in the type spec. CPython also parses a leading
+`Name(sig)\n--\n\n` out of `tp_doc` into `__text_signature__`, so a class
+doc can render a real constructor signature in `help()` -- the convention
+CPython's own C types use.
 
 ### Rung 2 -- BigInt marshalling under the 3.12 limited API
 

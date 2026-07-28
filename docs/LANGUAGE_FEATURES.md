@@ -6333,9 +6333,39 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `TODO.md`): nested/cross-module enums (a cross-module enum param is a located
   error), `bytes`/`BytesView` constants, and `int(enum)` conversion inside a
   body (orthogonal to the boundary).
+- **Working (docstrings)**: a docstring on the exposed surface crosses as
+  `__doc__`, so `help(mymod)` reads the same text the TPy source carries --
+  the module (`m_doc`), `@export` functions and exposed-class methods
+  (`ml_doc`), the class itself (`Py_tp_doc`), a `@property` (the getter's
+  docstring, via `PyGetSetDef.doc`) and a user exception type
+  (`PyErr_NewExceptionWithDoc`). The text is the RAW literal, exactly as
+  CPython stores it (dedenting is `inspect.getdoc`'s job on both sides), and
+  an undocumented callable keeps `__doc__` None. A plain annotated field has
+  no docstring in Python either, so its getset carries none. **Excluded:**
+  - A **DUNDER's** docstring (`__init__`, `__repr__`, `__eq__`, the operators,
+    the container protocol). A dunder reaches CPython as a *type slot* -- a
+    bare function pointer with no doc field -- so the text cannot cross, and
+    CPython substitutes its own generic wording (`__repr__` reports
+    `'Return repr(self).'`, `__init__` reports `'Initialize self. ...'`).
+    Routing the dunder through a method descriptor instead WOULD carry the
+    doc, but it replaces the direct slot call with a dict lookup on every
+    invocation -- documentation is not worth taxing operator dispatch, so TPy
+    keeps the fast slot and **warns once per class** naming the dunders whose
+    text is dropped. Put that text in the **class docstring**, which does
+    cross at zero cost; this is the same convention hand-written C extensions
+    use (`help(dict)` shows `dict(mapping)` out of the class doc).
+  - An exposed **ENUM's** docstring (the enum is rebuilt through the stdlib
+    functional API, which takes no doc -- tracked in `TODO.md`).
+  - A docstring containing an embedded **NUL**, which no CPython doc slot (a
+    NUL-terminated C string) can carry -- the glue drops it and warns rather
+    than hand the host a truncated text.
+  - An **empty** docstring on a function or method reports `__doc__` as
+    `None` rather than `''`: CPython reads an empty `ml_doc` as no doc at
+    all. Its own behavior for C-level callables, and no text is lost, so it
+    is documented rather than warned. A module is the exception -- an empty
+    `m_doc` does come back as `''`.
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
-  the phase-3.5 foreign-borrow primitive), class-typed
-  fields / inheritance for exposed classes,
+  the phase-3.5 foreign-borrow primitive),
   container getset fields at the exposed-class boundary, the PEP 517
   wheel backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 

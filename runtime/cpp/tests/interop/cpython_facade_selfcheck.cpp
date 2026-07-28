@@ -26,6 +26,7 @@ constexpr int meth_keywords = METH_KEYWORDS;
 constexpr int meth_noargs = METH_NOARGS;
 constexpr int python_api_version = PYTHON_API_VERSION;
 constexpr int tp_dealloc = Py_tp_dealloc;
+constexpr int tp_doc = Py_tp_doc;
 constexpr int tp_hash = Py_tp_hash;
 constexpr int tp_init = Py_tp_init;
 constexpr int tp_methods = Py_tp_methods;
@@ -84,6 +85,7 @@ constexpr int tp_iternext = Py_tp_iternext;
 #undef METH_NOARGS
 #undef PYTHON_API_VERSION
 #undef Py_tp_dealloc
+#undef Py_tp_doc
 #undef Py_tp_hash
 #undef Py_tp_init
 #undef Py_tp_methods
@@ -206,6 +208,8 @@ static_assert(tpy::cpy::PYTHON_API_VERSION == real_abi::python_api_version,
               "PYTHON_API_VERSION value mismatch");
 static_assert(tpy::cpy::Py_tp_dealloc == real_abi::tp_dealloc,
               "Py_tp_dealloc value mismatch");
+static_assert(tpy::cpy::Py_tp_doc == real_abi::tp_doc,
+              "Py_tp_doc value mismatch");
 static_assert(tpy::cpy::Py_tp_hash == real_abi::tp_hash,
               "Py_tp_hash value mismatch");
 static_assert(tpy::cpy::Py_tp_init == real_abi::tp_init,

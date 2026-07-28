@@ -1,0 +1,1 @@
+docstrings.py:25: warning: @export class 'Counter': the docstring on '__init__' will not be visible from Python; put the text in the class docstring instead

@@ -1556,6 +1556,11 @@ class TpyRecord:
     # TpyFunction.exposed_to_host; the record keeps DEFAULT linkage (the glue
     # is separate). Set only by the parser inside an ext_module.
     exposed_to_host: bool = False
+    # The class body's leading string literal. A function/method keeps its
+    # docstring as `body[0]`, but a record has no statement body to read it
+    # back from, so the text is captured here at parse time. Consumed only by
+    # the CPython-extension glue (`Py_tp_doc`).
+    docstring: str | None = None
     loc: SourceLocation | None = None
 
     @property
@@ -1664,6 +1669,11 @@ class TpyModule:
     protocols: list[TpyProtocol] = field(default_factory=list)
     enums: list[TpyEnum] = field(default_factory=list)
     top_level_stmts: list[TpyStmt] = field(default_factory=list)
+    # The module's leading string literal. Captured here rather than read
+    # back from `top_level_stmts[0]`: later passes prepend synthesized decls,
+    # so the docstring's position is not stable. Consumed only by the
+    # CPython-extension glue (`m_doc`).
+    docstring: str | None = None
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
     # Import tracking: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #                  module_name -> None (for "import X")

@@ -131,6 +131,7 @@ struct PyGetSetDef {
 // Type-slot ids the class glue populates (values from CPython's typeslots.h,
 // stable across versions). Checked against Python.h in the facade self-check.
 inline constexpr int Py_tp_dealloc = 52;
+inline constexpr int Py_tp_doc = 56;
 inline constexpr int Py_tp_hash = 59;
 inline constexpr int Py_tp_init = 60;
 inline constexpr int Py_tp_methods = 64;

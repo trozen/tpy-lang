@@ -32,6 +32,8 @@ PyObject *PyModule_Create2(PyModuleDef *def, int module_api_version);
 // and add an object to the module (AddObjectRef does not steal `value`, unlike
 // the legacy AddObject; returns 0 on success).
 PyObject *PyErr_NewException(const char *name, PyObject *base, PyObject *dict);
+PyObject *PyErr_NewExceptionWithDoc(const char *name, const char *doc,
+                                    PyObject *base, PyObject *dict);
 int PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value);
 
 // Enum construction (exposed @export enums). The enum_bridge recreates a TPy

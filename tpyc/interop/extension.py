@@ -32,15 +32,18 @@ from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARY
 # (and the validator's field admission and the getset emit likewise share
 # exposed_view_field).
 from .export_shape import (
-    boundary_alias_records, exposed_view_field, view_safe_borrow_returns)
+    boundary_alias_records, exposed_view_field, view_safe_borrow_returns,
+    callable_docstring, is_dunder, uncrossable_docstring_reason)
 from ..codegen_cpp.context import (
-    qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
+    qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError,
+    escape_cpp_string)
 from ..codegen_cpp.type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
     from ..codegen_cpp.context import CodeGenContext
     from ..codegen_cpp.records import RecordGenerator
     from ..codegen_cpp.types import TypeResolver
+    from ..parse import TpyRecord
     from ..typesys import RecordInfo
 
 # Exposed-class arithmetic/ordering operators: dunder name
@@ -74,6 +77,20 @@ _NB_UNARY_OPS = {
 _NB_INPLACE_OPS = {
     AUGOP_TO_IMETHOD[sym]: slot for sym, slot in _NB_INPLACE_SYMBOL_SLOT.items()
 }
+
+
+def doc_literal(text: str) -> str:
+    """A docstring as a C++ string-literal expression. A multi-line docstring
+    renders as one adjacent literal per source line, so the text stays
+    readable in the generated TU instead of collapsing into a single line of
+    escaped newlines."""
+    lines = text.split("\n")
+    if len(lines) == 1:
+        return f'"{escape_cpp_string(text)}"'
+    parts = [f'"{escape_cpp_string(ln)}\\n"' for ln in lines[:-1]]
+    if lines[-1]:
+        parts.append(f'"{escape_cpp_string(lines[-1])}"')
+    return "\n    ".join(parts)
 
 
 class ExtensionGenerator:
@@ -146,6 +163,7 @@ class ExtensionGenerator:
                 "fields": fields,
                 "has_data": has_data,
                 "setter": setter,
+                "doc_text": record.docstring,
             })
         return result
 
@@ -577,26 +595,57 @@ class ExtensionGenerator:
         return view_safe_borrow_returns(
             ast_fn, boundary_alias_records(params, reg, rec_info), rinfo, reg)
 
+    def _emit_doc_const(self, out: TextIO, name: str,
+                        text: str | None) -> str:
+        """Emit a docstring as a named constant and return the name to put in
+        the slot (`nullptr` when there is none, which is what makes `__doc__`
+        None). Named rather than inlined so a table row stays a readable row
+        instead of a line of embedded prose -- the same reason CPython's own
+        extensions spell their docstrings with PyDoc_STRVAR. A docstring the
+        boundary cannot carry drops to `nullptr` here and is warned about by
+        the validator, both keyed on `uncrossable_docstring_reason`.
+
+        The constant must keep static storage: CPython stores `ml_doc`,
+        `PyGetSetDef.doc` and `m_doc` BY POINTER (only `Py_tp_doc` is copied
+        by PyType_FromSpec), so a doc moved into a function-local would
+        dangle for the module's lifetime."""
+        if text is None or uncrossable_docstring_reason(text) is not None:
+            return "nullptr"
+        lit = doc_literal(text)
+        sep = "\n    " if "\n" in lit else " "
+        out.write(f"const char {name}[] ={sep}{lit};\n")
+        return name
+
+    def _ast_records(self, cls: dict) -> "list[TpyRecord]":
+        """The exposed class's source-level record, then its ancestors' --
+        the MRO order every source-body lookup resolves against."""
+        reg = self.ctx.analyzer.registry
+        by_name = cls["records_by_name"]
+        return [cls["record"]] + [
+            by_name[anc.name] for anc in reg.iter_ancestor_records(cls["info"])
+            if anc.name in by_name]
+
     def _ast_method(self, cls: dict, name: str, *,
-                    property_getter: bool = False):
+                    property_getter: bool = False,
+                    require_mutable: bool = True):
         """The source-level (TpyFunction, declaring RecordInfo) for a method
         of an exposed class (the glue's per-class loops run off RecordInfo;
         the view classifier needs the body AST). Own record first, then
         ancestors -- an inherited dunder half emitted on a derived slot
         classifies against the declaring body, mirroring
         _method_with_ancestors' MRO lookup. For a property, the MUTABLE
-        getter clone (the const clone shares its return shape)."""
+        getter clone (the const clone shares its return shape) -- unless
+        `require_mutable` is off, for callers that only need the source body
+        (a docstring) and so accept either twin, since a scalar-returning
+        property carries just the readonly one."""
         reg = self.ctx.analyzer.registry
-        by_name = cls["records_by_name"]
-        records = [cls["record"]] + [
-            by_name[anc.name] for anc in reg.iter_ancestor_records(cls["info"])
-            if anc.name in by_name]
-        for rec in records:
+        for rec in self._ast_records(cls):
             for m in rec.methods:
                 if m.name != name:
                     continue
                 if property_getter:
-                    if m.is_property_getter and not m.is_readonly:
+                    if m.is_property_getter and (not require_mutable
+                                                 or not m.is_readonly):
                         return m, reg.get_record(rec.name)
                     continue
                 if not (m.is_property_getter or m.is_property_setter):
@@ -1425,11 +1474,11 @@ class ExtensionGenerator:
 
         # Instance methods (plain, non-dunder; the sema validator guaranteed the
         # signatures marshal and rejected static/async/generator/generic).
-        method_entries: list[tuple[str, str, str, bool]] = []
+        method_entries: list[tuple[str, str, str, bool, str]] = []
         for mname, overloads in info.methods.items():
-            if mname == "__init__":
-                continue
-            if mname.startswith("__") and mname.endswith("__"):
+            # Dunders never enter the method table: the supported ones are
+            # wired as type slots, the rest do not cross at all.
+            if is_dunder(mname):
                 continue
             m = overloads[0]
             params = [(p.name, p.type) for p in m.params if p.name != "self"]
@@ -1445,7 +1494,12 @@ class ExtensionGenerator:
                           f"PyObject *kwargs) {{\n")
                 self._emit_arg_unpack(out, [pn for pn, _t in params], "nullptr",
                                       mname)
-            method_entries.append((mname, wname, meth_flag, kw))
+            # The docstring follows the DECLARING body: an inherited method
+            # emitted on a derived type documents itself the way Python's MRO
+            # lookup would, which is what _ast_method already resolves.
+            method_entries.append((mname, wname, meth_flag, kw,
+                                   callable_docstring(
+                                       self._ast_method(cls, mname)[0])))
             out.write("    try {\n")
             out.write(f"        auto &__self = *{cppvar}->p;\n")
             argtoks = [self._emit_marshal_in(out, i, t, sym)
@@ -1475,7 +1529,10 @@ class ExtensionGenerator:
         # immutable, so its own fields are exposed READ-ONLY (nullptr setter) --
         # matching the language rule that its fields are set only in __init__.
         read_only = info.is_value_type
-        getset_entries: list[tuple[str, str, str]] = []
+        # (pyname, getter, setter, doc). A plain field carries no doc --
+        # a class-level annotation has no docstring in Python either; only
+        # a @property does (its getter's).
+        getset_entries: list[tuple[str, str, str, str]] = []
         for fld in info.fields:
             if is_internal_boundary_field(fld.name):
                 continue  # `_`-named field stays payload-only, never a getset
@@ -1492,7 +1549,7 @@ class ExtensionGenerator:
                 # defeat it). Admission mirrors the validator via the shared
                 # exposed_view_field.
                 _fc, ftv = self._class_cpp_var(fld.type, sym)
-                getset_entries.append((fld.name, getn, "nullptr"))
+                getset_entries.append((fld.name, getn, "nullptr", None))
                 out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
                 out.write("    try {\n")
                 out.write(f"        return ::tpy::interop::borrow_to_py("
@@ -1506,7 +1563,8 @@ class ExtensionGenerator:
                 out.write("        return nullptr;\n")
                 out.write("    }\n}\n")
                 continue
-            getset_entries.append((fld.name, getn, "nullptr" if read_only else setn))
+            getset_entries.append((fld.name, getn,
+                                   "nullptr" if read_only else setn, None))
             out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
             out.write("    try {\n")
             out.write(f"        return {self._value_out_expr(f'{cppvar}->p->{fcpp}', fld.type, sym)};\n")
@@ -1554,7 +1612,10 @@ class ExtensionGenerator:
             setn = f"{sym}__{escape_cpp_name(cls['simple'])}__{pcpp}_set"
             has_setter = prop.setter is not None
             getset_entries.append((pname, getn, setn if has_setter
-                                   else "nullptr"))
+                                   else "nullptr",
+                                   callable_docstring(self._ast_method(
+                                       cls, pname, property_getter=True,
+                                       require_mutable=False)[0])))
             out.write(f"PyObject *{getn}(PyObject *self, void *) {{\n")
             out.write("    try {\n")
             out.write(f"        auto &__self = *{cppvar}->p;\n")
@@ -1607,16 +1668,25 @@ class ExtensionGenerator:
             out, cls, sym, reg_arg, cppvar)
 
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
+        method_docs = [self._emit_doc_const(out, f"{wname}__doc", text)
+                       for _pn, wname, _f, _kw, text in method_entries]
+        getset_docs = [self._emit_doc_const(out, f"{getn}__doc", text)
+                       for _pn, getn, _sn, text in getset_entries]
         out.write(f"PyMethodDef {base}__methods[] = {{\n")
-        for pyname, wname, flag, kw in method_entries:
+        for (pyname, wname, flag, kw, _t), doc in zip(method_entries,
+                                                      method_docs):
             slot = f"as_pycfunction({wname})" if kw else wname
-            out.write(f'    {{"{pyname}", {slot}, {flag}, nullptr}},\n')
+            out.write(f'    {{"{pyname}", {slot}, {flag}, {doc}}},\n')
         out.write("    {nullptr, nullptr, 0, nullptr},\n};\n")
         out.write(f"PyGetSetDef {base}__getset[] = {{\n")
-        for pyname, getn, setn in getset_entries:
-            out.write(f'    {{"{pyname}", {getn}, {setn}, nullptr, nullptr}},\n')
+        for (pyname, getn, setn, _t), doc in zip(getset_entries, getset_docs):
+            out.write(f'    {{"{pyname}", {getn}, {setn}, {doc}, nullptr}},\n')
         out.write("    {nullptr, nullptr, nullptr, nullptr, nullptr},\n};\n")
+        cls_doc = self._emit_doc_const(out, f"{base}__doc",
+                                       cls["record"].docstring)
         out.write(f"PyType_Slot {base}__slots[] = {{\n")
+        if cls_doc != "nullptr":
+            out.write(f"    {{Py_tp_doc, (void *){cls_doc}}},\n")
         out.write(f"    {{Py_tp_init, (void *){init_fn}}},\n")
         out.write(f"    {{Py_tp_dealloc, (void *){dealloc_fn}}},\n")
         out.write(f"    {{Py_tp_methods, (void *){base}__methods}},\n")
@@ -1753,7 +1823,7 @@ class ExtensionGenerator:
             assert is_function_boundary_marshallable(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, boundary_type_name(t))
 
-        wrappers: list[tuple[str, str, str, bool]] = []  # (pyname, wrap, flag, kw)
+        wrappers: list[tuple[str, str, str, bool, str]] = []  # (pyname, wrap, flag, kw, doc)
         for fn in exposed:
             assert_marshal(fn.return_type, "return", fn)
             for pname, ptype in fn.params:
@@ -1770,7 +1840,8 @@ class ExtensionGenerator:
                           f"PyObject *kwargs) {{\n")
                 self._emit_arg_unpack(out, [pn for pn, _t in fn.params],
                                       "nullptr", fn.name)
-            wrappers.append((fn.name, wname, meth, kw))
+            wrappers.append((fn.name, wname, meth, kw,
+                             callable_docstring(fn)))
             out.write("    try {\n")
             # Marshal each arg into a local before the call so conversion order
             # is left-to-right (C++ argument evaluation order is unspecified).
@@ -1789,17 +1860,21 @@ class ExtensionGenerator:
         for cls in exposed_classes:
             self._emit_exposed_class(out, cls, sym, reg_arg)
 
+        fn_docs = [self._emit_doc_const(out, f"{wname}__doc", text)
+                   for _pn, wname, _m, _kw, text in wrappers]
+        mod_doc = self._emit_doc_const(out, f"{sym}__module__doc",
+                                       module.docstring)
         out.write(f"PyMethodDef {sym}__methods[] = {{\n")
-        for pyname, wname, meth, kw in wrappers:
+        for (pyname, wname, meth, kw, _t), doc in zip(wrappers, fn_docs):
             slot = f"as_pycfunction({wname})" if kw else wname
-            out.write(f'    {{"{pyname}", {slot}, {meth}, nullptr}},\n')
+            out.write(f'    {{"{pyname}", {slot}, {meth}, {doc}}},\n')
         out.write("    {nullptr, nullptr, 0, nullptr},\n")
         out.write("};\n\n")
 
         out.write(f"PyModuleDef {sym}__moduledef = {{\n")
         out.write("    MODULEDEF_HEAD_INIT,\n")
         out.write(f'    "{module_name}",\n')
-        out.write("    nullptr,\n")
+        out.write(f"    {mod_doc},\n")
         out.write("    -1,\n")
         out.write(f"    {sym}__methods,\n")
         out.write("    nullptr, nullptr, nullptr, nullptr,\n")
@@ -1808,6 +1883,9 @@ class ExtensionGenerator:
 
         # PyInit_ must be the literal import name; escape_cpp_name (used for
         # the internal symbols) would mangle a C++-keyword stem and break load.
+        for e in user_excs:
+            e["doc"] = self._emit_doc_const(out, f'{e["var"]}__doc',
+                                            e["doc_text"])
         out.write(f'extern "C" PyObject *PyInit_{module_name}(void) {{\n')
         # A C++ exception escaping extern "C" is UB: convert init failures to
         # the NULL sentinel with a Python exception set.
@@ -1825,9 +1903,14 @@ class ExtensionGenerator:
                       f"&{sym}__moduledef, ::tpy::cpy::PYTHON_API_VERSION);\n")
             out.write("        if (!__m) return nullptr;\n")
             for e in user_excs:
-                out.write(f'        PyObject *{e["var"]} = ::tpy::cpy::'
-                          f'PyErr_NewException("{e["py_name"]}", {e["base_expr"]}, '
-                          f"nullptr);\n")
+                if e["doc"] == "nullptr":
+                    out.write(f'        PyObject *{e["var"]} = ::tpy::cpy::'
+                              f'PyErr_NewException("{e["py_name"]}", '
+                              f'{e["base_expr"]}, nullptr);\n')
+                else:
+                    out.write(f'        PyObject *{e["var"]} = ::tpy::cpy::'
+                              f'PyErr_NewExceptionWithDoc("{e["py_name"]}", '
+                              f'{e["doc"]}, {e["base_expr"]}, nullptr);\n')
                 out.write(f'        if (!{e["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
                           f"return nullptr; }}\n")
                 # A failed AddObjectRef would leave the type unimportable by name

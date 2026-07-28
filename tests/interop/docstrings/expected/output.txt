@@ -1,0 +1,14 @@
+'Documented extension module.\n\nMulti-line, with the closing quotes at column 0 -- so the text ends with a\nbare newline, unlike `incr` below whose indented close leaves trailing\nspaces. The two shapes render through different branches of the docstring\nemitter, so both are pinned here.\n'
+'Return `x` unchanged.'
+None
+'Non-ASCII: naïve résumé, 10°, 中文.'
+'A counter with a documented surface.'
+"Add `by` to the counter.\n\n        The second line survives too -- __doc__ is the raw literal, so\n        indentation is preserved (dedenting is inspect.getdoc's job).\n        "
+None
+'Twice the current value.'
+'Raised when the value is rejected.'
+'A documented base class.'
+'A documented subclass.'
+'Documented on the base, reached through the subclass.'
+"Add `by` to the counter.\n\nThe second line survives too -- __doc__ is the raw literal, so\nindentation is preserved (dedenting is inspect.getdoc's job)."
+True

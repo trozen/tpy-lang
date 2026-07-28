@@ -1,0 +1,5 @@
+main.py:13: warning: @export function 'has_nul': the docstring will not be visible from Python (it contains a NUL character)
+main.py:25: warning: @export class 'Holder': the docstring will not be visible from Python (it contains a NUL character)
+main.py:33: warning: @export class 'Holder': method 'meth': the docstring will not be visible from Python (it contains a NUL character)
+main.py:38: warning: @export class 'Holder': property 'prop': the docstring will not be visible from Python (it contains a NUL character)
+main.py:43: warning: exception class 'BadDoc': the docstring will not be visible from Python (it contains a NUL character)

@@ -8,14 +8,15 @@ input. The bodies live here beside the shared shape predicates
 `Compiler._validate_ext_module_exports` stays as the thin phase hook.
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 from ..compiler import CompileError
 from ..diagnostics import Diagnostic, DiagnosticLevel
-from ..typesys import FunctionInfo, TpyType
+from ..typesys import FunctionInfo, RecordInfo, TpyType
 from .export_shape import (
-    export_method_shape_error, exposed_view_field,
-    nocopy_borrow_return_error, unsupported_boundary_param_form)
+    callable_docstring, export_method_shape_error, exposed_view_field,
+    is_dunder, nocopy_borrow_return_error, slot_wired_dunder,
+    uncrossable_docstring_reason, unsupported_boundary_param_form)
 
 if TYPE_CHECKING:
     from ..compiler import Compiler, CompiledModule
@@ -89,6 +90,81 @@ def validate_ext_module_exports(compiler: 'Compiler') -> None:
             _validate_exposed_class(compiled, record)
         _validate_exposed_enums(compiled)
         _validate_user_exc_data_fields(compiled)
+        _warn_uncrossable_docstrings(compiled)
+
+def _user_exception_records(
+        compiled: 'CompiledModule'
+) -> "Iterator[tuple[TpyRecord, RecordInfo]]":
+    """(record, info) for each user exception class DEFINED in this module --
+    the set that gets its own Python type at `PyInit_`. One spelling for the
+    validators here; the glue's emit-side list derives the same set."""
+    reg = compiled.analyzer.registry
+    for record in compiled.ast.records:
+        info = reg.get_record(record.name)
+        if info is None or info.is_native:
+            continue
+        if info.implements_throwable and info.inherits_base_exception:
+            yield record, info
+
+def _warn_uncrossable_docstrings(compiled: 'CompiledModule') -> None:
+    """Docstrings on the exposed surface become `__doc__` on the host. One
+    the boundary cannot carry is dropped by the glue rather than truncated,
+    so warn wherever that happens -- the drop and this warning read the same
+    `uncrossable_docstring_reason`, so a silently missing `__doc__` is not a
+    reachable state."""
+    def check(text: 'str | None', label: str,
+              loc: 'SourceLocation | None') -> None:
+        reason = uncrossable_docstring_reason(text)
+        if reason is None:
+            return
+        compiled.analyzer.diagnostics.append(Diagnostic(
+            DiagnosticLevel.WARNING,
+            f"{label}: the docstring will not be visible from Python "
+            f"({reason})",
+            loc))
+
+    mod = compiled.ast
+    check(mod.docstring, f"ext_module '{compiled.name}'", None)
+    for func in mod.functions:
+        if func.exposed_to_host:
+            check(callable_docstring(func), f"@export function '{func.name}'",
+                  func.loc)
+    for record in mod.records:
+        if not record.exposed_to_host:
+            continue
+        check(record.docstring, f"@export class '{record.name}'", record.loc)
+        slot_documented = []
+        for m in record.methods:
+            if is_dunder(m.name):
+                # No dunder enters the method table. A SLOT-wired one crosses
+                # with CPython's own text in place of its docstring -- not a
+                # `check()` case (nothing is emitted and dropped), and
+                # collected to report once per class rather than once per
+                # dunder. An unsupported dunder does not cross at all and
+                # already has its own not-exposed warning, so adding "its
+                # docstring is not visible" would only imply it did.
+                if (slot_wired_dunder(m.name)
+                        and callable_docstring(m) is not None
+                        and m.name not in slot_documented):
+                    slot_documented.append(m.name)
+                continue
+            kind = "property" if m.is_property_getter else "method"
+            check(callable_docstring(m),
+                  f"@export class '{record.name}': {kind} '{m.name}'", m.loc)
+        if slot_documented:
+            names = ", ".join(f"'{n}'" for n in slot_documented)
+            plural = "s" if len(slot_documented) > 1 else ""
+            compiled.analyzer.diagnostics.append(Diagnostic(
+                DiagnosticLevel.WARNING,
+                f"@export class '{record.name}': the docstring{plural} on "
+                f"{names} will not be visible from Python; put the text in "
+                f"the class docstring instead",
+                record.loc))
+    # A user exception class is not `@export`-marked -- it gets its Python
+    # type by being raised across the boundary -- so it needs its own pass or
+    # its docstring would be the one drop with no diagnostic behind it.
+    for record, _info in _user_exception_records(compiled):
+        check(record.docstring, f"exception class '{record.name}'", record.loc)
 
 def _warn_export_copy_boundary_mutation(compiled: 'CompiledModule',
                                         func: 'TpyFunction') -> None:
@@ -181,12 +257,7 @@ def _validate_user_exc_data_fields(compiled: 'CompiledModule') -> None:
         is_boundary_marshallable, is_exposed_class, is_exposed_enum,
         is_internal_boundary_field, boundary_type_name)
     reg = compiled.analyzer.registry
-    for record in compiled.ast.records:
-        info = reg.get_record(record.name)
-        if info is None or info.is_native:
-            continue
-        if not (info.implements_throwable and info.inherits_base_exception):
-            continue
+    for record, info in _user_exception_records(compiled):
 
         def line_of(fld) -> 'int | None':
             return (fld.loc.line if fld.loc else

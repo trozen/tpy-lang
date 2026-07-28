@@ -22,12 +22,13 @@ from ..modules import (
 )
 from ..parse.nodes import (
     TpyCoerce, TpyFieldAccess, TpyName, TpyReturn, walk_body_stmts,
+    is_docstring,
 )
 from ..type_def_registry import _boundary_inner
 from ..typesys import NominalType, OwnType, ReadonlyType
 
 if TYPE_CHECKING:
-    from ..parse.nodes import TpyExpr, TpyFunction
+    from ..parse.nodes import TpyExpr, TpyFunction, TpyRecord
     from ..typesys import RecordInfo, TpyType
 
 # The 6 rich-comparison dunders share BINOP_TO_METHOD with the 12 binary
@@ -61,6 +62,52 @@ EXPORT_CLASS_SUPPORTED_DUNDERS = (
     EXPORT_CLASS_REPR_STR_DUNDERS | EXPORT_CLASS_COMPARE_DUNDERS
     | {"__hash__"} | EXPORT_CLASS_ARITH_DUNDERS
     | EXPORT_CLASS_CONTAINER_DUNDERS)
+
+
+def callable_docstring(fn: 'TpyFunction | None') -> 'str | None':
+    """A function/method's `__doc__` text -- the leading bare string literal
+    of its body, the same form every other consumer skips via `is_docstring`.
+    """
+    if fn is None or not fn.body or not is_docstring(fn.body[0]):
+        return None
+    return fn.body[0].expr.value
+
+
+def is_dunder(name: str) -> bool:
+    """A `__x__` name. Every dunder is excluded from the exposed class's
+    method table: the supported ones become type slots, and an unsupported
+    one does not cross at all (already its own warning)."""
+    return name.startswith("__") and name.endswith("__")
+
+
+def slot_wired_dunder(name: str) -> bool:
+    """Whether this dunder crosses as a TYPE SLOT -- a bare function pointer
+    with no doc field, so its docstring cannot cross and CPython substitutes
+    its own generic text.
+
+    Keyed on the catalog the glue actually emits slots for, NOT on "is a
+    dunder": an UNSUPPORTED dunder does not reach the host at all, so saying
+    "its docstring is not visible" would imply the method itself crossed.
+    That case has its own not-exposed warning. Note the two sets differ on
+    purpose -- a future rung exposing a method-table dunder (`__reduce__` and
+    friends are ordinary PyMethodDef entries in CPython, not slots) must
+    update this catalog and the method-table exclusion together.
+    """
+    return name == "__init__" or name in EXPORT_CLASS_SUPPORTED_DUNDERS
+
+
+def uncrossable_docstring_reason(text: 'str | None') -> 'str | None':
+    """Why this docstring cannot cross to the host, or None when it can.
+
+    Every CPython doc slot (`ml_doc`, `m_doc`, `Py_tp_doc`, `PyGetSetDef.doc`)
+    is a NUL-terminated `const char *`, so an embedded NUL would silently
+    truncate the text the host sees. The glue drops such a docstring and the
+    validator warns -- both through this one predicate, so a dropped
+    docstring always has a diagnostic behind it.
+    """
+    if text is not None and "\0" in text:
+        return "it contains a NUL character"
+    return None
 
 
 def _peel_coerce(expr: 'TpyExpr') -> 'TpyExpr':

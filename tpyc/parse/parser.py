@@ -840,6 +840,8 @@ class Parser:
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
         tree = ast.parse(source)
+        # `clean=False` keeps the raw literal -- what CPython puts in `__doc__`.
+        self._module_docstring = ast.get_docstring(tree, clean=False)
         # Scan directives first so cpp_namespace is available while
         # _parse_module registers records/protocols/enums.
         directives, directive_warnings = _scan_directives(self.source_lines)
@@ -1172,7 +1174,7 @@ class Parser:
             for method in record.methods:
                 desugar_suspension_positions(method)
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, docstring=self._module_docstring, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""
@@ -1875,7 +1877,10 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, loc=self._loc(node))
+        # `clean=False` keeps the raw literal -- that is what CPython puts in
+        # `__doc__` (dedenting is `inspect.getdoc`'s job, on both sides).
+        docstring = ast.get_docstring(node, clean=False)
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
