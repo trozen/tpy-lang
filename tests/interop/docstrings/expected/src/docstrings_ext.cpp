@@ -3,6 +3,7 @@
 #include "tpy/interop/marshal.hpp"
 #include "tpy/interop/exc_bridge.hpp"
 #include "tpy/interop/class_bridge.hpp"
+#include "tpy/interop/enum_bridge.hpp"
 
 namespace {
 using namespace ::tpy::cpy;
@@ -12,6 +13,8 @@ using namespace ::tpy::cpy;
 PyObject *docstrings__type_Counter = nullptr;
 PyObject *docstrings__type_Base = nullptr;
 PyObject *docstrings__type_Derived = nullptr;
+PyObject *docstrings__enum_Level = nullptr;
+PyObject *docstrings__enum_Bare = nullptr;
 ::tpy::interop::ViewRegistry docstrings__view_registry;
 
 PyObject *docstrings__documented_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
@@ -419,6 +422,7 @@ PyModuleDef docstrings__moduledef = {
 }  // namespace
 
 const char docstrings__exc_Rejected__doc[] = "Raised when the value is rejected.";
+const char docstrings__enum_Level__doc[] = "A documented enum -- set on the type after the functional API builds it.";
 extern "C" PyObject *PyInit_docstrings(void) {
     try {
         PyObject *__m = ::tpy::cpy::PyModule_Create2(&docstrings__moduledef, ::tpy::cpy::PYTHON_API_VERSION);
@@ -436,6 +440,36 @@ extern "C" PyObject *PyInit_docstrings(void) {
         docstrings__type_Derived = ::tpy::cpy::PyType_FromSpecWithBases(&docstrings__Derived__spec, docstrings__type_Base);
         if (!docstrings__type_Derived) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Derived", docstrings__type_Derived) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        {
+            PyObject *__d = ::tpy::cpy::PyDict_New();
+            if (!__d) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            if (::tpy::interop::enum_dict_add(__d, "LOW", ::tpy::interop::to_py(static_cast<int32_t>(0))) < 0 ||
+            ::tpy::interop::enum_dict_add(__d, "HIGH", ::tpy::interop::to_py(static_cast<int32_t>(1))) < 0) {
+                ::tpy::cpy::Py_DecRef(__d); ::tpy::cpy::Py_DecRef(__m); return nullptr;
+            }
+            docstrings__enum_Level = ::tpy::interop::make_enum("Level", "docstrings", true, __d);
+            ::tpy::cpy::Py_DecRef(__d);
+            if (!docstrings__enum_Level) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            {
+                PyObject *__ed = ::tpy::interop::to_py(std::string_view(docstrings__enum_Level__doc));
+                if (!__ed) { ::tpy::cpy::Py_DecRef(docstrings__enum_Level); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+                int __erc = ::tpy::cpy::PyObject_SetAttrString(docstrings__enum_Level, "__doc__", __ed);
+                ::tpy::cpy::Py_DecRef(__ed);
+                if (__erc < 0) { ::tpy::cpy::Py_DecRef(docstrings__enum_Level); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            }
+            if (::tpy::cpy::PyModule_AddObjectRef(__m, "Level", docstrings__enum_Level) < 0) { ::tpy::cpy::Py_DecRef(docstrings__enum_Level); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        }
+        {
+            PyObject *__d = ::tpy::cpy::PyDict_New();
+            if (!__d) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            if (::tpy::interop::enum_dict_add(__d, "UNSET", ::tpy::interop::to_py(static_cast<int32_t>(0))) < 0) {
+                ::tpy::cpy::Py_DecRef(__d); ::tpy::cpy::Py_DecRef(__m); return nullptr;
+            }
+            docstrings__enum_Bare = ::tpy::interop::make_enum("Bare", "docstrings", true, __d);
+            ::tpy::cpy::Py_DecRef(__d);
+            if (!docstrings__enum_Bare) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+            if (::tpy::cpy::PyModule_AddObjectRef(__m, "Bare", docstrings__enum_Bare) < 0) { ::tpy::cpy::Py_DecRef(docstrings__enum_Bare); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        }
         ::tpyapp::docstrings::__tpy_init();
         return __m;
     } catch (const ::tpy::BaseException &__e) {

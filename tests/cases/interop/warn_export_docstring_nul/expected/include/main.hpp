@@ -7,6 +7,28 @@
 
 namespace tpyapp::main {
 
+enum class BadEnum : int32_t {
+    A = 1,
+};
+
+} // namespace tpyapp::main
+
+template<>
+struct tpy::EnumUtil<::tpyapp::main::BadEnum> {
+    static constexpr std::string_view type_name = "BadEnum";
+    static std::string_view name(::tpyapp::main::BadEnum e);
+    static const std::array<::tpyapp::main::BadEnum, 1> members;
+    static ::tpyapp::main::BadEnum from_value(int32_t v);
+    static ::tpyapp::main::BadEnum from_name(std::string_view s);
+    static std::optional<::tpyapp::main::BadEnum> try_parse(std::string_view s);
+};
+
+namespace tpyapp::main {
+
+inline std::ostream& operator<<(std::ostream& __os, BadEnum __e) {
+    return __os << "BadEnum." << ::tpy::EnumUtil<BadEnum>::name(__e);
+}
+
 struct Holder;
 struct BadDoc;
 

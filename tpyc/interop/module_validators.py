@@ -160,6 +160,9 @@ def _warn_uncrossable_docstrings(compiled: 'CompiledModule') -> None:
                 f"{names} will not be visible from Python; put the text in "
                 f"the class docstring instead",
                 record.loc))
+    for en in mod.enums:
+        if en.exposed_to_host:
+            check(en.docstring, f"@export enum '{en.name}'", en.loc)
     # A user exception class is not `@export`-marked -- it gets its Python
     # type by being raised across the boundary -- so it needs its own pass or
     # its docstring would be the one drop with no diagnostic behind it.

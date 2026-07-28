@@ -13,12 +13,27 @@ bare newline, unlike `incr` below whose indented close leaves trailing
 spaces. The two shapes render through different branches of the docstring
 emitter, so both are pinned here.
 """
+from enum import IntEnum
+
 from tpy import Int64
 from tpy.extern import export
 
 
 class Rejected(ValueError):
     """Raised when the value is rejected."""
+
+
+@export
+class Level(IntEnum):
+    """A documented enum -- set on the type after the functional API builds it."""
+
+    LOW = 0
+    HIGH = 1
+
+
+@export
+class Bare(IntEnum):
+    UNSET = 0
 
 
 @export

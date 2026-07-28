@@ -14,6 +14,11 @@ print(repr(m.Counter.incr.__doc__))
 print(repr(m.Counter.undocumented_method.__doc__))
 print(repr(m.Counter.doubled.__doc__))
 print(repr(m.Rejected.__doc__))
+# An enum is rebuilt via the stdlib functional API, which takes no doc, so the
+# docstring is set on the constructed type; members must survive that.
+print(repr(m.Level.__doc__))
+print(repr(m.Bare.__doc__))
+print(list(m.Level), m.Level.HIGH.name, m.Level.HIGH.value)
 print(repr(m.Base.__doc__))
 print(repr(m.Derived.__doc__))
 # Inherited method: the docstring follows the DECLARING body through the MRO,

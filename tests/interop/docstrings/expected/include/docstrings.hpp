@@ -7,6 +7,47 @@
 
 namespace tpyapp::docstrings {
 
+enum class Level : int32_t {
+    LOW = 0,
+    HIGH = 1,
+};
+
+enum class Bare : int32_t {
+    UNSET = 0,
+};
+
+} // namespace tpyapp::docstrings
+
+template<>
+struct tpy::EnumUtil<::tpyapp::docstrings::Level> {
+    static constexpr std::string_view type_name = "Level";
+    static std::string_view name(::tpyapp::docstrings::Level e);
+    static const std::array<::tpyapp::docstrings::Level, 2> members;
+    static ::tpyapp::docstrings::Level from_value(int32_t v);
+    static ::tpyapp::docstrings::Level from_name(std::string_view s);
+    static std::optional<::tpyapp::docstrings::Level> try_parse(std::string_view s);
+};
+
+template<>
+struct tpy::EnumUtil<::tpyapp::docstrings::Bare> {
+    static constexpr std::string_view type_name = "Bare";
+    static std::string_view name(::tpyapp::docstrings::Bare e);
+    static const std::array<::tpyapp::docstrings::Bare, 1> members;
+    static ::tpyapp::docstrings::Bare from_value(int32_t v);
+    static ::tpyapp::docstrings::Bare from_name(std::string_view s);
+    static std::optional<::tpyapp::docstrings::Bare> try_parse(std::string_view s);
+};
+
+namespace tpyapp::docstrings {
+
+inline std::ostream& operator<<(std::ostream& __os, Level __e) {
+    return __os << "Level." << ::tpy::EnumUtil<Level>::name(__e);
+}
+
+inline std::ostream& operator<<(std::ostream& __os, Bare __e) {
+    return __os << "Bare." << ::tpy::EnumUtil<Bare>::name(__e);
+}
+
 struct Rejected;
 struct Counter;
 struct Base;

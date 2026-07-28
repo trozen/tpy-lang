@@ -2224,6 +2224,7 @@ class Parser:
             cpp_member_names=cpp_member_names,
             has_explicit_values=has_explicit,
             exposed_to_host=exposed_to_host,
+            docstring=ast.get_docstring(node, clean=False),
             loc=self._loc(node),
         )
 

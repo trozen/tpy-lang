@@ -1629,6 +1629,10 @@ class TpyEnum:
     # True for a bare `@export` enum in an ext_module: recreated as a CPython
     # IntEnum/Enum at PyInit_. Mirrors TpyFunction/TpyRecord.exposed_to_host.
     exposed_to_host: bool = False
+    # The enum body's leading string literal, captured here for the same
+    # reason TpyRecord's is: there is no statement body to read it back
+    # from. Consumed only by the CPython-extension glue.
+    docstring: str | None = None
     loc: SourceLocation | None = None
 
 

@@ -7,6 +7,9 @@ None
 None
 'Twice the current value.'
 'Raised when the value is rejected.'
+'A documented enum -- set on the type after the functional API builds it.'
+None
+[<Level.LOW: 0>, <Level.HIGH: 1>] HIGH 1
 'A documented base class.'
 'A documented subclass.'
 'Documented on the base, reached through the subclass.'

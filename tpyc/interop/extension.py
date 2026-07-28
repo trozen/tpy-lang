@@ -300,6 +300,7 @@ class ExtensionGenerator:
                 "is_int_enum": e.is_int_enum,
                 "underlying": underlying,
                 "members": [(name, value) for name, value, _loc in e.members],
+                "doc_text": e.docstring,
             })
         return result
 
@@ -1726,6 +1727,23 @@ class ExtensionGenerator:
         out.write(f"            ::tpy::cpy::Py_DecRef(__d);\n")
         out.write(f'            if (!{e["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
                   f"return nullptr; }}\n")
+        # The stdlib functional API takes no doc argument, so the docstring is
+        # set on the constructed type -- without this an @export enum reports
+        # __doc__ None where its own source reports the text.
+        if e["doc"] != "nullptr":
+            out.write("            {\n")
+            out.write(f'                PyObject *__ed = ::tpy::interop::to_py('
+                      f'std::string_view({e["doc"]}));\n')
+            out.write(f'                if (!__ed) {{ ::tpy::cpy::Py_DecRef('
+                      f'{e["var"]}); ::tpy::cpy::Py_DecRef(__m); '
+                      f"return nullptr; }}\n")
+            out.write(f'                int __erc = ::tpy::cpy::'
+                      f'PyObject_SetAttrString({e["var"]}, "__doc__", __ed);\n')
+            out.write("                ::tpy::cpy::Py_DecRef(__ed);\n")
+            out.write(f'                if (__erc < 0) {{ ::tpy::cpy::Py_DecRef('
+                      f'{e["var"]}); ::tpy::cpy::Py_DecRef(__m); '
+                      f"return nullptr; }}\n")
+            out.write("            }\n")
         # On success the module-static handle keeps its make_enum reference alive
         # (like the exposed-class type handles) and AddObjectRef adds the module
         # dict's own; on failure AddObjectRef took no ref, so release the handle's
@@ -1883,7 +1901,9 @@ class ExtensionGenerator:
 
         # PyInit_ must be the literal import name; escape_cpp_name (used for
         # the internal symbols) would mangle a C++-keyword stem and break load.
-        for e in user_excs:
+        # Every PyInit_-created entity that carries a docstring materializes
+        # its constant here, before the function that references it.
+        for e in user_excs + exposed_enums:
             e["doc"] = self._emit_doc_const(out, f'{e["var"]}__doc',
                                             e["doc_text"])
         out.write(f'extern "C" PyObject *PyInit_{module_name}(void) {{\n')

@@ -6337,8 +6337,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `__doc__`, so `help(mymod)` reads the same text the TPy source carries --
   the module (`m_doc`), `@export` functions and exposed-class methods
   (`ml_doc`), the class itself (`Py_tp_doc`), a `@property` (the getter's
-  docstring, via `PyGetSetDef.doc`) and a user exception type
-  (`PyErr_NewExceptionWithDoc`). The text is the RAW literal, exactly as
+  docstring, via `PyGetSetDef.doc`), an `@export` enum (set on the type after
+  the stdlib functional API builds it, since that API takes no doc) and a user
+  exception type (`PyErr_NewExceptionWithDoc`). The text is the RAW literal, exactly as
   CPython stores it (dedenting is `inspect.getdoc`'s job on both sides), and
   an undocumented callable keeps `__doc__` None. A plain annotated field has
   no docstring in Python either, so its getset carries none. **Excluded:**
@@ -6354,8 +6355,6 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
     text is dropped. Put that text in the **class docstring**, which does
     cross at zero cost; this is the same convention hand-written C extensions
     use (`help(dict)` shows `dict(mapping)` out of the class doc).
-  - An exposed **ENUM's** docstring (the enum is rebuilt through the stdlib
-    functional API, which takes no doc -- tracked in `TODO.md`).
   - A docstring containing an embedded **NUL**, which no CPython doc slot (a
     NUL-terminated C string) can carry -- the glue drops it and warns rather
     than hand the host a truncated text.
