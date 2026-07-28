@@ -206,6 +206,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `StrView("x")`/`String("x")` -> the ctor
                                     # @cpp_template over inline args
 
+    "call.inst_call_rvalue_arg",    # `set(make_nodes())` -> an owning call
+                                    # rvalue inline in the construct template
     "call.inst_ctor_arg",           # `dict(PairIter(3))` -> a user-iterator
                                     # ctor rvalue into the construct template
     "call.generic_free",            # plain TPy generic callee -> explicit
@@ -758,6 +760,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # union slot -> plain value render
     "arg.protocol_union_plain",     # ... the lowering arm that renders it
     "call.view_instantiation",       # Span/Array ctor over a bare source
+    "call.array_literal_instantiation",  # `Array[T, N]([..])` -> the spelled
+                                    # array type over the literal's braces
+    "call.span_instantiation",      # `Span(p, n)` -> the ctor's own template
+                                    # expanded over inline args
+    "call.container_literal_instantiation",  # `set([..])` -> the spelled
+                                    # container type over the literal's braces
     "arg.native_comprehension",     # comprehension stmt-expr inline at a
                                     # native/template Iterable slot
     "res.btuple_write",             # resumable borrow-tuple frame-field write

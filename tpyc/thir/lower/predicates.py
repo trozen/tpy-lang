@@ -4628,21 +4628,30 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     return None
 
 def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
-    """A container-returning call admitted at the STORAGE return sink,
-    element-blind (`return make_recs()` -> `return make_recs(args);`). The whole
-    container is returned bare into the storage-form `std::vector`/`map`/`set`
-    slot -- no per-element conversion happens at a whole-container return, so a
-    record / nested-container element list renders the same bare call the
-    scalar-element one does. `_storage_call_ret`'s scalar-read guard is a DECL
-    consumer concern (subsequent element reads must render bare); at a return
-    there is no downstream element read, so the guard does not apply. Reachable
-    only from the return generic tail: a container-of-records DECL is blocked at
-    its own `decl.slot_type` local slot before the call gate, so widening here
-    does not touch the decl path."""
+    """A container-typed call result at a position whose render does not read
+    the ELEMENT type -- element-blind, unlike `_storage_call_ret`, whose scalar
+    guard is a DECL consumer concern (subsequent element reads must render
+    bare). Two such positions:
+
+    - the STORAGE return sink (`return make_recs()` -> `return
+      make_recs(args);`): the whole container is returned bare into the
+      storage-form `std::vector`/`map`/`set` slot, with no per-element
+      conversion, so a record / nested-container element list renders the same
+      bare call a scalar-element one does. A container-of-records DECL is
+      blocked at its own `decl.slot_type` local slot before the call gate, so
+      this does not reach the decl path;
+    - the generic-type INSTANTIATION result (`list(it)` / `set(xs)`): sema has
+      already substituted the whole container into the ctor's `@cpp_template`
+      (`::tpy::construct<std::vector<Point>>({0})`), so again nothing in the
+      render reads the element. The sink this call then lands in -- decl slot,
+      rebind, return, arg -- runs its own family check, so it is not the
+      instantiation expression's job.
+    """
     if ret is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     return is_list(t) or is_dict(t) or is_set(t)
+
 
 def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     """A call-result tuple with at least one `Own[F1-record]` element, every
@@ -5538,16 +5547,39 @@ def _view_ctor_bare_source(e: TpyCall, rtype: 'TpyType | None',
     return True
 
 
-def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
-                          analyzer) -> 'FunctionInfo | None':
-    """The resolved `__init__` fi of a str-family VALUE type-constructor call
-    that carries `call_type` (`StrView("x")` / `String("x")`) -- the AST's
-    `_gen_call` call_type-branch resolved-template arm (`gen_call_from_fi(ctor,
-    None, gen_args)`), which for a viewfam/owned-str result renders the ctor's
-    positional `@cpp_template` over inline args (`StrView("x")` -> bare `"x"`,
-    `String("x")` -> `std::string("x")`), or None. The `call_type`-blind twin
-    of `_template_init_call_fi`, gated to viewfam/owned-str VALUE results so it
-    never overlaps the storage-container instantiation arm."""
+def _array_literal_ctor_source(e: TpyCall, rtype: 'TpyType | None') -> bool:
+    """An `Array[T, N]([...])` instantiation over an array LITERAL. The AST's
+    resolved-ctor template arm skips an array-literal first arg outright, so
+    this lands in the call_type tail, which spells the target type and hands
+    the literal `call_type` as its brace target (`std::array<int32_t, 3>({10,
+    20, 30})`). Restricted to Array's own param-less `__init__`: a user ctor
+    taking a container param reaches the same tail with a real slot type, and
+    the AST still threads `call_type` there -- a different render this arm must
+    not claim."""
+    if getattr(e, "call_type", None) is None or len(e.args) != 1:
+        return False
+    if e.kwargs or getattr(e, "double_star_unpack", None) is not None:
+        return False
+    if (e.subscript_callee is not None or e.type_args
+            or e.enum_from_value is not None or e.cast_target_type is not None
+            or e.isinstance_var is not None or e.dunder_call is not None
+            or e.macro_expansion is not None or e.compile_time_assert):
+        return False
+    if not isinstance(e.args[0], TpyArrayLiteral):
+        return False
+    if not is_array(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))):
+        return False
+    fi = e.resolved_function_info
+    return fi is not None and not fi.params
+
+
+def _template_ctor_call_fi(e: TpyCall) -> 'FunctionInfo | None':
+    """The resolved `__init__` fi of a bare-name type-constructor call whose
+    emit is the ctor's positional `@cpp_template` expanded over inline args --
+    the AST's `_gen_call` call_type-branch resolved-template arm
+    (`gen_call_from_fi(ctor, None, gen_args)`). Shape only: it makes no
+    judgement about the RESULT family, which is what decides whether that arm
+    is the one the AST reaches, so each caller adds its own family gate."""
     if (not isinstance(e.func, TpyName) or not e.args
             or e.kwargs or e.double_star_unpack is not None):
         return None
@@ -5555,9 +5587,6 @@ def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
             or e.cast_target_type is not None or e.isinstance_var is not None
             or e.dunder_call is not None or e.macro_expansion is not None
             or e.compile_time_assert or e.subscript_callee is not None):
-        return None
-    if (_resolved_viewfam_value(rtype, analyzer) is None
-            and not _is_string_owned(rtype)):
         return None
     fi = e.resolved_function_info
     if fi is None or not (fi.is_method and fi.name == "__init__"):
@@ -5573,6 +5602,107 @@ def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
     if len(e.args) != len(fi.params):
         return None
     return fi
+
+
+def _inst_call_rvalue_arg(arg: TpyExpr, analyzer) -> bool:
+    """A CALL RVALUE at an instantiation arg slot -- `set(make_nodes())`,
+    `set(copy(b))`, `list(copy_iter(it))`, `list(heapq.merge(a, b))`. The AST
+    renders it through the ordinary call-arg dispatch, inline into the
+    construct template, exactly as the generator-factory and combinator arms
+    above do for their narrower callee shapes.
+
+    Keyed on the value CATEGORY, not on the callee: an rvalue owns its result,
+    so none of the own_iter / last-use machinery the bare-NAME branch exists
+    for can apply to it.
+
+    Restricted to a CONTAINER result. The iterator-shaped rvalues in the same
+    position (`copy_iter(..)`'s `CopyIter[T]`, a module-qualified generator
+    factory) are blocked one layer down at the free-call result gate and the
+    module-marker gate, so admitting them here would be unwitnessable
+    surface."""
+    if not isinstance(arg, (TpyCall, TpyMethodCall)):
+        return False
+    if not is_rvalue_source(analyzer, arg):
+        return False
+    rt = analyzer.get_expr_type(arg)
+    if rt is None:
+        return False
+    rt = _resolve_literal_seeded(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt))), analyzer)
+    return is_list(rt) or is_dict(rt) or is_set(rt)
+
+
+def _container_literal_inst_slot(e: TpyCall, rtype: 'TpyType | None',
+                                 analyzer) -> 'TpyType | None':
+    """The element slot of a `list([...])` / `set([...])` instantiation -- a
+    container ctor whose single arg is an array LITERAL -- or None. The AST's
+    resolved-ctor template arm skips a literal first arg outright, so this
+    lands in the call_type tail, which spells the result type around the
+    literal's own braces (`::tpy::ordered_set<Node>({Node(2)})`).
+
+    The literal must be lowered against a LIST of this slot, never against its
+    own sema-resolved type (a read-only literal demotes to `Array[T, N]`, whose
+    element target the AST does not apply here) and never against the call's
+    own type (a `set` result would render the literal as a second
+    `ordered_set`). Only scalar / F1-record element slots are admitted: those
+    are exactly the families for which the AST's `target_type` yields no
+    element target at all, so a list of the slot reproduces its render. Every
+    family where the derivation DOES fire -- Optional / union / tuple / Any /
+    str / bytes / recursive-alias elements, and any DICT result, whose elements
+    retarget to `tuple[K, V]` -- stays out."""
+    if getattr(e, "call_type", None) is None or len(e.args) != 1:
+        return None
+    if e.kwargs or getattr(e, "double_star_unpack", None) is not None:
+        return None
+    if (e.subscript_callee is not None or e.enum_from_value is not None
+            or e.cast_target_type is not None or e.isinstance_var is not None
+            or e.dunder_call is not None or e.macro_expansion is not None
+            or e.compile_time_assert):
+        return None
+    lit = e.args[0]
+    if not isinstance(lit, TpyArrayLiteral) or not lit.elements:
+        return None
+    rt = _resolve_literal_seeded(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype))), analyzer)
+    if rt is None or not (is_list(rt) or is_set(rt)):
+        return None
+    targs = getattr(rt, "type_args", None)
+    if not targs:
+        return None
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(targs[0])))
+    if not (_eligible_scalar(slot) or _f1_record(slot, analyzer)):
+        return None
+    return slot
+
+
+def _viewfam_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None',
+                          analyzer) -> 'FunctionInfo | None':
+    """The resolved `__init__` fi of a str-family VALUE type-constructor call
+    that carries `call_type` (`StrView("x")` / `String("x")`) -- the AST's
+    `_gen_call` call_type-branch resolved-template arm (`gen_call_from_fi(ctor,
+    None, gen_args)`), which for a viewfam/owned-str result renders the ctor's
+    positional `@cpp_template` over inline args (`StrView("x")` -> bare `"x"`,
+    `String("x")` -> `std::string("x")`), or None. The `call_type`-blind twin
+    of `_template_init_call_fi`, gated to viewfam/owned-str VALUE results so it
+    never overlaps the storage-container instantiation arm."""
+    if (_resolved_viewfam_value(rtype, analyzer) is None
+            and not _is_string_owned(rtype)):
+        return None
+    return _template_ctor_call_fi(e)
+
+
+def _span_ctor_call_fi(e: TpyCall, rtype: 'TpyType | None') -> 'FunctionInfo | None':
+    """The resolved `__init__` fi of a `Span(ptr, n)` construction -- the same
+    template-expansion arm as the str family, over a SPAN result
+    (`std::span<int32_t>({0}, static_cast<size_t>({1}))`). A span is a VALUE
+    view, so no storage-container machinery is involved; the args land inline
+    in the ctor's own template. Placed ahead of the bare-source view arm
+    because the AST reaches the resolved-template arm FIRST -- a span
+    construction that resolves a template ctor never gets the spelled
+    direct-init render."""
+    if not is_span(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))):
+        return None
+    return _template_ctor_call_fi(e)
 
 def _tparam_value(t: 'TpyType | None') -> bool:
     """A bare type-param value (`T` after the ro/ref/send unwraps): renders
@@ -5629,7 +5759,11 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     if e.call_type is None or isinstance(e.call_type, PtrType):
         return None
-    if (e.subscript_callee is not None or e.type_args
+    # `e.type_args` is NOT excluded: an explicitly spelled `list[Int32](it)`
+    # renders exactly like the inferred `list(it)` -- sema folds the spelling
+    # into `call_type` and into the ctor template, and no AST call-gen branch
+    # reads the node's own type args.
+    if (e.subscript_callee is not None
             or e.enum_from_value is not None or e.cast_target_type is not None
             or e.isinstance_var is not None or e.dunder_call is not None
             or e.macro_expansion is not None or e.compile_time_assert):

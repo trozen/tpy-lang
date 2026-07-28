@@ -338,6 +338,10 @@ from .predicates import (
     _subscript_container_recv_type,
     _template_init_call_fi,
     _view_ctor_bare_source,
+    _array_literal_ctor_source,
+    _container_literal_inst_slot,
+    _inst_call_rvalue_arg,
+    _span_ctor_call_fi,
     _viewfam_ctor_call_fi,
     _tuple_subscript_value_read,
     _tparam_value,
@@ -4365,6 +4369,21 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     cpp_template=vf_fi.cpp_template,
                     loc=loc,
                 )
+            sp_fi = _span_ctor_call_fi(e, rtype)
+            if sp_fi is not None:
+                # `Span(p, 3)` -> `std::span<int32_t>(p, static_cast<size_t>(
+                # 3))`: a VALUE view built by the resolved ctor's own
+                # positional template over inline args, the same expansion the
+                # str family takes.
+                _witness("call.span_instantiation")
+                return THIRCall(
+                    result_type=rtype,
+                    callee=e.func_name,
+                    args=tuple(_lower_call_arg(a, p.type, lc, declared)
+                               for a, p in zip(e.args, sp_fi.params)),
+                    cpp_template=sp_fi.cpp_template,
+                    loc=loc,
+                )
             if _view_ctor_bare_source(e, rtype, declared, analyzer):
                 # A `Span[...]` / `Array[...]` instantiation over a bare
                 # container/view NAME (`Span[readonly[Int32]](lst)` ->
@@ -4379,9 +4398,35 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     result_type=rtype, type_cpp=lc.render_type(e.call_type),
                     args=tuple(_lower_expr(a, lc, declared) for a in e.args),
                     form=Form.VALUE, loc=loc)
+            if _array_literal_ctor_source(e, rtype):
+                # `Array[Int32, 3]([10, 20, 30])` -> `std::array<int32_t, 3>({
+                # 10, 20, 30})`: the spelled target type direct-initialized
+                # from the literal, which takes `call_type` as its brace
+                # target (the AST's array-literal branch of the call_type
+                # tail's per-arg dispatch).
+                _witness("call.array_literal_instantiation")
+                return THIRCtorCall(
+                    result_type=rtype, type_cpp=lc.render_type(e.call_type),
+                    args=(_lower_expr(e.args[0], lc, declared,
+                                      target_type=e.call_type),),
+                    form=Form.VALUE, loc=loc)
+            lit_slot = _container_literal_inst_slot(e, rtype, analyzer)
+            if lit_slot is not None:
+                # `set([Node(2)])` -> `::tpy::ordered_set<Node>({Node(2)})`:
+                # the spelled result type around the literal's own braces. The
+                # literal lowers against a LIST of the result's element slot,
+                # which is what keeps it in the brace family for a `set`
+                # result and off the Array element retype its own read-only
+                # demoted type would carry.
+                _witness("call.container_literal_instantiation")
+                return THIRCtorCall(
+                    result_type=rtype, type_cpp=lc.render_type(e.call_type),
+                    args=(_lower_expr(e.args[0], lc, declared,
+                                      target_type=make_list(lit_slot)),),
+                    form=Form.STORAGE, loc=loc)
             inst_fi = _instantiation_call_fi(e)
-            if (inst_fi is None or fam is None
-                    or not _storage_call_container(fam)):
+            if inst_fi is None or not _container_storage_return_call_ret(
+                    rtype, analyzer):
                 note_detail("call.inst_shape")
                 raise ThirUnsupported("expr.call")
             lowered_args: list[THIRExpr] = []
@@ -4459,6 +4504,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     lowered_args.append(_lower_expr(
                         arg, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.ITERABLE)))
+                elif _inst_call_rvalue_arg(arg, analyzer):
+                    # An owning CALL rvalue (`set(make_nodes())`,
+                    # `set(copy(b))`, `list(heapq.merge(a, b))`): the ordinary
+                    # call-arg render inline in the construct template. The
+                    # own_iter / last-use rows below are about consuming a
+                    # BINDING, which an rvalue has none of.
+                    _witness("call.inst_call_rvalue_arg")
+                    lowered_args.append(
+                        _lower_call_arg(arg, param.type, lc, declared))
                 else:
                     if (not isinstance(arg, TpyName) or arg.name == "self"
                             or arg.name not in declared):

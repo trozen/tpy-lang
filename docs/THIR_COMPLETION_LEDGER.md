@@ -3528,3 +3528,58 @@ which a type-param receiver does not have.
   the exact bug the case was written to guard. Routing it is a structural
   addition to the comprehension node, not a gate widening, so it stops here for
   a design decision.
+- **The instantiation-gate site grind -- `expressions.py:4386`, the
+  generic-type instantiation gate** (2026-07-28; commits `3c9e28a72`,
+  `77cfd452b`, `b7762bc95`). The second `probe_sites.py` wave, against
+  `expr.call`'s second-largest raise site: its twelve remaining sole-blocker
+  cases ground until NONE rejects there. Dial 2620 -> **2626/3615** (+6);
+  suite 9937 green, full exec. Six rows.
+
+  Rows, and the AST arm each mirrors -- all inside `_gen_call`'s `call_type`
+  branch:
+
+  1. `Array[T, N]([...])` -- the resolved-ctor template arm skips an
+     array-literal first arg outright, so the call lands in the generic tail,
+     which spells the target type and hands the literal `call_type` as its
+     brace target. Gated to Array's param-less `__init__`.
+  2. `Span(p, n)` -- the value-view sibling of the str-family
+     `_viewfam_ctor_call_fi` arm. Placed AHEAD of the bare-source view arm,
+     because the AST reaches the resolved-template arm first; the shared shape
+     check was extracted as `_template_ctor_call_fi`.
+  3. The instantiation RESULT gate goes element-blind. It had been reusing
+     `_storage_call_ret`, whose element check exists for DOWNSTREAM reads; the
+     ctor's sema-substituted template already spells the whole container, so a
+     record or tuple element renders exactly what a scalar one does.
+  4. A spelled `list[Int32](it)` routes like the inferred `list(it)`: sema
+     folds the spelling into `call_type` and into the template, and no AST
+     call-gen branch reads the node's own `type_args`.
+  5. `set([Node(2)])` -- the spelled container around the literal's braces.
+  6. An owning CALL rvalue at an instantiation ARG slot (`set(make_nodes())`,
+     `set(copy(b))`) -- the chain's next site, cleared in the same wave.
+
+  **The gate that is wrong is the one whose verdict the render does not
+  read.** Three of the six rows are one finding: the instantiation gate was
+  keyed on facts about the RESULT'S CONSUMERS (element family, spelled type
+  args) rather than on what its own render spells. A gate should encode the
+  render's requirements; the sinks the value flows into already run their own.
+
+  **Lowering a literal against the CALL's type is not the same as lowering it
+  against the AST's `target_type`.** The AST's `_gen_array_literal` dispatches
+  the RENDER on the literal's own kind and uses `target_type` only for element
+  targeting; `THIRContainerLiteral` fuses both into `result_type`. Passing
+  `e.call_type` through would have rendered a `set` result as a second
+  `ordered_set`; passing nothing let the literal's own sema type (a read-only
+  literal DEMOTES to `Array[T, N]`) turn on the Array element retype and emit
+  `::tpy::BigInt(2)` where the AST renders a bare `2`. The correct target is a
+  LIST of the RESULT's element slot -- neither of the two obvious spellings.
+  Only adversarial `dualgen.py` found this; no corpus case has a BigInt
+  element in that position.
+
+  **A value-CATEGORY key beat a callee key.** The instantiation arg ladder had
+  five callee-shaped arms (ctor / slice / generator factory / dict view /
+  combinator template) and still missed `copy_iter(..)`, `copy(..)`,
+  `make_nodes()` and `heapq.merge(..)` -- four unrelated callees. One
+  `is_rvalue_source` arm covers all of them, and its justification is stronger
+  than any callee list: the own_iter / last-use rows below exist to consume a
+  BINDING, which an rvalue does not have. The boundary (a call returning a
+  BORROW) keeps rejecting, and is pinned.

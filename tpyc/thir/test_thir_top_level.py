@@ -713,12 +713,11 @@ class TestSlotAllocatingShapesReject:
 
 
 class TestEmptyContainerInstantiation:
-    """The zero-arg `list()` / `dict()` / `set()` render is the default ctor
-    spelled off `call_type` -- it never reads the ELEMENT type, so the arm
-    does not key on the element-typed `_storage_call_ret` verdict (which
-    exists for the downstream READ shapes). A record-element container
-    therefore routes; anything that DOES read the element keeps that
-    verdict."""
+    """Neither instantiation form reads the ELEMENT type: the zero-arg render
+    is the default ctor spelled off `call_type`, and the arg-carrying one is
+    the ctor template with the whole container already substituted in. So
+    neither keys on the element-typed `_storage_call_ret` verdict, which
+    exists for the downstream READ shapes."""
 
     SRC = PRELUDE + (
         "class P:\n"
@@ -738,9 +737,11 @@ class TestEmptyContainerInstantiation:
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
 
-    def test_argument_carrying_instantiation_still_keys_on_the_element(self):
-        # `list(it)` DOES render over its element slots, so it keeps the
-        # `_storage_call_ret` verdict -- a record element still rejects.
+    def test_argument_carrying_instantiation_is_element_blind_too(self):
+        # The arg-carrying form does not read the element either: sema has
+        # already substituted the whole container into the ctor template
+        # (`::tpy::construct<std::vector<P>>({0})`), so a record element
+        # renders what a scalar one does -- same as the empty form above.
         src = (
             "from tpy import Int32, Own\n"
             "class P:\n"
@@ -754,6 +755,8 @@ class TestEmptyContainerInstantiation:
             "ps: list[P] = list(src_of())\n"
             "print(len(ps))\n"
         )
-        top, _w, fallback = _top_level(src)
-        assert top is None
-        assert [k for k in fallback if k.startswith("top_level:")], fallback
+        top, witnessed, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert witnessed["call.instantiation_template"] >= 1
+        _assert_byte_identical(src)

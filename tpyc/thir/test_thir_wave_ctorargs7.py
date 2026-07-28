@@ -209,17 +209,18 @@ class TestDictViewInstArg:
         assert w.get("call.inst_view_arg", 0) >= 2
         _assert_byte_identical(src)
 
-    def test_items_list_decl_stays_ast(self):
-        # `list(d.items())` routes as an EXPR, but the list[tuple] DECL slot
-        # is outside _storage_call_ret -- the body keeps falling back until
-        # the container-elem axis widens.
+    def test_items_list_decl_routes(self):
+        # The blocker was the instantiation EXPR gate reusing the ELEMENT-keyed
+        # `_storage_call_ret` verdict, not the decl slot: the ctor template
+        # spells the whole `std::vector<std::tuple<..>>`, so a tuple element
+        # renders what a scalar one does.
         src = ("from tpy import Int32\n"
                "def items_decl() -> Int32:\n"
                "    m: dict[str, Int32] = {\"a\": 1}\n"
                "    items = list(m.items())\n"
                "    return len(items)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "items_decl") is None
+        assert _fn(thir, "items_decl") is not None
         _assert_byte_identical(src)
 
 
