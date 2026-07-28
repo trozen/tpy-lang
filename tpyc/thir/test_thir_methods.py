@@ -3027,3 +3027,50 @@ class TestGenuineMethodOverloadCallSite:
         assert _fn(thir, "f") is not None
         assert not faces.get("call.strlit_overload_pin")
         _assert_byte_identical(src)
+
+
+class TestBuiltinModuleTemplateCall:
+    _SRC = (
+        "from tpy import Int32, UInt32, Ptr, Array\n"
+        "import tpy.unsafe\n"
+        "def f() -> Int32:\n"
+        "    arr: Array[Int32, 2] = [1, 2]\n"
+        "    p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)\n"
+        "    tpy.unsafe.unsafe_store(p, UInt32(1), Int32(9))\n"
+        "    return tpy.unsafe.unsafe_load(p, UInt32(1))\n"
+        "def main() -> None:\n    print(f())\nmain()\n"
+    )
+
+    def test_module_qualified_template_routes(self):
+        # Every @cpp_template branch of the AST's builtin-module arm renders
+        # through gen_template_or_native_call with the RESOLVED fi -- the same
+        # expansion the same-module static template already takes.
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "f") is not None
+        assert w.get("call.static_template", 0) >= 3
+        compiler, modules = _compile(self._SRC)
+        entry = _entry(modules)
+        assert compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True)) == \
+            compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False))
+
+    def test_special_builtin_module_call_stays_ast(self):
+        # A special-handling builtin (`tpy.copy`) has its own bespoke emit
+        # arm, which the marker classifier excludes before the template
+        # branch -- widening the template row must not open it.
+        src = (
+            "import tpy as t\n"
+            "def f(s: str) -> str:\n"
+            "    return t.copy(s)\n"
+            "def main() -> None:\n    print(f('a'))\nmain()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        assert compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True)) == \
+            compiler.generate_code_to_strings(
+                entry, options=CodeGenOptions(emit_source_comments=False))

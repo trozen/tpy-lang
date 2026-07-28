@@ -5735,6 +5735,57 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # target-typed at lowering, like the Char decl below (F4 U1). At a
         # `Ptr[T]` value binding it renders `nullptr` (a VALUE-form None --
         # _emit_literal's non-STORAGE arm; the gate pinned the binding type).
+        # A borrow-tuple local bound from a name (`s = r`) or a borrow-tuple
+        # -returning call (`pair = f(b)`): the AST's `_cpp_decl_type` spells
+        # `auto` for any ref-element tuple and the source renders bare, so the
+        # decl is the plain copy of a pointer-repr tuple -- the new binding
+        # keeps pointing at the same elements.
+        if (not is_reassign and not scope.in_branch
+                and isinstance(stmt.init, (TpyName, TpyCall, TpyMethodCall))
+                and stmt.name not in declared
+                and stmt.name not in lc.prescan.reassigned
+                and stmt.name not in lc.prescan.hoisted
+                and stmt.name not in lc.prescan.move_through):
+            src_bt = None
+            if isinstance(stmt.init, TpyName):
+                # `storage_tuple_locals` is the same-typed STORAGE binding (an
+                # `auto&&` durable alias): its reads stay `.field`, so it is
+                # not this shape.
+                if (stmt.init.name in declared
+                        and stmt.init.name not in lc.pointers
+                        and stmt.init.name not in lc.storage_tuple_locals):
+                    src_bt = _f1_tuple(declared[stmt.init.name], analyzer)
+            else:
+                # `get_expr_type` strips every Own wrapper, so the owning-ness
+                # has to come off the callee's DECLARED return type. Two
+                # separate exclusions live here, for two different reasons:
+                cfi = stmt.init.resolved_function_info
+                crt = getattr(cfi, "return_type", None) if cfi else None
+                cru = (unwrap_readonly(unwrap_send_sync(crt))
+                       if crt is not None else None)
+                # (1) SEMANTIC: a whole `Own[tuple[..]]` has the same element
+                # list but binds owning storage, whose reads stay `.field`.
+                owning = isinstance(cru, OwnType)
+                # (2) BUG-COMPAT: a per-element `tuple[Own[A], B]` returns the
+                # BORROW form, and the AST's element read for it is ill-formed
+                # C++ (BUGS.md). Rejecting mirrors the broken oracle on
+                # purpose; drop this half once that bug is fixed.
+                mixed_own = isinstance(cru, TupleType) and cru.has_own_element()
+                if cru is not None and not owning and not mixed_own:
+                    src_bt = _f1_tuple(analyzer.get_expr_type(stmt.init),
+                                       analyzer)
+            if src_bt is not None and src_bt.has_ref_elements():
+                from_call = not isinstance(stmt.init, TpyName)
+                init = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.VALUE,
+                                 btuple_slot=from_call,
+                                 allow_temps=from_call))
+                declared[stmt.name] = src_bt
+                _witness("decl.btuple_alias")
+                return THIRVarDecl(
+                    name=stmt.name, resolved_type=src_bt, init=init,
+                    cpp_type="auto", form=Form.BORROW, loc=loc)
         if isinstance(stmt.init, TpyNoneLiteral):
             none_tgt = declared[stmt.name] if stmt.name in declared else vtype
             ut = _eligible_value_union(none_tgt)
@@ -6969,6 +7020,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
             if isinstance(stmt.value, TpyName):
                 if stmt.value.name not in lc.storage_tuple_locals:
+                    # A local already bound in BORROW form (an `auto` decl off
+                    # a ref-element tuple) needs no lift -- it returns bare.
+                    if (stmt.value.name in declared
+                            and stmt.value.name not in narrowed
+                            and _f1_tuple(declared[stmt.value.name], analyzer)
+                            is not None):
+                        _witness("ret.btuple_name")
+                        return THIRReturn(
+                            value=_lower_expr(stmt.value, lc, declared),
+                            loc=loc)
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 is_const = stmt.value.name in lc.const_locals
                 inner: THIRExpr = _lower_expr(stmt.value, lc, declared)  # STORAGE-form alias

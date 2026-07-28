@@ -1050,9 +1050,11 @@ class TestTupleCallSlots:
         assert "t = make((::tpy::add_check<int32_t>(n, 1)));" in cpp
         assert "return make(n);" in cpp
 
-    def test_pointer_repr_tuple_call_ineligible(self):
-        # A pointer-repr tuple (record element) return is outside the
-        # value-tuple family -- decl init and return slot both reject.
+    def test_pointer_repr_tuple_call_takes_the_auto_slot(self):
+        # A pointer-repr tuple (record element) result is outside the
+        # VALUE-tuple family, but it is not ineligible: the decl spells
+        # `auto` and binds the borrow tuple whole (`decl.btuple_alias` /
+        # `call.btuple_slot`), while the source return lifts storage->borrow.
         src = (
             _F3_RECORDS
             + "def pick(h: Holder) -> tuple[Int32, Leaf]:\n    return h.pair\n"
@@ -1060,8 +1062,10 @@ class TestTupleCallSlots:
             + "    t = pick(h)\n"
             + "    return t[0]\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("call.btuple_slot", 0) == 1
+        _assert_byte_identical(src)
 
 
 # --- Widened value-tuple RETURN elements: nested value-tuple / value-Optional ---
@@ -2204,4 +2208,97 @@ class TestTupleTernary:
                + "    yield u\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _fn(_lower_ctx(src), "gen") is None
+        _assert_byte_identical(src)
+
+
+class TestBorrowTupleAliasDecl:
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+        "def pair_of(b: Box) -> tuple[Int32, Box]:\n"
+        "    t = (1, b)\n"
+        "    r = t\n"
+        "    return r\n"
+        "def alias(b: Box) -> Int32:\n"
+        "    t = (1, b)\n"
+        "    r = t\n"
+        "    return r[0]\n"
+        "def from_call(b: Box) -> Int32:\n"
+        "    p = pair_of(b)\n"
+        "    return p[0]\n"
+        "def main() -> None:\n    print(alias(Box(5)) + from_call(Box(6)))\n"
+        "main()\n"
+    )
+
+    def test_name_and_call_sources_route(self):
+        # A ref-element tuple always spells `auto`, so re-binding one from a
+        # name or from a call returning one is the plain pointer-repr copy --
+        # the new binding aliases the same elements.
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "alias") is not None
+        assert _fn(thir, "from_call") is not None
+        assert w.get("decl.btuple_alias", 0) == 3   # r=t twice, p=pair_of(b)
+        assert w.get("call.btuple_slot", 0) == 1
+        # `return r` on an already-borrow local needs no tuple_to_pointer lift.
+        assert w.get("ret.btuple_name", 0) == 1
+        _assert_byte_identical(self._SRC)
+
+    def test_storage_tuple_alias_still_defers(self):
+        # A tuple with no ref elements is NOT this shape: an lvalue storage
+        # source binds the AST's `auto&&` durable alias, a different decl.
+        src = (
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+            "def f() -> Int32:\n"
+            "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+            "    t = items[0]\n"
+            "    return t[0]\n"
+            "def main() -> None:\n    print(f())\nmain()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+    def test_own_tuple_call_result_still_defers(self):
+        # `Own[tuple[..]]` has the same element list but binds OWNING storage
+        # (`std::get<1>(t).val`, not `->val`), so it is not this shape -- the
+        # owning-ness is only visible on the callee's declared return type.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+            "def make_pair(v: Int32) -> Own[tuple[Int32, Box]]:\n"
+            "    return (v, Box(v))\n"
+            "def use() -> Int32:\n"
+            "    t = make_pair(5)\n"
+            "    return t[0] + t[1].val\n"
+            "def main() -> None:\n    print(use())\nmain()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.btuple_alias", 0) == 0
+        _assert_byte_identical(src)
+
+    def test_per_element_own_call_result_still_defers(self):
+        # `tuple[Own[A], B]` returns the BORROW form too, but binds its owned
+        # element by value -- and the AST's decl render for it is ill-formed
+        # (`std::get<1>(p).val` on a `B*`; filed in BUGS.md). Mirroring a
+        # broken oracle is correct here; routing it would be the divergence.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+            "def make_mixed(b: Box) -> tuple[Own[Box], Box]:\n"
+            "    return (Box(1), b)\n"
+            "def use(b: Box) -> Int32:\n"
+            "    p = make_mixed(b)\n"
+            "    return p[1].val\n"
+            "def main() -> None:\n    print(use(Box(7)))\nmain()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.btuple_alias", 0) == 0
         _assert_byte_identical(src)

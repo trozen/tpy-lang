@@ -2724,7 +2724,8 @@ def _native_protocol_value_arg(a: TpyExpr, ptype: 'TpyType | None',
                      or _resolved_str_value(atu, analyzer) is not None)
                 and _witness("arg.native_protocol_value"))
 
-def _lambda_routable(a: TpyExpr, analyzer) -> bool:
+def _lambda_routable(a: TpyExpr, analyzer, *,
+                     self_this: bool = False) -> bool:
     """The lambda-expression shapes `_lower_lambda` reproduces byte-for-byte:
     a closure with a non-void, non-pointer-tuple return and param types in the
     families the body emit renders without seeding (value scalars / Char /
@@ -2739,9 +2740,10 @@ def _lambda_routable(a: TpyExpr, analyzer) -> bool:
     shape lowering then rejects -- a needless fallback)."""
     if not isinstance(a, TpyLambda):
         return False
-    # A captured `self` spells `this` in the capture list (method context
-    # the lowering does not carry) -> AST path.
-    if "self" in a.captured_names:
+    # A captured `self` spells `this` in the capture list -- admitted only
+    # where the caller confirmed `self` renders as `this` (a plain method).
+    # A resumable coro's `__self` frame field is a different receiver render.
+    if "self" in a.captured_names and not self_this:
         return False
     rt = a.inferred_return_type
     if rt is None:
@@ -2823,8 +2825,9 @@ def _callable_object_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
                        temps_ok: bool,
-                       narrowed: 'set[str] | frozenset[str]') -> bool:
-    return (_lambda_routable(a, analyzer)
+                       narrowed: 'set[str] | frozenset[str]',
+                       self_this: bool = False) -> bool:
+    return (_lambda_routable(a, analyzer, self_this=self_this)
             or _func_ref_routable(a, analyzer)
             or _callable_value_pass_arg(a, locals_, analyzer)
             or _callable_object_arg(a, ptype, locals_, analyzer)
@@ -5029,6 +5032,17 @@ def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
         return "method.marker.deref.recv_shape"
     return "method.marker.deref.plain"
 
+def _template_kind(fi, e: TpyMethodCall) -> 'tuple[str, str] | None':
+    """The ("template", expanded) kind for a @cpp_template callee whose
+    expansion is positional-only -- the render `gen_template_or_native_call`
+    produces. None when a `{T}`/`{cpp}` placeholder survives, i.e. the call
+    needs the substitution machinery this slice does not carry."""
+    tmpl = (expand_fi_template(fi, e.inferred_type_args)
+            if e.inferred_type_args else fi.cpp_template)
+    if _positional_only_template(tmpl, len(e.args)):
+        return ("template", tmpl)
+    return None
+
 def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                       generator_ok: bool = False,
                       coro_factory_ok: bool = False,
@@ -5143,10 +5157,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                               else escape_cpp_name(e.method))
                 return ("qualified", f"{cpp_class}::{cpp_method}")
             if fi.cpp_template is not None:
-                tmpl = expand_fi_template(fi, e.inferred_type_args)
-                if _positional_only_template(tmpl, len(e.args)):
-                    return ("template", tmpl)
-                return None
+                return _template_kind(fi, e)
             if (fi.native_function
                     or fi.linkage != FunctionLinkage.DEFAULT):
                 return None
@@ -5160,11 +5171,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
         # (`Poll.ready[T]`-style) substitutes its {T} placeholders through
         # the shared expand_fi_template first. Positional-only results only.
         if fi.cpp_template is not None:
-            tmpl = (expand_fi_template(fi, e.inferred_type_args)
-                    if e.inferred_type_args else fi.cpp_template)
-            if _positional_only_template(tmpl, len(e.args)):
-                return ("template", tmpl)
-            return None
+            return _template_kind(fi, e)
         if e.inferred_type_args or fi.type_params:
             # A generic static call spells the class/method targs split
             # (`Cls<CA>::template m<MA>(args)`); the renders need the
@@ -5197,6 +5204,16 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
         return ("qualified", static_method_callee_cpp(
             analyzer.registry, implicit, analyzer.ctx.module_name,
             e.obj.name, e.method, fi))
+    if e.builtin_module_call is not None and fi.cpp_template is not None:
+        # A builtin-module function/type call (`tpy.unsafe.unsafe_ptr(arr)`,
+        # `tpy.Int32(10)`): every @cpp_template branch of the AST's
+        # builtin-module arm routes through gen_template_or_native_call with
+        # the RESOLVED fi, i.e. the same expansion the same-module static
+        # template takes. The @native branches render a receiver-threaded or
+        # gen_call_arg loop instead and stay out.
+        if fi.native_function or fi.native_name:
+            return None
+        return _template_kind(fi, e)
     if fi.cpp_template is not None:
         return None
     if e.builtin_module_call is not None:

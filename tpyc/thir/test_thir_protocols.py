@@ -439,3 +439,46 @@ class TestDynProtocolBranchHoist:
             "    else:\n        pet = Cat()\n"
             "    yield 1\n"))
         assert _fn(thir, "g") is None
+
+
+class TestBoundedTypeParamFieldRead:
+    _SRC = (
+        "from tpy import Int32\n"
+        "from typing import Protocol\n"
+        "class HasValue(Protocol):\n"
+        "    value: Int32\n"
+        "class Point:\n"
+        "    value: Int32\n"
+        "    def __init__(self, v: Int32):\n        self.value = v\n"
+        "class Wrap[T: HasValue]:\n"
+        "    inner: T\n"
+        "    def __init__(self, val: T):\n        self.inner = val\n"
+        "    def get(self) -> Int32:\n        return self.inner.value\n"
+        "def get_value[T: HasValue](item: T) -> Int32:\n"
+        "    return item.value\n"
+        "def main() -> None:\n"
+        "    print(get_value(Point(1)))\n"
+        "    print(Wrap(Point(2)).get())\n"
+        "main()\n"
+    )
+
+    def test_bound_receiver_and_chain_route(self):
+        # Inside the template the receiver is `param_val_or_ref_t<T>` -- a
+        # value or reference, never a pointer -- and the concept requires the
+        # member, so both the bare-name and the through-field receiver spell
+        # the plain `.` access.
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "get_value") is not None
+        # The through-field receiver (`self.inner.value`) is a SEPARATE
+        # predicate, and a fallback there emits byte-identical AST -- so the
+        # method has to be looked up by name, not inferred from the diff.
+        assert _fn(thir, "get") is not None
+        _assert_byte_identical(self._SRC)
+
+    def test_row_requires_a_protocol_bound(self):
+        # The row keys on the BOUND, not on "is a type param": an unbounded
+        # T has no concept requiring the member (sema rejects the read), so
+        # the predicate must not admit one.
+        from .lower.predicates import _bounded_tparam_protocol
+        from ..typesys import TypeParamRef
+        assert _bounded_tparam_protocol(TypeParamRef("T"), {}) is None

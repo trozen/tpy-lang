@@ -168,6 +168,9 @@ class CommentSink:
     def elif_(self, out: TextIO, loc, indent: str) -> None:
         ...
 
+    def case_(self, out: TextIO, loc, indent: str) -> None:
+        ...
+
     def else_(self, out: TextIO, else_body, indent: str) -> None:
         ...
 
@@ -528,6 +531,12 @@ class CtxCommentSink(CommentSink):
     def elif_(self, out: TextIO, loc, indent: str) -> None:
         # An elif condition gets only its source line (the AST path emits no
         # inline comments for a flattened elif).
+        self._ctx.emit_source_comment(out, loc, indent)
+
+    def case_(self, out: TextIO, loc, indent: str) -> None:
+        # A `match` arm gets only its source line: every AST match emitter
+        # calls emit_source_comment for the case loc and none of them emits
+        # the leading `#`-comment trivia.
         self._ctx.emit_source_comment(out, loc, indent)
 
     def else_(self, out: TextIO, else_body, indent: str) -> None:
@@ -2537,7 +2546,7 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
     out.write(f"{indent}switch ({subject}) {{\n")
     state.switch_depth += 1
     for arm in stmt.arms:
-        state.comments.stmt(out, arm.entries[0].loc, indent)
+        state.comments.case_(out, arm.entries[0].loc, indent)
         if not arm.labels:
             if default_label is not None:
                 out.write(f"{indent}default: {default_label}: {{\n")
@@ -2600,7 +2609,7 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
     deref = "*" if stmt.is_ptr_variant else ""
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}default: {{\n")
         elif len(arm.labels) == 1:
@@ -2663,7 +2672,7 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
         use_scope = len(arm.entries) > 1
         bind_indent = inner2 if use_scope else inner
         for entry in arm.entries:
-            state.comments.stmt(out, entry.loc, inner)
+            state.comments.case_(out, entry.loc, inner)
             if use_scope:
                 out.write(f"{inner}{{\n")
             if not entry.field_conds:
@@ -2730,7 +2739,7 @@ def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if entry.poly_cast is not None:
             keyword = "if" if i == 0 else "} else if"
             pre, suf = entry.poly_cast
@@ -2770,7 +2779,7 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if entry.poly_cast is not None:
             pre, suf = entry.poly_cast
             out.write(f"{indent}if ({pre}{subject}{suf}) {{\n")
@@ -2847,7 +2856,7 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     out.write(f"{inner}auto& {inner_name} = (*{subject});\n")
     if stmt.inner_strategy is None:
         entry = stmt.arms[0].entries[0]
-        state.comments.stmt(out, entry.loc, inner)
+        state.comments.case_(out, entry.loc, inner)
         out.write(f"{inner}{{\n")
         _emit_match_binding(out, entry.binding, inner_name, inner2)
         _emit_stmts(out, entry.body, indent_level + 2, state)
@@ -2902,7 +2911,7 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if entry.opt_conds is None:
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
@@ -2946,7 +2955,7 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if entry.opt_conds is None:
             out.write(f"{indent}{{\n")
         else:
@@ -2976,7 +2985,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     state.match_counter += 1
     end_label = f"__match_end_{state.match_counter}"
     for entry in stmt.str_guarded:
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         cond = _opt_chain_cond(entry.opt_conds, subject)
         out.write(f"{indent}if ({cond}) {{\n")
         _emit_match_binding(out, entry.binding, subject, inner)
@@ -2997,7 +3006,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     for arm in stmt.arms:
         out.write(f"{sw_indent}case {arm.labels[0]}: {{\n")
         for entry in arm.entries:
-            state.comments.stmt(out, entry.loc, sw_inner)
+            state.comments.case_(out, entry.loc, sw_inner)
             cond = _opt_chain_cond(entry.opt_conds, subject)
             out.write(f"{sw_inner}if ({cond}) {{\n")
             _emit_match_binding(out, entry.binding, subject, sw_deep)
@@ -3011,7 +3020,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     if stmt.str_disc_kind == "char_at":
         out.write(f"{indent}}}\n")
     for entry in stmt.str_trailing:
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         out.write(f"{indent}{{\n")
         _emit_match_binding(out, entry.binding, subject, inner)
         _emit_match_goto_tail(out, entry, indent_level, state, end_label)
@@ -3033,7 +3042,7 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
@@ -3067,7 +3076,7 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}{{\n")
         else:
@@ -3110,7 +3119,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         keyword = "if" if i == 0 else "} else if"
         if entry.or_conds is not None:
             if entry.or_conds:
@@ -3151,7 +3160,7 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.stmt(out, entry.loc, indent)
+        state.comments.case_(out, entry.loc, indent)
         if entry.or_conds is not None:
             if entry.or_conds:
                 cond = _record_or_cond(entry.or_conds, subject)

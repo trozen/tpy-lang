@@ -216,16 +216,38 @@ class TestEnumTruthiness:
         assert cond.operand is not None
         _assert_byte_identical(src)
 
-    def test_int_enum_call_operand_stays_ast(self):
-        # An IntEnum embeds its operand in the `!= 0` test, so it never had the
-        # drop bug -- but the arm lowers under a CONDITION use, which demands a
-        # bool the enum operand never has, so a CALL operand rejects and the
-        # body falls back. Pins the boundary the plain-enum sibling crossed.
+    def test_int_enum_non_name_operands_route(self):
+        # Both wraps substitute the AST's ordinary value render, so the IntEnum
+        # arm admits every operand shape its sibling does -- call, method call,
+        # subscript and ternary, not just a name or field.
+        src = (
+            _ENUM_PRELUDE
+            + "class H:\n"
+            + "    p: Prio\n"
+            + "    def __init__(self, p: Prio) -> None:\n        self.p = p\n"
+            + "    def get(self) -> Prio:\n        return self.p\n"
+            + "def make(v: Prio) -> Prio:\n    return v\n"
+            + "def f(h: H, ps: list[Prio], flag: bool) -> None:\n"
+            + "    if make(Prio.HIGH):\n        print(1)\n"
+            + "    if h.get():\n        print(2)\n"
+            + "    if ps[0]:\n        print(3)\n"
+            + "    if (Prio.HIGH if flag else Prio.LOW):\n        print(4)\n"
+            + "def main():\n    f(H(Prio.HIGH), [Prio.LOW], True)\nmain()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("enum.truthy_int", 0) >= 4
+        assert isinstance(_fn(thir, "f").body[0].condition, THIREnumWrap)
+        _assert_byte_identical(src)
+
+    def test_int_enum_operand_still_validates_itself(self):
+        # Admitting every SHAPE does not bypass the operand's own lowering: a
+        # walrus operand still rejects, so the body falls back.
         src = (
             _ENUM_PRELUDE
             + "def make(v: Prio) -> Prio:\n    return v\n"
             + "def f() -> None:\n"
-            + "    if make(Prio.HIGH):\n        print(1)\n"
+            + "    if (q := make(Prio.HIGH)):\n        print(q == Prio.HIGH)\n"
             + "def main():\n    f()\nmain()\n"
         )
         thir = _lower_ctx(src)

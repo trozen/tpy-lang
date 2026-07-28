@@ -112,6 +112,14 @@ class _ExprUse:
     # Distinct from `ptr_opt_passthrough`, whose result lands BARE -- one flag
     # cannot stand for both renders.
     ptr_opt_lift: bool = False
+    # The borrow-tuple local decl sink only (`auto p = pair_of(b);`): admit a
+    # pointer-repr tuple result, which the `auto` slot binds whole. Every other
+    # consumer of such a result converts form, so they keep their own rows.
+    btuple_slot: bool = False
+    # An ALWAYS_TRUE truthiness operand only: the wrap renders it inside
+    # `static_cast<void>(...)`, so the result is discarded exactly as at
+    # statement position -- the same widened return set applies.
+    truthy_discard: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

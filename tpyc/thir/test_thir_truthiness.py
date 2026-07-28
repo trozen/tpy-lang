@@ -7,7 +7,10 @@ from dataclasses import fields as dataclass_fields, is_dataclass
 from ..codegen_cpp.context import CodeGenOptions
 from .lower import lower_module
 from .nodes import TruthinessMode, THIRTruthy, THIRUnaryNot
-from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (
+    _assert_byte_identical, _compile, _entry, _fn, _lower_ctx,
+    _lower_ctx_witnessed,
+)
 
 
 _SRC = (
@@ -313,3 +316,54 @@ class TestStructuredTruthiness:
             "    return False\n"
         )
         assert _fn(_lower_ctx(src), "probe") is None
+
+
+class TestAlwaysTrueDiscardsItsOperand:
+    _SRC = (
+        "from tpy import Own\n"
+        "class Rec:\n"
+        "    v: int\n"
+        "    def __init__(self, v: int):\n        self.v = v\n"
+        "class Holder:\n"
+        "    r: Rec\n"
+        "    def __init__(self) -> None:\n        self.r = Rec(0)\n"
+        "    def get_ref(self) -> Rec:\n        return self.r\n"
+        "    def make(self) -> Own[Rec]:\n        return Rec(1)\n"
+        "    @property\n"
+        "    def made(self) -> Own[Rec]:\n        return Rec(2)\n"
+        "def probe(h: Holder) -> None:\n"
+        "    if h.make():\n        print(1)\n"
+        "    if h.get_ref():\n        print(2)\n"
+        "    if h.made:\n        print(3)\n"
+        "def main():\n    probe(Holder())\nmain()\n"
+    )
+
+    def test_record_returning_method_operands_route(self):
+        # `(static_cast<void>(h.make()), true)` discards the result, so the
+        # method's own return gate sees the same widened set it does at
+        # statement position -- an owned, a borrow and a property return.
+        kept = [n for n in _truthy_nodes(_fn(_lower_ctx(self._SRC), "probe"))
+                if n.mode is TruthinessMode.ALWAYS_TRUE]
+        assert len(kept) == 3, kept
+        assert all(n.operand is not None for n in kept)
+        _assert_byte_identical(self._SRC)
+
+    def test_discard_does_not_leak_to_value_positions(self):
+        # Only the ALWAYS_TRUE wrap discards. A __bool__ record's operand is
+        # CONSUMED by the dunder call, so its method-call return keeps the
+        # ordinary value-position gate and the body still falls back.
+        src = (
+            "class Flag:\n"
+            "    value: bool\n"
+            "    def __init__(self, value: bool):\n        self.value = value\n"
+            "    def __bool__(self) -> bool:\n        return self.value\n"
+            "class Holder:\n"
+            "    f: Flag\n"
+            "    def __init__(self) -> None:\n        self.f = Flag(True)\n"
+            "    def get(self) -> Flag:\n        return self.f\n"
+            "def probe(h: Holder) -> None:\n"
+            "    if h.get():\n        print(1)\n"
+            "def main():\n    probe(Holder())\nmain()\n"
+        )
+        assert _fn(_lower_ctx(src), "probe") is None
+        _assert_byte_identical(src)

@@ -536,9 +536,34 @@ class TestMatchIfElifGuarded:
         assert _fn(thir, "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
+    def test_truthy_wrapped_guard_lowers(self):
+        # The AST renders every guard through gen_truthy_expr, so a guard
+        # whose type carries a truthiness wrap takes it -- here the
+        # always-true record fold, which also has to keep the call.
+        src = (
+            "from tpy import Own\n"
+            "class Rec:\n"
+            "    v: int\n"
+            "    def __init__(self, v: int):\n        self.v = v\n"
+            "def make() -> Own[Rec]:\n    return Rec(1)\n"
+            "def f(s: str) -> None:\n"
+            "    match s:\n"
+            "        case \"a\" if make():\n"
+            "            print(0)\n"
+            "        case _:\n"
+            "            print(1)\n"
+            "f(\"a\")\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "(static_cast<void>(make()), true)" in cpp
+        assert cpp == _cpp(src, thir=False)
+
     def test_non_bool_guard_rejects(self):
-        # The AST renders the guard raw (no truthy wrap): only bool-typed
-        # guards are mirror-safe.
+        # A native-int guard has no truthiness WRAP -- its render IS its value
+        # (`if (k)`), so the lowered result stays Int32 and the bool-result
+        # check keeps rejecting it.
         src = (
             "from tpy import Int32\n"
             "def f(s: str, k: Int32) -> None:\n"
@@ -3090,3 +3115,25 @@ class TestUnionMemberCtorFieldWrite:
         assert cpp == _cpp(self.SRC, thir=False)
         assert "h.pet = Cat(9);" in cpp
         assert "to_value_variant" not in cpp
+
+
+class TestMatchArmComments:
+    def test_leading_comment_before_a_case_is_not_duplicated(self):
+        # Every AST match emitter renders only the case's own source line, so
+        # the leading `#`-comment trivia must not be emitted at the arm --
+        # a divergence no case could witness until a match with such a
+        # comment routed.
+        src = (
+            "from tpy import Int32\n"
+            "def f(k: Int32) -> Int32:\n"
+            "    match k:\n"
+            "        # a note about the first arm\n"
+            "        case 1:\n"
+            "            return 10\n"
+            "        case _:\n"
+            "            return 20\n"
+            "f(1)\n"
+        )
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "a note about the first arm" not in cpp

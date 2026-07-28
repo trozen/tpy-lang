@@ -748,6 +748,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.value_to_borrow",       # rvalue elements via the source-tuple helper
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
+    "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
+    "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
+    "ret.btuple_name",              # already-borrow tuple local returned bare
     "res.btuple_write",             # resumable borrow-tuple frame-field write
     "res.btuple_yield",             # borrow-tuple yield (literal or lifted source)
     "ret.tuple_opt_elem",

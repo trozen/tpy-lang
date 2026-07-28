@@ -264,3 +264,51 @@ class TestNestedDefEmitState:
                + "    a = make_adder(5)\n    print(a(10))\nmain()\n")
         assert _fn(_lower_ctx(src), "make_adder") is not None
         assert _cpp(src, True) == _cpp(src, False)
+
+
+class TestSelfCapturingLambda:
+    _SRC = (
+        _PRELUDE
+        + "from typing import Callable\n"
+        + "def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:\n"
+        + "    return f(v)\n"
+        + "class C:\n"
+        + "    n: Int32\n"
+        + "    def __init__(self) -> None:\n        self.n = 42\n"
+        + "    def scaled(self, k: Int32) -> Int32:\n"
+        + "        return apply(lambda x: x * self.n, k)\n"
+        + "def main() -> None:\n    print(C().scaled(2))\nmain()\n"
+    )
+
+    def test_routes_and_captures_this(self):
+        # A captured `self` IS the receiver pointer, so it spells `this` in
+        # the capture list and the body reads through it.
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "apply") is not None
+        assert w.get("expr.lambda", 0) >= 1
+        cpp = _cpp(self._SRC, thir=True)
+        assert "[this](int32_t x) -> int32_t" in cpp
+        assert "this->n" in cpp
+
+    def test_byte_identical(self):
+        assert _cpp(self._SRC, thir=True) == _cpp(self._SRC, thir=False)
+
+    def test_generator_method_self_capture_still_defers(self):
+        # A generator method's receiver is not a plain `this` -- the AST
+        # reaches it through the wrapper's captured this (`(*this)`), a
+        # different render, so the capture spelling is not mirrored there.
+        src = (
+            _PRELUDE
+            + "from typing import Callable, Iterator\n"
+            + "def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:\n"
+            + "    return f(v)\n"
+            + "class C:\n"
+            + "    n: Int32\n"
+            + "    def __init__(self) -> None:\n        self.n = 42\n"
+            + "    def gen(self, k: Int32) -> Iterator[Int32]:\n"
+            + "        yield apply(lambda x: x * self.n, k)\n"
+            + "def main() -> None:\n"
+            + "    for v in C().gen(2):\n        print(v)\nmain()\n"
+        )
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "gen") is None

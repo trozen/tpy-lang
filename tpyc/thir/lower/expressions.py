@@ -195,6 +195,8 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    _tparam_protocol_field_recv_ok,
+    _tparam_protocol_field_over_field_ok,
     _call_ret_union_ok,
     _ptr_opt_borrow_call_ret,
     _BIGINT_LIT_COERCION,
@@ -642,6 +644,11 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # own shape.
               or (result is _ExprResultUse.VALUE
                   and _value_tuple(ret, analyzer) is not None)
+              # The borrow-tuple local decl (`auto p = pair_of(b);`): the
+              # `auto` slot binds the pointer-repr result whole, so the call
+              # renders bare with no form conversion.
+              or (use.btuple_slot and _f1_tuple(ret, analyzer) is not None
+                  and _witness("call.btuple_slot"))
               or (result is _ExprResultUse.BORROW_BIND
                   and _f1_record(record, analyzer))
               # An async-def FACTORY call under the make_adapter wrap: the
@@ -2787,6 +2794,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         or _field_over_global_record_ok(
                             e, declared, analyzer)
                         or _field_over_call_ok(e, analyzer)
+                        or _tparam_protocol_field_recv_ok(
+                            e, declared, lc.tparam_bounds)
+                        or _tparam_protocol_field_over_field_ok(
+                            e, lc.tparam_bounds, analyzer)
                         or _assign_narrowed_union_recv(e.obj, declared, lc)
                         is not None):
                     raise ThirUnsupported("field.receiver_shape", detail=True)
@@ -5231,7 +5242,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("expr.method_call")
 
             recv_type = _method_receiver_type(e.obj, declared, analyzer)
-            stmt_position = result_use is _ExprResultUse.DISCARD
+            stmt_position = (result_use is _ExprResultUse.DISCARD
+                             or use.truthy_discard)
             storage_ret_ok = result_use is _ExprResultUse.STORAGE
             # Builtin-stub receivers (container/set/str-view) render args
             # through gen_call_arg's `_args()` loop, which THREADS the raw
@@ -5766,7 +5778,9 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
     pointer-repr tuple return arm and the void-body statement render."""
     analyzer = lc.analyzer
     loc = getattr(e, "loc", None)
-    if not _lambda_routable(e, analyzer):
+    if not _lambda_routable(
+            e, analyzer,
+            self_this=(lc.self_receiver == "self" and lc.self_cpp == "this")):
         raise ThirUnsupported("expr.lambda")
     ret_type = e.inferred_return_type
     params_cpp: list[str] = []
@@ -5790,9 +5804,15 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
             params_cpp.append(ptype.to_cpp_param(cpp_name))
         body_declared[pname] = ptype
     if e.captured_names:
+        # A captured `self` IS the receiver pointer, so it spells `this` in
+        # both capture modes -- alias semantics either way (the AST's
+        # `self_captures_this` arm). The gate admits the shape only where
+        # `self` renders as `this`.
         prefix = "" if e.captures_by_value else "&"
         capture = "[" + ", ".join(
-            f"{prefix}{escape_cpp_name(n)}" for n in e.captured_names) + "]"
+            "this" if (n == lc.self_receiver and lc.self_cpp == "this")
+            else f"{prefix}{escape_cpp_name(n)}"
+            for n in e.captured_names) + "]"
     else:
         capture = "[]"
     if is_void_like_type(ret_type):
@@ -6943,7 +6963,9 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         else:
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
-                narrowed=frozenset(lc.narrow.narrowed))
+                narrowed=frozenset(lc.narrow.narrowed),
+                self_this=(lc.self_receiver == "self"
+                           and lc.self_cpp == "this"))
             if not ok and _value_opt_member_arg(a, ptype, declared, analyzer):
                 ok = _witness("call.optval_member")
             if not ok and _optional_ptr_container_arg(
@@ -8363,12 +8385,6 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             loc=getattr(e, "loc", None),
         )
     wrap = _enum_truthy_wrap(et, lc.analyzer)
-    # A plain-enum operand admits any shape: the always-true render keeps a
-    # side-effecting operand alive for effect. The IntEnum wrap embeds its
-    # operand in a `!= 0` test and stays name/field-keyed.
-    if (wrap is not None and not _plain_enum_truthy(et, lc.analyzer)
-            and not isinstance(e, (TpyName, TpyFieldAccess))):
-        raise ThirUnsupported("truthy.enum_shape")
     mode = _truthiness_mode(et, lc.analyzer)
     if (mode is TruthinessMode.IS_TRUTHY
             and isinstance(e, TpyFieldAccess)):
@@ -8500,7 +8516,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("truthy.shape")
         operand = _lower_expr(
             e, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok),
+            use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok,
+                         truthy_discard=mode is TruthinessMode.ALWAYS_TRUE),
             allow_whole_optional=mode is TruthinessMode.IS_TRUTHY,
             allow_unrouted_name=mode is TruthinessMode.IS_TRUTHY,
         )
@@ -8537,24 +8554,17 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             loc=getattr(e, "loc", None),
         )
     loc = getattr(e, "loc", None)
-    if _plain_enum_truthy(et, lc.analyzer):
-        _witness("enum.truthy_plain")
-        # The kept operand is a truthiness position like the record arm's, not
-        # the IntEnum wrap's condition: a CONDITION use demands a bool result,
-        # which the enum-returning operand never has.
-        return THIREnumWrap(
-            result_type=BOOL, wrap=wrap,
-            operand=_lower_expr(
-                e, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.TRUTHY,
-                             allow_temps=temps_ok)),
-            loc=loc)
-    _witness("enum.truthy_int")
-    return THIREnumWrap(result_type=BOOL, wrap=wrap,
-                        operand=_lower_expr(
-                            e, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.CONDITION)),
-                        loc=loc)
+    # Both enum wraps substitute the AST's ordinary VALUE render (gen_truthy_expr
+    # calls gen_expr, then wraps), so neither operand is a condition -- a
+    # CONDITION use would demand a bool result the enum operand never has.
+    _witness("enum.truthy_plain" if _plain_enum_truthy(et, lc.analyzer)
+             else "enum.truthy_int")
+    return THIREnumWrap(
+        result_type=BOOL, wrap=wrap,
+        operand=_lower_expr(
+            e, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok)),
+        loc=loc)
 
 def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     """Mirror ExpressionGenerator._is_str_view_at_runtime over the admitted

@@ -3374,3 +3374,72 @@ What the round established instead:
 strong signal -- which is exactly why the failure sets must be recorded from
 the probe output, not from memory. A phantom overlap justified a whole design
 round.
+
+### Truthiness / borrow-tuple / bounded-tparam wave (2026-07-27)
+
+Six cells off master `d7c45bc01` (baseline 2034 fallback units: body 1755,
+ctor 88, resumable 122, top_level 69).
+
+**The wave's framing finding -- run the sole-blocker census BEFORE setting a
+unit target.** Summing, per tag, the fallback bodies of only those cases the
+tag blocks ALONE gives 685 of the 2034 units, and 234 of those sit inside
+`decl.slot_type` / `expr.call` / `expr.method_call`, which fragment. A unit
+target much above ~80 therefore cannot be met from the non-elephant frontier;
+the elephants pay only in verified SUB-FAMILY slices. Two were carved here.
+
+**Both enum truthiness wraps substitute a VALUE render.** `gen_truthy_expr`
+calls `gen_expr` and wraps the result, so the IntEnum arm's `CONDITION` use
+was the odd one out -- and the name/field-only shape gate it forced rejected
+call, method-call, subscript and ternary operands. Deleting the gate and
+lowering both arms under `TRUTHY` left every enum case byte-identical. The
+`stays_ast` pin whose comment STATED the CONDITION reason became a routing
+pin; a walrus operand replaced it as the boundary.
+
+**An ALWAYS_TRUE truthiness operand is a discard.** `(static_cast<void>(x),
+true)` throws the result away, so a record-returning method or property read
+there needs exactly the widened return set `stmt_position` already grants --
+`_ExprUse.truthy_discard` carries the fact. A `__bool__` record's operand is
+CONSUMED by the dunder and keeps the value-position gate.
+
+**Match guards render through `gen_truthy_expr` too.** Lowering used a plain
+`CONDITION` use and rejected any non-bool guard at `match.guard_type`; routing
+it through `_lower_truthy` left all 162 match cases byte-identical. A
+native-int guard has no WRAP (its render IS its value) so the bool-result
+check still rejects it -- the existing pin's premise ("the AST renders the
+guard raw") was simply wrong and is corrected.
+
+**The borrow-tuple decl trap: two same-typed shapes, told apart only by the
+CALLEE's declared return type.** `auto p = pair_of(b);` and `auto t =
+make_pair(5);` produce identical element lists, but the second returns
+`Own[tuple[..]]` and binds owning STORAGE (`std::get<1>(t).val`, not
+`->val`). `get_expr_type` strips the Own wrapper, so keying the arm on the
+expression type mis-registered the local and the corpus byte-diff caught it;
+the fix reads `fi.return_type`. The name-source sibling has the same trap in
+the other direction -- a `storage_tuple_locals` name is the AST's `auto&&`
+durable alias and is excluded by set membership, the precondition
+`_is_borrow_form_name` documents.
+
+**The builtin-module `@cpp_template` slice carves out of `expr.method_call`.**
+`tpy.unsafe.unsafe_ptr(arr)` / `tpy.Int32(10)` reach the AST's builtin-module
+arm, and every `@cpp_template` branch of it renders through
+`gen_template_or_native_call` with the RESOLVED fi -- the same expansion the
+same-module static template already took. The marker classifier rejected the
+whole family one line before that branch. The `@native` branches
+(receiver-threaded / `gen_call_arg` loops) and the special-handling builtins
+keep rejecting. This made `_marker_call_kind` carry a THIRD copy of the
+expand-and-check-positional block, now folded into `_template_kind`.
+
+**A defect the routing exposed: match arms emitted their leading comments.**
+Every AST match emitter calls `emit_source_comment(case.loc)` alone; THIR's
+arm emitters used the combined `stmt` sink, so a `#` comment between
+`match x:` and its first `case` came out that the AST never wrote. Invisible
+until the guard cell routed `match/guard_truthiness`, whose arm carries
+exactly such a comment -- the whole-corpus byte-diff caught it. New
+`CommentSink.case_` at all 15 arm sites.
+
+**A receiver-shape row, not a `_field_receiver_ok` widening.** Reading a field
+off a protocol-bounded type param (`item.value` under `[T: HasValue]`) got two
+new rows in the receiver disjunction rather than a row inside
+`_field_receiver_ok` -- the same reasoning the unbound-self arm used one wave
+earlier: ~75 sites read that predicate and most consult the receiver BINDING,
+which a type-param receiver does not have.

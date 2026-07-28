@@ -3714,6 +3714,34 @@ def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bo
     return (_f1_record(declared.get(recv.name), analyzer)
             or _optional_ptr_borrow_name(recv, declared, analyzer) is not None)
 
+def _tparam_protocol_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
+                                   bounds: 'dict | None') -> bool:
+    """`item.value` off a protocol-BOUND type-param binding (`item: T` under
+    `[T: HasValue]`). Inside the template the receiver is a
+    `param_val_or_ref_t<T>` value-or-reference -- never a pointer -- and the
+    concept requires the member, so `_gen_field_access` renders the plain
+    `item.value`. The method-call sibling is `_bounded_tparam_protocol`'s."""
+    if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
+        return False
+    recv = e.obj
+    if not isinstance(recv, TpyName):
+        return False
+    return _bounded_tparam_protocol(declared.get(recv.name),
+                                    bounds) is not None
+
+def _tparam_protocol_field_over_field_ok(e: TpyExpr, bounds: 'dict | None',
+                                         analyzer) -> bool:
+    """`self.inner.value` where the INNER field is a protocol-bound type param
+    of the enclosing generic record -- the chain sibling of
+    `_tparam_protocol_field_recv_ok`. The member spells the same postfix `.`
+    off the inner read, which lowers through its own arms."""
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
+            and isinstance(e.obj, TpyFieldAccess)
+            and _field_markers_clean(e.obj)):
+        return False
+    return _bounded_tparam_protocol(analyzer.get_expr_type(e.obj),
+                                    bounds) is not None
+
 def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
                           analyzer) -> bool:
     """A value-position read of a str-family field off an admitted receiver

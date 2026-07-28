@@ -2,10 +2,8 @@
 
 The resumable CFG branch, the simple-generator while head, and a `match`
 case guard are all boolean contexts that used to render the operand raw.
-THIR always lowered the first two through the truthiness lowering, so the
-pins here are what proves the two paths now agree rather than THIR quietly
-mirroring a raw render. The guard is the boundary: THIR still rejects a
-non-bool one, so a future widening has to bring its own truthiness render.
+All three lower through the truthiness lowering, so the pins here are what
+proves the two paths agree rather than THIR quietly mirroring a raw render.
 """
 
 from __future__ import annotations
@@ -100,16 +98,16 @@ class TestMatchGuard:
         assert "(n > 0)" in cpp
         _assert_byte_identical(src)
 
-    def test_non_bool_guard_still_defers(self):
-        # THIR's guard lowering demands a bool result. The AST now renders
-        # the truthiness dispatch here, so a widening must reproduce THAT,
-        # not the old bare operand.
+    def test_non_bool_guard_takes_the_truthiness_dispatch(self):
+        # The guard lowers through `_lower_truthy` exactly as the AST's
+        # gen_truthy_expr does, so a container guard renders the emptiness
+        # test rather than falling the body back.
         src = _PRE + ("def f(k: Int32, xs: list[Int32]) -> Int32:\n"
                       "    match k:\n"
                       "        case 1 if xs:\n"
                       "            return 10\n"
                       "        case _:\n"
                       "            return 20\n")
-        assert _fallback(src) == {"body:stmt.match:match.guard_type": 1}
+        assert _fallback(src) == {}
         assert "::tpy::__len__(xs) != 0" in _thir_cpp(src)
         _assert_byte_identical(src)

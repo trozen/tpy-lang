@@ -91,6 +91,7 @@ from .context import (
 from .expressions import (
     _lower_expr,
     _lower_field_source,
+    _lower_truthy,
     _narrow_subject_is_ptr,
 )
 from . import statements as _statements
@@ -844,9 +845,9 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
 
 def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
                        declared: dict[str, TpyType]) -> THIRExpr:
-    lowered = _lower_expr(
-        guard, lc, declared,
-        use=_ExprUse(result=_ExprResultUse.CONDITION))
+    # The AST renders every guard through gen_truthy_expr, so a non-bool guard
+    # takes its type's truthiness wrap rather than rejecting.
+    lowered = _lower_truthy(guard, lc, declared)
     if not is_bool_type(unwrap_readonly(lowered.result_type)):
         raise ThirUnsupported("match.guard_type", detail=True)
     return lowered
