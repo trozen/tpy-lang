@@ -556,15 +556,20 @@ class TestOptionalRecordFieldWrite:
             _OPTREC + "    def clear(self):\n        self.opt = None\n")
         assert _fn(thir, "clear") is not None
 
-    def test_value_record_optional_stays_ast(self):
-        # A VALUE-record inner has no plain-non-value convert arm -> AST.
+    def test_value_record_optional_routes(self):
+        # A VALUE-record inner needs NO convert: borrow and storage forms
+        # coincide, so the AST writes it bare (`this->o = v;`) and the optrec
+        # name arm applies no FormConvert either (the source lowers VALUE,
+        # not BORROW). The pointer-repr predicate excludes it because ITS
+        # convert has no plain-non-value arm -- irrelevant here.
         src = ("from tpy import Int32, ValueType\n"
                "class V(ValueType):\n    x: Int32\n"
                "    def __init__(self, x: Int32):\n        self.x = x\n"
                "class W:\n    o: V | None\n"
                "    def __init__(self):\n        self.o = None\n"
                "    def put(self, v: V):\n        self.o = v\n")
-        assert _fn(_lower_ctx(src), "put") is None
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "put") is not None
 
 
 class TestOptionalRecordFieldWriteEmit:

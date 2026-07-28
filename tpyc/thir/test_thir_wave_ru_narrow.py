@@ -126,10 +126,13 @@ class TestWrapperUnionNarrow:
         assert _fn(_lower_ctx(src), "f") is None
         _assert_byte_identical(src)
 
-    def test_foreach_over_narrowed_alias_stays_ast(self):
-        # gen_expr's for-dispatch keys the DECLARED union, rendering the
-        # generic `__iter__` protocol loop over the alias -- unmirrored
-        # (corpus-caught on union_recursive_nested_literal's json_keys).
+    def test_foreach_over_narrowed_alias_routes(self):
+        # gen_expr's for-dispatch keys the DECLARED union, so a narrowed-alias
+        # iterable renders the generic `__iter__` protocol loop over the alias
+        # -- never the member's begin/end peephole. That IS the iter_proto
+        # route, so lowering now selects it rather than rejecting; the render
+        # is unchanged (corpus-caught on union_recursive_nested_literal's
+        # json_keys, which this pin was written from).
         src = (
             "import json\n"
             "def f(s: str) -> None:\n"
@@ -140,8 +143,8 @@ class TestWrapperUnionNarrow:
             "            n = n + 1\n"
             "    print(n)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
         _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "f") is not None
 
     def test_setitem_none_value_stays_ast(self):
         # None into a wrapper-union value slot (the monostate spelling) is

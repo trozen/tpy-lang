@@ -221,6 +221,7 @@ from .predicates import (
     _call_iterable_lvalue,
     _chain_post_if_fact,
     _const_exact_field_receiver_ok,
+    _storage_tuple_alias_src_ok,
     _opt_view_arg_shim,
     _own_declared_call_ret,
     _container_enum_spell,
@@ -328,6 +329,7 @@ from .checks import (
     _class_const_aug_assign_ok,
     _class_const_write_target_ok,
     _container_aug_setitem_ok,
+    _container_copy_field_write_ok,
     _container_field_write_ok,
     _container_record_elem_subscript,
     _container_literal_decl_ok,
@@ -346,6 +348,7 @@ from .checks import (
     _narrow_cond_info,
     _any_narrow_cond_info,
     _optional_record_field_inner,
+    _optional_value_record_field_inner,
     _optional_record_field_write_ok,
     _covariant_record_upcast_ok,
     _optional_record_field_upcast_write_ok,
@@ -388,6 +391,7 @@ from .expressions import (
     _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target,
+    _lower_copy_container,
     _lower_copy_record,
     _lower_ctor_call_args,
     _lower_expr,
@@ -1513,10 +1517,25 @@ def _select_for_each_route(
     if isinstance(stmt.iterable, TpyName) and stmt.iterable.name in narrowed:
         # The AST for-dispatch keys the DECLARED binding (get_resolved_type
         # reads ctx.var_types), so a narrowed-alias iterable renders the
-        # generic `__iter__`/`__next__` protocol loop, not the member's
-        # begin/end peephole -- unmirrored; keep falling back.
-        note_detail("foreach.narrowed_src")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        # universal `__iter__`/`__next__` protocol loop, never the member's
+        # begin/end peephole. That IS the iter_proto route -- select it
+        # rather than rejecting; the alias binds as an lvalue source
+        # (`auto& __src_N = __t;`) and the name lowering spells the alias.
+        # The richer for-shapes keep their own routes and stay rejected here:
+        # each re-dispatches on the iterable in ways this bypass would skip.
+        if (stmt.is_tuple_unpack or stmt.is_async
+                or stmt.enum_iterable is not None
+                or stmt.consuming_iter_fi is not None):
+            note_detail("foreach.narrowed_src")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        net = _resolved_loop_elem_type(stmt, analyzer)
+        if not _for_each_elem_binding_ok(net):
+            note_detail("foreach.elem_family."
+                        + _type_family_tag(net, analyzer))
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness("foreach.narrowed_proto_src")
+        return _ForEachRoute(route="iter_proto", elem_type=net,
+                             iterable_lvalue=True)
     if _is_range_call(stmt.iterable):
         route = _for_range_route(stmt, analyzer, declared,
                                  shadowable_globals)
@@ -3865,9 +3884,17 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     recv = _lower_expr(
         sub.obj, lc, declared,
         field_prechecked=isinstance(sub.obj, TpyFieldAccess))
+    # A generator-FACTORY call RHS (`d[1:3] = gen_values()`) is consumed by
+    # the helper as an iterable, not stored: it takes the iterable-position
+    # admission (the same bare factory render a for-each source gets), which
+    # the storage slot set does not carry.
+    v_fi = getattr(stmt.value, "resolved_function_info", None)
+    rhs_use = (_ExprUse(result=_ExprResultUse.ITERABLE)
+               if isinstance(stmt.value, TpyCall) and v_fi is not None
+               and v_fi.is_generator
+               else _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
     value = _lower_expr(
-        stmt.value, lc, declared, target_type=target_type,
-        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
+        stmt.value, lc, declared, target_type=target_type, use=rhs_use)
     if _is_move_source(stmt.value, lc):
         value = THIRMove(result_type=value.result_type, value=value,
                          form=value.form, loc=loc)
@@ -5024,24 +5051,38 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if (fn_top and is_storage_tuple_alias_decl(
                     vtype, stmt.init, name=stmt.name,
                     reassigned=lc.prescan.reassigned, hoisted=lc.prescan.hoisted,
-                    move_through=lc.prescan.move_through)
-                    and _const_exact_field_receiver_ok(
-                        stmt.init, declared, analyzer)
+                    move_through=lc.prescan.move_through,
+                    storage_tuple_locals=lc.storage_tuple_locals)
+                    and _storage_tuple_alias_src_ok(
+                        stmt.init, lc, declared, analyzer)
                     and _f1_tuple(
                         analyzer.get_expr_type(stmt.init), analyzer) is not None):
                 lc.storage_tuple_locals.add(stmt.name)
                 # The alias aliases its source's const-ness (`auto&&` deduces it): a
                 # const-receiver source makes reads lift to `const T*`. Tracked in
                 # `const_locals` so the borrow read at a return picks the const helper.
-                src_recv = stmt.init.obj  # TpyName (FieldAccess receiver)
-                if (src_recv.name in lc.const_locals
-                        or _param_is_const(src_recv.name, lc.func, analyzer,
-                                           lc.record_name)):
-                    lc.const_locals.add(stmt.name)
+                # Only the FIELD source derives it here; the subscript / name shapes
+                # are admitted non-const only (see `_storage_tuple_alias_src_ok`), so
+                # they never add a member and leave the const topology untouched.
+                if isinstance(stmt.init, TpyFieldAccess):
+                    src_recv = stmt.init.obj  # TpyName (FieldAccess receiver)
+                    if (src_recv.name in lc.const_locals
+                            or _param_is_const(src_recv.name, lc.func, analyzer,
+                                               lc.record_name)):
+                        lc.const_locals.add(stmt.name)
+                    src = _lower_field_source(stmt.init, lc, declared)
+                elif isinstance(stmt.init, TpySubscript):
+                    src = _lower_expr(stmt.init, lc, declared,
+                                      subscript_prechecked=True)
+                else:
+                    # A bare alias-of-an-alias (`u = t`): the name renders as the
+                    # storage-form name it already is, so `auto&&` re-binds the same
+                    # storage. Never moved -- an alias source is single-assignment.
+                    src = _lower_expr(stmt.init, lc, declared)
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
-                    init=_lower_field_source(stmt.init, lc, declared), form=Form.STORAGE,
+                    init=src, form=Form.STORAGE,
                     cpp_local_representation=LocalBinding.STORAGE_TUPLE_ALIAS, loc=loc)
             # C1+C2 comprehension local: the init renders as the whole
             # stmt-expr; the decl line itself is the plain-value arm.
@@ -6213,6 +6254,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt, declared, analyzer)
                 or _optional_field_none_write_ok(stmt, declared, analyzer)
                 or _container_field_write_ok(stmt, declared, analyzer)
+                or _container_copy_field_write_ok(
+                    stmt, declared, pointers, analyzer)
                 or _str_field_write_ok(stmt, declared, analyzer)
                 or _bytes_field_write_ok(stmt, declared, analyzer)
                 or _container_name_field_write_ok(
@@ -6308,6 +6351,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value = THIRLiteral(result_type=eu, value=None,
                                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.optval_none")
+            elif is_void_like_type(eu):
+                # UNIT value slot (`d["a"] = None` on `dict[str, None]`):
+                # the element is `std::monostate`, and `None` is the only
+                # source sema admits -- the STORAGE literal renders
+                # `std::monostate{}`, stored bare by the checked setitem.
+                if not isinstance(stmt.value, TpyNoneLiteral):
+                    note_detail("setitem.unit_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                value = THIRLiteral(result_type=eu, value=None,
+                                    form=Form.STORAGE, loc=loc)
+                _witness("setitem.unit_none")
             elif _eligible_wrapper_union(eu, analyzer) is not None:
                 # Recursive-union WRAPPER value slot: a scalar/str literal
                 # constructs the wrapper via its converting ctor -- the bare
@@ -6485,6 +6539,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                           result=_ExprResultUse.STORAGE,
                                                           allow_temps=True))),
                                       ftype, lc), loc=loc)
+            # `self.items = copy(data)` -- the container copy-construct row
+            # (`this->items = std::vector<int32_t>(data);`), the container
+            # sibling of the record `copy()` field write above.
+            if is_list(ftype) or is_dict(ftype) or is_set(ftype):
+                ccopy = _lower_copy_container(stmt.value, lc, declared,
+                                              loc=loc)
+                if ccopy is not None:
+                    _witness("field_write.container_copy")
+                    return THIRAssign(
+                        target=_lower_field_write_target(stmt, lc, declared),
+                        value=ccopy, loc=loc)
             # A VALUE-repr `Optional[scalar]` field (`std::optional<int32_t>`):
             # the scalar converts implicitly, so the store is BARE
             # (`s.count = 42;`). The generic tail's `ptr_to_optional` lift
@@ -6611,7 +6676,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # at an Optional slot (`_optional_record_field_write_ok`). The F2b
             # `T*`->ptr_to_optional lift keeps its pointer-local source, in
             # `lc.pointers`, on the generic tail below.
-            opt_inner = _optional_record_field_inner(ftype, analyzer)
+            opt_inner = (_optional_record_field_inner(ftype, analyzer)
+                         or _optional_value_record_field_inner(
+                             ftype, analyzer))
             # A `copy()` over a pointer-repr Optional is the identity, so the
             # pointer-local exclusion has to see THROUGH it -- otherwise the
             # wrapper hides a borrow `T*` source here and the optrec arm emits
@@ -8574,6 +8641,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               # Optional bindings stay out (their whole-name
                               # print is a different render).
                               and _witness("print.hoisted_container_arg"))
+                          # `print(self)` streams the record raw via its
+                          # emitted operator<<. The AST renders the receiver
+                          # `(*this)`, which is exactly what `THIRSelf.deref`
+                          # spells in a value position -- the render was
+                          # never missing, only excluded.
+                          or (isinstance(arg, TpyName)
+                              and lc.self_receiver is not None
+                              and arg.name == lc.self_receiver
+                              and lc.record_name is not None
+                              and _f1_record(
+                                  analyzer.get_expr_type(arg), analyzer)
+                              and _witness("print.self_arg"))
                           or (isinstance(arg, TpyFieldAccess)
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
@@ -9091,6 +9170,17 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact lowering consumed (`_wrap_print_form`).
+    if (isinstance(a, TpyName) and lc.self_receiver is not None
+            and a.name == lc.self_receiver and lc.record_name is not None
+            and _f1_record(lc.analyzer.get_expr_type(a), lc.analyzer)):
+        # `print(self)` streams the record raw via its emitted operator<<.
+        # The receiver is a POINTER in a plain method, and a value position
+        # derefs it (`(*this)`) -- the same retag the record call-arg tail
+        # applies; the print path just never did it.
+        lowered = _lower_expr(a, lc, declared)
+        if isinstance(lowered, THIRSelf) and lc.self_is_pointer:
+            lowered = replace(lowered, deref=True)
+        return THIRPrintArg(lowered, PrintForm.RAW)
     wrap = _wrap_print_form(a, declared, lc.analyzer)
     if wrap is not None and isinstance(a, (TpyCall, TpyMethodCall)):
         # A container-returning CALL wraps the inline call render; STORAGE

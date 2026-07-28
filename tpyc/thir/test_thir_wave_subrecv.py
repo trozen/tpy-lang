@@ -52,8 +52,12 @@ class TestVarargsSubscript:
         assert faces["subscript.varargs_recv"] >= 1
         _assert_byte_identical(src)
 
-    def test_unproven_index_stays_ast(self):
-        # No range proof -> no bounds-safe raw render; the body falls back.
+    def test_unproven_index_takes_the_checked_read(self):
+        # Without a range proof there is no bounds-safe RAW render -- but the
+        # emit does not need one: it falls through to the checked
+        # `::tpy::__getitem__(args, i)`, the same branch a container receiver
+        # takes. The gate used to demand the proof and reject here; the emit
+        # picks the form off `bounds_safe` instead.
         src = _PRELUDE + (
             "def tail(*args: Int32) -> Int32:\n"
             "    n: Int32 = len(args)\n"
@@ -61,8 +65,8 @@ class TestVarargsSubscript:
             "        return args[n - 1]\n"
             "    return -1\n"
         )
-        assert _fn(_lower_ctx(src), "tail") is None
         _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "tail") is not None
 
 
 class TestOwnContainerReceiver:

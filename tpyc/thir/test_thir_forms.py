@@ -1915,8 +1915,12 @@ class TestPrintWrapArgs:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
 
-    def test_self_print_stays_ast(self):
-        # `print(self)` renders `(*this)` on the AST path -- excluded.
+    def test_self_print_routes(self):
+        # `print(self)` renders `(*this)` on the AST path: the receiver is a
+        # POINTER in a plain method and a value position derefs it. That is
+        # `THIRSelf.deref` -- the same retag the record call-arg tail applies
+        # -- so the print path applies it too and streams the record raw via
+        # its emitted operator<<.
         src = (
             _F1_RECORDS
             + "class W:\n"
@@ -1925,8 +1929,9 @@ class TestPrintWrapArgs:
             + "    def show(self) -> None:\n        print(self)\n"
             + "W().show()\n"
         )
+        _assert_byte_identical(src)
         thir = _lower_ctx(src)
-        assert _fn(thir, "show") is None
+        assert _fn(thir, "show") is not None
 
     def test_bytearray_name_routes_bytearray_printer(self):
         # A bytearray NAME print routes via its own wrap kind

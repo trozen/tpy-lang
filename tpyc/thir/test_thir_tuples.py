@@ -2245,9 +2245,10 @@ class TestBorrowTupleAliasDecl:
         assert w.get("ret.btuple_name", 0) == 1
         _assert_byte_identical(self._SRC)
 
-    def test_storage_tuple_alias_still_defers(self):
+    def test_storage_tuple_alias_takes_the_other_decl(self):
         # A tuple with no ref elements is NOT this shape: an lvalue storage
-        # source binds the AST's `auto&&` durable alias, a different decl.
+        # source binds the AST's `auto&&` durable alias, a different decl --
+        # which is what it must route as, never the borrow-tuple family.
         src = (
             "from tpy import Int32\n"
             "class Box:\n"
@@ -2259,7 +2260,16 @@ class TestBorrowTupleAliasDecl:
             "    return t[0]\n"
             "def main() -> None:\n    print(f())\nmain()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[1]  # body[0] declares `items`
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS
+        assert decl.form is Form.STORAGE
+        # The distinction the pin was written to hold: the borrow-tuple alias
+        # family must not claim a ref-element-free tuple.
+        assert w.get("decl.btuple_alias", 0) == 0
         _assert_byte_identical(src)
 
     def test_own_tuple_call_result_still_defers(self):
@@ -2301,4 +2311,113 @@ class TestBorrowTupleAliasDecl:
         )
         thir, w = _lower_ctx_witnessed(src)
         assert w.get("decl.btuple_alias", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestStorageTupleAliasSourceShapes:
+    """The `auto&&` storage-tuple alias over the two source shapes the AST's
+    `is_storage_form_source` admits beyond a field read."""
+
+    _BOX = (
+        "from tpy import Int32, readonly\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+    )
+
+    def test_subscript_source_routes(self):
+        # A container subscript is unconditionally a storage source, so
+        # `t = items[0]` binds the same durable `auto&&` alias a field does.
+        src = (self._BOX
+               + "def f() -> None:\n"
+               + "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+               + "    t = items[0]\n"
+               + "    t[1].val = 99\n"
+               + "    print(items[0][1].val)\n"
+               + "def main() -> None:\n    f()\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[1]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS
+        assert decl.form is Form.STORAGE
+        _assert_byte_identical(src)
+
+    def test_alias_of_alias_name_source_routes(self):
+        # A NAME source is a storage source only once it already aliases
+        # storage -- `u = t` after `t = items[0]`. Mutation through the second
+        # alias reaches the stored element, so both must bind, not copy.
+        src = (self._BOX
+               + "def f() -> None:\n"
+               + "    items: list[tuple[Int32, Box]] = [(1, Box(3))]\n"
+               + "    t = items[0]\n"
+               + "    u = t\n"
+               + "    u[1].val = 11\n"
+               + "    print(items[0][1].val)\n"
+               + "def main() -> None:\n    f()\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        for i in (1, 2):
+            decl = fn.body[i]
+            assert isinstance(decl, THIRVarDecl)
+            assert (decl.cpp_local_representation
+                    is LocalBinding.STORAGE_TUPLE_ALIAS)
+        _assert_byte_identical(src)
+
+    def test_plain_name_source_is_not_a_storage_source(self):
+        # BOUNDARY: a name that does not already alias storage is not a
+        # storage source, so it must not take the alias decl -- mirrors the
+        # AST consulting `storage_form_tuple_locals` for the Name shape only.
+        src = (self._BOX
+               + "def f(t: tuple[Int32, Box]) -> None:\n"
+               + "    u = t\n"
+               + "    print(u[1].val)\n"
+               + "def main() -> None:\n    f((1, Box(2)))\nmain()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        if fn is not None:
+            decl = fn.body[0]
+            assert isinstance(decl, THIRVarDecl)
+            assert (decl.cpp_local_representation
+                    is not LocalBinding.STORAGE_TUPLE_ALIAS)
+        _assert_byte_identical(src)
+
+    def test_const_subscript_source_stays_ast(self):
+        # BOUNDARY: the const verdict for a non-field source would have to come
+        # from the AST's `is_const_storage_source`, whose body-global set drives
+        # LATER borrow reads. The widening admits non-const sources only, so a
+        # readonly container receiver must keep rejecting rather than bind an
+        # alias whose const-ness THIR did not derive.
+        src = (self._BOX
+               + "def f(items: readonly[list[tuple[Int32, Box]]]) -> Int32:\n"
+               + "    t = items[0]\n"
+               + "    return t[1].val\n"
+               + "def main() -> None:\n"
+               + "    xs: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+               + "    print(f(xs))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+    def test_const_alias_of_alias_stays_ast(self):
+        # BOUNDARY, the NAME arm's half of the const rejection: `t = h.pair` off
+        # a readonly receiver marks `t` const via the FIELD branch, so the
+        # SECOND alias (`u = t`) must reject too. Without this the compound
+        # shape is the one hole the subscript pin above does not cover -- a
+        # const verdict laundered through one hop into a non-const alias.
+        src = (self._BOX
+               + "class Holder:\n"
+               + "    pair: tuple[Int32, Box]\n"
+               + "    def __init__(self, b: Box) -> None:\n"
+               + "        self.pair = (1, b)\n"
+               + "def f(h: readonly[Holder]) -> Int32:\n"
+               + "    t = h.pair\n"
+               + "    u = t\n"
+               + "    return u[1].val\n"
+               + "def main() -> None:\n"
+               + "    print(f(Holder(Box(5))))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "f") is None
         _assert_byte_identical(src)

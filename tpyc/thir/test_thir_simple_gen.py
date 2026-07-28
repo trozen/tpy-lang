@@ -260,10 +260,11 @@ class TestSlicedOutShapes:
         assert _sgen_fallback(src).get("sgen.loop_var_type") == 1
 
     def test_generic_defers(self):
-        # The generic DEF rejects at the sgen gate, and the CALLER's foreach
-        # over the generic factory rejects at the call classifier
-        # (call.generic_generator -> expr.call) -- both stay byte-identical
-        # via fallback.
+        # The generic DEF still rejects at the sgen gate (a template frame is
+        # not the sliced lambda peephole). The CALLER's foreach over that
+        # factory now ROUTES: the iterable position spells the generic call
+        # exactly like any other generic free call (`rep<int32_t>(...)`), so
+        # only the DEF stays on the AST path -- byte-identical either way.
         src = (_ITER
                + "def rep[T](v: T, n: Int32) -> Iterator[T]:\n"
                + "    for _i in range(n):\n"
@@ -273,7 +274,7 @@ class TestSlicedOutShapes:
         _assert_identical(src)
         fb = _sgen_fallback(src)
         assert fb.get("sgen.generic") == 1
-        assert fb.get("expr.call") == 1
+        assert fb.get("expr.call") is None
 
     def test_generic_record_method_defers(self):
         # The generator METHOD on a generic record rejects (template frame);
@@ -577,3 +578,39 @@ class TestTupleYield:
                + "    print(b.val)\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert fallback, "expected the name-source tuple yield to fall back"
+
+
+class TestYieldCopyRecord:
+    _PT = ("from tpy import Int32, Own, copy\n"
+           "from typing import Iterator\n\n"
+           "class Point:\n    x: Int32\n"
+           "    def __init__(self, x: Int32) -> None:\n        self.x = x\n\n")
+
+    def test_yield_copy_routes(self):
+        # `yield copy(p)` binds the skeleton's `__val` slot through the shared
+        # copy-construct row (`Point(p)`), like every other copy() sink.
+        src = (self._PT
+               + "def points() -> Iterator[Own[Point]]:\n"
+               + "    src: list[Point] = [Point(3), Point(1)]\n"
+               + "    for p in src:\n"
+               + "        yield copy(p)\n\n"
+               + "def main() -> None:\n"
+               + "    for p in points():\n        print(p.x)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.yield_copy_record", 0) >= 1
+        assert not fallback
+
+    def test_yield_copy_of_ctor_rvalue_stays_ast(self):
+        # `copy(Point(1))` is the PRVALUE arm of _gen_copy_expr (the ctor
+        # render handed back unchanged), not the copy-construct row -- it must
+        # not ride this arm.
+        src = (self._PT
+               + "def points() -> Iterator[Own[Point]]:\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        yield copy(Point(i))\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for p in points():\n        print(p.x)\nmain()\n")
+        witnesses, _fallback = _assert_identical(src)
+        assert witnesses.get("sgen.yield_copy_record", 0) == 0

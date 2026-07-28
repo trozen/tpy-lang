@@ -35,6 +35,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
                                     # union wrapper slot (json.dumps([...]))
+    "argtemp.ru_wrapper_literal",   # scalar/str literal into a
+                                    # recursive-union wrapper slot
     "argtemp.ru_wrapper_member",    # member-typed NAME into a wrapper slot
                                     # (`Tree __tmp_N = std::move(b);`)
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
@@ -65,6 +67,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
     "argtemp.container_literal",    # list literal into a free-call container
                                     # ref slot -> hoisted `__tmp_N` temp
+    "argtemp.generic_container_literal",  # the same hoist at a GENERIC
+                                    # callee's substituted container slot
     "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
                                     # pre-decl on the sink's named row
     "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =
@@ -166,6 +170,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
     "own.record_copy",              # copy(name) into Own[record]: T(x)
+    "method.protocol_discard",      # discarded protocol-method result in
+                                    # statement position -- bare call
     "method.record_discard",        # discarded F1-record method result at
                                     # stmt position: the bare call
     "method.container_discard",     # discarded container method result: same bare call
@@ -376,6 +382,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.record_rvalue",
     # F1-record element/value slot from `copy(name)`: the copy-construct
     # rvalue (`::tpy::__setitem__(items, 0, Point(p));`).
+    "field_write.container_copy",   # `self.items = copy(data)` ->
+                                    # `std::vector<T>(data)`
     "setitem.record_copy",
     # F1-record element/value slot from a plain record NAME: the bare copy
     # (`::tpy::__setitem__(items, 0, p);`) or `std::move(p)` at a movable
@@ -663,6 +671,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.tuple_borrow_storage",
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
+    "containerlit.copy_record",     # `copy(p)` element: the shared
+                                    # copy-construct row at a record slot
     # A spanlike coerce over an array-literal inner: the helper wraps the
     # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
     "coerce.span_array_literal",
@@ -706,9 +716,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # A `*args` pack at a GENERIC callee's vararg slot -- the same
     # `std::array` temp + `::tpy::varargs<..>` render the plain path uses.
     "call.generic_vararg_pack",
+    # A NAME bound to the still-unsubstituted slot type at a generic callee
+    # (`first(items)` at `list[T]`): binds the ref template param bare.
+    "call.generic_open_slot_name",
     # `into_any` coercion: a scalar / str / bytes / None value wrapped into a
     # `tpy::Any` cell via `make_any` (`x: Any = 42` / `Any(v)`).
     "coerce.into_any",
+    # A redundant `copy()` dropped at the into_any coerce -- make_any already
+    # copy-constructs into the cell (ptr-variant unions excluded).
+    "coerce.into_any_copy_peel",
     # `from_any` auto-coerce: runtime-checked `any_cast_or_panic<T>` extraction
     # at a concrete slot (`n: int = a` / `return a`).
     "coerce.from_any",
@@ -1125,7 +1141,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # container ref slot (accept([x for ..]))
     "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
                                     # tuple_to_pointer at a borrow-tuple slot
+    "arg.borrow_tuple_subscript",   # the container-element twin: a checked
+                                    # element read through the same wrap
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
+    "subscript.borrow_tuple_elem",  # borrow-form tuple element at a
+                                    # BORROW_BIND sink (the arg wrap)
     "subscript.record_elem_borrow", # checked F1-record element lvalue at a
                                     # BORROW_BIND sink (record ref-slot arg)
     "arg.record_borrow_call",       # T&-returning call bound inline at a
@@ -1154,6 +1174,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.self_arg",             # `print(self)` -> the `(*this)` receiver
+                                    # streamed raw via operator<<
     "print.wrap_field_arg",         # container FIELD read print arg -> its
                                     # kind-keyed printer wrap (ListPrinter(m.f))
     "print.bytes_field",            # bytes-family field read print arg -> bare
@@ -1188,6 +1210,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot -> the bare aliasing member read
     "setitem.optval_none",          # None into a value-repr Optional[scalar]
                                     # element -> the nullopt STORAGE store
+    "setitem.unit_none",            # `d[k] = None` at a unit value slot
+                                    # -> the monostate STORAGE literal
     "ctor.protocol_union_arg",      # record/container NAME into an
                                     # all-protocols union ctor slot -> bare
     "print.kw_sep_end",             # sep=/end= kwarg (str literal or resolved
@@ -1322,6 +1346,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "sgen.yield_value",             # yield-value render
     "sgen.tuple_yield",             # tuple yield slot: the resumable tuple
                                     # arm's mirror (borrow/value builders)
+    "sgen.yield_copy_record",       # `yield copy(p)`: the shared
+                                    # copy-construct row at the __val slot
     "sgen.iterable",                # for-branch iterable render
     "sgen.range_arg",               # for-range bound renders
     # The universal __iter__/__next__ protocol foreach (generator-call /
@@ -1331,6 +1357,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # A NativeIterable[T]/Spannable[T] protocol PARAM iterable: the AST's
     # NativeIterable peephole (plain begin/end range-for over the deduced
     # template-param lvalue), not the universal loop.
+    "foreach.narrowed_proto_src",  # narrowed-alias iterable -> the
+                                    # universal __iter__/__next__ loop
     "foreach.native_proto_param",
     # Tuple-unpack head over the universal loop (`for a, b in zip(..)` /
     # a tuple-yield generator call -- the same head decls as the container

@@ -220,11 +220,12 @@ class TestProtocolMethodCallRejects:
         "from tpy import Int32, dynamic\n"
     )
 
-    def test_record_returning_protocol_method_stays_ast(self):
-        # A record result is outside the value-position set the arm admits;
-        # discarded in statement position so the RECEIVER is the bare protocol
-        # name (not a field chain, which would reject earlier).
-        thir = _lower_ctx(
+    def test_record_returning_protocol_method_discard_routes(self):
+        # A record result is outside the VALUE-position set the arm admits --
+        # but discarded in statement position nothing consumes it, so the call
+        # renders bare whatever its type. Same reason the record-receiver
+        # ladder admits `method.record_discard`.
+        src = (
             self._P
             + "class Node:\n"
             "    n: Int32\n"
@@ -233,16 +234,19 @@ class TestProtocolMethodCallRejects:
             "class Source(Protocol):\n"
             "    def head(self) -> Node: ...\n"
             "def run(s: Source) -> None:\n    s.head()\n")
-        assert _fn(thir, "run") is None
+        assert _fn(_lower_ctx(src), "run") is not None
+        _assert_byte_identical(src)
 
-    def test_container_returning_protocol_method_stays_ast(self):
-        thir = _lower_ctx(
+    def test_container_returning_protocol_method_discard_routes(self):
+        # The container sibling of the discard row above.
+        src = (
             self._P
             + "@dynamic\n"
             "class Source(Protocol):\n"
             "    def items(self) -> list[Int32]: ...\n"
             "def run(s: Source) -> None:\n    s.items()\n")
-        assert _fn(thir, "run") is None
+        assert _fn(_lower_ctx(src), "run") is not None
+        _assert_byte_identical(src)
 
 
 class TestProtocolParamRejects:

@@ -19,7 +19,8 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from ..parse.nodes import TpyExpr, TpyFieldAccess, TpyNoneLiteral, TpySubscript
+from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpyNoneLiteral,
+                           TpySubscript)
 from ..typesys import (
     OptionalType, OwnType, TpyType, TupleType, UnionType,
     unwrap_qualifiers, unwrap_readonly,
@@ -144,26 +145,35 @@ def is_storage_tuple_alias_decl(
     reassigned: set[str],
     hoisted: set[str],
     move_through: set[str],
+    storage_tuple_locals: set[str] | None = None,
 ) -> bool:
     """A pointer-repr tuple local bound `auto&& name = <lvalue storage tuple>`,
     aliasing the source's storage (CPython shares the elements); single-assignment
     only. Mirrors `_gen_var_decl_code`'s storage-form-tuple alias arm
-    (`statements.py`, the `auto&&` return) for the FieldAccess-source subset -- the
-    Subscript / storage-form-Name sources, the const tracking, and the reassigned
-    BORROW_TUPLE fall-over ride later F3 cells. A field read off a storage tuple
-    field is unconditionally a storage source (the AST's `is_storage_form_source`
-    returns True for any FieldAccess), so no ctx walk-state is needed here.
+    (`statements.py`, the `auto&&` return) over the three lvalue source shapes the
+    AST admits there -- FieldAccess, Subscript, and a Name that is itself a
+    storage-form tuple local. The reassigned BORROW_TUPLE fall-over rides a later
+    F3 cell.
 
-    Pure: a function of the resolved type, the init shape, and the prescan facts;
-    callers add their own receiver / element checks (THIR lowering gates the field
-    receiver + the F1 tuple slice). The whole-corpus byte-diff is the anti-drift net
-    against the AST arm above.
+    The source-shape test mirrors the AST's `is_storage_form_source`: a field read
+    and a container subscript are unconditionally storage sources, while a NAME is
+    one only when it already aliases storage. `storage_tuple_locals` supplies that
+    membership; passing None admits the two unconditional shapes only, so a caller
+    without the walk-state cannot silently admit a borrow-form name.
 
-    The init must be a BARE `TpyFieldAccess`: THIR lowering reads `init.obj` directly
-    (no coerce peel), and the eligibility gate (`_field_receiver_ok`) likewise admits
-    only a bare field access, so admitting a coerce-wrapped source here would let the
-    two diverge. A coerce-wrapped tuple-field read stays on the AST path until a later
-    F3 cell handles it on both sides together."""
+    Pure, but NOT all its inputs are available up front: `reassigned` / `hoisted` /
+    `move_through` are prescan facts, while `storage_tuple_locals` is built
+    incrementally during the same lowering walk (a name joins it only once its own
+    alias decl has been lowered), which is exactly what makes the Name arm an
+    alias-of-an-alias test rather than a type test. Callers add their own receiver /
+    element / const checks (THIR lowering gates the receiver, the F1 tuple slice, and
+    rejects const sources on the non-field shapes). The whole-corpus byte-diff is the
+    anti-drift net against the AST arm above.
+
+    The init must be BARE (no coerce peel): THIR lowering reads `init.obj` directly
+    and the eligibility gate likewise admits only a bare access, so admitting a
+    coerce-wrapped source here would let the two diverge. A coerce-wrapped tuple
+    read stays on the AST path until a later F3 cell handles it on both sides."""
     if init is None or target_type is None:
         return False
     if name in reassigned or name in hoisted or name in move_through:
@@ -171,7 +181,10 @@ def is_storage_tuple_alias_decl(
     if not (isinstance(target_type, TupleType)
             and target_type.has_pointer_repr_element()):
         return False
-    return isinstance(init, TpyFieldAccess)
+    if isinstance(init, (TpyFieldAccess, TpySubscript)):
+        return True
+    return (isinstance(init, TpyName) and storage_tuple_locals is not None
+            and init.name in storage_tuple_locals)
 
 
 def classify_local_binding(

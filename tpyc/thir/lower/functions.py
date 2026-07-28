@@ -396,12 +396,6 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                 else:
                     raise ThirUnsupported(
                         _overload_reject_detail(func, overloads))
-        # A member shadowing a same-named local type forces the AST path to
-        # render that type fully-qualified inside the record's scope (the
-        # member-name/type-name collision fix). THIR renders local ctor callees
-        # as the raw name, so a colliding record's body would diverge -- reject.
-        if ri is not None and ri.shadows_local_type:
-            raise ThirUnsupported("sig.member_shadows_type")
     else:
         fis = analyzer.registry.get_function(func.name)
         if fis is not None and len(fis) > 1:
@@ -1372,12 +1366,6 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
         note("ctor.unregistered")
-        return None
-    # A colliding record qualifies local type references (incl. a base name in
-    # the member-init list) on the AST path; THIR renders them raw, so reject
-    # the whole ctor -- mirrors the method-body reject (sig.member_shadows_type).
-    if ri.shadows_local_type:
-        note("ctor.member_shadows_type")
         return None
     if any(not _f1_record(p, analyzer) for p in ri.parents):
         note("ctor.non_f1_base")

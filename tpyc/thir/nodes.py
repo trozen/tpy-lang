@@ -2684,6 +2684,11 @@ class PrintForm(Enum):
       * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
       * `REPR`    -- `::tpy::__repr__(...)` (an @native enum: no operator<< is
         emitted for it, so gen_print routes through the EnumUtil-backed repr).
+      * `VARARGS` -- `::tpy::VarargsPrinter(...)` on a whole `*args` body
+        view, which Python prints tuple-style (gen_print's is_varargs arm).
+      * `VALUE_GENERIC` -- `::tpy::ValuePrinter(...)` on an open type-param
+        value, which dispatches the formatting at runtime (gen_print's
+        TypeParamRef arm; a `bool` T must print True/False, not 1/0).
       * `LIST`/`SET`/`DICT` -- the container-printer wraps (gen_print's
         container arms); currently only comprehension args take these (the
         C3 print-arg row).
@@ -2708,6 +2713,8 @@ class PrintForm(Enum):
     SET = auto()
     DICT = auto()
     TUPLE = auto()  # `::tpy::TuplePrinter(...)` -- a value-tuple name arg
+    VARARGS = auto()
+    VALUE_GENERIC = auto()
     BYTEARRAY = auto()  # `::tpy::ByteArrayPrinter(...)` -- a bytearray name
     OPT_VAL = auto()
     OPT_VAL_BOOL = auto()

@@ -3583,3 +3583,239 @@ which a type-param receiver does not have.
   than any callee list: the own_iter / last-use rows below exist to consume a
   BINDING, which an rvalue does not have. The boundary (a call returning a
   BORROW) keeps rejecting, and is pinned.
+
+- **The free-call RESULT-gate site grind + the shadowing-record qualification
+  fix -- `expressions.py:4055` and `functions.py:404`** (1961 -> **1895** fallback units, +31 flips) (2026-07-28; commits
+  `0508d7d65`, `c1e44632c`, `e851289ce`, `92d969946`, `fd519dddb`). The third `probe_sites.py` wave
+  against `expr.call`, plus the single largest whole-family reject in the
+  corpus. Twelve rows.
+
+  Rows, and the AST arm each mirrors:
+
+  1. `yield copy(p)` at the simple-generator `__val` slot, and `copy(p)` at a
+     record container-ELEMENT slot -- the shared copy-construct row the decl /
+     setitem / field-write / return sinks already took. The element row is
+     gated on the SLOT being that record, so a slot needing an element wrap
+     keeps the wrapping tail.
+  2. A redundant `copy()` dropped at the `into_any` coerce: `make_any` already
+     copy-constructs into the cell, so the AST emits `make_any(c)`, never
+     `make_any(Counter(c))`. Ptr-variant unions stay excluded -- there
+     `copy()` converts REPRESENTATION (`to_value_variant`) and dropping it
+     would store dangling pointers.
+  3. A generator-FACTORY call as the slice-assign RHS: `list_set_slice`
+     consumes it as an iterable, so it takes the iterable-position admission
+     rather than the storage slot set.
+  4. The composite sibling of the bare-`T` generic arg row: a NAME bound to
+     the still-unsubstituted slot (`first(items)` at `list[T]` ->
+     `first<T>(items)`) binds the ref template param bare. Own slots stay on
+     the move row above it.
+  5. A list literal at a generic callee's substituted container slot hoists
+     the same named `__tmp_N` the concrete free-call row hoists -- a
+     `std::vector<T>&` param cannot bind a brace prvalue.
+  6. A GENERIC generator factory in iterable position spells exactly like any
+     other generic free call, so only the DEF stays on the AST path. Arg
+     positions keep rejecting (unprobed slot render), and are pinned.
+  7. The container-element twin of the borrow-tuple field wrap, plus the
+     subscript READ that feeds it (`consume(items[0])` ->
+     `tuple_to_pointer<...>(::tpy::__getitem__(items, 0))`).
+  8. The scalar/str LITERAL sibling of the recursive-union wrapper temp
+     (`show(42)` -> `Value __tmp_N = 42;`).
+  9. A REF_ALIAS decl whose source is an and/or/ternary CHOICE of two
+     alias-legal names (`x = a or b`).
+  10. Shadowing records (below).
+  11. A marker call's `@call_macro` expansion (`dataclasses.asdict(p)`), which
+     the free-call ladder already lowered via `call.macro_expansion` while the
+     marker path rejected outright. Pays no corpus case: the case that would
+     flip also uses `astuple`, whose expansion is a bare TUPLE LITERAL with no
+     generic `_lower_expr` arm (sinks lower those against their slot). Ships
+     because it is independently WITNESSABLE -- `asdict` alone routes with zero
+     fallback, byte-identical. **An arm that pays no case but can be witnessed
+     is legitimate; one that cannot be witnessed at all is the dead row this
+     wave's review had to delete.**
+  12. The `auto&&` storage-tuple alias widened from FieldAccess-only to the two
+     other sources the AST admits -- a container SUBSCRIPT, and a NAME that
+     already aliases storage -- mirroring `is_storage_form_source`. Admitted
+     CONST-FREE on the new shapes: the AST's const verdict lives in a
+     body-global set whose CONSUMERS drive later borrow reads, so admitting a
+     const one would mean mirroring the whole consumer topology rather than one
+     value. Rejecting const sources makes the widening provably
+     const-neutral, and that boundary is pinned.
+
+  **FIRST-REJECT unit counts OVERSTATE what clearing a row pays.** The new
+  `probe_site_units.py` census priced `call.arg_shape.tuple` at 13 units and
+  `call.arg_shape.union` at 10; landing both paid **+2 routed bodies**. A unit
+  only drops when the row is that body's LAST blocker -- otherwise the body
+  chains straight to the next one and stays a fallback. Rank rows by
+  SOLE-blocker mass; treat a first-reject histogram as a map of WHERE work is,
+  never as a forecast of what it yields.
+
+  **The biggest single lever was a rendering-CONTEXT mismatch, not a missing
+  arm.** `sig.member_shadows_type` rejected an entire record family (13 body +
+  5 ctor units in one case) because the AST emits a shadowing record inside
+  `qualify_shadowed_nominals()` while THIR pre-renders its type spellings in
+  one up-front LOWERING pass, where that context was never live. No shape was
+  unsupported. Lowering those bodies inside the same context fixed the
+  rendered types outright; only the ctor CALLEE needed code, because it spells
+  the raw `func_name` rather than a rendered type. **When a whole family is
+  rejected wholesale, ask WHEN the render happens before concluding that WHAT
+  it renders is unsupported.**
+
+  **That qualification follows the ENCLOSING record, not the constructed
+  one.** `day(...)` inside `clock` qualifies because `clock` has a member named
+  `day`; `day` itself shadows nothing. Keying the ctor callee on the
+  constructed record's flag would have left every real case unqualified while
+  looking correct in isolation -- it is pinned both ways.
+
+  **`decl.slot_type` (166 units, the corpus's largest single site) is NOT a
+  row.** `probe_slot_families.py` breaks it into tuple (29), list (24), dict
+  (12), set (6) and pointer-repr Optional/union decls -- all of them decls
+  whose init is neither a literal nor a storage call, i.e. the borrow-vs-
+  storage form frontier (`IR_DESIGN.md` open question 9). It needs the form
+  design, not gate widenings.
+
+  Two new probes upstreamed into the wave skill: `probe_site_units.py` (ranks
+  a tag's raise sites by fallback UNITS rather than sole-blocker cases) and
+  `probe_slot_families.py` (breaks down a site whose entire mass carries one
+  detail string).
+
+  **NEXT SESSION IS NOT A WAVE (user decision, 2026-07-28): the A5 baseline
+  + the D4 design round.** The dial (`N/3615 migrated`) counts
+  USER-module cases with zero fallback, and deleting the AST body emitter
+  needs FIVE hard gates -- waves move only A1 (markers -> 0). Grinding A1 to
+  zero still leaves the emitter undeletable, so measure the other gates
+  before buying more A1:
+
+  * **A3 -- AST-arm residency: ALREADY MEASURED, AND IT IS A DEAD END. Do not
+    re-run it.** The 2026-07-27 run cost 1h52m and produced `A-U = 31`
+    functions / 3.3%, which **does not measure "AST emit left to delete"**:
+    `U` already covers 97% of functions, because signatures, record decls,
+    protocol emission and headers stay AST-emitted regardless of routing and
+    call the same `gen_expr`/`gen_stmt` helpers a fallback body calls. The
+    number is a floor on exclusively-fallback code, not a size. What survives
+    from that gate is the **zero-witness face list**, which prints free on
+    every `--thir-codegen` run (15 open at this wave's close). Note the hole
+    feeding it: `_witness()` has no rollback, so an arm that witnesses BEFORE
+    it can raise reads as witnessed even when it never lowered -- that defeats
+    the detector itself, and is filed in TODO.md.
+  * **A5 -- stdlib fallback.** Unmanaged: resolved on paper only
+    (`IR_DESIGN.md`:893-895), no instrument, and the single datum is a stale
+    2026-07-05 drill showing ~249 blocked stdlib bodies. The migration is
+    deliberately scoped to user modules so a case migrates on its own code and
+    not its imports' -- right for grinding, and exactly why this surface is
+    unmeasured. It could rival the whole remaining corpus.
+  * **D4 -- the post-cutover verification story.** Today's net is the
+    dual-path byte-diff with AST as the oracle. At cutover that oracle is
+    DELETED and nothing specifies what replaces it, nor when snapshots become
+    THIR-authored. Decide before the last mile: it is the one hole where being
+    wrong is unrecoverable. Siblings from the same inventory: D3 (skeleton
+    ownership never transfers per any doc) and D1 (= A5). D2 is DONE.
+
+  Grind economics for whenever waves resume, measured over ~30 rows this
+  session: **leaf gate rows pay 0-2 units each; the one structural find paid
+  17.** At ~1900 units the tail is ~1000 rows worked shape-by-shape, so prefer
+  structural finds and the classifier-undercoverage sweep (diff the AST's
+  per-type dispatch arms against the THIR enum -- `gen_print` had 13
+  predicates where `PrintForm` had 11 members; two free rows). The
+  pin-comment mine is now EXHAUSTED: a re-scan of all 407 boundary pins
+  returns only fences ("must keep rejecting"), not invitations.
+
+  **THE SOLE-BLOCKER CEILING, measured 2026-07-28 -- the number that bounds a
+  single wave.** For each reason, the units held in cases where it is the ONLY
+  blocker (i.e. the most a row clearing it can possibly pay):
+
+  | reason | sole-units | total units |
+  |---|---|---|
+  | `stmt.var_decl:decl.slot_type` | 84 | 166 |
+  | `expr.method_call` | 70 | 158 |
+  | `expr.call` | 51 | 179 |
+  | `stmt.return:return.slot_type` | **17** | 111 |
+  | `expr.container_literal` | 12 | 22 |
+  | `stmt.match` | 10 | 63 |
+
+  **Corpus-wide the ceiling is 664 of 1961 units.** Everything else sits in
+  bodies with two or more blockers, where clearing one changes nothing until
+  the last one goes. Two consequences: (1) `return.slot_type` reads as the
+  #2 lever at 111 units and is actually worth 17 -- price by the sole column,
+  never the total; (2) no single family holds 100 units, so a 100-unit wave
+  needs either two elephants cleared end-to-end or the borrow-vs-storage form
+  design that `decl.slot_type` is waiting on. This is the per-body form of the
+  set-cover finding already recorded for cases.
+
+  **AND THE CEILING IS AN UPPER BOUND, NOT AN ESTIMATE.** A case's recorded
+  reason is its FIRST reject, so "sole blocker" means one reason was *seen*,
+  not that one blocker exists -- the rest are masked behind it. Two rows
+  landed at the end of this wave (`h.set((x, y))` at a method tuple slot,
+  `",".join(self._parts)` at a native Iterable slot) each cleared the only
+  reason their case recorded, and each case STILL fell back, to a reason that
+  had been invisible until then. So 628 is what the corpus could pay if every
+  masked blocker happened to be already-routed; the real figure is lower by an
+  unknown amount that only grinding reveals. Plan waves against it as a cap,
+  and expect a tail of rows that are correct, needed, and pay nothing
+  measurable on their own.
+
+  **FINAL TALLY, and the correction that matters more than it.** 1961 ->
+  **1895** units (body 1628 / ctor 83 / resumable 122 / top_level 62), a
+  -66 reduction; routed bodies 10702 -> 10763; +31 case flips, dial
+  2626 -> 2657/3615 (989 -> 958 markers on disk). 37 commits, corpus byte-diff green at
+  every step. TWO /tpy-review rounds are included: the first deleted a row that
+  never fired (see below) and added byte-identity to five converted pins; the
+  second covered the four rows that landed after it. Full suite green with exec
+  (10018 passed, 3614 cases built+run, nothing cached).
+
+  **This tally was wrong four times before it was right, and the last two
+  disagreed with each other** (the headline said 1896 while this paragraph said
+  1897; the true figure is 1895). Each earlier fix patched the location the
+  author remembered instead of grepping for every occurrence of the old
+  figures, and one commit message even claimed doing them together made a
+  further partial fix impossible. It did not. **Re-derive the number from a
+  measurement run and grep every stale figure -- never transcribe a tally from
+  a summary, including your own.**
+
+  A FIFTH error, caught by `/tpy-ready` after all of the above: the flip count
+  read +36 and the marker baseline 974, both DERIVED rather than measured (+36
+  was "20 earlier + 16 at close"; 974 was a MID-WAVE probe count, not the branch
+  base). Ground truth is three mutually-confirming counts -- `git diff master
+  --diff-filter=D` shows 31 deleted markers, master holds 989 and HEAD 958, and
+  2626 + 31 = 2657 matches the measured dial exactly. **A figure you can derive
+  by arithmetic is the one most likely to be wrong: derive the dial delta and
+  the flip count from the SAME marker census, and cross-check them against each
+  other before writing either.**
+
+  The sole-blocker ceiling recorded above is a cap on ONE-ROW-PER-CASE yield,
+  NOT on reachable work -- an earlier draft of this entry said otherwise and
+  was wrong. Chain-walking clears multi-blocker cases (11 of this wave's flips
+  came that way), so the whole 1895 is in play. The measured distribution says
+  where: **532 of the 974 cases marked AT THAT MEASUREMENT sit at exactly ONE
+  unit** (the wave closed at 958 marked), i.e. one arm
+  from flipping. What actually limits a wave is RATE, and the rate is set by
+  the KIND of row: this wave's single structural fix (the shadowing-record
+  rendering context) paid 17 units, while leaf arg-ladder rows paid 0-2 each.
+  Hunt whole-family rejects -- a rendering-context mismatch, a routing
+  decision, a gate excluding a wrap the lowering already applies -- before
+  grinding ladders.
+
+  **THE CHEAPEST LEAD SOURCE FOUND THIS SESSION: the `stays_ast` PIN COMMENTS.**
+  Ten of the wave's rows came from grepping those pins and reading WHY each
+  said the shape stays AST -- a minute per candidate against ~15 for a case
+  probe. The comment's grammar sorts them:
+
+  | comment says | means | outcome |
+  |---|---|---|
+  | "the AST renders X" / "has no convert arm" / "read positions only" | the render exists, or is not needed | 5 for 5 became rows |
+  | "not built" | the row is anticipated, not forbidden | build it deliberately, with its OWN predicate rather than by widening a sibling's |
+  | "has no ladder row" / "no matching node yet" | genuinely missing THIR machinery | left alone |
+  | "must NOT open" | a fence guarding a real frontier | left alone -- see the record_borrow design stop |
+
+  **A pin whose reason is RIGHT can still yield a row.** `print(self)`'s
+  comment correctly said the AST renders `(*this)`; the first attempt shipped
+  bare `this` and adversarial dualgen caught it in seconds. The fix was
+  applying `THIRSelf.deref` -- the retag the record call-arg tail already does
+  -- not the gate widening alone. **Dualgen is what separates "the render
+  exists" from "the render exists and this position applies it".**
+
+  **The unifying rule behind every row that paid:** when one ladder admits a
+  shape and a sibling ladder does not, the sibling is usually missing an
+  ADMISSION, not a RENDER -- because the render is chosen by position, and
+  position is what the ladders share. Free-call <-> method <-> marker <-> ctor
+  arg ladders; read <-> write field ladders; record <-> protocol result
+  ladders. Every one of those pairings paid at least one row this wave.

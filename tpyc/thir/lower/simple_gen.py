@@ -57,7 +57,8 @@ from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
-                          _lower_borrow_tuple_literal, _lower_tuple_literal)
+                          _lower_borrow_tuple_literal, _lower_tuple_literal,
+                          _lower_copy_record)
 from .functions import _check_callable_structure, _seed_global_scope
 from .predicates import (
     _f1_record,
@@ -310,11 +311,20 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 yv = _lower_tuple_literal(yv_src, vt, lc, body_declared)
             _witness("sgen.tuple_yield")
         else:
-            # gen_yield_value threads the yield type into the render
-            # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
-            yv = _slot_literal_retype(
-                _lower_expr(yield_stmt.value, lc, body_declared),
-                yt, lc)
+            # `yield copy(p)` -- the shared copy-construct row (`Point(p)`)
+            # binding the skeleton's `__val` slot. The slot's own type is the
+            # SOURCE record's, so no slot_type override: an `Own[T]` yield
+            # slot spells T, which is what the copy already renders.
+            copy_row = _lower_copy_record(yield_stmt.value, lc, body_declared)
+            if copy_row is not None:
+                _witness("sgen.yield_copy_record")
+                yv = copy_row
+            else:
+                # gen_yield_value threads the yield type into the render
+                # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
+                yv = _slot_literal_retype(
+                    _lower_expr(yield_stmt.value, lc, body_declared),
+                    yt, lc)
         _witness("sgen.yield_value")
         post_l = _lower_stmts(post, lc, body_declared, in_branch=True,
                               branch_decls_ok=True, loop_depth=loop_depth)

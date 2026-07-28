@@ -3883,6 +3883,10 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::DictPrinter({inner})"
     if a.print_form is PrintForm.TUPLE:
         return f"::tpy::TuplePrinter({inner})"
+    if a.print_form is PrintForm.VARARGS:
+        return f"::tpy::VarargsPrinter({inner})"
+    if a.print_form is PrintForm.VALUE_GENERIC:
+        return f"::tpy::ValuePrinter({inner})"
     if a.print_form is PrintForm.BYTEARRAY:
         return f"::tpy::ByteArrayPrinter({inner})"
     if a.print_form is PrintForm.OPT_VAL:

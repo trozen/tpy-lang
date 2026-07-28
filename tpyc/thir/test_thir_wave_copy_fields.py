@@ -92,10 +92,12 @@ class TestCopyAtOptionalRecordField:
 
 
 class TestCopyFieldBoundaries:
-    def test_container_copy_stays_ast(self):
+    def test_container_copy_routes_on_its_own_row(self):
         # `copy(container)` is the copy-CONSTRUCT arm too
-        # (`std::vector<int32_t>(data)`), but its field-write row is not
-        # built -- the record-only admission must not leak to it.
+        # (`std::vector<int32_t>(data)`). It now has its OWN field-write row
+        # -- `copy_plain_container_source` / `_lower_copy_container` -- rather
+        # than riding the record admission, which this pin was written to
+        # keep from leaking into it.
         src = ("from tpy import Int32, copy\n"
                "class C:\n"
                "    items: list[Int32]\n"
@@ -103,8 +105,9 @@ class TestCopyFieldBoundaries:
                "        self.items = []\n"
                "    def set(self, data: list[Int32]) -> None:\n"
                "        self.items = copy(data)\n")
+        _assert_byte_identical(src)
         thir = _lower_ctx(src)
-        assert _fn(thir, "set") is None
+        assert _fn(thir, "set") is not None
 
     def test_subclass_rvalue_copy_stays_ast(self):
         # The exact-type check keeps a SLICING copy out: `copy(Sub(...))`

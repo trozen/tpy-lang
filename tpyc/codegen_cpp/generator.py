@@ -7,12 +7,13 @@ Main orchestrator for generating C++ code from TurboPython AST.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, TextIO, TYPE_CHECKING
+import contextlib
 import heapq
 import io
 import os
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -493,6 +494,24 @@ class CodeGenerator:
 
             _render_concept = self.protocols.concept_test_cpp
 
+            def _shadow_ctx(owner) -> 'contextlib.AbstractContextManager':
+                """The AST emits a shadowing record's decl and method defs
+                inside `qualify_shadowed_nominals()`, so every local nominal
+                leaf renders fully-qualified. THIR pre-renders its type
+                spellings at LOWERING time, which happens here rather than at
+                emission -- so the same context has to be live around the
+                lowering call or the routed body spells the raw name.
+                `owner` is the enclosing record: its `self_type` for a method,
+                the TpyRecord itself for a constructor."""
+                registry = self.analyzer.registry
+                ri_s = (registry.get_record_for_type(owner)
+                        if isinstance(owner, NominalType)
+                        else registry.get_record(getattr(owner, "name", "")))
+                if (ri_s is None or not ri_s.shadows_local_type
+                        or self.records._is_native(ri_s.name)):
+                    return contextlib.nullcontext()
+                return qualify_shadowed_nominals()
+
             self.ctx.thir_functions = {}
             self.ctx.thir_resumables = {}
             self.ctx.thir_simple_gens = {}
@@ -509,11 +528,12 @@ class CodeGenerator:
                 if f.is_generator:
                     # Simple-peephole generator: leaf-seam lowering (the
                     # lambda skeleton stays AST, like the resumable frame).
-                    sg = _thir_lower_sgen(
-                        f, self.analyzer, self.types.type_to_cpp,
-                        self_type=self_type, native_globals=_ng,
-                        render_type_stored=self.types.type_to_cpp_stored,
-                        render_resolve=self.types.resolve_type)
+                    with _shadow_ctx(self_type):
+                        sg = _thir_lower_sgen(
+                            f, self.analyzer, self.types.type_to_cpp,
+                            self_type=self_type, native_globals=_ng,
+                            render_type_stored=self.types.type_to_cpp_stored,
+                            render_resolve=self.types.resolve_type)
                     if sg is not None:
                         self.ctx.thir_simple_gens[id(f)] = sg
                         record_shape(f, "body", routed=True)
@@ -532,12 +552,13 @@ class CodeGenerator:
                     # (a partial set would leave hybrid per-stub emission).
                     entries = []
                     for stub in stubs:
-                        stf = _thir_lower(
-                            f, self.analyzer, self.types.type_to_cpp,
-                            self_type=self_type, native_globals=_ng,
-                            render_type_stored=self.types.type_to_cpp_stored,
-                            render_resolve=self.types.resolve_type,
-                            stub=stub, render_concept=_render_concept)
+                        with _shadow_ctx(self_type):
+                            stf = _thir_lower(
+                                f, self.analyzer, self.types.type_to_cpp,
+                                self_type=self_type, native_globals=_ng,
+                                render_type_stored=self.types.type_to_cpp_stored,
+                                render_resolve=self.types.resolve_type,
+                                stub=stub, render_concept=_render_concept)
                         if stf is None:
                             entries = None
                             break
@@ -551,11 +572,12 @@ class CodeGenerator:
                         record_arm_residual(f.body)
                         record_shape(f, "body", routed=False)
                     continue
-                tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
-                                 self_type=self_type, native_globals=_ng,
-                                 render_type_stored=self.types.type_to_cpp_stored,
-                                 render_resolve=self.types.resolve_type,
-                                 render_concept=_render_concept)
+                with _shadow_ctx(self_type):
+                    tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
+                                     self_type=self_type, native_globals=_ng,
+                                     render_type_stored=self.types.type_to_cpp_stored,
+                                     render_resolve=self.types.resolve_type,
+                                     render_concept=_render_concept)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
                     record_shape(f, "body", routed=True)
@@ -568,13 +590,14 @@ class CodeGenerator:
                 if is_bodyless_binding(init):
                     continue
                 begin_attempt()
-                tc = _thir_lower_ctor(rec, init, self.analyzer,
-                                      self.types.type_to_cpp,
-                                      self_type=self_type,
-                                      native_globals=_ng,
-                                      render_type_stored=self.types.type_to_cpp_stored,
-                                      render_resolve=self.types.resolve_type,
-                                      render_concept=_render_concept)
+                with _shadow_ctx(rec):
+                    tc = _thir_lower_ctor(rec, init, self.analyzer,
+                                          self.types.type_to_cpp,
+                                          self_type=self_type,
+                                          native_globals=_ng,
+                                          render_type_stored=self.types.type_to_cpp_stored,
+                                          render_resolve=self.types.resolve_type,
+                                          render_concept=_render_concept)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
                     record_shape(init, "ctor", routed=True)

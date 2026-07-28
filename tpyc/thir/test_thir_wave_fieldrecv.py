@@ -111,13 +111,18 @@ class TestOptionalFieldChainCheck:
         assert w.get("field.opt_check_field_recv", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_unproven_write_stays_ast(self):
-        # The write ladder has no field-chain check row -- read-only slice.
+    def test_unproven_write_routes(self):
+        # The AST wraps the whole optional lvalue
+        # (`::tpy::deref_optional_check(h.opt).x = 5;`) and that render is
+        # position-independent, exactly like the already-`T*` name receiver
+        # beside it -- so the write ladder takes the same row the read
+        # ladder does.
         src = (self._SRC
                + "def use(h: Holder) -> None:\n"
                + "    h.opt.x = 5\n")
+        _assert_byte_identical(src)
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
     def test_narrowed_field_none_subject_reads_bare(self):
         # A sema-NARROWED storage-Optional FIELD as an `is None` subject

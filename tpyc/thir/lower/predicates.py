@@ -2863,6 +2863,10 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
     owned `std::string` lvalue, an Any element a `const ::tpy::Any&`), so a
     subscript read of such an element needs no lift."""
     return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+            # A UNIT element (`tuple[None, int]`) is `std::monostate` -- a
+            # value type with no storage/borrow split, read bare like a
+            # scalar.
+            or is_void_like_type(e)
             or isinstance(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(e))), AnyType))
 
@@ -3339,9 +3343,10 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                                 locals_: dict[str, TpyType], analyzer,
                                 pointers: 'AbstractSet[str]') -> bool:
     """The record-getitem subscript arm's index/receiver admission, written
-    once for the subscript arm and the field-over-getitem gate: a plainly
-    rendered index (scalar without the `.to_fixed_check` narrow, or a str
-    value) off a declared non-pointer NAME or clean-field receiver
+    once for the subscript arm and the field-over-getitem gate: a scalar
+    index (a runtime-BigInt one against a fixed-int key param carries the
+    `.to_fixed_check` narrow the arm applies) or a str value, off a declared
+    non-pointer NAME or clean-field receiver
     (pointer-local receivers render `(*p)[...]` -- excluded). An UNPROVEN
     Optional receiver keeps its runtime check on the AST path (explicit
     here rather than relying on `_record_getitem_key`'s unwrap staying
@@ -3353,7 +3358,7 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                and (not _runtime_bigint(idx_type, analyzer)
                     or _bigint_index_disposition(
                            sub.index, analyzer.get_expr_type(sub.obj),
-                           analyzer) == "bare"))
+                           analyzer) != "reject"))
               or _resolved_str_value(idx_type, analyzer) is not None)
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
                 and sub.obj.name not in pointers)
@@ -3804,6 +3809,42 @@ def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
     if not _field_receiver_ok(e, declared, analyzer):
         return False
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is None
+
+
+def _storage_tuple_alias_src_ok(init: TpyExpr, lc, declared: dict[str, TpyType],
+                                analyzer) -> bool:
+    """The source-side gate for an `auto&&` storage-tuple alias, per shape.
+
+    A FIELD source keeps the const-spelling receiver gate, because the decl
+    below derives the alias's const-ness from it. The SUBSCRIPT and NAME shapes
+    are admitted CONST-FREE only: their const verdict would have to come from
+    the AST's `is_const_storage_source`, a recursive walk over a body-global set
+    whose downstream consumers decide later borrow reads -- so admitting a const
+    one would mean mirroring that set's whole consumer topology, not just its
+    value here. Rejecting const sources keeps the new shapes from contributing a
+    member at all, which is what makes this widening const-topology-neutral.
+
+    Both non-field arms also consult `const_storage_tuple_locals`, where a loop
+    variable iterating a const source records its const-ness. That check CANNOT
+    FIRE today -- F3 admission requires `fn_top`, and a loop body lowers with
+    `in_branch` set -- so this is belt-and-braces, not a live-bug fix. It is here
+    because the guarantee the gate advertises should be enforced by the gate,
+    rather than resting on an admission condition two files away staying narrow.
+    """
+    if isinstance(init, TpyFieldAccess):
+        return _const_exact_field_receiver_ok(init, declared, analyzer)
+    if isinstance(init, TpySubscript):
+        recv = init.obj
+        if not isinstance(recv, TpyName):
+            return False
+        return not (recv.name in lc.const_locals
+                    or recv.name in lc.const_storage_tuple_locals
+                    or _param_is_const(recv.name, lc.func, analyzer,
+                                       lc.record_name))
+    return (isinstance(init, TpyName)
+            and init.name not in lc.const_locals
+            and init.name not in lc.const_storage_tuple_locals)
+
 
 def _optional_checked_field(e: TpyExpr, declared: dict[str, TpyType],
                             analyzer) -> bool:
@@ -4902,6 +4943,30 @@ def _ru_wrapper_member_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     return ut
 
 
+def _ru_wrapper_scalar_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   analyzer) -> 'UnionType | None':
+    """A scalar / str / bytes / bool LITERAL into a wrapper-union slot
+    (`show(42)` on `Value = int | str | Neg` -> `Value __tmp_N = 42;` +
+    the bare temp name) -- the literal sibling of
+    `_ru_wrapper_member_name_arg`. `_gen_union_arg`'s value branch renders
+    the init against the arg's OWN sema type, which for a literal is its
+    target-less spelling, and hoists it with `create_typed`. Literals only:
+    a name or call source brings `_maybe_move` / deref questions the
+    neighbouring rows own."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None:
+        return None
+    if not isinstance(a, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                          TpyStrLiteral, TpyBytesLiteral)):
+        return None
+    at = analyzer.get_expr_type(a)
+    # `already_union` routes a union-typed / same-alias source elsewhere (bare,
+    # no temp); a literal can only be one of those through a sema coerce.
+    if at is None or isinstance(at, (UnionType, AliasRef)):
+        return None
+    return ut
+
+
 def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
     """A list/dict literal coercible into a recursive-union wrapper slot,
     admitted when the whole tree mirrors byte-identically: the container's
@@ -5392,6 +5457,72 @@ def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     pb = _protocol_binding(ptype)
     return pb is not None and pb.name in ("Iterable", "Sequence")
+
+def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          declared: dict[str, TpyType], analyzer) -> bool:
+    """A member-typed arg into a VALUE-repr Optional slot (`std::optional<T>`
+    by value): gen_call_arg has no value-optional arm at all, so the arg
+    falls to the generic tail and the optional's converting ctor absorbs the
+    bare member render (`f(5)`, `f("hi")`, `f(Color.Red)`, a bytes rvalue) --
+    position-blind, mirrored by `_lower_call_arg`'s own tail. Excluded:
+    `Optional[Own[...]]` slots (gen_call_arg's Own cascade), optional-typed
+    args (the whole-optional rows), and any NAME/FIELD whose C++ binding is
+    still the optional (a narrowed read -- the AST passes the WHOLE optional
+    bare there, while the plain lowered read would deref)."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not isinstance(u, OptionalType) or u.uses_pointer_repr():
+        return False
+    if isinstance(unwrap_readonly(unwrap_send_sync(u.inner)), OwnType):
+        return False
+    # Shape checks run on the peeled expr: a slot-coerced arg is stamped with
+    # the OPTIONAL itself (`5` / `b"a" + b"b"` -> `T | None`) but still
+    # renders as the bare member through the coerce arm.
+    peeled = _peel_coerce(a)
+    if isinstance(peeled, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                           TpyStrLiteral, TpyBytesLiteral)):
+        return True
+    at = analyzer.get_expr_type(peeled)
+    if at is None:
+        return False
+    at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at_u, (OptionalType, UnionType)):
+        return False
+    if isinstance(peeled, TpyName):
+        dt = declared.get(peeled.name)
+        if dt is None or peeled.name == "self":
+            return False
+        du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+        return not isinstance(du, (OptionalType, UnionType))
+    if isinstance(peeled, TpyFieldAccess):
+        # Only the type-level enum-member read (a fixed spelling); a data
+        # field could be a narrowed optional field -> keep rejecting.
+        return getattr(peeled, "enum_member_of", None) is not None
+    # Member-typed rvalues (a scalar ctor, a bytes/str binop, a call): the
+    # recursive lowering validates the expression itself.
+    return isinstance(peeled, (TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp))
+
+
+def _native_iterable_field_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               declared: dict[str, TpyType], analyzer) -> bool:
+    """The FIELD sibling of `_native_iterable_container_arg`: a container
+    member read at a native builtin's structural `Iterable[T]` / `Sequence[T]`
+    slot (`",".join(self._parts)` -> `::tpy::str_join(",", this->_parts)`).
+    The member read renders bare exactly like the name row, and the runtime
+    overload is the same binding-by-template, so no adapter conversion runs."""
+    if not _field_receiver_ok(a, declared, analyzer):
+        return False
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    if not (is_list(at) or is_dict(at) or is_set(at) or is_array(at)
+            or is_span(at)):
+        return False
+    pb = _protocol_binding(ptype)
+    return pb is not None and pb.name in ("Iterable", "Sequence")
+
 
 def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                               analyzer) -> bool:
