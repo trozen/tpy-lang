@@ -14,7 +14,7 @@ def conditional_hoist() -> None:
     for i in range(5):
         p: Point = Point(i, i * 3)
         if i > 2:
-            saved = p  # tpyc: warning(/hoisted to function scope/)
+            saved = p  # tpyc: warning(/will not keep the object it was given/)
     print(saved.x, saved.y)
 
 conditional_hoist()

@@ -22,9 +22,9 @@ void multi_hoist() {
         Point* a = &*(__slot_3 = Point(i, 10));
         // b: Point = Point(20, i)
         Point* b = &*(__slot_4 = Point(20, i));
-        // saved_a = a  # tpyc: warning(/hoisted to function scope/)
+        // saved_a = a  # tpyc: warning(/will not keep the object it was given/)
         saved_a = a;
-        // saved_b = b  # tpyc: warning(/hoisted to function scope/)
+        // saved_b = b  # tpyc: warning(/will not keep the object it was given/)
         saved_b = b;
     }
     // print(saved_a.x, saved_a.y)

@@ -25,7 +25,7 @@ void terminated_branch() {
             // continue
             continue;
         }
-        // saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
     // print(saved.x, saved.y)

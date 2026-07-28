@@ -16,7 +16,7 @@ void field_access_escape() {
     for (int32_t i = 0; i < 3; ++i) {
         // o: Outer = Outer(Inner(i))
         Outer* o = &*(__slot_2 = Outer(Inner(i)));
-        // saved = o.inner  # tpyc: warning(/hoisted to function scope/)
+        // saved = o.inner  # tpyc: warning(/will not keep the object it was given/)
         saved = &(o->inner);
     }
     // print(saved.value)

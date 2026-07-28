@@ -1,1 +1,1 @@
-main.py:20: warning: 'p' is declared in a loop body; storage hoisted to function scope
+main.py:20: warning: 'saved' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value

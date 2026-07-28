@@ -16,7 +16,7 @@ void nested_loop_escape() {
         for (int32_t j = 0; j < 3; ++j) {
             // inner: Point = Point(j, j)
             Point* inner = &*(__slot_2 = Point(j, j));
-            // outer = inner  # tpyc: warning(/hoisted to function scope/)
+            // outer = inner  # tpyc: warning(/will not keep the object it was given/)
             outer = inner;
         }
         // print(outer.x, outer.y)

@@ -208,7 +208,7 @@ already safe or already caught, so the enforced set is smaller (verified empiric
 |---|---|---|
 | store to value field / container / global (`self.f = x`, `list.append(x)`, `d[k]=x`, `g = x`) | **copies the value** into owned storage (the existing "copies into owned storage" warning path) -- memory-safe, not a borrow-retain | **not rejected** (would over-reject the same code the old copy-ABI accepted) |
 | `return x` | a generator loop var is body-scoped and not `safe_to_return` | **already rejected** by the dangling-return check (ephemeral message layered on top) |
-| stash into an outer-scope local (`saved = x`; use after loop) | scope-depth lifetime analysis | **already rejected** ("reference may outlive its storage; use copy") |
+| stash into an outer-scope local (`saved = x`; use after loop) | scope-depth lifetime analysis | **already rejected** ("'x' is rebound on each iteration; use copy() or Rc") |
 | closure / lambda capture | `Callable` lambdas capture **by value** (copy); `Fn` lambdas are inline / non-escaping | **safe**; a conservative backstop rejects an ephemeral capture inside a nested `def` |
 | **`yield x` onward in an outer generator** | re-yields a reference into the inner frame slot; the Stage-built generator-loop-var provenance broadening would otherwise *bless* it | **rejected** (the one genuine new gap) |
 

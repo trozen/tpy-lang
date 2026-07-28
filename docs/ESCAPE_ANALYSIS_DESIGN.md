@@ -141,8 +141,11 @@ The tracker compares `var_scope_depth` entries. Two outcomes:
 
 - **Hoistable**: source is an rvalue-initialized variable (owns its storage, not a
   loop iteration variable). Storage is hoisted to function scope with a warning.
+  The hoist prevents dangling but shares ONE slot between both names, so the
+  target observes later rebinds of the source -- an acknowledged CPython
+  divergence the warning states and `copy()` avoids.
 - **Error**: source is a loop variable or lvalue-initialized (aliases other storage).
-  Hard error requiring `copy()`.
+  Hard error -- hoisting cannot help, since the aliased storage dies anyway.
 
 **Provenance tracking** (`param_derived`, `safe_to_return`): two flow-sensitive
 facts, now the `param_derived` / `safe_to_return` fields of the per-local

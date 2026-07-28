@@ -1375,7 +1375,9 @@ class CodeGenContext:
     # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
     move_through_vars: set[str] = field(default_factory=set)
 
-    # --- Hoisted variable tracking (scope escape phase 2) ---
+    # --- Hoisted variable tracking ---
+    # Locals whose storage must live at FUNCTION scope because a branch
+    # construct pre-declares them (try/finally, branch decls).
     hoisted_vars: set[str] = field(default_factory=set)
     # Branch-hoisted pointer-locals: declared by _emit_branch_decls for if/match/try.
     # Rvalue slots for these vars must go to pending_hoist_decls, not block scope.

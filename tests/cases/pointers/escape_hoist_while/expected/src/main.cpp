@@ -16,7 +16,7 @@ void while_escape() {
     while ((i < 3)) {
         // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
         // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));

@@ -12,7 +12,7 @@ def while_escape() -> None:
     i: Int32 = 0
     while i < 3:
         p: Point = Point(i, i)
-        saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p  # tpyc: warning(/will not keep the object it was given/)
         i = i + 1
     print(saved.x, saved.y)
 

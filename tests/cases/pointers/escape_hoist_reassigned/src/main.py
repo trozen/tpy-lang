@@ -15,7 +15,7 @@ def hoist_and_reassign() -> None:
     for i in range(3):
         p: Point = Point(i, 0)
         p = Point(i, i + 10)
-        saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p  # tpyc: warning(/will not keep the object it was given/)
     print(saved.x, saved.y)
 
 hoist_and_reassign()

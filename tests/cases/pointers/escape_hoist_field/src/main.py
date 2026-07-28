@@ -16,7 +16,7 @@ def field_access_escape() -> None:
     saved: Inner = Inner(0)
     for i in range(3):
         o: Outer = Outer(Inner(i))
-        saved = o.inner  # tpyc: warning(/hoisted to function scope/)
+        saved = o.inner  # tpyc: warning(/will not keep the object it was given/)
     print(saved.value)
 
 field_access_escape()

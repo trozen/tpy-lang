@@ -15,8 +15,8 @@ def multi_hoist() -> None:
     for i in range(3):
         a: Point = Point(i, 10)
         b: Point = Point(20, i)
-        saved_a = a  # tpyc: warning(/hoisted to function scope/)
-        saved_b = b  # tpyc: warning(/hoisted to function scope/)
+        saved_a = a  # tpyc: warning(/will not keep the object it was given/)
+        saved_b = b  # tpyc: warning(/will not keep the object it was given/)
     print(saved_a.x, saved_a.y)
     print(saved_b.x, saved_b.y)
 

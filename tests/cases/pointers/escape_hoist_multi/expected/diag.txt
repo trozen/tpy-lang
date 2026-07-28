@@ -1,2 +1,2 @@
-main.py:18: warning: 'a' is declared in a loop body; storage hoisted to function scope
-main.py:19: warning: 'b' is declared in a loop body; storage hoisted to function scope
+main.py:18: warning: 'saved_a' will not keep the object it was given -- 'a' is rebound on each iteration and both names share its storage; use copy(a) for an independent value
+main.py:19: warning: 'saved_b' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy(b) for an independent value

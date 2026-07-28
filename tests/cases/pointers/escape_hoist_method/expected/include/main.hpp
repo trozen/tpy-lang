@@ -67,7 +67,7 @@ inline void Finder::find_last(int32_t n) {
     for (int32_t i = 0; i < __stop_0; ++i) {
         // p: Point = Point(i, i * 2)
         Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 2))));
-        // saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
     // self.result = saved  # tpyc: warning(/copies Point into field/)

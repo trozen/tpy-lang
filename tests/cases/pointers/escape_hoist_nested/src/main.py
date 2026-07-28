@@ -12,7 +12,7 @@ def nested_loop_escape() -> None:
         outer: Point = Point(i, 0)
         for j in range(3):
             inner: Point = Point(j, j)
-            outer = inner  # tpyc: warning(/hoisted to function scope/)
+            outer = inner  # tpyc: warning(/will not keep the object it was given/)
         print(outer.x, outer.y)
 
 nested_loop_escape()

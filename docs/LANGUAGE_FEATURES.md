@@ -1366,34 +1366,45 @@ copy. The source `b` remains valid after the call.
 
 #### Scope Escape Detection (Working)
 
-The compiler detects when a pointer to a local variable might outlive its storage. This happens when a variable declared in an inner scope (e.g., loop body) is assigned to a variable in an outer scope.
-
-For most cases, the compiler **hoists** the inner variable's storage slot to function scope and emits a warning. The generated code is safe — the hoisted slot lives as long as the function, so the outer variable never dangles:
+A local declared in an inner scope (a loop body) owns storage that dies with the iteration. Binding it to a name that outlives that scope hoists the source's storage to function scope, so the outer name never dangles — but both names then share **one** slot, so the outer name observes whatever the source is rebound to later. That diverges from CPython, so the compiler warns and names the two spellings that avoid it:
 
 ```python
 def example() -> None:
     saved: Point = Point(0, 0)
     for i in range(10):
         p: Point = Point(i, i)
-        saved = p        # WARNING: hoisted to function scope (safe)
-        saved = copy(p)  # OK: copy() creates independent storage
-        saved = Point()  # OK: rvalue has fresh storage
-    print(saved.x)       # Works: p's storage was hoisted
+        saved = p            # WARNING: 'saved' will not keep the object it was given
+        saved = copy(p)      # OK: an independent value
+        saved = Point(0, 0)  # OK: an rvalue has fresh storage
 ```
 
-For `for-each` variables, hoisting doesn't help because the variable is a reference into a container — the reference itself would dangle. These remain **hard errors**:
+The warning states the consequence, not the mechanism, because the mechanism does not tell you what value you will get:
+
+```
+'saved' will not keep the object it was given -- 'p' is rebound on each
+iteration and both names share its storage; use copy(p) for an independent
+value
+```
+
+`copy()` costs a copy and drops the aliasing: a later write through one name is invisible through the other. For a `@nocopy` source it is not available at all, and the warning says so rather than naming a remedy.
+
+If the two names genuinely need to reach one object, that is a design change rather than a one-word fix — `Rc` gives shared ownership with CPython's aliasing, at a heap block per `Rc.new`. The compiler does not suggest it: a warning should not push allocation into a loop.
+
+**This is an acknowledged divergence, not a fixed bug.** Code that ignores the warning compiles and produces a value CPython would not; the specific shapes are tracked in `BUGS.md`. Closing it properly needs per-iteration storage, which cannot be supplied without allocating, copying, or keeping a second slot alive behind the author's back — see `TODO.md` for two mechanisms that were prototyped and discarded.
+
+The warning covers `for` and `while` bodies, nested loops, module scope, method bodies, and sources reached through a field or container element (`saved = o.inner` keeps `o`'s storage alive, so it is `o` that escapes). It is *not* exhaustive: the check runs at plain-name assignment, so an escape routed through a walrus binding or a `nonlocal` rebind inside a nested def is not seen, and neither is a local declared above the loop — those diverge with no diagnostic at all, and are tracked in `BUGS.md`.
+
+For `for-each` variables hoisting does not help — the variable is a reference into the container, so the reference itself would dangle. Those stay **hard errors**:
 
 ```python
 def bad() -> None:
     saved: Point = Point(0, 0)
     for p in make_points():
-        saved = p        # ERROR: for-each var references container storage
+        saved = p        # ERROR: reference to 'p' may outlive its storage
         saved = copy(p)  # OK: copy() creates independent storage
 ```
 
-Detection uses scope depth comparison — each scope has a numeric depth, and variables track the depth where they were first declared. When assigning an lvalue to a shallower-depth target, the compiler checks whether hoisting is possible (regular loop variables) or not (for-each variables).
-
-Use `copy()` to silence warnings or fix errors — it creates an independent value that the outer variable can safely own.
+Detection uses scope depth comparison — each scope has a numeric depth, and variables track the depth where they were first declared; assigning an lvalue to a shallower-depth target is the escape. Assigning a loop-body local into a *field* or a *container* is a different mechanism entirely — those boundaries copy, with the pre-existing "copies X into ..." warning.
 
 #### Definite-Assignment Analysis (Working)
 

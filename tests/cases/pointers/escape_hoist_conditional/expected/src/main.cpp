@@ -18,7 +18,7 @@ void conditional_hoist() {
         Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 3))));
         // if i > 2:
         if ((i > 2)) {
-            // saved = p  # tpyc: warning(/hoisted to function scope/)
+            // saved = p  # tpyc: warning(/will not keep the object it was given/)
             saved = p;
         }
     }

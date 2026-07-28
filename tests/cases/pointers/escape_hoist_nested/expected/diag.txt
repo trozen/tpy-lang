@@ -1,1 +1,1 @@
-main.py:15: warning: 'inner' is declared in a loop body; storage hoisted to function scope
+main.py:15: warning: 'outer' will not keep the object it was given -- 'inner' is rebound on each iteration and both names share its storage; use copy(inner) for an independent value

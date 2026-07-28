@@ -16,7 +16,7 @@ def rvalue_restored() -> None:
         p: Point = Point(0, 0)
         p = items[0]
         p = Point(i, i + 10)
-        saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p  # tpyc: warning(/will not keep the object it was given/)
     print(saved.x, saved.y)
 
 rvalue_restored()

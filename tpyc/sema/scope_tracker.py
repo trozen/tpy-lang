@@ -162,35 +162,51 @@ class ScopeTracker:
 
     def check_escape(self, target_name: str, source_expr: TpyExpr,
                      node: TpyExpr | TpyStmt | None) -> None:
-        """Check if source may outlive target's storage.
+        """Diagnose binding storage that may not outlive its new name.
 
-        Hoisting is only safe when the source variable owns its storage
-        (rvalue-initialized). For-each variables and lvalue-initialized
-        variables keep the hard error -- they alias other storage that
-        hoisting can't fix.
+        Hoisting the source's storage to function scope keeps the target
+        from dangling, but both names then share ONE slot, so the target
+        observes whatever the source is rebound to later -- a divergence
+        from CPython, which the warning states and `copy()` avoids.
+        For-each and lvalue-initialized sources cannot be hoisted at all
+        (they alias other storage), so those stay a hard error.
         """
-        if self.is_scope_escape(target_name, source_expr):
-            source_name = self._get_source_name(source_expr)
-            can_hoist = (source_name not in self.ctx.func.loop_vars
-                         and source_name in self.ctx.func.rvalue_vars)
-            if not can_hoist:
-                raise self.ctx.error(
-                    f"reference to '{source_name}' may outlive its storage; "
-                    f"use copy({source_name}) for a safe copy",
-                    node
-                )
-            self.ctx.warning(
-                f"'{source_name}' is declared in a loop body; "
-                f"storage hoisted to function scope",
+        if not self.is_scope_escape(target_name, source_expr):
+            return
+        source_name = self._get_source_name(source_expr)
+        # copy() is not available for a @nocopy source -- naming it there
+        # sends the author into a second, unrelated rejection.
+        source_type = (self.ctx.func.current_scope.lookup(source_name)
+                       if self.ctx.func.current_scope else None)
+        copyable = not (source_type is not None
+                        and self.ctx.is_type_nocopy(source_type))
+        fix = (f"use copy({source_name}) for an independent value"
+               if copyable else f"'{source_name}' cannot be copied")
+        can_hoist = (source_name not in self.ctx.func.loop_vars
+                     and source_name in self.ctx.func.rvalue_vars)
+        if not can_hoist:
+            raise self.ctx.error(
+                f"reference to '{source_name}' may outlive its storage; {fix}",
                 node
             )
-            self.ctx.func.hoisted_vars.add(source_name)
-            # Hoisted vars become pointer-locals -- strip Own[T] wrapper
-            # since they can no longer own their storage.
-            if self.ctx.func.current_scope:
-                scope_type = self.ctx.func.current_scope.lookup(source_name)
-                if isinstance(scope_type, OwnType):
-                    self.ctx.func.current_scope.define(source_name, scope_type.wrapped)
+        # States the CONSEQUENCE, not the mechanism: the old text named the
+        # hoist, which told the reader nothing about the value they would
+        # get. Deliberately avoids "give it longer-lived storage" framing --
+        # hoisting the declaration above the loop is the neighbouring
+        # spelling that diverges with no diagnostic at all.
+        self.ctx.warning(
+            f"'{target_name}' will not keep the object it was given -- "
+            f"'{source_name}' is rebound on each iteration and both names "
+            f"share its storage; {fix}",
+            node
+        )
+        self.ctx.func.hoisted_vars.add(source_name)
+        # Hoisted vars become pointer-locals -- strip Own[T] wrapper
+        # since they can no longer own their storage.
+        if self.ctx.func.current_scope:
+            scope_type = self.ctx.func.current_scope.lookup(source_name)
+            if isinstance(scope_type, OwnType):
+                self.ctx.func.current_scope.define(source_name, scope_type.wrapped)
 
     def _get_source_name(self, expr: TpyExpr) -> str:
         """Extract the root variable name from an expression for error messages."""

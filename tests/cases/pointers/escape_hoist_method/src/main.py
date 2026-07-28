@@ -16,7 +16,7 @@ class Finder:
         saved: Point = Point(0, 0)
         for i in range(n):
             p: Point = Point(i, i * 2)
-            saved = p  # tpyc: warning(/hoisted to function scope/)
+            saved = p  # tpyc: warning(/will not keep the object it was given/)
         self.result = saved  # tpyc: warning(/copies Point into field/)
 
 f: Finder = Finder()

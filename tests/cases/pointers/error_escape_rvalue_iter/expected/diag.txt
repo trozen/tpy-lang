@@ -1,1 +1,1 @@
-main.py:18: error: reference to 'p' may outlive its storage; use copy(p) for a safe copy
+main.py:18: error: reference to 'p' may outlive its storage; use copy(p) for an independent value

@@ -11,7 +11,7 @@ def loop_escape() -> None:
     saved: Point = Point(0, 0)
     for i in range(3):
         p: Point = Point(i, i)
-        saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p  # tpyc: warning(/will not keep the object it was given/)
     print(saved.x, saved.y)
 
 loop_escape()

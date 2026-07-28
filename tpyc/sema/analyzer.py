@@ -318,7 +318,7 @@ class SemanticAnalyzer:
         self.function_scan_results: dict[int, ScanResult] = {}
         self.top_level_scan_result: ScanResult | None = None
 
-        # Per-function/method hoisted vars (scope escape phase 2)
+        # Per-function/method hoisted vars (try/finally + branch predecl)
         self.function_hoisted_vars: dict[int, set[str]] = {}
         self.top_level_hoisted_vars: set[str] = set()
 

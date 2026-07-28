@@ -17,7 +17,7 @@ def terminated_branch() -> None:
         if i == 0:
             p = items[0]
             continue
-        saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p  # tpyc: warning(/will not keep the object it was given/)
     print(saved.x, saved.y)
 
 terminated_branch()
