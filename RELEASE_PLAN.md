@@ -1,13 +1,12 @@
 # Release plan
 
-The milestone slice of `BUGS.md` / `TODO.md`. Short bullets only -- each
-item's full entry lives in the file it points to (search the quoted phrase
-there). When a release ships, delete its section and promote the next one.
+The milestone slice of `TODO.md`. Short bullets only -- each item's full
+entry lives in the file it points to (search the quoted phrase there).
+When a release ships, delete its section and promote the next one.
 
-## 0.6.0 must-fix bugs (details in BUGS.md; search the quoted phrase)
-
-- "A tuple-membership needle is not snapshotted"
-- "A PLAIN re-assignment that widens an inferred-"
+Bugs are not listed here. Every `BUGS.md` entry tagged `IMM` or `HIGH`
+blocks the release, so the must-fix set is whatever those tags currently
+name -- a list here would only drift from them.
 
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 
