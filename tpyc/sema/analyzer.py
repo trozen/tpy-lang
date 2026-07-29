@@ -274,7 +274,7 @@ class SemanticAnalyzer:
 
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
-        self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols)
+        self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols, self.compat)
         self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols)
 
         # Wire up compatibility's deferred dependencies
@@ -1697,23 +1697,35 @@ class SemanticAnalyzer:
         deferred here so module-level Finals (declared after functions in the
         registration order) and imported Finals are visible.
         """
-        for default in func.defaults:
+        for i, default in enumerate(func.defaults):
             if not isinstance(default, TpyName):
                 continue
             name = default.name
+            const_type: 'TpyType | None' = None
             if name in self.ctx.final_globals:
-                continue
-            imp = lookup_imported(
-                self.ctx.module_attributes, name, SymbolKind.VARIABLE)
-            if imp is not None:
-                source_module, original_name = imp
-                source_info = self.ctx.registry.get_module(source_module)
-                var_info = source_info.variables.get(original_name) if source_info else None
-                if var_info is not None and var_info.is_final:
-                    continue
-            raise self.ctx.error(
-                f"Default parameter value '{name}' must be a module-level "
-                f"Final[T] constant", default)
+                binding = self.ctx.global_ns.lookup(name)
+                const_type = binding.type if binding is not None else None
+            else:
+                imp = lookup_imported(
+                    self.ctx.module_attributes, name, SymbolKind.VARIABLE)
+                var_info = None
+                if imp is not None:
+                    source_module, original_name = imp
+                    source_info = self.ctx.registry.get_module(source_module)
+                    var_info = source_info.variables.get(original_name) if source_info else None
+                if var_info is None or not var_info.is_final:
+                    raise self.ctx.error(
+                        f"Default parameter value '{name}' must be a module-level "
+                        f"Final[T] constant", default)
+                const_type = var_info.type
+            # The binding resolves only here, so this is also where the
+            # constant's type meets the parameter's -- the other default
+            # shapes are checked at registration.
+            ptype = func.params[i][1] if i < len(func.params) else None
+            if const_type is not None and ptype is not None and not contains_type_param(ptype):
+                self.compat.check_type_compatible(
+                    const_type, ptype,
+                    f"parameter '{func.params[i][0]}'", default.loc)
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
@@ -2145,6 +2157,11 @@ class SemanticAnalyzer:
 
         # Register each stub as a callable overload via a single binding
         self.registrar.register_overload_group(stubs)
+
+        # The implementation builds no ParamInfo (see below), but codegen
+        # emits ITS defaults into every specialization, so they need the same
+        # gate a plain function's params get.
+        self.registrar.validate_ast_param_defaults(impl)
 
         # The impl skips register_function (it is not callable), so its
         # signature-derived generator yield type is never set there. Body

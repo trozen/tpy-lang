@@ -71,6 +71,7 @@ from .type_ops import signature_may_return_borrow
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import expr_to_cpp_default
+from .literal_utils import const_expr_type, is_char_literal_init
 from ..symbol_binding import (
     SymbolKind, install_binding, protocol_kind_for,
 )
@@ -79,6 +80,7 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
+    from .compatibility import TypeCompatibility
     from ..typesys import TypeRegistry
 
 from tpyc import modules as builtin_modules
@@ -189,11 +191,51 @@ def check_enum_member_default(expr: TpyExpr, target_type: 'TpyType | None',
         f"'{expr.field}' is not a member of enum '{expr.obj.name}'", loc)
 
 
+def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
+                             compat: 'TypeCompatibility | None', loc: object,
+                             *, target_noun: str, target_name: str) -> None:
+    """Type-check a constant default against the slot it initializes.
+
+    The parser admits a default by SHAPE only ("is this a constant
+    expression?"), so without this an ill-typed constant reaches codegen and
+    renders through arms that cannot fail -- `n: Int32 = None` emitting
+    `int32_t n = nullptr`, or an out-of-range `Int8 = 200` wrapping silently.
+    Routed through the same compatibility check an assignment uses, so a
+    default and its equivalent `x: T = <const>` agree on what is legal and
+    report it in the same words.
+
+    A generic target is skipped: a literal default on a `T`-typed slot is
+    legitimately polymorphic and judged at instantiation. So is a default
+    whose type `const_expr_type` cannot name -- an enum member or `Final[T]`
+    name, each checked where its binding resolves.
+    """
+    if compat is None or target_type is None or contains_type_param(target_type):
+        return
+    actual = const_expr_type(expr)
+    if actual is None:
+        return
+    context = f"{target_noun} '{target_name}'"
+    # A fixed-int ctor carries its own range contract: `Int8(200)` is out of
+    # range whatever the slot is, so check the wrapped literal against the
+    # ctor's type before the ctor's type against the slot.
+    if isinstance(expr, TpyCall) and expr.args and is_fixed_int_type(actual):
+        inner = const_expr_type(expr.args[0])
+        if inner is not None:
+            compat.check_type_compatible(inner, actual, context, loc)
+    if is_char_literal_init(target_type, actual, expr):
+        return
+    compat.check_type_compatible(actual, target_type, context, loc)
+
+
 def _validate_const_field_default(expr: TpyExpr, loc: object,
                                   registry: 'TypeRegistry | None' = None,
-                                  field_type: TpyType | None = None) -> None:
+                                  field_type: TpyType | None = None,
+                                  compat: 'TypeCompatibility | None' = None,
+                                  field_name: str = "") -> None:
     """Validate that a field default expression is a compile-time constant."""
     if expr_to_cpp_default(expr) is not None:
+        check_default_value_type(expr, field_type, compat, loc,
+                                 target_noun="field", target_name=field_name)
         return
     # Enum members are constants: `c: Color = Color.RED` emits a C++ constant
     # initializer. Type-aware -- see check_enum_member_default.
@@ -281,10 +323,12 @@ def _is_valid_dyn_getattr_return(ret: TpyType) -> bool:
 class TypeRegistrar:
     """Registers builtin types, records, protocols, and functions."""
 
-    def __init__(self, ctx: SemanticContext, type_ops: TypeOperations, protocols: ProtocolChecker):
+    def __init__(self, ctx: SemanticContext, type_ops: TypeOperations,
+                 protocols: ProtocolChecker, compat: 'TypeCompatibility'):
         self.ctx = ctx
         self.type_ops = type_ops
         self.protocols = protocols
+        self.compat = compat
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
@@ -1195,7 +1239,8 @@ class TypeRegistrar:
         for fld in record.fields:
             if fld.default_expr is not None and not fld.is_factory_default:
                 _validate_const_field_default(
-                    fld.default_expr, fld.loc, self.ctx.registry, fld.type)
+                    fld.default_expr, fld.loc, self.ctx.registry, fld.type,
+                    self.compat, fld.name)
 
         init_params = []
         if record.init_method:
@@ -1448,7 +1493,7 @@ class TypeRegistrar:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
-            self._validate_param_default_enums(method_param_infos)
+            self._validate_param_defaults(method_param_infos)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
             # and the body-return checker. Cancellable structurally extends
@@ -3171,14 +3216,21 @@ class TypeRegistrar:
             and not is_owned_in_coro_frame(ptype)
         )
 
-    def _validate_param_default_enums(self, param_infos: 'list[ParamInfo]') -> None:
-        """Reject a `Name.MEMBER` parameter default that is not a valid enum
-        member, keeping parameter defaults consistent with field defaults (the
-        parser accepts the shape; this is the type-aware gate). Other default
-        forms are validated by the parser and at generic instantiation."""
+    def _validate_param_defaults(self, param_infos: 'list[ParamInfo]') -> None:
+        """Type-check parameter defaults against their declared types.
+
+        The parser accepts a default by shape alone; this is the type-aware
+        gate, keeping parameter defaults consistent with field defaults. A
+        `Final[T]` name resolves too late to see here and is checked in the
+        analyzer instead."""
         for pi in param_infos:
             default = pi.default_expr
+            if default is None:
+                continue
             if not isinstance(default, TpyFieldAccess):
+                check_default_value_type(default, pi.type, self.compat,
+                                         default.loc, target_noun="parameter",
+                                         target_name=pi.name)
                 continue
             # An enum-member default is monomorphic: it is only meaningful when
             # the parameter type IS that concrete enum. A type-param-containing
@@ -3197,6 +3249,28 @@ class TypeRegistrar:
                 raise SemanticError(
                     f"default value '{default.obj.name}.{default.field}' is not "
                     f"a resolvable enum member", default.loc)
+
+    def validate_ast_param_defaults(self, func: TpyFunction) -> None:
+        """Type-check a function's defaults straight off the AST.
+
+        For a callable that never reaches `register_function` and so builds no
+        ParamInfo -- the @overload IMPLEMENTATION, whose defaults codegen still
+        emits into each specialization. A `Final[T]` name is not judged here:
+        `_validate_named_defaults` covers it during body analysis, which the
+        implementation does undergo.
+        """
+        defaults = func.defaults or []
+        for i, (pname, ptype) in enumerate(func.params):
+            default = defaults[i] if i < len(defaults) else None
+            if default is None:
+                continue
+            try:
+                resolved = self.type_ops.resolve_type(ptype)
+            except SemanticError:
+                continue  # a bad annotation is reported by its own pass
+            check_default_value_type(default, resolved, self.compat,
+                                     default.loc, target_noun="parameter",
+                                     target_name=pname)
 
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -3332,7 +3406,7 @@ class TypeRegistrar:
             span_type = _vararg_span_type(resolved_vararg_type)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
-        self._validate_param_default_enums(param_infos)
+        self._validate_param_defaults(param_infos)
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
         resolved_kwarg_type = None
@@ -3538,6 +3612,10 @@ class TypeRegistrar:
                 stub_param_infos.append(
                     ParamInfo(func.vararg_name, _vararg_span_type(va_type),
                               is_variadic=True))
+            # A stub's own defaults reach codegen (the specialization is
+            # synthesized from the STUB's params, not the implementation's),
+            # so they need the same gate a plain function's get.
+            self._validate_param_defaults(stub_param_infos)
             info = FunctionInfo(
                 name=func.name,
                 params=stub_param_infos,

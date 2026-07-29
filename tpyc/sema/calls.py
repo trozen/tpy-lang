@@ -45,6 +45,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from .context import PENDING_CONTAINER_TYPES
+from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from .overloads import (
     type_matches_numeric, type_matches_with_coercion,
@@ -4896,8 +4897,7 @@ class CallAnalyzer:
 
             self.check_own_param(arg, arg_type, pname, ptype)
 
-            if not (is_char_type(ptype) and is_any_str_type(arg_type) and
-                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+            if not is_char_literal_init(ptype, arg_type, arg):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
@@ -4918,8 +4918,7 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         self.check_own_param(arg, arg_type, pname, ptype)
         self.mark_pending_arg_context(arg, arg_type, ptype)
-        if (is_char_type(ptype) and is_any_str_type(arg_type)
-                and isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+        if is_char_literal_init(ptype, arg_type, arg):
             return arg
         return self.compat.coerce_expr(
             arg, arg_type, ptype, f"argument '{pname}'",
@@ -5204,8 +5203,7 @@ class CallAnalyzer:
 
                 self.check_own_param(arg, arg_type, pname, check_ptype)
 
-                if not (is_char_type(check_ptype) and is_any_str_type(arg_type) and
-                        isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                if not is_char_literal_init(check_ptype, arg_type, arg):
                     coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
                     expr.args[i] = coerced_arg

@@ -209,8 +209,8 @@ design -- the same long pole.)
   be a constant expression, and no constant of class / `Span[T]` / container
   type can be spelled, so only the by-value forms can carry one anyway. (The
   nonsense spelling `x: Point = None` is not a boundary problem -- `None` is
-  not a `Point` with or without `@export` -- and belongs to the parameter-
-  default type check; see BUGS.md.) A dunder keeps rejecting every non-plain
+  not a `Point` with or without `@export` -- and is caught by the parameter-
+  default type check sema applies to every declaration.) A dunder keeps rejecting every non-plain
   form: it reaches CPython as a type slot that supplies its operand directly,
   so there is no argument tuple to parse. **Known limitation, not boundary-
   specific:** a defaulted parameter placed BEFORE a required keyword-only one

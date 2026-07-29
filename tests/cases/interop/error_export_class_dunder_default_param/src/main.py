@@ -14,5 +14,8 @@ class C:
     def __init__(self, a: Int64):
         self.a = a
 
-    def __eq__(self, other: "C" = None) -> bool:  # tpyc: error(/'__eq__': default parameter values are not supported/)
+    # The operand is nullable so `None` is a WELL-TYPED default: an ill-typed
+    # one would trip the parameter-default type check before the dunder
+    # rejection this case is about.
+    def __eq__(self, other: "C | None" = None) -> bool:  # tpyc: error(/'__eq__': default parameter values are not supported/)
         return True

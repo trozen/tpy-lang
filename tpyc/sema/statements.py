@@ -55,6 +55,7 @@ from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate)
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding, tuple_borrow_escape_roots
+from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -4205,10 +4206,8 @@ class StatementAnalyzer:
                     )
                     ann_line = stmt.loc.line if stmt.loc else None
                     self.deduction.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
-                # Special case: single-char string literal can be assigned to Char
-                if (is_char_type(stmt.type) and is_any_str_type(init_type) and
-                    isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
-                    pass  # Allow str literal -> Char
+                if is_char_literal_init(stmt.type, init_type, stmt.init):
+                    pass  # the literal renders as a C++ char; no coercion exists
                 else:
                     # Unwrap ReadonlyType for coercion -- readonly is tracked
                     # via type deduction, not the compatibility check.
