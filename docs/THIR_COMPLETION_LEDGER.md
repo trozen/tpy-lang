@@ -4342,3 +4342,43 @@ byte-pinned so an AST-side change surfaces loudly).
 lifts (routing + `method.gen_recv_temp`), non-generator temp receiver
 boundary, omitted-default + inferred-targ renders, the checked Ptr member
 (routing + `method.ptr_native_member`) and the repeat-access byte pin.
+
+### Indirection consolidation (2026-07-29): one resolver for a name read's deref
+
+Hygiene refactor, no new admissions, zero flips by design: a bare NAME
+read's indirection verdict now lives in ONE function --
+`_name_read_deref(name, binding_type, lc, use)` (`lower/expressions.py`,
+next to `_ptr_read_derefs`) -- and consumers state their POSITION instead
+of re-deriving the verdict. The position rides a new `_ExprUse.
+indirect_read` flag: a gen_expr_deref position (call args, container
+elements, raise/decl name sources, `_INDIRECT_DEREF_COERCIONS` inners,
+cpp_template/@native-free receivers-as-arguments) fully derefs any
+pointer-local; every other position derefs only the always-indirect
+bindings (frame slots, walrus slots, pointer-slot globals, F2d rebound
+containers -- the old name-arm `container_ptr` block, now inside the
+resolver). Deleted: ~10 post-hoc `_ptr_read_derefs` + `replace(lowered,
+deref=True)` patches across `_lower_call_arg`/arg-temp rows/element
+lowering/`_lower_ptr_name_src`/the raise arm, and `_lower_truthy`'s
+independent `e.name in lc.pointers` re-derivation (now the resolver's
+indirect verdict; the anti-stack guard against an operand that already
+carries the deref stays). Full-corpus byte-diff green before and after
+(10178 passed, dial 2713/3631 unchanged). Deliberate keeps: the deref
+STRIPS at wrap-owning seams (`_strip_slot_leaf_deref`, the isnone/truthy
+global-slot opt-outs) express "machinery applies its own indirection" and
+consume, not re-derive; `THIRUnionArgLift.deref` and the THIRSelf
+`self_is_pointer` patches are node-level facts outside the name arm.
+
+**Surfaced en route:** the truthiness probes found a pre-existing AST bug
+-- a U3-narrowed union member's record truthiness emits the bare alias
+(`if (__x)`, invalid C++) because `gen_truthy_expr` keys the mode on the
+DECLARED union while the read substitutes the alias (BUGS.md entry).
+THIR's occurrence-typed mode would render the CORRECT dispatch, i.e.
+silently fix the oracle -- so the truthy arm gate-rejects the composition
+(`truthy.narrowed_record_mode`), per the reject-broken-oracle doctrine.
+Un-reject when the AST is fixed.
+
+**Pins:** `test_narrowed_record_mode_truthiness_stays_ast` (the new reject's
+boundary, `test_thir_core.py`); the existing
+`test_rebound_container_truthiness_derefs_once` anti-stack pin and the
+whole routing/byte suite unchanged -- the refactor is corpus-verified,
+not pin-verified.

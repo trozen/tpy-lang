@@ -3469,6 +3469,40 @@ class TestBoolFreeCallCondition:
         assert thir_out == ast_out
         assert "(*(*" not in thir_out[1]
 
+    def test_narrowed_record_mode_truthiness_stays_ast(self):
+        # A U3-narrowed union member with a truthiness dunder read in truthy
+        # position: the AST keys the mode on the DECLARED union and emits the
+        # bare alias (`if (__x)` -- invalid C++, the BUGS.md entry), so the
+        # occurrence-typed RECORD_LEN render here would silently "fix" the
+        # oracle. The gate rejects the composition instead; un-reject when
+        # the AST bug is fixed.
+        src = (
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    def __init__(self) -> None:\n        pass\n"
+            "    def __len__(self) -> Int32:\n        return 1\n"
+            "class B:\n"
+            "    def __init__(self) -> None:\n        pass\n"
+            "def f(x: A | B) -> Int32:\n"
+            "    if isinstance(x, A):\n"
+            "        if x:\n"
+            "            return 1\n"
+            "    return 0\n"
+            "def main():\n"
+            "    print(f(A()))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+
     def test_isinstance_condition_never_takes_call_arm(self):
         # isinstance conditions belong to the narrowing machinery (in-branch
         # extraction aliases, statically-proven `if (true)` folds) -- the

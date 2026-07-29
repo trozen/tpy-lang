@@ -120,6 +120,12 @@ class _ExprUse:
     # `static_cast<void>(...)`, so the result is discarded exactly as at
     # statement position -- the same widened return set applies.
     truthy_discard: bool = False
+    # A gen_expr_deref position (a value-consuming read: call/element slots,
+    # raise/decl name sources, indirect-coerce inners): ANY pointer-local
+    # name fully derefs there (`(*p)`), where the default value use derefs
+    # only the always-indirect bindings. Consumed by `_name_read_deref` --
+    # the single resolution point for a name read's indirection.
+    indirect_read: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

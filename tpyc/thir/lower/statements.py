@@ -384,7 +384,6 @@ from .expressions import (
     _narrow_variant_cpp,
     _poly_cast_checks,
     _poly_cast_context,
-    _ptr_read_derefs,
     _param_declared_type,
     _is_move_source,
     _lower_call_arg,
@@ -3099,11 +3098,8 @@ def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
     source or a non-name render (those keep their own deref rules)."""
     if not isinstance(init, TpyName):
         return None
-    src = _lower_expr(init, lc, declared)
-    if not isinstance(src, THIRName):
-        return None
-    return (replace(src, deref=True)
-            if _ptr_read_derefs(init.name, lc) else src)
+    src = _lower_expr(init, lc, declared, use=_ExprUse(indirect_read=True))
+    return src if isinstance(src, THIRName) else None
 
 
 def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
@@ -8942,21 +8938,15 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         # too; the operand's own lowering still gates its shape.
         # A CALL source sits under the postfix `.__raise__()` member, so it
         # lowers in receiver position (`ea.Err(9).__raise__();` -- the result
-        # never reaches a value slot). Name sources keep the plain value use:
-        # their deref is applied below, mirroring gen_expr_deref.
+        # never reaches a value slot). Every other source is a gen_expr_deref
+        # position (a pointer-repr record local derefs to a reference before
+        # the `.__raise__()` member call -- `(*e).__raise__()`), so it lowers
+        # under indirect_read.
         raised = _lower_expr(
             stmt.raise_expr, lc, declared,
             use=_ExprUse(result=_ExprResultUse.RECEIVER)
             if isinstance(stmt.raise_expr, (TpyCall, TpyMethodCall))
-            else _ExprUse())
-        # A pointer-repr record local (rebind-slot reseat -> `Rec* e`) derefs
-        # to a reference before the `.__raise__()` member call (`(*e).__raise__()`,
-        # the AST's gen_expr_deref) -- the `_lower_expr` name arm leaves it bare
-        # (its normal consumers use `->`), so apply the pointer deref here.
-        if (isinstance(stmt.raise_expr, TpyName)
-                and _ptr_read_derefs(stmt.raise_expr.name, lc)):
-            assert isinstance(raised, THIRName)
-            raised = replace(raised, deref=True)
+            else _ExprUse(indirect_read=True))
         _witness("raise.expr")
         return THIRRaise(raise_expr=raised,
                          deref_depth=getattr(stmt, "deref_depth", 0), loc=loc)

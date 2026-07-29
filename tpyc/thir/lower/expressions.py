@@ -2396,6 +2396,32 @@ def _ptr_read_derefs(name: str, lc: '_LowerCtx') -> bool:
             and name not in lc.narrow.narrowed)
 
 
+def _name_read_deref(name: str, binding_type: 'TpyType | None',
+                     lc: '_LowerCtx', use: _ExprUse) -> bool:
+    """THE resolution point for a bare NAME read's indirection: True renders
+    `(*name)`, False the bare name (an arrow receiver stays bare -- the
+    field/method arms spell `->` themselves). An `indirect_read` position
+    (the AST's gen_expr_deref) fully derefs any pointer-local, unless a live
+    narrowing binding replaced the read wholesale. Every other position
+    derefs only the always-indirect bindings: resumable frame slots and
+    owned-slot walrus targets everywhere, and -- outside receiver /
+    borrow-bind positions -- pointer-slot globals and rebound CONTAINER
+    locals (F2d). Record pointer-locals stay bare by default; their `->`
+    access rides the field/method arrow arms."""
+    if use.indirect_read and _ptr_read_derefs(name, lc):
+        return True
+    if name in lc.frame_slots or name in lc.walrus_slot_locals:
+        return True
+    if (name in lc.pointers and binding_type is not None
+            and use.result not in (_ExprResultUse.RECEIVER,
+                                   _ExprResultUse.BORROW_BIND)):
+        if name in lc.prescan.global_slots:
+            return True
+        bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(binding_type)))
+        return bool(is_list(bt) or is_dict(bt) or is_set(bt) or is_array(bt))
+    return False
+
+
 def _narrow_variant_cpp(var: str, u: UnionType, lc: '_LowerCtx') -> str:
     """The C++ expression yielding the narrowing subject's `std::variant`: a
     recursive-alias wrapper union (F6) reaches it via `.value` (the
@@ -2721,33 +2747,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             form = Form.STORAGE
         else:
             form = Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE
-        # A resumable frame_slot local (R1c): the read is `(*name)` (the
-        # slot's operator*). Member access off it is `.` (the slot is not a
-        # pointer, so `_field_is_arrow` / the method-call arrow stay False),
-        # giving `(*b).method()` -- the AST's frame_slot deref render.
-        # A rebound CONTAINER local (F2d) is a bare `T*` whose VALUE reads
-        # deref `(*name)` -- the AST's pointer_value_expr render at subscript
-        # receivers, len args, and arg slots. Method receivers stay bare (the
-        # method arm renders `items->m(...)`, matching the AST's arrow on the
-        # pointer), and record / Optional-ptr pointer-locals stay bare
-        # everywhere (their `->` access rides the field/method arrow arms).
-        container_ptr = False
-        if (e.name in lc.pointers and binding_type is not None
-                and use.result not in (_ExprResultUse.RECEIVER,
-                                       _ExprResultUse.BORROW_BIND)):
-            bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                binding_type)))
-            # A pointer-slot GLOBAL derefs at every value position whatever
-            # its family (the AST's gen_expr_deref indirect render); locals
-            # keep the container-only deref (record locals stay bare, their
-            # `->` access rides the arrow arms).
-            container_ptr = (is_list(bt) or is_dict(bt) or is_set(bt)
-                             or is_array(bt)
-                             or e.name in lc.prescan.global_slots)
+        # The indirection verdict (frame slots' `(*name)` slot reads, the F2d
+        # rebound-container value deref, pointer-slot globals, the
+        # indirect_read positions) lives in _name_read_deref -- one resolver
+        # for every consumer, so a position cannot re-derive it differently.
         return THIRName(result_type=rtype, name=e.name, cpp=gcpp, form=form,
-                        deref=(e.name in lc.frame_slots
-                               or e.name in lc.walrus_slot_locals
-                               or container_ptr),
+                        deref=_name_read_deref(e.name, binding_type, lc, use),
                         loc=loc)
     if isinstance(e, TpyFieldAccess):
         if e.property_getter_call is not None:
@@ -5828,22 +5833,21 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 e.obj, lc, declared,
                 # A call-shaped receiver's own arg temps flush at the
                 # enclosing statement like any nested arg's, so allow_temps
-                # rides through.
+                # rides through. A cpp_template expansion and an @native free
+                # function both consume the receiver as an ARGUMENT, a value
+                # position -- so an indirect name derefs there
+                # (`::tpy::__len__((*xs))`), where a real member call spells
+                # `->` instead; both emit branches ignore `is_arrow`, so the
+                # deref has to ride the name (indirect_read).
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             allow_temps=temp_args),
+                             allow_temps=temp_args,
+                             indirect_read=(
+                                 fi is not None
+                                 and (fi.cpp_template is not None
+                                      or bool(fi.native_function
+                                              and fi.native_name)))),
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript))
-        if (isinstance(e.obj, TpyName) and isinstance(recv_lowered, THIRName)
-                and not recv_lowered.deref
-                and (fi.cpp_template is not None
-                     or (fi.native_function and fi.native_name))
-                and _ptr_read_derefs(e.obj.name, lc)):
-            # A cpp_template expansion and an @native free function both
-            # consume the receiver as an ARGUMENT, a value position -- so an
-            # indirect name derefs there (`::tpy::__len__((*xs))`), where a
-            # real member call spells `->` instead. Both emit branches ignore
-            # `is_arrow`, so the deref has to ride the name.
-            recv_lowered = replace(recv_lowered, deref=True)
         method_node = THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
@@ -5966,6 +5970,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 and _witness("coerce.str_field_view"))
             inner = _lower_expr(
                 e.expr, lc, declared,
+                # The AST pre-derefs an indirect-name inner for these
+                # coercions (`&(*q)` -- the "need dereferencing for globals"
+                # arm), so their inner is an indirect_read position.
+                use=_ExprUse(indirect_read=(
+                    e.coercion.name in _INDIRECT_DEREF_COERCIONS)),
                 # Whatever the str-family coerce does with it, the member read
                 # itself renders bare -- the wrap (materializing copy or
                 # nothing) composes around it. Typed on the DECLARED field
@@ -5975,17 +5984,6 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     or str_field_inner
                     or (disp == "materialize"
                         and isinstance(e.expr, TpyFieldAccess))))
-        if (e.coercion.name in _INDIRECT_DEREF_COERCIONS
-                and isinstance(e.expr, TpyName)
-                and isinstance(inner, THIRName)
-                and inner.name == e.expr.name
-                and _ptr_read_derefs(e.expr.name, lc)
-                and not inner.deref):
-            # The AST pre-derefs an indirect-name inner for these coercions
-            # (`&(*q)` -- the "need dereferencing for globals" arm); a slot
-            # GLOBAL already carries the deref from the name arm, this covers
-            # the pointer-LOCAL inner the name arm leaves bare.
-            inner = replace(inner, deref=True)
         if disp == "materialize":
             # The cross-type view->owned copy (`std::string(x)`) IS the S1
             # view->owned form transfer -- one emit chokepoint. The coerce
@@ -6671,18 +6669,16 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         # value; no move wrap, a call rvalue is not a move source).
         return _lower_expr(e, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+    # An element mirrors gen_expr_deref + _maybe_move: an F2 pointer-local
+    # name derefs (`(*p)` -- indirect_read), and a movable owned local at its
+    # last use moves into the element slot -- the same `movable_locals` +
+    # `all_last_uses` facts the AST reads.
     el = _lower_expr(
-        e, lc, declared, container_threaded=retype_scalars,
+        e, lc, declared, use=_ExprUse(indirect_read=True),
+        container_threaded=retype_scalars,
         field_owned_str_ok=field_str_ok and isinstance(e, TpyFieldAccess))
     if retype_scalars:
         el = _slot_literal_retype(el, slot, lc)
-    # A record-name element mirrors gen_expr_deref + _maybe_move: an F2
-    # pointer-local name derefs (`(*p)`), and a movable owned local at its
-    # last use moves into the element slot -- the same `movable_locals` +
-    # `all_last_uses` facts the AST reads.
-    if (isinstance(e, TpyName) and isinstance(el, THIRName)
-            and _ptr_read_derefs(e.name, lc)):
-        el = replace(el, deref=True)
     # A value-`Optional[str]` slot (a widened value-tuple RETURN element) wraps
     # its str-view source exactly like the bare owned-str slot: the tuple
     # brace-init relies on the implicit `std::string -> std::optional<std::string>`
@@ -8054,16 +8050,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         inner = _lower_expr(a, lc, declared,
                             use=replace(_NESTED_ARG_USE,
                                         result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=temp_args),
+                                        allow_temps=temp_args,
+                                        indirect_read=True),
                             allow_unrouted_name=True)
-        if isinstance(a, TpyName):
-            if _ptr_read_derefs(a.name, lc):
-                assert isinstance(inner, THIRName)
-                inner = replace(inner, deref=True)
-            if _is_move_source(a, lc):
-                inner = THIRMove(result_type=inner.result_type, value=inner,
-                                 form=inner.form,
-                                 loc=getattr(a, "loc", None))
+        if isinstance(a, TpyName) and _is_move_source(a, lc):
+            inner = THIRMove(result_type=inner.result_type, value=inner,
+                             form=inner.form,
+                             loc=getattr(a, "loc", None))
         at = lc.analyzer.get_expr_type(a)
         at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
         if isinstance(at_u, OwnType):
@@ -8169,10 +8162,9 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     use=replace(_NESTED_ARG_USE,
                                 result=_ExprResultUse.BORROW_BIND))
             else:
-                init = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-            if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):
-                assert isinstance(init, THIRName)
-                init = replace(init, deref=True)
+                init = _lower_expr(a, lc, declared,
+                                   use=replace(_NESTED_ARG_USE,
+                                               indirect_read=True))
             _witness("argtemp.protocol")
             return THIRArgTemp(result_type=proto, cpp_type=cpp_type,
                                init=init, brace_init=brace_init,
@@ -8187,16 +8179,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             inner = _lower_expr(a, lc, declared,
                                 use=replace(_NESTED_ARG_USE,
                                             result=_ExprResultUse.BORROW_BIND,
-                                            allow_temps=temp_args),
+                                            allow_temps=temp_args,
+                                            indirect_read=True),
                                 allow_unrouted_name=True)
-            if isinstance(a, TpyName):
-                if _ptr_read_derefs(a.name, lc):
-                    assert isinstance(inner, THIRName)
-                    inner = replace(inner, deref=True)
-                if _is_move_source(a, lc):
-                    inner = THIRMove(result_type=inner.result_type,
-                                     value=inner, form=inner.form,
-                                     loc=getattr(a, "loc", None))
+            if isinstance(a, TpyName) and _is_move_source(a, lc):
+                inner = THIRMove(result_type=inner.result_type,
+                                 value=inner, form=inner.form,
+                                 loc=getattr(a, "loc", None))
             _witness("argtemp.covariant")
             return THIRArgTemp(result_type=cov_slot,
                                cpp_type=lc.render_type(cov_slot),
@@ -8350,23 +8339,21 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # safe here -- the position pins the render (the truthiness
         # precedent for allow_unrouted_name).
         if _own_move_source_slice(a, ptype, lc, declared):
-            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+            lowered = _lower_expr(a, lc, declared,
+                                  use=replace(_NESTED_ARG_USE,
+                                              indirect_read=True),
                                   allow_unrouted_name=True)
-            if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):
-                assert isinstance(lowered, THIRName)
-                lowered = replace(lowered, deref=True)
             _witness("move.own_last_use")
             return THIRMove(result_type=ow, value=lowered, form=own_form,
                             loc=getattr(a, "loc", None))
         if temp_args:
             own_str = is_str_type(ow)
-            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+            lowered = _lower_expr(a, lc, declared,
+                                  use=replace(_NESTED_ARG_USE,
+                                              indirect_read=True),
                                   allow_unrouted_name=True,
                                   own_slot_coerce=isinstance(a, TpyCoerce),
                                   field_owned_str_ok=own_str)
-            if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):
-                assert isinstance(lowered, THIRName)
-                lowered = replace(lowered, deref=True)
             if own_str:
                 # The str payload declares the owned type with brace init
                 # (`std::string __tmp_N{this->label};` -- the view->owned
@@ -8587,9 +8574,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                       addr_of=True,
                                       loc=loc)
     if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):
-        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-        assert isinstance(lowered, THIRName)
-        return replace(lowered, deref=True)
+        return _lower_expr(a, lc, declared,
+                           use=replace(_NESTED_ARG_USE, indirect_read=True))
     if isinstance(a, TpyName) and a.name == lc.self_receiver:
         # `self` passed by reference derefs the receiver pointer
         # (`on_init((*this))`); a resumable method's `__self` frame field is
@@ -8911,6 +8897,21 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         # does not carry that path fact yet, so routing the condition alone can
         # drop the AST's `(*field)` unwrap in the branch.
         raise ThirUnsupported("truthy.optional_field_narrow")
+    if (mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)
+            and isinstance(e, TpyName)
+            and (e.name in lc.narrow.narrowed
+                 or e.name in lc.narrow.spelled)):
+        # A narrowing-replaced read's record truthiness: the AST keys the
+        # mode on the DECLARED union (no dunder there) and emits the bare
+        # alias (`if (__x)` -- invalid C++, see BUGS.md), while the
+        # occurrence type here says RECORD_BOOL/RECORD_LEN. Reject rather
+        # than mirror the broken render or silently fix the oracle. The
+        # spelled leg is DEFENSIVE: sema does not retype a poly-narrowed
+        # subject's truthiness occurrence today (it stays ALWAYS_TRUE off
+        # the declared type), so only the U3 alias leg is reachable -- if
+        # sema starts retyping, this keeps the composition off the routed
+        # path until the render is verified.
+        raise ThirUnsupported("truthy.narrowed_record_mode")
     if isinstance(e, TpyName) and et is not None:
         eu_name = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
         if isinstance(eu_name, OptionalType) and eu_name.uses_pointer_repr():
@@ -9058,7 +9059,16 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         deref = (
             mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)
             and isinstance(e, TpyName)
-            and (e.name in lc.pointers
+            # The record __bool__/__len__ dispatch consumes the read at a
+            # gen_expr_deref position, so ask the resolver for the indirect
+            # verdict (`self` reads THIRSelf before the name arm, hence the
+            # explicit receiver-pointer clause).
+            and (_name_read_deref(
+                     e.name,
+                     _param_declared_type(e.name, lc) or declared.get(e.name),
+                     lc,
+                     _ExprUse(result=_ExprResultUse.TRUTHY,
+                              indirect_read=True))
                  or (e.name == lc.self_receiver and lc.self_is_pointer))
             # A rebound CONTAINER local's name read already derefs `(*xs)`
             # (the F2d value-use deref in the name arm) -- the wrap must not
