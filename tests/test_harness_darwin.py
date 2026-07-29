@@ -15,6 +15,7 @@ from tpyc.toolchain import (
     compiler_target_os,
     darwin_cross_ld_flags,
     darwin_version_min_flags,
+    shared_link_flags,
 )
 
 
@@ -53,6 +54,23 @@ def _fake_compiler(tmp_path: Path, name: str, triple: str) -> Path:
     fake.write_text(f"#!/bin/sh\necho {triple}\n")
     fake.chmod(0o755)
     return fake
+
+
+def test_shared_link_flags(tmp_path: Path) -> None:
+    """The extension link recipe is per-TARGET, not per-host: Mach-O refuses
+    to leave the facade's `Py*` symbols undefined under plain `-shared` (the
+    link fails outright), so a darwin target gets the bundle recipe CPython's
+    own LDSHARED uses, while ELF keeps `-shared`.
+
+    Keying on the target is what makes a native mac build and an osxcross
+    cross-build emit the same line -- a host-keyed check would silently give
+    the cross row the wrong recipe."""
+    darwin = _fake_compiler(tmp_path, "sl-clang++", "arm64-apple-darwin25.5")
+    assert shared_link_flags([str(darwin)]) == [
+        "-bundle", "-undefined", "dynamic_lookup"]
+
+    linux = _fake_compiler(tmp_path, "sl-g++", "x86_64-linux-gnu")
+    assert shared_link_flags([str(linux)]) == ["-shared"]
 
 
 def test_darwin_version_min_flags(tmp_path: Path) -> None:

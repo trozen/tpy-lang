@@ -52,7 +52,8 @@ from .toolchain import (  # noqa: F401 -- re-exported: external callers import t
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
     list_compilers,
     strict_warn_flags, get_or_build_pch, discover_runtime_cpp_sources,
-    third_party_source_driver, darwin_cross_ld_flags, _derive_c_compiler, _is_zig,
+    third_party_source_driver, darwin_cross_ld_flags, shared_link_flags,
+    _derive_c_compiler, _is_zig,
     _find_all_versioned, _find_best_versioned, _find_all_zig, _find_zig,
     _resolve_compiler, _auto_detect_compiler, _cxx_aliases,
 )
@@ -262,8 +263,9 @@ class BuildLayout:
                        build dir (prefix avoids stem collisions with user
                        modules of the same name).
             shared: Emit a shared object (`# tpy: ext_module` builds): every
-                       TU is compiled `-fPIC` and the final step links
-                       `-shared` into a `.so` instead of an executable.
+                       TU is compiled `-fPIC` and the final step links a
+                       loadable `.so` instead of an executable (the recipe
+                       itself is per-target -- see `shared_link_flags`).
         """
         if config is None:
             config = CppCompilerConfig()
@@ -358,7 +360,7 @@ class BuildLayout:
             # ELF `ld`. Not on config.compiler (it errors as unused on -c
             # compiles); the link is the single place it belongs.
             *darwin_cross_ld_flags(config.compiler),
-            *(["-shared"] if shared else []),
+            *(shared_link_flags(config.compiler) if shared else []),
             "-o", str(output),
             *obj_files,
             *(extra_objects or []),

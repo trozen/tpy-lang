@@ -25,15 +25,16 @@ gitignored `__tpyc__/` build output stay at the case root:
   normalized to basenames, as in the main harness). `# tpyc:` inline
   annotations on `src/*.py` are validated against the diagnostics. This
   alone catches any glue/marshaller codegen or diagnostics drift in CI.
-- **ext-exec** (cached, like the exec phase; **Linux-only**): `tpyc`'s
-  first-class `.so` build mode (`-b` on an `# tpy: ext_module` -> `-fPIC
-  -shared`, no `main`, facade only -- never links libpython) produces an
-  importable `<mod>.so`; CPython imports it and runs `driver.py`. Gated by a
+- **ext-exec** (cached, like the exec phase; **Linux and macOS**): `tpyc`'s
+  first-class `.so` build mode (`-b` on an `# tpy: ext_module` -> `-fPIC`,
+  no `main`, facade only -- never links libpython) produces an importable
+  `<mod>.so`; CPython imports it and runs `driver.py`. Gated by a
   content-addressed marker (the same shared `exec-results/` cache the exec
   phase uses) so it re-verifies once after any relevant change, then skips.
-  The `-shared` link recipe is Linux-only for now (macOS needs `-bundle
-  -undefined dynamic_lookup`), so this phase skips on other platforms; the
-  snapshot, cpy-parity, and facade self-check still run everywhere.
+  The link recipe is per-target (`shared_link_flags`): ELF `-shared`, Mach-O
+  `-bundle -undefined dynamic_lookup`. Windows is the remaining gap, so the
+  phase still skips there; the snapshot, cpy-parity, and facade self-check
+  run everywhere.
 - **THIR overlay** (always, when THIR is on): the case's module is re-emitted
   through THIR and byte-diffed against the AST oracle, and an unmarked case
   must route every user body (the ratchet) -- the same contract the main

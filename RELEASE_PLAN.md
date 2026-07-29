@@ -18,9 +18,6 @@ name -- a list here would only drift from them.
     onto FunctionInfo/ParamInfo)
   - Optional/None at the boundary (param + return; pairs with
     defaults -- do back-to-back)
-  - macOS `.so` build (`-bundle -undefined dynamic_lookup` branch in
-    `build_cpp_commands(shared=True)`, widen `_EXT_BUILD_SUPPORTED`;
-    blocked on verification via `tpy-nightly-mac`, not on work)
   - PEP 517 backend -> abi3 wheel (phase 2.5; the design-heavy one --
     converges with the pyproject v0 track below)
   - `from tpy import __ext_module__`

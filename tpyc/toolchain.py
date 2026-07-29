@@ -201,6 +201,25 @@ def darwin_cross_ld_flags(compiler: list[str]) -> list[str]:
     return [f"--ld-path={ld}"]
 
 
+def shared_link_flags(compiler: list[str]) -> list[str]:
+    """Link flags that turn a link step into a loadable CPython extension.
+
+    ELF resolves the facade's undefined `Py*` symbols against the host
+    interpreter at import, so `-shared` alone suffices. Mach-O will not leave
+    them undefined -- plain `-shared` fails the link outright -- so darwin
+    needs `-bundle -undefined dynamic_lookup`, which is exactly what CPython's
+    own `LDSHARED` uses there. Function AND data symbols (`_Py_NoneStruct`,
+    the `PyExc_*` pointers) both resolve at load under it.
+
+    Keyed on the compiler's TARGET os, so a native mac build and an osxcross
+    cross-build emit the same line (`darwin_cross_ld_flags` above keys the
+    same way, at the same link site).
+    """
+    if compiler_target_os(tuple(compiler)) == "darwin":
+        return ["-bundle", "-undefined", "dynamic_lookup"]
+    return ["-shared"]
+
+
 def _resolve_compiler(cxx: str) -> list[str] | None:
     """Resolve a --cxx value to a compiler command list, or None if not found.
 

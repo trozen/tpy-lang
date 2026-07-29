@@ -10,15 +10,15 @@ For every case this proves, in the shape of the main snapshot harness:
     diagnostics into expected/diag.txt (with `# tpyc:` annotation validation,
     as in the main harness). This alone catches any glue/marshaller codegen
     or diagnostics drift in CI.
-  - EXT-EXEC (cached, like the exec phase; Linux-only): tpyc's first-class .so
-    build mode produces an importable `<mod>.so` (facade only -- never links
-    libpython); CPython imports it and runs driver.py. Gated by a
+  - EXT-EXEC (cached, like the exec phase; Linux and macOS): tpyc's first-class
+    .so build mode produces an importable `<mod>.so` (facade only -- never
+    links libpython); CPython imports it and runs driver.py. Gated by a
     content-addressed marker so it re-verifies once per change, then skips.
-    The `-shared` link recipe is Linux-only for now (macOS needs `-bundle
-    -undefined dynamic_lookup`), so this phase skips on other platforms while
-    the snapshot, cpy-parity, and facade self-check still run. Under
-    --build-only or a cross toolchain only the snapshot half runs (the .so
-    can be neither imported here nor, for cross, built at all).
+    The link recipe is per-target (`shared_link_flags`): ELF `-shared`, Mach-O
+    `-bundle -undefined dynamic_lookup`. Windows is the remaining gap, so the
+    phase skips there while the snapshot, cpy-parity, and facade self-check
+    still run. Under --build-only or a cross toolchain only the snapshot half
+    runs (the .so can be neither imported here nor, for cross, built at all).
   - THIR OVERLAY (always, when THIR is on): the module re-emitted through THIR
     and byte-diffed against the AST oracle, plus the no_thir.txt-gated ratchet
     -- the same two-halves contract the main harness enforces. It emits BOTH
@@ -67,12 +67,13 @@ _FACADE_SELFCHECK = (
 # limited API.
 _LIMITED_API = "-DPy_LIMITED_API=0x030c0000"
 
-# The `.so` build links `-shared` with the Python symbols left undefined
-# (resolved against the host interpreter at import) -- the Linux recipe. macOS
-# needs `-bundle -undefined dynamic_lookup` instead (see TODO), so the build +
-# ext-exec run is Linux-only for now; the portable snapshot, cpy-parity, and
+# The `.so` build leaves the Python symbols undefined, to be resolved against
+# the host interpreter at import; `shared_link_flags` picks the per-target
+# recipe (ELF `-shared` / Mach-O `-bundle -undefined dynamic_lookup`). Windows
+# is the remaining gap (MSVC, and no statement-expression extension), so the
+# build + ext-exec run is gated here; the portable snapshot, cpy-parity, and
 # facade self-check still run everywhere.
-_EXT_BUILD_SUPPORTED = platform.system() == "Linux"
+_EXT_BUILD_SUPPORTED = platform.system() in ("Linux", "Darwin")
 
 
 def _run_tpyc(args: list[str], what: str) -> str:
@@ -92,11 +93,16 @@ def _run_tpyc(args: list[str], what: str) -> str:
 
 def _assert_facade_only(so_path: Path) -> None:
     """A tpy extension links the hand-mirrored facade, not libpython: the
-    symbols resolve against the host interpreter at import time. ldd is
-    Linux-only (interop is Linux-first); skip the check elsewhere."""
-    if platform.system() != "Linux":
+    symbols resolve against the host interpreter at import time.
+
+    Both platforms that build the .so are covered, each with its own linked-
+    libraries tool -- otherwise the guarantee would silently go unchecked on
+    whichever one lacks it."""
+    tool = {"Linux": "ldd", "Darwin": "otool"}.get(platform.system())
+    if tool is None:
         return
-    result = subprocess.run(["ldd", str(so_path)], capture_output=True, text=True)
+    argv = [tool, str(so_path)] if tool == "ldd" else [tool, "-L", str(so_path)]
+    result = subprocess.run(argv, capture_output=True, text=True)
     for line in result.stdout.splitlines():
         if "python" in line.lower():
             pytest.fail(
@@ -234,8 +240,8 @@ def test_interop_exec(case_dir, mod_py, request):
     # Skipped under --no-exec (no C++ build), under build-only/cross (the .so
     # is imported+RUN under host CPython and records exec markers -- neither
     # is possible or wanted; a cross .so also needs the target's Python.h),
-    # and on non-Linux (the `-shared` link recipe is Linux-only -- see
-    # _EXT_BUILD_SUPPORTED). The snapshot half above always runs.
+    # and on platforms with no link recipe yet (see _EXT_BUILD_SUPPORTED).
+    # The snapshot half above always runs.
     if not no_exec and not build_only and _EXT_BUILD_SUPPORTED:
         companions = [driver] + ([ext_checks] if ext_checks.exists() else [])
         fingerprint = compute_ext_exec_fingerprint([gen_hpp, gen_cpp, gen_ext], companions)

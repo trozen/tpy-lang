@@ -143,10 +143,13 @@ design -- the same long pole.)
 - **Build mode** reuses the existing compile/link path + `--no-main`; Python
   include dir via in-process `sysconfig`; `-DPy_LIMITED_API=0x030c0000`
   **from the first `.so`** (so a non-stable symbol is a compile error, never
-  a retrofit); **Linux-only** for slice 1 (undefined Python symbols resolve
-  at import; macOS `-undefined dynamic_lookup` is a small additive follow via
-  a per-platform link-flag table); bare `<module>.so` (the `.abi3.so` tag is
-  a packaging concern). The glue `.cpp` joins `all_cpp_paths`.
+  a retrofit); **Linux and macOS** (undefined Python symbols resolve at
+  import, so the link recipe is per-target: ELF `-shared`, Mach-O `-bundle
+  -undefined dynamic_lookup` -- CPython's own `LDSHARED` there; function and
+  data symbols alike resolve at load); bare `<module>.so` (the `.abi3.so` tag
+  is a packaging concern, and a bare `.so` is importable on both). Windows
+  remains out (MSVC, and no statement-expression extension). The glue `.cpp`
+  joins `all_cpp_paths`.
 - **GIL: dropped from slice 1 entirely.** With no `nogil` and no user-facing
   `PyRef` (Q3), a `gil_held` flow-fact is a tautology that produces zero
   diagnostics. The only invariant kept: cpython bindings stay

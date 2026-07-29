@@ -6048,9 +6048,13 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   container-mutation warning); `Span[readonly[T]]` can never warn (writing
   through it is already a compile error elsewhere). Verified in
   `tests/interop/span_numeric/`.
-- **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
-  importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
-  `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error
+- **Working (`.so` build mode, Linux + macOS)**: `tpyc -b` on an
+  `# tpy: ext_module` builds an importable `<mod>.so` directly -- every TU
+  `-fPIC`, no `main()`, glue TU in the link set. The link recipe follows the
+  compiler's target: ELF `-shared`, Mach-O `-bundle -undefined dynamic_lookup`
+  (the undefined `Py*` symbols, functions and data alike, resolve against the
+  host interpreter at import). Windows is not supported (MSVC, and no
+  statement-expression extension). `--exec` on an ext_module is a clean error
   (a `.so` is not runnable). The ext-exec snapshot harness
   (`tests/test_interop_exec.py`) snapshots the glue + module C++, builds the
   `.so`, imports it under CPython against `driver.py`, and asserts parity with
