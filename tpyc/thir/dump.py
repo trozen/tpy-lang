@@ -46,6 +46,7 @@ from .nodes import (
     THIRExprStmt,
     THIRContainerLiteral,
     THIRContinue,
+    THIRDefaultConstruct,
     THIRDelVar,
     THIRLiteral,
     THIRMatch,
@@ -143,6 +144,8 @@ def _expr(e: THIRExpr) -> str:
         # vs VALUE/BORROW -> nullptr), so surface it like the other form tags.
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
         return f"lit({e.value!r}){tag}"
+    if isinstance(e, THIRDefaultConstruct):
+        return f"default({e.cpp_type})"
     if isinstance(e, THIRStrLiteral):
         return f"str({e.value!r})"
     if isinstance(e, THIRBytesLiteral):

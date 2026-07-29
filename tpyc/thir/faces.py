@@ -209,6 +209,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
+    "call.copy_iter_explicit",      # copy_iter(it) -> ::tpy::copy_iter<Elem>(<it>)
     "call.try_parse",               # try_parse(Enum, s) -> EnumUtil<E>::
                                     # try_parse(s)
     "call.native_ret_cast",         # @native cpp_return_type: static_cast<
@@ -751,6 +752,38 @@ THIR_FACES: frozenset[str] = frozenset({
     # A NAME bound to the still-unsubstituted slot type at a generic callee
     # (`first(items)` at `list[T]`): binds the ref template param bare.
     "call.generic_open_slot_name",
+    # A `T()` default filling an omitted generic param
+    # (`three_params[Int32](10, c=5)` -> `int32_t{}`).
+    "call.tparam_default_construct",
+    # A conformer NAME into a still-open single structural protocol slot
+    # (`drive_implicit(t)` at `Awaitable[T]`): binds the template param bare.
+    "call.generic_open_proto_name",
+    # A Callable field read into a callable slot (`apply(handler.cb, 10)`):
+    # the bare member read, the std::function converting implicitly.
+    "call.callable_field_arg",
+    # A Callable-VALUE field read at a value position: the bare member read.
+    "field.callable_value",
+    # An empty container instantiation into an Own[container] ctor slot
+    # (the @dataclass default_factory fill): the spelled default ctor.
+    "ctor.own_container_instantiation",
+    # `copy(src[i])` of an open-T element into an Own[T] ctor slot:
+    # the generic copy tail (`T(<element read>)`).
+    "ctor.copy_open_elem",
+    # A @cpp_template free call returning a by-value F1 record at a STORAGE
+    # sink (`make_default[Point]()` -> `Point p = Point{};`).
+    "call.template_record_rvalue",
+    # A DISCARDED @native record-rvalue call: the bare call statement.
+    "call.discard_native_record",
+    # A `None` literal into a unit slot (`Own[None]` / bare None-resolved T):
+    # the bare `std::monostate{}` value.
+    "call.none_unit",
+    # A str-slice arg into an `Own[str]` slot: the bare literal / view->owned
+    # convert render (the copy+move temp row's temp-free faces).
+    "arg.own_str_slot",
+    # An @error_return record-rvalue callee at the field-receiver position
+    # (composes on the er-unwrap stmt-expr) or the raw statement bind
+    # (the try/er `__try_tmp_N` block).
+    "call.er_record_rvalue",
     # `into_any` coercion: a scalar / str / bytes / None value wrapped into a
     # `tpy::Any` cell via `make_any` (`x: Any = 42` / `Any(v)`).
     "coerce.into_any",
@@ -906,6 +939,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(x)` of a concrete container source (`copy(d.get(k, dflt))` ->
     # `std::vector<T>(<src>)`).
     "call.copy_container",
+    # `copy(span)` of a Span NAME -> `std::span<T>(span)` (a view copy).
+    "call.copy_span",
     # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",

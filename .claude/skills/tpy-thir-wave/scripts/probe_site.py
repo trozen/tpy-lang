@@ -8,7 +8,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-ROOT = Path("/home/tommy/dev/turbo-python/tpy-m1")
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 

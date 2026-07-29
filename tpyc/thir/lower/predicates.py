@@ -5312,6 +5312,11 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # An Own[T]-bound param name reads bare, like any owned local.
         at = unwrap_readonly(at.wrapped)
     if _eligible_scalar(w):
+        # A literal-seeded name's use site may still carry an IntLiteralType
+        # (`for v in [5, 3]: heappush(h, v)`); the render is the same bare
+        # name either way, so resolve like `_resolved_scalar`.
+        if at is not None:
+            at = resolve_int_literals(at, analyzer.ctx.default_int_for_literal)
         return w if _eligible_scalar(at) else None
     if is_str_type(w):
         # An owned-str slot fed by a str-family FIELD read

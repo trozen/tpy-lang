@@ -99,6 +99,14 @@ class THIRLiteral(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRDefaultConstruct(THIRExpr):
+    """A `T()` default-construction filling an omitted generic param
+    (`three_params[Int32](10, c=5)` -> `int32_t{}`): the resolved type's
+    brace-init, rendered at the arg position."""
+    cpp_type: str = ""
+
+
+@dataclass(frozen=True)
 class THIRStrLiteral(THIRExpr):
     """A string literal, rendered via `cpp_string_literal_expr` so the
     quoting/escaping matches the AST path. Form stays VALUE: the emitted

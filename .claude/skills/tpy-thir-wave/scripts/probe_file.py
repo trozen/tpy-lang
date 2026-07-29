@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses, inspect, sys
 from collections import Counter
 from pathlib import Path
-ROOT = Path("/home/tommy/dev/turbo-python/tpy-m1")
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
 import conftest as C
 from tpyc.compiler import Compiler

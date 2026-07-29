@@ -2652,6 +2652,46 @@ def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
             and _native_ctx_manager_ok(e, analyzer))
 
 
+def _er_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
+    """An @error_return record-rvalue free call at a position that composes
+    on the er-unwrap stmt-expr (`return make_data(v).value` ->
+    `({ auto __er_1 = make_data(v); ... unwrap_ref_move(*__er_1); }).value`):
+    the same callee/arity shape as `_record_rvalue_call_shape`, er-tolerant
+    -- the call lowering's `_er_wrap` renders the unwrap wherever the call
+    routes."""
+    if not isinstance(e, TpyCall):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or fi.error_return_type is None:
+        return False
+    if not (_f1_record(analyzer.get_expr_type(e), analyzer)
+            and is_rvalue_source(analyzer, e)):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if not _call_arity_ok(e, fi):
+        return False
+    kind = _free_callee_kind(e, analyzer, error_return_ok=True)
+    return (kind is not None and kind[0] in ("plain", "imported")
+            and _witness("call.er_record_rvalue"))
+
+
+def _template_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
+    """A @cpp_template free call returning a by-value F1 record
+    (`make_default[Point]()` -> `Point p = Point{};`, `unsafe_load(p, 0)`
+    -> `Point loaded = p[0];`): the TEMPLATE residue of
+    `_record_rvalue_call_shape` -- the expanded positional-only template
+    renders bare in the STORAGE slot; args gate at their own rows."""
+    if not isinstance(e, TpyCall):
+        return False
+    if not (_f1_record(analyzer.get_expr_type(e), analyzer)
+            and is_rvalue_source(analyzer, e)):
+        return False
+    kind = _free_callee_kind(e, analyzer)
+    return (kind is not None and kind[0] == "template"
+            and _witness("call.template_record_rvalue"))
+
+
 
 def _rvalue_storage_decl_call(e: TpyExpr, analyzer) -> bool:
     """A call rvalue landing in a plain spelled value decl -- the general
@@ -2915,7 +2955,11 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
                 or _eligible_enum(pu, analyzer) is not None
                 or _resolved_str_value(pu, analyzer) is not None
                 or _resolved_bytes_value(pu, analyzer) is not None
-                or _f1_record(pu, analyzer)):
+                or _f1_record(pu, analyzer)
+                # A list param spells `std::vector<T>&` via the same
+                # to_cpp_param helper; the body's own reads gate their
+                # renders (an unroutable body still falls back whole).
+                or is_list(pu)):
             return False
     return True
 
@@ -2974,6 +3018,14 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     return (_lambda_routable(a, analyzer, self_this=self_this)
             or _func_ref_routable(a, analyzer)
             or _callable_value_pass_arg(a, locals_, analyzer)
+            # The FIELD twin of the callable-value name pass: a Callable
+            # field read binds a callable slot bare (`apply(handler.cb, 10)`
+            # -> `apply(handler.cb, 10)` -- the std::function member converts
+            # implicitly, no temp on either path).
+            or (isinstance(a, TpyFieldAccess)
+                and _callable_value(analyzer.get_expr_type(a))
+                and _field_receiver_ok(a, locals_, analyzer)
+                and _witness("call.callable_field_arg"))
             or _callable_object_arg(a, ptype, locals_, analyzer)
             or _shared_pass_through_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _value_union_temp_arg(
@@ -3233,6 +3285,14 @@ def _tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
         return False
     slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
             if isinstance(ptype, TpyType) else None)
+    if isinstance(slot, OwnType):
+        # An `Own[value-tuple]` slot takes the same spelled value render as
+        # the bare tuple slot (the tuple-literal lowering arm's unwrap);
+        # pointer-repr storage slots keep rejecting there.
+        inner = unwrap_readonly(slot.wrapped)
+        if (isinstance(inner, TupleType)
+                and not inner.has_pointer_repr_element()):
+            slot = inner
     return (isinstance(slot, TupleType)
             and len(a.elements) == len(slot.element_types))
 
@@ -3345,6 +3405,20 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                 au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
                 if au == resolved and _witness("call.generic_open_slot_name"):
                     return True
+                # A conformer NAME into a still-open SINGLE structural
+                # protocol slot (`drive_implicit(t)` at `Awaitable[T]`, t:
+                # MyTask[T]): the monomorphized template param binds the
+                # lvalue bare -- only temporaries hoist on the AST path
+                # (is_temporary_expr), and a NAME is never one. @dynamic
+                # slots keep their adapter temps on the AST path.
+                if (a.name not in narrowed
+                        and isinstance(resolved, NominalType)
+                        and resolved.is_protocol
+                        and not is_dyn_protocol(resolved)
+                        and isinstance(au, NominalType)
+                        and au.is_user_record and not au.is_protocol
+                        and _witness("call.generic_open_proto_name")):
+                    return True
         return note_detail("call.generic_arg_slot")
     if isinstance(ptype, TypeParamRef):
         if _eligible_scalar(resolved):
@@ -3432,6 +3506,29 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
             # slot, exactly like the concrete free-call path.
             or (temps_ok and _own_lvalue_arg(
                 a, resolved, locals_, narrowed, analyzer))
+            # The `Own[@dynamic P]` erasure rows on a SUBSTITUTED slot
+            # (`task_from_coro(yield_once())` at `Own[Cancellable[T]]`):
+            # the same make_adapter / make_unique wraps the concrete
+            # free-call gate admits -- the lowering arms are slot-keyed
+            # and generic-blind.
+            or _dyn_own_coro_factory_arg(a, resolved, analyzer) is not None
+            or _dyn_own_conformer_arg(a, resolved, locals_, analyzer)
+            is not None
+            # `None` into a substituted unit slot (`poll_ready[None](None)`
+            # at `Own[T]` resolved `Own[None]`): the bare `std::monostate{}`
+            # render, position-independent.
+            or _none_unit_arg(a, resolved) is not None
+            # A tuple literal into a substituted `Own[value-tuple]` slot
+            # (`heappush(pq, (3, "third"))`): the spelled value render the
+            # tuple-literal lowering arm gives the Own-unwrapped slot.
+            or _tuple_literal_arg(a, resolved)
+            # A str literal into a substituted `Own[str]` slot
+            # (`heappush(words, "cherry")`): binds the owned param bare --
+            # `_str_owned_slot_arg`'s literal face; the other faces
+            # (view-form locals, subscripts) stay unwitnessed here.
+            or (isinstance(_peel_coerce(a), TpyStrLiteral)
+                and (w_str := _plain_own_slot(resolved)) is not None
+                and is_str_type(w_str))
             # A protocol slot in the substituted param list
             # (`poll_once(f())` -- `Awaitable[T]`): the same pre-arm the
             # concrete free-call loop runs (protocol_slots=True there and
@@ -3576,6 +3673,32 @@ def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _container_literal_shape_ok(a, ltu, analyzer))
     return (_own_literal_family(inner)
             and _container_literal_shape_ok(a, inner, analyzer))
+
+def _own_container_instantiation_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                     analyzer) -> bool:
+    """An EMPTY container INSTANTIATION into an `Own[container]` ctor slot
+    (the @dataclass default_factory fill: `Foo(x=Int32(1))` ->
+    `Foo(std::vector<int32_t>(), 1)`): the spelled default ctor renders off
+    `call_type` (the instantiation-empty arm), and the exact-type check
+    keeps the render aligned with the slot."""
+    if not (isinstance(a, TpyCall) and a.call_type is not None
+            and not a.args and not a.kwargs
+            and a.double_star_unpack is None
+            and a.subscript_callee is None):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if not isinstance(pt, OwnType):
+        return False
+    inner = unwrap_readonly(unwrap_send_sync(pt.wrapped))
+    if not (is_list(inner) or is_dict(inner) or is_set(inner)):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if isinstance(atu, OwnType):
+        atu = unwrap_readonly(atu.wrapped)
+    return atu == inner and _witness("ctor.own_container_instantiation")
 
 def _native_iterable_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                                  analyzer) -> bool:
@@ -4167,6 +4290,12 @@ def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
             is_float_type(w) or isinstance(w, FloatLiteralType)):
         return _witness("own.scalar_rvalue")
     at = analyzer.get_expr_type(a)
+    if at is not None:
+        # A BigInt slot leaves the int literal unwrapped by sema
+        # (`heappush(h4, 42)` at `Own[T]` resolved `Own[int]`), so the
+        # expr type is still an IntLiteralType; the render is the bare
+        # literal either way.
+        at = resolve_int_literals(at, analyzer.ctx.default_int_for_literal)
     return (_eligible_scalar(at)
             and _witness("own.scalar_rvalue"))
 
@@ -4311,6 +4440,26 @@ def _copy_record_own_arg(a: TpyExpr, ptype: TpyType | None,
     # with the live set and rejects pointer sources (gate-vs-lowering split).
     src = copy_plain_record_source(a, analyzer, frozenset())
     return src is not None and src == w and _witness("own.record_copy")
+
+def _copy_open_elem_arg(a: TpyExpr, ptype: TpyType | None,
+                        analyzer) -> 'TypeParamRef | None':
+    """`copy(src[i])` of an open-T container element into an `Own[T]` slot
+    inside a generic body (`Owned(copy(src[0]))` ->
+    `Owned<T>(T(::tpy::__getitem__(src, 0)))`): `_gen_copy_expr`'s generic
+    tail spells `{arg_type.to_cpp()}({read})` -- the open T -- around the
+    standard checked element read. Returns the slot's TypeParamRef or None."""
+    w = _plain_own_slot(ptype)
+    if not isinstance(w, TypeParamRef):
+        return None
+    arg = copy_call_arg(a, analyzer)
+    if not isinstance(arg, TpySubscript) or isinstance(arg.index, TpySlice):
+        return None
+    at = analyzer.get_expr_type(arg)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if not (isinstance(atu, TypeParamRef) and atu.name == w.name):
+        return None
+    return w
 
 def _own_optional_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                                     analyzer) -> bool:
@@ -5466,11 +5615,17 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
             or fi.is_property_getter or fi.is_property_setter
             or any(isinstance(p.type, LiteralType) for p in fi.params)):
         return None
-    if fi.is_generator and (fi.type_params or e.inferred_type_args
-                            or e.is_static_call):
-        # `generator_ok` covers the plain module-qualified factory only; the
-        # generic and static spellings are unprobed against generator fis.
+    if fi.is_generator and e.is_static_call:
+        # The static spelling is unprobed against generator fis.
         return None
+    if fi.is_generator and (fi.type_params or e.inferred_type_args):
+        # A GENERIC module-qualified factory (`heapq.merge(a, b)` ->
+        # `::tpystd::heapq::merge<Item>(...)`): the generic_qualified kind
+        # composes the targs at lowering exactly like a non-generator
+        # generic module call, so `generator_ok` covers it; an unresolved
+        # targ list still rejects at that kind's own checks below.
+        if not generator_ok:
+            return None
     parent = e.super_parent_type or e.unbound_self_parent_type
     if parent is not None:
         # `super().m(args)` / `Base.m(self, args)` -> `this->Base::m(args)`

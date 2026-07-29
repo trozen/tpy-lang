@@ -4382,3 +4382,112 @@ boundary, `test_thir_core.py`); the existing
 `test_rebound_container_truthiness_derefs_once` anti-stack pin and the
 whole routing/byte suite unchanged -- the refactor is corpus-verified,
 not pin-verified.
+
+### Generic-call arg-site wave (2026-07-29): the expr.call TRACK's biggest site emptied
+
+Dial 2713 -> 2724/3631 (+11 flips), markers 918 -> 907. Full suite green
+(10196 passed, exec + cpy). The fresh histogram put `body:expr.call` at 37
+sole-blocker cases across TWELVE raise sites, the largest
+(`_lower_generic_plain_call`'s arg gate, `expressions.py:7175` on this
+tree) holding 10; the track ground that site to zero. Eight of its ten
+cases flipped; the other two moved to their true blockers
+(`tpy_executor_wake_dispatch` -> decl.slot_type,
+`functools_reduce` -> the un-ported list-concat binop). Three bonus flips
+(`await_task`, `channel_hold_both_ends`, `user_deref_chain`) fell out of
+the same rows.
+
+**What landed.** (a) The substituted-slot concrete tail gains the
+`Own[@dynamic P]` erasure rows (coro factory + structural conformer), the
+`Own[None]` monostate row, the `Own[value-tuple]` literal row (the shared
+`_tuple_literal_arg` now unwraps the Own the lowering arm already
+unwrapped), and the `Own[str]` str-literal face. (b)
+`_own_lvalue_temp_slot` / `_own_scalar_rvalue_arg` resolve IntLiteralType
+use-site types like `_resolved_scalar` -- a literal-seeded loop var or a
+bare literal into an `Own[T]`-resolved-BigInt slot was rejecting on the
+literal type alone. (c) The `_lower_call_arg` tail no longer
+literal-retypes against an Own-WRAPPED slot: gen_call_arg threads the RAW
+ptype, on which every literal target predicate is False, so the AST
+renders `heappush<::tpy::BigInt>(h4, 42)` bare -- the retype was a latent
+divergence waiting for its first witness. (d) `T()` defaults filling
+omitted params lower as the new `THIRDefaultConstruct` node
+(`int32_t{}`). (e) A conformer NAME binds a still-OPEN single structural
+protocol slot bare (`drive_implicit<T>(t)` at `Awaitable[T]` inside a
+generic body). (f) Both ctor arg loops now pass `nested_temps`, so a
+call-shaped arg's OWN args flush at the enclosing statement
+(`Holder(wrap(Int32(42)))` hoists the inner ref-slot temp) -- this
+converted the nested mutated-slot pin from stays-AST to routes
+(dualgen-verified byte-identical), the pin's stated reason being exactly
+the threading gap removed. (g) The lambda param family admits list params
+(`std::vector<T>&` via to_cpp_param); the len()-body witness routes, the
+list-concat body still falls back whole.
+
+**Lesson re-confirmed: the gate had drifted BELOW its own lowering.** Four
+of the seven cells needed no new render at all -- the lowering arms
+(monostate, make_adapter, tuple value render, the copy+move cascade)
+already existed and were reachable from the concrete free-call gate; only
+the generic tail's hand-copied subset had fallen behind. When a generic
+case rejects, diff the generic tail against `_plain_call_arg_ok` before
+reading any render code.
+
+**Pins:** `test_thir_wave_generic_own_args.py` (15 units: routing +
+byte-identity per row, pointer-repr tuple / owned-str-name / list-concat
+boundaries); the converted
+`test_ctor_mutated_slot_rvalue_nested_routes` (`test_thir_callargs.py`).
+
+### Expr.call track, second grind (2026-07-29): ctor-arg + result-gate sites emptied
+
+Dial 2724 -> 2742/3631 (+18 flips), markers 907 -> 889. Full suite green
+(10212 passed, exec + cpy, every case re-verified). The two 6-case sites
+that tied for the track's top after the generic-arg wave -- the record-CTOR
+arg gate (`_record_ctor_arg_supported`) and the call-RESULT gate
+(`_call_use_supported`) -- both ground to zero, plus the 3/2/2 mid-tail
+sites (instantiation iterator args, the copy() faces, the free-call arg
+gate's open-slot name). Five bonus flips (`sorted_key_user_type`,
+`gen_template_no_leak`, and three others) fell out of shared rows.
+
+**What landed.** Ctor-arg rows: `copy(name)` into `Own[record]`
+(`Holder(copy(b))` -> `Holder(Box(b))`); func-ref / callable-value NAMEs
+into Callable ctor slots; `copy(src[i])` of an OPEN-T element into
+`Own[T]` (`Owned<T>(T(__getitem__(src, 0)))` -- new `_copy_open_elem_arg`
++ THIRCopy arm); the @dataclass default_factory fill (an empty container
+instantiation into an `Own[container]` slot, STORAGE use). Result-gate
+rows: @cpp_template record rvalues at STORAGE (`Point p = Point{};`);
+DISCARDED @native record rvalues (`open(missing)` for its raise);
+@error_return record rvalues at the field-RECEIVER position and the raw
+statement bind (`error_return_raw` threads into the gate). Iterator
+rvalues at instantiation args: `copy_iter(it)` gets its own arm
+(`::tpy::copy_iter<Elem>(<it>)`) and the module-qualified GENERIC
+generator factory routes (`list(heapq.merge(a, b))` -- the
+`_marker_call_kind` generic+generator reject lifted under `generator_ok`,
+the vararg pack's temp riding the statement flush). The copy() builtin
+gains the open-T CALL-rvalue face (`U(f(init))`) and the Span NAME face
+(a view copy). A Callable FIELD read binds callable slots bare; a
+borrow-returning lambda body lowers under BORROW_BIND
+(`map(lambda p: scale(p, 2), pts)`).
+
+**The byte-diff caught a live AST miscompile.** Pinning the
+callable-field row with a param named `f` shadowing a module function
+`f`: sema resolves the BINDING (CPython-correct), but the AST emit's
+registry-first ordering renders the MODULE function's call with args
+zip-truncated to its params (`return f();` for `return f(v)`). Filed in
+BUGS.md; THIR gate-rejects the composition (`call.callable_shadow`) per
+the broken-oracle rule.
+
+**A row written and REVERTED, as the doctrine demands.** The
+same-wrapper method-call rvalue arg row (`show(v.inner.get())` at a
+recursive-union slot) had no routable witness: every reachable shape
+dies downstream (the corpus case at the F1 union-type-arg fence, the
+constructed probes at the wrapper-result gates). Admitting it would have
+been unwitnessed surface, so it came back out in the same commit.
+
+**Residue, honestly named.** `set/set_comp_owned_move` needs a
+comp-FILTER flush point (arg temps inside the comprehension loop body);
+`union/union_mutual_mixed` sits behind the deliberate F1 union-type-arg
+spelling fence; `calls/ref_collect_no_source_clobber` moved to a
+str-field-over-subscript read. The track's remaining sole-blocker tail is
+six 1:1 singles (expr callee, isinstance tuple, cross-module dup-name
+union, gen-proto param, os.walk kwarg, argparse widths).
+
+**Pins:** `test_thir_wave_result_gate.py` (16 units: routing +
+byte-identity per row, template-at-VALUE / er-at-print / concrete-elem
+copy boundaries, the callable-shadow reject).

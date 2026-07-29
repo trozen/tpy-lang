@@ -212,9 +212,11 @@ class TestRecordCallArgs:
         assert isinstance(init, THIRCtorCall)
         assert isinstance(init.args[0], THIRCall)
 
-    def test_ctor_mutated_slot_rvalue_nested_stays_ast(self):
-        # The mutated-slot temp needs a statement flush; as a NESTED arg
-        # (`WrapM(Sink(A(1)))`) there is none -> the whole body stays AST.
+    def test_ctor_mutated_slot_rvalue_nested_routes(self):
+        # A NESTED mutated-slot rvalue (`WrapM(Sink(A(1)))`) hoists its temp
+        # at the enclosing statement's flush -- `nested_temps` rides the
+        # flush into call-shaped ctor args, matching the AST's single
+        # pre-statement TempState flush (dualgen-verified byte-identical).
         thir = _lower_ctx(
             _PRELUDE
             + "class Sink:\n    c: Int32\n"
@@ -223,7 +225,7 @@ class TestRecordCallArgs:
             + "    def __init__(self, s: Sink):\n        self.w = s.c\n"
             + "def use() -> Int32:\n"
             + "    o = WrapM(Sink(A(1)))\n    return o.w\n")
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
 
     def test_ctor_const_chain_nested_routes(self):
         # Const chains inline at any depth: `Wrap(SinkC(A(5)))`.

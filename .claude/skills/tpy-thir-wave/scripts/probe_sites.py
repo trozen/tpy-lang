@@ -12,7 +12,7 @@ NEVER reject a family by sampling a handful of its cases -- the sites are
 interleaved, so a 4-case sample reads as 4 unrelated shapes. Run this instead;
 it costs ~4 minutes.
 
-Usage (from the repo root, after probe_corpus.py + the sole-blocker split):
+Usage (from the repo root, after probe_corpus.py):
     uv run python .claude/skills/tpy-thir-wave/scripts/probe_sites.py \
         "body:expr.call"
 """
@@ -23,7 +23,7 @@ import sys
 import traceback
 from pathlib import Path
 
-ROOT = Path("/home/tommy/dev/turbo-python/tpy-m1")
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
@@ -33,8 +33,11 @@ from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.codegen_cpp import CodeGenOptions  # noqa: E402
 
 TARGET = sys.argv[1]
-sole = json.load(open('/tmp/agents/wave200/sole_cases.json'))
-names = [n.replace("cases/", "", 1) for n in sole.get(TARGET, [])]
+OUT_DIR = Path("/tmp/agents/thir-wave")
+blockers = json.load(open(OUT_DIR / "blockers.json"))
+names = sorted(n.replace("cases/", "", 1)
+               for n, r in blockers.items()
+               if r.get("reasons") == [TARGET])
 reason = TARGET.split(":", 1)[1]
 
 sites = collections.Counter()
@@ -96,5 +99,5 @@ for site, n in sites.most_common():
     cum += n
     ex = [c for c, s in per_case.items() if s == site][:3]
     print(f"{n:4d}  cum {cum:4d}  {site:<28} e.g. {', '.join(ex)}")
-json.dump(per_case, open(f"/tmp/agents/wave200/sites_{reason}.json", "w"),
+json.dump(per_case, open(OUT_DIR / f"sites_{reason}.json", "w"),
           indent=0)

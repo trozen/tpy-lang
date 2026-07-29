@@ -85,6 +85,7 @@ from .nodes import (
     THIRAnyIsinstance,
     THIRDynIsinstance,
     THIRDynIsinstanceMulti,
+    THIRDefaultConstruct,
     THIRLiteral,
     THIRMatch,
     THIRMatchBinding,
@@ -1330,6 +1331,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return f"(*{e.cpp})" if e.deref else e.cpp
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
+    if isinstance(e, THIRDefaultConstruct):
+        return f"{e.cpp_type}{{}}"
     if isinstance(e, THIRStrLiteral):
         return cpp_string_literal_expr(e.value)
     if isinstance(e, THIRBytesLiteral):
