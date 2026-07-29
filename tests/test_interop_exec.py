@@ -104,6 +104,10 @@ def _assert_facade_only(so_path: Path) -> None:
     argv = [tool, str(so_path)] if tool == "ldd" else [tool, "-L", str(so_path)]
     result = subprocess.run(argv, capture_output=True, text=True)
     for line in result.stdout.splitlines():
+        # otool echoes the object's own path as a header line; a repo path that
+        # itself contains "python" (e.g. turbo-python) would false-positive.
+        if line.startswith(str(so_path)):
+            continue
         if "python" in line.lower():
             pytest.fail(
                 f"{so_path.name} links libpython ({line.strip()}); the facade "
