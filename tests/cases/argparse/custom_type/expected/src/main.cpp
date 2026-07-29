@@ -25,12 +25,12 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args(["core:strict", "--out", "release"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
+    std::optional<Tag> __slot_2;
+    std::optional<Tag> __slot_4;
     std::optional<Tag> __slot_1;
     Tag* __tpy_argparse_acc_input = nullptr;
-    std::optional<Tag> __slot_2;
     Tag* out = nullptr;
     Tag __slot_3 = Tag::from_arg("ci:nightly");
-    std::optional<Tag> __slot_4;
     Tag* label = &__slot_3;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--out OUT] [--label LABEL] input";
     int32_t __tpy_argparse_h = 0;

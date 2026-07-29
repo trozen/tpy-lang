@@ -8,8 +8,8 @@ namespace tpyapp::main {
 // # with, loop body) resolve via the finalized branch-decl snapshot.
 // def pick_list(c: bool) -> int:
 ::tpy::BigInt pick_list(bool c) {
-    // if c:
     std::optional<std::vector<int32_t>> __slot_1;
+    // if c:
     std::vector<int32_t>* xs;
     if (c) {
         // xs = [1, 2]
@@ -27,8 +27,8 @@ namespace tpyapp::main {
 
 // def pick_dict(c: bool) -> int:
 ::tpy::BigInt pick_dict(bool c) {
-    // if c:
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_1;
+    // if c:
     ::tpy::ordered_map<std::string, int32_t>* d;
     if (c) {
         // d = {"a": 1}
@@ -44,8 +44,8 @@ namespace tpyapp::main {
 
 // def pick_set(c: bool) -> int:
 ::tpy::BigInt pick_set(bool c) {
-    // if c:
     std::optional<::tpy::ordered_set<int32_t>> __slot_1;
+    // if c:
     ::tpy::ordered_set<int32_t>* s;
     if (c) {
         // s = {1, 2}
@@ -61,8 +61,8 @@ namespace tpyapp::main {
 
 // def pick_try(c: bool) -> int:
 ::tpy::BigInt pick_try(bool c) {
-    // try:
     std::optional<std::vector<int32_t>> __slot_1;
+    // try:
     std::vector<int32_t>* xs;
     {
         try {

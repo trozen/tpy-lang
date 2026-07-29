@@ -1,0 +1,16 @@
+enter in_if
+inside: if-second
+drop if-first
+after block
+drop if-second
+---
+enter in_loop
+inside: loop-second
+drop loop-first
+drop loop-second
+inside: loop-second
+drop loop-first
+after loop
+drop loop-second
+---
+done

@@ -194,14 +194,12 @@ std::string str_local() {
     for (int32_t i = 0; i < 2; ++i) {
         // xs = [i, i]
         std::array<int32_t, 2> __slot_1 = {i, i};
-        std::optional<std::array<int32_t, 2>> __slot_2;
         std::array<int32_t, 2>* xs = &__slot_1;
         // print(xs[0])
         std::cout << ::tpy::__getitem__((*xs), 0) << "\n";
     }
     // xs = [9, 9]
     std::array<int32_t, 2> __slot_3 = {9, 9};
-    std::optional<std::array<int32_t, 2>> __slot_4;
     std::array<int32_t, 2>* xs = &__slot_3;
     // return xs[0]
     return ::tpy::__getitem__((*xs), 0);

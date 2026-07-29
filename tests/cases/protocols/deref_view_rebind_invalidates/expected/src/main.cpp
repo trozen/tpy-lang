@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def f() -> str:
 std::string f() {
+    std::optional<::tpystd::tplib::box::Box<Pet>> __slot_2;
     // b: Box[Pet] = Box(Dog())
     ::tpystd::tplib::box::Box<Pet> __slot_1 = ::tpystd::tplib::box::Box<Dog>(Dog());
-    std::optional<::tpystd::tplib::box::Box<Pet>> __slot_2;
     ::tpystd::tplib::box::Box<Pet>* b = &__slot_1;
     // if isinstance(b, Dog):
     if (Dog* __b_ptr = dynamic_cast<Dog*>(&((*b).__deref__())); (__b_ptr != nullptr)) {

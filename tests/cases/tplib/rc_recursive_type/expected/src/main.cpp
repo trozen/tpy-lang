@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
     // a = Rc.new(Node(Int32(1)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
     // b = Rc.new(Node(Int32(2)))
@@ -19,7 +20,6 @@ void main() {
     // # Walk the chain.
     // cur = a.clone()
     ::tpystd::tplib::rc::Rc<Node> __slot_1 = a.clone();
-    std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
     ::tpystd::tplib::rc::Rc<Node>* cur = &__slot_1;
     // while True:
     while (true) {

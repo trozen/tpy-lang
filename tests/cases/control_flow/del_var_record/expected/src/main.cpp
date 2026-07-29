@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<Point> __slot_2;
     // p = Point(1, 2)
     Point __slot_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // print(p.x)
     std::cout << p->x << "\n";

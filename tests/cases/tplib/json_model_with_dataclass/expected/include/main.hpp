@@ -106,8 +106,8 @@ inline std::string Item::__repr__() const {
 }
 
 inline Item Item::from_json(std::string_view __s) {
-    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Item> __slot_1;
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Item* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;

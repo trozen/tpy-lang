@@ -12,6 +12,7 @@ Obj make() {
 
 // def main() -> None:
 void main() {
+    std::optional<Obj> __slot_2;
     // # del alias from constructor
     // a = b = Obj(5)
     Obj a = Obj(::tpy::BigInt(5));
@@ -29,7 +30,6 @@ void main() {
     // # del alias, then reassign
     // e = f = Obj(99)
     Obj __slot_1 = Obj(::tpy::BigInt(99));
-    std::optional<Obj> __slot_2;
     Obj* e = &__slot_1;
     Obj& f = (*e);
     // del e

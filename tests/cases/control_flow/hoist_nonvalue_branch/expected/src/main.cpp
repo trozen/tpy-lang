@@ -28,8 +28,8 @@ void test_list_one_branch(bool flag) {
 
 // def test_own_list_both_branches(flag: bool) -> None:
 void test_own_list_both_branches(bool flag) {
-    // if flag:
     std::optional<std::vector<int32_t>> __slot_1;
+    // if flag:
     std::vector<int32_t>* items;
     if (flag) {
         // items = make_list()
@@ -82,8 +82,8 @@ void test_record_one_branch(bool flag) {
 
 // def test_record_both_branches(flag: bool) -> None:
 void test_record_both_branches(bool flag) {
-    // if flag:
     std::optional<Point> __slot_1;
+    // if flag:
     Point* p;
     if (flag) {
         // p = Point(1, 2)

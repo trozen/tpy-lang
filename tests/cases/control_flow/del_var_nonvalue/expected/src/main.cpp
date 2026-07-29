@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // # del on non-value type locals (list, str)
 // def main() -> None:
 void main() {
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     // items: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> __slot_1 = {1, 2, 3};
-    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<::tpy::BigInt>* items = &__slot_1;
     // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";

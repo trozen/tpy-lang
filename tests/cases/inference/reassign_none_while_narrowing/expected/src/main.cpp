@@ -12,8 +12,8 @@ Box make(int32_t i) {
 
 // def test_while() -> None:
 void test_while() {
-    // result = None
     std::optional<Box> __slot_1;
+    // result = None
     Box* result = nullptr;
     // i = Int32(0)
     int32_t i = 0;

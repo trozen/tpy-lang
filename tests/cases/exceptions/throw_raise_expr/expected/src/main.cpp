@@ -28,12 +28,12 @@ void test_raise_variable() {
 
 // def test_raise_reassigned() -> None:
 void test_raise_reassigned() {
+    std::optional<AppError> __slot_2;
     // try:
     {
         try {
             // e = AppError(1)
             AppError __slot_1 = AppError(1);
-            std::optional<AppError> __slot_2;
             AppError* e = &__slot_1;
             // e = AppError(2)
             e = &*(__slot_2 = AppError(2));

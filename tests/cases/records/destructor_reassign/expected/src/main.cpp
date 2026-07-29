@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_straight():
 void test_straight() {
+    std::optional<Resource> __slot_2;
     // r = Resource("a")
     Resource __slot_1 = Resource("a");
-    std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
     // r = Resource("b")
     r = &*(__slot_2 = Resource("b"));
@@ -20,9 +20,9 @@ void test_straight() {
 
 // def test_loop():
 void test_loop() {
+    std::optional<Resource> __slot_2;
     // r = Resource("init")
     Resource __slot_1 = Resource("init");
-    std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -35,9 +35,9 @@ void test_loop() {
 
 // def test_conditional(flag: Int32):
 void test_conditional(int32_t flag) {
+    std::optional<Resource> __slot_2;
     // r = Resource("start")
     Resource __slot_1 = Resource("start");
-    std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
     // if flag > 0:
     if ((flag > 0)) {
@@ -50,9 +50,9 @@ void test_conditional(int32_t flag) {
 
 // def test_inherit():
 void test_inherit() {
+    std::optional<Child> __slot_2;
     // c = Child("x")
     Child __slot_1 = Child("x");
-    std::optional<Child> __slot_2;
     Child* c = &__slot_1;
     // c = Child("y")
     c = &*(__slot_2 = Child("y"));

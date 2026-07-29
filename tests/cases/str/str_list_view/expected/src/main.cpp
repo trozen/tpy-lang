@@ -28,9 +28,9 @@ void test_list_mutation_fallback() {
 
 // def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback() {
+    std::optional<std::vector<std::string>> __slot_2;
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> __slot_1 = {"alice", "bob"};
-    std::optional<std::vector<std::string>> __slot_2;
     std::vector<std::string>* names = &__slot_1;
     // x = names[Int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__((*names), 0);

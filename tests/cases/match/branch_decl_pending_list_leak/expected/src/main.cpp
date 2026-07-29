@@ -26,8 +26,8 @@ namespace tpyapp::main {
 
 // def g(p: Point) -> int:
 ::tpy::BigInt g(const Point& p) {
-    // match p:
     std::optional<std::vector<int32_t>> __slot_1;
+    // match p:
     std::vector<int32_t>* xs;
     auto& __match_subject_1 = p;
     // case Point(x=0):

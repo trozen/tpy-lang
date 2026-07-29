@@ -59,7 +59,8 @@ from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
                           _lower_borrow_tuple_literal, _lower_tuple_literal,
                           _lower_copy_record)
-from .functions import _check_callable_structure, _seed_global_scope
+from .functions import (_check_callable_structure, _iter_thir,
+                        _needs_held_back_slot, _seed_global_scope)
 from .predicates import (
     _f1_record,
     _value_tuple_nested,
@@ -121,13 +122,22 @@ def lower_simple_generator(func: TpyFunction, analyzer, render_type,
     """Lower a simple-generator body's leaves, falling back cleanly on a
     lowering reject."""
     try:
-        return _lower_simple_generator(
+        body = _lower_simple_generator(
             func, analyzer, render_type, self_type=self_type,
             native_globals=native_globals or {},
             render_type_stored=render_type_stored,
             render_resolve=render_resolve)
     except ThirUnsupported as ex:
         return _reject(ex.reason)
+    if body is not None:
+        # A pre-declared rebind slot's declaration is held back for the
+        # enclosing body's prologue to drain. This leaf emitter has no drain
+        # point (the AST skeleton owns the lambda), so the declaration would
+        # never be written -- fall back rather than emit an undeclared slot.
+        stmts = list(body.init) + list(body.pre_yield) + list(body.post_yield)
+        if any(_needs_held_back_slot(n) for n in _iter_thir(stmts)):
+            return _reject("sgen.rebind_slot_hoist")
+    return body
 
 
 def _lower_simple_generator(func: TpyFunction, analyzer, render_type,

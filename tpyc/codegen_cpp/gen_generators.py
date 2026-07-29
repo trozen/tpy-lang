@@ -1,6 +1,9 @@
 """Code generation for generator functions (yield -> state machine structs)."""
 from __future__ import annotations
 
+import io
+from contextlib import contextmanager
+
 from dataclasses import dataclass
 from typing import Callable, TYPE_CHECKING
 
@@ -273,6 +276,23 @@ class GeneratorCodegen:
             finally_guard_counter=CtxCounter(
                 self.ctx, "finally_guard_counter"))
 
+    @contextmanager
+    def _lambda_body_sink(self, out: 'TextIO', indent: str):
+        """Buffer a generator lambda's body, draining its held-back decls first.
+
+        A rebind-slot declaration held back by `use_rebind_slot` targets the
+        enclosing FUNCTION prologue, which sits outside this lambda -- so it
+        must be drained at the lambda's own prologue instead, ahead of the
+        buffered body.
+        """
+        lam = io.StringIO()
+        with self.ctx.nested_hoist_scope() as hoist_decls:
+            yield lam
+        for decl in hoist_decls:
+            out.write(f"{indent}{decl}")
+        out.write(lam.getvalue())
+
+
     def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
                                     record_name: str | None = None,
                                     leaf: "SimpleGenLeafEmitter | None" = None) -> None:
@@ -333,54 +353,56 @@ class GeneratorCodegen:
         out.write(f"{INDENT * (1 + extra)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
         out.write(f"{INDENT * (2 + extra)}[{captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
 
-        old_indent = self.ctx.indent_level
-        self.ctx.indent_level = 3 + extra
-        cond_checkpoint = self.ctx.temps.checkpoint()
-        cond_code = (leaf.render_cond() if leaf is not None
-                     else self.expressions.gen_truthy_expr(while_stmt.condition))
-        # Condition-registered decls have no statement flush inside the
-        # lambda: walrus pre-decls go at lambda scope, and anonymous temps
-        # (re-evaluated per iteration, like _gen_while's restructured head)
-        # go inside the loop head. Mixed walrus + temps is rejected: the
-        # in-head temp could run before the walrus assignment it reads
-        # (_gen_while's gated fallback hazard), and this shape never
-        # compiled before, so a loud reject regresses nothing (BUGS.md).
-        if (self.ctx.temps.has_pending_since(cond_checkpoint)
-                and contains_named_expr(while_stmt.condition)):
-            raise CodeGenError(
-                "A generator 'while' condition combining a walrus binding "
-                "with an argument that needs a temporary is not supported; "
-                "bind the value in the loop body ('while True:' with an "
-                "explicit break) instead.",
-                loc=while_stmt.condition.loc)
-        self.ctx.temps.flush_named_since(out, cond_checkpoint,
-                                         INDENT * (3 + extra))
-        if self.ctx.temps.has_pending_since(cond_checkpoint):
-            out.write(f"{INDENT * (3 + extra)}while (true) {{\n")
-            self.ctx.temps.flush_since(out, cond_checkpoint,
-                                       INDENT * (4 + extra))
-            out.write(f"{INDENT * (4 + extra)}if (!({cond_code})) break;\n")
-        else:
-            out.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
-        self.ctx.indent_level = 4 + extra
+        with self._lambda_body_sink(out, INDENT * (3 + extra)) as lam:
 
-        if leaf is not None:
-            leaf.emit_pre_yield(out, 4 + extra)
-            yield_expr = leaf.render_yield_value()
-        else:
-            for stmt in pre_yield:
-                self.statements.gen_stmt(out, stmt)
-            yield_expr = self.statements.gen_yield_value(yield_stmt)
-        out.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
-        if leaf is not None:
-            leaf.emit_post_yield(out, 4 + extra)
-        else:
-            for stmt in post_yield:
-                self.statements.gen_stmt(out, stmt)
+            old_indent = self.ctx.indent_level
+            self.ctx.indent_level = 3 + extra
+            cond_checkpoint = self.ctx.temps.checkpoint()
+            cond_code = (leaf.render_cond() if leaf is not None
+                         else self.expressions.gen_truthy_expr(while_stmt.condition))
+            # Condition-registered decls have no statement flush inside the
+            # lambda: walrus pre-decls go at lambda scope, and anonymous temps
+            # (re-evaluated per iteration, like _gen_while's restructured head)
+            # go inside the loop head. Mixed walrus + temps is rejected: the
+            # in-head temp could run before the walrus assignment it reads
+            # (_gen_while's gated fallback hazard), and this shape never
+            # compiled before, so a loud reject regresses nothing (BUGS.md).
+            if (self.ctx.temps.has_pending_since(cond_checkpoint)
+                    and contains_named_expr(while_stmt.condition)):
+                raise CodeGenError(
+                    "A generator 'while' condition combining a walrus binding "
+                    "with an argument that needs a temporary is not supported; "
+                    "bind the value in the loop body ('while True:' with an "
+                    "explicit break) instead.",
+                    loc=while_stmt.condition.loc)
+            self.ctx.temps.flush_named_since(lam, cond_checkpoint,
+                                             INDENT * (3 + extra))
+            if self.ctx.temps.has_pending_since(cond_checkpoint):
+                lam.write(f"{INDENT * (3 + extra)}while (true) {{\n")
+                self.ctx.temps.flush_since(lam, cond_checkpoint,
+                                           INDENT * (4 + extra))
+                lam.write(f"{INDENT * (4 + extra)}if (!({cond_code})) break;\n")
+            else:
+                lam.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
+            self.ctx.indent_level = 4 + extra
 
-        self._emit_iter_slot_return(out, INDENT * (4 + extra), cpp_iter_slot, yld)
-        out.write(f"{INDENT * (3 + extra)}}}\n")
-        out.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
+            if leaf is not None:
+                leaf.emit_pre_yield(lam, 4 + extra)
+                yield_expr = leaf.render_yield_value()
+            else:
+                for stmt in pre_yield:
+                    self.statements.gen_stmt(lam, stmt)
+                yield_expr = self.statements.gen_yield_value(yield_stmt)
+            lam.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
+            if leaf is not None:
+                leaf.emit_post_yield(lam, 4 + extra)
+            else:
+                for stmt in post_yield:
+                    self.statements.gen_stmt(lam, stmt)
+
+            self._emit_iter_slot_return(lam, INDENT * (4 + extra), cpp_iter_slot, yld)
+            lam.write(f"{INDENT * (3 + extra)}}}\n")
+            lam.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
         out.write(f"{INDENT * (2 + extra)}}}\n")
         out.write(f"{INDENT * (1 + extra)});\n")
         out.write(f"{INDENT if record_name else ''}}}\n")
@@ -505,26 +527,27 @@ class GeneratorCodegen:
 
             out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
             out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            out.write(f"{I(3)}while (__i < __stop) {{\n")
+            with self._lambda_body_sink(out, I(3)) as lam:
+                lam.write(f"{I(3)}while (__i < __stop) {{\n")
 
-            self.ctx.indent_level = 4 + extra
-            out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
-            if leaf is not None:
-                leaf.emit_pre_yield(out, 4 + extra)
-                yield_expr = leaf.render_yield_value()
-            else:
-                for stmt in pre_yield:
-                    self.statements.gen_stmt(out, stmt)
-                yield_expr = self.statements.gen_yield_value(yield_stmt)
-            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-            if leaf is not None:
-                leaf.emit_post_yield(out, 4 + extra)
-            else:
-                for stmt in post_yield:
-                    self.statements.gen_stmt(out, stmt)
-            self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
-            out.write(f"{I(3)}}}\n")
-            out.write(f"{I(3)}return std::nullopt;\n")
+                self.ctx.indent_level = 4 + extra
+                lam.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
+                if leaf is not None:
+                    leaf.emit_pre_yield(lam, 4 + extra)
+                    yield_expr = leaf.render_yield_value()
+                else:
+                    for stmt in pre_yield:
+                        self.statements.gen_stmt(lam, stmt)
+                    yield_expr = self.statements.gen_yield_value(yield_stmt)
+                lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
+                if leaf is not None:
+                    leaf.emit_post_yield(lam, 4 + extra)
+                else:
+                    for stmt in post_yield:
+                        self.statements.gen_stmt(lam, stmt)
+                self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
+                lam.write(f"{I(3)}}}\n")
+                lam.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
@@ -544,10 +567,11 @@ class GeneratorCodegen:
             out.write(f"{I(3)}auto __r = ({src_code}).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
-            self._gen_simple_for_yield_body(
-                out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
-                leaf=leaf)
+            with self._lambda_body_sink(out, I(3)) as lam:
+                self._gen_simple_for_yield_body(
+                    lam, for_stmt, pre_yield, post_yield, yield_stmt,
+                    iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
+                    leaf=leaf)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
@@ -573,36 +597,37 @@ class GeneratorCodegen:
 
             out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
             out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            emplace_src = (f"__src.emplace({iterable_code}); "
-                           if src_is_temp else "")
-            out.write(f"{I(3)}if (!__init) {{ {emplace_src}__beg = ({src_code}).begin(); __end = ({src_code}).end(); __init = true; }}\n")
-            out.write(f"{I(3)}if (__beg != __end) {{\n")
+            with self._lambda_body_sink(out, I(3)) as lam:
+                emplace_src = (f"__src.emplace({iterable_code}); "
+                               if src_is_temp else "")
+                lam.write(f"{I(3)}if (!__init) {{ {emplace_src}__beg = ({src_code}).begin(); __end = ({src_code}).end(); __init = true; }}\n")
+                lam.write(f"{I(3)}if (__beg != __end) {{\n")
 
-            self.ctx.indent_level = 4 + extra
-            if iter_elem and iter_elem.is_value_type():
-                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
-            else:
-                out.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
-            if (isinstance(iter_elem, TupleType)
-                    and iter_elem.has_pointer_repr_element()):
-                self.ctx.storage_form_tuple_locals.add(for_stmt.var)
+                self.ctx.indent_level = 4 + extra
+                if iter_elem and iter_elem.is_value_type():
+                    lam.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
+                else:
+                    lam.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
+                if (isinstance(iter_elem, TupleType)
+                        and iter_elem.has_pointer_repr_element()):
+                    self.ctx.storage_form_tuple_locals.add(for_stmt.var)
 
-            if leaf is not None:
-                leaf.emit_pre_yield(out, 4 + extra)
-                yield_expr = leaf.render_yield_value()
-            else:
-                for stmt in pre_yield:
-                    self.statements.gen_stmt(out, stmt)
-                yield_expr = self.statements.gen_yield_value(yield_stmt)
-            out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-            if leaf is not None:
-                leaf.emit_post_yield(out, 4 + extra)
-            else:
-                for stmt in post_yield:
-                    self.statements.gen_stmt(out, stmt)
-            self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
-            out.write(f"{I(3)}}}\n")
-            out.write(f"{I(3)}return std::nullopt;\n")
+                if leaf is not None:
+                    leaf.emit_pre_yield(lam, 4 + extra)
+                    yield_expr = leaf.render_yield_value()
+                else:
+                    for stmt in pre_yield:
+                        self.statements.gen_stmt(lam, stmt)
+                    yield_expr = self.statements.gen_yield_value(yield_stmt)
+                lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
+                if leaf is not None:
+                    leaf.emit_post_yield(lam, 4 + extra)
+                else:
+                    for stmt in post_yield:
+                        self.statements.gen_stmt(lam, stmt)
+                self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
+                lam.write(f"{I(3)}}}\n")
+                lam.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
@@ -636,10 +661,11 @@ class GeneratorCodegen:
             out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
-            self._gen_simple_for_yield_body(
-                out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
-                leaf=leaf)
+            with self._lambda_body_sink(out, I(3)) as lam:
+                self._gen_simple_for_yield_body(
+                    lam, for_stmt, pre_yield, post_yield, yield_stmt,
+                    iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
+                    leaf=leaf)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref

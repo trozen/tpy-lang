@@ -9,7 +9,6 @@ void main() {
     // h = Holder()
     Holder h = Holder();
     // q: Source | None = None
-    std::optional<Source> __slot_1;
     Source* q = nullptr;
     // try:
     {
@@ -35,7 +34,6 @@ void main() {
     std::cout << ::tpy::__len__(h.src.items) << "\n";
     // v = Source()
     Source __slot_2 = Source();
-    std::optional<Source> __slot_3;
     Source* v = &__slot_2;
     // try:
     {

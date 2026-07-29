@@ -19,7 +19,6 @@ std::string_view pick_view(std::string_view s) {
 // def param_then_trusted(seed: Point, n: Int32) -> Point:
 Point& param_then_trusted(Point& seed, int32_t n) {
     // result = seed                    # param-derived
-    std::optional<Point> __slot_1;
     Point* result = &(seed);
     // i: Int32 = 0
     int32_t i = 0;

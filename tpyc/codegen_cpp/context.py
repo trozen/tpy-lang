@@ -1413,6 +1413,12 @@ class CodeGenContext:
     # expression codegen.  Checked early in is_global_name().
     comp_local_names: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
+    # Identifies the current hoist scope so a held-back rebind-slot decl
+    # drains into the scope that reserved it (see use_rebind_slot).
+    hoist_scope_id: int = 0
+    _hoist_scope_counter: int = 0
+    # slot -> the hoist scope that reserved it; outlives the held-back decl.
+    rebind_slot_scopes: dict[str, int] = field(default_factory=dict)
 
     # True while generating container element expressions (dict/list/set/tuple
     # literals, comprehension elements). Ternary codegen checks this to produce
@@ -1729,6 +1735,7 @@ class CodeGenContext:
         self.rebind_slots = {}
         self.plain_rebind_slots = set()
         self.deferred_rebind_slot_decls = {}
+        self.rebind_slot_scopes = {}
         self.reassigned_vars = set()
         self.rvalue_reassigned_vars = set()
         self.lvalue_reassigned_vars = set()
@@ -1793,13 +1800,51 @@ class CodeGenContext:
         """Get current indentation string."""
         return INDENT * self.indent_level
 
-    def use_rebind_slot(self, name: str) -> str | None:
-        """The rebind slot for `name`, emitting its held-back declaration."""
+    def declare_rebind_slot(self, name: str, slot: str, slot_cpp: str) -> None:
+        """Reserve `name`'s rebind slot, holding its declaration back.
+
+        The single registration point for a *pre-declared* slot (one reserved at
+        a declaration site for a rebind that may never come). Emitting the
+        declaration here instead is what left dead `std::optional<T>` locals
+        behind: the slot number must be reserved now (a later rebind must not
+        emplace over an init value an alias may hold), but whether any rebind
+        follows is only known once the body is walked. `use_rebind_slot`
+        materializes the declaration if and when a rebind consumes the slot.
+
+        A slot allocated AT a rebind site is consumed by construction -- those
+        register through `rebind_slots` directly.
+        """
+        static_kw = "static " if self.slots.global_scope else ""
+        self.rebind_slots[name] = slot
+        # The owning scope outlives the declaration: the decl drains on the FIRST
+        # consume, but a later rebind from another scope is the same hazard.
+        self.rebind_slot_scopes[slot] = self.hoist_scope_id
+        self.deferred_rebind_slot_decls[slot] = f"{static_kw}{slot_cpp} {slot};\n"
+
+    def use_rebind_slot(self, name: str, loc=None) -> str | None:
+        """The rebind slot for `name`, emitting its held-back declaration.
+
+        The declaration drains into the hoist scope that RESERVED the slot. A
+        rebind reached from a different scope -- a lambda-rendered body
+        consuming a slot reserved outside it -- has no sound placement: inside
+        the lambda the slot dies each invocation while the pointer aliasing it
+        is captured and outlives it, and outside it the lambda cannot name it.
+        Reject rather than emit either.
+        """
         slot = self.rebind_slots.get(name)
-        if slot is not None:
-            decl = self.deferred_rebind_slot_decls.pop(slot, None)
-            if decl is not None:
-                self.pending_hoist_decls.append(decl)
+        if slot is None:
+            return None
+        owner = self.rebind_slot_scopes.get(slot)
+        if owner is not None and owner != self.hoist_scope_id:
+            raise CodeGenError(
+                f"'{name}' is declared outside a generator or nested function "
+                f"and reassigned to a new value inside it, which TPy cannot "
+                f"give a stable home; bind the new value to a local declared "
+                f"in that body instead.",
+                loc=loc)
+        decl = self.deferred_rebind_slot_decls.pop(slot, None)
+        if decl is not None:
+            self.pending_hoist_decls.append(decl)
         return slot
 
     def snapshot_local_scope(self) -> LocalScopeSnap:
@@ -1856,6 +1901,28 @@ class CodeGenContext:
         self.const_indirect_locals.update(self.walrus_const_pointer_locals)
         self.rebind_slots.update(self.persistent_rebind_slots)
         self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
+
+    @contextmanager
+    def nested_hoist_scope(self) -> 'Iterator[list[str]]':
+        """Collect a lambda-rendered body's held-back declarations separately.
+
+        `pending_hoist_decls` is drained at the enclosing FUNCTION prologue,
+        which a lambda body cannot reach: the declaration would either never be
+        written (an emitter that does not drain) or land outside the lambda's
+        explicit capture list. A body rendered into a lambda therefore collects
+        its own and drains them at its own prologue -- the caller buffers the
+        body and writes the yielded list ahead of it.
+        """
+        saved = self.pending_hoist_decls
+        saved_id = self.hoist_scope_id
+        self.pending_hoist_decls = []
+        self._hoist_scope_counter += 1
+        self.hoist_scope_id = self._hoist_scope_counter
+        try:
+            yield self.pending_hoist_decls
+        finally:
+            self.pending_hoist_decls = saved
+            self.hoist_scope_id = saved_id
 
     @contextmanager
     def nested_def_emission_scope(self, return_type: TpyType | None,

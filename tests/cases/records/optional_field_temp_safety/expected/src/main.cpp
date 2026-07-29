@@ -32,8 +32,8 @@ void test_init_from_temp() {
 
 // def test_rebind_from_temp() -> None:
 void test_rebind_from_temp() {
-    // v: Point | None = None
     std::optional<Point> __slot_1;
+    // v: Point | None = None
     Point* v = nullptr;
     // p = Point(3, 4)
     Point p = Point(3, 4);
@@ -48,8 +48,8 @@ void test_rebind_from_temp() {
 
 // def test_rebind_in_block() -> None:
 void test_rebind_in_block() {
-    // v: Point | None = None
     std::optional<Point> __slot_1;
+    // v: Point | None = None
     Point* v = nullptr;
     // p = Point(5, 6)
     Point p = Point(5, 6);

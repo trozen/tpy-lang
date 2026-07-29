@@ -12,9 +12,9 @@ void boom() {
 
 // def main():
 void main() {
+    std::optional<Point> __slot_2;
     // p: Point | None = Point(3)
     Point __slot_1 = Point(3);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // if p is None:
     if ((p == nullptr)) {

@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<std::variant<Cat, Dog>> __slot_2;
     // # Init from concrete rvalue, then reassign to different type
     // pet: Dog | Cat = Dog("Rex")
-    std::optional<std::variant<Cat, Dog>> __slot_2;
     std::variant<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):

@@ -201,6 +201,41 @@ for i in range(1000):
 print(saved.x)                  # valid
 ```
 
+The slot NUMBER is reserved where the local is declared -- a later rebind must
+not emplace over an init value some alias already points at -- but whether any
+rebind follows is only known once the body is walked. (The split is currently
+taken whether or not anything actually aliases the init value, which keeps a
+superseded value alive to scope end; see BUGS.md.)
+
+The declaration is drained at the prologue of the body being emitted -- which
+for a body rendered into a C++ lambda (a nested `def`, a simple generator's
+`make_generator` closure) is the LAMBDA's own prologue, not the enclosing
+function's. The enclosing prologue is unreachable from there: an emitter that
+never drains would drop the declaration, and a lambda's explicit capture list
+cannot see a local declared outside it. `nested_hoist_scope` gives such a body
+its own collection, and `_lambda_body_sink` pairs that with buffering the body
+so the declarations can be written ahead of it.
+
+A slot reserved in one scope and consumed in another is REJECTED rather than
+placed: a local declared before a generator's loop and reassigned inside it has
+no sound home -- inside the lambda the slot dies each invocation while the
+pointer aliasing it is captured and outlives it, and outside it the lambda
+cannot name the slot. `use_rebind_slot` tags each held-back declaration with the
+scope that reserved it and raises on a cross-scope consumption. Declaring the
+local inside the loop is the working spelling. So the slot's C++
+declaration is held back and emitted at the function top only if a rebind
+consumes it (`ctx.declare_rebind_slot` / `use_rebind_slot`, mirrored by THIR's
+`_declare_rebind_slot`). A reassignment that needs no slot -- a
+borrow-returning call or operator (which takes an address), or `None` (a null
+pointer) -- therefore leaves no declaration behind at all.
+
+Because the held-back declaration lands in the function prologue, the slot is
+declared before every inline local -- so it is destroyed *after* all of them,
+including the local's own init slot. A `__del__` that observes another object's
+teardown sees prologue-declared slots drop last. Slots that were reserved
+inside a block are hoisted the same way, so the value one holds lives to
+function exit rather than block exit.
+
 ### Stack slot reuse in loops
 
 When no pointer escapes, the compiler reuses the stack slot:

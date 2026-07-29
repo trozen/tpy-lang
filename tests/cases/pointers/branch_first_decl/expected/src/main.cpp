@@ -65,8 +65,8 @@ int32_t multi_var(bool cond) {
 // # Non-value type with rvalue init (needs rebind slot)
 // def rvalue_branch(cond: bool) -> None:
 void rvalue_branch(bool cond) {
-    // if cond:
     std::optional<Point> __slot_1;
+    // if cond:
     Point* p;
     if (cond) {
         // p = Point(1, 2)
@@ -146,8 +146,8 @@ void param_branch(std::vector<Point>& points, bool cond) {
 // # Branch-declared non-value type with rvalue in one branch, lvalue in other
 // def mixed_init(points: list[Point], cond: bool) -> None:
 void mixed_init(std::vector<Point>& points, bool cond) {
-    // if cond:
     std::optional<Point> __slot_1;
+    // if cond:
     Point* p;
     if (cond) {
         // p = points[0]

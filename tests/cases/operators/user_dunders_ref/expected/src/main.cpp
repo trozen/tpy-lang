@@ -90,9 +90,9 @@ void test_chained() {
 
 // def test_binop_assign() -> None:
 void test_binop_assign() {
+    std::optional<Vec> __slot_2;
     // v: Vec = Vec(1.0, 2.0)
     Vec __slot_1 = Vec(1.0, 2.0);
-    std::optional<Vec> __slot_2;
     Vec* v = &__slot_1;
     // inc: Vec = Vec(10.0, 20.0)
     Vec inc = Vec(10.0, 20.0);

@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def rc_is_shared() -> None:
 void rc_is_shared() {
+    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     // saved = Rc.new(Point(-1))
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
-    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -29,9 +29,9 @@ void rc_is_shared() {
 
 // def rc_outlives_the_loop() -> None:
 void rc_outlives_the_loop() {
+    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     // saved = Rc.new(Point(-1))
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
-    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
     // for i in range(4):
     for (int32_t i = 0; i < 4; ++i) {

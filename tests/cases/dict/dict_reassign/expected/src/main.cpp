@@ -6,9 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<::tpy::ordered_map<std::string, ::tpy::BigInt>> __slot_2;
+    std::optional<::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>> __slot_4;
     // d: dict[str, int] = {"a": 1}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> __slot_1 = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
-    std::optional<::tpy::ordered_map<std::string, ::tpy::BigInt>> __slot_2;
     ::tpy::ordered_map<std::string, ::tpy::BigInt>* d = &__slot_1;
     // print(d["a"])
     std::cout << ::tpy::__getitem__((*d), "a") << "\n";
@@ -19,7 +20,6 @@ void main() {
     // # Union dict reassignment
     // d2: dict[str, Int32 | str] = {"x": 1, "y": "hello"}
     ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> __slot_3 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"x", 1}, {"y", "hello"}});
-    std::optional<::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>> __slot_4;
     ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>* d2 = &__slot_3;
     // d2 = {"z": "world"}
     d2 = &*(__slot_4 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"z", "world"}}));

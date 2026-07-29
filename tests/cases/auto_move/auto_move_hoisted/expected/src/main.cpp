@@ -12,8 +12,8 @@ int32_t consume(Point&& p) {
 
 // def test(cond: bool) -> Int32:
 int32_t test(bool cond) {
-    // if cond:
     std::optional<Point> __slot_1;
+    // if cond:
     Point* p;
     if (cond) {
         // p = Point()

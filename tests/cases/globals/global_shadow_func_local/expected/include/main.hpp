@@ -62,8 +62,8 @@ inline Picker::Picker(int32_t val) : val(val) {}
 
 // def pick(self, cond: bool) -> None:
 inline void Picker::pick(bool cond) const {
-    // if cond:
     std::optional<Point> __slot_1;
+    // if cond:
     Point* p;
     if (cond) {
         // p = Point(self.val, self.val)

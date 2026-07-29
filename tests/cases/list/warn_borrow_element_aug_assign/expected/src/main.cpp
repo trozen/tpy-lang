@@ -59,10 +59,10 @@ void test_iter_borrow_aug_assign() {
 
 // def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
+    std::optional<Point> __slot_1;
     // items: list[Point] = [Point(Int32(1))]
     std::vector<Point> items = {Point(1)};
     // v = items[Int32(0)]
-    std::optional<Point> __slot_1;
     Point* v = &(::tpy::__getitem__(items, 0));
     // v = Point(Int32(9))
     v = &*(__slot_1 = Point(9));

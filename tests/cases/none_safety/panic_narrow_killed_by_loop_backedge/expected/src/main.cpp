@@ -8,7 +8,6 @@ namespace tpyapp::main {
 void main() {
     // p: Point | None = Point(1)
     Point __slot_1 = Point(1);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // if p is None:
     if ((p == nullptr)) {

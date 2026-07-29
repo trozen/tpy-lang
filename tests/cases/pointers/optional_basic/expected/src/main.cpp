@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def test() -> None:
 void test() {
-    // p: Point | None = None
     std::optional<Point> __slot_1;
+    // p: Point | None = None
     Point* p = nullptr;
     // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";

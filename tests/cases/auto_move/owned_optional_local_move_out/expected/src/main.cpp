@@ -24,8 +24,8 @@ namespace tpyapp::main {
 
 // def move_owned_optional_out_return(c: bool) -> Own[Box] | None:
 std::optional<Box> move_owned_optional_out_return(bool c) {
-    // tmp: Box | None = None
     std::optional<Box> __slot_1;
+    // tmp: Box | None = None
     Box* tmp = nullptr;
     // if c:
     if (c) {
@@ -54,9 +54,9 @@ std::optional<Box> move_owned_optional_out_return(bool c) {
 
 // def alias_then_rebind() -> int:
 ::tpy::BigInt alias_then_rebind() {
+    std::optional<Pt> __slot_2;
     // x: Pt | None = Pt(1)
     Pt __slot_1 = Pt(::tpy::BigInt(1));
-    std::optional<Pt> __slot_2;
     Pt* x = &__slot_1;
     // y: Pt | None = x             # y aliases x's object
     Pt* y = x;

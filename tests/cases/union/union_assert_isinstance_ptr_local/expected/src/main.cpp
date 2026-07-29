@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def process(flag: bool) -> Int32:
 int32_t process(bool flag) {
-    // v: Circle | Rect = Circle(Int32(1))
     std::optional<std::variant<Circle, Rect>> __slot_2;
+    // v: Circle | Rect = Circle(Int32(1))
     std::variant<Circle, Rect> __slot_1 = Circle(1);
     std::variant<Circle*, Rect*> v = ::tpy::to_ptr_variant(__slot_1);
     // v = Rect(Int32(3))  # reassignment makes v a pointer-local

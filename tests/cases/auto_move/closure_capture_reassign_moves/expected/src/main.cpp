@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
+    std::optional<Point> __slot_2;
     // s = Sink()
     Sink s = Sink();
     // p = Point()
     Point __slot_1 = Point();
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // def show():
     auto show = [&p]() {

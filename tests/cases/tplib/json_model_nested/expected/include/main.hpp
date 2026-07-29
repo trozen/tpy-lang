@@ -180,8 +180,8 @@ inline std::string Address::__repr__() const {
 }
 
 inline Address Address::from_json(std::string_view __s) {
-    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Address> __slot_1;
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Address* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
@@ -307,8 +307,8 @@ inline std::string Profile::__repr__() const {
 }
 
 inline Profile Profile::from_json(std::string_view __s) {
-    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Profile> __slot_1;
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Profile* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;

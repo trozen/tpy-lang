@@ -54,8 +54,8 @@ std::vector<int32_t> ret_list() {
 
 // def ret_optional(flag: bool) -> Own[Box] | None:
 std::optional<Box> ret_optional(bool flag) {
-    // b: Box | None = None
     std::optional<Box> __slot_1;
+    // b: Box | None = None
     Box* b = nullptr;
     // if flag:
     if (flag) {
@@ -114,9 +114,9 @@ int32_t ret_value_int() {
 
 // def ret_rebound() -> Own[Box]:
 Box ret_rebound() {
+    std::optional<Box> __slot_2;
     // b = Box()
     Box __slot_1 = Box();
-    std::optional<Box> __slot_2;
     Box* b = &__slot_1;
     // try:
     {

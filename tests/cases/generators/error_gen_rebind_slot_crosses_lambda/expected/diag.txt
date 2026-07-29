@@ -1,0 +1,1 @@
+main.py:26: error: 'p' is declared outside a generator or nested function and reassigned to a new value inside it, which TPy cannot give a stable home; bind the new value to a local declared in that body instead.

@@ -1,0 +1,5 @@
+alias: 2 c: 10
+first: 1 c: 2
+seed: 8 result: 8
+none: 0
+some: 5

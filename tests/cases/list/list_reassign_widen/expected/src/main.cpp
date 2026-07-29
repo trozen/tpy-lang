@@ -8,9 +8,9 @@ namespace tpyapp::main {
 // # of the same element family stays valid (element-compat must not over-reject).
 // def main() -> None:
 void main() {
+    std::optional<std::vector<int32_t>> __slot_2;
     // xs = [1, 2]
     std::vector<int32_t> __slot_1 = {1, 2};
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs = &__slot_1;
     // xs = [3, 4, 5]
     xs = &*(__slot_2 = {3, 4, 5});

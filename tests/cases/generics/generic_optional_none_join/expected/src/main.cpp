@@ -20,7 +20,6 @@ int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
 // def via_branches(xs: list[Int32], c: bool) -> Int32:
 int32_t via_branches(std::vector<int32_t>& xs, bool c) {
     // if c:
-    std::optional<int32_t> __slot_1;
     int32_t* z;
     if (c) {
         // z = first(xs)

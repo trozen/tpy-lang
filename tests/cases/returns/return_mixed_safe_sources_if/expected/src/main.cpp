@@ -19,7 +19,6 @@ std::string_view pick_view(std::string_view s) {
 // def mixed_record(seed: Point, flag: bool) -> Point:
 Point& mixed_record(Point& seed, bool flag) {
     // if flag:
-    std::optional<Point> __slot_1;
     Point* result;
     if (flag) {
         // result = seed            # param-derived

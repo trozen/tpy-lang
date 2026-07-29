@@ -1339,33 +1339,24 @@ class StatementGenerator:
                     self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                     if name in self.ctx.rvalue_reassigned_vars:
                         rebind_slot = self.ctx.slots.next_slot()
-                        self.ctx.rebind_slots[name] = rebind_slot
-                        self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                        self.ctx.declare_rebind_slot(name, rebind_slot, slot_opt_cpp)
                     else:
                         self.ctx.rebind_slots[name] = init_slot
                     return f"{indent}{const_pfx}{cpp_type}* {name} = &({init_slot}.emplace({init_expr}));\n"
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
-                    self.ctx.rebind_slots[name] = rebind_slot
+                    self.ctx.declare_rebind_slot(name, rebind_slot, slot_opt_cpp)
                     return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
-                            f"{indent}{static_kw}{slot_opt_cpp} {rebind_slot};\n"
                             f"{indent}{const_pfx}{cpp_type}* {name} = &{init_slot};\n")
                 self.ctx.rebind_slots[name] = init_slot
                 return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
                         f"{indent}{const_pfx}{cpp_type}* {name} = &{init_slot};\n")
             # Pre-declare rebind slot if future rvalue rebinds need it
-            rebind_decl = ""
             if name in self.ctx.rvalue_reassigned_vars:
-                static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
-                hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
-                slot_opt_cpp = f"std::optional<{cpp_type}>"
                 slot = self.ctx.slots.next_slot()
-                self.ctx.rebind_slots[name] = slot
-                if name in self.ctx.hoisted_vars:
-                    self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {slot};\n")
-                else:
-                    rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
+                self.ctx.declare_rebind_slot(name, slot,
+                                             f"std::optional<{cpp_type}>")
+            return f"{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
 
         # OPTIONAL_STORAGE source: an `Own[Opt[T_ref]]` storage-form
         # `optional<T>` value consumed as `T*`. Two source shapes share
@@ -1471,9 +1462,7 @@ class StatementGenerator:
                 self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
-                    self.ctx.rebind_slots[name] = rebind_slot
-                    self.ctx.deferred_rebind_slot_decls[rebind_slot] = (
-                        f"{hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                    self.ctx.declare_rebind_slot(name, rebind_slot, slot_opt_cpp)
                 else:
                     self.ctx.rebind_slots[name] = init_slot
                 deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field,
@@ -1482,10 +1471,9 @@ class StatementGenerator:
             if name in self.ctx.rvalue_reassigned_vars:
                 # Separate rebind slot so aliases to init value aren't overwritten
                 rebind_slot = self.ctx.slots.next_slot()
-                self.ctx.rebind_slots[name] = rebind_slot
+                self.ctx.declare_rebind_slot(name, rebind_slot, slot_opt_cpp)
                 deref = self._ptr_from_local_slot(init_slot, is_opt_field)
                 return (f"{indent}{static_kw}{slot_type} {init_slot} = {init_expr};\n"
-                        f"{indent}{static_kw}{slot_opt_cpp} {rebind_slot};\n"
                         f"{indent}{target} = {deref};\n")
             self.ctx.rebind_slots[name] = init_slot
             deref = self._ptr_from_local_slot(init_slot, is_opt_field)
@@ -1493,24 +1481,19 @@ class StatementGenerator:
                     f"{indent}{target} = {deref};\n")
 
         # Pre-declare rebind slot for lvalue-init vars with future rvalue rebinds
-        rebind_decl = ""
         if name in self.ctx.rvalue_reassigned_vars:
             slot = self.ctx.slots.next_slot()
-            self.ctx.rebind_slots[name] = slot
-            if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {slot};\n")
-            else:
-                rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
+            self.ctx.declare_rebind_slot(name, slot, slot_opt_cpp)
 
         if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
+            return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
+            return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
         else:
             # lvalue ref: param, subscript, field -> take address
-            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_slice_assign(self, stmt: TpyAssign, indent: str) -> str:
         """Generate code for slice assignment via __setitem__(basic_slice/slice) stub dispatch."""
@@ -1547,7 +1530,7 @@ class StatementGenerator:
         # None literal -> set to nullptr (Optional/Ptr) or monostate (Union)
         if isinstance(init, TpyNoneLiteral):
             if isinstance(target_type, UnionType):
-                rebind_slot = self.ctx.use_rebind_slot(name)
+                rebind_slot = self.ctx.use_rebind_slot(name, loc=init.loc)
                 if rebind_slot:
                     is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
                     if is_optional_slot:
@@ -1569,7 +1552,7 @@ class StatementGenerator:
         is_name_src = (isinstance(init, TpyName)
                        and self.ctx.needs_optional_to_ptr_lift(init.name))
         if is_call_src:
-            rebind_slot = self.ctx.use_rebind_slot(name)
+            rebind_slot = self.ctx.use_rebind_slot(name, loc=init.loc)
             if rebind_slot is not None:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return (f"{indent}{rebind_slot} = {init_expr};\n"
@@ -1617,7 +1600,7 @@ class StatementGenerator:
             if sub is not None:
                 self._reject_polymorphic_rvalue_into_optional_local(
                     name, target_type, sub, init.loc)
-            rebind_slot = self.ctx.use_rebind_slot(name)
+            rebind_slot = self.ctx.use_rebind_slot(name, loc=init.loc)
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,
                                                    rebind_slot not in self.ctx.plain_rebind_slots)
@@ -1678,25 +1661,21 @@ class StatementGenerator:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
             slot = self.ctx.slots.next_slot()
             # Pre-declare rebind slot if the variable gets reassigned later with rvalues
-            rebind_decl = ""
             if stmt.name in self.ctx.rvalue_reassigned_vars:
                 rebind_slot = self.ctx.slots.next_slot()
-                self.ctx.rebind_slots[stmt.name] = rebind_slot
-                rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
-            return (f"{rebind_decl}"
-                    f"{indent}{static_kw}{val_type} {slot} = {init_expr};\n"
+                self.ctx.declare_rebind_slot(stmt.name, rebind_slot,
+                                             f"std::optional<{val_type}>")
+            return (f"{indent}{static_kw}{val_type} {slot} = {init_expr};\n"
                     f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({slot});\n")
 
         # Lvalue source: either a value-variant lvalue or a concrete-type lvalue
         init_type = self.ctx.get_expr_type(stmt.init)
         init_expr = self.expressions.gen_expr(stmt.init, target_type)
         # Pre-declare rebind slot if needed
-        rebind_decl = ""
         if stmt.name in self.ctx.rvalue_reassigned_vars:
-            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
             rebind_slot = self.ctx.slots.next_slot()
-            self.ctx.rebind_slots[stmt.name] = rebind_slot
-            rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
+            self.ctx.declare_rebind_slot(stmt.name, rebind_slot,
+                                         f"std::optional<{val_type}>")
         # Detect const source (field on const-ref param or const-indirect local)
         is_const_source = self.ctx.is_const_union_source(stmt.init)
         # If source is a value variant (field, container element), convert to pointer variant
@@ -1704,18 +1683,15 @@ class StatementGenerator:
             if is_const_source:
                 cpv_type = self.types.type_to_cpp_const_ptr_variant(target_type)
                 self.ctx.const_indirect_locals.add(stmt.name)
-                return (f"{rebind_decl}"
-                        f"{indent}{cpv_type} {cpp_name} = ::tpy::to_const_ptr_variant({init_expr});\n")
-            return (f"{rebind_decl}"
-                    f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({init_expr});\n")
+                return (f"{indent}{cpv_type} {cpp_name} = "
+                        f"::tpy::to_const_ptr_variant({init_expr});\n")
+            return f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({init_expr});\n"
         # Concrete-type lvalue (e.g. Dog param): take address for implicit variant construction
         if is_const_source:
             cpv_type = self.types.type_to_cpp_const_ptr_variant(target_type)
             self.ctx.const_indirect_locals.add(stmt.name)
-            return (f"{rebind_decl}"
-                    f"{indent}{cpv_type} {cpp_name}{{&({init_expr})}};\n")
-        return (f"{rebind_decl}"
-                f"{indent}{pv_type} {cpp_name}{{&({init_expr})}};\n")
+            return f"{indent}{cpv_type} {cpp_name}{{&({init_expr})}};\n"
+        return f"{indent}{pv_type} {cpp_name}{{&({init_expr})}};\n"
 
     def _gen_ptr_variant_local_reassign(
         self, stmt: 'TpyVarDecl', target_type: TpyType | None, cpp_name: str, indent: str,
@@ -1736,7 +1712,7 @@ class StatementGenerator:
         if self.ctx.is_rvalue_source(stmt.init):
             # Rvalue -> use pre-declared rebind slot
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
-            rebind_slot = self.ctx.use_rebind_slot(stmt.name)
+            rebind_slot = self.ctx.use_rebind_slot(stmt.name, loc=stmt.loc)
             if rebind_slot:
                 return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
                         f"{indent}{cpp_name} = ::tpy::to_ptr_variant(*{rebind_slot});\n")
@@ -1856,7 +1832,7 @@ class StatementGenerator:
             dst_type=resolved, dst_form=CppForm.BORROW)
 
     def _tuple_owning_slot(self, name: str, var_type: TpyType | None,
-                           indent: str) -> tuple[str, str]:
+                           indent: str, loc=None) -> tuple[str, str]:
         """Return (slot_name, prefix_decl) for the storage slot backing an
         owning-call binding of borrow-form tuple local `name`.
 
@@ -1867,7 +1843,7 @@ class StatementGenerator:
         straight-line local declares it inline. Reused across rebinds via
         `rebind_slots` so a later owning RHS emplaces into the same slot.
         """
-        existing = self.ctx.use_rebind_slot(name)
+        existing = self.ctx.use_rebind_slot(name, loc=loc)
         if existing is not None:
             return existing, ""
         storage_cpp = unwrap_readonly(unwrap_ref_type(var_type)).to_cpp_stored()
@@ -1906,7 +1882,8 @@ class StatementGenerator:
         if owning_call:
             borrow_cpp = self.types.tuple_borrow_cpp(
                 unwrap_readonly(unwrap_ref_type(var_type)), const=elem_const)
-            slot, prefix = self._tuple_owning_slot(name, var_type, indent)
+            slot, prefix = self._tuple_owning_slot(name, var_type, indent,
+                                                   loc=init.loc)
             return prefix, (f"::tpy::tuple_to_pointer<{borrow_cpp}>"
                             f"({slot}.emplace({init_expr}))")
         return "", self._maybe_wrap_tuple_to_pointer(
@@ -3451,7 +3428,7 @@ class StatementGenerator:
                               f"{get_expr};\n")
             else:
                 if name in self.ctx.pointer_locals:
-                    rebind_slot = self.ctx.use_rebind_slot(name)
+                    rebind_slot = self.ctx.use_rebind_slot(name, loc=stmt.loc)
                     if rebind_slot:
                         is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
                         deref = self._ptr_from_rvalue_slot(
@@ -3694,10 +3671,17 @@ class StatementGenerator:
         # Emit lambda header
         out.write(f"{indent}auto {name} = {capture}({params_str}){ret_annotation} {{\n")
         self.ctx.indent_level += 1
+        body_buf = io.StringIO()
         try:
-            self.gen_nested_def_body(out, func, ret_cpp)
+            with self.ctx.nested_hoist_scope() as hoists:
+                self.gen_nested_def_body(body_buf, func, ret_cpp)
+                # Drain inside the lambda: the enclosing prologue is outside
+                # this capture list, so a slot declared there is unreachable.
+                for decl in hoists:
+                    out.write(f"{indent}{INDENT}{decl}")
         finally:
             self.ctx.indent_level -= 1
+        out.write(body_buf.getvalue())
         out.write(f"{indent}}};\n")
 
     def _gen_raise(self, stmt: TpyRaise, indent: str) -> str:
@@ -4789,7 +4773,8 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases,
+                                                 loc=stmt.loc)
         out += f"{indent}}}\n"
 
         return out
@@ -4840,11 +4825,12 @@ class StatementGenerator:
                                     aliases: bool = False) -> str:
         """Assign an unwrapped @error_return result to an assignment target."""
         if isinstance(target, TpyName):
-            return self._error_return_assign_to_name(target.name, tmp, indent, aliases)
+            return self._error_return_assign_to_name(target.name, tmp, indent, aliases,
+                                                     loc=target.loc)
         return f"{indent}{self.expressions.gen_expr(target)} = {self._error_return_success_expr(tmp)};\n"
 
     def _error_return_assign_to_name(self, name: str, tmp: str, indent: str,
-                                     aliases: bool = False) -> str:
+                                     aliases: bool = False, loc=None) -> str:
         cpp_name = escape_cpp_name(name)
         if aliases and name in self.ctx.pointer_locals:
             # Borrow result: point at the live source the val_or_ref payload
@@ -4856,13 +4842,18 @@ class StatementGenerator:
         # unwrap_ref_move already carries the value category (T&& owned, T&
         # borrow), so no extra std::move: it would steal from a borrowed source.
         value = self._error_return_success_expr(tmp)
-        slot = self.ctx.use_rebind_slot(name)
-        if name in self.ctx.pointer_locals and slot is not None:
-            is_optional_slot = slot not in self.ctx.plain_rebind_slots
-            rhs = self._ptr_from_rvalue_slot(
-                slot, value, is_opt_field=False,
-                is_optional_slot=is_optional_slot)
-            return f"{indent}{cpp_name} = {rhs};\n"
+        # Consume the slot only once it is certain to be referenced:
+        # `use_rebind_slot` emits the held-back declaration as a side effect, so
+        # flushing before this guard would leave a dead local behind for a
+        # reserved-but-not-pointer-local name.
+        if name in self.ctx.pointer_locals:
+            slot = self.ctx.use_rebind_slot(name, loc=loc)
+            if slot is not None:
+                is_optional_slot = slot not in self.ctx.plain_rebind_slots
+                rhs = self._ptr_from_rvalue_slot(
+                    slot, value, is_opt_field=False,
+                    is_optional_slot=is_optional_slot)
+                return f"{indent}{cpp_name} = {rhs};\n"
         return f"{indent}{cpp_name} = {value};\n"
 
     def _gen_error_return_assign(self, stmt: TpyAssign, indent: str) -> str:
@@ -4914,7 +4905,8 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases,
+                                                 loc=stmt.loc)
         out += f"{indent}}}\n"
 
         return out
@@ -4956,7 +4948,8 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases,
+                                                 loc=stmt.loc)
         out += f"{indent}}}\n"
 
         return out
@@ -5704,10 +5697,9 @@ class StatementGenerator:
                         self.ctx.movable_locals.add(name)
                     const_pfx = "const " if is_const else ""
                     if name in self.ctx.rvalue_reassigned_vars:
-                        static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
                         slot = self.ctx.slots.next_slot()
-                        self.ctx.rebind_slots[name] = slot
-                        out.write(f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n")
+                        self.ctx.declare_rebind_slot(name, slot,
+                                                     f"std::optional<{cpp_type}>")
                     out.write(f"{indent}{const_pfx}{cpp_type}* {name};\n")
                 elif (isinstance(resolve_type, TupleType)
                         and resolve_type.has_pointer_repr_element()):

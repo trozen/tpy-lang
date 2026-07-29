@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def branch_rvalue_independent(cond: bool) -> None:
 void branch_rvalue_independent(bool cond) {
+    std::optional<Point> __slot_1;
     // # p is rvalue-init in both branches, used only within each branch (not after)
     // if cond:
-    std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
         // p = Point(1, 2)
@@ -26,9 +26,9 @@ void branch_rvalue_independent(bool cond) {
 
 // def branch_rvalue_three_way(flag: Int32) -> None:
 void branch_rvalue_three_way(int32_t flag) {
+    std::optional<Point> __slot_1;
     // # Three-way: each elif/else branch has its own independent local
     // if flag == 0:
-    std::optional<Point> __slot_1;
     Point* p;
     if ((flag == 0)) {
         // p = Point(10, 20)
@@ -52,11 +52,11 @@ void branch_rvalue_three_way(int32_t flag) {
 
 // def branch_mixed_scope(cond: bool) -> None:
 void branch_mixed_scope(bool cond) {
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_1;
     // # First var is used after (pre-declared), second is branch-only (independent)
     // if cond:
-    std::optional<Point> __slot_1;
     Point* local;
-    std::optional<Point> __slot_2;
     Point* shared;
     if (cond) {
         // shared = Point(1, 2)

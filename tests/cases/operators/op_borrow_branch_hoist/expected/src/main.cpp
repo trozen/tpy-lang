@@ -11,7 +11,6 @@ void pick(bool flag) {
     // b = Acc(7)
     Acc b = Acc(7);
     // if flag:
-    std::optional<Acc> __slot_1;
     const Acc* c;
     if (flag) {
         // c = a + b

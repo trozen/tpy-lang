@@ -44,9 +44,9 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args([])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<std::string> tag = {"alpha", "beta"};
     std::vector<::tpy::BigInt> __slot_1 = {1, 2, 3};
-    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<::tpy::BigInt>* count = &__slot_1;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--tag TAG] [--count COUNT [COUNT ...]]";
     int32_t __tpy_argparse_h = 0;
@@ -94,9 +94,9 @@ void __tpy_builder_argparse_help_2() {
 
 // args = parser.parse_args(["--tag", "gamma", "--count", "10", "20"])
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv) {
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<std::string> tag = {"alpha", "beta"};
     std::vector<::tpy::BigInt> __slot_1 = {1, 2, 3};
-    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<::tpy::BigInt>* count = &__slot_1;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--tag TAG] [--count COUNT [COUNT ...]]";
     int32_t __tpy_argparse_h = 0;

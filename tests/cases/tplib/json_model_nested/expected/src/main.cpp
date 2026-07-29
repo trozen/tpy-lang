@@ -175,6 +175,8 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
 Profile::Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role, std::optional<Address>&& alt_address, std::optional<std::string_view> email) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), alt_address(std::move(alt_address)), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
 std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
+    std::optional<Address> __slot_1;
+    std::optional<Address> __slot_2;
     {
         auto __try_tmp_11 = __reader.read_object_start();
         if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
@@ -186,7 +188,6 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     bool active = false;
     ::tpy::BigInt big_id = ::tpy::BigInt(0);
     std::optional<Role> role = std::nullopt;
-    std::optional<Address> __slot_1;
     Address* address = nullptr;
     std::vector<std::string> tags = std::vector<std::string>{};
     std::vector<int32_t> scores = std::vector<int32_t>{};
@@ -196,7 +197,6 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     ::tpy::ordered_map<std::string, std::vector<int32_t>> nested_map = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     std::optional<std::tuple<int32_t, int32_t, std::string>> coord = std::nullopt;
     std::optional<Role> backup_role = std::nullopt;
-    std::optional<Address> __slot_2;
     Address* alt_address = nullptr;
     std::optional<std::string> email = std::nullopt;
     while (__reader.has_next()) {

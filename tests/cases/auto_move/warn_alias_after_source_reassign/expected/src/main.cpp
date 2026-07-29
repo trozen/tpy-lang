@@ -12,9 +12,9 @@ int32_t consume(Point&& p) {
 
 // def main():
 void main() {
+    std::optional<Point> __slot_2;
     // p = Point()
     Point __slot_1 = Point();
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // p.x = 0
     p->x = 0;

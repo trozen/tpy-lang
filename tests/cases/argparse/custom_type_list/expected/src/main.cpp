@@ -62,14 +62,14 @@ void __tpy_builder_argparse_help_1() {
 // ["--include", "core", "--include", "extra",
 // "--paths", "a", "b", "c"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
+    std::optional<std::vector<Tag>> __slot_4;
     std::optional<std::vector<Tag>> __slot_1;
+    std::optional<std::vector<Tag>> __slot_2;
     std::vector<Tag>* include = nullptr;
     std::vector<Tag> __tpy_argparse_acc_include = std::vector<Tag>{};
     bool __tpy_argparse_seen_include = false;
-    std::optional<std::vector<Tag>> __slot_2;
     std::vector<Tag>* paths = nullptr;
     std::vector<Tag> __slot_3 = std::vector<Tag>{};
-    std::optional<std::vector<Tag>> __slot_4;
     std::vector<Tag>* __tpy_argparse_acc_paths = &__slot_3;
     bool __tpy_argparse_seen_paths = false;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]";

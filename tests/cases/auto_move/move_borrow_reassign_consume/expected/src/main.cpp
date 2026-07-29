@@ -16,7 +16,6 @@ void call_source() {
     Bag g = Bag();
     // b = Bag()
     Bag __slot_1 = Bag();
-    std::optional<Bag> __slot_2;
     Bag* b = &__slot_1;
     // b = g.itself()
     b = &(g.itself());
@@ -39,7 +38,6 @@ void ternary_source(bool flag) {
     Bag h = Bag();
     // b = Bag()
     Bag __slot_1 = Bag();
-    std::optional<Bag> __slot_2;
     Bag* b = &__slot_1;
     // b = g.itself() if flag else h.itself()
     b = &(((flag) ? (g.itself()) : (h.itself())));

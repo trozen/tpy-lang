@@ -40,6 +40,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
     // xs = make()                 # returned by value -> move of live prefix
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = make();
     // print(len(xs))              # 2
@@ -94,7 +95,6 @@ void main() {
     // # old elements, then relocate the new ones via the move ctor).
     // acc = make()                # [alpha, beta]
     ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = make();
-    std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
     // acc = make_full()           # reassign -> drop old, relocate [a, b, c, d]
     acc = &*(__slot_2 = make_full());

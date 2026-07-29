@@ -50,9 +50,9 @@ void test_record_field_mutated() {
 
 // def test_record_reassigned() -> None:
 void test_record_reassigned() {
+    std::optional<Person> __slot_2;
     // p = Person("Dave", Int32(40))
     Person __slot_1 = Person("Dave", 40);
-    std::optional<Person> __slot_2;
     Person* p = &__slot_1;
     // s = p.name  # tpyc: type(str)
     std::string s = p->name;

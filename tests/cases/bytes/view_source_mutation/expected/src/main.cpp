@@ -28,9 +28,9 @@ void test_list_mutation_fallback() {
 
 // def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback() {
+    std::optional<std::vector<std::vector<uint8_t>>> __slot_2;
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<std::vector<uint8_t>> __slot_1 = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    std::optional<std::vector<std::vector<uint8_t>>> __slot_2;
     std::vector<std::vector<uint8_t>>* items = &__slot_1;
     // x = items[Int32(0)]  # tpyc: type(bytes)
     std::vector<uint8_t> x = ::tpy::__getitem__((*items), 0);

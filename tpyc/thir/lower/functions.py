@@ -107,6 +107,9 @@ from ..nodes import (
     THIRModule,
     THIROptViewArg,
     THIRParam,
+    THIRAssign,
+    THIRName,
+    THIRNestedDef,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
     THIRVarDecl,
@@ -847,6 +850,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             error_return_cpp=lc.error_return_cpp,
             suppress_trailing_comments=lc.overload_terminated,
         )
+        if _rejects_lambda_hoist(fn.body):
+            raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
@@ -1494,6 +1499,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             base_inits=tuple(base_inits),
             body=_lower_stmts(body_stmts, lc, body_declared),
         )
+        if _rejects_lambda_hoist(ctor.body):
+            raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_constructor(ctor)
         return ctor
     except ThirUnsupported as ex:
@@ -2002,6 +2009,64 @@ def _iter_thir(roots):
         node = stack.pop()
         yield node
         stack.extend(_iter_children(node))
+
+
+def _needs_held_back_slot(node) -> bool:
+    """A THIR statement whose emit PRE-declares a rebind slot -- one reserved at
+    a declaration whose C++ declaration is held back until a rebind consumes it
+    (`_declare_rebind_slot`).
+
+    Such a declaration is drained at the prologue of the body being emitted. A
+    body rendered into a C++ lambda needs that drain INSIDE the lambda (the
+    enclosing prologue is outside its capture list), which the AST path supplies
+    and the leaf emitters do not -- so a body reaching one of those contexts
+    must fall back rather than emit a declaration nothing writes. Mirrors
+    `_rejects_global_slot`: every emit site calling `_declare_rebind_slot` must
+    be represented here."""
+    if isinstance(node, THIRPtrLocalDecl):
+        return node.needs_rebind_slot
+    if isinstance(node, THIRVarDecl):
+        return node.cpp_local_representation is LocalBinding.REBIND_SLOT
+    if isinstance(node, THIRIf):
+        return bool(node.hoist_slots)
+    return False
+
+
+def _slot_owning_name(node) -> 'str | None':
+    """The local a pre-declared rebind slot belongs to, if `node` reserves one."""
+    return getattr(node, "name", None) if _needs_held_back_slot(node) else None
+
+
+def _rebound_name(node) -> 'str | None':
+    """The local `node` rebinds, for the nodes whose emit consumes a slot."""
+    if isinstance(node, THIRPtrLocalRebind):
+        return node.name
+    if isinstance(node, THIRAssign) and isinstance(node.target, THIRName):
+        return node.target.name
+    return None
+
+
+def _rejects_lambda_hoist(body) -> bool:
+    """True when a nested def's body needs a rebind slot the lambda cannot reach.
+
+    THIR emits nested-def bodies at the enclosing body's level, so both halves of
+    the hazard put the declaration outside the lambda's capture list: the body
+    RESERVING its own slot, and the body CONSUMING one the enclosing scope
+    reserved (a `nonlocal` rebind). The AST path rejects both -- `use_rebind_slot`
+    compares the slot's owning hoist scope -- and THIR has no such runtime check,
+    so this predicate is its entire protection.
+    """
+    outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(body))
+                        if n is not None}
+    for nd in _iter_thir(body):
+        if not isinstance(nd, THIRNestedDef):
+            continue
+        for n in _iter_thir(nd.body):
+            if _needs_held_back_slot(n):
+                return True
+            if _rebound_name(n) in outer_slot_names:
+                return True
+    return False
 
 
 def _rejects_global_slot(node) -> bool:

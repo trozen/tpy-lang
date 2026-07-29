@@ -1288,6 +1288,18 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
+def _declare_rebind_slot(state: '_EmitState', name: str, slot: int,
+                         slot_cpp: str) -> None:
+    """Reserve `name`'s rebind slot, holding its hoist line back.
+
+    The single registration point for a PRE-declared slot -- mirrors the AST's
+    `ctx.declare_rebind_slot`. Emitting the line here instead is what left dead
+    `std::optional<T>` locals behind on both paths.
+    """
+    state.rebind_slots[name] = slot
+    state.deferred_rebind_hoists[slot] = f"std::optional<{slot_cpp}> __slot_{slot};"
+
+
 def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
     """The rebind slot for `name`, emitting its held-back hoist line."""
     slot = state.rebind_slots.get(name)
@@ -1687,9 +1699,7 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     for name, cpp_type in stmt.hoist_decls:
         if name in slot_types:
             slot = (state.assert_local_slot() or state.next_slot())
-            state.rebind_slots[name] = slot
-            out.write(f"{indent}std::optional<{slot_types[name]}> "
-                      f"__slot_{slot};\n")
+            _declare_rebind_slot(state, name, slot, slot_types[name])
         out.write(f"{indent}{cpp_type} {name};\n")
     chain = [stmt]
     while (len(chain[-1].else_body) == 1
@@ -3209,11 +3219,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # before the rebind slot.
             init_slot = (state.assert_local_slot() or state.next_slot())
             rebind_slot = (state.assert_local_slot() or state.next_slot())
-            state.rebind_slots[stmt.name] = rebind_slot
             cpp = stmt.cpp_type
+            _declare_rebind_slot(state, stmt.name, rebind_slot, cpp)
             const_pfx = "const " if stmt.is_const else ""
             out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init, state)};\n")
-            out.write(f"{indent}std::optional<{cpp}> __slot_{rebind_slot};\n")
             out.write(f"{indent}{const_pfx}{cpp}* {name} = &__slot_{init_slot};\n")
         elif stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
             # F3 storage-tuple alias: `auto&& name = <lvalue storage tuple>` binds a
@@ -3262,9 +3271,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         if stmt.kind is PtrSlotKind.OPT_NONE:
             if stmt.needs_rebind_slot:
                 slot = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = slot
-                out.write(f"{indent}std::optional<{stmt.cpp_type}> "
-                          f"__slot_{slot};\n")
+                _declare_rebind_slot(state, stmt.name, slot, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = nullptr;\n")
         elif stmt.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE):
             # RECORD_RVALUE (the escape-hoist plain-record flavor) shares the
@@ -3277,9 +3284,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"{init_cpp};\n")
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = rebind
-                out.write(f"{indent}std::optional<{stmt.cpp_type}> "
-                          f"__slot_{rebind};\n")
+                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
         elif stmt.kind is PtrSlotKind.GLOBAL_RVALUE:
@@ -3310,9 +3315,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 f"std::optional<{stmt.cpp_type}> __slot_{init_slot};")
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = rebind
-                state.deferred_rebind_hoists[rebind] = (
-                    f"std::optional<{stmt.cpp_type}> __slot_{rebind};")
+                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
             # Deliberately NO rebind_slots registration without a rebind
             # slot: the THIRAssign rebind-slot emit special-case is keyed on
             # membership alone, so registering the init slot would hijack a
@@ -3326,10 +3329,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             slot = (state.assert_local_slot() or state.next_slot())
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = rebind
+                _declare_rebind_slot(state, stmt.name, rebind, stmt.val_cpp)
                 state.union_slot_locals.add(stmt.name)
-                out.write(f"{indent}std::optional<{stmt.val_cpp}> "
-                          f"__slot_{rebind};\n")
             out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = {init_cpp};\n")
             out.write(f"{indent}{stmt.cpp_type} {name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
@@ -3355,10 +3356,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init_cpp = _emit_expr(stmt.init, state)
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = rebind
+                _declare_rebind_slot(state, stmt.name, rebind, stmt.val_cpp)
                 state.union_slot_locals.add(stmt.name)
-                out.write(f"{indent}std::optional<{stmt.val_cpp}> "
-                          f"__slot_{rebind};\n")
             out.write(f"{indent}{stmt.cpp_type} {name}{{&({init_cpp})}};\n")
     elif isinstance(stmt, THIRPtrLocalRebind):
         name = escape_cpp_name(stmt.name)

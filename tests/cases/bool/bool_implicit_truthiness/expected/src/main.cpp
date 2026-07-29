@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<Container> __slot_2;
     // c1 = Container(3)
     Container c1 = Container(::tpy::BigInt(3));
     // c2 = Container(0)
@@ -24,7 +25,6 @@ void main() {
     // # while with __bool__ (reassigned variable uses pointer slot)
     // c3 = Container(2)
     Container __slot_1 = Container(::tpy::BigInt(2));
-    std::optional<Container> __slot_2;
     Container* c3 = &__slot_1;
     // while c3:
     while (::tpy::__bool__((*c3))) {

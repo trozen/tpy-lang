@@ -13,6 +13,7 @@ Container<int32_t> get_box() {
 
 // def main():
 void main() {
+    std::optional<Container<int32_t>> __slot_2;
     // # Assignment context (annotated var_decl)
     // b: Container[Int32] = make_box()  # tpyc: ok
     Container<int32_t> b = make_box<int32_t>();
@@ -34,7 +35,6 @@ void main() {
     // # Reassignment context: existing type used as hint
     // r = Container[Int32]()
     Container<int32_t> __slot_1 = Container<int32_t>();
-    std::optional<Container<int32_t>> __slot_2;
     Container<int32_t>* r = &__slot_1;
     // r = Container()  # tpyc: ok
     r = &*(__slot_2 = Container<int32_t>());

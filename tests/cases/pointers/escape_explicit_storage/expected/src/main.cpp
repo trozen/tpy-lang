@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def copy_is_independent() -> None:
 void copy_is_independent() {
+    std::optional<Point> __slot_2;
     // saved = Point(-1)
     Point __slot_1 = Point(-1);
-    std::optional<Point> __slot_2;
     Point* saved = &__slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -29,11 +29,11 @@ void copy_is_independent() {
 
 // def copy_outlives_the_loop() -> None:
 void copy_outlives_the_loop() {
+    std::optional<Point> __slot_2;
     // # The copy is the caller's own object, so it survives every later
     // # iteration untouched -- the property the escape reject protects.
     // saved = Point(-1)
     Point __slot_1 = Point(-1);
-    std::optional<Point> __slot_2;
     Point* saved = &__slot_1;
     // for i in range(4):
     for (int32_t i = 0; i < 4; ++i) {
@@ -53,10 +53,10 @@ void copy_outlives_the_loop() {
 
 // def copy_into_optional_target() -> None:
 void copy_into_optional_target() {
+    std::optional<Point> __slot_1;
     // # The idiomatic spelling: the outer name starts as None, so it is an
     // # Optional local. copy() has to work through that binding too.
     // saved: Point | None = None
-    std::optional<Point> __slot_1;
     Point* saved = nullptr;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {

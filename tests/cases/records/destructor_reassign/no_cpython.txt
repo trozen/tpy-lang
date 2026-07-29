@@ -1,0 +1,8 @@
+The rebind-slot split is currently unconditional (`rvalue_reassigned_vars`
+alone), so a superseded value survives in the init slot until function exit
+instead of dropping at the rebind the way CPython does. Tracked in BUGS.md
+("gated on whether the init value is actually aliased") -- once the slot is
+alias-gated this case is expected to reach CPython parity and lose this marker.
+
+CPython also does not auto-chain __del__ to a base class, which test_inherit
+exercises separately.

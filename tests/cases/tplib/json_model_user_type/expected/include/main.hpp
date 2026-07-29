@@ -188,8 +188,8 @@ inline std::string Event::__repr__() const {
 }
 
 inline Event Event::from_json(std::string_view __s) {
-    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Event> __slot_1;
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Event* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_2;
@@ -308,8 +308,8 @@ inline std::string Schedule::__repr__() const {
 }
 
 inline Schedule Schedule::from_json(std::string_view __s) {
-    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     std::optional<Schedule> __slot_1;
+    ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Schedule* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_4;

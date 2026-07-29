@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
+    std::optional<Wrapper> __slot_2;
     // w = Wrapper(42)
     Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
-    std::optional<Wrapper> __slot_2;
     Wrapper* w = &__slot_1;
     // r1 = w.take()
     ::tpy::BigInt r1 = std::move(*w).take();

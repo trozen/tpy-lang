@@ -6790,7 +6790,7 @@ class ExpressionGenerator:
         if reassigned_borrow:
             borrow_cpp = self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)
             if storage_rvalue:
-                slot = self.ctx.use_rebind_slot(expr.target)
+                slot = self.ctx.use_rebind_slot(expr.target, loc=expr.loc)
                 rhs = (f"::tpy::tuple_to_pointer<{borrow_cpp}>"
                        f"({slot}.emplace({value_code}))")
             else:

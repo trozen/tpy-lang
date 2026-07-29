@@ -23,7 +23,6 @@ void test_reassign_then_mutate_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // x = Point(0, 0)             # initial assignment (no borrow from items)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* x = &__slot_1;
     // x = get_first(items)        # reassignment: borrow from items registered here
     x = &(get_first(items));
@@ -39,7 +38,6 @@ void test_reassign_no_mutation_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // x = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* x = &__slot_1;
     // x = get_first(items)        # tpyc: ok
     x = &(get_first(items));
@@ -55,7 +53,6 @@ void test_reassign_overwrite_clears_borrow() {
     std::vector<Point> other = {Point(9, 9)};
     // x = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* x = &__slot_1;
     // x = get_first(items)        # borrows items
     x = &(get_first(items));

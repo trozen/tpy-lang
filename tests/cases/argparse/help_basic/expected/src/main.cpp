@@ -24,11 +24,11 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args(["-h"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
+    std::optional<std::vector<std::string>> __slot_1;
     std::string_view file = "";
     ::tpy::BigInt count = ::tpy::BigInt(1);
     std::string_view name = "world";
     int32_t verbose = 0;
-    std::optional<std::vector<std::string>> __slot_1;
     std::vector<std::string>* tag = nullptr;
     std::vector<std::string> __tpy_argparse_acc_tag = std::vector<std::string>{};
     bool __tpy_argparse_seen_tag = false;

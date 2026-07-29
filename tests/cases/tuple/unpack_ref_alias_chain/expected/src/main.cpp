@@ -47,7 +47,6 @@ void reassign_to_ref() {
     Counter g = Counter(10);
     // x = Counter(99)   # owned
     Counter __slot_1 = Counter(99);
-    std::optional<Counter> __slot_2;
     Counter* x = &__slot_1;
     // x = g.get()       # aug/reassign to a borrow-alias: must not stay movable
     x = &(g.get());

@@ -32,9 +32,9 @@ void value_init() {
 // # Assign before if, use after — OK
 // def assign_before_if(cond: bool) -> None:
 void assign_before_if(bool cond) {
+    std::optional<Point> __slot_2;
     // x: Point = Point(1, 2)
     Point __slot_1 = Point(1, 2);
-    std::optional<Point> __slot_2;
     Point* x = &__slot_1;
     // if cond:
     if (cond) {

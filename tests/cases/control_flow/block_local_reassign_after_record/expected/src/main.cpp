@@ -38,12 +38,10 @@ namespace tpyapp::main {
     for (int32_t i = 0; i < 2; ++i) {
         // p = Point(i)
         Point __slot_1 = Point(::tpy::BigInt(i));
-        std::optional<Point> __slot_2;
         Point* p = &__slot_1;
     }
     // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
-    std::optional<Point> __slot_4;
     Point* p = &__slot_3;
     // q = p
     Point& q = (*p);
@@ -61,7 +59,6 @@ namespace tpyapp::main {
     if (__match_subject_1 == 1) {
         // p = Point(1)
         Point __slot_1 = Point(::tpy::BigInt(1));
-        std::optional<Point> __slot_2;
         Point* p = &__slot_1;
         // print(p.x)
         std::cout << p->x << "\n";
@@ -71,7 +68,6 @@ namespace tpyapp::main {
     }
     // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
-    std::optional<Point> __slot_4;
     Point* p = &__slot_3;
     // return p.x
     return p->x;
@@ -84,7 +80,6 @@ namespace tpyapp::main {
         try {
             // p = Point(1)
             Point __slot_1 = Point(::tpy::BigInt(1));
-            std::optional<Point> __slot_2;
             Point* p = &__slot_1;
             // print(p.x)
             std::cout << p->x << "\n";
@@ -94,7 +89,6 @@ namespace tpyapp::main {
     }
     // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
-    std::optional<Point> __slot_4;
     Point* p = &__slot_3;
     // return p.x
     return p->x;
@@ -117,7 +111,6 @@ namespace tpyapp::main {
     }
     // p = Point(9)
     Point __slot_1 = Point(::tpy::BigInt(9));
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // return p.x
     return p->x;

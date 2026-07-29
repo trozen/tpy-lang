@@ -12,9 +12,9 @@ int32_t close(Handle&& h) {
 
 // def main():
 void main() {
+    std::optional<Handle> __slot_2;
     // h = Handle()
     Handle __slot_1 = Handle();
-    std::optional<Handle> __slot_2;
     Handle* h = &__slot_1;
     // h.fd = 42
     h->fd = 42;

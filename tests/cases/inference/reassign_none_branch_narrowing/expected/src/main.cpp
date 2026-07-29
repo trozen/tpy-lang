@@ -12,8 +12,8 @@ Box make_box() {
 
 // def test_if_branch() -> None:
 void test_if_branch() {
-    // b = None
     std::optional<Box> __slot_1;
+    // b = None
     Box* b = nullptr;
     // if True:
     if (true) {
@@ -29,8 +29,8 @@ void test_if_branch() {
 
 // def test_elif_branch() -> None:
 void test_elif_branch() {
-    // b = None
     std::optional<Box> __slot_1;
+    // b = None
     Box* b = nullptr;
     // x = 1
     int32_t x = 1;

@@ -13,9 +13,9 @@ namespace tpyapp::main {
 // # clobber the loop-body-declared spelling is rejected for.
 // def rebind_gap() -> None:
 void rebind_gap() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // saved: Point = Point(0, 0)
     Point __slot_3 = Point(0, 0);

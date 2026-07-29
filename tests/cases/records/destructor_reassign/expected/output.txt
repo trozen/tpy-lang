@@ -1,17 +1,17 @@
 drop b
 alive: c
-drop c
 drop a
+drop c
 ---
 drop loop
 drop loop
 alive: loop
-drop loop
 drop init
+drop loop
 ---
 alive: branch
-drop branch
 drop start
+drop branch
 ---
 alive: start
 drop start
@@ -19,7 +19,7 @@ drop start
 ~Child y
 ~Base y
 alive: z
-~Child z
-~Base z
 ~Child x
 ~Base x
+~Child z
+~Base z

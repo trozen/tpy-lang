@@ -1,0 +1,6 @@
+TPy currently drops the superseded value at block exit; CPython drops it at the
+rebind (`drop if-first` before `inside:`, not after). The cause is that the
+rvalue rebind slot is allocated unconditionally, so the superseded object has a
+second home to sit in -- tracked in BUGS.md ("The rvalue rebind slot is
+allocated unconditionally"). Alias-gating that split is expected to bring this
+case to parity and retire this marker.

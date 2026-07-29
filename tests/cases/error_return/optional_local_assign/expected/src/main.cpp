@@ -18,8 +18,8 @@ std::expected<Box, Bad> decode(bool ok) {
 
 // def run(ok: bool) -> Int32:
 int32_t run(bool ok) {
-    // b: Box | None = None
     std::optional<Box> __slot_1;
+    // b: Box | None = None
     Box* b = nullptr;
     // try:
     {

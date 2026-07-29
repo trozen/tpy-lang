@@ -49,10 +49,10 @@ void __tpy_builder_argparse_help_1() {
 // a1 = p1.parse_args([])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::optional<std::vector<std::string>> __slot_1;
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<std::string>* tag = nullptr;
     std::vector<std::string> __tpy_argparse_acc_tag = std::vector<std::string>{};
     bool __tpy_argparse_seen_tag = false;
-    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<::tpy::BigInt>* num = nullptr;
     std::vector<::tpy::BigInt> __tpy_argparse_acc_num = std::vector<::tpy::BigInt>{};
     bool __tpy_argparse_seen_num = false;
@@ -147,10 +147,10 @@ void __tpy_builder_argparse_help_3() {
 
 // a3 = p3.parse_args([])
 __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<std::string>& argv) {
+    std::optional<std::vector<::tpy::BigInt>> __slot_3;
     std::optional<std::vector<::tpy::BigInt>> __slot_1;
     std::vector<::tpy::BigInt>* coord = nullptr;
     std::vector<::tpy::BigInt> __slot_2 = std::vector<::tpy::BigInt>{};
-    std::optional<std::vector<::tpy::BigInt>> __slot_3;
     std::vector<::tpy::BigInt>* __tpy_argparse_acc_coord = &__slot_2;
     bool __tpy_argparse_seen_coord = false;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--coord COORD COORD]";

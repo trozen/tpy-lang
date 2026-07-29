@@ -42,9 +42,9 @@ void external_field_path() {
 
 // def reassign_clears_borrow() -> None:
 void reassign_clears_borrow() {
+    std::optional<Container> __slot_2;
     // c = Container()
     Container __slot_1 = Container();
-    std::optional<Container> __slot_2;
     Container* c = &__slot_1;
     // ptr = take_ptr(c.items[0])
     Point* ptr = &::tpy::__getitem__(c->items, 0);

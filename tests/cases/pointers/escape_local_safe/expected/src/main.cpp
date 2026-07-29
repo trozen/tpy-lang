@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // # copy() suppresses escape error
 // def loop_escape_copy_ok() -> None:
 void loop_escape_copy_ok() {
+    std::optional<Point> __slot_2;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* saved = &__slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -25,9 +25,9 @@ void loop_escape_copy_ok() {
 // # Rvalue in loop: no escape (fresh storage)
 // def loop_rvalue_ok() -> None:
 void loop_rvalue_ok() {
+    std::optional<Point> __slot_2;
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* saved = &__slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -89,7 +89,6 @@ void foreach_shadow_safe() {
     for (int32_t i = 0; i < 1; ++i) {
         // p: Point = Point(i, i)
         Point __slot_2 = Point(i, i);
-        std::optional<Point> __slot_3;
         Point* p = &__slot_2;
         // pass
     }
@@ -153,10 +152,10 @@ void same_scope_ok() {
 // # is pre-declared at function scope so it outlives the loop.
 // def lvalue_init_rvalue_rebind() -> None:
 void lvalue_init_rvalue_rebind() {
+    std::optional<Point> __slot_1;
     // items: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     // best: Point = items[0]
-    std::optional<Point> __slot_1;
     Point* best = &(::tpy::__getitem__(items, 0));
     // for p in items:
     auto& __obj_0 = items;
@@ -178,9 +177,9 @@ void lvalue_init_rvalue_rebind() {
 // # Uses separate init/rebind slots so alias still sees the old object.
 // def rvalue_alias_preserved() -> None:
 void rvalue_alias_preserved() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // alias: Point = p  # tpyc: ok
     Point& alias = (*p);
@@ -195,9 +194,9 @@ void rvalue_alias_preserved() {
 // # Rvalue rebind in one if-branch only.
 // def if_branch_rvalue_rebind() -> None:
 void if_branch_rvalue_rebind() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // if p.x > 0:
     if ((p->x > 0)) {
@@ -211,9 +210,9 @@ void if_branch_rvalue_rebind() {
 // # Different rvalue rebinds in if vs else.
 // def if_else_rvalue_rebinds() -> None:
 void if_else_rvalue_rebinds() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // if p.x > 0:
     if ((p->x > 0)) {
@@ -231,9 +230,9 @@ void if_else_rvalue_rebinds() {
 // # Alias preserved through if-branch rvalue rebind.
 // def if_alias_preserved() -> None:
 void if_alias_preserved() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // alias: Point = p  # tpyc: ok
     Point& alias = (*p);
@@ -251,9 +250,9 @@ void if_alias_preserved() {
 // # Rvalue rebind inside while loop.
 // def while_rvalue_rebind() -> None:
 void while_rvalue_rebind() {
+    std::optional<Point> __slot_2;
     // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
-    std::optional<Point> __slot_2;
     Point* p = &__slot_1;
     // i: Int32 = 0
     int32_t i = 0;
