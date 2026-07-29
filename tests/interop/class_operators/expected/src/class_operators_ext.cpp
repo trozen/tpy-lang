@@ -13,7 +13,7 @@ PyObject *class_operators__type_Vec2 = nullptr;
 int class_operators__Vec2_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec2", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec2.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_operators::Vec2> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

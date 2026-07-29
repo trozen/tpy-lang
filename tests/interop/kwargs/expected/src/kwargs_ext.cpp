@@ -50,7 +50,7 @@ PyObject *kwargs__label_of_pywrap(PyObject *self, PyObject *args, PyObject *kwar
 int kwargs__Vec_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -85,7 +85,7 @@ void kwargs__Vec_dealloc(PyObject *self) {
 PyObject *kwargs__Vec__move_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("dx"), const_cast<char *>("dy"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:move", __kwlist, &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec.move", __kwlist, &a0, &a1)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
@@ -105,7 +105,7 @@ PyObject *kwargs__Vec__move_pywrap(PyObject *self, PyObject *args, PyObject *kwa
 PyObject *kwargs__Vec__dot_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("other_x"), const_cast<char *>("other_y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:dot", __kwlist, &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vec.dot", __kwlist, &a0, &a1)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::kwargs::Vec> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);

@@ -49,7 +49,7 @@ PyObject *classes__make_pywrap(PyObject *self, PyObject *args, PyObject *kwargs)
 int classes__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("value"), const_cast<char *>("label"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Counter", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Counter.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -84,7 +84,7 @@ void classes__Counter_dealloc(PyObject *self) {
 PyObject *classes__Counter__incr_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("by"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:incr", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter.incr", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
@@ -117,7 +117,7 @@ PyObject *classes__Counter__get_pywrap(PyObject *self, PyObject *) {
 PyObject *classes__Counter__echo_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("s"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter.echo", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->p;
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);

@@ -33,7 +33,7 @@ from .export_shape import (
     EXPORT_CLASS_NEXT_DUNDERS as _EXPORT_CLASS_NEXT_DUNDERS,
     EXPORT_CLASS_SUPPORTED_DUNDERS as _EXPORT_CLASS_SUPPORTED_DUNDERS,
     boundary_alias_records, export_method_shape_error,
-    nocopy_borrow_return_error, unsupported_boundary_param_form,
+    nocopy_borrow_return_error, unsupported_slot_param_form,
     view_safe_borrow_returns,
 )
 
@@ -249,7 +249,7 @@ def validate_export_class_dunders(ctx: 'SemanticContext',
             # passes the count/type checks below (a default changes neither
             # the arity nor the marshal a param needs) and then fails the
             # C++ build with `could not convert 'nullptr' to 'const Vec2&'`.
-            form = unsupported_boundary_param_form(m)
+            form = unsupported_slot_param_form(m)
             if form is not None:
                 raise SemanticError(
                     f"exposed class '{record.name}': '{m.name}': {form}",

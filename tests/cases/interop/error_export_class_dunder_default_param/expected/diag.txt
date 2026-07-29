@@ -1,1 +1,1 @@
-main.py:17: error: exposed class 'C': '__eq__': default parameter values are not supported at the CPython boundary yet (every parameter must be required)
+main.py:17: error: exposed class 'C': '__eq__': default parameter values are not supported on a dunder crossing the CPython boundary (its operand comes from a type slot, which always supplies one)

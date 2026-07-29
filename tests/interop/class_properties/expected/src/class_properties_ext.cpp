@@ -15,7 +15,7 @@ PyObject *class_properties__enum_Color = nullptr;
 int class_properties__Rect_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("w"), const_cast<char *>("h"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Rect", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Rect.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_properties::Rect> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

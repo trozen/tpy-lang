@@ -153,7 +153,7 @@ PyObject *container_exposed_elements__tag_value_pywrap(PyObject *self, PyObject 
 int container_exposed_elements__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::container_exposed_elements::Counter> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

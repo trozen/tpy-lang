@@ -34,6 +34,41 @@ namespace tpy::interop {
 // returns NULL.
 struct MarshalError {};
 
+// A REQUIRED keyword-only parameter cannot be spelled in a
+// PyArg_ParseTupleAndKeywords format: `$` is only legal after `|`, so every
+// slot from the keyword-only run onward parses as optional. The wrapper
+// therefore lets the parser leave them null and reports the omission here,
+// reproducing CPython's own wording verbatim (including the 3+ Oxford comma)
+// so a caller sees the same text a `def` in Python would raise.
+inline void require_kwonly(const char *fn_name, const char *const *names,
+                           const bool *supplied, std::size_t n) {
+    std::vector<const char *> missing;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (!supplied[i]) {
+            missing.push_back(names[i]);
+        }
+    }
+    if (missing.empty()) {
+        return;
+    }
+    std::string msg = std::string(fn_name) + "() missing "
+                    + std::to_string(missing.size())
+                    + " required keyword-only argument"
+                    + (missing.size() == 1 ? "" : "s") + ": ";
+    for (std::size_t i = 0; i < missing.size(); ++i) {
+        if (i > 0) {
+            msg += (i + 1 == missing.size())
+                 ? (missing.size() == 2 ? " and " : ", and ")
+                 : ", ";
+        }
+        msg += '\'';
+        msg += missing[i];
+        msg += '\'';
+    }
+    cpy::PyErr_SetString(cpy::PyExc_TypeError, msg.c_str());
+    throw MarshalError{};
+}
+
 // from_py<T>: a borrowed PyObject -> a TPy value of type T.
 template <class T>
 T from_py(cpy::PyObject *o);

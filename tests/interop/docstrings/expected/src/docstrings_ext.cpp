@@ -119,7 +119,7 @@ PyObject *docstrings__reject_pywrap(PyObject *self, PyObject *unused) {
 int docstrings__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("value"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::docstrings::Counter> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -153,7 +153,7 @@ void docstrings__Counter_dealloc(PyObject *self) {
 PyObject *docstrings__Counter__incr_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("by"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:incr", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Counter.incr", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::docstrings::Counter> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
@@ -259,7 +259,7 @@ int docstrings__Base_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     }
     static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Base", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Base.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::docstrings::Base> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -355,7 +355,7 @@ PyType_Spec docstrings__Base__spec = {
 int docstrings__Derived_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Derived", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Base.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::docstrings::Derived> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

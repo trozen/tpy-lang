@@ -98,7 +98,7 @@ PyObject *enum_values__default_color_pywrap(PyObject *self, PyObject *unused) {
 int enum_values__Toggle_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Toggle", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Toggle.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -132,7 +132,7 @@ void enum_values__Toggle_dealloc(PyObject *self) {
 PyObject *enum_values__Toggle__pick_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:pick", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Toggle.pick", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_values::Toggle> *>(self)->p;
         ::tpyapp::enum_values::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::enum_values::Color>(a0, enum_values__enum_Color);

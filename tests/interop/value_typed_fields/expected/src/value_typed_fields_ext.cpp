@@ -14,7 +14,7 @@ PyObject *value_typed_fields__type_Box = nullptr;
 int value_typed_fields__Point_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), const_cast<char *>("y"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Point", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Point.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Point> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -136,7 +136,7 @@ PyType_Spec value_typed_fields__Point__spec = {
 int value_typed_fields__Box_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("p"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Box", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Box.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::value_typed_fields::Box> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

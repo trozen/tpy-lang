@@ -79,7 +79,7 @@ int class_inheritance__Shape_init(PyObject *self, PyObject *args, PyObject *kwar
     }
     static char *__kwlist[] = {const_cast<char *>("name"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Shape", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Shape.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Shape> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -239,7 +239,7 @@ int class_inheritance__Circle_init(PyObject *self, PyObject *args, PyObject *kwa
     }
     static char *__kwlist[] = {const_cast<char *>("name"), const_cast<char *>("radius"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Circle", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Circle.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Circle> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -389,7 +389,7 @@ PyType_Spec class_inheritance__Circle__spec = {
 int class_inheritance__Disc_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("name"), const_cast<char *>("radius"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Disc", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Circle.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::Disc> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -462,7 +462,7 @@ int class_inheritance__BaseBox_init(PyObject *self, PyObject *args, PyObject *kw
     }
     static char *__kwlist[] = {const_cast<char *>("width"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:BaseBox", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:BaseBox.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::BaseBox> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -559,7 +559,7 @@ int class_inheritance__MidBox_init(PyObject *self, PyObject *args, PyObject *kwa
     }
     static char *__kwlist[] = {const_cast<char *>("width"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:MidBox", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:BaseBox.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::MidBox> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -627,7 +627,7 @@ PyType_Spec class_inheritance__MidBox__spec = {
 int class_inheritance__LeafBox_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("width"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:LeafBox", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:BaseBox.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_inheritance::LeafBox> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

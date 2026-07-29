@@ -1446,7 +1446,8 @@ class TypeRegistrar:
                     method_param_infos.append(va_param)
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
-                method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))
+                method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
+                                                    is_kwargs=True))
             self._validate_param_default_enums(method_param_infos)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
@@ -3349,7 +3350,8 @@ class TypeRegistrar:
                                 f"parameter '{fld.name}' on '{func.name}'",
                                 func.loc,
                             )
-            param_infos.append(ParamInfo(func.kwarg_name, resolved_kwarg_type))
+            param_infos.append(ParamInfo(func.kwarg_name, resolved_kwarg_type,
+                                         is_kwargs=True))
 
         # async def f() -> T: callers see Cancellable[T] (mirrors how
         # generators surface as Iterator[T]). The user's T stays on the

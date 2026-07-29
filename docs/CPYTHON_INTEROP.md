@@ -51,7 +51,7 @@ progress -> ✅ done.
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
 | 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) + list/dict/set/tuple (copy-in, recursive) done |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args (PyArg_ParseTupleAndKeywords) |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes + container arg/return done; positional + keyword args, defaults, keyword-only + positional-only params (PyArg_ParseTupleAndKeywords) |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | ✅ done: `Span[readonly[T]]`/`Span[T]` (fixed-width int/`float`) as an @export fn or exposed-class method PARAM only, via `PyObject_GetBuffer`; copy-in for both forms (no write-back for either); a mutated `Span[T]` param warns (copy-in, not visible to caller) |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset (scalars/str/bytes/exposed-enum/exposed-value-type; a value type is exposed read-only; a *never-reassigned* reference class-typed field crosses as a READ-ONLY aliasing borrow-view getset, a *reassignable* one is rejected -- its view would read the storage slot through the rebind -- and a `_`-prefixed **internal** field of any type is kept as payload state and never crosses, so a class can hold reference-class/container members reached through methods), instances as free-fn/method params (borrow) + returns (identity-preserving when the returned reference is `self`/a param -- the original PyObject crosses back; an aliasing registry-deduped borrow VIEW when it is a never-reassigned field of one; copy otherwise); dunders (Q4) DONE -- all three checkpoints (repr/str/eq/ne/lt/le/gt/ge/hash; arithmetic/ordering operators incl. in-place; container protocol) landed; @property DONE (computed getset, full method boundary set); inheritance DONE (single exposed same-module base -> real `tp_base`) |
@@ -190,9 +190,36 @@ design -- the same long pole.)
   second, competing marshalling path). The keyword wrapper's 3-arg shape is
   cast into the `PyCFunction` slot via the facade's `as_pycfunction` (CPython's
   own `_PyCFunction_CAST` idiom, warning-clean under `-Wcast-function-type`).
-  Param forms the unpack can't cross -- defaults, `*args`/`**kwargs`,
-  positional-only (`/`), keyword-only (`*`) -- are rejected at compile time
-  (loud, not silently mishandled); keyword-only + defaults are the next rung.
+  Default values, positional-only (`/`) and keyword-only (`*`) params all
+  cross: the format string opens its optional run with `|` and its
+  keyword-only run with `$`, a positional-only param takes an EMPTY `kwlist`
+  entry (CPython's own idiom for refusing a name match), and a slot the parser
+  leaves null binds the default -- materialized per slot rather than by
+  dropping trailing arguments, since a caller may skip an earlier defaulted
+  param and still pass a later one by keyword. `$` is only legal after `|`, so
+  a REQUIRED keyword-only param cannot be enforced by the parser at all; the
+  wrapper parses it as optional and reports the omission through
+  `tpy::interop::require_kwonly`, whose text reproduces CPython's own
+  (`f() missing 2 required keyword-only arguments: 'b' and 'c'`, Oxford comma
+  included). Both that message and the C parser's own name the callable the
+  way CPython does -- a bound one QUALIFIED (`Pair.__init__()`, `Pair.weigh()`),
+  via the `:name` suffix the two share. `*args`/`**kwargs` stay rejected at
+  compile time (loud, not silently mishandled) -- neither has a fixed slot to
+  unpack into. The boundary does NOT police a default's type: a default has to
+  be a constant expression, and no constant of class / `Span[T]` / container
+  type can be spelled, so only the by-value forms can carry one anyway. (The
+  nonsense spelling `x: Point = None` is not a boundary problem -- `None` is
+  not a `Point` with or without `@export` -- and belongs to the parameter-
+  default type check; see BUGS.md.) A dunder keeps rejecting every non-plain
+  form: it reaches CPython as a type slot that supplies its operand directly,
+  so there is no argument tuple to parse. **Known limitation, not boundary-
+  specific:** a defaulted parameter placed BEFORE a required keyword-only one
+  (`def f(a, b=10, *, c)`, and equally `def f(*, a=1, b)`) does not build --
+  TPy models defaults as C++ positional default arguments, which must be
+  trailing, so the failure lands as a raw toolchain error on the generated
+  header. The same source fails with no `@export` involved; tracked in
+  BUGS.md. Give the keyword-only parameter a default, or drop the earlier
+  one, until that lowering changes.
 
 ### Dunder docstrings do not cross (measured, not assumed)
 

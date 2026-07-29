@@ -5926,10 +5926,23 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   function, method, or constructor with positional args, keyword args, or a mix
   (`add(2, 3)`, `add(a=2, b=3)`, `add(2, b=3)`, `Counter(value=10, label="c")`),
   matching CPython's positional-or-keyword semantics; a zero-arg callable stays
-  `METH_NOARGS`. Param forms the unpack does not cross yet -- **default values,
-  `*args`/`**kwargs`, positional-only (`/`), keyword-only (`*`)** -- are
-  rejected with a located compile error (rather than silently mishandled);
-  keyword-only + defaults are the next rung, tracked in `TODO.md`.
+  `METH_NOARGS`. **Default values, positional-only (`/`) and keyword-only (`*`)
+  params cross too** (`greet("Ann", excited=True)` skips the defaulted
+  `greeting` and still passes `excited` by keyword): the wrapper materializes
+  each omitted slot from its default rather than dropping trailing arguments,
+  so a caller may skip an earlier defaulted param. A *required* keyword-only
+  param is enforced by the glue itself -- CPython's argument parser cannot
+  express one -- and its `TypeError` text matches CPython's exactly. Param
+  forms that do not cross yet -- **`*args`/`**kwargs`** -- are rejected with a
+  located compile error rather than silently mishandled. Only the by-value
+  boundary types can carry a default in the first place, since a default must
+  be a constant expression. A dunder still takes none of
+  these forms: it crosses as a type slot whose operand CPython supplies
+  directly, so there is no argument tuple to parse. One shape does not build
+  yet -- a defaulted parameter before a *required* keyword-only one
+  (`def f(a, b=10, *, c)`) -- because TPy lowers defaults to C++ positional
+  default arguments, which must be trailing; that limitation is plain-TPy, not
+  boundary-specific, and is tracked in `BUGS.md`.
 - **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
   taking and returning any fixed-width int (`Int8`..`Int64` / `UInt8`..`UInt64`;
   the unpack splits args/kwargs into `PyObject*` slots with `from_py` owning

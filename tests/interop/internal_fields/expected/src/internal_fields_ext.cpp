@@ -73,7 +73,7 @@ void internal_fields__exc_OpError_seterr(const ::tpy::BaseException &__base, PyO
 int internal_fields__Entry_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Entry", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Entry.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Entry> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -151,7 +151,7 @@ PyType_Spec internal_fields__Entry__spec = {
 int internal_fields__Vault_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("owner"), const_cast<char *>("secret"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vault", __kwlist, &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Vault.__init__", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -214,7 +214,7 @@ PyObject *internal_fields__Vault__cell_n_pywrap(PyObject *self, PyObject *) {
 PyObject *internal_fields__Vault__record_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("v"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:record", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Vault.record", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::internal_fields::Vault> *>(self)->p;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);

@@ -663,7 +663,7 @@ class CallAnalyzer:
         construction, and stores it on expr.kwarg_td_call. The caller appends it
         to expr.args AFTER regular kwargs resolution (so positional ordering is correct).
         """
-        kwarg_param = next(p for p in func.params if p.name == func.kwarg_name)
+        kwarg_param = next(p for p in func.params if p.is_kwargs)
         td_type = unwrap_ref_type(kwarg_param.type)
 
         if expr.double_star_unpack is not None:
@@ -690,7 +690,7 @@ class CallAnalyzer:
         # remaining kwargs go to the TD constructor.
         # Unlike direct TypedDict construction, kwargs context honors field defaults
         # (fields with defaults become optional keyword params).
-        regular_param_names = {p.name for p in func.params if p.name != func.kwarg_name}
+        regular_param_names = {p.name for p in func.params if not p.is_kwargs}
         td_kwargs = {}
         remaining_kwargs = {}
         for k, v in expr.kwargs.items():
@@ -704,7 +704,7 @@ class CallAnalyzer:
 
     def _pack_kwargs_into_typed_dict_method(self, expr: 'TpyMethodCall', func: FunctionInfo) -> None:
         """Pack call-site kwargs or **expr into a TypedDict for method **kwargs param."""
-        kwarg_param = next(p for p in func.params if p.name == func.kwarg_name)
+        kwarg_param = next(p for p in func.params if p.is_kwargs)
         td_type = unwrap_ref_type(kwarg_param.type)
 
         if expr.double_star_unpack is not None:

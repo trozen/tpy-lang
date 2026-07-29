@@ -5244,6 +5244,7 @@ class ParamInfo:
     keyword_only: bool = False  # True for params after * separator
     is_variadic: bool = False  # True for *args param (type Span[T], or Span[readonly[T]] for readonly *args)
     positional_only: bool = False  # True for params before a '/' separator
+    is_kwargs: bool = False  # True for the **kwargs param (type Unpack[TypedDict])
 
     @property
     def has_default(self) -> bool:
@@ -5509,7 +5510,7 @@ class FunctionInfo:
         """Minimum number of required positional arguments (excludes keyword-only, variadic, **kwargs)."""
         return sum(1 for p in self.params
                    if not p.has_default and not p.keyword_only and not p.is_variadic
-                   and not (self.kwarg_name and p.name == self.kwarg_name))
+                   and not p.is_kwargs)
 
     @property
     def max_args(self) -> int:

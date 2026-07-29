@@ -15,7 +15,7 @@ PyObject *enum_typed_fields__enum_Color = nullptr;
 int enum_typed_fields__Widget_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Widget", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Widget.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -49,7 +49,7 @@ void enum_typed_fields__Widget_dealloc(PyObject *self) {
 PyObject *enum_typed_fields__Widget__set_color_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:set_color", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Widget.set_color", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::enum_typed_fields::Widget> *>(self)->p;
         ::tpyapp::enum_typed_fields::Color __p0 = ::tpy::interop::enum_from_py<::tpyapp::enum_typed_fields::Color>(a0, enum_typed_fields__enum_Color);

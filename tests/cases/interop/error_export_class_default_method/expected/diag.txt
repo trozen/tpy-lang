@@ -1,1 +1,0 @@
-main.py:14: error: @export class 'C': method 'bump': default parameter values are not supported at the CPython boundary yet (every parameter must be required)

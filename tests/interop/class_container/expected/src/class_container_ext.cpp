@@ -14,7 +14,7 @@ PyObject *class_container__type_Slot = nullptr;
 int class_container__Box_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), const_cast<char *>("c"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr; PyObject *a2 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOO:Box", __kwlist, &a0, &a1, &a2)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOO:Box.__init__", __kwlist, &a0, &a1, &a2)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Box> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -244,7 +244,7 @@ PyType_Spec class_container__Box__spec = {
 int class_container__Slot_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("value"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Slot", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Slot.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_container::Slot> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");

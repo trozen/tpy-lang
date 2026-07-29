@@ -1982,11 +1982,8 @@ class TypeOperations:
             value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,
-            # Propagate so post-substitution ``min_args`` correctly excludes
-            # the ``**kw`` slot from the positional count (the property
-            # filters via ``not (self.kwarg_name and p.name == self.kwarg_name)``).
-            # Without this, the arity gate at ``candidate_arg_hints`` and any
-            # other downstream consumer reads an inflated min_args.
+            # Propagate so the substituted signature still names its ``**kw``
+            # slot -- call-site kwargs packing resolves the pack by this name.
             kwarg_name=method.kwarg_name,
             # Preserve analysis-derived facts -- indices are positional (unaffected by
             # type substitution) and needed by call-site borrow/mutation checks.

@@ -29,7 +29,7 @@ from ..typesys import NominalType, OwnType, ReadonlyType
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyExpr, TpyFunction, TpyRecord
-    from ..typesys import RecordInfo, TpyType
+    from ..typesys import FunctionInfo, ParamInfo, RecordInfo, TpyType
 
 # The 6 rich-comparison dunders share BINOP_TO_METHOD with the 12 binary
 # arithmetic ops but are semantically distinct (one shared richcompare slot,
@@ -301,24 +301,73 @@ def nocopy_borrow_return_error(ret_type: 'TpyType', registry) -> 'str | None':
             f"Own[{info.name}] to move a fresh instance out")
 
 
-def unsupported_boundary_param_form(fn: 'TpyFunction') -> 'str | None':
-    """The argument forms the glue's keyword-aware unpack cannot cross (only
-    plain positional-or-keyword params marshal): defaults (PyArg unpack has no
-    optional slot), *args/**kwargs (dropped), positional-only, keyword-only.
-    Returns the message tail for the first form present, else None."""
+def registered_function(registry, fn: 'TpyFunction') -> 'FunctionInfo | None':
+    """The registered `FunctionInfo` for a free function -- where sema recorded
+    the resolved param types AND the arg-form facts (default expression,
+    keyword-only, positional-only, variadic, **kwargs). The validator and the
+    glue emitter both resolve their param list through here, so the forms the
+    validator admitted are literally the ones the wrapper emits against.
+    Keyed on the declared param NAMES rather than on arity, so an overload
+    group whose members share an arity still resolves to the right member."""
+    declared = [pname for pname, _t in fn.params]
+    for fi in registry.functions.get(fn.name) or []:
+        if [p.name for p in fi.params] == declared:
+            return fi
+    return None
+
+
+def registered_params(registry, fn: 'TpyFunction') -> 'list[ParamInfo]':
+    fi = registered_function(registry, fn)
+    return list(fi.params) if fi is not None else []
+
+
+_VARARG_TAIL = "*args is not supported at the CPython boundary yet"
+_KWARG_TAIL = "**kwargs is not supported at the CPython boundary yet"
+
+
+def unsupported_wrapper_param_form(params: 'list[ParamInfo]') -> 'str | None':
+    """The argument forms a `PyArg_ParseTupleAndKeywords` wrapper (free
+    function, plain method, tp_init) cannot cross. Defaults, positional-only
+    and keyword-only DO cross -- the format string carries `|`/`$` and an
+    empty kwlist entry, and an omitted slot materializes the default. What
+    stays out is the variadic pair, which has no fixed slot to unpack into.
+    Returns the message tail for the first form present, else None.
+
+    A default's TYPE is not policed here: only a by-value form can carry one
+    in the first place, because a default has to be a constant expression and
+    no constant of class / `Span[T]` / container type can be spelled. The
+    nonsense spelling (`x: Point = None`) is not a boundary problem at all --
+    `None` is not a `Point` with or without `@export`, and belongs to the
+    parameter-default type check."""
+    for p in params:
+        if p.is_variadic:
+            return _VARARG_TAIL
+        if p.is_kwargs:
+            return _KWARG_TAIL
+    return None
+
+
+def unsupported_slot_param_form(fn: 'TpyFunction') -> 'str | None':
+    """The argument forms a SLOT-wired dunder cannot cross. Unlike the wrapper
+    families above, a slot hands the wrapper a fixed operand straight from
+    CPython's protocol (`nb_add` gets exactly one, `mp_ass_subscript` two) --
+    there is no arg tuple to parse, so an optional or renamed slot is
+    unreachable no matter what the glue emits. Every non-plain form is
+    therefore rejected here even though the wrapper families now accept it."""
     if fn.vararg_name is not None:
-        return "*args is not supported at the CPython boundary yet"
+        return _VARARG_TAIL
     if fn.kwarg_name is not None:
-        return "**kwargs is not supported at the CPython boundary yet"
+        return _KWARG_TAIL
     if any(d is not None for d in (fn.defaults or [])):
-        return ("default parameter values are not supported at the CPython "
-                "boundary yet (every parameter must be required)")
+        return ("default parameter values are not supported on a dunder "
+                "crossing the CPython boundary (its operand comes from a "
+                "type slot, which always supplies one)")
     if fn.num_posonly_params:
-        return ("positional-only parameters (/) are not supported at the "
-                "CPython boundary yet")
+        return ("positional-only parameters (/) are not supported on a dunder "
+                "crossing the CPython boundary")
     if fn.keyword_only_start is not None:
-        return ("keyword-only parameters (*) are not supported at the "
-                "CPython boundary yet")
+        return ("keyword-only parameters (*) are not supported on a dunder "
+                "crossing the CPython boundary")
     return None
 
 
@@ -327,7 +376,8 @@ def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = F
     """The decorator/kind/async forms a method or dunder cannot take to cross
     the CPython boundary as a PyType slot or PyMethodDef wrapper. Returns a
     message tail (`'name' cannot ...`) for the first violated form, else None.
-    Argument forms are a separate axis -- see `unsupported_boundary_param_form`.
+    Argument forms are a separate axis -- see
+    `unsupported_wrapper_param_form` / `unsupported_slot_param_form`.
 
     `allow_error_return` exempts the one dunder whose slot wrapper unwraps the
     std::expected itself (`__next__`, implicitly @error_return(StopIteration));

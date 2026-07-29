@@ -1,0 +1,1 @@
+main.py:16: error: exposed class 'C': '__eq__': keyword-only parameters (*) are not supported on a dunder crossing the CPython boundary

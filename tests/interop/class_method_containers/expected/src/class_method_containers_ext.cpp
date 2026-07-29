@@ -13,7 +13,7 @@ PyObject *class_method_containers__type_Stats = nullptr;
 int class_method_containers__Stats_init(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("seed"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats", __kwlist, &a0)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.__init__", __kwlist, &a0)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self);
     if (__inst->owner != nullptr) {
         PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
@@ -47,7 +47,7 @@ void class_method_containers__Stats_dealloc(PyObject *self) {
 PyObject *class_method_containers__Stats__add_dict_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("d"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:add_dict", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.add_dict", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         ::tpy::ordered_map<std::string, int64_t> __p0 = ::tpy::interop::dict_from_py<std::string, int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<std::string>(__e0); }, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
@@ -65,7 +65,7 @@ PyObject *class_method_containers__Stats__add_dict_pywrap(PyObject *self, PyObje
 PyObject *class_method_containers__Stats__add_span_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:add_span", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.add_span", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::span_from_py<int64_t>(a0);
@@ -84,7 +84,7 @@ PyObject *class_method_containers__Stats__add_span_pywrap(PyObject *self, PyObje
 PyObject *class_method_containers__Stats__span_sum_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:span_sum", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.span_sum", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::span_from_py<int64_t>(a0);
@@ -102,7 +102,7 @@ PyObject *class_method_containers__Stats__span_sum_pywrap(PyObject *self, PyObje
 PyObject *class_method_containers__Stats__scaled_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), const_cast<char *>("k"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:scaled", __kwlist, &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Stats.scaled", __kwlist, &a0, &a1)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
@@ -121,7 +121,7 @@ PyObject *class_method_containers__Stats__scaled_pywrap(PyObject *self, PyObject
 PyObject *class_method_containers__Stats__uniq_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:uniq", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.uniq", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
@@ -153,7 +153,7 @@ PyObject *class_method_containers__Stats__snapshot_pywrap(PyObject *self, PyObje
 PyObject *class_method_containers__Stats__flatten_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("m"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:flatten", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.flatten", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         ::tpy::ordered_map<std::string, std::vector<int64_t>> __p0 = ::tpy::interop::dict_from_py<std::string, std::vector<int64_t>>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<std::string>(__e0); }, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::list_from_py<int64_t>(__e0, [](::tpy::cpy::PyObject *__e1) { return ::tpy::interop::from_py<int64_t>(__e1); }); });
@@ -171,7 +171,7 @@ PyObject *class_method_containers__Stats__flatten_pywrap(PyObject *self, PyObjec
 PyObject *class_method_containers__Stats__absorb_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), const_cast<char *>("v"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:absorb", __kwlist, &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Stats.absorb", __kwlist, &a0, &a1)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });
@@ -190,7 +190,7 @@ PyObject *class_method_containers__Stats__absorb_pywrap(PyObject *self, PyObject
 PyObject *class_method_containers__Stats__same_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("xs"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:same", __kwlist, &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:Stats.same", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::class_method_containers::Stats> *>(self)->p;
         std::vector<int64_t> __p0 = ::tpy::interop::list_from_py<int64_t>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<int64_t>(__e0); });

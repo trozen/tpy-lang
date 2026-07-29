@@ -16,8 +16,9 @@ import io
 from typing import TYPE_CHECKING, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
+from ..parse.nodes import TpyBytesLiteral, TpyFieldAccess, TpyName
 from ..typesys import (
-    TpyType, is_void_like_type, FinalType, OwnType, ReadonlyType,
+    TpyType, ParamInfo, is_void_like_type, FinalType, OwnType, ReadonlyType,
     error_return_uses_borrow_slot)
 from ..type_def_registry import (
     is_boundary_marshallable, is_function_boundary_marshallable, is_exposed_class,
@@ -33,11 +34,12 @@ from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARY
 # exposed_view_field).
 from .export_shape import (
     boundary_alias_records, exposed_view_field, view_safe_borrow_returns,
-    callable_docstring, cpython_clean_doc, is_dunder,
+    callable_docstring, cpython_clean_doc, is_dunder, registered_params,
     uncrossable_docstring_reason)
 from ..codegen_cpp.context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError,
-    escape_cpp_string)
+    escape_cpp_string, cpp_bytes_literal_owned, enum_member_cpp)
+from ..codegen_cpp.functions import default_to_cpp
 from ..codegen_cpp.type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -45,6 +47,7 @@ if TYPE_CHECKING:
     from ..codegen_cpp.records import RecordGenerator
     from ..codegen_cpp.types import TypeResolver
     from ..parse import TpyRecord
+    from ..parse.nodes import TpyExpr
     from ..typesys import RecordInfo
 
 # Exposed-class arithmetic/ordering operators: dunder name
@@ -356,7 +359,7 @@ class ExtensionGenerator:
         cpp = qualified_cpp_name(self.ctx.module_name, name)
         return cpp, f"{sym}__enum_{escape_cpp_name(name)}"
 
-    def _emit_arg_unpack(self, out: TextIO, param_names: list[str],
+    def _emit_arg_unpack(self, out: TextIO, params: list[ParamInfo],
                          fail_ret: str, fn_label: str) -> None:
         """Emit the keyword-aware unpack prologue for a wrapper with >=1 param:
         the kwlist of Python param names, the borrowed-PyObject* arg locals, and
@@ -369,17 +372,60 @@ class ExtensionGenerator:
         `fn_label` is appended to the format string as the C-API `:name`
         suffix, so a parse error (wrong arity, unknown keyword) names the
         callable -- closer to CPython's own `func() got ...` wording, though
-        the residual text still differs (the C parser's message phrasing).
+        the residual text still differs (the C parser's message phrasing). A
+        bound callable is labelled QUALIFIED (`Pair.__init__`), matching how
+        CPython names one; `require_kwonly` reports through the same label.
+
+        Param forms map onto the format string: `|` opens the optional run,
+        `$` opens the keyword-only run, and a positional-only param takes an
+        EMPTY kwlist entry (CPython's own idiom -- the parser then refuses to
+        match it by name). A slot the parser leaves null is either filled from
+        its default at the marshal site or, for a REQUIRED keyword-only param,
+        reported by `require_kwonly` -- `$` is only legal after `|`, so those
+        slots must be parsed as optional and checked by hand.
         """
-        n = len(param_names)
-        kw = ", ".join(f'const_cast<char *>("{nm}")' for nm in param_names)
+        n = len(params)
+        kw = ", ".join(
+            'const_cast<char *>("")' if p.positional_only
+            else f'const_cast<char *>("{p.name}")' for p in params)
         decls = " ".join(f"PyObject *a{i} = nullptr;" for i in range(n))
         addrs = ", ".join(f"&a{i}" for i in range(n))
+        # Optional to the PARSER covers both a defaulted slot and a
+        # keyword-only one (see require_kwonly above); `|` therefore always
+        # lands at or before `$`, which is the ordering the C-API demands.
+        fmt = ""
+        opened_optional = False
+        opened_kwonly = False
+        for p in params:
+            if not opened_optional and (p.has_default or p.keyword_only):
+                fmt += "|"
+                opened_optional = True
+            if not opened_kwonly and p.keyword_only:
+                fmt += "$"
+                opened_kwonly = True
+            fmt += "O"
         out.write(f"    static char *__kwlist[] = {{{kw}, nullptr}};\n")
         out.write(f"    {decls}\n")
         out.write(f'    if (!PyArg_ParseTupleAndKeywords(args, kwargs, '
-                  f'"{"O" * n}:{fn_label}", __kwlist, {addrs})) '
+                  f'"{fmt}:{fn_label}", __kwlist, {addrs})) '
                   f"return {fail_ret};\n")
+        required_kwonly = [(i, p) for i, p in enumerate(params)
+                           if p.keyword_only and not p.has_default]
+        if required_kwonly:
+            names = ", ".join(f'"{p.name}"' for _i, p in required_kwonly)
+            flags = ", ".join(f"a{i} != nullptr" for i, _p in required_kwonly)
+            out.write(f"    {{ static const char *const __kwreq[] = "
+                      f"{{{names}}};\n")
+            out.write(f"      const bool __kwgot[] = {{{flags}}};\n")
+            out.write(f"      try {{ ::tpy::interop::require_kwonly("
+                      f'"{fn_label}", __kwreq, __kwgot, '
+                      f"{len(required_kwonly)}); }}\n")
+            # Catch-all, not just MarshalError: the report builds its message
+            # with std::string, so an OOM here would otherwise unwind out of
+            # this wrapper and into CPython's own C frames. Mirrors the
+            # per-wrapper boundary catch, which this block precedes.
+            out.write(f"      catch (...) {{ if (!PyErr_Occurred()) "
+                      f"PyErr_NoMemory(); return {fail_ret}; }} }}\n")
 
     def _marshal_in_expr(self, typ: TpyType, src: str, depth: int) -> str:
         """A C++ expression converting the borrowed PyObject* `src` into the TPy
@@ -496,8 +542,62 @@ class ExtensionGenerator:
             elem = unwrap_readonly(elem)
         return elem.to_cpp()
 
+    def _inherited_init(self, info: 'RecordInfo'
+                        ) -> 'tuple[list[ParamInfo], str | None]':
+        """The `__init__` ParamInfo list a ctor-inheriting exposed class binds
+        against, plus the name of the class that DECLARED it -- walked up the
+        MRO because the immediate parent may itself have inherited. Falls back
+        to the registration-copied `init_params` (name/type/default only, no
+        keyword-only or positional-only form) if the ancestor's method is not
+        resolvable, which keeps a plain positional signature emitting exactly
+        as before.
+
+        The declaring name is what argument errors report: CPython names an
+        inherited callable by where it is DEFINED (`Derived(1)` raises
+        `Base.__init__() missing ...`), not by the receiver."""
+        reg = self.ctx.analyzer.registry
+        for anc in reg.iter_ancestor_records(info):
+            if "__init__" in anc.methods:
+                return ([p for p in anc.methods["__init__"][0].params
+                         if p.name != "self"], anc.name)
+        return ([ParamInfo(pn, pt, default_expr=dflt)
+                 for pn, pt, dflt in info.init_params], None)
+
+    def _boundary_default_expr(self, typ: TpyType, default_expr: 'TpyExpr',
+                               cpp: str) -> str:
+        """The C++ value an omitted slot binds. Shares `default_to_cpp` with
+        the ordinary parameter-default render (one answer for what a default
+        MEANS), then pins it to the boundary's own storage form: the plain
+        param takes `bytes` as a borrow (`span<const uint8_t>`), while the
+        boundary local owns its copy, so the span literal would not convert.
+        Everything else brace-initializes the boundary type directly, which
+        pins the slot's type independently of what the renderer produced."""
+        inner = _boundary_inner(typ)
+        if isinstance(default_expr, TpyBytesLiteral):
+            return cpp_bytes_literal_owned(default_expr.value)
+        if is_exposed_enum(typ) and isinstance(default_expr, TpyFieldAccess):
+            # Enum-member default. `enum_member_cpp` names the enumerator
+            # relative to the DEFINING module -- bare, since the enum is this
+            # module's -- and the glue TU sits outside that namespace, so
+            # re-spell it through the qualified type the local is declared
+            # with. Going through the shared helper keeps the @native member
+            # rename map applied.
+            member = enum_member_cpp(inner, self.ctx.module_name,
+                                     default_expr.field)
+            return f"{cpp}{{{cpp}::{member.rsplit('::', 1)[-1]}}}"
+        rendered = default_to_cpp(self.ctx, default_expr, inner)
+        if isinstance(default_expr, TpyName) and "::" not in rendered:
+            # A `Final` module constant. default_to_cpp renders a LOCALLY
+            # defined one as a bare name -- right inside the module's own
+            # namespace, but the glue TU sits in an anonymous namespace beside
+            # it, so qualify it the way the constant snapshots do. (An
+            # IMPORTED Final already comes back qualified.)
+            rendered = qualified_cpp_name(self.ctx.module_name, rendered)
+        return f"{cpp}{{{rendered}}}"
+
     def _emit_marshal_in(self, out: TextIO, idx: int, typ: TpyType,
-                         sym: str) -> str:
+                         sym: str,
+                         default_expr: 'TpyExpr | None' = None) -> str:
         """Marshal arg a{idx} into a local; return the token to pass at the
         call. A class param binds a reference to the live embedded payload --
         the borrow that makes mutation through it write through to the same
@@ -505,7 +605,28 @@ class ExtensionGenerator:
         param copies in O(n) via the recursive glue; a Span[T] param copies in
         via the buffer protocol into a vector that implicitly converts to the
         function's span<T>/span<const T> param, the same "owned local outlives
-        the call" trick str/bytes use for string_view/span<const uint8_t>."""
+        the call" trick str/bytes use for string_view/span<const uint8_t>.
+
+        A defaulted param binds from its slot when the caller supplied one and
+        from the rendered default otherwise, so the C++ call always happens at
+        full arity -- Python lets a caller skip an EARLIER defaulted slot while
+        passing a later one by keyword, which dropping trailing arguments could
+        not express. Only the by-value forms reach here with a default at all:
+        a default must be a constant expression, and no constant of class /
+        Span[T] / container type can be spelled -- which is what keeps the
+        reference-binding arms below slot-unconditional.
+        """
+        if default_expr is not None:
+            # One dispatcher for the supplied-argument half (`_marshal_in_expr`
+            # already picks enum / container / scalar), so a defaulted param
+            # marshals through exactly the same converter as an undefaulted one
+            # -- a tuple, for instance, has no `from_py<T>` at all.
+            cpp = (self._enum_cpp_var(typ, sym)[0] if is_exposed_enum(typ)
+                   else boundary_cpp_type(_boundary_inner(typ)))
+            got = self._marshal_in_expr(typ, f"a{idx}", 0)
+            dflt = self._boundary_default_expr(typ, default_expr, cpp)
+            out.write(f"        {cpp} __p{idx} = a{idx} ? {got} : {dflt};\n")
+            return f"__p{idx}"
         if is_exposed_class(typ):
             cpp, tv = self._class_cpp_var(typ, sym)
             out.write(f"        {cpp} &__p{idx} = "
@@ -1392,15 +1513,18 @@ class ExtensionGenerator:
         # the destroy, so a marshalling failure leaves the existing payload
         # intact. `initialized` is cleared across the rebuild so a throwing
         # constructor can't leave tp_dealloc to double-destroy.
+        init_owner = None
         if "__init__" in info.methods:
-            init_params = [(p.name, p.type)
-                           for p in info.methods["__init__"][0].params
+            init_params = [p for p in info.methods["__init__"][0].params
                            if p.name != "self"]
         elif info.inherits_init_from is not None:
             # Ctor inheritance: no own __init__, so the signature comes from
-            # the registration-copied init_params (the C++ record inherits the
-            # ctor via `using Base::Base`, so the placement-new call matches).
-            init_params = [(pn, pt) for pn, pt, _default in info.init_params]
+            # the ancestor that declared it (the C++ record inherits the ctor
+            # via `using Base::Base`, so the placement-new call matches). Read
+            # the ancestor's ParamInfo rather than the registration-copied
+            # `init_params` 3-tuples: those carry the default but not the
+            # keyword-only / positional-only forms the unpack needs.
+            init_params, init_owner = self._inherited_init(info)
         else:
             init_params = []
         n_init = len(init_params)
@@ -1422,8 +1546,12 @@ class ExtensionGenerator:
                       f'\'{cls["py_name"]}\' are not supported");\n')
             out.write("        return -1;\n    }\n")
         if n_init:
-            self._emit_arg_unpack(out, [pn for pn, _t in init_params], "-1",
-                                  cls['simple'])
+            # CPython names a bound callable by its QUALIFIED name in argument
+            # errors (`Pair.__init__() missing ...`), and this label feeds both
+            # the format string's `:name` suffix and require_kwonly's message.
+            self._emit_arg_unpack(
+                out, init_params, "-1",
+                f"{init_owner or cls['simple']}.__init__")
         out.write(f"    auto *__inst = {cppvar};\n")
         # A borrow view's storage belongs to its owner; re-constructing it in
         # place would write into unused view storage (silently wrong), so an
@@ -1433,8 +1561,8 @@ class ExtensionGenerator:
                   'a borrowed field view");\n')
         out.write("        return -1;\n    }\n")
         out.write("    try {\n")
-        argtoks = [self._emit_marshal_in(out, i, t, sym)
-                   for i, (_pn, t) in enumerate(init_params)]
+        argtoks = [self._emit_marshal_in(out, i, p.type, sym, p.default_expr)
+                   for i, p in enumerate(init_params)]
         # Re-init destroys + reconstructs the payload IN PLACE; a live borrow
         # view of one of its fields would silently observe the replacement
         # (CPython's re-__init__ rebinds attributes, leaving old references
@@ -1483,10 +1611,18 @@ class ExtensionGenerator:
             if is_dunder(mname):
                 continue
             m = overloads[0]
-            params = [(p.name, p.type) for p in m.params if p.name != "self"]
+            mparams = [p for p in m.params if p.name != "self"]
+            params = [(p.name, p.type) for p in mparams]
             n = len(params)
             wname = f"{sym}__{escape_cpp_name(cls['simple'])}__" \
                     f"{escape_cpp_name(mname)}_pywrap"
+            # Both the docstring and the argument-error label follow the
+            # DECLARING body: an inherited method emitted on a derived type
+            # documents and names itself the way Python's MRO lookup would
+            # (CPython reports `Base.m()`, not `Derived.m()`), which is what
+            # _ast_method already resolves.
+            ast_m, decl_info = self._ast_method(cls, mname)
+            owner = decl_info.name if decl_info is not None else cls['simple']
             if n == 0:
                 meth_flag, kw = "METH_NOARGS", False
                 out.write(f"PyObject *{wname}(PyObject *self, PyObject *) {{\n")
@@ -1494,18 +1630,15 @@ class ExtensionGenerator:
                 meth_flag, kw = "METH_VARARGS | METH_KEYWORDS", True
                 out.write(f"PyObject *{wname}(PyObject *self, PyObject *args, "
                           f"PyObject *kwargs) {{\n")
-                self._emit_arg_unpack(out, [pn for pn, _t in params], "nullptr",
-                                      mname)
-            # The docstring follows the DECLARING body: an inherited method
-            # emitted on a derived type documents itself the way Python's MRO
-            # lookup would, which is what _ast_method already resolves.
+                self._emit_arg_unpack(out, mparams, "nullptr",
+                                      f"{owner}.{mname}")
             method_entries.append((mname, wname, meth_flag, kw,
-                                   callable_docstring(
-                                       self._ast_method(cls, mname)[0])))
+                                   callable_docstring(ast_m)))
             out.write("    try {\n")
             out.write(f"        auto &__self = *{cppvar}->p;\n")
-            argtoks = [self._emit_marshal_in(out, i, t, sym)
-                       for i, (_pn, t) in enumerate(params)]
+            argtoks = [self._emit_marshal_in(out, i, p.type, sym,
+                                             p.default_expr)
+                       for i, p in enumerate(mparams)]
             call = f"__self.{escape_cpp_name(mname)}({', '.join(argtoks)})"
             self._emit_call_return(
                 out, m.return_type, call, sym,
@@ -1848,6 +1981,9 @@ class ExtensionGenerator:
             for pname, ptype in fn.params:
                 assert_marshal(ptype, f"parameter '{pname}'", fn)
             n = len(fn.params)
+            # The SAME ParamInfo list the validator admitted the arg forms
+            # from, so what it allowed is what the wrapper emits against.
+            fn_params = registered_params(self.ctx.analyzer.registry, fn)
             wname = f"{sym}__{escape_cpp_name(fn.name)}_pywrap"
             call = qualified_cpp_name(call_ns, fn.name)
             if n == 0:
@@ -1857,14 +1993,14 @@ class ExtensionGenerator:
                 meth, kw = "METH_VARARGS | METH_KEYWORDS", True
                 out.write(f"PyObject *{wname}(PyObject *self, PyObject *args, "
                           f"PyObject *kwargs) {{\n")
-                self._emit_arg_unpack(out, [pn for pn, _t in fn.params],
-                                      "nullptr", fn.name)
+                self._emit_arg_unpack(out, fn_params, "nullptr", fn.name)
             wrappers.append((fn.name, wname, meth, kw,
                              callable_docstring(fn)))
             out.write("    try {\n")
             # Marshal each arg into a local before the call so conversion order
             # is left-to-right (C++ argument evaluation order is unspecified).
-            argtoks = [self._emit_marshal_in(out, i, ptype, sym)
+            argtoks = [self._emit_marshal_in(out, i, ptype, sym,
+                                             fn_params[i].default_expr)
                        for i, (_pn, ptype) in enumerate(fn.params)]
             call_expr = f"{call}({', '.join(argtoks)})"
             self._emit_call_return(out, fn.return_type, call_expr, sym,

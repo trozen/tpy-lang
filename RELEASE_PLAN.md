@@ -12,12 +12,7 @@ name -- a list here would only drift from them.
 
 - Interop v1 wrap-up -- usable in real applications (deferred matrix in
   `docs/CPYTHON_INTEROP.md`):
-  - Defaults + keyword-only params at the `@export` boundary (`|`/`$`
-    in `PyArg_ParseTupleAndKeywords`, pass the C++ default when
-    omitted; prerequisite: `_unsupported_param_form` off raw AST attrs
-    onto FunctionInfo/ParamInfo)
-  - Optional/None at the boundary (param + return; pairs with
-    defaults -- do back-to-back)
+  - Optional/None at the boundary (param + return)
   - PEP 517 backend -> abi3 wheel (phase 2.5; the design-heavy one --
     converges with the pyproject v0 track below)
   - `from tpy import __ext_module__`

@@ -16,7 +16,8 @@ from ..typesys import FunctionInfo, RecordInfo, TpyType
 from .export_shape import (
     callable_docstring, export_method_shape_error, exposed_view_field,
     is_dunder, nocopy_borrow_return_error, slot_wired_dunder,
-    uncrossable_docstring_reason, unsupported_boundary_param_form)
+    registered_function, registered_params,
+    uncrossable_docstring_reason, unsupported_wrapper_param_form)
 
 if TYPE_CHECKING:
     from ..compiler import Compiler, CompiledModule
@@ -53,7 +54,8 @@ def validate_ext_module_exports(compiler: 'Compiler') -> None:
             if not func.exposed_to_host:
                 continue
             fline = func.loc.line if func.loc else None
-            form = unsupported_boundary_param_form(func)
+            form = unsupported_wrapper_param_form(
+                registered_params(compiled.analyzer.registry, func))
             if form is not None:
                 raise CompileError(
                     f"@export function '{func.name}': {form}",
@@ -179,10 +181,9 @@ def _warn_export_copy_boundary_mutation(compiled: 'CompiledModule',
     divergence and stays quiet. tuple is a value type (and immutable), so
     it is exempt; Span[readonly[T]] can never appear here (writing through
     it is already a compile error), so only a mutated Span[T] shows up."""
-    fis = compiled.analyzer.registry.functions.get(func.name)
-    if not fis:
+    fi = registered_function(compiled.analyzer.registry, func)
+    if fi is None:
         return
-    fi = next((f for f in fis if len(f.params) == len(func.params)), fis[0])
     _warn_copy_boundary_mutation(
         compiled, f"@export function '{func.name}'", fi,
         list(enumerate(func.params)), func.loc)
@@ -397,12 +398,12 @@ def _validate_exposed_class(compiled: 'CompiledModule',
         check(fld.type, f"field '{fld.name}'", "field", fld.loc,
               field_ctx=(fld, info))
 
-    # AST nodes (not the FunctionInfo overloads) carry the arg-form facts
-    # the keyword-aware unpack can't cross (defaults/*args/**kwargs/posonly/
-    # kwonly) and the method's own source location; map by name so the
-    # per-method loop can read both. First node per name is enough -- the
-    # form facts are signature-level, and an overloaded name is rejected
-    # before its form is inspected.
+    # AST nodes carry the decorator/kind forms the glue can't emit and the
+    # method's own source location; map by name so the per-method loop can
+    # read both. (The ARG-form facts come off ParamInfo instead -- see the
+    # per-overload check below.) First node per name is enough -- these facts
+    # are signature-level, and an overloaded name is rejected before its
+    # shape is inspected.
     ast_by_name: dict = {}
     for rm in record.methods:
         ast_by_name.setdefault(rm.name, rm)
@@ -432,10 +433,11 @@ def _validate_exposed_class(compiled: 'CompiledModule',
             shape = export_method_shape_error(ast_m)
             if shape is not None:
                 reject(shape, m_loc)
-            form = unsupported_boundary_param_form(ast_m)
+        for m in overloads:
+            form = unsupported_wrapper_param_form(
+                [p for p in m.params if p.name != "self"])
             if form is not None:
                 reject(f"method '{mname}': {form}", m_loc)
-        for m in overloads:
             # __init__'s "return" is the constructed instance (no value
             # marshalled out); a plain method marshals its return, with
             # `-> None` handed back as None.
