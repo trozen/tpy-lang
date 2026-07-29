@@ -1,0 +1,5 @@
+store: 14
+observed: 7
+loop: 4 4
+after plain: 15
+comprehension: 3 2

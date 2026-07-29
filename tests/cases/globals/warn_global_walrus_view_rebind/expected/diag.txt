@@ -1,0 +1,2 @@
+main.py:14: warning: Mutation of 'label' while borrowed (reassignment invalidates view 'sv')
+main.py:22: warning: Mutation of 'label' while borrowed (reassignment invalidates view 'sv')

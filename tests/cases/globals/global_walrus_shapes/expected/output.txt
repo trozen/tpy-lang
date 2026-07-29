@@ -1,0 +1,4 @@
+narrow: 4 -1 None
+method: 7 renamed
+bound: 1.5 True
+globals: 1.5 True

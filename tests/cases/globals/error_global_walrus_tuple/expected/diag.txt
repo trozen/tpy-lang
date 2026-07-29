@@ -1,0 +1,1 @@
+main.py:16: error: walrus reassignment of global 'pair' of type 'tuple[Point, Int32]' is not supported yet; use a separate assignment statement

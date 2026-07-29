@@ -2620,6 +2620,13 @@ class ExpressionAnalyzer:
         value_type = self.analyze_expr(expr.value)
         name = expr.target
 
+        # A `global`-declared target writes the MODULE variable, like the plain
+        # assignment path -- the global lives in `global_scope`, which is not in
+        # the function's scope chain, so without this the binding below would
+        # define a function-local shadow and the write would be lost.
+        if name in self.ctx.func.global_declarations:
+            return self._analyze_global_walrus(expr, name, value_type)
+
         # Resolve pending/literal types for the variable binding
         resolved = value_type
         if isinstance(resolved, IntLiteralType):
@@ -2745,6 +2752,53 @@ class ExpressionAnalyzer:
             eph.discard(name)
 
         return result_type
+
+    def _analyze_global_walrus(
+        self, expr: TpyNamedExpr, name: str, value_type: TpyType,
+    ) -> TpyType:
+        """Analyze `(g := v)` where `g` is `global`-declared: a write to the
+        module variable, mirroring the var-decl global arm (coerce to the
+        global's declared type, no local binding). Codegen keys the matching
+        assign-to-global render on `global_declared_vars`."""
+        global_type = self.ctx.global_scope.lookup(name)
+        if global_type is None:
+            raise self.ctx.error(
+                f"name '{name}' is not defined at module level", expr)
+        inner_global = unwrap_readonly(global_type)
+        if not inner_global.is_value_type():
+            raise self.ctx.error(
+                f"Cannot reassign global variable '{name}' of non-value type "
+                f"'{inner_global}'", expr)
+        # Same exclusion the walrus local-reassign arm makes: a borrow-form
+        # tuple needs the var-decl path's storage lift, which the inline
+        # assign has no place to put.
+        if (isinstance(inner_global, TupleType)
+                and inner_global.has_pointer_repr_element()):
+            raise self.ctx.error(
+                f"walrus reassignment of global '{name}' of type "
+                f"'{inner_global}' is not supported yet; use a separate "
+                f"assignment statement", expr)
+        _, expr.value = self.compat.coerce_reassignment(
+            name, global_type, value_type, expr.value, expr)
+        # Mirror the var-decl global arm: the global scope carries the write,
+        # the function scope carries the binding reads and narrowing resolve
+        # against. Codegen still renders the write against the module variable
+        # (it keys on `global_declared_vars`, not on this binding).
+        self.ctx.global_scope.define(name, global_type)
+        self.ctx.func.current_scope.define(name, global_type)
+        self.narrowing.update_after_write(name, global_type, value_type,
+                                          expr.value)
+        # The write invalidates views and borrows of the global's storage the
+        # same way the var-decl path's does -- without this a view pinned to
+        # the old string/span survives the rebind unwarned.
+        # Local import: statements <-> expressions circular dodge.
+        from .statements import _handle_pinned_view_rebind
+        self.ctx.mark_all_view_borrowers_mutated(name)
+        _handle_pinned_view_rebind(self.ctx, name, expr)
+        bt = self.ctx.func.borrow_tracker
+        bt.retarget_storage_borrows(name)
+        bt.remove_borrower(name)
+        return global_type
 
     def _analyze_if_expr(
         self, expr: TpyIfExpr, type_hint: TpyType | None = None,

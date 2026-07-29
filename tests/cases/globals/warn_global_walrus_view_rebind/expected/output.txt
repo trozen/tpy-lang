@@ -1,0 +1,3 @@
+plain: 11
+walrus: 58
+label: another replacement string

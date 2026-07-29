@@ -6636,6 +6636,17 @@ class ExpressionGenerator:
         cpp_name = escape_cpp_name(expr.target)
         value_code = self.gen_expr(expr.value, value_type)
 
+        # A `global`-declared target writes the module variable in place, the
+        # same render the var-decl global arm emits -- declaring a local here
+        # would shadow the global and swallow the write.
+        if expr.target in self.ctx.global_declared_vars:
+            target_name = self.ctx.native_global_names.get(expr.target,
+                                                           expr.target)
+            value_code = self._maybe_unwrap_narrowed_optional(
+                expr.value, value_code, self.ctx.is_indirect_name(expr.value),
+                target_type=unwrap_qualifiers(value_type))
+            return f"({target_name} = {value_code})"
+
         # A pointer-repr tuple is a value type, but its expression rendering
         # is borrow form (std::tuple<..., T*>): declare the walrus local in
         # borrow form and lift storage-form sources element-wise, mirroring
