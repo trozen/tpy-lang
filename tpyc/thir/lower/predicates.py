@@ -4280,6 +4280,25 @@ def _const_borrow_name(name: str, lc) -> bool:
     return (_param_is_deep_const(name, lc.func, lc.analyzer, lc.record_name)
             or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
 
+def _already_pointer_source(expr: TpyExpr, lc) -> bool:
+    """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
+    `T*` with no further lifting, so an `&(...)` lift would produce `T**`.
+
+    Both of codegen's disjuncts. The name half (`lc.pointers`, plus the
+    `self` receiver whose `this` is a prvalue pointer) is what THIR sites
+    historically spelled inline; the `Ptr[T]` half is the one they dropped --
+    a `Ptr[T]` source never enters `lc.pointers` (the `_eligible_ptr_value`
+    family owns it), so a membership test alone answers "not a pointer" for
+    exactly the type that most obviously is one. Takes an EXPRESSION, not a
+    name, so subscript and field sources are covered too."""
+    if isinstance(expr, TpyName):
+        if expr.name in lc.pointers:
+            return True
+        if expr.name == lc.self_receiver and lc.self_is_pointer:
+            return True
+    return isinstance(unwrap_readonly(lc.analyzer.get_expr_type(expr)),
+                      PtrType)
+
 def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     """`_poly_subject_is_const` mirror: whether a polymorphic dispatch
     subject's pointee is const, so the cast targets `const Sub*`. True for

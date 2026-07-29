@@ -289,6 +289,7 @@ from .predicates import (
     _nonvalue_container_ret,
     _narrow_bigint_index,
     _optional_ptr_arg_face,
+    _already_pointer_source,
     _const_borrow_name,
     _poly_isinstance_value_info,
     _poly_subject_decl,
@@ -6641,9 +6642,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         loc=getattr(elem, "loc", None))
                 elif (isinstance(elem, TpyName) and elem.name in declared
                       and elem.name not in lc.narrow.narrowed
-                      and elem.name not in lc.pointers
-                      and not (elem.name == lc.self_receiver
-                               and lc.self_is_pointer)
+                      # This row only knows the addr_of render, so an
+                      # already-pointer source defers rather than lifting.
+                      and not _already_pointer_source(elem, lc)
                       and not isinstance(
                           unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                               declared[elem.name]))), OptionalType)):
@@ -6695,13 +6696,11 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 note_detail("btuple.elem_source")
                 raise ThirUnsupported("expr.tuple_literal")
             # An already-pointer name renders bare into the `T*` slot: an
-            # Optional-ptr param / pointer local, or `self` in a sync method
-            # (`this` is a prvalue pointer -- `&(this)` is ill-formed; a
-            # resumable method's `__self` is a `Record&` field and DOES
-            # lift). A plain lvalue takes `&(...)`.
-            lift = (elem.name not in lc.pointers
-                    and not (elem.name == lc.self_receiver
-                             and lc.self_is_pointer))
+            # Optional-ptr param / pointer local, a `Ptr[T]` source, or
+            # `self` in a sync method (`this` is a prvalue pointer --
+            # `&(this)` is ill-formed; a resumable method's `__self` is a
+            # `Record&` field and DOES lift). A plain lvalue takes `&(...)`.
+            lift = not _already_pointer_source(elem, lc)
         elif isinstance(elem, TpySubscript):
             # A container-element lvalue subscript lifts `&(<row render>)`
             # (`&(::tpy::__getitem__(items, i))`). A subscript whose OBJECT
@@ -6716,7 +6715,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     and obj_bare.has_pointer_repr_element()):
                 note_detail("btuple.elem_source")
                 raise ThirUnsupported("expr.tuple_literal")
-            lift = True
+            lift = not _already_pointer_source(elem, lc)
         else:
             note_detail("btuple.elem_source")
             raise ThirUnsupported("expr.tuple_literal")

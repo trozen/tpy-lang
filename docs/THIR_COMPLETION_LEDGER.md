@@ -3373,7 +3373,17 @@ What the round established instead:
   position has nothing to do with it. Filed in BUGS.md as a LIVE THIR-only
   defect (a `Ptr[T]` name in a borrow-form tuple literal emits `&(p)` ->
   `Node**` into a `Node*` slot), reproducing at the CALL-ARG position on
-  master with no corpus witness.
+  master with no corpus witness. **CLOSED:** fixed by a shared
+  `_already_pointer_source(expr, lc)` (predicates.py) carrying both
+  disjuncts and taking an EXPRESSION, so the subscript row is covered too;
+  four rows route through it, the pointer-repr-Optional row DEFERS rather
+  than lifting. Corpus witness `tests/cases/tuple/borrow_tuple_ptr_element`.
+  The companion entry claiming four FURTHER sites would inherit the lift was
+  withdrawn on probe: three reject before reaching any pointer test, the
+  `with` manager is sema-rejected, and the generic-tuple `TypeParamRef`
+  guard mirrors `is_indirect_name` (which does NOT deref a `Ptr[T]`), where
+  the name-only spelling is correct. That distinction is now the third hard
+  finding in THIR_EMIT_INVENTORY.md.
 * **A seed-only repair is inert and worth landing**: making `lc.pointers`'
   seed + `admission_pointers()` filter faithful to codegen's
   `seed_param_locals` measured 0 unit change and 0 divergence over 152

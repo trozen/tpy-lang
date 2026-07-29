@@ -41,7 +41,7 @@ now known to be a handful of real bodies repeated per case: `sig.receiver_record
 async plumbing ~8k = Waker/None-typed slots. Honest post-fix sig totals:
 `sig.param_type` 20,030 (582 shapes), `sig.return_type` 6,721 (157 shapes).
 
-## Two hard findings up front
+## Three hard findings up front
 
 **1. Under per-body routing, no AST emit function deletes until near-100%.**
 THIR interception is per-BODY (a body routes wholly through THIR or wholly falls
@@ -61,6 +61,37 @@ flat F3+ field form-rungs; the remaining gates are the generics frontier
 (`ctor.non_f1_record` + the `UninitStorage[T]`-family MIL mass inside
 `ctor.mil_field`), async plumbing (`Waker`), AND full body-statement coverage.
 It lands with the rest, not before.
+
+**3. "Already a pointer?" has TWO spellings; picking the wrong one is silent.**
+Codegen asks it two ways and they are not interchangeable. `is_indirect_name`
+covers pointer locals/globals/`self`/imports -- names whose *rendering* is `T*`.
+`is_already_pointer_source` is that OR a `PtrType` sema type. A `Ptr[T]` source
+never enters `lc.pointers` (the `_eligible_ptr_value` family owns it), so a
+lowering arm that spells the question as bare `name in lc.pointers` answers
+"not a pointer" for exactly the type that most obviously is one -- and then
+lifts `&(...)` into a `T*` slot, spelling `T**`.
+
+When porting an arm, check WHICH predicate its AST counterpart calls:
+
+- counterpart calls `is_already_pointer_source` -> use
+  `_already_pointer_source(expr, lc)` (predicates.py). It takes an EXPRESSION,
+  so subscript and field sources are covered, not just names.
+- counterpart calls `is_indirect_name` (e.g. anything reached through
+  `gen_expr_deref`, which does NOT deref a `Ptr[T]`) -> the name-membership
+  spelling is CORRECT; widening it to the `Ptr[T]` disjunct is wrong.
+
+Also check WHERE the test sits, because the cost of getting it wrong differs.
+At a RENDER decision (lift or don't) a wrong answer is a miscompile. At an
+ADMISSION guard -- the `if not (...): raise ThirUnsupported` shape -- the
+predicate can only ever reject more, and a reject is a byte-identical
+fallback, so the cost is lost routing, never correctness. Don't reach for the
+widest predicate at an admission guard just because it reads as more
+thorough.
+
+Both mistakes are invisible to the ratchet (a fallback emits byte-identical
+AST) and invisible to the byte-diff until a corpus case actually routes the
+shape -- which is why the borrow-tuple element ladder carried the `T**` lift
+for as long as it did.
 
 ## The work in four buckets
 
