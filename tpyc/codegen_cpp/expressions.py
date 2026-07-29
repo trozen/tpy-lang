@@ -804,8 +804,31 @@ class ExpressionGenerator:
                 and inner.name in movable_names
                 and id(inner) in self.ctx.analyzer.ctx.all_last_uses)
 
+    def _move_is_inert(self, expr: TpyExpr) -> bool:
+        """True when moving a coercion's result cannot differ from copying it.
+
+        A coercion to a trivially-destructible type owns no heap resource for
+        a move to steal, so the last-use `std::move` over it is pure noise --
+        what a BigInt narrowed into a fixed-int slot produces.
+
+        Keyed on the TYPE, never on the rendered text: the renderer injects
+        `(*x)` for frame-resident and pointer locals and renames forwarded
+        aliases, so a render differing from the bare name says nothing about
+        whether a temporary was materialized. `Own[T]` is unwrapped first --
+        it reports itself value-typed and cheap whatever it wraps, so asking
+        it directly would call `Own[bytes]` trivially destructible.
+        """
+        if not isinstance(expr, TpyCoerce):
+            return False
+        t = unwrap_readonly(unwrap_ref_type(expr.expected_type))
+        while isinstance(t, OwnType):
+            t = t.wrapped
+        return t is not None and t.is_trivially_destructible()
+
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() if expr is a last-use of a movable local."""
+        if self._move_is_inert(expr):
+            return gen_code
         if self._is_last_use_movable(expr):
             return f"std::move({gen_code})"
         return gen_code

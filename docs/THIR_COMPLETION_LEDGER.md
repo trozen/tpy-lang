@@ -3909,19 +3909,48 @@ which a type-param receiver does not have.
 
   **DECISION -- the stdlib oracle, and it gates A5. LANDED 2026-07-28 as
   `--thir-stdlib`, and it found 434 diverging cases on its first run.**
-  Baseline: 436 failed / 9588 passed, across 11 modules, in THREE classes --
-  ~93% is a single `lower_top_level` gap (the `// # tpy: <directive>` source
-  comment), plus a redundant ctor-MIL `std::move` (`datetime`) and a
-  `std::string(...)` wrap at a tuple-literal return slot (`urllib.parse`).
-  Filed in TODO.md. The lesson is the gate's whole argument in one number:
-  **710 stdlib bodies were already routing, and a divergence class that no
-  user case can express had been sitting behind them unseen.**
+  Baseline: 436 failed / 9588 passed, across 12 modules, in THREE classes.
+  The lesson is the gate's whole argument in one number: **710 stdlib bodies
+  were already routing, and a divergence class that no user case can express
+  had been sitting behind them unseen.**
 
-  Confirmed gap: the
-  overlay regenerates only `local_mods` (`conftest.py`:966) and `expected/src/`
-  holds only case-local modules (the single `_bindings` snapshot under
-  `imports/from_pkg_import_submod` is a case-local package, not
-  `lib/tpy/_bindings`). Stdlib emission has no byte-diff oracle anywhere.
+  **GROUND TO ZERO 2026-07-29 (436 -> 0, 10031 passed).** Three commits, two
+  of them not what the baseline entry predicted:
+
+  * **382 of the 436 were a DOCSTRING dropping its leading comment trivia** --
+    not the `lower_top_level` gap the entry named. The AST's `gen_stmt` emits
+    inline comments for every statement BEFORE the None-code suppression, so a
+    `# tpy: <directive>` header preceding a module docstring reaches
+    `__tpy_init`; `_lower_stmt_dispatch` lowered the docstring to a
+    payload-free `THIRNoOpStmt`. **Landed as `39a80d242` from the
+    interop-overlay session -- two instruments built for different gates
+    (the interop overlay and the stdlib oracle) converged on the same
+    one-liner in the same week.** **`_assert_byte_identical` ran with the
+    comment echo OFF, so every THIR unit written to date was structurally
+    blind to this class** -- it now takes a `comments` switch, and the
+    module-init shape is pinned by `TestDocstringTrivia`.
+  * **`datetime` was an AST accident, fixed AST-first** (`d18c69397`, AST-only
+    change-set, user-approved): `_maybe_move` peels `TpyCoerce` to decide
+    movability and then wrapped whatever the sink rendered, so a BigInt
+    narrowed into a fixed-int slot got `std::move` over a scalar prvalue. Zero
+    committed snapshots changed. The Own[T] arg temp already drew that
+    lvalue-vs-rvalue line; `_maybe_move` now does too.
+  * **`urllib.parse` was the ALREADY-FILED pending-view design item** reaching
+    a second sink (`b3d19fa65`), fenced like `call.arg_unpack_pending_view`.
+
+  **Two findings worth carrying past this gate.** (1) The oracle reports only
+  the FIRST diverging module per case, so its per-module counts are LOWER
+  BOUNDS -- datetime read 21 and was 49 once class 1 cleared. Re-measure after
+  every class; never subtract. (2) A regression case for a movability rule
+  must be checked against the PRE-fix compiler: the obvious short `datetime`
+  repro binds `const BigInt&` at its unpack target, is therefore never
+  movable, and passed vacuously.
+
+  The gap this vehicle was built to close (confirmed at the time, closed
+  since): the overlay regenerated only `local_mods` (`conftest.py`:966) and
+  `expected/src/` holds only case-local modules (the single `_bindings`
+  snapshot under `imports/from_pkg_import_submod` is a case-local package, not
+  `lib/tpy/_bindings`). Stdlib emission had no byte-diff oracle anywhere.
   **Vehicle: extend the overlay to NON-LOCAL modules and byte-diff the
   THIR-emitted stdlib `.cpp` against the SAME-RUN AST-emitted `.cpp` already on
   disk** -- both artifacts exist in the case's output dir today, so there is no
@@ -3937,9 +3966,10 @@ which a type-param receiver does not have.
   set comes from the explicit module list, never a walk of the output dir, so
   `_thir_lib/` is never compiled or linked. This is cheaper than round 15's
   pre-run-capture shape and strictly closer to the property being checked
-  (AST-vs-THIR directly, rather than both-vs-snapshot). **It must land before
-  any stdlib routing work** -- 710 stdlib bodies already lower today with
-  nothing checking their output.
+  (AST-vs-THIR directly, rather than both-vs-snapshot). **It had to land before
+  any stdlib routing work** -- 710 stdlib bodies already lowered with nothing
+  checking their output. It landed, and the divergences it found are recorded
+  above.
 
   **DECISION -- the `_witness()` no-rollback fix is now a HARD CUTOVER
   PREREQUISITE -- LANDED 2026-07-28, and it exposed NINE falsely-covered

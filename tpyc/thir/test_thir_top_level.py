@@ -528,6 +528,40 @@ class TestFinalGlobals:
         _assert_byte_identical(self.SRC)
 
 
+class TestDocstringTrivia:
+    """A docstring emits no code and no source comment -- but it still owes its
+    leading `#`-comment trivia, which the AST's gen_stmt emits before the
+    None-code suppression. A module's `# tpy:` directive header is exactly that
+    shape, and no user case in the corpus has one: the whole-corpus byte-diff
+    was green while every stdlib module carrying a directive diverged."""
+
+    SRC = (
+        '# tpy: cpp_namespace("probe::ns")\n'
+        '"""Module docstring."""\n'
+        "from tpy import Int32\n"
+        "n: Int32 = 1\n"
+        "print(n)\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        top, w, fallback = _top_level(self.SRC)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("stmt.trivia", 0) >= 1
+
+    def test_byte_identical_with_comments(self):
+        # Comments OFF cannot see this class at all -- the arm only differs in
+        # trivia, so the pin has to run the corpus's comment setting.
+        hpp_cpp = _assert_byte_identical(self.SRC, comments=True)
+        assert '// # tpy: cpp_namespace("probe::ns")' in "".join(hpp_cpp)
+
+    def test_docstring_keeps_no_source_comment_of_its_own(self):
+        # The boundary: trivia rides through, the docstring's OWN source line
+        # does not (`_gen_simple_stmt` returns None, suppressing it).
+        hpp_cpp = "".join(_assert_byte_identical(self.SRC, comments=True))
+        assert '// """Module docstring."""' not in hpp_cpp
+
+
 class TestPointerSlotGlobalConsumers:
     """A pointer-slot global derefs `(*g)` at value positions -- but every
     consumer that binds the raw `T*` must NOT deref. Each shape here broke

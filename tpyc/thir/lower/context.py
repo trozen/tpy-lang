@@ -646,9 +646,11 @@ class _LowerCtx:
         # Tuple-unpack targets whose element type is a PENDING view (str
         # family): the binding emits as a view, but the AST's
         # _is_str_view_source misses it (unpack targets are absent from its
-        # runtime-view bookkeeping) and takes the owned copy+move cascade
-        # at Own[str] sinks -- an unmirrored render, so those sinks reject
-        # on these names. Function-scoped (Python names outlive the loop).
+        # runtime-view bookkeeping). What the AST does instead differs per
+        # sink -- the owned copy+move cascade at an Own[str] arg, a bare
+        # brace-init at a container-literal element -- so each owned-str sink
+        # rejects on these names separately rather than sharing one rule.
+        # Function-scoped (Python names outlive the loop).
         self.pending_view_unpack_targets: set[str] = set()
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.

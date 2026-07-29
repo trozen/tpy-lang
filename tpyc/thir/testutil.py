@@ -63,19 +63,30 @@ def _fn(thir, name):
 
 
 def _assert_byte_identical(source: str, default_int: str = "Int32",
-                           extra_lib_dirs=None):
+                           extra_lib_dirs=None, comments: bool = True):
     """Compile `source` through both codegen paths and assert the emitted
     (.hpp, .cpp) are byte-identical -- the routing contract for a shape a
-    reject-unit used to gate."""
+    reject-unit used to gate.
+
+    The source-comment echo is ON by default, matching what the corpus runs
+    with: comment TRIVIA divergences are invisible without it, since a
+    statement that emits no code can still owe its leading `#`-comment lines.
+    Pass `comments=False` only for a shape whose comment rendering is itself
+    under test elsewhere."""
     from ..codegen_cpp.context import CodeGenOptions
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
     entry = _entry(modules)
     ast = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=False))
+        entry, options=CodeGenOptions(emit_source_comments=comments,
+                                      comment_line_numbers=False,
+                                      thir_codegen=False))
     thir = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=comments,
+                                      comment_line_numbers=False,
+                                      thir_codegen=True))
     assert thir == ast
+    return thir
 
 
 def _top_level(source: str, default_int: str = "Int32",

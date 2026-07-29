@@ -1527,16 +1527,17 @@ def pytest_report_header(config):
     if DEP_MODES:
         modes = ", ".join(f"{lib}={mode}" for lib, mode in sorted(DEP_MODES.items()))
         dep_mode_lines = [f"{_LOG_PREFIX} dep modes: {modes} (via --dep-mode)"]
-    # --thir-stdlib has NO GREEN STATE yet, so say so where the failures will
-    # be seen. CLAUDE.md documents the baseline, but nobody opens CLAUDE.md at
-    # the moment 436 tests go red.
+    # The oracle is green, so a failure here is a fresh regression -- say that
+    # where the failures are seen rather than in CLAUDE.md, which nobody opens
+    # mid-run. The banner keeps the since-date: it tells a reader mid-run which
+    # baseline they are being measured against.
     stdlib_lines = []
     if THIR_STDLIB:
         stdlib_lines = [
             f"{_LOG_PREFIX} thir stdlib oracle: ON -- lib/tpy + stdlib routed "
             f"through THIR and diffed vs this run's AST output",
-            f"{_LOG_PREFIX}   KNOWN BASELINE: ~436 divergences over 11 modules "
-            f"(3 classes, see TODO.md). There is no green state yet.",
+            f"{_LOG_PREFIX}   EXPECTED GREEN since 2026-07-29. A failure here "
+            f"is a new divergence, not the old backlog.",
         ]
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
@@ -1551,6 +1552,7 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
         f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
         f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
+        f"{_LOG_PREFIX}   --thir-stdlib      also route lib/tpy + stdlib, diff vs AST",
         *stdlib_lines,
     ]
 

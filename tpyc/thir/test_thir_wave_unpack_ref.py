@@ -2,9 +2,10 @@
 heads): a reference-family CONTAINER element in a for-head unpack aliases
 via the type-agnostic `auto&& = unwrap_ref(tuple_elem_ref(...))` bind,
 like the F1-record ref targets. Boundary: a PENDING-str unpack target at
-an Own[str] sink rejects -- the AST's _is_str_view_source misses the view
-binding there and takes the owned copy+move temp cascade (a pre-existing
-latent divergence this reject fences until the AST side is reconciled)."""
+an owned-str sink rejects -- the AST's _is_str_view_source misses the view
+binding there, taking the owned copy+move temp cascade at an Own[str] arg
+and a bare brace-init at a container-literal element (a pre-existing latent
+divergence these rejects fence until the AST side is reconciled)."""
 
 from __future__ import annotations
 
@@ -79,4 +80,40 @@ class TestUnpackRefContainers:
         )
         out, faces, fallback = _gen_thir(src)
         assert not fallback
+        _assert_byte_identical(src)
+
+    def test_pending_str_target_tuple_literal_elem_rejects(self):
+        # The container-literal sibling of the Own[str] sink: an unpack target
+        # as a tuple-literal element at an owned-str slot. The AST brace-inits
+        # the view BARE (same missed view binding) while the S1 element convert
+        # would spell `std::string(x)`.
+        src = (
+            "def take(t: tuple[str, str]) -> int:\n"
+            "    return len(t[0]) + len(t[1])\n"
+            "def main() -> None:\n"
+            "    src: tuple[str, str] = (\"ab\", \"c\")\n"
+            "    x, y = src\n"
+            "    print(take((x, y)))\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert any("elem_unpack_pending_view" in r for r in fallback)
+        # The fallback body keeps the AST's bare brace-init.
+        assert "std::string(x)" not in out
+        _assert_byte_identical(src)
+
+    def test_view_param_tuple_literal_elem_still_converts(self):
+        # The boundary: a str PARAM at the same element sink is in the AST's
+        # view bookkeeping, so both paths spell the owned copy and the element
+        # convert must keep firing.
+        src = (
+            "def take(t: tuple[str, str]) -> int:\n"
+            "    return len(t[0]) + len(t[1])\n"
+            "def main(a: str, b: str) -> None:\n"
+            "    print(take((a, b)))\n"
+            "main(\"ab\", \"c\")\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert not any("elem_unpack_pending_view" in r for r in fallback)
+        assert "std::string(a)" in out
         _assert_byte_identical(src)
