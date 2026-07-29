@@ -462,6 +462,7 @@ from .checks import (
     _marker_call_supported,
     _marker_reject,
     _module_qual_ctor_shape,
+    _gen_recv_ctor_temp,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _method_recv_family,
@@ -492,6 +493,7 @@ from .checks import (
     _native_record_recv,
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
+    _ptr_native_member_core,
     _ptr_template_method_supported,
     _record_rvalue_call_shape,
     _native_record_rvalue_call_shape,
@@ -499,6 +501,7 @@ from .checks import (
     _typed_dict_ctor_call,
     _native_ctx_manager_ok,
     _shared_pass_through_arg,
+    _str_owned_slot_arg,
     _str_pass_through_arg,
     _strlit_method_pin_arg,
     _strlit_overload_pin_arg,
@@ -2461,6 +2464,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 allow_union_divergent: bool = False,
                 field_prechecked: bool = False,
                 field_owned_str_ok: bool = False,
+                own_slot_coerce: bool = False,
                 subscript_prechecked: bool = False,
                 container_threaded: bool = True,
                 array_retype: bool = True,
@@ -3143,6 +3147,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # Set by the read gate below for an Own[container] receiver; the
         # prechecked paths skip the gate and never need the pinned name.
         own_recv = False
+        record_slice_tpl = None
         if e.slice_function_info is not None:
             if not subscript_prechecked:
                 fi = e.slice_function_info
@@ -3167,8 +3172,39 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     and _slice_bound_supported(e.index.upper, analyzer)
                     and (e.index.step is None
                          or _slice_bound_supported(e.index.step, analyzer)))
-                if container_slice:
-                    _witness("subscript.container_slice")
+                # A user record's own slice `__getitem__` overload (ArrayList
+                # `a[1:4]` -> `a.__getitem__(::tpy::BasicSlice{1, 4})`):
+                # gen_call_from_fi's plain-method tail over the same
+                # BasicSlice initializer, mirrored by synthesizing the member
+                # call as the node's template. Witnessed for a NAME receiver
+                # of an F1 record with a Span result, non-stepped bounds.
+                if (not container_slice
+                        and fi.cpp_template is None
+                        and not fi.native_function
+                        and fi.is_method
+                        and isinstance(e.index, TpySlice)
+                        and not e.is_stepped_slice
+                        and is_span(rbare)
+                        and isinstance(e.obj, TpyName)
+                        # `self` renders `this` -- the bare `{self}.` member
+                        # template would spell `.` on a pointer (the AST
+                        # pre-derefs `(*this)`); unwitnessed, stays AST.
+                        and e.obj.name != lc.self_receiver
+                        and _f1_record(declared.get(e.obj.name),
+                                       analyzer)
+                        and not _ptr_read_derefs(e.obj.name, lc)
+                        and e.obj.name not in lc.frame_slots
+                        and _slice_bound_supported(e.index.lower, analyzer)
+                        and _slice_bound_supported(e.index.upper, analyzer)
+                        and e.index.step is None):
+                    record_slice_tpl = ("{self}."
+                                        + (fi.native_name or fi.name)
+                                        + "({0})")
+                if container_slice or record_slice_tpl is not None:
+                    if record_slice_tpl is not None:
+                        _witness("subscript.record_slice_method")
+                    else:
+                        _witness("subscript.container_slice")
                     slice_ok = True
                     fi = None  # skip the str-slice viewfam gate below
                 else:
@@ -3217,7 +3253,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             recv = _lower_expr(
                 e.obj, lc, declared,
                 field_prechecked=isinstance(e.obj, TpyFieldAccess))
-            tpl = e.slice_function_info.cpp_template
+            tpl = record_slice_tpl or e.slice_function_info.cpp_template
             if not isinstance(e.index, TpySlice):
                 return THIRStrSlice(
                     result_type=rtype, receiver=recv, cpp_template=tpl,
@@ -5554,7 +5590,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     record_ret_ok=result_use in (_ExprResultUse.BORROW_BIND,
                                                   _ExprResultUse.RECEIVER))
                 if shape_ok:
-                    _witness("method.ptr_template")
+                    _witness("method.ptr_template" if fi.cpp_template
+                             else "method.ptr_native_member")
             else:
                 shape_ok = _record_method_call_supported(
                     e, fi, declared, analyzer,
@@ -5705,13 +5742,23 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # receiver admits no Own slots). A blanket temp_args would
             # re-shape the record-rvalue / union temp rows, whose method
             # renders are BARE on the AST path.
-            own_flush = (temp_args and not stub_recv and not proto_recv
-                         and (_own_lvalue_temp_slot(a, ptype, lc.analyzer)
-                              is not None
+            own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
+            own_flush = (temp_args and not proto_recv
+                         and ((own_slot_w is not None
+                               # A cpp_template stub binds lvalues natively
+                               # (no temp, the bare pass-through renders) --
+                               # EXCEPT an `Own[str]` slot, whose copy is the
+                               # view->owned CONVERSION (gen_call_arg's
+                               # is_any_str_type carve-out), so its temp
+                               # hoists on stub receivers too.
+                               and (not stub_recv
+                                    or is_str_type(own_slot_w)))
                               # The member-ctor-rvalue union lift hoists its
                               # own `__tmp_N` before the `pv{&__tmp_N}` wrap,
                               # exactly like the ctor loop's flush_slot.
-                              or _union_ctor_temp_arg(a, ptype, lc.analyzer)))
+                              or (not stub_recv
+                                  and _union_ctor_temp_arg(a, ptype,
+                                                           lc.analyzer))))
             # The deep-const verdict rides into the union const-wrap arm
             # (`z.names(other)` -> `ptr_variant_to_const<...>(other)`), like
             # the free-call loop. Read it off the RAW method fi: the
@@ -5739,6 +5786,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # local admission permits it only on such a receiver. Mutually exclusive
         # with the indirect (`->`) arm -- the checked deref yields a reference.
         deref_check = e.needs_optional_runtime_check
+        if not deref_check and isinstance(e.obj, TpyName):
+            # The unproven raw-`Ptr[T]` NAME receiver of a plain @native
+            # member takes the same checked spelling
+            # (`::tpy::deref_check(s).outer()` -- _gen_method_call's
+            # is_pointer arm; the ptr-arm gate admitted exactly this face).
+            _rb = declared.get(e.obj.name)
+            recv_ptr = (_rb is not None and unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(_rb))).is_pointer())
+            if _ptr_native_member_core(e, fi, recv_ptr):
+                deref_check = True
         # A generic method's explicit template args (`b.transform<T>(42)`):
         # the AST's method_targs suffix, spelled type_to_cpp over each
         # inferred arg. The static/module marker faces spell their own.
@@ -5752,14 +5809,30 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             method_targs = tuple(
                 lc.render_type(unwrap_ref_type(t))
                 for t in e.inferred_type_args)
-        recv_lowered = _lower_expr(
-            e.obj, lc, declared,
-            # A call-shaped receiver's own arg temps flush at the enclosing
-            # statement like any nested arg's, so allow_temps rides through.
-            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                         allow_temps=temp_args),
-            field_prechecked=isinstance(e.obj, TpyFieldAccess),
-            subscript_prechecked=isinstance(e.obj, TpySubscript))
+        if (fi is not None and fi.is_generator
+                and _gen_recv_ctor_temp(e.obj, lc.analyzer)):
+            # The generator-factory receiver lift: the frame/peephole
+            # captures the receiver by reference, so the ctor rvalue hoists
+            # into a named local (`Counter __tmp_N = Counter(..);`) flushed
+            # at the consuming position (the for-head brace scope / the
+            # iterator-object decl) -- _gen_method_call's is_temporary lift.
+            recv_t = lc.analyzer.get_expr_type(e.obj)
+            _witness("method.gen_recv_temp")
+            recv_lowered = THIRArgTemp(
+                result_type=recv_t, cpp_type=lc.render_type(recv_t),
+                init=_lower_expr(e.obj, lc, declared,
+                                 use=_RECORD_TEMP_FLUSH_USE),
+                form=Form.BORROW, loc=getattr(e.obj, "loc", None))
+        else:
+            recv_lowered = _lower_expr(
+                e.obj, lc, declared,
+                # A call-shaped receiver's own arg temps flush at the
+                # enclosing statement like any nested arg's, so allow_temps
+                # rides through.
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                             allow_temps=temp_args),
+                field_prechecked=isinstance(e.obj, TpyFieldAccess),
+                subscript_prechecked=isinstance(e.obj, TpySubscript))
         if (isinstance(e.obj, TpyName) and isinstance(recv_lowered, THIRName)
                 and not recv_lowered.deref
                 and (fi.cpp_template is not None
@@ -5818,7 +5891,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             return _lower_into_any(e, lc, declared, rtype, loc)
         if e.coercion.name == "from_any":
             return _lower_from_any(e, lc, declared, rtype, loc)
-        disp = _coerce_disposition(e)
+        # `own_slot_coerce` is threaded only by the Own-slot copy row, whose
+        # temp init consumes the coerce whole -- there the `Own[str]` ARG
+        # face materializes (see _coerce_disposition's own_slot_arg).
+        disp = _coerce_disposition(e, own_slot_arg=own_slot_coerce)
         if disp is None:
             raise ThirUnsupported("expr.coerce")
         if (e.coercion.name in _SPAN_METHOD_COERCIONS
@@ -8210,7 +8286,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # (`_str_owned_slot_arg`) admits only these two -- an owned STORAGE source
     # takes gen_call_arg's copy+move temp cascade, left on the AST path.
     ow_str = _plain_own_slot(ptype)
-    if ow_str is not None and is_str_type(ow_str):
+    if (ow_str is not None and is_str_type(ow_str)
+            and _str_owned_slot_arg(a, ptype, declared,
+                                    lc.prescan.param_names, lc.analyzer)):
+        # Re-checked here (not gate-trusted): the Own[str] copy+move temp row
+        # below shares the slot, so this bare/convert render must fire only
+        # for its own literal/view/element/rvalue faces.
         lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
         if lowered.form is Form.BORROW:
             return THIRFormConvert(result_type=ow_str, value=lowered,
@@ -8238,9 +8319,20 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # so it runs outside `temp_args` too -- the `heap_take(value)` ctor-MIL
     # shape; the copy half still needs the flush (gate-enforced).
     ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
-    if ow is not None and not (isinstance(a, TpyName)
-                               and (a.name in lc.narrow.narrowed
-                                    or a.name in lc.inline_narrowed)):
+    ow_bare = _peel_coerce(a)
+    if (ow is not None and isinstance(a, TpyCoerce)
+            and isinstance(ow_bare, TpyName)
+            and (ow_bare.name in lc.pointers
+                 or ow_bare.name in lc.frame_slots)):
+        # The coerce face's needs_copy verdict assumed the name renders
+        # plain; a pointer-local / frame-slot inner renders `(*name)`, where
+        # the AST's rendered-string test flips to needs_copy=False (bare, no
+        # temp) -- unwitnessed, keep it on the AST path.
+        note_detail("call.own_coerce_nonplain_name")
+        raise ThirUnsupported("expr.call")
+    if ow is not None and not (isinstance(ow_bare, TpyName)
+                               and (ow_bare.name in lc.narrow.narrowed
+                                    or ow_bare.name in lc.inline_narrowed)):
         own_form = Form.VALUE if _eligible_scalar(ow) else Form.STORAGE
         # VALUE payloads never move: lc.movable_locals is the RAW sema set
         # (the _LowerCtx caveat), while codegen registers movables only at
@@ -8267,14 +8359,34 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRMove(result_type=ow, value=lowered, form=own_form,
                             loc=getattr(a, "loc", None))
         if temp_args:
+            own_str = is_str_type(ow)
             lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
-                                  allow_unrouted_name=True)
+                                  allow_unrouted_name=True,
+                                  own_slot_coerce=isinstance(a, TpyCoerce),
+                                  field_owned_str_ok=own_str)
             if isinstance(a, TpyName) and _ptr_read_derefs(a.name, lc):
                 assert isinstance(lowered, THIRName)
                 lowered = replace(lowered, deref=True)
+            if own_str:
+                # The str payload declares the owned type with brace init
+                # (`std::string __tmp_N{this->label};` -- the view->owned
+                # conversion), unlike the `auto` copy of the other payloads.
+                _witness("argtemp.own_str")
+                return THIRArgTemp(result_type=ow,
+                                   cpp_type=lc.render_type(ow),
+                                   brace_init=True, init=lowered, move=True,
+                                   form=own_form, loc=getattr(a, "loc", None))
             _witness("argtemp.own_copy")
             return THIRArgTemp(result_type=ow, init=lowered, move=True,
                                form=own_form, loc=getattr(a, "loc", None))
+        if is_str_type(ow):
+            # The str copy temp is a needed CONVERSION in every position
+            # (never elided for a cpp_template callee either); without a
+            # flushing statement THIR cannot hoist it, and falling through
+            # would let a pass-through arm render the bare (un-copied) read
+            # -- reject honestly instead.
+            note_detail("call.own_str_no_flush")
+            raise ThirUnsupported("expr.call")
     ro_cont = _readonly_container_rvalue_arg(a, ptype, lc.analyzer)
     if ro_cont is not None:
         # An empty container rvalue at a readonly slot binds INLINE: the

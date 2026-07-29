@@ -4381,8 +4381,10 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
     condition stays AST -- deferred)."""
     if _own_lvalue_temp_slot(a, ptype, analyzer) is None:
         return False
-    if isinstance(a, TpyName):
-        if a.name == "self" or a.name in narrowed or a.name not in locals_:
+    bare = _peel_coerce(a)
+    if isinstance(bare, TpyName):
+        if (bare.name == "self" or bare.name in narrowed
+                or bare.name not in locals_):
             return False
     return True
 
@@ -6199,6 +6201,19 @@ def _native_record_recv(t: 'TpyType | None', analyzer) -> bool:
     return ri is not None and ri.is_native
 
 
+def _ptr_native_member_core(e: TpyMethodCall, fi, recv_ptr: bool) -> bool:
+    """The shared discriminator of the unproven `Ptr[record]` @native-member
+    face -- a cpp_template-less native-renamed member (method / property
+    getter) on a NAME receiver of pointer binding, not proven non-null
+    (sema's `ptr_non_null`, the test _gen_method_call's is_pointer arm
+    reads). Consumed by the admission gate below (which adds its own
+    type_params / args rejects) and by the method tail's deref_check render
+    flag, so the two sides cannot drift on the core."""
+    return (recv_ptr and fi is not None and fi.cpp_template is None
+            and bool(fi.native_name) and not fi.native_function
+            and isinstance(e.obj, TpyName) and not e.ptr_non_null)
+
+
 def _ptr_template_method_supported(
         e: TpyMethodCall, fi, recv_type: 'TpyType | None', analyzer, *,
         stmt_position: bool, record_ret_ok: bool) -> bool:
@@ -6214,10 +6229,22 @@ def _ptr_template_method_supported(
     if recv_type is None or not (recv_type.is_pointer()
                                  or _native_record_recv(recv_type, analyzer)):
         return False
-    if fi.cpp_template is None or "{cpp}" in fi.cpp_template or fi.type_params:
-        return False
-    if fi.native_function or fi.native_name or e.inferred_type_args:
-        return False
+    if fi.cpp_template is not None:
+        if "{cpp}" in fi.cpp_template or fi.type_params:
+            return False
+        if fi.native_function or fi.native_name or e.inferred_type_args:
+            return False
+    else:
+        # A plain @native MEMBER on a `Ptr[record]` NAME receiver -- the
+        # deref-check face only (`::tpy::deref_check(s).outer()`,
+        # `s.outer.inner.flag`'s first hop); the proven `s->outer()`
+        # spelling is unwitnessed and stays AST. The shared core lives in
+        # `_ptr_native_member_core`; the generic/args rejects are this
+        # gate's own.
+        if not (_ptr_native_member_core(e, fi, recv_type.is_pointer())
+                and not fi.type_params
+                and not e.args and not e.inferred_type_args):
+            return False
     # Scalar args expand bare into the template's positional slots
     # (`p.span(3)` -> `std::span(p, static_cast<size_t>(3))` -- the cast
     # lives in the template itself); non-scalar args stay AST.
@@ -7403,6 +7430,27 @@ def _iter_proto_call_ret(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
     return _user_iterator_iterable(u, analyzer)
 
 
+def _gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
+    """A generator-method receiver the AST lifts into a named local
+    (`for v in Counter(3).each():` -> `Counter __tmp_N = Counter(..);` +
+    `__tmp_N.each()`): the resumable frame / peephole captures the receiver
+    by reference, so a temporary would dangle (_gen_method_call's
+    is_temporary lift). Mirrored for the witnessed slice: a same-nominal
+    ctor RVALUE whose expansion the ctor rows already render."""
+    if not isinstance(obj, TpyCall):
+        return False
+    fi = obj.resolved_function_info
+    if fi is None or not fi.is_constructor:
+        return False
+    if not is_rvalue_source(analyzer, obj):
+        return False
+    t = analyzer.get_expr_type(obj)
+    if not isinstance(t, NominalType):
+        return False
+    return _ctor_shape_ok(obj, analyzer) or _ctor_instantiation_ok(
+        obj, analyzer)
+
+
 def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                                  analyzer) -> bool:
     """A member GENERATOR (or iterator-factory) call as a for-each iterable
@@ -7411,10 +7459,18 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     lands in a value slot -- it feeds the route's `auto __src_N` capture),
     so only the fi generator-kind reject and the per-receiver result-family
     gates are bypassed (via `iterable_override`); the receiver and args
-    still lower through the standard member tail. Bare in-scope name
-    receivers only (`self` included); generic / native / template callees
-    and marker-bearing calls stay rejected."""
-    if not _plain_member_call_markers_ok(e) or e.needs_optional_runtime_check:
+    still lower through the standard member tail. Receivers: a bare
+    in-scope name (`self` included) or the ctor-rvalue lift slice
+    (`_gen_recv_ctor_temp`). A generic method routes when its inferred
+    targs spell through the member tail's method_targs suffix
+    (`f.items<int32_t>(42)`); omitted trailing defaults ride the emitted
+    C++ signature (`_call_arity_ok`). Native / template callees and
+    marker-bearing calls stay rejected."""
+    # targs_ok: the member tail threads method_targs_cpp, and the
+    # fi.type_params condition below requires the INFERRED args that
+    # suffix spells -- an explicit-targs-only generic call still rejects.
+    if (not _plain_member_call_markers_ok(e, targs_ok=True)
+            or e.needs_optional_runtime_check):
         return False
     fi = e.resolved_function_info
     if fi is None:
@@ -7423,12 +7479,17 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
         return False
     if not _plain_method_fi_ok(fi, generator_ok=True):
         return False
-    if (fi.type_params or fi.cpp_template is not None or fi.native_function
+    if (fi.cpp_template is not None or fi.native_function
             or fi.native_name or fi.linkage != FunctionLinkage.DEFAULT):
         return False
-    if not (isinstance(e.obj, TpyName) and e.obj.name in locals_):
+    if fi.type_params and not (e.inferred_type_args
+                               and not e.user_module_call
+                               and not e.is_static_call):
         return False
-    return len(e.args) == len(fi.params)
+    if not (isinstance(e.obj, TpyName) and e.obj.name in locals_):
+        if not _gen_recv_ctor_temp(e.obj, analyzer):
+            return False
+    return _call_arity_ok(e, fi)
 
 
 def _str_list_method_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],

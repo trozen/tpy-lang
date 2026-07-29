@@ -71,6 +71,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp
+    "argtemp.own_str",              # Own[str]-slot copy temp: the owned type
+                                    # declared with brace init (`std::string
+                                    # __tmp_N{<arg>};` -- the view->owned
+                                    # conversion), field / coerced-field args
     "argtemp.container_literal",    # list literal into a free-call container
                                     # ref slot -> hoisted `__tmp_N` temp
     "argtemp.generic_container_literal",  # the same hoist at a GENERIC
@@ -507,6 +511,20 @@ THIR_FACES: frozenset[str] = frozenset({
     # A list/Array/Span slice read (`items[a:b:c]`) -> owned list via the
     # `list_slice`/`list_stepped_slice` @cpp_template (STORAGE result).
     "subscript.container_slice",
+    # A user record's own slice `__getitem__` overload rendered as the plain
+    # member call over the BasicSlice initializer
+    # (`a.__getitem__(::tpy::BasicSlice{1, 4})` -- gen_call_from_fi's tail).
+    "subscript.record_slice_method",
+    # A generator-method ctor-rvalue receiver lifted into a named local
+    # (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`) -- the frame
+    # captures the receiver by reference, so the temporary must outlive the
+    # call (_gen_method_call's is_temporary lift).
+    "method.gen_recv_temp",
+    # A plain @native member (renamed method / property getter) on a
+    # Ptr[record] receiver, deref-check face only
+    # (`::tpy::deref_check(s).outer()` -- the first hop of a native field
+    # chain).
+    "method.ptr_native_member",
     # `Color[name]` enum name lookup -> `::tpy::EnumUtil<E>::from_name(name)`
     # (lowering; a static lookup panicking KeyError on miss).
     "subscript.enum_from_name",

@@ -221,8 +221,20 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # rvalue (the ctor_mutated arm); const-slot rvalues inline temp-free.
         if isinstance(node, THIRMethodCall):
             # A call-shaped receiver's arg temps flush at the same statement
-            # (allow_temps rides into receivers at lowering).
-            _walk(owner, node.receiver, return_type, argtemp_ok=argtemp_ok)
+            # (allow_temps rides into receivers at lowering). The receiver
+            # itself may BE a temp: the generator-factory ctor-rvalue lift
+            # (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`), flushed
+            # at the consuming for-head / iterator-object decl.
+            if isinstance(node.receiver, THIRArgTemp):
+                if not argtemp_ok:
+                    _fail(owner, node.receiver,
+                          "receiver THIRArgTemp under a non-flushable "
+                          "statement position")
+                _walk(owner, node.receiver.init, return_type,
+                      argtemp_ok=argtemp_ok)
+            else:
+                _walk(owner, node.receiver, return_type,
+                      argtemp_ok=argtemp_ok)
         for a in node.args:
             if isinstance(a, THIRArgTemp):
                 if not argtemp_ok:

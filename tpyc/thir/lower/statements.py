@@ -6972,12 +6972,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("narrow.aug_value")
             right_cast = ("({0}).to_fixed_check<"
                           f"{cast_t.to_cpp()}>()")
+        # The subscript-write route flushes arg temps before its single
+        # setitem line (the AST's pre-statement flush point), so the value
+        # position admits the temp rows there -- `d[i] += k.take(b)` hoists
+        # the Own-slot copy `auto __tmp_N = b;` ahead of the full expression.
+        # The THIRAssign tail keeps the default (no temp witness).
+        aug_value_use = (_ExprUse(allow_temps=True)
+                         if isinstance(stmt.target, TpySubscript)
+                         and stmt.target.typed_dict_field is None
+                         else _ExprUse())
         binop = THIRBinOp(
             result_type=tgt_type,
             left=left,
             op=stmt.op,
             right=_slot_literal_retype(
-                _lower_expr(stmt.value, lc, declared), aug_rslot, lc),
+                _lower_expr(stmt.value, lc, declared, use=aug_value_use),
+                aug_rslot, lc),
             right_cast=right_cast,
             resolved=stmt.resolved_binop,
             paren_wrap=False,

@@ -339,7 +339,8 @@ def _coerce_wrap(e: TpyCoerce) -> 'str | None':
         return "{0}.__span__()"
     return None
 
-def _coerce_disposition(e: TpyCoerce) -> 'str | None':
+def _coerce_disposition(e: TpyCoerce, *,
+                        own_slot_arg: bool = False) -> 'str | None':
     """'identity' (emit passthrough), 'materialize' (`std::string(x)`, lowered
     to the S1 view->owned THIRFormConvert), 'template' (a scalar cast rendered
     through `_coerce_wrap`'s `{0}` template), or None (outside the slice).
@@ -347,15 +348,18 @@ def _coerce_disposition(e: TpyCoerce) -> 'str | None':
     Mirrors the tpyc/coercions.py codegen lambdas exactly, reading the same
     facts off the node: `strview_to_str` is identity at a plain ARG slot (a
     `str` param spells std::string_view) and materializes at INIT/ASSIGN/
-    RETURN; an `Own[...]` ARG slot is rejected -- the surrounding gen_call_arg
-    auto-move cascade is its own deferred frontier. `str_to_string`
-    materializes only at ARG for a non-literal source; a NUL-free literal is
-    const char[N], binding const std::string& directly (the lambda's
-    startswith('"') token check made structural: cpp_string_literal_expr emits
-    the bare-quote form exactly when the value is NUL-free).
-    `strview_to_string` (const std::string& slot / owned String target)
-    materializes in every position. The Optional and Char arms have their own
-    renders -> AST path."""
+    RETURN and at an `Own[str]` ARG slot (the lambda's `isinstance(b,
+    OwnType)` branch) -- but the Own face is served only under
+    `own_slot_arg`, the flag the Own-slot copy row threads; every other
+    consumer keeps the blanket `Own[...]` reject, because there the
+    surrounding gen_call_arg auto-move cascade owns the render decision.
+    `str_to_string` materializes only at ARG for a non-literal source; a
+    NUL-free literal is const char[N], binding const std::string& directly
+    (the lambda's startswith('"') token check made structural:
+    cpp_string_literal_expr emits the bare-quote form exactly when the value
+    is NUL-free). `strview_to_string` (const std::string& slot / owned
+    String target) materializes in every position. The Optional and Char
+    arms have their own renders -> AST path."""
     name = e.coercion.name
     if name in (_INT_LIT_COERCION, _FLOAT_LIT_COERCION,
                 _FLOAT32_LIT_COERCION, _BIGINT_LIT_COERCION):
@@ -363,6 +367,8 @@ def _coerce_disposition(e: TpyCoerce) -> 'str | None':
     if name in _IDENTITY_STR_COERCIONS:
         return "identity"
     if isinstance(e.expected_type, OwnType):
+        if own_slot_arg and name == "strview_to_str":
+            return "materialize"
         return None
     if name in _PTR_IDENTITY_COERCIONS:
         return "identity"
@@ -5237,19 +5243,61 @@ def _plain_own_slot(ptype: TpyType | None) -> TpyType | None:
 
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer) -> TpyType | None:
-    """Slot/shape verdict for the Own-slot copy+move row -- a bare (un-coerced)
-    NAME / eligible field read into a plain `Own[T]` slot of eligible-scalar
-    or same-nominal F1-record payload. Renders `auto __tmp_N = <arg>;` +
-    `f(std::move(__tmp_N))` -- or the temp-free `f(std::move(name))` when the
-    name is movable at its last use (gen_call_arg's `_maybe_move` arm, decided
-    at lowering from the same `movable_locals` + last-use facts; a scalar is
-    never movable, a pointer-local is a non-owning borrow -- both always
-    copy). Shared by the gate (`_own_lvalue_arg`, which adds the locals_/
-    narrowing rejects) and `_lower_call_arg` (which adds the lc-side
-    narrowing reject and picks `THIRMove` vs `THIRArgTemp`)."""
+    """Slot/shape verdict for the Own-slot copy+move row -- a NAME / eligible
+    field read (possibly coerce-wrapped, see below) into a plain `Own[T]`
+    slot of eligible-scalar, str, or same-nominal F1-record payload. Renders
+    `auto __tmp_N = <arg>;` + `f(std::move(__tmp_N))` (a str payload declares
+    the owned type instead: `std::string __tmp_N{<arg>};` -- the copy is the
+    view->owned CONVERSION, gen_call_arg's `is_any_str_type` branch) -- or
+    the temp-free `f(std::move(name))` when the name is movable at its last
+    use (gen_call_arg's `_maybe_move` arm, decided at lowering from the same
+    `movable_locals` + last-use facts; a scalar is never movable, a
+    pointer-local is a non-owning borrow -- both always copy). Shared by the
+    gate (`_own_lvalue_arg`, which adds the locals_/narrowing rejects) and
+    `_lower_call_arg` (which adds the lc-side narrowing reject and picks
+    `THIRMove` vs `THIRArgTemp`).
+
+    A COERCE-WRAPPED lvalue splits on the AST's `needs_copy` rendered-string
+    identity test, mirrored here by coercion KIND via `_coerce_disposition`
+    (a KIND's render either always equals its inner or always wraps it, so
+    the two tests agree wherever the name itself renders plain): an
+    all-identity chain renders as the bare
+    lvalue, so the copy temp still applies (`a.append(v)` under an
+    int-literal coerce); a wrapping link over a NAME produces an rvalue that
+    binds the slot bare (needs_copy=False) -- not this row, unwitnessed ->
+    AST; over a FIELD the AST test never runs (needs_copy stays True), so
+    the temp hoists with the wrapped render as its init
+    (`std::string __tmp_N{std::string(<enum-name render>)};`). The wrapped
+    faces are payload-sliced to the witnessed scalar/str rows; the name-
+    renders-plain factor the string test folds in (frame-slot `(*name)` /
+    pointer-local derefs) is re-checked at lowering, which rejects those
+    inners honestly."""
     w = _plain_own_slot(ptype)
     if w is None:
         return None
+    if isinstance(a, TpyCoerce):
+        bare = _peel_coerce(a)
+        if not isinstance(bare, (TpyName, TpyFieldAccess)):
+            return None
+        disps = []
+        c = a
+        while isinstance(c, TpyCoerce):
+            disps.append(_coerce_disposition(c, own_slot_arg=True))
+            c = c.expr
+        if any(d is None for d in disps):
+            return None
+        if isinstance(bare, TpyName):
+            if any(d != "identity" for d in disps):
+                # needs_copy=False: the wrapped rvalue binds the slot bare.
+                return None
+            # An identity chain means source and slot payload share one C++
+            # type (what the AST's render==name test certifies), so the
+            # peeled name stands in for the at-check below.
+            return w if _eligible_scalar(w) else None
+        # FIELD inner: the AST test never runs, the copy temp is
+        # unconditional and its init carries the (possibly wrapping) chain
+        # render; str is the witnessed payload.
+        return w if is_str_type(w) else None
     # A TERNARY is admitted for the COPY half only: it binds as an lvalue
     # reference the `T&&` slot cannot take, so `_maybe_move` never fires and
     # the cascade always hoists `auto __tmp_N = ((c) ? (a) : (b));` + the
@@ -5265,6 +5313,18 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         at = unwrap_readonly(at.wrapped)
     if _eligible_scalar(w):
         return w if _eligible_scalar(at) else None
+    if is_str_type(w):
+        # An owned-str slot fed by a str-family FIELD read
+        # (`dropped.append(self.label)`): the copy temp declares the owned
+        # type (`std::string __tmp_N{this->label};`) -- the view->owned
+        # conversion the AST's `is_any_str_type` branch spells. A str NAME
+        # stays out: no witness, and its local view/owned form split is a
+        # separate render axis.
+        if not isinstance(a, TpyFieldAccess):
+            return None
+        return w if (isinstance(at, NominalType)
+                     and (is_str_type(at) or is_str_view_type(at)
+                          or is_string_type(at))) else None
     if _f1_record(w, analyzer):
         # Same-nominal is a slice guard: sema rejects an upcast into an Own
         # slot outright, so no other pairing reaches codegen.

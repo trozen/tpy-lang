@@ -4237,3 +4237,108 @@ boundary pins for the non-scalar template arg and the substituted-T
 super arg (the latter as an adjacent-shape routing pin -- see the sema
 note above), the bytes-split unit byte-identity, the module-var
 docstring consumer list, and two comment-hygiene fixes.
+
+### needs_copy fork resolution (2026-07-29): the coercion-KIND mirror + the four arg-gate cases
+
+The DEAD-END design fork at the Own-slot arg gate is RESOLVED by
+measurement, and its four cases flipped (`enum/enum_name_owned_sinks`,
+`async/future_drop_on_cancel`, `auto_move/same_stmt_aug_target_consume`,
+`list/tplib_array_list_slice`). Dial 2701 -> 2705/3626, markers 921.
+Full exec suite green (10156 passed, every case built+run).
+
+**The probe.** `_gen_own_arg`'s `needs_copy` compares the RENDERED
+coerce-wrapped arg against the bare escaped name -- render-string
+identity, with no gate-time equivalent. A full-corpus probe (hooked
+`gen_expr`, every TpyCoerce whose peeled inner is a simple TpyName --
+598 renders across 3626 compiling cases) shows a pure coercion-KIND
+classifier agrees with the string test on EVERY instance: 0
+disagreements, 0 unknown kinds. The one nuance is the name-render
+factor: 3 instances (two generator frame-slot `(*buf)` derefs, one
+qualified module global) render non-plain, flipping the string test to
+needs_copy=False on an identity-KIND chain -- so the mirror must also
+require the name to render plain, a fact THIR owns natively
+(`lc.pointers` / `lc.frame_slots` / narrowing / locals_). Verdict: the
+KIND mirror is sound; the rendered-string variant was never needed.
+
+**The mirror.** `_coerce_disposition` IS the KIND classifier (it already
+mirrored the coercions.py lambdas); the change lifts its blanket
+`Own[...]` reject for exactly one face behind an explicit `own_slot_arg`
+knob (`strview_to_str` at an `Own` ARG slot -> materialize, the lambda's
+`isinstance(b, OwnType)` branch). `_own_lvalue_temp_slot` peels a coerce
+chain: all-identity over a NAME keeps the copy temp (scalar payloads;
+the identity verdict certifies source/slot share one C++ type); any
+wrapping link over a NAME is the needs_copy=False bare-rvalue face --
+unwitnessed, still AST (boundary-pinned on `bigint_to_fixed_int`); over
+a FIELD the AST test never runs, so the temp hoists with the wrapped
+render as its init. New `Own[str]` payload row: the typed brace-init
+temp (`std::string __tmp_N{...};` -- the view->owned CONVERSION), FIELD
+sources only; `own_flush`'s stub-receiver exclusion gets the
+`is_any_str_type` carve-out (a cpp_template callee binds lvalues
+natively EXCEPT at str slots); the shape-blind `Own[str]` bare/convert
+lowering arm now re-checks its own gate (`_str_owned_slot_arg`) instead
+of trusting the widened gate -- without that it swallowed the field face
+bare (caught by byte-diff, the exact latent-hole class the arm's comment
+warned about).
+
+**Companion rows** (each its own blocker in the four cases): the
+subscript-aug-assign statement threads `allow_temps` into its value
+(`d[len(b.items)] += k.take(b)` hoists `auto __tmp_N = b;` ahead of the
+one setitem line; THIRSetItem already flushed); a user record's own
+slice `__getitem__` overload renders the plain member call over the
+BasicSlice initializer (`a.__getitem__(::tpy::BasicSlice{1, 4})` --
+gen_call_from_fi's tail synthesized as the THIRStrSlice template;
+NAME receiver, F1 record, Span result, non-stepped only -- the stepped
+form boundary-pinned).
+
+**Pins:** `test_thir_wave_needs_copy.py` -- identity-chain copy
+(routing + face), wrap-chain-over-name fallback (boundary), str-field
+temp, coerced-enum-name temp with the wrapped init, the while-condition
+loop-head hoist (the restructured head is a flush position too),
+aug-setitem flush with the same-statement-conflict copy, the record
+slice member call (+ negative-bound render), stepped-slice fallback.
+Faces: `argtemp.own_str`, `subscript.record_slice_method`.
+
+### Generator-method family + Ptr native member (2026-07-29): the last method_call grindables
+
+The two remainders the floor measurement left grindable, both landed:
+7 flips (`iterators/gen_method_temp_receiver{,_simple,_union}`,
+`iterators/gen_default_args`, `iterators/gen_method_typeparam`,
+`native/native_include_propagation_transitive`, plus the
+`native/native_property_via_ptr` cascade). Dial 2705 -> 2712/3626,
+markers 914. Full exec suite green (10163 passed, every case built+run).
+
+**The member-gen iterable row** (`_member_gen_call_iterable_ok`) was the
+sole gate for all five iterator cases (`iterable_override` bypasses the
+whole plain-method gate block), and its three restrictions were the three
+blockers: (1) the bare-name receiver check -- widened to the ctor-rvalue
+lift slice (`_gen_recv_ctor_temp`); the lowering renders the receiver as
+a THIRArgTemp (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`,
+mirroring `_gen_method_call`'s `is_temporary` lift -- the frame/peephole
+captures the receiver by reference), flushed at the for-head brace scope
+or the iterator-object decl, with nested ctor-arg temps (the union case's
+`Dog __tmp_1`) riding `_RECORD_TEMP_FLUSH_USE` innermost-first; the
+validator learned the receiver-position ArgTemp under flushable
+positions. (2) exact arity -- replaced with the shared `_call_arity_ok`
+(omitted trailing defaults ride the emitted C++ signature). (3) the
+`fi.type_params` blanket -- relaxed to inferred-targ calls, whose
+spelling the member tail's `method_targs` suffix already composed
+(`f.items<int32_t>(42)`); the markers predicate takes `targs_ok=True`
+per its own documented contract.
+
+**The Ptr native member** (`native/native_include_propagation_transitive`,
+`s.outer.inner.flag` off `s: Ptr[S]`): `_ptr_template_method_supported`
+gained the cpp_template-less branch -- a plain @native MEMBER (renamed
+method / property getter) on a `Ptr[record]` NAME receiver, deref-check
+face only (`::tpy::deref_check(s).outer()`). The discriminator is sema's
+`ptr_non_null` node fact, the exact test `_gen_method_call`'s is_pointer
+arm reads -- NOT `needs_optional_runtime_check` (the Optional marker,
+which a first probe wrongly assumed; the raw-Ptr deref-check spelling has
+its own channel). The proven `s->outer()` face is unwitnessed and
+rejects; notably the AST's post-access narrowing does not fire for the
+@native property chain (a repeat access stays checked on both paths --
+byte-pinned so an AST-side change surfaces loudly).
+
+**Pins:** `test_thir_wave_gen_method.py` -- for-head + decl receiver
+lifts (routing + `method.gen_recv_temp`), non-generator temp receiver
+boundary, omitted-default + inferred-targ renders, the checked Ptr member
+(routing + `method.ptr_native_member`) and the repeat-access byte pin.
