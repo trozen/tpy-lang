@@ -658,6 +658,18 @@ def discover_runtime_cpp_sources(runtime_cpp_dir: Path) -> list[Path]:
                   if not p.stem.endswith("_shim"))
 
 
+def pch_is_path_sensitive(config: CppCompilerConfig) -> bool:
+    """True when a .gch is only valid for the -I root it was built against.
+
+    Clang tracks `#pragma once` by file identity, so headers reached through a
+    second checkout's -I are re-parsed and redefine everything the .gch already
+    holds; GCC's libcpp compares contents instead. Unrecognized families are
+    treated as sensitive. Callers sharing a .gch across checkouts must fold the
+    include root into their cache key when this is True.
+    """
+    return _detect_compiler_family(tuple(config.compiler)) != "gcc"
+
+
 def get_or_build_pch(
     config: CppCompilerConfig,
     runtime_include_dir: Path,

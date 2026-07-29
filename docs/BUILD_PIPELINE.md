@@ -47,6 +47,12 @@ g++ -std=c++23 -g -O0 -I ... -c module.cpp
 - Only one PCH per translation unit.
 - Compiler-version-specific (not portable across g++ versions).
 - Separate PCH needed for debug vs release builds.
+- Clang tracks `#pragma once` by file identity, so a `.gch` is only reusable
+  from the include root it was built against: reaching the same headers
+  through a second checkout's `-I` re-parses them and redefines everything.
+  GCC compares contents instead, so its `.gch` travels between checkouts.
+  Any cache that shares a `.gch` machine-wide must key on the include root
+  (`toolchain.pch_is_path_sensitive`).
 
 ### 2. Parallel Compilation
 

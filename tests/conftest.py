@@ -49,7 +49,9 @@ from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
-from tpyc.toolchain import compiler_target_os, host_os, shared_cache_root
+from tpyc.toolchain import (
+    compiler_target_os, host_os, pch_is_path_sensitive, shared_cache_root,
+)
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
@@ -563,6 +565,13 @@ def _pch_cache_key() -> str:
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,
     )).encode())
+    # This cache root is machine-wide, so byte-identical runtime headers in two
+    # checkouts hash the same -- but on clang the .gch is only usable from the
+    # -I root it was built against (see pch_is_path_sensitive). Give each
+    # checkout its own key there; on GCC the .gch stays shared across worktrees.
+    if pch_is_path_sensitive(CPP_CONFIG):
+        h.update(b"\0runtime-root:")
+        h.update(str(RUNTIME_DIR.resolve()).encode())
     return h.hexdigest()
 
 
