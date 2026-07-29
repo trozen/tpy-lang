@@ -96,6 +96,55 @@ def slot_wired_dunder(name: str) -> bool:
     return name == "__init__" or name in EXPORT_CLASS_SUPPORTED_DUNDERS
 
 
+_DOC_TAB_SIZE = 8
+
+
+def _doc_leading_ws(line: str) -> 'tuple[int, int]':
+    """Column width of the line's leading space/tab run, and the index just
+    past it. Only ' ' and '\\t' count -- a leading '\\f' or '\\v' reads as
+    content to CPython's dedent, so it pins the common indent at zero."""
+    col = 0
+    i = 0
+    for ch in line:
+        if ch == " ":
+            col += 1
+        elif ch == "\t":
+            col = (col // _DOC_TAB_SIZE + 1) * _DOC_TAB_SIZE
+        else:
+            break
+        i += 1
+    return col, i
+
+
+def cpython_clean_doc(text: str) -> str:
+    """The text CPython's compiler puts in `__doc__` for this literal.
+
+    Since 3.13 `__doc__` is NOT the source literal: the compiler strips the
+    first line's leading whitespace and the common indent of the remaining
+    lines (`_PyCompile_CleanDoc`). The glue crosses the cleaned text so an
+    exposed docstring reads the same as it would from the equivalent Python
+    source. Reimplemented rather than delegated to the host interpreter,
+    which would make the emitted TU depend on whether tpyc ran under 3.12
+    or 3.13+; the behavior below is pinned against 3.13+ in test_doc_clean.
+    """
+    lines = text.split("\n")
+    indent: int | None = None
+    for line in lines[1:]:
+        col, i = _doc_leading_ws(line)
+        if i < len(line):  # whitespace-only lines don't set the indent
+            indent = col if indent is None else min(indent, col)
+    first = lines[0].lstrip(" \t")
+    if not indent:
+        return "\n".join([first] + lines[1:])
+    out = [first]
+    for line in lines[1:]:
+        col, i = _doc_leading_ws(line)
+        # Re-rendered as spaces, so a dedented tab-indented line keeps its
+        # relative depth without depending on the reader's tab stops.
+        out.append(" " * max(0, col - indent) + line[i:])
+    return "\n".join(out)
+
+
 def uncrossable_docstring_reason(text: 'str | None') -> 'str | None':
     """Why this docstring cannot cross to the host, or None when it can.
 

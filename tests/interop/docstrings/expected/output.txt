@@ -3,7 +3,6 @@
 None
 'Non-ASCII: naïve résumé, 10°, 中文.'
 'A counter with a documented surface.'
-"Add `by` to the counter.\n\n        The second line survives too -- __doc__ is the raw literal, so\n        indentation is preserved (dedenting is inspect.getdoc's job).\n        "
 None
 'Twice the current value.'
 'Raised when the value is rejected.'
@@ -13,5 +12,5 @@ None
 'A documented base class.'
 'A documented subclass.'
 'Documented on the base, reached through the subclass.'
-"Add `by` to the counter.\n\nThe second line survives too -- __doc__ is the raw literal, so\nindentation is preserved (dedenting is inspect.getdoc's job)."
+"Add `by` to the counter.\n\nThe second line survives too, minus the block's common indent --\n__doc__ is what the compiler makes of the literal, not the literal."
 True

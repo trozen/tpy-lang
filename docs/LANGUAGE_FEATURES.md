@@ -6350,9 +6350,15 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   (`ml_doc`), the class itself (`Py_tp_doc`), a `@property` (the getter's
   docstring, via `PyGetSetDef.doc`), an `@export` enum (set on the type after
   the stdlib functional API builds it, since that API takes no doc) and a user
-  exception type (`PyErr_NewExceptionWithDoc`). The text is the RAW literal, exactly as
-  CPython stores it (dedenting is `inspect.getdoc`'s job on both sides), and
-  an undocumented callable keeps `__doc__` None. A plain annotated field has
+  exception type (`PyErr_NewExceptionWithDoc`). The crossing text is DEDENTED
+  the way CPython's compiler dedents it since 3.13 -- the first line's leading
+  whitespace and the common indent of the remaining lines come off, so
+  `__doc__` is what the equivalent Python source would report under a modern
+  interpreter rather than the raw literal. (Under a 3.12 *host* that makes the
+  exposed `__doc__` differ from what the interpreter reports for the same
+  source: the emitted TU must not depend on which interpreter compiled it, and
+  3.13+ is the behavior worth matching.) An undocumented callable keeps
+  `__doc__` None. A plain annotated field has
   no docstring in Python either, so its getset carries none. **Excluded:**
   - A **DUNDER's** docstring (`__init__`, `__repr__`, `__eq__`, the operators,
     the container protocol). A dunder reaches CPython as a *type slot* -- a

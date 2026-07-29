@@ -10,7 +10,6 @@ print(repr(m.undocumented.__doc__))
 # UTF-8 survives the per-byte C++ escaping.
 print(repr(m.unicode_doc.__doc__))
 print(repr(m.Counter.__doc__))
-print(repr(m.Counter.incr.__doc__))
 print(repr(m.Counter.undocumented_method.__doc__))
 print(repr(m.Counter.doubled.__doc__))
 print(repr(m.Rejected.__doc__))
@@ -25,7 +24,10 @@ print(repr(m.Derived.__doc__))
 # so the subclass reports the base's text on both sides.
 print(repr(m.Derived.described.__doc__))
 
-# The raw literal crosses -- indentation intact, dedenting left to inspect.
+# An indented docstring's raw __doc__ is pinned in ext_checks.py, not here:
+# CPython dedents it at compile time since 3.13, so the source side's answer
+# depends on the host interpreter. getdoc() is the version-stable view -- it
+# dedents whatever it is given, so both sides agree on every interpreter.
 import inspect
 print(repr(inspect.getdoc(m.Counter.incr)))
 

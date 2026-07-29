@@ -6,6 +6,9 @@
 # the exception: it reaches CPython as a type slot, which has no doc field, so
 # the text is dropped (with a warning) and CPython substitutes its own -- see
 # ext_checks.py, which pins that ext-only because it diverges from the source.
+# The crossing text is DEDENTED like CPython 3.13+ does at compile time, so an
+# indented docstring's __doc__ is pinned ext-only too: the parity run's answer
+# depends on the host interpreter's version, the compiled module's does not.
 """Documented extension module.
 
 Multi-line, with the closing quotes at column 0 -- so the text ends with a
@@ -49,8 +52,8 @@ class Counter:
     def incr(self, by: Int64) -> None:
         """Add `by` to the counter.
 
-        The second line survives too -- __doc__ is the raw literal, so
-        indentation is preserved (dedenting is inspect.getdoc's job).
+        The second line survives too, minus the block's common indent --
+        __doc__ is what the compiler makes of the literal, not the literal.
         """
         self.value += by
 
@@ -97,6 +100,16 @@ def unicode_doc(x: Int64) -> Int64:
 @export
 def empty_doc(x: Int64) -> Int64:
     """"""
+    return x
+
+
+@export
+def indented_doc(x: Int64) -> Int64:
+    """   Leading whitespace on the first line always goes.
+
+        Relative depth between the remaining lines survives:
+          this one stays two columns deeper.
+    """
     return x
 
 

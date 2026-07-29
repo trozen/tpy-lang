@@ -68,6 +68,23 @@ PyObject *docstrings__empty_doc_pywrap(PyObject *self, PyObject *args, PyObject 
     }
 }
 
+PyObject *docstrings__indented_doc_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:indented_doc", __kwlist, &a0)) return nullptr;
+    try {
+        int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
+        return ::tpy::interop::to_py(::tpyapp::docstrings::indented_doc(__p0));
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, docstrings__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
 PyObject *docstrings__undocumented_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
@@ -207,9 +224,8 @@ PyObject *docstrings__Counter__doubled_get(PyObject *self, void *) {
 const char docstrings__Counter__incr_pywrap__doc[] =
     "Add `by` to the counter.\n"
     "\n"
-    "        The second line survives too -- __doc__ is the raw literal, so\n"
-    "        indentation is preserved (dedenting is inspect.getdoc's job).\n"
-    "        ";
+    "The second line survives too, minus the block's common indent --\n"
+    "__doc__ is what the compiler makes of the literal, not the literal.\n";
 const char docstrings__Counter__doubled_get__doc[] = "Twice the current value.";
 PyMethodDef docstrings__Counter__methods[] = {
     {"incr", as_pycfunction(docstrings__Counter__incr_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__Counter__incr_pywrap__doc},
@@ -394,6 +410,11 @@ PyType_Spec docstrings__Derived__spec = {
 const char docstrings__documented_pywrap__doc[] = "Return `x` unchanged.";
 const char docstrings__unicode_doc_pywrap__doc[] = "Non-ASCII: na\xc3\xafve r\xc3\xa9sum\xc3\xa9, 10\xc2\xb0, \xe4\xb8\xad\xe6\x96\x87.";
 const char docstrings__empty_doc_pywrap__doc[] = "";
+const char docstrings__indented_doc_pywrap__doc[] =
+    "Leading whitespace on the first line always goes.\n"
+    "\n"
+    "Relative depth between the remaining lines survives:\n"
+    "  this one stays two columns deeper.\n";
 const char docstrings__reject_pywrap__doc[] = "Always raise.";
 const char docstrings__module__doc[] =
     "Documented extension module.\n"
@@ -406,6 +427,7 @@ PyMethodDef docstrings__methods[] = {
     {"documented", as_pycfunction(docstrings__documented_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__documented_pywrap__doc},
     {"unicode_doc", as_pycfunction(docstrings__unicode_doc_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__unicode_doc_pywrap__doc},
     {"empty_doc", as_pycfunction(docstrings__empty_doc_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__empty_doc_pywrap__doc},
+    {"indented_doc", as_pycfunction(docstrings__indented_doc_pywrap), METH_VARARGS | METH_KEYWORDS, docstrings__indented_doc_pywrap__doc},
     {"undocumented", as_pycfunction(docstrings__undocumented_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"reject", docstrings__reject_pywrap, METH_NOARGS, docstrings__reject_pywrap__doc},
     {nullptr, nullptr, 0, nullptr},

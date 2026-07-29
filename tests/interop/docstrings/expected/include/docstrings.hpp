@@ -58,6 +58,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int64_t documented(int64_t x);
 int64_t unicode_doc(int64_t x);
 int64_t empty_doc(int64_t x);
+int64_t indented_doc(int64_t x);
 int64_t undocumented(int64_t x);
 void reject();
 

@@ -84,6 +84,10 @@ int64_t empty_doc(int64_t x) {
     return x;
 }
 
+int64_t indented_doc(int64_t x) {
+    return x;
+}
+
 int64_t undocumented(int64_t x) {
     return x;
 }

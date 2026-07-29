@@ -33,7 +33,8 @@ from ..modules import BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARY
 # exposed_view_field).
 from .export_shape import (
     boundary_alias_records, exposed_view_field, view_safe_borrow_returns,
-    callable_docstring, is_dunder, uncrossable_docstring_reason)
+    callable_docstring, cpython_clean_doc, is_dunder,
+    uncrossable_docstring_reason)
 from ..codegen_cpp.context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError,
     escape_cpp_string)
@@ -612,7 +613,7 @@ class ExtensionGenerator:
         dangle for the module's lifetime."""
         if text is None or uncrossable_docstring_reason(text) is not None:
             return "nullptr"
-        lit = doc_literal(text)
+        lit = doc_literal(cpython_clean_doc(text))
         sep = "\n    " if "\n" in lit else " "
         out.write(f"const char {name}[] ={sep}{lit};\n")
         return name

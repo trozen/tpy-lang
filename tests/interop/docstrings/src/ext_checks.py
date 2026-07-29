@@ -14,6 +14,30 @@ assert init_doc != "Start at `value`.", (
 # The class docstring is the crossing place for that text, and it does cross.
 assert docstrings.Counter.__doc__ == "A counter with a documented surface."
 
+# Ext-only for a different reason: an indented docstring's __doc__ is version-
+# dependent under CPython (3.13+ dedents at compile time, 3.12 does not), so
+# the parity driver cannot compare it. The compiled module always crosses the
+# dedented text -- the common indent of the lines after the first comes off,
+# closing-quote line included, and relative depth between them survives.
+assert docstrings.Counter.incr.__doc__ == (
+    "Add `by` to the counter.\n"
+    "\n"
+    "The second line survives too, minus the block's common indent --\n"
+    "__doc__ is what the compiler makes of the literal, not the literal.\n"
+), repr(docstrings.Counter.incr.__doc__)
+
+assert docstrings.indented_doc.__doc__ == (
+    "Leading whitespace on the first line always goes.\n"
+    "\n"
+    "Relative depth between the remaining lines survives:\n"
+    "  this one stays two columns deeper.\n"
+), repr(docstrings.indented_doc.__doc__)
+
+# The inverse: a docstring whose continuation lines already sit at column 0
+# pins the common indent there, so nothing moves. The module docstring is that
+# shape and its text is compared on both sides in driver.py.
+assert docstrings.__doc__.startswith("Documented extension module.\n\nMulti-line")
+
 # A plain annotated field carries no docstring in Python either, so its getset
 # must carry none. Pinned because the byte-diff cannot catch a wrong doc here
 # (the snapshot is regenerated from whatever is emitted) and the parity driver
