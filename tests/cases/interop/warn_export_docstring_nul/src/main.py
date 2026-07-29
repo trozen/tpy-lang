@@ -2,9 +2,9 @@
 # A docstring carrying an embedded NUL cannot cross: every CPython doc slot is
 # a NUL-terminated C string, so the glue drops it (__doc__ stays None) rather
 # than hand the host a silently truncated text. The drop always warns -- at
-# every site that carries one: function, class, method, property, enum and
-# exception class. (A NUL module docstring is left out: it exposes an
-# unrelated AST/THIR comment-emission divergence -- see BUGS.md.)
+# every site that carries one: module, function, class, method, property, enum
+# and exception class.
+"main\0doc"
 from enum import IntEnum
 
 from tpy import Int64

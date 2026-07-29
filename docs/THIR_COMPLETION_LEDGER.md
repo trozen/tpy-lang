@@ -3998,3 +3998,31 @@ which a type-param receiver does not have.
   internal net: `faces.py` (1462), `validate.py` (386), `dump.py` (786),
   adversarial `dualgen.py`. Note the workflow loss to plan for: `--no-thir`
   pure-AST mode disappears with the path it selects.
+
+- **Landed: docstring leading-comment trivia** (`stmt.trivia`): a docstring
+  statement now lowers as `THIRNoOpStmt(trivia_loc=loc)` instead of a bare
+  no-op. The AST's `gen_stmt` flushes a statement's leading `#` comments BEFORE
+  dispatch and only then lets the `None` simple-stmt code suppress the
+  statement's own source line; the docstring arm modelled just the suppression,
+  so the preceding comment block vanished on the THIR path at four sites
+  (module top level, function body, constructor body, method body). Four
+  sibling skip arms already set `trivia_loc` -- this one was the odd one out,
+  and its comment (plus `THIRNoOpStmt`'s docstring) asserted the false premise
+  that the AST emits no comment at all for a docstring. A class-body docstring
+  is unaffected: the AST filters it before `gen_stmt`, so neither path emits
+  its trivia. The corpus never caught this because no case had the shape;
+  `tests/cases/records/docstring_leading_comments` now pins all four plus both
+  boundaries.
+
+- **Landed: interop ext-exec THIR overlay** (`tests/test_interop_exec.py`):
+  the `tests/interop` corpus now runs the byte-diff and the `no_thir.txt`
+  ratchet, closing a harness-shaped blind spot -- an AST/THIR divergence in an
+  extension module was previously invisible. It emits BOTH sides itself rather
+  than diffing THIR against `expected/`, because those snapshots come from the
+  real `tpyc` CLI at the default `emit_source_comments=False`: a
+  THIR-vs-snapshot diff cannot see a source-comment divergence at all, which is
+  exactly the class the docstring-trivia fix above belongs to. Interop cases
+  are tallied on their own summary line and kept out of the migration dial, the
+  fallback histogram, and the face-witness union -- all three are keyed to
+  `tests/cases`, and the face exclusion errs toward a false zero-witness
+  (wasted work, never a missed divergence).

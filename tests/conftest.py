@@ -2191,6 +2191,132 @@ def _apply_no_thir_marker(case_dir: Path, dirty: bool) -> None:
         marker.unlink()
 
 
+# tests/interop ext-exec cases: their own THIR dial, deliberately NOT folded
+# into _thir_cases. The migration's steering number and the wave tooling's
+# fallback histogram are both keyed to the tests/cases corpus; mixing a second
+# corpus into either would move the denominator and make every recorded wave
+# measurement non-comparable.
+#
+# The per-FACE witness tally is excluded on the same grounds, and the exclusion
+# is knowing rather than incidental: a face only an interop case reaches then
+# reads as zero-witness. That errs toward building a witness that already
+# exists -- wasted work, never a missed divergence -- which is the direction to
+# err in for a metric whose job is to name shapes nothing exercises.
+_interop_thir: dict[str, int] = {"clean": 0, "total": 0, "routed": 0}
+_interop_thir_agg: dict[str, int] = {"clean": 0, "total": 0, "routed": 0}
+
+
+@dataclasses.dataclass
+class InteropThirResult:
+    """One interop case's overlay outcome: byte-diff reports (empty when the
+    two paths agree) and the user-body fallback count.
+
+    `ratchet_fell` is None when the ratchet does not govern this case (marked,
+    or a marker-writing flag run) -- distinct from 0, which is a governed case
+    that routed everything. Collapsing the two would make a marked-case test
+    unable to tell marker gating from an empty count.
+    """
+    divergences: list[str]
+    ratchet_fell: 'int | None'
+
+
+def run_interop_thir_overlay(mod_py: Path, case_dir: Path,
+                             out_dir: Path) -> 'InteropThirResult | None':
+    """Emit an interop case's user modules twice -- AST oracle and THIR -- and
+    diff the pair. None when THIR is off for this run (--no-thir / updating).
+
+    Unlike the tests/cases overlay this compares the two emissions to EACH
+    OTHER rather than to expected/: the ext-exec harness drives the real tpyc
+    CLI, which emits at the default emit_source_comments=False, so its
+    snapshots carry no source comments and a THIR-vs-snapshot diff would be
+    blind to the whole comment-trivia class. Emitting both sides here with
+    comments on (the tests/cases setting) restores that sensitivity; the
+    snapshot check itself stays with the CLI emit, which is unaffected.
+    """
+    if not TEST_CODEGEN_OPTIONS.thir_codegen:
+        return None
+    no_thir = (case_dir / "no_thir.txt").exists()
+    overlay, ratchet = _thir_case_mode(
+        thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
+        ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
+        check_flip=THIR_CHECK_FLIP)
+    if not overlay:
+        return None
+
+    compiler = Compiler(mod_py, lib_dirs=DEFAULT_LIB_DIRS)
+    compiled_modules = compiler.compile()
+    entry_module = next(m for m in compiled_modules if m.is_entry_point)
+    src_dir = mod_py.parent.resolve()
+    local_mods = []
+    for mod in compiled_modules:
+        try:
+            mod.path.resolve().relative_to(src_dir)
+        except ValueError:
+            continue
+        local_mods.append(mod)
+
+    # no_main mirrors what the CLI does for an `# tpy: ext_module` (a .so has
+    # no main()); both sides share it, so it cannot itself cause a diff.
+    base = dataclasses.replace(TEST_CODEGEN_OPTIONS,
+                               no_main=compiler.is_ext_module_build())
+    emitted: dict[str, dict[str, Path | None]] = {}
+    for label, thir in (("ast", False), ("thir", True)):
+        opts = dataclasses.replace(base, thir_codegen=thir)
+        for mod in local_mods:
+            hpp_path, cpp_path = compiler.generate_code(
+                mod, out_dir / label, entry_module_name=entry_module.name,
+                options=opts)
+            files = emitted.setdefault(mod.name, {})
+            files[f"{label}.hpp"] = hpp_path
+            files[f"{label}.cpp"] = cpp_path
+            # The CPython glue TU rides alongside the module .cpp. It has no
+            # THIR path today, so diffing it pins that it stays insensitive.
+            if cpp_path is not None:
+                glue = Path(cpp_path).with_name(f"{Path(cpp_path).stem}_ext.cpp")
+                files[f"{label}.ext"] = glue if glue.exists() else None
+
+    fell = sum(compiler._thir_fallback.values())
+    routed_names = dict(compiler._thir_routed_names)
+    divergences: list[str] = []
+    for mod_name, files in sorted(emitted.items()):
+        names = routed_names.get(mod_name, frozenset())
+        for kind in ("hpp", "cpp", "ext"):
+            ast_path = files.get(f"ast.{kind}")
+            thir_path = files.get(f"thir.{kind}")
+            if ast_path is None and thir_path is None:
+                continue  # neither path emits this file (no glue, no .cpp)
+            if ast_path is None or thir_path is None:
+                # Emitted on one path only -- itself a divergence, and one a
+                # text compare can never reach.
+                emitted_on = "THIR" if ast_path is None else "the AST oracle"
+                divergences.append(
+                    f"{mod_name}.{kind}: emitted by {emitted_on} only")
+                continue
+            oracle = Path(ast_path).read_text()
+            actual = Path(thir_path).read_text()
+            if oracle == actual:
+                continue
+            label = _thir_divergence_label(oracle, actual, names)
+            divergences.append(
+                f"{mod_name}.{kind}: THIR diverges from the AST oracle "
+                f"{label}\n"
+                + _format_unified_diff(oracle, actual, "ast", "thir"))
+
+    _interop_thir["routed"] += compiler._thir_routed_bodies
+    if THIR_CLASSIFY_WRITE:
+        _apply_no_thir_marker(case_dir, dirty=(fell > 0))
+    elif THIR_CHECK_FLIP:
+        if no_thir and fell == 0:
+            record_thir_flip_candidate(str(case_dir))
+    else:
+        _interop_thir["total"] += 1
+        # Marked cases count not-clean from the MARKER, as in the main dial.
+        if ratchet and fell == 0:
+            _interop_thir["clean"] += 1
+    return InteropThirResult(divergences=divergences,
+                             ratchet_fell=fell if ratchet else None)
+
+
 # THIR per-face witness tally (tpyc/thir/faces.py) -- byte-diff green only
 # proves the ROUTED code matched; a face no corpus case reaches is invisible
 # to it, so the summary names registered faces with zero witnesses across the
@@ -2296,6 +2422,7 @@ def pytest_sessionfinish(session):
         workeroutput["thir_shapes"] = _thir_shapes
         workeroutput["thir_divergences"] = list(_thir_divergences)
         workeroutput["thir_cases"] = dict(_thir_cases)
+        workeroutput["interop_thir"] = dict(_interop_thir)
         workeroutput["thir_flip"] = list(_thir_flip)
         workeroutput["stale_fp"] = list(_stale_fp)
         return
@@ -2326,6 +2453,10 @@ def pytest_testnodedown(node, error):
     if tc:
         for k in _thir_cases_agg:
             _thir_cases_agg[k] += tc.get(k, 0)
+    it = wo.get("interop_thir")
+    if it:
+        for k in _interop_thir_agg:
+            _interop_thir_agg[k] += it.get(k, 0)
     _thir_flip_agg.extend(wo.get("thir_flip", []))
     _stale_fp_agg.extend(wo.get("stale_fp", []))
 
@@ -2399,6 +2530,19 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
     verdict = _thir_gate_verdict(config)
     if verdict != "off":
+        # The interop corpus reports before the tests/cases block and outside
+        # its `ok` gate: that gate is the tests/cases vacuity check, which a
+        # run filtered to the interop module always trips, and the interop
+        # overlay ran regardless. Kept out of the migration dial on purpose --
+        # that number is keyed to tests/cases.
+        icl = _interop_thir["clean"] + _interop_thir_agg["clean"]
+        itot = _interop_thir["total"] + _interop_thir_agg["total"]
+        irouted = _interop_thir["routed"] + _interop_thir_agg["routed"]
+        if itot:
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} interop thir: {icl}/{itot} migrated; "
+                f"{irouted} bodies routed"
+            )
         bodies = _thir_tally["bodies"] + _thir_tally_agg["bodies"]
         cases = _thir_tally["cases"] + _thir_tally_agg["cases"]
         if verdict == "ok":

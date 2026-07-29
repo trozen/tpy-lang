@@ -109,7 +109,8 @@ def test_thir_case_mode_whole_corpus_and_writers_suppress_ratchet() -> None:
 
 
 _TALLIES = ("_thir_tally", "_thir_cases", "_thir_faces", "_thir_fallback",
-            "_thir_arm_residual", "_thir_shapes", "_thir_flip")
+            "_thir_arm_residual", "_thir_shapes", "_thir_flip",
+            "_interop_thir")
 
 
 @contextlib.contextmanager
@@ -177,3 +178,83 @@ def test_unmarked_case_arms_the_ratchet(tmp_path: Path) -> None:
     assert result.success, result.diagnostics
     assert result.thir_modules, "unmarked case got no THIR overlay"
     assert result.thir_ratchet_fell == 0, "ratchet not armed for an unmarked case"
+
+
+# --- tests/interop ext-exec overlay --------------------------------------
+
+_INTEROP_FIXTURE = (
+    "# tpy: ext_module\n"
+    "# leading comment block, then a docstring -- the shape whose AST/THIR\n"
+    "# divergence is invisible without source comments.\n"
+    '"""Fixture module."""\n'
+    "from tpy import Int64\n"
+    "from tpy.extern import export\n"
+    "\n"
+    "\n"
+    "@export\n"
+    "def twice(x: Int64) -> Int64:\n"
+    "    return x * 2\n"
+)
+
+
+def _run_interop_overlay(tmp_path: Path, marked: bool):
+    case = tmp_path / "fixture"
+    (case / "src").mkdir(parents=True)
+    mod_py = case / "src" / "fixture.py"
+    mod_py.write_text(_INTEROP_FIXTURE)
+    if marked:
+        (case / "no_thir.txt").write_text("marked\n")
+    out = tmp_path / "overlay"
+    with _isolated_tallies():
+        return conftest.run_interop_thir_overlay(mod_py, case, out), out
+
+
+def test_interop_overlay_emits_with_source_comments(tmp_path: Path) -> None:
+    """The overlay's whole reason for emitting BOTH sides itself: the ext-exec
+    snapshots come from the tpyc CLI at emit_source_comments=False, so a
+    THIR-vs-snapshot diff cannot see a source-comment divergence.
+
+    Nothing else catches a regression here. Re-pointing the overlay at
+    expected/ (or dropping comments) leaves the whole corpus green -- the
+    comment class is exactly the part that would stop being checked. So a green
+    suite is not evidence; this assertion is.
+    """
+    _require_thir()
+    result, out = _run_interop_overlay(tmp_path, marked=False)
+    assert result is not None, "overlay did not run with THIR on"
+    assert not result.divergences, "\n\n".join(result.divergences)
+    emitted = (out / "ast").rglob("fixture.cpp")
+    text = next(emitted).read_text()
+    assert "// # leading comment block" in text, (
+        "the overlay emitted without source comments -- it is then blind to "
+        "the comment-trivia divergence class it exists to catch")
+
+
+def test_interop_marked_case_skips_only_the_ratchet(tmp_path: Path) -> None:
+    """A marked interop case still byte-diffs (the marker is per-case, fallback
+    is per-body), but the ratchet must not govern it.
+
+    Asserting `is None` rather than `== 0` is what makes this non-vacuous: the
+    fixture routes cleanly, so a count of 0 is what an UNGATED ratchet would
+    report too, and the test could not tell the marker had been honoured.
+    """
+    _require_thir()
+    if conftest.THIR_CLASSIFY_WRITE or conftest.THIR_CHECK_FLIP:
+        pytest.skip("marker writers repurpose the overlay's return")
+    result, _out = _run_interop_overlay(tmp_path, marked=True)
+    assert result is not None, "marked case got no overlay"
+    assert not result.divergences, "\n\n".join(result.divergences)
+    if not conftest.THIR_IGNORE_MARKERS:
+        assert result.ratchet_fell is None, "ratchet must skip a marked case"
+
+
+def test_interop_unmarked_case_arms_the_ratchet(tmp_path: Path) -> None:
+    """The complement: an unmarked case IS governed, so it reports a count (0
+    for this clean fixture) rather than None."""
+    _require_thir()
+    if (conftest.THIR_IGNORE_MARKERS or conftest.THIR_CLASSIFY_WRITE
+            or conftest.THIR_CHECK_FLIP):
+        pytest.skip("ratchet suppressed by the marker-ignoring flags")
+    result, _out = _run_interop_overlay(tmp_path, marked=False)
+    assert result is not None, "unmarked case got no overlay"
+    assert result.ratchet_fell == 0, "ratchet not armed for an unmarked case"

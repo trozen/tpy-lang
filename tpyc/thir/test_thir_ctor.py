@@ -78,7 +78,8 @@ class TestConstructor:
 
     def test_docstring_ctor_routes(self):
         # M3c-trivia: a docstring is non-init trivia too -- same body-brace effect,
-        # chain intact. It emits neither code nor comment (loc=None).
+        # chain intact. It emits no code and no source line (loc=None), but its
+        # leading `#` comments still ride trivia_loc.
         ctor = _lower_ctor(
             _PRELUDE
             + "class P:\n    x: Int32\n"
@@ -101,9 +102,11 @@ class TestConstructor:
         assert _ctor_tail(ctor) == " {\n    }\n"
 
     def test_trivia_comment_loc_asymmetry(self):
-        # The byte-identity hinge: `pass` keeps its source loc (the AST emits its
-        # `// pass` source comment), a docstring lowers with loc=None (the AST emits
-        # NO comment for a docstring -- its simple-stmt code is None).
+        # The byte-identity hinge, and it splits the two comment kinds: the AST's
+        # gen_stmt flushes a statement's leading `#` comments BEFORE dispatch, then
+        # the None simple-stmt code suppresses only the statement's own source line.
+        # So `pass` keeps `loc` (both kinds), while a docstring drops `loc` (no
+        # `// """doc"""` line) but keeps `trivia_loc` (the comments still emit).
         pass_ctor = _lower_ctor(
             _PRELUDE
             + "class P:\n    x: Int32\n"
@@ -117,6 +120,7 @@ class TestConstructor:
             + '        """doc"""\n        self.x = x\n',
             "P")
         assert doc_ctor.body[0].loc is None
+        assert doc_ctor.body[0].trivia_loc is not None
 
     def test_non_init_print_body_routes(self):
         # A print() body statement is an eligible expression statement, so a ctor

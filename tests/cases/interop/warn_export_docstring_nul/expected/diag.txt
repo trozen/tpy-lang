@@ -1,3 +1,4 @@
+main.py: warning: ext_module 'main': the docstring will not be visible from Python (it contains a NUL character)
 main.py:15: warning: @export function 'has_nul': the docstring will not be visible from Python (it contains a NUL character)
 main.py:27: warning: @export class 'Holder': the docstring will not be visible from Python (it contains a NUL character)
 main.py:35: warning: @export class 'Holder': method 'meth': the docstring will not be visible from Python (it contains a NUL character)

@@ -34,6 +34,21 @@ gitignored `__tpyc__/` build output stay at the case root:
   The `-shared` link recipe is Linux-only for now (macOS needs `-bundle
   -undefined dynamic_lookup`), so this phase skips on other platforms; the
   snapshot, cpy-parity, and facade self-check still run everywhere.
+- **THIR overlay** (always, when THIR is on): the case's module is re-emitted
+  through THIR and byte-diffed against the AST oracle, and an unmarked case
+  must route every user body (the ratchet) -- the same contract the main
+  harness enforces, with `no_thir.txt` at the case root exempting a case from
+  the ratchet only, never from the diff. `--thir-classify` /
+  `--thir-check-flip` maintain these markers here too. Interop cases are
+  tallied on their own `tpy| interop thir:` line and deliberately kept out of
+  the migration dial, which is keyed to `tests/cases`.
+
+  The overlay emits *both* sides itself instead of diffing THIR against
+  `expected/`: the snapshot above comes from the real `tpyc` CLI at the
+  default `emit_source_comments=False`, so a THIR-vs-snapshot diff cannot see
+  a source-comment divergence at all. Emitting both sides with comments on
+  restores that sensitivity. The glue `_ext.cpp` is diffed too -- it has no
+  THIR path today, so the diff pins that it stays THIR-insensitive.
 - **cpy-parity** (always, cheap): the *same* `driver.py` over the TPy source
   (via the `lib/cpy` stubs) must reproduce the ext-exec output snapshot.
 - **ext_checks.py** (ext-only, if present): runs against the built `.so`.

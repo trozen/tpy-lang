@@ -19,6 +19,12 @@ For every case this proves, in the shape of the main snapshot harness:
     the snapshot, cpy-parity, and facade self-check still run. Under
     --build-only or a cross toolchain only the snapshot half runs (the .so
     can be neither imported here nor, for cross, built at all).
+  - THIR OVERLAY (always, when THIR is on): the module re-emitted through THIR
+    and byte-diffed against the AST oracle, plus the no_thir.txt-gated ratchet
+    -- the same two-halves contract the main harness enforces. It emits BOTH
+    sides itself rather than diffing THIR against expected/, because the CLI
+    above emits at the default emit_source_comments=False: a snapshot diff
+    would be blind to the whole source-comment class (see conftest).
   - CPY-PARITY (always, cheap): the SAME driver.py over the TPy source (lib/cpy
     stubs) must match the ext-exec output snapshot.
   - ext_checks.py (ext-only marshalling-error cases) runs against the .so.
@@ -49,6 +55,7 @@ from conftest import (
     exec_pass_is_cached,
     record_exec_pass,
     run_cpython,
+    run_interop_thir_overlay,
     validate_annotations,
 )
 
@@ -202,6 +209,24 @@ def test_interop_exec(case_dir, mod_py, request):
         if not gen.exists():
             pytest.fail(f"{gen} not generated", pytrace=False)
         check_or_update(gen.read_text(), expected_dir / rel, str(rel))
+
+    # ----- THIR OVERLAY (always, when THIR is on) ----------------------------
+    # The migration contract's two halves, as in the main harness: the byte-diff
+    # catches a THIR emission that differs from the AST oracle, the ratchet
+    # catches a body that silently stopped routing (a fallback emits identical
+    # AST, so neither check sees the other's failure).
+    overlay = run_interop_thir_overlay(mod_py, case_dir, build_dir / "_thir")
+    if overlay is not None:
+        if overlay.divergences:
+            pytest.fail("\n\n".join(overlay.divergences), pytrace=False)
+        if overlay.ratchet_fell:
+            pytest.fail(
+                f"THIR ratchet: {mod_py.name} is not marked no_thir but "
+                f"{overlay.ratchet_fell} user body/bodies fell back to the AST "
+                f"path. Either migrate the construct (widen THIR lowering) or "
+                f"mark the case (add {case_dir.name}/no_thir.txt).",
+                pytrace=False,
+            )
 
     output_txt = expected_dir / "output.txt"
 

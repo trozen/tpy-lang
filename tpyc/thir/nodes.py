@@ -1762,8 +1762,9 @@ class THIRNoOpStmt(THIRStmt):
     instead of ` {}`, matching the AST. The inherited `loc` drives the source
     comment exactly as the AST does: a `pass` keeps its `loc` (so `_emit_stmts`
     emits its `// pass` source line), while a docstring lowers with `loc=None`
-    -- the AST emits neither comment nor code for a docstring (`gen_body`'s
-    simple-stmt code is None, which suppresses the comment).
+    -- the AST's None simple-stmt code suppresses the source line. A docstring
+    still carries `trivia_loc`, because suppressing the source line does not
+    suppress the leading comments (see below).
 
     `trivia_loc` is the SKIPPED statement's loc when its leading
     `#`-comment trivia must still emit without the statement's own source

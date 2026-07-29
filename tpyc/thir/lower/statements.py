@@ -4748,11 +4748,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     loc = getattr(stmt, "loc", None)
     if lc.forbidden_writes & _written_names(stmt):
         raise ThirUnsupported("stmt.match")
-    # Trivia (docstring before the TpyExprStmt arm): loc drives the source
-    # comment -- `pass` keeps it, a docstring drops it (the AST emits neither).
+    # Trivia (docstring before the TpyExprStmt arm): `pass` keeps `loc`, so it
+    # gets both its leading `#` trivia and its own source line. A docstring
+    # gets trivia only -- the AST's None code suppresses the source line, but
+    # gen_stmt has already flushed the preceding comments before dispatch.
     if is_docstring(stmt):
         _witness("stmt.trivia")
-        return THIRNoOpStmt()
+        return THIRNoOpStmt(trivia_loc=loc)
     if isinstance(stmt, TpyPassStmt):
         _witness("stmt.trivia")
         return THIRNoOpStmt(loc=loc)
