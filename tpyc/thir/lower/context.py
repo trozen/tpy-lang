@@ -426,16 +426,13 @@ _BRANCH_SCOPED_SETS = (
 #   walrus_slot_locals -- the owned-slot walrus targets: the decl is
 #       function-scoped (named row) and the binding outlives its branch
 #       (Python scoping), so reads after the branch keep the `(*n)` render.
-#   pending_view_unpack_targets -- unpack targets outlive the loop (Python
-#       scoping, like the AST's var_types); a stale entry only over-rejects
-#       at Own[str] sinks (fallback), never mis-renders.
 #   frame_local_types -- the frame's resolved slot types, seeded once by
 #       lower_resumable (the AST frame ctx's var_types); a frame field's
 #       slot is one type for the whole body, position-blind.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
-    "walrus_slot_locals", "pending_view_unpack_targets",
+    "walrus_slot_locals",
     "frame_local_types",
     # Module-init facts: seeded once from the module's globals / import list
     # and never branch-scoped -- a global's slot identity and an import's
@@ -487,7 +484,6 @@ class _LowerCtx:
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp",
                  "walrus_predeclared", "walrus_slot_locals",
-                 "pending_view_unpack_targets",
                  "overload_narrowing", "overload_stub_return",
                  "overload_terminated", "render_concept",
                  "top_level_scope", "global_ptr_slots", "global_slot_assigned",
@@ -643,15 +639,6 @@ class _LowerCtx:
         # AST's register_walrus_deref substitution, NOT the pointer-local
         # arrow model. Function-scoped like the decl itself.
         self.walrus_slot_locals: set[str] = set()
-        # Tuple-unpack targets whose element type is a PENDING view (str
-        # family): the binding emits as a view, but the AST's
-        # _is_str_view_source misses it (unpack targets are absent from its
-        # runtime-view bookkeeping). What the AST does instead differs per
-        # sink -- the owned copy+move cascade at an Own[str] arg, a bare
-        # brace-init at a container-literal element -- so each owned-str sink
-        # rejects on these names separately rather than sharing one rule.
-        # Function-scoped (Python names outlive the loop).
-        self.pending_view_unpack_targets: set[str] = set()
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()

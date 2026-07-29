@@ -171,9 +171,7 @@ class HTTPResponse:
         elif ver.startswith("HTTP/1."):
             self.version = 11
         else:
-            # String(): ver is a view into `parts`; the exception ctor wants
-            # an owned string (view->owned wrap isn't applied to ctor args).
-            raise UnknownProtocol(String(ver))
+            raise UnknownProtocol(ver)
 
     def _skip_headers(self) -> None:
         while True:

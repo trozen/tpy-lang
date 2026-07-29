@@ -96,8 +96,7 @@ void main() {
         // if k.startswith(_PREFIX):
         if (::tpy::str_startswith(k, _PREFIX)) {
             // vals.append(v)
-            std::string __tmp_1{v};
-            vals.push_back(std::move(__tmp_1));
+            vals.push_back(std::string(v));
         }
     }
     // vals.sort()

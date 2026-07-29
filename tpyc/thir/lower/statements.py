@@ -79,7 +79,6 @@ from ...typesys import (
     OptionalType,
     OwnType,
     PendingListType,
-    PendingStrType,
     PendingViewType,
     ReadonlyType,
     TpyType,
@@ -8133,8 +8132,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # A str target's type is still a PendingStrType (params never
             # resolve it in place); resolve it to the concrete view before
             # render, else `render_type` raises. Scalars/records pass through.
-            if isinstance(tt, PendingStrType):
-                lc.pending_view_unpack_targets.add(name)
             tt, cpp = _unpack_target_decl(tt, analyzer, lc.render_type)
             declared[name] = tt
             target_cpps.append(cpp)
@@ -8315,8 +8312,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     else:
                         target_cpps.append(cpp)
                         target_binds.append("value")
-                    if isinstance(up.target_types[i], PendingStrType):
-                        lc.pending_view_unpack_targets.add(name)
                     body_declared[name] = tt
                 head_wrap_cpp = None
                 head_bind = TupleSourceBind.NAME_CREF

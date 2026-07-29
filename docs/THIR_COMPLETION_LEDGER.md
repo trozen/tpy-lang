@@ -2529,6 +2529,16 @@ bare store).
   them (call.arg_unpack_pending_view). Reconciling the AST-side
   bookkeeping (the temp is arguably an accident -- the binding IS a
   view) is a DESIGN item: AST-first snapshot-churning change.
+  CLOSED: the AST side was the real defect. `get_resolved_type`'s
+  `var_types` short-circuit returned the entry raw, skipping the
+  deferred-type resolution the same function does on its other
+  path, so the target read as neither view nor owned and every
+  view-form predicate keyed on it answered "not a view". Routing
+  that short-circuit through `resolve_type()` fixed all four owned
+  sinks (three emitted uncompilable C++), and BOTH fences plus the
+  `pending_view_unpack_targets` set they fed are deleted. Zero case
+  flips -- the shape's corpus witnesses stay blocked on unrelated
+  constructs -- so the gain is deleted fences, not dial movement.
   (4) deref_to_target Ptr template row: `_deref_codegen`'s PtrType arm
   is position-uniform (`::tpy::deref_check(x)`), so the coerce joins
   the {0}-template family; the record-wrapper `.__deref__()` flavor
@@ -3937,6 +3947,8 @@ which a type-param receiver does not have.
     lvalue-vs-rvalue line; `_maybe_move` now does too.
   * **`urllib.parse` was the ALREADY-FILED pending-view design item** reaching
     a second sink (`b3d19fa65`), fenced like `call.arg_unpack_pending_view`.
+    Both fences are now deleted -- see the wave-next10 entry's CLOSED note for
+    the AST root cause (`get_resolved_type`'s unresolved `var_types` return).
 
   **Two findings worth carrying past this gate.** (1) The oracle reports only
   the FIRST diverging module per case, so its per-module counts are LOWER

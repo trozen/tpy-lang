@@ -6468,16 +6468,6 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                 and not ou.uses_pointer_repr() else slot)
     st = _resolved_str_value(str_slot, lc.analyzer) if str_slot is not None else None
     if st is not None and is_str_type(st) and el.form is Form.BORROW:
-        if (isinstance(e, TpyName)
-                and e.name in lc.pending_view_unpack_targets):
-            # The AST's `_is_str_view_source` misses an unpack target's view
-            # binding (pending-typed, absent from its runtime-view
-            # bookkeeping), so it brace-inits the view BARE and lets the
-            # element's own conversion run -- unmirrored, so reject rather
-            # than route-and-diverge. Same gap as the `Own[str]` arg slot's
-            # `call.arg_unpack_pending_view` row.
-            note_detail("containerlit.elem_unpack_pending_view")
-            raise ThirUnsupported("containerlit.elem_unpack_pending_view")
         el = THIRFormConvert(result_type=st, value=el, form=Form.STORAGE,
                              loc=getattr(e, "loc", None))
     else:
@@ -8011,14 +8001,6 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # takes gen_call_arg's copy+move temp cascade, left on the AST path.
     ow_str = _plain_own_slot(ptype)
     if ow_str is not None and is_str_type(ow_str):
-        if (isinstance(a, TpyName)
-                and a.name in lc.pending_view_unpack_targets):
-            # The AST's _is_str_view_source misses an unpack target's view
-            # binding (pending-typed, absent from its runtime-view
-            # bookkeeping) and takes the owned copy+move temp cascade --
-            # unmirrored, so reject rather than route-and-diverge.
-            note_detail("call.arg_unpack_pending_view")
-            raise ThirUnsupported("call.arg_unpack_pending_view")
         lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
         if lowered.form is Form.BORROW:
             return THIRFormConvert(result_type=ow_str, value=lowered,

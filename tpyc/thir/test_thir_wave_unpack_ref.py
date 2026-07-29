@@ -1,11 +1,10 @@
 """Pins for the ref-container tuple-unpack targets (os.walk-family loop
 heads): a reference-family CONTAINER element in a for-head unpack aliases
 via the type-agnostic `auto&& = unwrap_ref(tuple_elem_ref(...))` bind,
-like the F1-record ref targets. Boundary: a PENDING-str unpack target at
-an owned-str sink rejects -- the AST's _is_str_view_source misses the view
-binding there, taking the owned copy+move temp cascade at an Own[str] arg
-and a bare brace-init at a container-literal element (a pre-existing latent
-divergence these rejects fence until the AST side is reconciled)."""
+like the F1-record ref targets. A PENDING-str unpack target at an owned-str
+sink routes and spells the same `std::string(x)` convert as a str param:
+the AST resolves the pending type at its `var_types` lookup, so the target
+is view-form to `_is_str_view_source` like any other view source."""
 
 from __future__ import annotations
 
@@ -48,10 +47,9 @@ class TestUnpackRefContainers:
         assert "::tpy::unwrap_ref(::tpy::tuple_elem_ref(" in out
         _assert_byte_identical(src)
 
-    def test_pending_str_target_own_sink_rejects(self):
-        # `seen.append(name)` on a str unpack target: the AST hoists
-        # `std::string __tmp_N{name};` + move (its view bookkeeping misses
-        # the target), so the S1 inline convert must not fire.
+    def test_pending_str_target_own_sink_routes(self):
+        # `seen.append(name)` on a str unpack target: the view-form source
+        # takes the S1 inline convert, same as a str param at the slot.
         src = (
             "def main() -> None:\n"
             "    pairs: list[tuple[str, int]] = [(\"a\", 1), (\"b\", 2)]\n"
@@ -62,9 +60,10 @@ class TestUnpackRefContainers:
             "main()\n"
         )
         out, faces, fallback = _gen_thir(src)
-        assert any("arg_unpack_pending_view" in r for r in fallback)
-        # The fallback body keeps the AST's cascade render.
-        assert "std::string __tmp_1{name};" in out
+        assert not fallback
+        assert "seen.push_back(std::string(name));" in out
+        # The copy+move temp cascade the missed view binding used to force.
+        assert "std::string __tmp_1{name};" not in out
         _assert_byte_identical(src)
 
     def test_str_target_reads_still_route(self):
@@ -82,11 +81,10 @@ class TestUnpackRefContainers:
         assert not fallback
         _assert_byte_identical(src)
 
-    def test_pending_str_target_tuple_literal_elem_rejects(self):
+    def test_pending_str_target_tuple_literal_elem_routes(self):
         # The container-literal sibling of the Own[str] sink: an unpack target
-        # as a tuple-literal element at an owned-str slot. The AST brace-inits
-        # the view BARE (same missed view binding) while the S1 element convert
-        # would spell `std::string(x)`.
+        # as a tuple-literal element at an owned-str slot takes the same S1
+        # element convert the str-param element below does.
         src = (
             "def take(t: tuple[str, str]) -> int:\n"
             "    return len(t[0]) + len(t[1])\n"
@@ -97,15 +95,13 @@ class TestUnpackRefContainers:
             "main()\n"
         )
         out, faces, fallback = _gen_thir(src)
-        assert any("elem_unpack_pending_view" in r for r in fallback)
-        # The fallback body keeps the AST's bare brace-init.
-        assert "std::string(x)" not in out
+        assert not fallback
+        assert "std::string(x)" in out
         _assert_byte_identical(src)
 
     def test_view_param_tuple_literal_elem_still_converts(self):
-        # The boundary: a str PARAM at the same element sink is in the AST's
-        # view bookkeeping, so both paths spell the owned copy and the element
-        # convert must keep firing.
+        # The boundary the unpack-target rows now match: a str PARAM at the
+        # same element sink, whose owned copy both paths have always spelled.
         src = (
             "def take(t: tuple[str, str]) -> int:\n"
             "    return len(t[0]) + len(t[1])\n"
@@ -114,6 +110,6 @@ class TestUnpackRefContainers:
             "main(\"ab\", \"c\")\n"
         )
         out, faces, fallback = _gen_thir(src)
-        assert not any("elem_unpack_pending_view" in r for r in fallback)
+        assert not fallback
         assert "std::string(a)" in out
         _assert_byte_identical(src)

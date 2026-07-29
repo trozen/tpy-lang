@@ -15,7 +15,7 @@
 # bytes, where CPython substitutes U+FFFD (errors='replace'); matching that needs
 # a lossy UTF-8 decode the runtime does not yet expose.
 # tpy: cpp_namespace("tpystd::urllib::parse")
-from tpy import Int32, UInt8, Char, Own, String
+from tpy import Int32, UInt8, Char, Own
 
 _HEX: bytes = b"0123456789ABCDEF"
 
@@ -453,10 +453,7 @@ def urlparse(url: str) -> Own[ParseResult]:
 
 def urlunsplit(components: tuple[str, str, str, str, str]) -> str:
     scheme, netloc, path, query, fragment = components
-    # String(path) (not `url = path`) seeds an owned accumulator: a
-    # tuple-unpacked view local feeding an owned local does not get the
-    # view->owned copy that view params do, so a plain init fails to compile.
-    url = String(path)
+    url = path
     if len(netloc) > 0 or (len(scheme) > 0 and _scheme_uses_netloc(scheme)
                            and not path.startswith("//")):
         if len(url) > 0 and not url.startswith("/"):

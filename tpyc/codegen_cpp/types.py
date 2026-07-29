@@ -77,9 +77,14 @@ class TypeResolver:
         # operator, etc. pick the right peephole.
         if isinstance(expr, TpyName) and expr.name in self.ctx.protocol_narrowings:
             return unwrap_readonly(self.ctx.protocol_narrowings[expr.name])
-        # Check for codegen-overridden types (e.g., loop variables)
+        # Check for codegen-overridden types (e.g., loop variables). The entry
+        # may still hold a deferred type (a tuple-unpack target keeps its
+        # PendingStrType), so resolve it here too -- a caller receiving the
+        # pending type reads as neither view nor owned, and every view-form
+        # predicate keyed on this answer silently says "not a view".
         if isinstance(expr, TpyName) and expr.name in self.ctx.var_types:
-            return unwrap_readonly(self.ctx.var_types[expr.name])
+            return self.resolve_type(
+                unwrap_readonly(self.ctx.var_types[expr.name]))
         if isinstance(expr, TpyCoerce):
             return expr.expected_type
 

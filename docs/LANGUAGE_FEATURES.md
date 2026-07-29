@@ -524,7 +524,7 @@ This means `Float32` arithmetic stays in single precision without requiring expl
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, record field, `list[str]` element, `dict[K, str]` value source, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed. An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, record field, `list[str]` element, `dict[K, str]` value source, tuple-unpack target, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed. An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string

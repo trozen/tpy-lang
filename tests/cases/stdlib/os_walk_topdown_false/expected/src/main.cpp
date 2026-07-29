@@ -70,8 +70,7 @@ bool order_ok(std::string_view root) {
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
         // seen.append(dp)
-        std::string __tmp_1{dp};
-        seen.push_back(std::move(__tmp_1));
+        seen.push_back(std::string(dp));
         }
     }
     // i = 0
