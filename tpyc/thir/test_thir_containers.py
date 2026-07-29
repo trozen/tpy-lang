@@ -1637,13 +1637,16 @@ class TestStrListMethodIterable:
             "def f(s: str) -> None:\n    for line in s.splitlines():\n        print(line)\n")
         assert _fn(thir, "f") is not None
 
-    def test_bytes_split_iterable_ineligible(self):
-        # A bytes receiver returns list[bytes] (a reference-element list); the
-        # str-receiver pin rejects it and the elem gate has no bytes-element arm.
-        thir = _lower_ctx(
+    def test_bytes_split_iterable_routes(self):
+        # A bytes receiver returns list[bytes]: the override admits it like
+        # the str form (the owning __obj capture) and the shared elem gate
+        # pins the bytes element.
+        src = (
             "def f(data: bytes) -> None:\n"
             "    for chunk in data.split(b','):\n        print(len(chunk))\n")
-        assert _fn(thir, "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_field_receiver_split_ineligible(self):
         # A str-FIELD receiver (`self.name.split()`) is outside the bare-name pin.

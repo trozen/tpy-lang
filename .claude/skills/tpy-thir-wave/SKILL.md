@@ -35,9 +35,13 @@ improvise.
 1. **Pick the site.** `probe_sites.py "<tag>"`; take the top row. Open two or
    three of its cases AND their `expected/*.cpp` oracle before writing code.
 2. **Read the AST arm you are mirroring**, and grep the THIR tests for pins on
-   that boundary (`stays_ast`, `still_defers`). A pin encodes a known render
-   split -- if its stated reason is what your change removes, convert it; if
-   not, respect it.
+   that boundary (`stays_ast`, `still_defers`, `ineligible`, and corpus cases
+   the widened gate could newly capture). A pin encodes a known render split
+   -- if its stated reason is what your change removes, convert it; if not,
+   respect it. **Re-run every pin whose reason your widening touches BEFORE
+   the corpus run** -- three de-routings in one wave (a delegation
+   over-capturing a routed shape, two stale fence pins) were each caught a
+   full corpus/suite run later than this check would have.
 3. **Widen the arm.** Register any new face in `tpyc/thir/faces.py`.
 4. **Smoke:** `probe_one.py` every case at the site, then `dualgen.py` on
    adversarial inputs around the new boundary. Byte-identity via FALLBACK is

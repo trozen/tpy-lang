@@ -485,13 +485,10 @@ class TestModuleVarLenArg:
         "    print(len(os.environ) >= 0)\n"
     )
 
-    def test_the_arg_gate_no_longer_rejects(self):
-        # This widening moves the reject one layer DOWN -- the body still
-        # falls back, at the module-var read rather than at the arg gate.
-        # That shift is the whole effect, and it is the only thing a pin can
-        # honestly assert: a render check would pass under fallback too,
-        # since the AST emits the same bytes.
-        assert _fallback_reasons(self.SRC) == {"field.module_var_type"}
+    def test_the_len_arg_routes(self):
+        # The module var at a native len slot is a pinned consumer
+        # (`::tpy::__len__((*environ))`), so the body routes whole.
+        assert _fallback_reasons(self.SRC) == set()
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)

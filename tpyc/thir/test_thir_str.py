@@ -263,11 +263,10 @@ class TestStrReceiverMethods:
         assert _emit_expr(_fn(thir, "f").body[0].value) \
             == "::tpy::str_startswith(s, t)"
 
-    def test_str_field_receiver_ineligible(self):
-        # A str FIELD receiver (`self.name.startswith(...)`) stays AST: the
-        # shared `_method_field_receiver_ok` admits only F1-record fields, so
-        # a str field is rejected at the receiver-shape check before the
-        # view-method fork. Widening that shared helper is a later cell.
+    def test_str_field_receiver_routes(self):
+        # A str FIELD receiver (`self.name.startswith(...)`): the shared
+        # receiver helper's view-family widening routes it over the bare
+        # member read.
         src = (
             "class Box:\n"
             "    name: str\n"
@@ -275,7 +274,8 @@ class TestStrReceiverMethods:
             "    def check(self) -> bool:\n        return self.name.startswith(\"p\")\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "check") is None
+        assert _fn(thir, "check") is not None
+        _assert_byte_identical(src)
 
     def test_split_list_result_routes_at_decl(self):
         # A container result (`s.split()` -> Own[list[str]]) is admitted at

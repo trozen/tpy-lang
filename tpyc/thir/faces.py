@@ -301,6 +301,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
                                     # receiver rendered bare into the resolved
                                     # builtin-method template
+    "method.recv.bytes_literal",    # the bytes twin -- the OWNED literal
+                                    # receiver substituted into the template
+    "method.protocol_field_recv",   # protocol method over a one-level field
+                                    # receiver (this->factory.make())
+    "arg.native_module_var",        # module-variable deref read pinned at a
+                                    # native slot (len(os.environ))
+    "method.recv.view_field",       # str/bytes field receiver routing the
+                                    # view family over the member read
     "method.recv.bytes_method",     # `srv.recv(32).decode()` -- a bytes-VALUE
                                     # method-call result feeding the outer
                                     # bytes method's receiver slot
@@ -780,6 +788,43 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.btuple_name",              # already-borrow tuple name passed bare
     "arg.required_protocol_union",  # name at a required multi-protocol
                                     # union slot -> plain value render
+    "arg.value_opt_callable",       # whole Optional[Callable] name passed
+                                    # bare at a matching value-opt slot
+                                    # (admission; render is the bare name)
+    "method.optview_whole_arg",     # whole Optional[str/bytes] name passed
+                                    # bare at a user-record method's matching
+                                    # value-opt view slot (target-less loop)
+    "arg.container_field_marker",   # container field read bound bare at a
+                                    # marker callee's container ref slot
+    "arg.own_tparam_method_rvalue", # Own[T] method rvalue bare at the same
+                                    # open Own[T] method slot
+    "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
+                                    # the dyn-attr read mirror (result-blind
+                                    # bare dunder call)
+    "arg.bytes_owned_literal",      # bytes literal at an Own[bytes] element
+                                    # slot -> the owned literal render
+    "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
+                                    # element slot -> spelled value render
+    "method.protocol_own_storage_ret",  # Own[record] rvalue off a protocol
+                                    # receiver landing bare at a storage sink
+    "method.scalar_tuple_ret",      # scalar-receiver stub's value-tuple
+                                    # result at a storage/statement sink
+    "arg.native_property_container",  # container-returning property read
+                                    # bound bare at a native slot (len)
+    "method.value_opt_view_ret",    # value-opt owned-view method result
+                                    # landing bare in a storage decl slot
+    "method.ptr_template_span",     # Ptr[T].span(n) template expansion --
+                                    # by-value Span result lands bare
+    "method.native_ret_cast",       # declared cpp_return_type's
+                                    # static_cast wrap over the member call
+    "call.super_generic",           # generic super()/unbound-self call --
+                                    # this->Base<T>::template m<U>(args)
+    "arg.same_tparam_name",         # name bound to the slot's own bare T
+                                    # passes bare at a marker call
+    "method.typed_dict_get",        # TypedDict kwargs.get -> the value_or /
+                                    # make_optional / bare-field composition
+    "binop.typed_dict_in",          # TypedDict membership -> the
+                                    # .field.has_value() presence check
     "arg.protocol_union_plain",     # ... the lowering arm that renders it
     "call.view_instantiation",       # Span/Array ctor over a bare source
     "call.array_literal_instantiation",  # `Array[T, N]([..])` -> the spelled

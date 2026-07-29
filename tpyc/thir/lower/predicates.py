@@ -2624,6 +2624,21 @@ def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     return t if (_eligible_scalar(inner) or _eligible_char(inner)
                  or _eligible_enum(inner, analyzer) is not None) else None
 
+def _value_opt_callable(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
+    """The value-repr `Optional[Callable]` binding type -- a
+    `Callable[...] | None` param bound `std::optional<std::function<...>>`
+    by value, or None. Non-template callables only (`_callable_value`); an
+    `Fn` template slot has no value binding. The routed reads are the WHOLE-
+    optional ones (a bare pass into a matching value-opt slot); a NARROWED
+    read (`cb(x)` under `cb is not None`) derefs on the AST path and is
+    guarded per-use at name lowering."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_send_sync(t))
+    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
+        return None
+    return t if _callable_value(t.inner) else None
+
 def _value_opt_scalar_name(e: TpyExpr, declared: dict[str, TpyType],
                            analyzer) -> 'OptionalType | None':
     """`e` is a bare name whose DECLARED type is a value-repr `Optional[scalar]`
@@ -2683,36 +2698,67 @@ def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
     return bool(_resolved_scalar(at, analyzer) or _eligible_char(at)
                 or _eligible_enum(at, analyzer) is not None)
 
-def _value_opt_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                locals_: dict[str, TpyType],
-                                narrowed: 'AbstractSet[str]',
-                                analyzer) -> bool:
-    """A whole value-repr `Optional[T]` NAME into a matching value-repr
-    `Optional[T]` param slot (`eq_left(some_a, a)` at a `Char | None` param):
-    `std::optional<T>` is a value type passed BY VALUE, so both paths render
-    the name bare -- no lift, no shim, no temp.
-
-    Exact-slot pin: a differing inner would carry a conversion the bare render
-    does not. NARROWED names are excluded (their read derefs), as are
-    pointer-repr Optionals (`_optional_ptr_arg`'s `T*` lift) and the `None`
-    literal (`_none_value_opt_arg`).
-
-    Scoped to the SCALAR inner so admission matches the lowering row that
-    renders it (`_value_opt_scalar_binding` in `_lower_call_arg`); the
-    str/bytes inners have their own shim rows and would only be admitted here
-    to reject again inside lowering."""
-    if _value_opt_scalar(ptype, analyzer) is None:
+def _whole_value_opt_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              locals_: dict[str, TpyType],
+                              narrowed: 'AbstractSet[str]', analyzer,
+                              slot_check) -> bool:
+    """Shared core of the whole value-opt NAME pass-through rows: an
+    un-narrowed NAME whose DECLARED type is exactly the value-repr Optional
+    slot passes BARE (`std::optional<T>` is a value type passed by value --
+    no lift, no shim, no temp on either path). `slot_check` picks the
+    admitted inner family; the exact-slot pin stays because a differing
+    inner would carry a conversion the bare render does not. NARROWED names
+    are excluded (their read derefs); pointer-repr Optionals keep
+    `_optional_ptr_arg`'s lift and the `None` literal its own row."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    if slot_check(slot, analyzer) is None:
         return False
-    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    if not isinstance(a, TpyName) or a.name in narrowed:
+    if not isinstance(a, TpyName) or a.name in narrowed or a.is_function_ref:
         return False
     at = locals_.get(a.name)
     if at is None:
         at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if isinstance(at, TpyType) else None)
-    return (isinstance(at, OptionalType) and not at.uses_pointer_repr()
-            and at == slot)
+    return at == slot
+
+def _value_opt_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                locals_: dict[str, TpyType],
+                                narrowed: 'AbstractSet[str]',
+                                analyzer) -> bool:
+    """The SCALAR-inner row (`eq_left(some_a, a)` at a `Char | None` param):
+    scoped so admission matches the lowering row that renders it
+    (`_value_opt_scalar_binding` in `_lower_call_arg`); the str/bytes inners
+    have their own shim rows and would only be admitted here to reject again
+    inside lowering."""
+    return _whole_value_opt_name_arg(a, ptype, locals_, narrowed, analyzer,
+                                     _value_opt_scalar)
+
+def _value_opt_callable_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                 locals_: dict[str, TpyType],
+                                 narrowed: 'AbstractSet[str]',
+                                 analyzer) -> bool:
+    """The CALLABLE-inner row (`os.walk(top, onerror=cb)` at a
+    `Callable[..] | None` param)."""
+    return bool(_whole_value_opt_name_arg(a, ptype, locals_, narrowed,
+                                          analyzer, _value_opt_callable)
+                and _witness("arg.value_opt_callable"))
+
+def _value_opt_view_whole_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              locals_: dict[str, TpyType],
+                              narrowed: 'AbstractSet[str]',
+                              analyzer) -> bool:
+    """The VIEW-inner row, RECORD-METHOD position only (`conn.request(m, u,
+    body, hdrs)` at `body: bytes | None`): the user-record method loop is
+    TARGET-LESS (target_type=None), so `_maybe_convert_opt_view_param`'s arg
+    split never fires and the AST passes the whole optional BARE -- unlike
+    the free-call position, whose slot threading takes the shim
+    (`_opt_view_arg_shim`). The free ladder keeps its shim rows, and the
+    stub loops DO thread the raw param (see the shim arm's exclusion note in
+    `_lower_call_arg`), so the render arm also keys off `method_arg_stub`."""
+    return _whole_value_opt_name_arg(a, ptype, locals_, narrowed, analyzer,
+                                     _value_opt_view)
 
 def _str_literal_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A str LITERAL into a value-repr `Optional[str]` slot
@@ -2777,7 +2823,12 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
         # lowering, so this predicate must not blanket-reject it here.
         # Own-optional inners still reject (Own-axis faces not mirrored).
         if (_value_opt_scalar(u, analyzer) is not None
-                or _value_opt_view(u, analyzer) is not None):
+                or _value_opt_view(u, analyzer) is not None
+                # A value-repr Optional[Callable] param routes its WHOLE-
+                # optional reads (bare into a matching value-opt slot); the
+                # narrowed read derefs on the AST path and is guarded per-use
+                # at name lowering (name.optcallable_narrowed_read).
+                or _value_opt_callable(u, analyzer) is not None):
             return None
         return "name.optval_read"
     if (isinstance(u, OptionalType) and u.uses_pointer_repr()
@@ -3591,6 +3642,11 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
     args = getattr(t, "type_args", None)
     return bool(args) and (_eligible_scalar(args[0])
                            or _owned_str_slot(args[0], analyzer)
+                           # An F1-record element (`set[Point]`): inserts
+                           # render the bare rvalue / move like a list's;
+                           # per-method args and results still gate.
+                           or _f1_record(unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(args[0]))), analyzer)
                            or isinstance(unwrap_readonly(unwrap_ref_type(
                                unwrap_send_sync(args[0]))), AnyType))
 
@@ -4663,7 +4719,17 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     t = _resolve_literal_seeded(t, analyzer)
     if is_list(t) or is_dict(t):
-        return t if _container_scalar_read(t, analyzer) else None
+        if _container_scalar_read(t, analyzer):
+            return t
+        # An owned-bytes-element list (`parts = b"a,b".split(b",")` -- the
+        # bare rvalue copy into the decl slot); element reads gate their own
+        # consumers (the for-each bytes element already routes).
+        if is_list(t):
+            args = getattr(t, "type_args", None)
+            if args and is_bytes_type(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(args[0])))):
+                return t
+        return None
     if is_bytearray_type(t):
         # `ba = bytearray(...)` -- a scalar container (std::vector<uint8_t>),
         # the same plain-copy decl render as a scalar list.
@@ -5968,7 +6034,8 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_setter_ok: bool = False,
                         coro_factory_ok: bool = False,
                         consuming_ok: bool = False,
-                        error_return_ok: bool = False) -> bool:
+                        error_return_ok: bool = False,
+                        ret_cast_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`) -- `consuming_ok` admits it (set only by the record
     method arm for a bare non-pointer, non-narrowed name receiver, whose
@@ -5991,7 +6058,11 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
     and `c.prop = v` -> `c.set_prop(v)` render like any plain method."""
     return not ((fi.is_consuming and not consuming_ok)
                 or (fi.error_return_type is not None and not error_return_ok)
-                or fi.native_cpp_return_type is not None
+                # `ret_cast_ok` admits a declared cpp_return_type -- set only
+                # by the record method arm, whose tail composes the
+                # `static_cast<declared>(...)` wrap (the AST post-process).
+                or (fi.native_cpp_return_type is not None
+                    and not ret_cast_ok)
                 or any(isinstance(p.type, LiteralType) for p in fi.params)
                 or (fi.is_async and not coro_factory_ok)
                 or (fi.is_async and fi.type_params)

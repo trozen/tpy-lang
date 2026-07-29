@@ -351,6 +351,8 @@ from .predicates import (
     _str_literal_value_opt_arg,
     _value_opt_scalar_value_arg,
     _callable_value,
+    _value_opt_callable,
+    _value_opt_view_whole_arg,
     _value_opt_member_arg,
     _value_opt_scalar,
     _value_opt_scalar_name,
@@ -396,6 +398,7 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 from .checks import (
     _alias_ref_container,
+    _container_field_pass_arg,
     _coro_factory_structural_arg,
     _deref_coerce_arg,
     _iter_rvalue_structural_arg,
@@ -486,6 +489,7 @@ from .checks import (
     _own_record_rvalue_arg,
     _protocol_slot_arg,
     _plain_call_arg_ok,
+    _native_record_recv,
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
     _ptr_template_method_supported,
@@ -1615,6 +1619,26 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             f"{_binop_operand_suffix(e, declared, analyzer)}",
             detail=True)
 
+    if (e.op in _MEMBERSHIP_OPS and e.typed_dict_in_field is not None
+            and not e.typed_dict_in_always_true
+            and isinstance(e.right, TpyName) and e.right.name in declared
+            and e.right.name not in lc.pointers
+            and e.right.name not in lc.narrow.narrowed):
+        # TypedDict membership (`"verbose" in kwargs` ->
+        # `kwargs.verbose.has_value()`, negated `(!...)`): the compile-time
+        # field presence check over the bare receiver. The always-true FOLD
+        # (total=True fields) keeps rejecting below -- its operand-effect
+        # form is not mirrored.
+        td_fld = escape_cpp_name(e.typed_dict_in_field)
+        td_hv = f"{{0}}.{td_fld}.has_value()"
+        _witness("binop.typed_dict_in")
+        return THIRCall(
+            result_type=rtype, callee="in",
+            args=(_lower_expr(
+                e.right, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.RECEIVER)),),
+            cpp_template=(f"(!{td_hv})" if e.op == "not in" else td_hv),
+            loc=loc)
     # A `__contains__`-unresolved native-set membership routes via the AST's
     # `std::ranges::contains` fallback (set by the membership gate below).
     ranges_contains = False
@@ -1865,8 +1889,17 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             recv_ok = ((isinstance(e.right, TpyName)
                         and e.right.name in declared)
                        or (isinstance(e.right, TpyFieldAccess)
-                           and _field_receiver_ok(e.right, declared,
-                                                  analyzer)))
+                           and (_field_receiver_ok(e.right, declared,
+                                                   analyzer)
+                                # A module-var receiver's `__contains__`
+                                # (`"K" in os.environ` -> the deref read
+                                # composing the member call).
+                                or ((_in_mod := _bare_module_recv(
+                                        e.right.obj, declared, analyzer))
+                                    is not None
+                                    and _module_var_read_cpp(
+                                        _in_mod, e.right.field, analyzer)
+                                    is not None))))
             if not (recv_ok
                     and (_resolved_scalar(lt, analyzer)
                          or _resolved_str_value(lt, analyzer) is not None)):
@@ -2505,6 +2538,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if _value_opt_view_name(e, declared, analyzer) is not None:
                 raise ThirUnsupported(
                     "name.optstr_unproven_read", detail=True)
+        if (not allow_whole_optional
+                and _value_opt_callable(binding_type, analyzer) is not None
+                and not isinstance(unwrap_readonly(rtype), OptionalType)):
+            # A NARROWED value-opt-callable read (`cb(x)` under `cb is not
+            # None`) derefs `(*cb)` on the AST path -- unmirrored; only the
+            # whole-optional bare read routes (the binding admission in
+            # _unrouted_binding_read is scoped to it).
+            raise ThirUnsupported("name.optcallable_narrowed_read",
+                                  detail=True)
         if (not allow_union_divergent
                 and e.name not in lc.inline_narrowed
                 and _union_binding_divergent(e, declared, analyzer)):
@@ -2731,7 +2773,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # `mod.X` off a MODULE binding -- the same render as the dotted
             # form; a module receiver whose field is NOT a registered
             # variable falls through to the normal arms like the AST does.
-            return _lower_module_var(e, rtype, lc, bare_mod, e.field, loc=loc)
+            # A METHOD-RECEIVER consumer is pinned like the print sink
+            # (`(*environ).update(...)`), so the pointer-slot deref read is
+            # admitted there.
+            return _lower_module_var(
+                e, rtype, lc, bare_mod, e.field, loc=loc,
+                allow_ref_pointer=use.result in (
+                    _ExprResultUse.RECEIVER, _ExprResultUse.BORROW_BIND))
         if not field_prechecked:
             if e.enum_member_of is not None:
                 if _eligible_enum(e.enum_member_of, analyzer) is None:
@@ -4103,6 +4151,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # `@call_macro` / getattr / hasattr: the AST renders the
             # sema-synthesized replacement in place (gen_expr's macro arm), so
             # the call node lowers to its expansion.
+            exp = e.macro_expansion
+            if isinstance(exp, TpyMethodCall) and exp.method == "__getattr__":
+                # The 2-arg `getattr(obj, name)` builtin: delegate to the
+                # dyn-attr read mirror, which renders the same bare method
+                # call as the general arm but is RESULT-blind -- the dunder's
+                # return (Any / owned str / ...) lands bare in whatever sink
+                # consumes the builtin, exactly as the AST's in-place
+                # expansion does. Runtime names are D16 route-all-to-dunder,
+                # hence allow_name_arg.
+                lowered_ga = _lower_dyn_synth_call(
+                    exp, rtype, lc, declared, loc, allow_name_arg=True)
+                _witness("call.dyn_getattr_builtin")
+                return lowered_ga
             _witness("call.macro_expansion")
             return _lower_expr(e.macro_expansion, lc, declared)
         if e.dyn_hasattr_call is not None:
@@ -5016,6 +5077,57 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if (result_use is _ExprResultUse.CONDITION
                 and not is_bool_type(rtype)):
             raise ThirUnsupported("expr.method_call")
+        if e.typed_dict_get_field is not None:
+            # TypedDict `kwargs.get("k"[, default])` -- _gen_method_call's
+            # typed-dict arm: `.field.value_or(default)` (owned-str defaults
+            # take the std::string wrap), the statically-present
+            # `((void)default, .field)` form, the bare read, or the
+            # `std::make_optional(.field)` lift -- composed as a positional
+            # template over the receiver (and default) renders. Bare
+            # non-pointer name receivers only (the indirect form derefs).
+            td_recv = e.obj
+            if not (isinstance(td_recv, TpyName) and td_recv.name in declared
+                    and td_recv.name not in lc.pointers
+                    and td_recv.name not in lc.narrow.narrowed
+                    and td_recv.name != lc.self_receiver):
+                note_detail("method.typed_dict.recv")
+                raise ThirUnsupported("expr.method_call")
+            td_field = escape_cpp_name(e.typed_dict_get_field)
+            td_obj = _lower_expr(
+                td_recv, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.RECEIVER))
+            if len(e.args) == 2:
+                td_default = _lower_expr(e.args[1], lc, declared)
+                if e.typed_dict_get_optional:
+                    dwrap = ("std::string({1})"
+                             if (isinstance(rtype, TpyType)
+                                 and (is_str_type(unwrap_readonly(rtype))
+                                      or is_string_type(
+                                          unwrap_readonly(rtype))))
+                             else "{1}")
+                    td_tmpl = f"{{0}}.{td_field}.value_or({dwrap})"
+                else:
+                    td_tmpl = f"((void){{1}}, {{0}}.{td_field})"
+                td_args: tuple = (td_obj, td_default)
+            else:
+                if e.typed_dict_get_optional:
+                    td_tmpl = f"{{0}}.{td_field}"
+                else:
+                    rt0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        declared[td_recv.name])))
+                    rec = (analyzer.registry.get_record_for_type(rt0)
+                           if isinstance(rt0, NominalType) else None)
+                    already_opt = bool(rec and any(
+                        fld.name == e.typed_dict_get_field
+                        and isinstance(fld.type, OptionalType)
+                        for fld in rec.fields))
+                    td_tmpl = (f"{{0}}.{td_field}" if already_opt
+                               else f"std::make_optional({{0}}.{td_field})")
+                td_args = (td_obj,)
+            _witness("method.typed_dict_get")
+            return THIRCall(
+                result_type=rtype, callee=e.method, args=td_args,
+                cpp_template=td_tmpl, loc=loc)
         if e.macro_expansion is not None:
             # `dataclasses.asdict(p)` / `.astuple(p)`: a `@call_macro` whose
             # sema-synthesized replacement the AST renders IN PLACE (gen_expr's
@@ -5089,15 +5201,22 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # member call over target-less args. Optional[Callable] fields
             # (the `.value()` unwrap) and non-name receivers stay AST.
             recv = e.obj
-            # A `self` receiver renders the deref (`(*this).callback(x)`,
-            # gen_expr_deref) -- unmirrored; local receivers only.
-            cf_ok = (isinstance(recv, TpyName) and recv.name in declared
-                     and recv.name not in lc.pointers
-                     and recv.name not in lc.narrow.narrowed
-                     and not (lc.prescan.has_self and recv.name == "self"))
+            # A `self` receiver renders the deref (`(*this).on_event(x)`,
+            # gen_expr_deref) -- THIRSelf.deref spells exactly that, so the
+            # plain-method receiver routes alongside local receivers.
+            cf_self = (isinstance(recv, TpyName) and recv.name == "self"
+                       and lc.prescan.has_self and lc.self_is_pointer
+                       and recv.name not in lc.narrow.narrowed)
+            cf_ok = (cf_self
+                     or (isinstance(recv, TpyName) and recv.name in declared
+                         and recv.name not in lc.pointers
+                         and recv.name not in lc.narrow.narrowed
+                         and not (lc.prescan.has_self
+                                  and recv.name == "self")))
             if cf_ok:
                 rt0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared[recv.name])))
+                    analyzer.get_expr_type(recv) if cf_self
+                    else declared[recv.name])))
                 ft = None
                 ri = (analyzer.registry.get_record_for_type(rt0)
                       if isinstance(rt0, NominalType) else None)
@@ -5113,9 +5232,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("method.marker.callable_field")
                 raise ThirUnsupported("expr.method_call")
             _witness("method.callable_field")
+            cf_recv = _lower_expr(recv, lc, declared)
+            if cf_self and isinstance(cf_recv, THIRSelf):
+                cf_recv = replace(cf_recv, deref=True)
             return THIRMethodCall(
                 result_type=rtype if rtype is not None else VoidType(),
-                receiver=_lower_expr(recv, lc, declared),
+                receiver=cf_recv,
                 method_cpp=escape_cpp_name(e.method),
                 args=tuple(_lower_expr(x, lc, declared) for x in e.args),
                 form=Form.VALUE, loc=loc)
@@ -5317,6 +5439,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                      else "call.generic_qualified" if mk[0] == "generic_qualified"
                      else "call.generic_static" if mk[0] in (
                          "generic_static", "generic_module_static")
+                     else "call.super_generic" if mk[0] == "super_generic"
                      else "call.marker_qualified")
             mk_str = _resolved_str_value(rtype, analyzer)
             if mk_str is None:
@@ -5326,11 +5449,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # inferred arg (NOT the free-call arm's to_cpp_stored). A
             # same-module generic STATIC splits them into class/method args
             # over the composed callee (`Cls<CA>::template m<MA>`).
-            callee_cpp = mk[1] if mk[0] in ("qualified",
-                                            "generic_qualified") else None
+            callee_cpp = mk[1] if mk[0] in ("qualified", "generic_qualified",
+                                            "super_generic") else None
             mk_targs = (tuple(lc.render_type(unwrap_ref_type(t))
                               for t in e.inferred_type_args)
-                        if mk[0] == "generic_qualified" else None)
+                        if mk[0] in ("generic_qualified", "super_generic")
+                        else None)
             if mk[0] == "generic_static":
                 callee_cpp, mk_targs = _generic_static_callee(e, lc)
             elif mk[0] == "generic_module_static":
@@ -5388,7 +5512,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     fi, property_getter_ok=True, property_setter_ok=True,
                     coro_factory_ok=use.coro_factory,
                     consuming_ok=consuming_ok,
-                    error_return_ok=error_return_raw):
+                    error_return_ok=error_return_raw,
+                    # The plain-method tail composes the cpp_return_type
+                    # static_cast wrap, so the annotation is admitted here.
+                    ret_cast_ok=True):
                 note_detail("method.fi_kind")
                 raise ThirUnsupported("expr.method_call")
             if not _call_arity_ok(e, fi):
@@ -5413,7 +5540,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     borrow_ret_ok=result_use in (_ExprResultUse.RECEIVER,
                                                  _ExprResultUse.BORROW_BIND))
                 stub_recv = fam.stub_recv
-            elif recv_type is not None and recv_type.is_pointer():
+            elif recv_type is not None and (
+                    recv_type.is_pointer()
+                    # A @cpp_template method on a @native record receiver
+                    # (`v.count` -> `static_cast<int32_t>(v.size())`)
+                    # expands like the Ptr arm's; @native member renames
+                    # keep the record path below.
+                    or (fi.cpp_template is not None
+                        and _native_record_recv(recv_type, analyzer))):
                 shape_ok = _ptr_template_method_supported(
                     e, fi, recv_type, analyzer,
                     stmt_position=stmt_position,
@@ -5637,7 +5771,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # real member call spells `->` instead. Both emit branches ignore
             # `is_arrow`, so the deref has to ride the name.
             recv_lowered = replace(recv_lowered, deref=True)
-        return THIRMethodCall(
+        method_node = THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
             method_cpp=member,
@@ -5663,6 +5797,22 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             form=_viewfam_result_form(m_str),
             loc=loc,
         )
+        if (fi.native_cpp_return_type is not None
+                and fi.return_type is not None
+                and fi.error_return_type is None):
+            # Declared cpp_return_type wraps the member call in the
+            # narrowing static_cast (`c = v.cap` ->
+            # `static_cast<int32_t>(v.capacity())`) -- the AST's
+            # _maybe_native_return_cast post-process; skipped under
+            # @error_return like the free-call lane.
+            _witness("method.native_ret_cast")
+            return THIRCoerce(
+                result_type=rtype, expr=method_node,
+                coercion_name="native_ret_cast",
+                wrap=(f"static_cast<{lc.render_type(fi.return_type)}>"
+                      "({0})"),
+                form=method_node.form, loc=loc)
+        return method_node
     if isinstance(e, TpyCoerce):
         if e.coercion.name == "into_any":
             return _lower_into_any(e, lc, declared, rtype, loc)
@@ -6203,8 +6353,10 @@ def _lower_module_var(e: TpyFieldAccess, rtype: 'TpyType | None',
     str-bytes-view families land it bare in every admitted sink like a
     seeded global name read. A non-value pointer-slot var's `(*slot)` read
     stays out (its receiver/consumer wrapping is not pinned by this arm)
-    UNLESS `allow_ref_pointer` -- the print-sink caller, whose consumer IS
-    pinned (`::tpy::as_ostream(<read>)`), opts in to the bare `(*slot)`."""
+    UNLESS `allow_ref_pointer` -- set by the PINNED consumers: the print
+    sink (`::tpy::as_ostream(<read>)`), a method receiver
+    (`(*environ).update(..)`), a native-slot arg (`__len__((*environ))`),
+    and a membership operand."""
     analyzer = lc.analyzer
     viewfam = _resolved_viewfam_value(rtype, analyzer)
     ok = (_eligible_scalar(rtype) or _eligible_char(rtype)
@@ -7164,6 +7316,34 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
                                         allow_temps=temp_args))
+    if (kind is not None and kind[0] in ("native", "native_c", "template")
+            and isinstance(a, TpyFieldAccess)
+            and a.property_getter_call is not None
+            and _storage_call_ret(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    lc.analyzer.get_expr_type(a)))), lc.analyzer) is not None):
+        # A container-returning PROPERTY read bound bare by the native slot
+        # (`len(f.items)` -> `::tpy::__len__(f.items())`): BORROW_BIND use,
+        # so the getter's borrow-container result rides the same admission
+        # as the alias-decl sink -- the borrow is consumed inside the call
+        # expression, no alias escapes.
+        _witness("arg.native_property_container")
+        return _lower_expr(
+            a, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+    if (kind is not None and kind[0] in ("native", "native_c", "template")
+            and isinstance(a, TpyFieldAccess)
+            and (_mv_arg := _bare_module_recv(a.obj, declared, lc.analyzer))
+            is not None
+            and _module_var_read_cpp(_mv_arg, a.field, lc.analyzer)
+            is not None):
+        # A module-variable read at a native slot (`len(os.environ)` ->
+        # `::tpy::__len__((*environ))`): the consumer is pinned, so the
+        # pointer-slot deref read is admitted (RECEIVER use, like the
+        # method-receiver and print-sink consumers).
+        _witness("arg.native_module_var")
+        return _lower_expr(
+            a, lc, declared, use=_ExprUse(result=_ExprResultUse.RECEIVER))
     plain_kind = kind is None or kind[0] not in ("native", "native_c",
                                                  "template")
     if not plain_kind:
@@ -7549,6 +7729,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if isinstance(a, TpyTupleLiteral):
         pslot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
                  if isinstance(ptype, TpyType) else None)
+        if isinstance(pslot, OwnType):
+            # An Own[value-tuple] element slot (`ps.append(("k", 9))`) takes
+            # the same spelled value render as the bare tuple slot; the
+            # pointer-repr storage lift (tuple_to_storage_move) is a
+            # different render and its slots keep rejecting below.
+            own_inner = unwrap_readonly(pslot.wrapped)
+            if (isinstance(own_inner, TupleType)
+                    and not own_inner.has_pointer_repr_element()):
+                pslot = own_inner
         if isinstance(pslot, TupleType):
             # A tuple literal at a tuple param slot: value tuples take the
             # spelled value render; pointer-repr slots take the borrow
@@ -7589,6 +7778,19 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # for a PARAM whose binding is the borrow `optional<string_view>`, the
         # arm below). Strip any deref-on-narrow like the scalar sibling.
         _witness("call.optview_local_whole")
+        return replace(
+            _lower_expr(a, lc, declared, allow_whole_optional=True),
+            deref=False)
+    if (isinstance(a, TpyName) and method_arg and not method_arg_stub
+            and a.name not in lc.narrow.narrowed
+            and _value_opt_view_whole_arg(
+                a, ptype, declared, frozenset(lc.narrow.narrowed),
+                lc.analyzer)):
+        # A whole value-opt VIEW name at a matching slot in a USER-record
+        # method position: the AST's method loop is target-less, so the
+        # optional passes BARE -- no shim. Stub loops thread the raw param
+        # (the exclusion note below) and keep rejecting at their gates.
+        _witness("method.optview_whole_arg")
         return replace(
             _lower_expr(a, lc, declared, allow_whole_optional=True),
             deref=False)
@@ -7636,6 +7838,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # The predicate re-ran the marker/receiver checks, so the gates are
         # prechecked.
         _witness("call.record_field_arg")
+        return _lower_expr(a, lc, declared, field_prechecked=True)
+    if (isinstance(a, TpyFieldAccess)
+            and _container_field_pass_arg(a, ptype, declared, lc.analyzer)):
+        # A container FIELD read binding a plain container ref slot
+        # (`heapq.heappush(self.heap, ...)` -> bare `this->heap`): the
+        # predicate owns the receiver + declared-container checks, and the
+        # slot binds the member read by reference -- aliasing preserved, so
+        # the copy-vs-alias fence on the generic field VALUE position does
+        # not apply here.
         return _lower_expr(a, lc, declared, field_prechecked=True)
     if (isinstance(a, TpyName)
             and not method_arg
@@ -7693,7 +7904,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 and (is_list(at) or is_array(at))):
             lowered = replace(lowered, typed_brace_cpp=lc.render_type(at))
         return lowered
-    if (isinstance(a, (TpyDictLiteral, TpySetLiteral)) and method_arg_stub
+    if (isinstance(a, (TpyDictLiteral, TpySetLiteral)) and method_arg
             and _container_literal_method_arg(a, ptype, lc.analyzer)):
         # A dict / set literal into a builtin-container stub method slot
         # (`d.update({...})`): the spelled container render in place, like the

@@ -4078,3 +4078,162 @@ which a type-param receiver does not have.
   fallback histogram, and the face-witness union -- all three are keyed to
   `tests/cases`, and the face exclusion errs toward a false zero-witness
   (wasted work, never a missed divergence).
+
+### Method arg-gate wave (2026-07-29): the expr.method_call ARG site ground to its floor
+
+Dial 2661 -> 2666/3623 (+5 flips), markers 962 -> 957. Full suite green
+(10103 passed, exec + cpy). Five cells against ONE raise site (the
+`_require_method_call_arg` raise, `expressions.py:1029` on this tree), which
+the fresh histogram priced at 9 sole-blocker cases -- not the 16-18 the
+2026-07-28 tree showed; the free-call wave had already drained it. The other
+lesson from the re-measure: the site ORDER flipped (shape gate 17 > marker 10
+> arg 9), so the next `expr.method_call` track should re-histogram first.
+
+**What landed.** (a) Whole value-repr `Optional[Callable]` NAME passes bare
+at matching slots on the marker/free/method ladders, plus the marker
+ladder's func-ref row (`os.walk(top, onerror=cb)` / `onerror=boom`); the
+binding read is admitted in `_unrouted_binding_read` scoped to
+whole-optional reads, with a name-arm guard keeping the narrowed
+invocation (`cb(x)` under `is not None`) on the AST path. (b) The VIEW twin
+at the USER-record method position (`conn.request(m, u, body, hdrs)` at
+`body: bytes | None`): the method loop is target-less, so the AST passes
+the whole optional bare where the free-call position takes the
+`_opt_view_arg_shim` split -- the row and its lowering arm key off
+`method_arg and not method_arg_stub` for exactly that reason. (c) A
+container FIELD read binds bare at a marker callee's container ref slot
+(`heapq.heappush(self.heap, ...)`), lowered `field_prechecked` past the
+copy-vs-alias fence, declared-type keyed so a narrowed `Optional[list]`
+field stays out. (d) An Own[T]-returning method rvalue binds the SAME open
+`Own[T]` slot bare (`self._storage.init(ui, other._storage.take(ui))` in a
+generic `__move__`). (e) The builtin `setattr(obj, "name", v)` statement
+delegates its synthesized `__setattr__` call to the existing dynamic-attr
+write mirror.
+
+**A dead row caught before it shipped: sema SUBSTITUTES generic marker-call
+params.** The heappush `Own[T]` item slot arrives as `Own[TimerEntry]` on
+`resolved_function_info`, so the raw-`Own[TypeParamRef]` ctor-rvalue row
+written for it could never fire -- the existing `own.record_rvalue` row was
+already paying that arg. The row was deleted the moment its witness read
+zero; the general rule stands: check what sema actually stores on the call
+node before writing a slot-shape row against the stub's declared params.
+
+**The ratchet caught a real regression, exactly as designed.** The first
+setattr delegation captured EVERY `__setattr__` macro expansion, including
+the runtime-name form (`setattr(h, name, value)` on a str-slotted
+`__setattr__`) that already routed through the general method arm --
+`dynamic_attrs/dyn_name_setattr` went routed -> fallback and the corpus
+ratchet failed the run. The fix keys the delegation on the literal-name +
+coerced-value shape the mirror admits; the regression pin states the
+invariant. Note the failure MODE: a delegation to a narrower arm can
+DE-ROUTE bodies the general arm already handled, and only the ratchet (not
+the byte-diff -- fallback emits identical bytes) sees it.
+
+**Residue at the site: the four `needs_copy`-fork cases** (`enum/
+enum_name_owned_sinks`, `async/future_drop_on_cancel`,
+`auto_move/same_stmt_aug_target_consume`, `list/tplib_array_list_slice`) --
+unchanged, still gated on the TODO.md dead-end entry's design decision
+(mirror `_gen_own_arg`'s rendered-identity `needs_copy` by string or by
+coercion kind). The arg gate cannot go lower without that decision.
+
+**Review round:** the three whole-value-opt pass-through predicates
+collapsed onto one shared core keyed by the family check
+(`_whole_value_opt_name_arg`); the adjacent by-value open-T return shape
+got its byte-identity pin (the true negatives -- mismatched T, a C++-ref
+return at a same-T Own slot -- are sema-rejected and cannot compile).
+New faces, all corpus-witnessed: `arg.value_opt_callable`,
+`method.optview_whole_arg`, `arg.container_field_marker`,
+`arg.own_tparam_method_rvalue`.
+
+### Method-family grind, harvests 2-4 (2026-07-29): the expr.method_call family to its floor
+
+Dial 2666 -> 2701/3623 (+35 flips across three harvests: +15 shape-gate,
++11 marker/receiver-gate, +9 receiver/consumer), markers 957 -> 922. Full
+exec suite green after each harvest. With the arg-gate wave above, the
+session total is +40 flips, and every `expr.method_call` site is at its
+documented residue.
+
+**Shape-gate harvest (+15).** The 2-arg getattr builtin delegated to the
+result-blind dyn-attr read mirror (the general arm's result gate rejects
+the dunder's Any / owned-str returns; runtime names ride allow_name_arg);
+owned-bytes and value-tuple LITERAL elements at container inserts (names
+keep deferring pending the S6 convert / move cascade; the pointer-repr
+tuple keeps its storage lift); F1-record elements at the set method
+receiver; Own[record] protocol-method rvalues at storage sinks; a new
+SCALAR-receiver stub family row in `_METHOD_RECV_FAMILY_TABLE`
+(`v.as_integer_ratio()` -- value-tuple results at storage/statement
+sinks, plus the TuplePrinter wrap for value-tuple call results under
+print); open-T results at the shared stub result core (`return
+self.items.pop()`); container-property reads bound bare at native slots
+(`len(f.items)`, BORROW_BIND -- the alias-decl sink stays fenced);
+value-opt owned-view/scalar method results at storage decls (`host =
+full.hostname`); bytes-view receivers at the str-list iterable override.
+Cascades: `zero_division_caught`, `panic_float_divmod_zero`,
+`str_pending_tuple_return`.
+
+**Marker/receiver-gate harvest (+11).** `@cpp_template` methods on
+@native record receivers (the Ptr-template arm generalized via
+`_native_record_recv`) plus the `cpp_return_type` static_cast wrap
+(THIRCoerce over the member call, threaded via a `ret_cast_ok` knob
+scoped to the record arm whose tail renders it); generic super() /
+unbound-self calls as a new `super_generic` marker kind (parent spelled
+via its own `to_cpp` -- the AST's exact call -- targs composed at
+lowering via lc.render_type; the non-generic form keeps its F1 pin); the
+same-T marker arg row (a NAME bound to the slot's own bare type param
+passes bare); explicit-targs folding widened from statics to
+module-qualified and builtin-module callees under the same equality pin;
+TypedDict `.get` and membership mirrors (the composed value_or /
+make_optional / operand-effect / has_value templates -- byte-verified
+against the AST arms by direct probe); bytes literal and str/bytes SLICE
+subscript receivers; owned-bytes-element lists admitted at
+`_storage_call_ret`; protocol / bounded-tparam FIELD receivers
+(`self.factory.make()` -- the family dispatch holds the record's tparam
+bounds). Cascades: `bytes/rstrip_chars`,
+`protocol_bound_record_with_bounds`, `protocol_user_bound_record`.
+
+**Receiver/consumer harvest (+9).** Module-variable receivers
+(`os.environ`) across the PINNED consumers -- method receiver
+(`(*environ).update({...})`, with the dict/set literal rendering in
+place at record-method container slots), native-slot arg
+(`::tpy::__len__((*environ))`), and user-`__contains__` membership --
+while the unpinned local-alias decl keeps deferring; `self`
+callable-field invocations (`(*this).on_event(x)` via THIRSelf.deref);
+view-family receivers generally (str/bytes fields, bytes-returning
+calls, view-valued properties). Cascades: `sys_argv`, `stdlib/random`,
+`async/stream_eof`, `async/stream_readuntil`,
+`init_field_binding_dispatch`.
+
+**The ratchet caught two more de-routings, same failure mode as the
+setattr one:** the two old fence pins (bytes-split iterable, str-field
+receiver) and the module-var len pin encoded reasons these widenings
+removed -- each converted to a routing pin when the corpus/unit run
+failed. The running lesson: a fence pin's stated reason is a contract;
+when a widening removes the reason, the pin conversion is part of the
+cell, not cleanup.
+
+**Sema substitutes call-site params -- twice.** The `Own[TypeParamRef]`
+ctor-rvalue row (arg-gate wave) and the "mismatched-T super arg"
+boundary pin (review round) both died the same way: `resolved_
+function_info.params` arrives SUBSTITUTED on the call node, so a
+raw-slot row can never fire and a name-mismatch negative can never
+compile. Check what sema stores before writing slot-shape rows against
+the stub's declared params.
+
+**Parked on named frontiers this session:** the builtin-type ctor pair
+(`tpy.Int32(10)` -- the type-ctor machinery has no method-call seam),
+the `{cpp}`-substitution pair (partial explicit targ lists that also
+fail the equality pin), the `Rc.new` both-targs pair (the
+`::tpy::Adapter<P, C>` method-targ spelling is the dyn-protocol
+adapter machinery), `stdlib/urllib_parse` (chained off the family to an
+is-binop shape), `set/optional_set_forward_ref` (chained to the
+Optional[set] field write -- the field-write dispatch owes its
+decomposition first), and the four `needs_copy` fork cases at the arg
+gate (unchanged, awaiting the design decision).
+
+**Review round (7 specialists over the whole 40-flip batch):**
+codegen-correctness probed all four composed-template sites AST-vs-THIR
+(TypedDict get/membership, super_generic, ret-cast, Ptr/native
+cpp_template args) -- identical; safety and parity clean. Applied:
+boundary pins for the non-scalar template arg and the substituted-T
+super arg (the latter as an adjacent-shape routing pin -- see the sema
+note above), the bytes-split unit byte-identity, the module-var
+docstring consumer list, and two comment-hygiene fixes.

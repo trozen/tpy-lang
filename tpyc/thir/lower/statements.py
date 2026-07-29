@@ -8701,6 +8701,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # the expression macro arm drops the DISCARD use (a void
                 # method call rejects in value position), so the expansion
                 # dispatches here in statement position instead.
+                exp = stmt.expr.macro_expansion
+                if (exp.method == "__setattr__" and len(exp.args) == 2
+                        and isinstance(exp.args[0], TpyStrLiteral)
+                        and isinstance(exp.args[1], TpyCoerce)):
+                    # `setattr(obj, "name", <coerced literal>)` synthesizes
+                    # the SAME `obj.__setattr__(...)` call the dynamic-attr
+                    # WRITE lowers -- delegate to its narrow mirror (the Any
+                    # value slot is outside the generic method-arg slice).
+                    # ONLY the literal-name + coerced-value shape: a runtime
+                    # name / uncoerced value (`setattr(h, name, value)` on a
+                    # str-slotted __setattr__) already routes through the
+                    # general method arm and must keep doing so.
+                    lowered_sa = _lower_dyn_setattr_call(exp, lc, declared)
+                    _witness("expr_stmt.macro_discard")
+                    return THIRExprStmt(
+                        expr=_flush_witness("flush.expr_stmt", lowered_sa),
+                        loc=loc)
                 _witness("expr_stmt.macro_discard")
                 return THIRExprStmt(
                     expr=_flush_witness(
