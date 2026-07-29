@@ -1134,8 +1134,11 @@ by theme; each is a rule the next cell should apply.
   BigInt frame-field write rendered position-blind). Trust the diff, not the reasoning.
 - The byte-diff covers a case's **local** modules only, and that is the whole scope
   THIR has: `compiler.py` forces non-user modules to the AST path, so `lib/tpy` and
-  the stdlib never lower through THIR and a case migrates on its OWN code's
-  portability, not its imports'.
+  the stdlib never lower through THIR on any shipping path, and a case migrates on
+  its OWN code's portability, not its imports'. The one exception is
+  verification-only: `--thir-stdlib` (via `CodeGenOptions.thir_all_modules`) lifts
+  that gate and diffs the stdlib THIR output against the same run's AST output,
+  which is the only oracle stdlib emission has.
 - **Green byte-diff does not mean a face is covered.** A gate arm or render no corpus
   case reaches is invisible to the diff -- several latent call-arg bugs, and a
   template-keyword miscompile, sat in exactly such witness-free faces. Register each

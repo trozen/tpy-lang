@@ -658,6 +658,11 @@ class Compiler:
         # Per-face witness counts (thir/faces.py) for the harness's
         # zero-witness report; only ever written under --thir-codegen.
         self._thir_face_witnesses: dict[str, int] = {}
+        # Witnesses recorded since the current lowering attempt began, so a
+        # body that falls back can undo them (thir/faces.py rollback_witnesses).
+        # None between attempts: emit-time witnesses belong to a body that
+        # already routed and must never be rolled back by a later attempt.
+        self._thir_face_journal: dict[str, int] | None = None
         # Per-module names of THIR-routed bodies (ctors as `Rec.__init__`),
         # consumed by the test harness's divergence reporter to label a
         # snapshot-diff hunk as inside/outside a routed body.
@@ -1030,9 +1035,13 @@ class Compiler:
         boundary), so a case migrates on its own code's portability, not its
         imports'. Shared by the build path (generate_code) and the string path
         (generate_code_to_strings, i.e. --dump-code / -vv) so the two never
-        diverge on the routing decision."""
+        diverge on the routing decision.
+
+        `thir_all_modules` lifts the gate for the A5 measurement and the
+        stdlib-oracle run, whose output is discarded or same-run-diffed."""
         codegen = CodeGenerator(compiled.analyzer, options)
-        if codegen.ctx.thir_codegen and not self.is_user_module(compiled):
+        if (codegen.ctx.thir_codegen and not self.is_user_module(compiled)
+                and not (options is not None and options.thir_all_modules)):
             codegen.ctx.thir_codegen = False
         return codegen
 

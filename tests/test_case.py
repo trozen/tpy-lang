@@ -231,6 +231,19 @@ def test_case(case_dir, main_src, request):
                 check_or_update(gen_path.read_text(), expected_file,
                                 f"{mod_name}{ext} (THIR)", thir_routed_names=thir_names)
 
+    # Stdlib oracle (--thir-stdlib): lib/tpy + stdlib have no committed
+    # snapshot anywhere, so the THIR emission is compared to the AST emission
+    # from THIS run -- a transient oracle, never written to expected/.
+    if result.thir_lib_modules is not None:
+        for mod_name, ast_hpp, ast_cpp, thir_hpp, thir_cpp in result.thir_lib_modules:
+            for ext, ast_path, thir_path in ((".hpp", ast_hpp, thir_hpp),
+                                             (".cpp", ast_cpp, thir_cpp)):
+                if ast_path is None or thir_path is None:
+                    continue
+                check_or_update(thir_path.read_text(), ast_path,
+                                f"{mod_name}{ext} (THIR stdlib)",
+                                compare_only=True)
+
     # THIR ratchet: an unmarked (migrated) case must route every user body
     # through THIR. A fallback emits byte-identical AST, so the snapshot compare
     # above is blind to a silent THIR->AST regression -- assert zero fallback.

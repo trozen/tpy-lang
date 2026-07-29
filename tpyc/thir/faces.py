@@ -12,9 +12,15 @@ lowering faces record at THIR-node construction (the render actually
 fired); the `own.*` classifier rows record at lowering admission -- their
 render is
 the bare arg shared with the pass-through emit, so admission is the only
-distinguishing site (an admit in a body later rejected elsewhere still
-counts, a deliberate over-approximation); `flush.*` record when a flushable
+distinguishing site; `flush.*` record when a flushable
 statement position's lowered value actually carries a hoisted arg temp.
+
+Every kind is journalled per lowering attempt and ROLLED BACK when the body
+falls back (`rollback_witnesses`, driven from fallback.py's attempt
+boundaries): a fallback emits its whole tree through the AST path, so an arm
+it merely reached covers nothing. Without that, an arm witnessing before it
+can raise reads as covered when it never lowered -- which is how a dead arm
+passed this very check.
 
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
@@ -1459,4 +1465,66 @@ def witness(face: str) -> bool:
     if compiler is not None:
         w = compiler._thir_face_witnesses
         w[face] = w.get(face, 0) + 1
+        j = compiler._thir_face_journal
+        if j is not None:
+            j[face] = j.get(face, 0) + 1
     return True
+
+
+def begin_witness_journal() -> None:
+    """Open the journal for one body's lowering attempt (called from
+    `fallback.begin_attempt`, so the two tallies share their boundaries)."""
+    compiler = get_current_compiler()
+    if compiler is not None:
+        compiler._thir_face_journal = {}
+
+
+def commit_witnesses() -> None:
+    """Close the journal on a body that ROUTED, so witnesses recorded outside
+    a lowering attempt -- emit-time ones especially, since `thir/emit.py`
+    records faces too -- are never journalled and so can never be rolled back.
+
+    Closing is not what makes the tally correct: `begin_attempt` precedes
+    every `fold_attempt` and RESETS the journal, so a rollback already drains
+    only its own body (measured -- neutering this call corpus-wide leaves the
+    zero-witness list byte-identical). What it buys is that the window has a
+    definite end, which is what lets `rollback_witnesses` assert it was
+    opened. That assert is the enforcement the 6-site convention would
+    otherwise lack.
+
+    THE WINDOW IS ONE FLAT SLOT, NOT A STACK: attempts must not nest. An
+    inner commit would close the outer body's window and silently disable its
+    rollback. Holds today because every attempt completes before the next
+    begins (function and ctor attempts finish in the seeding loop, top-level
+    closes before `gen_module_init`, and a resumable attempt is
+    begin/lower/close with no other journal open). A lowering that straddled
+    emit would break it -- make the journal a stack before allowing that."""
+    compiler = get_current_compiler()
+    if compiler is not None:
+        compiler._thir_face_journal = None
+
+
+def rollback_witnesses() -> None:
+    """Undo every witness recorded since the journal opened, and close it.
+
+    A body that falls back emits its WHOLE tree through the AST path, so an
+    arm that merely ran during the attempt contributed no emitted C++ and is
+    not covered by anything. Counting it defeats the detector: that is exactly
+    how a dead arm passed the zero-witness check once already. Applies to the
+    `own.*` admission rows too -- admission stays the distinguishing site for a
+    body that ROUTES, which is the case their semantics were written for."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return
+    assert compiler._thir_face_journal is not None, (
+        "fold_attempt with no journal open -- every fallback seam must be "
+        "preceded by begin_attempt, or the rolled-back witnesses belong to "
+        "whatever ran last instead of to this body")
+    w = compiler._thir_face_witnesses
+    for face, n in compiler._thir_face_journal.items():
+        left = w.get(face, 0) - n
+        if left > 0:
+            w[face] = left
+        else:
+            w.pop(face, None)
+    compiler._thir_face_journal = None

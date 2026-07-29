@@ -53,11 +53,21 @@ def test_thir_flag_conflict() -> None:
     # force-on vs --update-snapshots (updating=True) -> conflict.
     assert conflict(_StubConfig({"--thir-codegen": True}), updating=True) is not None
 
+    # --thir-stdlib needs THIR ACTIVE, so it conflicts with both ways of
+    # turning it off. It is not a force-on flag (it respects no_thir markers),
+    # hence its own branch rather than membership in the loop above.
+    assert conflict(_StubConfig({"--thir-stdlib": True}), updating=True) is not None
+    assert conflict(_StubConfig({"--thir-stdlib": True, "--no-thir": True}),
+                    updating=False) is not None
+
     # Non-conflicting combinations -> None.
     assert conflict(_StubConfig({}), updating=False) is None          # default
     assert conflict(_StubConfig({"--no-thir": True}), updating=False) is None
     assert conflict(_StubConfig({"--thir-codegen": True}), updating=False) is None
     assert conflict(_StubConfig({"--no-thir": True}), updating=True) is None
+    assert conflict(_StubConfig({"--thir-stdlib": True}), updating=False) is None
+    assert conflict(_StubConfig({"--thir-stdlib": True, "--thir-codegen": True}),
+                    updating=False) is None
 
 
 def _mode(**kw):

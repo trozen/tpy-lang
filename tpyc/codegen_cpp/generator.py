@@ -485,8 +485,8 @@ class CodeGenerator:
                 lower_simple_generator as _thir_lower_sgen,
                 module_native_globals as _thir_native_globals,
             )
-            from ..thir.fallback import (begin_attempt, fold_attempt,
-                                         is_bodyless_binding,
+            from ..thir.fallback import (begin_attempt, commit_attempt,
+                                         fold_attempt, is_bodyless_binding,
                                          record_arm_residual)
             from ..thir.shape import record_shape
 
@@ -536,6 +536,7 @@ class CodeGenerator:
                             render_resolve=self.types.resolve_type)
                     if sg is not None:
                         self.ctx.thir_simple_gens[id(f)] = sg
+                        commit_attempt()
                         record_shape(f, "body", routed=True)
                     else:
                         fold_attempt("body", f)
@@ -566,6 +567,7 @@ class CodeGenerator:
                     if entries is not None:
                         for stub, stf in entries:
                             self.ctx.thir_functions[(id(f), id(stub))] = stf
+                        commit_attempt()
                         record_shape(f, "body", routed=True)
                     else:
                         fold_attempt("body", f)
@@ -580,6 +582,7 @@ class CodeGenerator:
                                      render_concept=_render_concept)
                 if tf is not None:
                     self.ctx.thir_functions[id(f)] = tf
+                    commit_attempt()
                     record_shape(f, "body", routed=True)
                 else:
                     fold_attempt("body", f)
@@ -600,6 +603,7 @@ class CodeGenerator:
                                           render_concept=_render_concept)
                 if tc is not None:
                     self.ctx.thir_constructors[id(init)] = tc
+                    commit_attempt()
                     record_shape(init, "ctor", routed=True)
                 else:
                     fold_attempt("ctor", init)
@@ -793,8 +797,8 @@ class CodeGenerator:
         # `init_globals`, the generator's own global-name/type map.
         if self.ctx.thir_codegen:
             from ..thir.lower import lower_top_level as _thir_lower_top
-            from ..thir.fallback import (begin_attempt, fold_attempt,
-                                         record_arm_residual)
+            from ..thir.fallback import (begin_attempt, commit_attempt,
+                                         fold_attempt, record_arm_residual)
             begin_attempt()
             self.ctx.thir_top_level = _thir_lower_top(
                 module, self.analyzer, init_globals,
@@ -809,6 +813,8 @@ class CodeGenerator:
             if self.ctx.thir_top_level is None:
                 fold_attempt("top_level", module)
                 record_arm_residual(module.top_level_stmts)
+            else:
+                commit_attempt()
         self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module

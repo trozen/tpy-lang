@@ -1901,8 +1901,8 @@ class AsyncCoroCodegen:
         key = id(func)
         if key in cache:
             return cache[key]
-        from ..thir.fallback import (begin_attempt, fold_attempt,
-                                     record_arm_residual)
+        from ..thir.fallback import (begin_attempt, commit_attempt,
+                                     fold_attempt, record_arm_residual)
         from ..thir.shape import record_shape
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
@@ -1923,6 +1923,7 @@ class AsyncCoroCodegen:
                              native_globals=self.ctx.native_global_names)
         cache[key] = rb
         if rb is not None:
+            commit_attempt()
             record_shape(func, "resumable", routed=True)
         else:
             fold_attempt("resumable", func)

@@ -85,6 +85,7 @@ uv run pytest --no-thir --no-exec          # Disable THIR entirely: emit + byte-
 uv run pytest --thir-codegen --no-exec     # Ignore no_thir.txt entirely (no ratchet) + print the whole-corpus faces/shapes coverage metrics (the byte-diff itself already spans every case; conflicts with --update-snapshots)
 uv run pytest --thir-classify --no-exec    # (Re)write no_thir.txt markers (add where a user module has THIR fallback, remove where clean) -- bootstrap/maintain the per-case migration state
 uv run pytest --thir-check-flip --no-exec  # List marked cases now clean enough to un-mark (delete no_thir.txt) -- the porting-progress query
+uv run pytest --thir-stdlib --no-exec      # Route lib/tpy + stdlib through THIR too and byte-diff against the SAME RUN's AST output (stdlib has no committed snapshot; cutover gates A5/D4). Writes nothing; conflicts with --update-snapshots / --no-thir; roughly doubles codegen per case
 uv run pytest --clean                      # Wipe shared PCH + stdlib .o + exec-results caches (implies --force-exec)
 uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
 uv run pytest --cxx clang                  # Build the exec phase with a specific toolchain (mirrors `tpyc --cxx`)

@@ -947,6 +947,11 @@ class CodeGenOptions:
     # Route THIR-eligible functions through the THIR codegen backend instead of
     # the AST path (migration dual-mode; byte-identical for the supported slice).
     thir_codegen: bool = False
+    # Lift the user-module scoping gate so `lib/tpy` + stdlib route THIR too
+    # (cutover gate A5). Measurement/verification only: stdlib emission has no
+    # committed snapshot, so its only oracle is a same-run diff against the AST
+    # output -- never set this on a path that ships the generated C++.
+    thir_all_modules: bool = False
 
 
 class LocalCppForm(Enum):

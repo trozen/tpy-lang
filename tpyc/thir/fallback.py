@@ -46,6 +46,8 @@ import re
 from dataclasses import fields as dataclass_fields, is_dataclass
 
 from ..compilation_context import get_current_compiler
+from .faces import (begin_witness_journal, commit_witnesses,
+                    rollback_witnesses)
 from ..parse.nodes import (
     TpyAwait,
     TpyDictComprehension,
@@ -141,6 +143,15 @@ def begin_attempt() -> None:
     if compiler is not None:
         compiler._thir_reject_reason = None
         compiler._thir_reject_detail = None
+    begin_witness_journal()
+
+
+def commit_attempt() -> None:
+    """Close one body's lowering attempt on the ROUTED side -- the sibling of
+    `fold_attempt`. Only the face journal cares (the reject slots are cleared
+    by the next `begin_attempt`), but the call belongs at every success branch
+    so the attempt window is bracketed where the routing decision is made."""
+    commit_witnesses()
 
 
 def fold_attempt(component: str, node: object = None) -> None:
@@ -151,6 +162,7 @@ def fold_attempt(component: str, node: object = None) -> None:
     `node` is the AST callable that failed; passing it also records the
     reason per body (`--dump-thir` names it), so the aggregate tally and the
     per-body attribution cannot drift apart."""
+    rollback_witnesses()
     compiler = get_current_compiler()
     if compiler is None:
         return

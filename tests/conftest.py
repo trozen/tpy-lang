@@ -743,6 +743,13 @@ class CompileResult:
     # still gets an overlay. Byte-compared to the same AST-authored snapshot as
     # all_modules -- so the AST (oracle) and THIR paths are both checked per run.
     thir_modules: list[tuple[str, Path | None, Path | None]] | None = None
+    # --thir-stdlib only: per non-local (lib/tpy + stdlib) module, the AST and
+    # THIR generated paths from THIS run: (name, ast_hpp, ast_cpp, thir_hpp,
+    # thir_cpp). Stdlib emission has no committed snapshot anywhere, so the
+    # same-run AST output is its only available oracle (cutover gate D4).
+    thir_lib_modules: list[
+        tuple[str, Path | None, Path | None, Path | None, Path | None]
+    ] | None = None
     # THIR ratchet count: user-body fallbacks for a case the ratchet governs
     # (default run, unmarked). None when it doesn't apply (marked case,
     # whole-corpus/classify runs, or --update-snapshots). >0 fails the comp
@@ -1001,6 +1008,30 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if thir_active else None)
 
+        # Stdlib oracle (--thir-stdlib): regenerate the NON-local modules
+        # through THIR and hand test_case both paths to byte-compare. Runs
+        # AFTER every record_thir_* call above -- stdlib bodies would otherwise
+        # land in the same tallies the dial and the ratchet read.
+        thir_lib_modules = None
+        if thir_active and THIR_STDLIB:
+            lib_dir = output_dir / "_thir_lib"
+            lib_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS,
+                                           thir_all_modules=True)
+            thir_lib_modules = []
+            ast_paths = {name: (hpp, cpp)
+                         for name, hpp, cpp, is_local in all_modules
+                         if not is_local}
+            for mod in compiled_modules:
+                if mod.name not in ast_paths:
+                    continue
+                hpp_path_t, cpp_path_t = compiler.generate_code(
+                    mod, lib_dir, entry_module_name=entry_module.name,
+                    options=lib_opts
+                )
+                ast_hpp, ast_cpp = ast_paths[mod.name]
+                thir_lib_modules.append(
+                    (mod.name, ast_hpp, ast_cpp, hpp_path_t, cpp_path_t))
+
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
         hpp_path = layout.hpp_path(entry_module.name)
@@ -1038,6 +1069,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              thir_routed_names=thir_routed_names,
                              thir_modules=thir_modules,
+                             thir_lib_modules=thir_lib_modules,
                              thir_ratchet_fell=thir_ratchet_fell,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
@@ -1200,6 +1232,19 @@ def pytest_addoption(parser):
         ),
     )
     parser.addoption(
+        "--thir-stdlib",
+        action="store_true",
+        default=False,
+        help=(
+            "Also route lib/tpy + the stdlib through THIR and byte-diff the "
+            "result against the SAME RUN's AST output (cutover gate A5/D4: "
+            "stdlib emission has no committed snapshot, so this is its only "
+            "oracle). Nothing is written to expected/. Roughly doubles "
+            "codegen per case -- pair with --no-exec, and with -k for a "
+            "subset."
+        ),
+    )
+    parser.addoption(
         "--thir-classify",
         action="store_true",
         default=False,
@@ -1269,6 +1314,10 @@ def _thir_flag_conflict(config, updating: bool) -> str | None:
     if config.getoption("--no-thir") and forcing:
         return ("--no-thir conflicts with --thir-codegen / --thir-classify / "
                 "--thir-check-flip: it disables THIR, they force it on")
+    if config.getoption("--thir-stdlib") and (updating
+                                              or config.getoption("--no-thir")):
+        return ("--thir-stdlib needs THIR active: it conflicts with "
+                "--update-snapshots and --no-thir")
     return None
 
 
@@ -1283,6 +1332,7 @@ def pytest_configure(config):
     # only while regenerating snapshots (which must be AST-authored). Flip before
     # the worker guard below: xdist workers do the compiling.
     global THIR_IGNORE_MARKERS, THIR_CLASSIFY_WRITE, THIR_CHECK_FLIP
+    global THIR_STDLIB
     updating = bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED
     # THIR is off while regenerating snapshots (must be AST-authored) and under
     # --no-thir (pure-AST mode: emit + diff via AST only, no overlay, no ratchet).
@@ -1299,6 +1349,8 @@ def pytest_configure(config):
         THIR_CLASSIFY_WRITE = True
     if config.getoption("--thir-check-flip"):
         THIR_CHECK_FLIP = True
+    if config.getoption("--thir-stdlib"):
+        THIR_STDLIB = True
 
     # --dep-mode: parsed before the xdist-worker early return -- workers do
     # the per-case compiles, so they need the same modes as the master.
@@ -1475,6 +1527,17 @@ def pytest_report_header(config):
     if DEP_MODES:
         modes = ", ".join(f"{lib}={mode}" for lib, mode in sorted(DEP_MODES.items()))
         dep_mode_lines = [f"{_LOG_PREFIX} dep modes: {modes} (via --dep-mode)"]
+    # --thir-stdlib has NO GREEN STATE yet, so say so where the failures will
+    # be seen. CLAUDE.md documents the baseline, but nobody opens CLAUDE.md at
+    # the moment 436 tests go red.
+    stdlib_lines = []
+    if THIR_STDLIB:
+        stdlib_lines = [
+            f"{_LOG_PREFIX} thir stdlib oracle: ON -- lib/tpy + stdlib routed "
+            f"through THIR and diffed vs this run's AST output",
+            f"{_LOG_PREFIX}   KNOWN BASELINE: ~436 divergences over 11 modules "
+            f"(3 classes, see TODO.md). There is no green state yet.",
+        ]
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
         f"{_LOG_PREFIX}   --cxx=<gcc|clang|gcc-14|zig|...> or --cxx=list to enumerate",
@@ -1488,6 +1551,7 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
         f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
         f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
+        *stdlib_lines,
     ]
 
 
@@ -2079,6 +2143,7 @@ def record_thir_case_marked() -> None:
 THIR_IGNORE_MARKERS = False
 THIR_CLASSIFY_WRITE = False
 THIR_CHECK_FLIP = False
+THIR_STDLIB = False
 
 # no_thir.txt-marked cases that came back clean under --thir-check-flip: the
 # un-mark candidates. Aggregated worker -> controller like the tallies.

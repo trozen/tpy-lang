@@ -3819,3 +3819,182 @@ which a type-param receiver does not have.
   position is what the ladders share. Free-call <-> method <-> marker <-> ctor
   arg ladders; read <-> write field ladders; record <-> protocol result
   ladders. Every one of those pairings paid at least one row this wave.
+
+### Gate A5 -- the stdlib baseline (2026-07-28, master `1596bea69`)
+
+  A5 had no instrument; the only datum was a stale 2026-07-05 drill (~249
+  blocked stdlib bodies). It has one now:
+  `scripts/thir_migration/thir_stdlib_fallback.py` lifts the user-module
+  scoping gate in `compiler.py:_make_codegen` for a measurement, compiles one
+  entry program per `lib/tpy` module, discards the C++, and classifies every
+  body. **44 seconds, 88 modules, zero crashes** -- the cost objection that
+  kept this gate unmeasured for three weeks was imaginary.
+
+  | population | count |
+  |---|---|
+  | routed | 710 |
+  | **fallback** | **289** |
+  | not attempted | 32 |
+  | not a body-migration candidate | 662 |
+
+  **71% of candidate stdlib bodies (710/999) already route.** The 289 split
+  237 sync functions / 27 constructors / 14 generators / 11 async. The 32
+  not-attempted are all `<top_level>` in binding-only modules (`builtins`,
+  `typing`, `tpy._builtins.*`, `_bindings.*`) that emit no `.cpp` at all --
+  nothing to lower, not a gap. Eight macro modules are excluded (they run
+  under CPython at compile time and are not codegen targets).
+
+  Concentration, by module: `tplib.requests` 44, `asyncio` 35,
+  `asyncio._executor` 20, `datetime` 17, `tplib.array_list` 14, `tpy.atomic`
+  14, `http.client` 13, `urllib.parse` 13 -- the top eight hold 170 of 289
+  (59%). By reason: `expr.method_call` 81, `expr.call` 30,
+  `stmt.var_decl:decl.slot_type` 12, `stmt.assign:assign.field_write_shape`
+  10, `stmt.return:return.slot_type` 10. 78 distinct reasons, 41 of them
+  singletons; top-5 = 143 (49%), top-20 = 208 (72%).
+
+  **The mix is the USER corpus's mix.** The call frontier alone
+  (`expr.method_call` + `expr.call`) is 111 of 289, and the next tier is the
+  same slot-type/field-write families the waves are already grinding. So the
+  stdlib tail is largely NOT additive work: most of it is the same set cover,
+  and wave rows aimed at the user corpus clear stdlib bodies for free. What
+  IS stdlib-specific: `res.*` (16 -- the asyncio executor and the coroutine
+  machinery, the sink that is always opened last) and `sig.inplace_dunder`
+  (5, `tpy.atomic`'s in-place operator surface).
+
+  **This is a FLOOR, and the routed figure is UNVERIFIED.** An import-only
+  entry program instantiates almost nothing, and resumable frames and generic
+  monomorphizations only attempt lowering at emission time, so the real count
+  under a using corpus is higher by an unknown amount. And the 710 routed
+  bodies emitted THIR C++ that **was never compared to anything**: stdlib has
+  no snapshot and no byte-diff oracle anywhere (only exec output). That is
+  gate D4's open hole, and A5 is the reason it has to close first -- a
+  stdlib routing wave would otherwise be grinding a number no oracle checks.
+
+### Gate D4 -- post-cutover verification (2026-07-28, decided)
+
+  The question the inventory left open: what replaces the dual-path byte-diff
+  once the AST oracle is deleted, and when do snapshots become THIR-authored.
+
+  **For USER modules, nothing replaces it.** The byte-diff is migration
+  scaffolding layered on top of the project's actual verification model, which
+  predates THIR and still runs on every case: committed snapshots (3615
+  compiling cases), exec (3631 runtime oracles -- exactly ONE compiling case
+  has neither `output.txt` nor `panic.txt`, `native/directives_native_module`),
+  cpy parity on 3057 of them (558 carry `no_cpython.txt`), comp diagnostics +
+  `# tpyc:` annotations, and the `tpyc/` unit suite. Cutover returns
+  verification to that model. So D4's user half is a TEARDOWN AND TRANSITION
+  problem, not a design problem.
+
+  **The one thing genuinely lost, stated rather than buried:** today the
+  emitted C++ has two independent authors, so a WRONG SNAPSHOT is still caught
+  -- AST and THIR must agree with each other as well as with the file. After
+  cutover a wrongly-regenerated snapshot is self-consistent. The compensating
+  controls are exec + cpy and the standing rule that snapshot churn on existing
+  tests needs approval. This is the pre-THIR regime; accept it, do not build
+  something to plug it.
+
+  **DECISION -- two-commit cutover, and the proof is free.**
+  `_thir_flag_conflict` (`tests/conftest.py`:1256) currently FORBIDS THIR under
+  `--update-snapshots` ("snapshots must capture the default (AST) codegen
+  path"). The cutover therefore splits:
+
+  1. Flip snapshot authorship to THIR and regenerate. **The correctness
+     criterion is `git diff tests/cases` EMPTY.** Non-empty means the corpus
+     was not ready, and it says exactly where.
+  2. Delete the AST body emitter, in a commit that touches NO `expected/` file.
+
+  The order is forced: the proof only works while the AST path still exists to
+  have authored the baseline. One combined commit would fold a divergence and a
+  ~16k-line deletion into the same unreadable diff.
+
+  **DECISION -- the stdlib oracle, and it gates A5. LANDED 2026-07-28 as
+  `--thir-stdlib`, and it found 434 diverging cases on its first run.**
+  Baseline: 436 failed / 9588 passed, across 11 modules, in THREE classes --
+  ~93% is a single `lower_top_level` gap (the `// # tpy: <directive>` source
+  comment), plus a redundant ctor-MIL `std::move` (`datetime`) and a
+  `std::string(...)` wrap at a tuple-literal return slot (`urllib.parse`).
+  Filed in TODO.md. The lesson is the gate's whole argument in one number:
+  **710 stdlib bodies were already routing, and a divergence class that no
+  user case can express had been sitting behind them unseen.**
+
+  Confirmed gap: the
+  overlay regenerates only `local_mods` (`conftest.py`:966) and `expected/src/`
+  holds only case-local modules (the single `_bindings` snapshot under
+  `imports/from_pkg_import_submod` is a case-local package, not
+  `lib/tpy/_bindings`). Stdlib emission has no byte-diff oracle anywhere.
+  **Vehicle: extend the overlay to NON-LOCAL modules and byte-diff the
+  THIR-emitted stdlib `.cpp` against the SAME-RUN AST-emitted `.cpp` already on
+  disk** -- both artifacts exist in the case's output dir today, so there is no
+  capture phase, no new snapshot, and no committed churn. Flag-gated, and NOT
+  deduped: every non-local module is regenerated for every case, so the flag
+  roughly doubles codegen per case. A content-hash dedup keyed on the emitted
+  AST text was considered and rejected, and the reason is structural rather
+  than superstition about proxy keys: **a stdlib module's lowering inputs
+  include per-case sema/registry state** -- which monomorphizations the case
+  requested, what the registry holds -- so two cases emitting identical AST
+  text are not thereby known to present identical lowering inputs. Pairing
+  with `--no-exec` is a COST recommendation, not a correctness one: the link
+  set comes from the explicit module list, never a walk of the output dir, so
+  `_thir_lib/` is never compiled or linked. This is cheaper than round 15's
+  pre-run-capture shape and strictly closer to the property being checked
+  (AST-vs-THIR directly, rather than both-vs-snapshot). **It must land before
+  any stdlib routing work** -- 710 stdlib bodies already lower today with
+  nothing checking their output.
+
+  **DECISION -- the `_witness()` no-rollback fix is now a HARD CUTOVER
+  PREREQUISITE -- LANDED 2026-07-28, and it exposed NINE falsely-covered
+  faces.** Witnesses are journalled per lowering attempt and undone when the
+  body falls back; corpus zero-witness went **15 -> 24 of 711**, so the
+  detector's own coverage claim had been inflated by 60%. The nine
+  (`arg.native_comprehension`, `arg.native_int_literal`,
+  `call.inst_genexpr_arg`, `containerlit.tuple_borrow_storage`,
+  `decl.ru_instance_literal`, `decl.ru_wrapper_literal`,
+  `res.frame_tuple_literal`, `subscript.record_elem_borrow`,
+  `top_level.global_ptr_copy`) are filed in TODO.md for pins. The journal is a
+  WINDOW rather than a running tally -- `None` between attempts, with
+  `commit_attempt()` at every routed branch -- so that witnesses recorded
+  outside a lowering attempt (`thir/emit.py` records faces too) are never
+  journalled and so never rollback-eligible.
+  **CORRECTION, measured after the fact: `commit_attempt()` is DEFENCE IN
+  DEPTH, not load-bearing, and the commit message for `ca57e429d` overstates
+  it.** Disabling it corpus-wide leaves the zero-witness list byte-identical,
+  because `begin_attempt` precedes every `fold_attempt` and RESETS the journal
+  -- so a rollback already can only drain its own body's witnesses. The
+  original claim (a neighbour's fallback draining a routed body's emit
+  witnesses) cannot happen for exactly that reason. Keep the call: it makes
+  the window explicit instead of implied by a call-order coincidence that a
+  future fold-without-begin would break silently. The lesson is the ordinary
+  one -- **an argued invariant is a hypothesis until an experiment removes the
+  mechanism and shows the number move.**
+  The retrospective then found the reasoning still too generous: the journal
+  is ONE FLAT SLOT, so in the very scenario cited to justify the call (a
+  lowering that straddles emit, i.e. a nested attempt) an inner commit would
+  CLOSE THE OUTER BODY'S WINDOW -- the mechanism would participate in that
+  hazard, not defend against it. The honest justification is narrower and
+  stronger: a definite end to the window is what lets `rollback_witnesses`
+  ASSERT the window was opened, which is the enforcement the 6-site
+  convention otherwise lacked. That assert landed with this branch, and
+  attempts-must-not-nest is now stated where the code can be read.
+  **The finding that outlives the nine faces: the standing three-unit
+  convention's "routing pin (face witnessed)" was satisfiable by a body that
+  never routed, so it needs restating as "routed AND witnessed" -- and every
+  pre-2026-07-28 `zero-witness N of M` figure in this ledger is INCOMPARABLE
+  with post-fix ones.** Filed in TODO.md.
+  After teardown, `faces.py` is the
+  primary internal detector for admitted-but-unwitnessed arms. It currently
+  increments at the call site, so an arm that witnesses BEFORE it can raise
+  reads as witnessed even when it never lowered -- and that is precisely how a
+  dead arm (`decl.alias_choice_src`) passed the project's own check. A detector
+  that reports false coverage is worse than no detector once it is the only
+  one left.
+
+  **Teardown inventory.** DIES: the overlay (~321 THIR-touching lines in
+  `conftest.py`), the ratchet, 958 `no_thir.txt` markers, the 5 CLI flags
+  (`--thir-codegen` / `--no-thir` / `--thir-classify` / `--thir-check-flip` /
+  `--thir-stdlib` -- the last dies with the rest: it diffs THIR against AST
+  output that will no longer exist) and `_thir_flag_conflict`,
+  `thir/fallback.py` (269), `tests/
+  test_thir_harness.py` (169), the dial itself. SURVIVES, and becomes the ONLY
+  internal net: `faces.py` (1462), `validate.py` (386), `dump.py` (786),
+  adversarial `dualgen.py`. Note the workflow loss to plan for: `--no-thir`
+  pure-AST mode disappears with the path it selects.

@@ -123,6 +123,55 @@ class TestThirScoping:
                 assert not routed.get(m.name), (
                     f"non-user module {m.name!r} routed THIR -- scoping gate failed")
 
+    def test_real_codegen_closes_the_witness_journal(self, tmp_path):
+        """Codegen leaves no journal open, so a witness recorded after the last
+        attempt (emit-time ones especially) is not rollback-eligible.
+
+        SCOPE, measured rather than assumed: this catches `commit_attempt()`
+        being unwired ENTIRELY, not one branch of six dropping it -- with a
+        single site removed the assertion still passes, because a later
+        attempt's `begin_attempt` resets the journal anyway. That is also why
+        a missing site is harmless today (see `faces.commit_witnesses`). The
+        rollback SEMANTICS are pinned in `tpyc/thir/test_faces.py`.
+
+        Deliberately does NOT pair a routed body with a falling-back one: the
+        blocking construct would have to keep falling back to stay meaningful,
+        and the whole active workstream is making such constructs route."""
+        src_file = tmp_path / "main.py"
+        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name,
+                                   options=CodeGenOptions(thir_codegen=True))
+        assert compiler._thir_face_witnesses, "no face witnessed -- test is vacuous"
+        assert compiler._thir_face_journal is None, (
+            "witness journal left OPEN after codegen -- a routed branch is "
+            "missing its commit_attempt(), so these witnesses are exposed to "
+            "the next attempt's rollback")
+
+    def test_thir_all_modules_lifts_the_stdlib_gate(self, tmp_path):
+        """The A5 / stdlib-oracle knob: `thir_all_modules` routes non-user
+        modules too. Asserts the routing DECISION (the sibling test pins the
+        default scoped behaviour); without it the stdlib surface can be neither
+        measured nor byte-diffed, since it has no committed snapshot."""
+        src_file = tmp_path / "main.py"
+        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name,
+                                   options=CodeGenOptions(thir_codegen=True,
+                                                          thir_all_modules=True))
+        routed = compiler._thir_routed_names
+        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
+        assert any(routed.get(name) for name in non_user), (
+            "thir_all_modules routed no non-user module -- the gate did not lift")
+
     def test_clean_body_has_zero_fallback(self, tmp_path):
         """The THIR ratchet's PASS condition: a fully-routable user body records
         zero fallback -- so an unmarked case built from it has thir_ratchet_fell
