@@ -1,0 +1,1 @@
+main.py:19: error: Cannot rebind 'cls' in @classmethod 'run' -- it names the defining class ('except ... as cls')

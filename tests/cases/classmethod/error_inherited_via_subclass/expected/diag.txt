@@ -1,0 +1,1 @@
+main.py:23: error: classmethod 'make' is inherited from 'Base', so 'cls' binds to 'Base', not 'Child' -- this would construct a 'Base'. Call 'Base.make(...)', or override 'make' on 'Child'

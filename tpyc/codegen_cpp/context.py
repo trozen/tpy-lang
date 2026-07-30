@@ -513,13 +513,18 @@ def module_native_global_names(top_level_stmts) -> dict[str, str]:
 
 def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
                              module_name: str, class_name: str, method: str,
-                             fi) -> str:
+                             fi, owner=None) -> str:
     """The non-generic static-method-call spelling (`Rec.m(...)` ->
     `Rec::m`), shared by the AST emit and the THIR gate/lowering mirror.
     Native records spell the C++ class and any explicit method rename;
     implicit-stdlib peers don't emit a `using ::ns::Foo;` alias (suppressed
-    to avoid include cycles), so the class qualifies explicitly there."""
+    to avoid include cycles), so the class qualifies explicitly there.
+    `owner` is sema's resolved record, used when the receiver's spelling
+    names no record of its own (`cls` inside a @classmethod)."""
     record_info = registry.get_record(class_name)
+    if record_info is None and owner is not None:
+        record_info = owner
+        class_name = owner.name
     if record_info and record_info.is_native:
         cpp_method = (fi.native_name if fi and fi.native_name
                       else escape_cpp_name(method))
@@ -658,6 +663,33 @@ def loop_var_binding(
     return f"auto&& {cpp_var} = {deref_expr};"
 
 
+def is_constructor_call(expr: 'TpyExpr',
+                       get_record: 'Callable[[str], object | None]') -> bool:
+    """Whether this call CONSTRUCTS a value, i.e. yields a C++ prvalue.
+
+    Three spellings reach it, and the middle one is why this is shared rather
+    than re-derived: a builtin or generic type instantiation carries
+    `call_type`; a resolved user-record constructor carries `is_constructor`
+    on its fi, which holds however the callee is SPELLED (`cls(...)` inside a
+    @classmethod names no record at all); and a record lookup by name covers
+    the builtin constructors whose fi is a `@cpp_template` `__init__` rather
+    than a synthetic ctor.
+
+    Binding `auto&` to such a result does not compile, so every
+    iterable-lvalue decision -- the AST's and both THIR mirrors' -- must ask
+    exactly this question.
+    """
+    if not isinstance(expr, TpyCall):
+        return False
+    if expr.call_type is not None:
+        return True
+    rfi = expr.resolved_function_info
+    if rfi is not None and rfi.is_constructor:
+        return True
+    return (isinstance(expr.func, TpyName)
+            and get_record(expr.func_name) is not None)
+
+
 def is_lvalue_iterable(
     expr: TpyExpr,
     get_record: Callable[[str], object | None],
@@ -685,9 +717,7 @@ def is_lvalue_iterable(
             return False
         return is_lvalue_iterable(expr.obj, get_record, get_type)
     if isinstance(expr, (TpyMethodCall, TpyCall)):
-        if isinstance(expr, TpyCall) and expr.call_type is not None:
-            return False
-        if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) and get_record(expr.func_name):
+        if is_constructor_call(expr, get_record):
             return False
         # Own[T] returns are by-value rvalues even when T is a reference type;
         # get_type strips OwnType, so consult resolved_function_info to see it.

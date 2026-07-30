@@ -1315,8 +1315,10 @@ class TypeRegistrar:
             method_has_type_params = bool(method.type_params)
             allow_tpref = is_generic or method_has_type_params
 
-            # Validate Self usage: not allowed in @staticmethod
-            if method.is_staticmethod:
+            # Validate Self usage: not allowed in @staticmethod. A @classmethod
+            # is exempt -- `cls` binds it to the defining record, which the
+            # substitution below resolves.
+            if method.is_staticmethod and not method.is_classmethod:
                 for pname, ptype in method.params:
                     if _contains_self_type(ptype):
                         raise SemanticError(
@@ -1518,6 +1520,7 @@ class TypeRegistrar:
                 send_override=method.send_override,
                 sync_override=method.sync_override,
                 is_staticmethod=method.is_staticmethod,
+                is_classmethod=method.is_classmethod,
                 is_property_getter=method.is_property_getter,
                 is_property_setter=method.is_property_setter,
                 property_name=method.property_name,

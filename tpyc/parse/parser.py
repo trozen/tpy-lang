@@ -1279,6 +1279,8 @@ class Parser:
             # @staticmethod and @property are Python builtins, not resolved through imports
             if name == "staticmethod":
                 return ("builtins", "staticmethod", arg_value)
+            if name == "classmethod":
+                return ("builtins", "classmethod", arg_value)
             if name == "property":
                 return ("builtins", "property", arg_value)
             resolved = self._resolve_type_name(name)
@@ -1809,6 +1811,16 @@ class Parser:
                 nested = self._parse_class(item)
                 if isinstance(nested, TpyProtocol):
                     raise ParseError("Protocols cannot be nested inside classes", item)
+                if isinstance(nested, TpyRecord):
+                    # A nested record is renamed to `Outer.Inner` after parsing,
+                    # and there is no bare-name spelling for `cls` to resolve to.
+                    for nested_method in nested.methods:
+                        if nested_method.is_classmethod:
+                            raise ParseError(
+                                f"@classmethod on a nested class is not yet supported "
+                                f"('{node.name}.{nested.name}.{nested_method.name}'); use "
+                                f"@staticmethod and name the class explicitly",
+                                loc=nested_method.loc)
                 if isinstance(nested, TpyEnum) and nested.is_native:
                     raise ParseError(
                         f"@native enum '{nested.name}' cannot be nested inside "
@@ -2027,9 +2039,9 @@ class Parser:
                 # Capture default values for protocol method params so
                 # that callers through a protocol-typed receiver can drop
                 # trailing defaults (e.g. `fp.seek(0)` for `Seekable`).
-                # _parse_param_defaults skips self via skip_self=True.
+                # _parse_param_defaults skips self via skip_receiver=True.
                 param_defaults = self._parse_param_defaults(
-                    item, params, skip_self=True,
+                    item, params, skip_receiver=True,
                 )
 
                 methods.append(MethodSignature(
@@ -2040,7 +2052,7 @@ class Parser:
                     readonly_opt_out=readonly_opt_out,
                     param_defaults=param_defaults,
                     num_posonly_params=self._count_posonly_params(
-                        item, has_self=True),
+                        item, receiver_name="self"),
                 ))
             elif isinstance(item, ast.AnnAssign):
                 # Field declaration: name: Type
@@ -2126,6 +2138,17 @@ class Parser:
                 continue
 
             if not isinstance(stmt, ast.Assign):
+                # Name the rule for a method specifically: it is the shape users
+                # reach for (`Color.from_str`, `c.label()`) and the generic
+                # node-kind message gives them nothing to act on.
+                if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    raise ParseError(
+                        f"Methods on enums are not supported yet, so '{stmt.name}' "
+                        f"cannot be declared here -- an enum body takes only member "
+                        f"assignments (name = value). Use a module-level function "
+                        f"taking the enum as a parameter.",
+                        stmt,
+                    )
                 raise ParseError(
                     f"Enum body must contain only member assignments (name = value), "
                     f"got {type(stmt).__name__}",
@@ -2303,6 +2326,7 @@ class Parser:
         """Parse a method definition."""
         # Check decorators (@staticmethod, @readonly, @native("cpp_name"), @override)
         is_staticmethod = False
+        is_classmethod = False
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
@@ -2343,6 +2367,8 @@ class Parser:
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
+            elif qname == qnames.CLASSMETHOD:
+                is_classmethod = True
             elif qname == qnames.PROPERTY:
                 is_property_getter = True
             elif qname == qnames.PURE:
@@ -2404,6 +2430,23 @@ class Parser:
                 # if unregistered).
                 macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
                 pending_macros.append((qname, macro_kwargs))
+        if is_classmethod:
+            # Checked before the @property / @auto_readonly blocks below so a
+            # bad combination reports the decorator rather than the `cls`
+            # parameter those blocks would trip over.
+            if is_staticmethod:
+                raise ParseError(f"@classmethod cannot be combined with @staticmethod on method '{node.name}'", node)
+            if is_override:
+                raise ParseError(f"@override cannot be combined with @classmethod on method '{node.name}'", node)
+            if is_property_getter or is_property_setter:
+                raise ParseError(f"@property cannot be combined with @classmethod on method '{node.name}'", node)
+            if auto_readonly:
+                raise ParseError(f"@auto_readonly cannot be combined with @classmethod on method '{node.name}'", auto_readonly_dec)
+            if node.name.startswith("__") and node.name.endswith("__"):
+                raise ParseError(
+                    f"'{node.name}' cannot be a @classmethod -- dunder methods "
+                    f"take an instance receiver", node)
+            self._check_cls_not_rebound(node)
         if is_override and is_staticmethod:
             raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
         if is_property_getter:
@@ -2462,17 +2505,28 @@ class Parser:
             type_param_scope = merged_scope
 
         params = []
-        has_self = not is_staticmethod
+        # A @classmethod occupies the same implicit first slot as `self`, named
+        # `cls`. Unlike `self` it carries no type: it names the defining record
+        # (sema binds it as a RECORD binding), so it never becomes a param.
+        has_receiver = not is_staticmethod
+        has_self = has_receiver and not is_classmethod
+        receiver_name = "cls" if is_classmethod else "self"
         self_annotation = None  # Resolved self type; consumed by sema.method_expansion.
         positional_args = _positional_ast_args(node)
-        n_non_self = len(positional_args) - (1 if has_self else 0)
+        n_non_self = len(positional_args) - (1 if has_receiver else 0)
         is_exit_method = node.name == "__exit__" and has_self and n_non_self == 3
         args_iter = iter(enumerate(positional_args))
         for i, arg in args_iter:
-            if i == 0 and has_self:
-                # Non-static methods must have 'self' as first parameter
-                if arg.arg != "self":
-                    raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
+            if i == 0 and has_receiver:
+                # The implicit receiver slot: 'self', or 'cls' on a classmethod
+                if arg.arg != receiver_name:
+                    raise ParseError(f"First parameter of method '{node.name}' must be '{receiver_name}'", node)
+                if is_classmethod:
+                    if arg.annotation is not None:
+                        raise ParseError(
+                            f"'cls' cannot be annotated on @classmethod '{node.name}' -- "
+                            f"it names the defining class, not a value", arg)
+                    continue
                 # Emit the self annotation as a TypeRefNode; sema
                 # resolves it in `resolve_refs` and
                 # `method_expansion.expand_methods` validates the
@@ -2545,8 +2599,8 @@ class Parser:
             kwarg_type = self._parse_unpack_annotation(kwarg_node.annotation, type_param_scope, node)
             kwarg_name = kwarg_node.arg
 
-        # Parse default parameter values (skip_self for non-static methods)
-        defaults = self._parse_param_defaults(node, params, skip_self=has_self,
+        # Parse default parameter values (the receiver slot has no params entry)
+        defaults = self._parse_param_defaults(node, params, skip_receiver=has_receiver,
                                               type_param_scope=type_param_scope,
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
@@ -2583,8 +2637,9 @@ class Parser:
         if is_generator:
             if node.name in ("__init__", "__del__"):
                 raise ParseError(f"'{node.name}' cannot be a generator method", node)
-            if is_staticmethod:
-                raise ParseError(f"@staticmethod method '{node.name}' cannot be a generator", node)
+            if is_staticmethod or is_classmethod:
+                label = "@classmethod" if is_classmethod else "@staticmethod"
+                raise ParseError(f"{label} method '{node.name}' cannot be a generator", node)
             _check_no_return_value_in_generator(body, node.name)
 
         # __next__ methods implicitly get @error_return(StopIteration)
@@ -2612,9 +2667,10 @@ class Parser:
                 raise ParseError(
                     f"async @property is not yet supported on "
                     f"'{node.name}' of '{class_name}'", node)
-            if is_staticmethod:
+            if is_staticmethod or is_classmethod:
+                label = "@classmethod" if is_classmethod else "@staticmethod"
                 raise ParseError(
-                    f"async @staticmethod is not yet supported on "
+                    f"async {label} is not yet supported on "
                     f"'{node.name}' of '{class_name}'", node)
 
         method = TpyFunction(
@@ -2624,7 +2680,10 @@ class Parser:
             body=body,
             is_method=True,
             is_async=is_async,
-            is_staticmethod=is_staticmethod,
+            # A classmethod IS structurally static (no receiver param, static
+            # emission); is_classmethod only carries the distinction.
+            is_staticmethod=is_staticmethod or is_classmethod,
+            is_classmethod=is_classmethod,
             is_property_getter=is_property_getter,
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
@@ -2648,7 +2707,8 @@ class Parser:
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,
             keyword_only_start=keyword_only_start,
-            num_posonly_params=self._count_posonly_params(node, has_self=has_self),
+            num_posonly_params=self._count_posonly_params(
+                node, receiver_name if has_receiver else None),
             vararg_name=vararg_name,
             vararg_type=vararg_type,
             kwarg_name=kwarg_name,
@@ -2893,7 +2953,7 @@ class Parser:
             kwarg_name = kwarg_node.arg
 
         # Parse default parameter values
-        defaults = self._parse_param_defaults(node, params, skip_self=False,
+        defaults = self._parse_param_defaults(node, params, skip_receiver=False,
                                               type_param_scope=type_param_scope,
                                               kw_defaults=node.args.kw_defaults,
                                               n_kwonly=len(node.args.kwonlyargs))
@@ -3006,7 +3066,7 @@ class Parser:
             type_param_defaults=type_param_defaults,
             defaults=defaults,
             keyword_only_start=keyword_only_start,
-            num_posonly_params=self._count_posonly_params(node, has_self=False),
+            num_posonly_params=self._count_posonly_params(node, None),
             vararg_name=vararg_name,
             vararg_type=vararg_type,
             kwarg_name=kwarg_name,
@@ -4342,19 +4402,71 @@ class Parser:
             f"(literal, None, fixed-int constructor like Int32(5), "
             f"an enum member like Color.RED, or a Final[T] module constant)", node)
 
+    # A `cls` bound inside one of these belongs to that inner scope, not to
+    # the classmethod, so it is an ordinary shadow rather than a rebind.
+    _INNER_SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+
+    @classmethod
+    def _check_cls_not_rebound(cls, node: 'ast.FunctionDef | ast.AsyncFunctionDef') -> None:
+        """Reject any rebinding of `cls` in a @classmethod body.
+
+        `cls` names the defining class for the whole body, so every binder form
+        counts -- and most of them are NOT `ast.Name(Store)`: except/match
+        captures, import aliases and `global` carry the bound name as a plain
+        string attribute.
+        """
+        def reject(loc_node: ast.AST, form: str) -> None:
+            raise ParseError(
+                f"Cannot rebind 'cls' in @classmethod '{node.name}' -- it names "
+                f"the defining class ({form})", loc_node)
+
+        # A comprehension target named `cls` is NOT exempted: its binding
+        # lives in a Scope, which name resolution consults only after the
+        # Namespace where `cls` is the record, so the read would resolve to
+        # the class and report a misleading error instead of this one.
+        def check(n: ast.AST) -> None:
+            if isinstance(n, ast.Name) and n.id == "cls":
+                if isinstance(n.ctx, ast.Store):
+                    reject(n, "assignment")
+                if isinstance(n.ctx, ast.Del):
+                    reject(n, "del")
+            elif isinstance(n, ast.ExceptHandler) and n.name == "cls":
+                reject(n, "'except ... as cls'")
+            elif isinstance(n, (ast.MatchAs, ast.MatchStar)) and n.name == "cls":
+                reject(n, "'case ... as cls'")
+            elif isinstance(n, ast.MatchMapping) and n.rest == "cls":
+                reject(n, "'case {**cls}'")
+            elif isinstance(n, ast.alias) and (n.asname or n.name) == "cls":
+                reject(n, "import binding")
+            elif isinstance(n, (ast.Global, ast.Nonlocal)) and "cls" in n.names:
+                reject(n, "'global'/'nonlocal'")
+
+        def walk(n: ast.AST) -> None:
+            for child in ast.iter_child_nodes(n):
+                if isinstance(child, cls._INNER_SCOPE_NODES):
+                    continue
+                check(child)
+                walk(child)
+
+        walk(node)
+
     @staticmethod
     def _count_posonly_params(node: 'ast.FunctionDef | ast.AsyncFunctionDef',
-                              has_self: bool) -> int:
-        """Positional-only param count as an index into the parsed params
-        list (self, when present, sits in posonlyargs but not in params)."""
+                              receiver_name: str | None) -> int:
+        """Positional-only param count as an index into the parsed params list.
+
+        The implicit receiver (`self`, or `cls` on a classmethod), when
+        present, sits in posonlyargs but not in params. `receiver_name` is
+        None for a function or @staticmethod, which have no receiver slot.
+        """
         n = len(node.args.posonlyargs)
-        if (has_self and n > 0
-                and node.args.posonlyargs[0].arg == "self"):
+        if (receiver_name is not None and n > 0
+                and node.args.posonlyargs[0].arg == receiver_name):
             n -= 1
         return n
 
     def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
-                              skip_self: bool = False,
+                              skip_receiver: bool = False,
                               type_param_scope: dict | None = None,
                               kw_defaults: list | None = None,
                               n_kwonly: int = 0,
@@ -4368,14 +4480,14 @@ class Parser:
         n_positional = len(params) - n_kwonly
         ast_defaults = node.args.defaults
 
-        # In methods, self is skipped from params but still counted here.
-        # Defaults right-align over posonlyargs + args combined.
+        # In methods the receiver (self / cls) is skipped from params but
+        # still counted here. Defaults right-align over posonlyargs + args.
         num_ast_args = len(_positional_ast_args(node))
         # defaults are right-aligned with the full args list
         num_no_default = num_ast_args - len(ast_defaults) if ast_defaults else num_ast_args
 
         defaults: list[TpyExpr | None] = []
-        param_offset = 1 if skip_self else 0  # skip self in index mapping
+        param_offset = 1 if skip_receiver else 0  # receiver has no params slot
         for i in range(n_positional):
             ast_idx = i + param_offset  # index into node.args.args
             default_idx = ast_idx - num_no_default

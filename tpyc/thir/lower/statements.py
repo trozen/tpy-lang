@@ -124,7 +124,7 @@ from ...codegen_cpp.protocols import (
     dynamic_base_name,
     record_inherits_dynamic,
 )
-from ...codegen_cpp.context import escape_cpp_name
+from ...codegen_cpp.context import escape_cpp_name, is_constructor_call
 from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...prescan import match_is_none
 from ...typesys import polymorphic_source_inner, polymorphic_source_is_pointer
@@ -1250,12 +1250,8 @@ def _iter_call_lvalue(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
     The type reads mirror the AST's `get_resolved_type` default tail
     (readonly-unwrapped `get_expr_type`; the call node hits none of the
     special arms)."""
-    if isinstance(it, TpyCall):
-        if it.call_type is not None:
-            return False
-        if (isinstance(it.func, TpyName)
-                and analyzer.registry.get_record(it.func_name)):
-            return False
+    if is_constructor_call(it, analyzer.registry.get_record):
+        return False
     rfi = it.resolved_function_info
     if rfi is not None and isinstance(rfi.return_type, OwnType):
         return False

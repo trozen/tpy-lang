@@ -5294,6 +5294,9 @@ class FunctionInfo:
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    # A @classmethod is also is_staticmethod; this distinguishes it (diagnostics
+    # and the inherited-receiver check, which `cls`'s static binding requires).
+    is_classmethod: bool = False
     is_async: bool = False  # `async def` -- factory returns a coroutine struct
     is_generator: bool = False  # `yield` body -- factory returns an iterator/frame that borrows the receiver + args
     # async def only: the raw declared return (`C`, `Own[C]`, `T`, ...)

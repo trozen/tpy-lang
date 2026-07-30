@@ -4608,17 +4608,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         # `qualify_shadowed_nominals()`, so a local ctor
                         # callee spells fully-qualified. The flag is live
                         # during this lowering too, so `to_cpp()` already
-                        # carries the right spelling -- but the raw
-                        # `func_name` would not. Keyed on the ENCLOSING
-                        # record (the one that shadows), not the constructed
-                        # one.
+                        # carries the right spelling -- but a bare name would
+                        # not. Keyed on the ENCLOSING record (the one that
+                        # shadows), not the constructed one.
                         encl = (lc.analyzer.registry.get_record(lc.record_name)
                                 if lc.record_name else None)
                         if encl is not None and encl.shadows_local_type:
                             type_cpp = unwrap_readonly(unwrap_ref_type(
                                 unwrap_send_sync(rtype))).to_cpp()
                         else:
-                            type_cpp = e.func_name
+                            # The resolved record's own name, not the callee
+                            # spelling: `cls(...)` inside a @classmethod names
+                            # no C++ type (the two are equal elsewhere).
+                            type_cpp = ri.name
             ctor_mut = fi.mutated_params or frozenset()
             eff_params = fi.params
             if not eff_params and e.args:
@@ -7396,7 +7398,13 @@ def _generic_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, ...] | 
     qualify) over the shared class/method targs split."""
     analyzer = lc.analyzer
     record_info = analyzer.registry.get_record(e.obj.name)
-    class_name = e.obj.name
+    # `cls` inside a @classmethod names no record of its own -- spell sema's
+    # resolved owner, the same fallback the plain qualified arm takes.
+    if record_info is None and e.static_call_owner is not None:
+        record_info = e.static_call_owner
+        class_name = record_info.name
+    else:
+        class_name = e.obj.name
     compiler = get_current_compiler()
     implicit = (compiler._implicit_stdlib_set() if compiler is not None
                 else set())

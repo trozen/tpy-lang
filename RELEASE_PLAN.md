@@ -16,9 +16,8 @@ name -- a list here would only drift from them.
   - PEP 517 backend -> abi3 wheel (phase 2.5; the design-heavy one --
     converges with the pyproject v0 track below)
   - `from tpy import __ext_module__`
-  - Remaining exposed-class rungs (static/classmethods once
-    `@classmethod` lands) + the `@export`-class validation
-    consolidation
+  - Remaining exposed-class rungs (static/classmethods) + the
+    `@export`-class validation consolidation
 - pyproject v0 -- TODO: "pyproject v0: build TPy extensions and apps"
 - Per-project compilation options -- TODO: "Per-project compilation
   options in pyproject" (default int, range checks, string/char type)
@@ -33,7 +32,12 @@ name -- a list here would only drift from them.
 
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 
-- `@classmethod` / `cls` -- alternate constructors everywhere
+- Polymorphic `cls` -- FEATURE_ROADMAP: "Polymorphic `cls` (`type[Self]`)". `@classmethod`
+  ships with `cls` bound to the DEFINING class, so an INHERITED factory reached
+  through a subclass is a compile error; the per-class override that works is
+  not virtual. This is what "alternate constructors everywhere" still means to a
+  user. (The enum half -- `Color.from_str` -- is a separate feature: enums accept
+  no methods at all, TODO: "Methods on enums".)
 - `collections.defaultdict` + `namedtuple` (TODO: "`collections.namedtuple`
   / `typing.NamedTuple` support"); `deque` / `OrderedDict` if time allows
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) -- stretch

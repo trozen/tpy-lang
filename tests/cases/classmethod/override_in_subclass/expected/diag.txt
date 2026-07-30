@@ -1,0 +1,1 @@
+main.py:18: warning: Method 'Square.make' hides 'Shape.make' -- any 'Shape' reference will call 'Shape.make', not 'Square.make' (differs from Python's dynamic dispatch); make 'Shape' a @dynamic protocol for runtime dispatch

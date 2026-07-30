@@ -130,6 +130,7 @@ from ...codegen_cpp.context import (
     bigint_index_narrow_type,
     enum_cpp_name,
     escape_cpp_name,
+    is_constructor_call,
     qualified_cpp_name,
 )
 from ...namespace import BindingKind
@@ -4945,6 +4946,8 @@ def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:
     (`auto& __obj_N =`)."""
     rfi = e.resolved_function_info
     if rfi is not None and isinstance(rfi.return_type, OwnType):
+        return False
+    if is_constructor_call(e, analyzer.registry.get_record):
         return False
     return not analyzer.get_expr_type(e).is_value_type()
 

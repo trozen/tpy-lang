@@ -389,6 +389,9 @@ class TpyMethodCall(TpyExpr):
     type_args: 'tuple[TpyType | TypeRefNode | None, ...]' = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
+    # Set by sema alongside is_static_call: the resolved owning record. Codegen
+    # needs it when the receiver's spelling names no record itself (`cls`).
+    static_call_owner: Optional['RecordInfo'] = None
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.method(self, ...) calls on an ancestor
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
@@ -1340,6 +1343,10 @@ class TpyFunction:
     is_overload_stub: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    # A @classmethod also sets is_staticmethod (no receiver param, static
+    # emission); this flag only distinguishes it for diagnostics and for
+    # binding `cls` to the defining record.
+    is_classmethod: bool = False
     is_property_getter: bool = False
     is_property_setter: bool = False
     property_name: str | None = None  # for setter: which property it belongs to

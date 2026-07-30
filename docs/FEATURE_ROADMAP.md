@@ -197,7 +197,7 @@ don't get lost.
 | `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
 | IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
 | `type[T]` parameter type | -- | Compile-time-only phantom type representing a class. `type[T]` params generate no runtime code; `cls(args)` desugars to `T(args)`. Enables factory functions (`def create[T](cls: type[T], ...) -> T`), deserialization (`from_json(Point, data)`), and CPython-compatible patterns where classes are passed as values. |
-| `@classmethod` | above | Sugar on top of `type[T]`. `cls` parameter implicitly typed `type[Self]`. Desugars to `@staticmethod` with implicit `T: Self` type param. For CPython compatibility -- idiomatic TPy equivalent is `@staticmethod def create[T: MyClass](...) -> T`. |
+| Polymorphic `cls` (`type[Self]`) | above | `@classmethod` ships with `cls` bound to the DEFINING class (see LANGUAGE_FEATURES). The remaining half is binding it to the RECEIVER: monomorphize the classmethod on the receiver class (`Base::make<Derived>()`), which turns today's inherited-through-subclass error into working code and makes `Self` mean the receiver. Needs `type[T]` plus a check that every subclass reachable as a receiver has a compatible `__init__`. Also unlocks a classmethod requirement in a `Protocol` (the `ConstructibleFromRange.from_range` shape in PROTOCOL_DESIGN), which is impossible with a statically-bound `cls`. |
 
 ---
 

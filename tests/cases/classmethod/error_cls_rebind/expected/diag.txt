@@ -1,0 +1,1 @@
+main.py:12: error: Cannot rebind 'cls' in @classmethod 'bad' -- it names the defining class (assignment)

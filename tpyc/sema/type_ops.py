@@ -1963,6 +1963,7 @@ class TypeOperations:
             is_consuming=method.is_consuming,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
+            is_classmethod=method.is_classmethod,
             # is_async / is_generator are invariant under type-arg substitution.
             is_async=method.is_async,
             is_generator=method.is_generator,

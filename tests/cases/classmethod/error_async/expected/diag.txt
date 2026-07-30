@@ -1,0 +1,1 @@
+main.py:8: error: async @classmethod is not yet supported on 'fetch' of 'P'

@@ -289,7 +289,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 |---|---|---|
 | `@property` | Done | See LANGUAGE_FEATURES Properties |
 | `@staticmethod` | Done | |
-| `@classmethod` | Open | Tracked in FEATURE_ROADMAP Future Extensions (sugar over `type[T]`) |
+| `@classmethod` | Done | `cls` = the defining class. Polymorphic `cls` (`type[T]`) still open -- see TODO |
 | `super()` | Done | See LANGUAGE_FEATURES |
 
 **Dynamic / not-meaningful under AOT**

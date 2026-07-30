@@ -2779,6 +2779,16 @@ class SemanticAnalyzer:
                 self.ctx.func.var_scope_depth["self"] = scope.depth
                 self.ctx.func.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
+            elif method.is_classmethod:
+                # `cls` is a second name for the defining record, not a value:
+                # a RECORD binding, so every consumer that already handles a
+                # bare class name (constructor calls, class constants,
+                # ClassVar writes, static dispatch) resolves it unchanged.
+                cls_info = self.ctx.registry.get_record(record.name)
+                if cls_info is not None:
+                    local_ns.bind(NameBinding(
+                        kind=BindingKind.RECORD, name="cls", record_info=cls_info,
+                        is_sema_alias=True))
 
             # Resolve and normalize params (@readonly wraps all non-value params).
             # Write back to AST so codegen sees Ref/ReadonlyType (codegen reads func.params directly, not FI).

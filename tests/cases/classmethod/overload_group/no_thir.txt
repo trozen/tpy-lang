@@ -1,0 +1,3 @@
+An @overload set whose stubs differ in ARITY is not routed by THIR yet
+(sig.overload_set.arity) -- pre-existing and decorator-agnostic: a group of
+plain instance methods with the same shape falls back identically.

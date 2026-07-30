@@ -389,7 +389,9 @@ def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = F
     here); everywhere else -- free functions, dunders -- a property is rejected.
     """
     if fn.is_staticmethod:
-        return f"'{fn.name}' cannot be a @staticmethod"
+        # A classmethod is structurally static; name the decorator as written.
+        kind = "@classmethod" if fn.is_classmethod else "@staticmethod"
+        return f"'{fn.name}' cannot be a {kind}"
     if (fn.is_property_getter or fn.is_property_setter) and not allow_property:
         return f"'{fn.name}' cannot be a @property"
     if fn.is_overload_stub:

@@ -1,0 +1,1 @@
+main.py:8: error: @property cannot be combined with @classmethod on method 'value'

@@ -1,0 +1,1 @@
+main.py:17: error: @override cannot be combined with @classmethod on method 'make'

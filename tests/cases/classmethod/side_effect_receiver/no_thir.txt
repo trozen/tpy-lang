@@ -1,0 +1,3 @@
+A static/classmethod call through a CALL-expression receiver
+(`source().blank()`) is not routed by THIR yet -- pre-existing, and
+identical for @staticmethod.

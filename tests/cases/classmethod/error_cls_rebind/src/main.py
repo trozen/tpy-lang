@@ -1,0 +1,20 @@
+# `cls` must stay a stable alias for the defining class, so rebinding it to a
+# value inside the body is rejected.
+from tpy import Int32
+
+
+class P:
+    def __init__(self, x: Int32):
+        self.x = x
+
+    @classmethod
+    def bad(cls) -> Int32:
+        cls = 5  # tpyc: error(/Cannot rebind 'cls'/)
+        return cls
+
+
+def main() -> None:
+    print(P.bad())
+
+
+main()

@@ -667,6 +667,14 @@ class ExpressionAnalyzer:
                     return self._apply_own_wrapper(expr, result)
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
+                if (expr.name == "cls" and binding.kind == BindingKind.RECORD
+                        and self.ctx.func.current_function is not None
+                        and self.ctx.func.current_function.is_classmethod):
+                    raise self.ctx.error(
+                        "'cls' can only be used to construct ('cls(...)') or to "
+                        "access class members ('cls.NAME') -- passing or returning "
+                        "a class as a value needs 'type[T]', which is not supported yet",
+                        expr)
                 # For other bindings (FUNCTION, RECORD, MODULE, IMPORTED_NAME),
                 # the name exists but isn't usable as a variable
                 raise self.ctx.error(f"'{expr.name}' is not a variable", expr)
@@ -1761,7 +1769,9 @@ class ExpressionAnalyzer:
         assert isinstance(expr.obj, TpyName)
         record_info: RecordInfo | None = None
         if binding.kind == BindingKind.RECORD:
-            record_info = self.ctx.registry.get_record(expr.obj.name)
+            # Authoritative: `cls` names its record, and get_record's
+            # short-name key collides for same-named records across modules.
+            record_info = binding.record_info
         elif binding.kind == BindingKind.IMPORTED_NAME:
             import_info = self.ctx.imported_names.get(expr.obj.name)
             if import_info:

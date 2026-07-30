@@ -3424,8 +3424,16 @@ class ExpressionGenerator:
             # Use qualified type name for imported records
             type_cpp = self.types.type_to_cpp(expr.call_type)
             return f"{type_cpp}({args})"
-        # Check for user-defined record constructor (e.g., Point(1, 2))
-        if record_info := self.ctx.analyzer.registry.get_record(expr.func_name):
+        # Check for user-defined record constructor (e.g., Point(1, 2)).
+        # `cls(...)` in a @classmethod spells no record, so fall back to the
+        # sema-assigned result type -- the same authority the short-name
+        # collision override below already trusts.
+        record_info = self.ctx.analyzer.registry.get_record(expr.func_name)
+        if record_info is None:
+            ctor_type = self.ctx.get_expr_type(expr)
+            if isinstance(ctor_type, NominalType) and ctor_type.is_user_record:
+                record_info = self.ctx.analyzer.registry.get_record_for_type(ctor_type)
+        if record_info:
             # get_record is short-name keyed and collides for two user records
             # sharing a short name across modules. When the sema-assigned result
             # type resolves (qname-first) to a *different* record, trust it -- it
@@ -3483,7 +3491,9 @@ class ExpressionGenerator:
             shadowed = shadowed_local_cpp_name(record_info.qualified_name())
             if shadowed is not None:
                 return f"{shadowed}({args})"
-            return f"{expr.func_name}({args})"
+            # Spell the resolved record, not the callee's name: `cls(...)` in a
+            # @classmethod names no C++ type (elsewhere the two are equal).
+            return f"{record_info.name}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
         fi = expr.resolved_function_info
         if fi and (fi.cpp_template or fi.native_function):
@@ -3852,12 +3862,14 @@ class ExpressionGenerator:
                 callee_cpp = static_method_callee_cpp(
                     self.ctx.analyzer.registry,
                     self.ctx.implicit_stdlib_modules, self.ctx.module_name,
-                    expr.obj.name, expr.method, fi)
+                    expr.obj.name, expr.method, fi,
+                    owner=expr.static_call_owner)
                 return f"{callee_cpp}({_args()})"
             # For native records, use the C++ class and method names. The
             # class qname is always set on is_native records (see registration);
             # method names only have a `native_name` when explicitly renamed.
-            record_info = self.ctx.analyzer.registry.get_record(expr.obj.name)
+            named_record = self.ctx.analyzer.registry.get_record(expr.obj.name)
+            record_info = named_record or expr.static_call_owner
             if record_info and record_info.is_native:
                 cpp_class = record_info.native_name
                 cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
@@ -3865,7 +3877,10 @@ class ExpressionGenerator:
             # Implicit-stdlib peers don't emit a `using ::ns::Foo;` alias
             # (suppressed in `_emit_alias_using_block` to avoid include
             # cycles), so the bare class name needs explicit qualification.
-            class_name = expr.obj.name
+            # `cls` names no C++ class of its own -- spell the resolved record.
+            class_name = (expr.obj.name if named_record
+                          else record_info.name if record_info
+                          else expr.obj.name)
             if (record_info is not None
                     and record_info.module is not None
                     and record_info.module in self.ctx.implicit_stdlib_modules

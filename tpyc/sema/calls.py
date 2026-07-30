@@ -841,6 +841,20 @@ class CallAnalyzer:
             is_constructor=True,
         )
 
+    def _ctor_type_name(self, expr: TpyCall, record: RecordInfo) -> str:
+        """The name a construction's result type carries.
+
+        Normally the callee's local name, so an aliased import (`from m import
+        Box as B`) keeps rendering through its C++ `using` alias. A binding
+        sema introduced as an alias has no such spelling (`cls` in a
+        @classmethod), so that names the record itself.
+        """
+        ns = self.ctx.func.current_ns
+        binding = ns.lookup(expr.func_name) if ns is not None else None
+        if binding is not None and binding.is_sema_alias:
+            return record.name
+        return expr.func_name
+
     def _record_for_local_name(self, name: str) -> 'RecordInfo | None':
         """Resolve a possibly import-aliased local name to its record.
 
@@ -5577,7 +5591,7 @@ class CallAnalyzer:
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     # Use expr.func (local name) not record.name (original) for alias support
-                    inferred_type = NominalType(expr.func_name, type_args,
+                    inferred_type = NominalType(self._ctor_type_name(expr, record), type_args,
                                                 _module_qname=record.qualified_name())
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
@@ -5629,7 +5643,7 @@ class CallAnalyzer:
                                         expr
                                     )
                         type_args = tuple(inferred[p] for p in record.type_params)
-                        inferred_type = NominalType(expr.func_name, type_args,
+                        inferred_type = NominalType(self._ctor_type_name(expr, record), type_args,
                                                     _module_qname=record.qualified_name())
                         expr.call_type = inferred_type
                         self._set_record_constructor_info(expr, record, inferred_type, inferred)

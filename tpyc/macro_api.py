@@ -1524,6 +1524,7 @@ class MethodInfo:
     name: str
     is_readonly: bool = False
     is_staticmethod: bool = False
+    is_classmethod: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -1585,6 +1586,7 @@ class ClassInfo:
                 name=m.name,
                 is_readonly=m.is_readonly,
                 is_staticmethod=m.is_staticmethod,
+                is_classmethod=m.is_classmethod,
             )
             for m in self._record.methods
         ]
@@ -1593,6 +1595,7 @@ class ClassInfo:
                 name=m.name,
                 is_readonly=m.is_readonly,
                 is_staticmethod=m.is_staticmethod,
+                is_classmethod=m.is_classmethod,
             )
             for m in self._added_methods
         )

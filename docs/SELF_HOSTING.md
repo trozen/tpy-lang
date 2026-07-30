@@ -23,7 +23,7 @@ What it would take for tpyc to compile itself.
 | 4.2  | Exception classes              | M      | TODO   |
 | 4.3  | `Enum`                         | S      | TODO   |
 | 4.4  | `@property`                    | XS     | TODO   |
-| 4.5  | `@classmethod`                 | XS     | TODO   |
+| 4.5  | `@classmethod`                 | XS     | DONE   |
 | 5.1  | `try`/`except`/`raise`         | M      | TODO   |
 | 6.1  | Default parameter values       | S      | TODO   |
 | 6.2  | `Callable` / `std::function`   | M      | TODO   |
@@ -41,7 +41,6 @@ What it would take for tpyc to compile itself.
 | 8.3  | Replace `re` with string scanner           | XS     | TODO   |
 | 8.4  | Replace `StringIO` with list accumulator   | XS     | TODO   |
 | 4.4b | Replace `@property` with method            | XS     | TODO   |
-| 4.5b | Replace `@classmethod` with staticmethod   | XS     | TODO   |
 
 ### Infrastructure
 
@@ -340,7 +339,7 @@ Maps to a getter method. Low priority — can be refactored to a regular method.
 
 **Effort:** Tiny, or just refactor to a method.
 
-### 4.5 `@classmethod` — Compiler feature
+### 4.5 `@classmethod` — Supported
 
 1 use:
 
@@ -350,9 +349,7 @@ def from_env(cls) -> CppCompilerConfig:
     ...
 ```
 
-Can be refactored to a `@staticmethod` that returns the type.
-
-**Effort:** Tiny, or just refactor.
+Works as written: `cls` names the defining class. No refactor needed.
 
 ---
 
@@ -738,7 +735,7 @@ These improve code quality now and reduce the self-hosting gap:
 - [ ] Replace `with` context managers with explicit enter/exit
 - [ ] Replace `re.compile` with string scanner
 - [ ] Replace `StringIO` with string list accumulator
-- [ ] Replace `@classmethod` / `@property` with regular methods
+- [ ] Replace `@property` with regular methods
 
 ---
 

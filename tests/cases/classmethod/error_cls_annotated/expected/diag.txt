@@ -1,0 +1,1 @@
+main.py:11: error: 'cls' cannot be annotated on @classmethod 'make' -- it names the defining class, not a value

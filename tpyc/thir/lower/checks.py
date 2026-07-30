@@ -4815,6 +4815,12 @@ def _ctor_shape_ok(e: TpyCall, analyzer) -> bool:
             return False
         inherited_arity = True
     ri = analyzer.registry.get_record(e.func_name)
+    if ri is None:
+        # `cls(...)` in a @classmethod spells no record; the sema result type
+        # is authoritative (the lowering spelling resolves it the same way).
+        rtype = analyzer.get_expr_type(e)
+        if isinstance(rtype, NominalType) and rtype.is_user_record:
+            ri = analyzer.registry.get_record_for_type(rtype)
     if ri is None or ri.builtin_type_key is not None:
         return False
     # A NATIVE exception record (Throwable subclass) constructs via the plain
@@ -5745,7 +5751,8 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
             if (not e.inferred_type_args
                     or getattr(e, "representational_subst_params", None)):
                 return None
-            ri = analyzer.registry.get_record(e.obj.name)
+            ri = (analyzer.registry.get_record(e.obj.name)
+                  or e.static_call_owner)
             if ri is not None and ri.is_native:
                 cpp_method = (fi.native_name if fi.native_name
                               else escape_cpp_name(e.method))
@@ -5766,7 +5773,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                     else set())
         return ("qualified", static_method_callee_cpp(
             analyzer.registry, implicit, analyzer.ctx.module_name,
-            e.obj.name, e.method, fi))
+            e.obj.name, e.method, fi, owner=e.static_call_owner))
     if e.builtin_module_call is not None and fi.cpp_template is not None:
         # A builtin-module function/type call (`tpy.unsafe.unsafe_ptr(arr)`,
         # `tpy.Int32(10)`): every @cpp_template branch of the AST's

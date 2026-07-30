@@ -1,0 +1,3 @@
+A static/classmethod call through an INSTANCE receiver (`p.origin()`) is
+not routed by THIR yet -- pre-existing, and identical for @staticmethod
+(`a.base()` falls back the same way).

@@ -1063,7 +1063,11 @@ class MethodAnalyzer:
         record_info = None
         binding = self.ctx.func.current_ns.lookup(expr.obj.name)
         if binding and binding.kind == BindingKind.RECORD:
-            record_info = self.ctx.registry.get_record(expr.obj.name)
+            # Read the record off the binding rather than re-deriving it from
+            # the receiver's spelling: the binding is authoritative (`cls`
+            # names its record, and get_record's short-name key collides
+            # across modules).
+            record_info = binding.record_info
         elif binding and binding.kind == BindingKind.IMPORTED_NAME:
             import_info = self.ctx.imported_names.get(expr.obj.name)
             if import_info:
@@ -1073,6 +1077,34 @@ class MethodAnalyzer:
         if record_info is None:
             return None
         return self._dispatch_static_method_call(expr, record_info)
+
+    def _reject_inherited_classmethod(
+        self, expr: TpyMethodCall, record_info: RecordInfo,
+        overloads: list[FunctionInfo],
+    ) -> None:
+        """Reject an INHERITED classmethod reached through a subclass.
+
+        `cls` binds statically to the DEFINING record, so the call would
+        construct the base where CPython binds the receiver and constructs the
+        subclass. Both receiver spellings reach it -- a class name
+        (`Derived.make()`) and an instance whose static type is the subclass
+        (`derived_obj.make()`) -- so both dispatch paths call this.
+        """
+        if not overloads or not overloads[0].is_classmethod:
+            return
+        if record_info.get_method_overloads(expr.method):
+            return
+        owner = next(
+            (a for a in self.ctx.registry.iter_ancestor_records(record_info)
+             if a.get_method_overloads(expr.method)), None)
+        owner_name = owner.name if owner is not None else "its base"
+        raise self.ctx.error(
+            f"classmethod '{expr.method}' is inherited from '{owner_name}', so "
+            f"'cls' binds to '{owner_name}', not '{record_info.name}' -- this "
+            f"would construct a '{owner_name}'. Call "
+            f"'{owner_name}.{expr.method}(...)', or override '{expr.method}' "
+            f"on '{record_info.name}'",
+            expr)
 
     def _dispatch_static_method_call(
         self, expr: TpyMethodCall, record_info: RecordInfo,
@@ -1090,6 +1122,8 @@ class MethodAnalyzer:
         if not overloads[0].is_staticmethod:
             return self._analyze_unbound_self_method_call(expr, record_info, overloads)
 
+        self._reject_inherited_classmethod(expr, record_info, overloads)
+
         if record_info.is_generic():
             return self._analyze_generic_static_method_call(expr, record_info, overloads)
 
@@ -1106,6 +1140,7 @@ class MethodAnalyzer:
 
         return_type = self._resolve_and_check_args(expr, overloads, {})
         expr.is_static_call = True
+        expr.static_call_owner = record_info
         return return_type
 
     def _try_resolve_module_qualified_class(
@@ -1304,6 +1339,7 @@ class MethodAnalyzer:
         virtual_func = FunctionInfo(
             name=method.name, params=method.params, return_type=method.return_type,
             is_staticmethod=method.is_staticmethod,
+            is_classmethod=method.is_classmethod,
             type_params=all_type_params,
             type_param_bounds=all_bounds,
             cpp_template=method.cpp_template,
@@ -1322,6 +1358,7 @@ class MethodAnalyzer:
         expr.inferred_type_args = temp_call.inferred_type_args
         expr.representational_subst_params = temp_call.representational_subst_params
         expr.is_static_call = True
+        expr.static_call_owner = record_info
         return result
 
     def _analyze_module_method_call(
@@ -1773,6 +1810,7 @@ class MethodAnalyzer:
             record_info, expr.method)
         if not overloads:
             return None
+        self._reject_inherited_classmethod(expr, record_info, overloads)
         instance_subst = self.type_ops.build_type_substitution(obj_type)
         if inherited_subst and instance_subst:
             # An `N: int` param's binding is a plain int -- nothing to

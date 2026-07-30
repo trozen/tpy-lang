@@ -1,0 +1,1 @@
+main.py:9: error: @classmethod method 'counts' cannot be a generator

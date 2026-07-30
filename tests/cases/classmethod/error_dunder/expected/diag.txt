@@ -1,0 +1,1 @@
+main.py:11: error: '__eq__' cannot be a @classmethod -- dunder methods take an instance receiver

@@ -43,6 +43,10 @@ class NameBinding:
     record_info: Optional[RecordInfo] = None  # For RECORD
     enum_type: Optional[NominalType] = None   # For ENUM (NominalType with TypeDef.enum)
     import_source: Optional[tuple[str, str]] = None  # For IMPORTED_NAME: (module, original_name)
+    # RECORD only: sema introduced this binding under a name that is not the
+    # record's own and has no C++ spelling of its own (`cls` in a
+    # @classmethod), so consumers must spell the record, never the binding.
+    is_sema_alias: bool = False
 
 
 class Namespace:
