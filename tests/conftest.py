@@ -1013,7 +1013,15 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 # case is allowed to fall back) and the dial counts it
                 # not-migrated from the marker, not from this measurement.
                 record_thir_case_marked()
-            # else --thir-codegen whole-corpus: aggregate tallies only
+            else:
+                # --thir-codegen whole-corpus: no ratchet, but keep the dial --
+                # same accounting as the default run (marker => un-migrated
+                # regardless of the fallback count just measured; unmarked =>
+                # clean iff zero user bodies fell back).
+                if no_thir:
+                    record_thir_case_marked()
+                else:
+                    record_thir_case(fell)
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if thir_active else None)
 
@@ -1213,9 +1221,10 @@ def pytest_addoption(parser):
             "AST snapshots; no_thir.txt only exempts a case from the RATCHET "
             "(it may fall back bodies), not from the diff. This flag ignores "
             "the markers entirely: no ratchet anywhere, plus the whole-corpus "
-            "faces/shapes coverage metrics. Pair with --no-exec for a fast "
-            "comp-only run. Off (and conflicting) under --update-snapshots "
-            "(snapshots must be AST-authored)."
+            "faces/shapes coverage metrics, and it implies --thir-stdlib (the "
+            "stdlib oracle rides every measurement run). Pair with --no-exec "
+            "for a fast comp-only run. Off (and conflicting) under "
+            "--update-snapshots (snapshots must be AST-authored)."
         ),
     )
     parser.addoption(
@@ -1248,9 +1257,10 @@ def pytest_addoption(parser):
             "Also route lib/tpy + the stdlib through THIR and byte-diff the "
             "result against the SAME RUN's AST output (cutover gate A5/D4: "
             "stdlib emission has no committed snapshot, so this is its only "
-            "oracle). Nothing is written to expected/. Roughly doubles "
-            "codegen per case -- pair with --no-exec, and with -k for a "
-            "subset."
+            "oracle). Nothing is written to expected/. Implied by "
+            "--thir-codegen. Costs ~10-15% wall on a comp-only run (the extra "
+            "codegen pass over the stdlib modules) -- pair with --no-exec, "
+            "and with -k for a subset."
         ),
     )
     parser.addoption(
@@ -1358,7 +1368,10 @@ def pytest_configure(config):
         THIR_CLASSIFY_WRITE = True
     if config.getoption("--thir-check-flip"):
         THIR_CHECK_FLIP = True
-    if config.getoption("--thir-stdlib"):
+    # --thir-codegen implies the stdlib oracle: a whole-corpus measurement run
+    # should also check the only oracle stdlib emission has (~10-15% wall on a
+    # comp-only run, measured 2026-07-30).
+    if config.getoption("--thir-stdlib") or config.getoption("--thir-codegen"):
         THIR_STDLIB = True
 
     # --dep-mode: parsed before the xdist-worker early return -- workers do
@@ -1558,7 +1571,7 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX}   --update-snapshots regenerate expected",
         f"{_LOG_PREFIX} thir: {thir_state}",
         f"{_LOG_PREFIX}   --no-thir          pure AST (no THIR overlay, no ratchet)",
-        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
+        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics + stdlib oracle",
         f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
         f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
         f"{_LOG_PREFIX}   --thir-stdlib      also route lib/tpy + stdlib, diff vs AST",

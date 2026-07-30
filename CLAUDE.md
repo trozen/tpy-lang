@@ -82,10 +82,10 @@ uv run pytest                              # All tests (exec skips per the local
 uv run pytest --force-exec                 # Force exec + cpy unconditionally (ignore the local exec cache)
 uv run pytest --no-exec                    # Skip the exec phase entirely (comp + cpy only); fast codegen/diagnostics iteration
 uv run pytest --no-thir --no-exec          # Disable THIR entirely: emit + byte-diff via the AST path only (no overlay, no ratchet) -- pure-AST mode for fast AST-codegen iteration (conflicts with --thir-codegen/-classify/-check-flip)
-uv run pytest --thir-codegen --no-exec     # Ignore no_thir.txt entirely (no ratchet) + print the whole-corpus faces/shapes coverage metrics (the byte-diff itself already spans every case; conflicts with --update-snapshots)
+uv run pytest --thir-codegen --no-exec     # Ignore no_thir.txt entirely (no ratchet) + print the whole-corpus faces/shapes coverage metrics and the migrated-case dial; implies --thir-stdlib, so the stdlib oracle rides every measurement run (the byte-diff itself already spans every case; conflicts with --update-snapshots)
 uv run pytest --thir-classify --no-exec    # (Re)write no_thir.txt markers (add where a user module has THIR fallback, remove where clean) -- bootstrap/maintain the per-case migration state
 uv run pytest --thir-check-flip --no-exec  # List marked cases now clean enough to un-mark (delete no_thir.txt) -- the porting-progress query
-uv run pytest --thir-stdlib --no-exec      # Route lib/tpy + stdlib through THIR too and byte-diff against the SAME RUN's AST output (stdlib has no committed snapshot; cutover gates A5/D4). Writes nothing; conflicts with --update-snapshots / --no-thir; roughly doubles codegen per case
+uv run pytest --thir-stdlib --no-exec      # Route lib/tpy + stdlib through THIR too and byte-diff against the SAME RUN's AST output (stdlib has no committed snapshot; cutover gates A5/D4). Writes nothing; conflicts with --update-snapshots / --no-thir; ~10-15% wall on a comp-only run. Implied by --thir-codegen
 uv run pytest --clean                      # Wipe shared PCH + stdlib .o + exec-results caches (implies --force-exec)
 uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
 uv run pytest --cxx clang                  # Build the exec phase with a specific toolchain (mirrors `tpyc --cxx`)
@@ -327,7 +327,7 @@ The tpyc front-end is fast enough for realistic dev workflow at this stage; the 
 
 ## THIR migration (ACTIVE -- delete this section when complete)
 
-Migrating C++ codegen from the AST path to THIR (`tpyc/thir/`). End state: THIR is the single sema->codegen boundary and the AST codegen is DELETED. A permanent hybrid is not an acceptable outcome -- it doubles the maintenance surface forever.
+Migrating C++ codegen from the AST path to THIR (`tpyc/thir/`). End state: THIR is the single sema->codegen boundary for every BODY and the AST body emitters are DELETED. The structural skeleton (module driver, headers, signatures, record/protocol/enum drivers, ctor member-init driver, resumable + simple-generator frames at their leaf seams, type rendering) stays in `codegen_cpp` as the permanent printer layer -- decided 2026-07-30, see the ledger's Gate D3 entry (which also holds the assembled cutover checklist). A permanent hybrid within body emission is not an acceptable outcome -- it doubles the maintenance surface forever.
 
 Fallback is per-BODY and all-or-nothing: a body THIR cannot lower emits through the AST path instead. So the AST body emitter stays complete until one atomic cutover at the end; do not delete AST arms piecemeal, and never mix AST and THIR within one body.
 

@@ -4623,3 +4623,62 @@ stays four unrelated shapes.
 returns routed, bytearray own+borrow+field returns, the Own-NAME-source
 fence), `test_thir_wave_owntuple.py` (4), converted fences in
 test_thir_tuples.py / test_thir_containers.py.
+
+### Gate D3 -- skeleton ownership + the assembled cutover checklist (2026-07-30, decided)
+
+The last open design gate from the 2026-07-28 inventory. Decision, in one
+line: **this migration's end state is bodies-only -- the structural skeleton
+stays in `codegen_cpp` as the permanent printer layer, and ownership never
+transfers.** "Skeleton" means: the module driver (`generator.py`), headers
+and emit ordering, signatures, record/protocol/enum drivers, the ctor
+member-init driver, the resumable + simple-generator frames at their leaf
+seams, and type rendering. CLAUDE.md's "the AST codegen is DELETED" is
+re-scoped to the AST *body* emitters in the same change-set as this entry.
+Folding the resumable skeleton into the IR (the IR_DESIGN.md "emitter
+becomes a printer" trajectory) is a named FUTURE project, deliberately not
+part of this migration -- architectural cleanups do not ride migrations.
+
+**The finding that gives D3 teeth: the skeleton calls the body expression
+emitter directly.** `records.py:403` renders class-constant defaults via
+`gen_expr`; `functions.py:1907` renders Final-global initializers via
+`gen_expr` -- and A3 measured 97% of codegen functions shared between
+fallback bodies and structural emission. While any skeleton position calls
+`gen_expr`, cutover commit 2 cannot delete the expression dispatch: that
+would be the permanent hybrid at expression granularity. (Param defaults
+are already clean -- they render through the dedicated constant renderer
+`default_to_cpp`, not `gen_expr`.) Hence a new pre-cutover work item:
+inventory every skeleton -> `gen_expr`/`gen_stmt` call site, and per site
+either route it through THIR lowering or move it to a small dedicated
+renderer. The cutover gate is "the skeleton calls zero body-emitter
+helpers" -- that is what makes commit 2 a wholesale deletion plus dead-code
+pruning instead of archaeology.
+
+**The cutover checklist, assembled in one place** (previously scattered
+across gate entries; all of it is parked until markers approach zero --
+none of it moves the dial, and body-lowering waves cannot invalidate it):
+
+1. A1: `no_thir.txt` markers -> 0 (dial 2773/3632, 859 left at this
+   writing) -- the standing wave work.
+2. A5: stdlib fallback -> 0 (289 at the 2026-07-28 baseline), then
+   re-measure with a using corpus -- the baseline is a FLOOR (import-only
+   entry programs never attempt monomorphizations or resumable frames).
+3. Interop corpus: its own dial to migrated (tallied separately).
+4. The skeleton call-site inventory above, ground to zero.
+5. `faces.py` call-site increment fix (an arm that witnesses before it can
+   raise reads as covered) + pins for the nine zero-witness faces -- both
+   filed in TODO.md; after teardown faces.py is the primary internal net,
+   and a detector reporting false coverage is worse than none.
+6. The two-commit cutover per Gate D4: flip snapshot authorship to THIR
+   with the `git diff tests/cases` EMPTY proof, then delete the body
+   emitters in a commit touching no `expected/` file.
+7. Teardown per the D4 inventory. Post-cutover, `ThirUnsupported` is an
+   internal compiler error: new language features land sema + THIR lowering
+   together -- there is no fallback to hide behind.
+
+What changed NOW rather than at the checklist: `--thir-codegen` implies
+`--thir-stdlib` (the stdlib oracle rides every measurement run instead of
+depending on someone remembering a flag; ~10-15% wall on a comp-only run)
+and the measurement run prints the migrated-case dial it previously
+omitted. Grind economics stay settled per D4: byte-identity holds for
+every cell until cutover commit 1 -- the diff-empty proof is the only
+cheap proof the cutover has, and output-equivalence would destroy it.
