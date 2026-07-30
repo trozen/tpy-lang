@@ -32,6 +32,7 @@ from ...typesys import (
     deref_dispatch_inner,
     polymorphic_source_inner,
     polymorphic_source_is_pointer,
+    substitute_type_params_simple,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -108,10 +109,10 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
     at or above the switch-dispatch threshold, which routes to the
     discriminator switch REGARDLESS of guards (switch_str; the
     threshold counts only unguarded literal alternatives). A `Literal[...]`
-    subject also dispatches on the AST path, but sema narrows the subject
-    to a per-arm LiteralType (`case.type_facts`) whose dead-branch
-    elimination can rewrite arm bodies that re-read the subject --
-    rejected until THIR expression lowering learns the literal-fact fold.
+    subject dispatches on its BASE type (the arm below), its per-arm
+    LiteralType narrowing (`case.type_facts`) registering as arm-scope
+    literal facts; the AST's dead-branch folds stay un-mirrored, fenced at
+    the compare/membership lowering (`match.literal_fold`).
     Union guard/shared-index/field-condition routing is
     `_match_union_route`; a user-record subject takes the record tiers
     (if_elif_record, or guarded_record when any arm has a guard) --
@@ -124,6 +125,29 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         return None
     t = unwrap_readonly(stmt.subject_type)
     if isinstance(t, LiteralType):
+        # The AST's Literal arm dispatches on the BASE type (LiteralType
+        # delegates every codegen method): str base -> the discriminator
+        # switch or the `==` chain, fixed-int base -> the primitive switch,
+        # anything else (bool) -> the chain. Sema's per-arm narrowing
+        # (`case.type_facts`) registers as arm-scope literal facts in
+        # `_lower_scalar_arms`; the un-mirrored dead-branch folds are
+        # fenced at the compare/membership lowering instead of here.
+        base = unwrap_readonly(t.base_type)
+        if _resolved_str_value(base, analyzer) is not None:
+            if _str_switch_count(stmt) >= STRING_SWITCH_THRESHOLD:
+                # The AST's threshold count is type-blind, so a 5+-literal
+                # Literal subject takes the DISCRIMINATOR switch there;
+                # that render against a Literal subject is its own row.
+                return None
+            if any(c.guard is not None for c in stmt.cases):
+                return "if_elif_guarded"
+            return "if_elif"
+        if is_fixed_int_type(base):
+            return "switch_primitive"
+        if _eligible_scalar(base):
+            if any(c.guard is not None for c in stmt.cases):
+                return "if_elif_guarded"
+            return "if_elif"
         return None
     if isinstance(t, UnionType):
         # A recursive-alias wrapper (bare `Tree` alias) dispatches on its
@@ -174,13 +198,9 @@ def _union_member_index(members, member) -> 'int | None':
             return i
     return None
 
-def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
-    """Mirrors _should_switch_str: a str subject with enough unguarded
-    str-literal alternatives takes the discriminator-switch strategy
-    (switch_str), not the if/elif chain."""
-    t = unwrap_readonly(stmt.subject_type)
-    if _resolved_str_value(t, analyzer) is None:
-        return False
+def _str_switch_count(stmt: TpyMatch) -> int:
+    """`_should_switch_str`'s unguarded str-literal alternative count --
+    type-blind, exactly like the AST's."""
     count = 0
     for case in stmt.cases:
         if case.guard is not None:
@@ -192,7 +212,17 @@ def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
             if all(isinstance(a, TpyLiteralPattern)
                    and isinstance(a.value, str) for a in pat.patterns):
                 count += len(pat.patterns)
-    return count >= STRING_SWITCH_THRESHOLD
+    return count
+
+
+def _match_str_switches(stmt: TpyMatch, analyzer) -> bool:
+    """Mirrors _should_switch_str: a str subject with enough unguarded
+    str-literal alternatives takes the discriminator-switch strategy
+    (switch_str), not the if/elif chain."""
+    t = unwrap_readonly(stmt.subject_type)
+    if _resolved_str_value(t, analyzer) is None:
+        return False
+    return _str_switch_count(stmt) >= STRING_SWITCH_THRESHOLD
 
 def _match_arm_parts(case) -> 'tuple | None':
     """Split an arm into (test_pattern, binding_node): the label-generating
@@ -286,39 +316,126 @@ def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
             or _f1_record(t, analyzer)
             or is_list(t) or is_dict(t) or is_set(t))
 
+def _match_field_type_subst(pattern: TpyClassPattern, field_name: str,
+                            analyzer) -> 'TpyType | None':
+    """`_match_record_field_type` with the pattern's type-arg substitution
+    applied (sema's `_build_type_subst` mirror): the SUBSTITUTED type is
+    what a compile-time type guard matched against (sema stamps
+    `resolved_type` on a nested class sub only when it had field patterns
+    or a union to resolve, so an exact-match guard's bound type must be
+    re-derived here)."""
+    ft = _match_record_field_type(pattern, field_name, analyzer)
+    rt = pattern.resolved_type
+    if ft is None or not isinstance(rt, NominalType) or not rt.type_args:
+        return ft
+    record = analyzer.registry.get_record_for_type(rt)
+    if record is None or not record.type_params:
+        return ft
+    subst = {p: a for p, a in zip(record.type_params, rt.type_args)
+             if isinstance(a, TpyType)}
+    if not subst:
+        return ft
+    return substitute_type_params_simple(ft, subst)
+
+
+def _union_guard_member_ok(t: 'TpyType | None', analyzer) -> bool:
+    """A union-field guard's member spelling inside `std::holds_alternative
+    <T>` / `std::get<T>`: an F1 record (`render_type` == `to_cpp`, incl.
+    cross-module qualification), or a value scalar / resolved-str member
+    whose C++ spelling is context-free."""
+    if t is None:
+        return False
+    u = unwrap_readonly(t)
+    return (_f1_record(u, analyzer) or _eligible_scalar(u)
+            or _resolved_str_value(u, analyzer) is not None)
+
+
 def _match_keywords_ok(
         pattern: TpyClassPattern, analyzer, pointers: AbstractSet[str],
         narrowed: AbstractSet[str], storage_tuple_locals: AbstractSet[str],
-        arm_declared: dict[str, TpyType], *, allow_conds: bool) -> bool:
+        arm_declared: dict[str, TpyType], *, allow_conds: bool,
+        nested_ok: bool = False) -> bool:
     """The field sub-pattern slice for one class pattern: literal conditions
     (the record tiers and the guarded-union tier; the unconditional union
     switch has no `&&` position, so its walk passes allow_conds=False --
     defensive, `_match_union_route` already sends conditions to the guarded
     path), free-value captures (declared into the arm scope; the same
     pointer/narrowed/tuple-alias name rejects as a whole-subject binding),
-    and wildcards. Class/`as` sub-patterns (union field guards, nested
-    records, type guards) are deferred rows. Keyword-bearing patterns
-    require the F1 record for the registry field-type walk (and keep
-    @native field renames out -- the AST spells the raw Python name)."""
+    and wildcards. NESTED class / `as` sub-patterns admit on the RECORD
+    tiers only (`nested_ok` -- the tiers whose emit threads the base-name
+    map): a union-field guard (`holds_alternative` + `get` around an
+    eligible member spelling), a compile-time type guard on a non-union
+    field, an `as` bind of the (extracted) field value, and their recursive
+    keyword walks -- `_record_field_conditions` / `_gen_match_field_
+    bindings`' recursion. The union/poly/optional tiers keep rejecting
+    nested forms (their emits compose bindings without the map).
+    Keyword-bearing patterns require the F1 record for the registry
+    field-type walk (and keep @native field renames out -- the AST spells
+    the raw Python name)."""
     if pattern.keywords and not _f1_record(pattern.resolved_type, analyzer):
         return False
     for fname, sub in pattern.keywords:
-        if isinstance(sub, TpyWildcardPattern):
-            continue
-        if isinstance(sub, TpyLiteralPattern):
-            if not allow_conds:
+        as_node = sub if isinstance(sub, TpyAsPattern) else None
+        inner = sub.pattern if as_node is not None else sub
+        if isinstance(inner, TpyWildcardPattern):
+            if as_node is not None:
+                # `_ as x` field form: the AST's double-bind shape, its own row.
                 return False
-            if _match_field_cond(pattern, fname, sub.value, analyzer) is None:
+            continue
+        if isinstance(inner, TpyLiteralPattern):
+            if as_node is not None or not allow_conds:
+                return False
+            if _match_field_cond(pattern, fname, inner.value, analyzer) is None:
                 return False
             continue
-        if isinstance(sub, TpyCapturePattern):
-            if (sub.name in pointers or sub.name in narrowed
-                    or sub.name in storage_tuple_locals):
+        if isinstance(inner, TpyCapturePattern):
+            if as_node is not None:
+                return False
+            if (inner.name in pointers or inner.name in narrowed
+                    or inner.name in storage_tuple_locals):
                 return False
             ft = _match_record_field_type(pattern, fname, analyzer)
             if ft is None or not _match_capture_field_ok(ft, analyzer):
                 return False
-            arm_declared[sub.name] = ft
+            arm_declared[inner.name] = ft
+            continue
+        if isinstance(inner, TpyClassPattern):
+            if not nested_ok or inner.positional:
+                return False
+            if inner.is_union_field_guard:
+                # The guard renders a holds_alternative condition, so it
+                # needs a cond position; a cond-free tier (the unguarded
+                # union switch) admits only compile-time type guards, and
+                # the recursion below rejects any nested literal there the
+                # same way.
+                if not allow_conds:
+                    return False
+                if not _union_guard_member_ok(inner.resolved_type, analyzer):
+                    return False
+                bound_t: 'TpyType | None' = inner.resolved_type
+            else:
+                # A compile-time type guard: sema validated the pattern
+                # type against the SUBSTITUTED field type and stamps
+                # `resolved_type` only when it had fields to resolve.
+                bound_t = (inner.resolved_type
+                           or _match_field_type_subst(pattern, fname,
+                                                      analyzer))
+            if inner.keywords:
+                if inner.resolved_type is None:
+                    return False
+                if not _match_keywords_ok(
+                        inner, analyzer, pointers, narrowed,
+                        storage_tuple_locals, arm_declared,
+                        allow_conds=allow_conds, nested_ok=nested_ok):
+                    return False
+            if as_node is not None:
+                if (as_node.name in pointers or as_node.name in narrowed
+                        or as_node.name in storage_tuple_locals):
+                    return False
+                if (bound_t is None
+                        or not _match_capture_field_ok(bound_t, analyzer)):
+                    return False
+                arm_declared[as_node.name] = bound_t
             continue
         return False
     return True
@@ -386,7 +503,8 @@ def _guarded_union_arm_ok(
             return False
         if not _match_keywords_ok(
                 test, analyzer, pointers, narrowed,
-                storage_tuple_locals, arm_declared, allow_conds=True):
+                storage_tuple_locals, arm_declared, allow_conds=True,
+                nested_ok=True):
             return False
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
@@ -401,7 +519,7 @@ def _guarded_union_arm_ok(
             if alt.keywords and not _match_keywords_ok(
                     alt, analyzer, pointers, narrowed,
                     storage_tuple_locals, dict(arm_declared),
-                    allow_conds=True):
+                    allow_conds=True, nested_ok=True):
                 return False
             if _union_member_index(members, alt.resolved_type) is None:
                 return False
@@ -451,7 +569,8 @@ def _union_arm_ok(
         seen.add(idx)
         if not _match_keywords_ok(
                 test, analyzer, pointers, narrowed,
-                storage_tuple_locals, arm_declared, allow_conds=False):
+                storage_tuple_locals, arm_declared, allow_conds=False,
+                nested_ok=True):
             return False
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
@@ -467,7 +586,7 @@ def _union_arm_ok(
             if alt.keywords and not _match_keywords_ok(
                     alt, analyzer, pointers, narrowed,
                     storage_tuple_locals, dict(arm_declared),
-                    allow_conds=False):
+                    allow_conds=False, nested_ok=True):
                 return False
             idx = _union_member_index(members, alt.resolved_type)
             if idx is None or idx in seen:
@@ -495,14 +614,16 @@ def _union_arm_ok(
 
 def _match_record_arm_always(test) -> bool:
     """Whether an arm matches unconditionally on the record tiers: a
-    wildcard/capture (test None), a class pattern with no literal field
-    sub-patterns, or an or-pattern whose rendered condition list collapses
-    empty (a wildcard alternative clears it; condition-free class
-    alternatives contribute nothing)."""
+    wildcard/capture (test None), a class pattern with no condition-
+    rendering field sub-patterns (the AST's own recursive
+    `_sub_has_field_condition` -- literals, union-field guards, and nested
+    records carrying either), or an or-pattern whose rendered condition
+    list collapses empty (a wildcard alternative clears it; condition-free
+    class alternatives contribute nothing)."""
     if test is None:
         return True
     if isinstance(test, TpyClassPattern):
-        return not any(isinstance(s, TpyLiteralPattern)
+        return not any(MatchGenerator._sub_has_field_condition(s)
                        for _, s in test.keywords)
     if any(isinstance(a, TpyWildcardPattern) for a in test.patterns):
         return True
@@ -531,7 +652,8 @@ def _record_arm_ok(
             return False
         if not _match_keywords_ok(
                 test, analyzer, pointers, narrowed,
-                storage_tuple_locals, arm_declared, allow_conds=True):
+                storage_tuple_locals, arm_declared, allow_conds=True,
+                nested_ok=True):
             return False
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
@@ -1014,7 +1136,9 @@ def _lower_scalar_arms(
     always_match_arms = 0
     for i, case in enumerate(cases):
         facts = case.type_facts or {}
-        if facts and not allow_facts:
+        lit_facts = {n: f for n, f in facts.items()
+                     if isinstance(f, LiteralType)}
+        if facts and not allow_facts and not lit_facts:
             raise ThirUnsupported("stmt.match")
         if is_chain and case.guard is not None and not chain_guards_ok:
             raise ThirUnsupported("stmt.match")
@@ -1069,17 +1193,32 @@ def _lower_scalar_arms(
             # the frame-field write (`v = __match_subject_N;`) both paths
             # emit before the body point -- admitted; the copy/ref modes
             # declare arm-block LOCALS, whose frame duality is unmirrored.
+            # Literal facts stay rejected here: the skeleton's BB walk
+            # would need the fact scoping the hooks do not carry.
+            if lit_facts:
+                raise ThirUnsupported("res.match_strategy")
             if binding is not None and binding.mode != "assign":
                 raise ThirUnsupported("res.match_binding")
             entry = THIRMatchArmEntry(
                 body=(), loc=case.loc, binding=binding, guard=guard,
                 body_key=id(case.body))
         else:
-            entry = THIRMatchArmEntry(
-                body=_statements._lower_scoped_stmts(
-                    case.body, lc, arm_declared,
-                    branch_decls_ok=True, loop_depth=loop_depth),
-                loc=case.loc, binding=binding, guard=guard)
+            # Literal-subject arms register the facts for the body walk:
+            # the AST consumes them for dead-branch folds, which THIR does
+            # not mirror -- the compare/membership fence in expression
+            # lowering rejects the foldable reads instead.
+            saved_lf = lc.literal_facts
+            if lit_facts:
+                _witness("match.literal_facts")
+                lc.literal_facts = {**saved_lf, **lit_facts}
+            try:
+                entry = THIRMatchArmEntry(
+                    body=_statements._lower_scoped_stmts(
+                        case.body, lc, arm_declared,
+                        branch_decls_ok=True, loop_depth=loop_depth),
+                    loc=case.loc, binding=binding, guard=guard)
+            finally:
+                lc.literal_facts = saved_lf
         if is_chain:
             # Source order, one entry per group (the always-match arm is
             # the plain chain's final `} else {` / a guarded standalone
@@ -1118,44 +1257,134 @@ def _lower_scalar_arms(
                                      entries=tuple(default_entries)))
     return arms, default_goto, bool(default_entries)
 
+@dataclass(frozen=True)
+class _SubAcc:
+    """`_lower_field_subpatterns`' recursion state -- two independent
+    compositions plus the binding base, mirroring the AST split:
+    `cond_pre`/`cond_suf` compose CONDITIONS around the tier's runtime base
+    (`_record_field_conditions` threads its `subject_expr` the same way),
+    while `base`/`bind_pre`/`bind_suf` compose BINDINGS relative to the
+    last bound name (`_gen_match_field_bindings` threads `case_var`).
+    `bind_suf` doubles as the plain field path since the last base switch
+    -- the piece the `__field_` temp NAME derivation needs."""
+    cond_pre: str = ""
+    cond_suf: str = ""
+    base: 'str | None' = None
+    bind_pre: str = ""
+    bind_suf: str = ""
+
+
 def _lower_field_subpatterns(pattern: TpyClassPattern,
                              declared: dict[str, TpyType],
                              arm_declared: dict[str, TpyType],
                              lc: _LowerCtx, *, from_case_var: bool,
+                             _acc: '_SubAcc | None' = None,
+                             _out: 'tuple | None' = None,
                              ) -> 'tuple[tuple, tuple]':
     """One class pattern's keyword sub-patterns -> (field_conds,
     field_bindings), in keyword order like `_record_field_conditions` /
     `_gen_match_field_bindings`. Captures join the arm scope typed to the
-    field (the AST's `_record_capture_type` var_types registration)."""
-    field_conds: list[tuple[str, str]] = []
-    field_bindings: list[THIRMatchBinding] = []
+    field (the AST's `_record_capture_type` var_types registration).
+
+    Nested sub-patterns recurse with two independent compositions, exactly
+    the AST split: CONDITIONS always compose around the tier's runtime base
+    (`_record_field_conditions` recursion -- a union-field guard wraps
+    `std::get<T>(...)` INTO the pair), while BINDINGS switch base to the
+    guard's `__field_` extraction temp or an `as` name
+    (`_gen_match_field_bindings` recursion); `_SubAcc` carries both.
+    `_out` shares the two ordered row lists across recursion levels so the
+    interleaving matches the AST's single keyword walk."""
+    top = _out is None
+    if top:
+        _out = ([], [])
+        _acc = _SubAcc()
+    field_conds, field_bindings = _out
+    cpre, csuf, base, bpre, bsuf = (_acc.cond_pre, _acc.cond_suf, _acc.base,
+                                    _acc.bind_pre, _acc.bind_suf)
     for fname, sub in pattern.keywords:
-        if isinstance(sub, TpyLiteralPattern):
-            pair = _match_field_cond(pattern, fname, sub.value, lc.analyzer)
+        as_node = sub if isinstance(sub, TpyAsPattern) else None
+        inner = sub.pattern if as_node is not None else sub
+        if isinstance(inner, TpyLiteralPattern):
+            assert as_node is None, \
+                "ineligible as-literal sub-pattern reached lowering"
+            pair = _match_field_cond(pattern, fname, inner.value, lc.analyzer)
             assert pair is not None, "ineligible field cond reached lowering"
-            _witness("match.field_none" if sub.value is None
+            _witness("match.field_none" if inner.value is None
                      else "match.field_cond")
-            field_conds.append(pair)
-        elif isinstance(sub, TpyCapturePattern):
-            if sub.name in lc.pointers:
+            field_conds.append((pair[0] + cpre, csuf + pair[1]))
+        elif isinstance(inner, TpyCapturePattern):
+            if inner.name in lc.pointers:
                 # A capture the match hoisted into a POINTER local binds by
                 # address (`q = &(__match_subject_1.inner);`) -- its own rung.
                 # Beside node construction, where every rejection check lives:
                 # the hoist registers `lc.pointers` only after the arm gate has
                 # read its snapshot, so the gate could not see this anyway.
                 raise ThirUnsupported("match.field_bind_ptr_hoist")
-            mode = ("assign" if sub.name in declared
-                    else "copy" if sub.bind_by_value else "ref")
+            mode = ("assign" if inner.name in declared
+                    else "copy" if inner.bind_by_value else "ref")
             _witness("match.field_bind")
             field_bindings.append(THIRMatchBinding(
-                name=sub.name, mode=mode, from_case_var=from_case_var,
-                subject_suffix=f".{fname}"))
+                name=inner.name, mode=mode, from_case_var=from_case_var,
+                subject_prefix=bpre, subject_suffix=f"{bsuf}.{fname}",
+                base_name=base))
             ft = _match_record_field_type(pattern, fname, lc.analyzer)
             assert ft is not None, "ineligible field capture reached lowering"
-            arm_declared[sub.name] = ft
+            arm_declared[inner.name] = ft
+        elif isinstance(inner, TpyClassPattern):
+            if inner.is_union_field_guard:
+                t_cpp = lc.render_type(unwrap_readonly(inner.resolved_type))
+                _witness("match.field_union_guard")
+                field_conds.append(
+                    (f"std::holds_alternative<{t_cpp}>({cpre}",
+                     f"{csuf}.{fname})"))
+                n_cpre = f"std::get<{t_cpp}>({cpre}"
+                n_csuf = f"{csuf}.{fname})"
+                a_pre = f"std::get<{t_cpp}>({bpre}"
+                a_suf = f"{bsuf}.{fname})"
+            else:
+                n_cpre, n_csuf = cpre, f"{csuf}.{fname}"
+                a_pre, a_suf = bpre, f"{bsuf}.{fname}"
+            if as_node is not None:
+                mode = ("assign" if as_node.name in declared
+                        else "copy" if as_node.bind_by_value else "ref")
+                _witness("match.field_guard_as")
+                field_bindings.append(THIRMatchBinding(
+                    name=as_node.name, mode=mode, from_case_var=from_case_var,
+                    subject_prefix=a_pre, subject_suffix=a_suf,
+                    base_name=base))
+                bound_t = (inner.resolved_type
+                           or _match_field_type_subst(pattern, fname,
+                                                      lc.analyzer))
+                assert bound_t is not None, \
+                    "ineligible as-bind reached lowering"
+                arm_declared[as_node.name] = bound_t
+                n_acc = _SubAcc(n_cpre, n_csuf, as_node.name)
+            elif inner.is_union_field_guard and inner.keywords:
+                # The AST draws the `__field_{parent}_{f}` extraction temp
+                # whenever a keyword-bearing union guard has no `as` name;
+                # its spelled name derives at emit from the runtime base
+                # PLUS the plain path walked since the last base switch
+                # (`alias_path` -- the AST's case_var threading).
+                _witness("match.field_alias")
+                field_bindings.append(THIRMatchBinding(
+                    name=fname, mode="field_alias",
+                    from_case_var=from_case_var,
+                    subject_prefix=a_pre, subject_suffix=a_suf,
+                    base_name=base, alias_path=bsuf))
+                n_acc = _SubAcc(n_cpre, n_csuf, fname)
+            else:
+                n_acc = _SubAcc(n_cpre, n_csuf, base, a_pre, a_suf)
+            if inner.keywords:
+                _witness("match.field_nested")
+                _lower_field_subpatterns(
+                    inner, declared, arm_declared, lc,
+                    from_case_var=from_case_var, _acc=n_acc, _out=_out)
         else:
-            assert isinstance(sub, TpyWildcardPattern), \
+            assert (isinstance(inner, TpyWildcardPattern)
+                    and as_node is None), \
                 "ineligible field sub-pattern reached lowering"
+    if not top:
+        return (), ()
     return tuple(field_conds), tuple(field_bindings)
 
 def _lower_or_field_conds(test: TpyOrPattern, lc: _LowerCtx,

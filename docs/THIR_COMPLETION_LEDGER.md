@@ -4682,3 +4682,141 @@ and the measurement run prints the migrated-case dial it previously
 omitted. Grind economics stay settled per D4: byte-identity holds for
 every cell until cutover commit 1 -- the diff-empty proof is the only
 cheap proof the cutover has, and output-equivalence would destroy it.
+
+### stmt.match traced probe + nested sub-pattern cell (2026-07-30)
+
+Dial 2773 -> 2776/3632 (+3 flips: `match/nested_field_none`,
+`match/record_union_field_pattern`, `union/union_field_nested_variant`),
+markers 859 -> 856. Full exec suite green (10271 passed, all 3631 cases
+built+run). The design-queue item "stmt.match per-arm type facts (63u,
+best flips-per-design-hour)" was MISPRICED -- the stale-verdict failure
+mode again, this time on a DESIGN item: the 2026-07-27 probe drilled one
+Literal subject and generalized. A settrace probe over `_match_route`'s
+inner helpers (innermost None/False return per fallback unit; script
+pattern worth reusing for any many-return-site gate) attributed 62 of the
+tag's 68 units:
+
+| units | cases | inner site | what it is |
+|---|---|---|---|
+| 27 | 23 | `_match_strategy` fall-through | recursive-alias-instance / generic / dyn subjects -- the M4c-generic frontier, all multi-blocked, NOT match work |
+| 18 | 8 | `_match_keywords_ok` nested rejects | nested class sub-patterns -- a render recursion, NO facts machinery |
+| 6 | 5 | `_match_strategy` LiteralType early-out | the actual facts slice; 2 of 5 cases co-blocked on the overload mangled-path design |
+| 3 | 3 | `_f1_record` under `_union_arm_ok` | mutual-recursion union members |
+| ~8 | ~8 | singles | hoists, rvalue subject, ptr captures -- existing parks |
+
+**The facts fear dissolves on inspection:** sema already stamps the
+Literal-driven overload resolution on call nodes (`resolved_function_info`
+with LiteralType params; the AST derives `f__lit_r` from it at the call
+site), so "facts can rewrite arm bodies" reduces to a mangled-callee
+SPELLING -- the parked overload design -- plus an arm-scope retype the
+union tier already performs. Design queue re-scoped accordingly.
+
+**What landed: the nested-sub-pattern cell, record tiers.** The AST's two
+recursions mirror onto the existing pair model: CONDITIONS compose
+(prefix, suffix) around the tier's runtime base -- a union-field guard
+folds `std::holds_alternative<T>` / `std::get<T>` INTO the pair, so
+arbitrary nesting depth costs nothing -- while BINDINGS switch base to the
+guard's `__field_` extraction temp (mode `field_alias`; its spelled name
+derives from the runtime base AT EMIT, mirroring `parent_sfx`) or an `as`
+name, via a base-name map threaded through the record-tier emits. One
+ordered row list keeps the AST's single-walk interleaving. Admission is
+record-tier-only (`nested_ok` -- the union/poly/optional tiers' emits have
+no map yet and keep rejecting, pinned). `_match_record_arm_always` now
+uses the AST's own recursive `_sub_has_field_condition` -- its
+literal-only check would have mis-read `Outer(inner=Inner(child=None))`
+as an always-arm. Chain-walked one arm past the cell: the bare str
+literal at a value-union ctor slot joins `_value_union_temp_slot` (the
+int-literal row's sibling), unmasked by `record_union_field_pattern`.
+
+**The two-level guard chain is admitted with zero corpus witnesses** --
+the recursion composes it for free -- so its byte-identity pin
+(`test_two_level_union_guard_chain_byte_identical`) is the arm's only
+check; dualgen smoked interleaved captures around a temp, the guarded
+tier, depth-3 paths, and bool/float/str members (zero fallback,
+identical). The old union-field-guard fence converted to a routing pin;
+as-of-literal, `_ as x`, or-alt nesting, and the union-TIER boundary keep
+fences.
+
+**Remaining rungs at the site, honestly named:** union-tier nested
+admission (the switch/guarded-union arm walks + or-alt body duplication
+-- `nested_type_pattern_combos`/`edges` and `union_nested_type_pattern`
+each hold 3 match bodies there, plus an expr.call chain each), the
+optional-tier as-form guards (`opt_wrapper`), and the Literal slice
+above. Note for the union-tier rung: those cases' nested READS are
+parity-blind (they only print) -- the reference-type mutation rule
+applies when their exec coverage is extended.
+
+### Nested sub-patterns, union-tier rung (2026-07-30)
+
+Dial 2776 -> 2778/3632 (+2: `match/union_nested_type_pattern`,
+`async/asyncio_queue_nocopy` -- the latter collateral from the ctor
+rows), markers 854; stmt.match 63 -> 42 units. Full exec suite green
+(10272 passed, all 3631 built+run). The union SUBJECT tiers admit the
+same recursion: the switch tier is cond-free BY ROUTE (field-condition
+patterns go guarded; the gate admits only compile-time type guards
+there), the guarded tier composes conds around `__case_` and threads the
+base-name map through both binding positions, and the optional PARTITION
+tier came along for free through its record-tier reuse (only the
+optional CHAIN tiers keep the fence, pinned).
+
+**The finding worth keeping: sema stamps `resolved_type` on a nested
+class sub only when it had FIELDS or a UNION to resolve** -- an
+exact-match compile-time guard (`Box(value=str())` on a non-union field)
+carries None, and its bound type must be re-derived through the
+pattern's type-arg substitution (`substitute_type_params_simple`,
+mirroring sema's `_build_type_subst`). The first gate draft required
+`resolved_type` unconditionally and silently kept all three probe cases
+rejecting -- the reject read as "union tier" when it was really "sema
+does not stamp what you assumed"; check what sema stores on the NODE
+before gating on it (the standing lesson, sub-pattern edition).
+
+Chain rows: `ctor.own_str_literal` (a str literal passes BARE into an
+`Own[str]` ctor slot -- the auto-move cascade never fires for a
+prvalue) and the nested ctor-arg tail peeling `Own` over an eligible
+scalar. `nested_type_pattern_combos`/`edges` each sit at ONE remaining
+blocker: ctor temp rows at a flush-less union/optional storage DECL
+position (`temps_ok=False` at the decl init while the AST flushes
+`__tmp_N` before the decl) -- that is the registered decl-form
+frontier's flush-rights question, named and not chased.
+
+### stmt.match Literal slice (2026-07-30)
+
+Dial 2778 -> 2784/3632 (+6 flips: `match/literal_type_{str,int}`,
+`match/warn_nonexhaustive_literal`, and three collateral
+`calls/literal_local_*` cases), markers 848. Full exec suite green
+(10276 passed). Literal subjects dispatch on the base tier; arm facts
+register into the new `lc.literal_facts` scope; LiteralType becomes
+transparent to THIR's own classification (scalar peel; a str-based
+Literal resolves to the family VIEW type -- its values are
+static-lifetime literals, so the AST gives such bindings string_view
+storage everywhere).
+
+**Two divergences found and closed by the standing nets, one lesson
+each.** (1) `calls/literal_local_from_literal_call` diverged owned-vs-
+view under the first draft (base-type resolution) -- caught by the
+LOCAL targeted run right after flipping; the check-flip candidate list
+measures FALLBACK only, so a flip must always be re-verified with the
+case's own snapshot compare before the marker goes. (2)
+`calls/narrow_literal_eq`'s `nested_fold` diverged on the FULL corpus
+run: the fold fence's first draft keyed on match-arm facts, but the
+AST seeds `ctx.literal_facts` from `==`-NARROWING too -- the fence now
+keys on the operand's TYPE (declared or read LiteralType) as well.
+The general form of both: a "transparency" widening changes every
+consumer of the classification at once; price the FORM axis (view vs
+owned) and every FACT CHANNEL (match arms vs narrowing) before
+trusting the first green probe.
+
+**A third lesson, from the shared-row misstep:** widening
+`_shared_pass_through_arg`'s first row to `_resolved_scalar` broke
+FIVE pinned arms across native/protocol/resumable rows -- row
+identity (which row admits = which face witnesses = which render arm
+fires) is load-bearing; a new admission belongs in a NEW slot-keyed
+row whose domain no existing row admits (`_literal_scalar_slot`).
+
+Residue, named: `literal_type_dead_branch`/`narrowing` park on the
+overload mangled-path design exactly as scoped (their bodies reject at
+`sig.overload_set` + `call.literal_overload`, byte-identical); the
+str-based Literal-slot pass-through ARG row (a fact-typed name into a
+`Literal[str-...]` slot) falls back byte-identically -- a small row
+when a paying witness appears; the 5+-alternative discriminator
+switch against a Literal subject stays AST (pinned).

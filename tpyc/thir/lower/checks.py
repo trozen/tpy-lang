@@ -3911,6 +3911,13 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     return ((_eligible_scalar(analyzer.get_expr_type(a))
              and not _member_valued_union_slot(a, ptype, analyzer)
              and not _own_cascade_fires(ptype))
+            # A scalar-based `Literal[...]` SLOT (spelled as its base):
+            # sema leaves the arg's literal type unresolved there, so the
+            # resolved-scalar check applies -- slot-keyed on LiteralType,
+            # a domain no other row admits, so admission stays disjoint.
+            or (_literal_scalar_slot(ptype)
+                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
+                and _witness("arg.literal_scalar_slot"))
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
@@ -4981,6 +4988,30 @@ def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyStrLiteral):
         return True
     return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None)
+
+def _literal_scalar_slot(ptype: TpyType | None) -> bool:
+    """A param slot annotated `Literal[...]` over a scalar base -- spelled
+    as the bare base type (`LiteralType` delegates `to_cpp`)."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    return isinstance(pt, LiteralType) and _eligible_scalar(pt.base_type)
+
+
+def _own_str_literal_arg(a: TpyExpr, ptype: TpyType | None) -> bool:
+    """A str LITERAL into an `Own[str]` ctor slot renders bare
+    (`Box<std::string>("hello")` -- the prvalue converts into the by-value
+    slot in place; the gen_call_arg auto-move cascade that keeps lvalue
+    str sources off this slot never fires for a literal). Temp-free, so
+    position-independent."""
+    pt = ptype if isinstance(ptype, TpyType) else None
+    if not isinstance(pt, OwnType):
+        return False
+    inner = unwrap_readonly(pt.wrapped)
+    return (isinstance(a, TpyStrLiteral)
+            and isinstance(inner, NominalType) and is_str_type(inner))
+
 
 def _opt_str_shim_arg(a: TpyExpr, ptype: TpyType | None,
                       locals_: dict[str, TpyType], analyzer) -> bool:

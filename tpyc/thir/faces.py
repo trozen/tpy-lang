@@ -1370,6 +1370,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.field_cond",             # literal field condition (`==` compare)
     "match.field_none",             # field=None -> has_value/monostate check
     "match.field_bind",             # field capture: `{base}.{f}` rhs binding
+    "arg.literal_scalar_slot",      # resolved scalar at a Literal[...] slot
+    "ctor.own_scalar_peel",         # nested ctor tail: Own[scalar] no-op peel
+    "ctor.own_str_literal",         # str literal bare into an Own[str] slot
+    "match.literal_facts",          # Literal-subject per-arm fact scope
+    "match.field_nested",           # nested class sub-pattern recursion
+    "match.field_union_guard",      # holds_alternative<T> union-field guard
+    "match.field_guard_as",         # `as` bind of the (extracted) field value
+    "match.field_alias",            # __field_{base}_{f} extraction temp
     "match.union_field_cond",       # guarded-union entry with field conds
     "match.or_labels",              # or-pattern -> stacked case labels
     "match.union_or_bind",          # binding or-arm -> one block per alt

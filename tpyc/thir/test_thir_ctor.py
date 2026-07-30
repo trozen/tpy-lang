@@ -1669,3 +1669,60 @@ class TestCtorArgOptionalPtrCtorFace:
             outs.append(cpp)
         assert "__tmp_1 = Inner(" in outs[0]
         assert outs[0] == outs[1]
+
+
+def _cpp_both(source: str) -> 'tuple[str, str]':
+    """(thir_cpp, ast_cpp) for the entry module -- the byte-identity pair."""
+    outs = []
+    for flag in (True, False):
+        compiler, modules = _compile(source)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=flag))
+        outs.append(cpp)
+    return outs[0], outs[1]
+
+
+class TestCtorOwnStrLiteralArg:
+    """The `ctor.own_str_literal` row: a str LITERAL passes bare into an
+    `Own[str]` ctor slot (prvalue conversion, no auto-move cascade)."""
+
+    SRC = (
+        "from tpy import Own\n"
+        "class H:\n"
+        "    s: str\n"
+        "    def __init__(self, s: Own[str]) -> None:\n"
+        "        self.s = s\n"
+        "def main() -> None:\n"
+        "    h = H(\"hi\")\n"
+        "    print(h.s)\n"
+        "main()\n"
+    )
+
+    def test_literal_routes_and_witnesses(self):
+        thir, w = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert w.get("ctor.own_str_literal", 0) > 0
+        t, a = _cpp_both(self.SRC)
+        assert t == a
+
+    def test_lvalue_name_stays_off_the_row(self):
+        # The row is literal-keyed: a NAME source must ride the auto-move
+        # cascade rows (or fall back), never the bare-literal render.
+        src = (
+            "from tpy import Own\n"
+            "class H:\n"
+            "    s: str\n"
+            "    def __init__(self, s: Own[str]) -> None:\n"
+            "        self.s = s\n"
+            "def main() -> None:\n"
+            "    t = \"hi\"\n"
+            "    h = H(t)\n"
+            "    print(h.s)\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.own_str_literal", 0) == 0
+        t, a = _cpp_both(src)
+        assert t == a

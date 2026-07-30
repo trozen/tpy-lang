@@ -2550,15 +2550,35 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
 
 
 def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
-                        subject: str, inner: str) -> None:
+                        subject: str, inner: str,
+                        bases: 'dict[str, str] | None' = None) -> None:
     # _emit_binding's value-subject arms, mode folded at lowering (see
     # THIRMatchBinding); the arm block's first line, before the body. A
     # field capture composes the `.field` accessor onto the base spelling
-    # (_gen_match_field_bindings' `{case_var}.{field}` RHS).
+    # (_gen_match_field_bindings' `{case_var}.{field}` RHS). Nested rows:
+    # `base_name` swaps the base for a previously-bound name (recorded in
+    # `bases`); mode 'field_alias' draws `_gen_match_field_bindings`'
+    # `__field_{parent}_{field}` temp, its name derived from the runtime
+    # base spelling exactly as the AST derives it.
     if binding is None:
         return
+    base = subject
+    if binding.base_name is not None:
+        assert bases is not None and binding.base_name in bases, \
+            "match binding references an unbound base name"
+        base = bases[binding.base_name]
+    rhs = f"{binding.subject_prefix}{base}{binding.subject_suffix}"
+    if binding.mode == "field_alias":
+        parent = f"{base}{binding.alias_path}"
+        parent_sfx = parent.replace(".", "_").replace("*", "").lstrip("_")
+        temp = f"__field_{parent_sfx}_{binding.name}"
+        out.write(f"{inner}auto& {temp} = {rhs};\n")
+        if bases is not None:
+            bases[binding.name] = temp
+        return
     name = escape_cpp_name(binding.name)
-    rhs = f"{subject}{binding.subject_suffix}"
+    if bases is not None:
+        bases[binding.name] = name
     if binding.mode == "assign":
         out.write(f"{inner}{name} = {rhs};\n")
     elif binding.mode == "assign_addr":
@@ -2668,9 +2688,10 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
             get = f"{deref}std::get<{entry.variant_index}>({variant})"
         if entry.case_alias is not None:
             out.write(f"{inner}auto& {entry.case_alias} = {get};\n")
+        bases: dict[str, str] = {}
         for fb in entry.field_bindings:
             # Keyword captures always draw the alias, so the base is it.
-            _emit_match_binding(out, fb, entry.case_alias, inner)
+            _emit_match_binding(out, fb, entry.case_alias, inner, bases)
         if entry.binding is not None:
             rhs = ((entry.case_alias or get)
                    if entry.binding.from_case_var else subject)
@@ -2720,12 +2741,13 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
             state.comments.case_(out, entry.loc, inner)
             if use_scope:
                 out.write(f"{inner}{{\n")
+            bases: dict[str, str] = {}
             if not entry.field_conds:
                 # No field conditions: bindings precede the guard (it may
                 # read them). With conditions they move INSIDE the if block
                 # below (_gen_guarded_switch_arm_action's split).
                 for fb in entry.field_bindings:
-                    _emit_match_binding(out, fb, alias, bind_indent)
+                    _emit_match_binding(out, fb, alias, bind_indent, bases)
                 if entry.binding is not None:
                     rhs = alias if entry.binding.from_case_var else subject
                     _emit_match_binding(out, entry.binding, rhs, bind_indent)
@@ -2740,7 +2762,8 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                 if entry.field_conds:
                     body_indent = INDENT * lvl
                     for fb in entry.field_bindings:
-                        _emit_match_binding(out, fb, alias, body_indent)
+                        _emit_match_binding(out, fb, alias, body_indent,
+                                            bases)
                     if entry.binding is not None:
                         rhs = (alias if entry.binding.from_case_var
                                else subject)
@@ -3181,8 +3204,9 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
         else:
             out.write(f"{indent}{{\n" if i == 0
                       else f"{indent}}} else {{\n")
+        bases: dict[str, str] = {}
         for fb in entry.field_bindings:
-            _emit_match_binding(out, fb, subject, inner)
+            _emit_match_binding(out, fb, subject, inner, bases)
         _emit_match_binding(out, entry.binding, subject, inner)
         _emit_stmts(out, entry.body, indent_level + 1, state)
     out.write(f"{indent}}}\n")
@@ -3226,8 +3250,9 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}if ({' && '.join(conds)}) {{\n")
         else:
             out.write(f"{indent}{{\n")
+        bases: dict[str, str] = {}
         for fb in entry.field_bindings:
-            _emit_match_binding(out, fb, subject, inner)
+            _emit_match_binding(out, fb, subject, inner, bases)
         _emit_match_binding(out, entry.binding, subject, inner)
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")

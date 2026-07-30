@@ -2485,13 +2485,30 @@ class THIRMatchBinding:
     arm's `__case_{i}` extraction alias (or the composed `std::get` when
     no alias was drawn) instead of the subject. A FIELD capture
     (`case C(f=name)`) carries `subject_suffix=".f"`: the emit composes
-    `{base}{suffix}` for the RHS (`_gen_match_field_bindings`' spelling),
-    the base being the subject (record tiers) or the alias (union
-    tiers)."""
+    `{prefix}{base}{suffix}` for the RHS (`_gen_match_field_bindings`'
+    spelling), the base being the subject (record tiers) or the alias
+    (union tiers). NESTED sub-patterns extend the same composition:
+    `subject_prefix` carries the left half of a `std::get<T>(...)` wrap
+    (a union-field guard's extraction); mode 'field_alias' is the
+    `auto& __field_{base}_{f} = ...;` temp `_gen_match_field_bindings`
+    draws for keyword captures under a union-field guard -- its NAME is
+    derived at emit from the runtime base spelling (`name` holds the
+    FIELD name), and later rows reach it via `base_name`, which switches
+    a row's base from the subject to a previously-bound name (a field
+    alias, or an `as` name whose nested keywords bind through it)."""
     name: str
-    mode: str  # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref'
+    # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref' | 'field_alias'
+    mode: str
     from_case_var: bool = False
     subject_suffix: str = ""
+    subject_prefix: str = ""
+    base_name: 'str | None' = None
+    # field_alias rows only: the PLAIN field path accumulated between the
+    # base and this guard (e.g. ".v" for `W(v=A(n=...))` where `v` is a
+    # non-union field). The AST derives the temp name from its threaded
+    # `case_var`, which includes those segments -- the emit composes
+    # `{base}{alias_path}` before sanitizing, or the name would drop them.
+    alias_path: str = ""
 
 
 @dataclass(frozen=True)

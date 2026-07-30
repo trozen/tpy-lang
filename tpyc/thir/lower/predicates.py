@@ -478,8 +478,13 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     `TpyType.to_cpp()`. Target-typed literal renders (the Float32 `f`
     suffix, the BigInt ctor wraps) ride `_slot_literal_retype` at the slot
     sites plus the literal coerce arms, which retype the literal so the
-    emitter picks the wrapped render.
+    emitter picks the wrapped render. A `LiteralType` over a scalar base
+    classifies as the base (it delegates every render to it; the AST's
+    dead-branch FOLDS are the one divergence, fenced at the compare
+    lowering via `lc.literal_facts`).
     """
+    if isinstance(t, LiteralType):
+        t = t.base_type
     return t is not None and (is_fixed_int_type(t) or is_bool_type(t)
                               or is_float_type(t) or is_big_int_type(t))
 
@@ -1195,13 +1200,26 @@ def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
     the SKELETON emitter spells -- no body arm renders it) -- or None outside
     the slice. A str local's binding type stays `PendingStrType` on the
     AST/sema side; resolve it like `_resolve_pending_view` does. `Char`,
-    `Literal[str]`-annotated bindings and the bytes family stay on the AST
-    path. Callers that key on the FORM axis must treat String as owned:
+    The bytes family stays on the AST path; a str-based `Literal[...]`
+    resolves as its base. Callers that key on the FORM axis must treat
+    String as owned:
     `is_str_type` is False for it, so a bare `is_str_type(resolved)` test
     reads it as a view -- see `_str_name_form`."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, LiteralType):
+        # A str-based Literal binding is VIEW-form everywhere: its values
+        # are static-lifetime string literals, so the AST's view-safety
+        # inference gives locals AND params `std::string_view` storage
+        # (pinned by `calls/literal_local_from_literal_call`). The AST's
+        # dead-branch folds -- the other divergence -- are fenced at the
+        # compare lowering via `lc.literal_facts`.
+        b = unwrap_readonly(t.base_type)
+        if isinstance(b, NominalType) and (is_str_type(b)
+                                           or is_str_view_type(b)):
+            return STR_FAMILY.view_type
+        return None
     if isinstance(t, PendingViewType):
         return _resolve_pending_view(t, analyzer) if t.family is STR_FAMILY else None
     if isinstance(t, NominalType) and (is_str_type(t) or is_str_view_type(t)
@@ -5047,6 +5065,15 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
                        if is_fixed_int_type(unwrap_readonly(m))
                        or is_big_int_type(unwrap_readonly(m))]
         if len(int_members) == 1:
+            return ut
+        return None
+    if isinstance(a, TpyStrLiteral):
+        # A bare str literal at a value-union ctor slot hoists the same
+        # temp; the variant's converting ctor picks the single str member
+        # (`std::variant<int32_t, std::string> __tmp_N = "hello";`).
+        str_members = [m for m in ut.members
+                       if is_str_type(unwrap_readonly(m))]
+        if len(str_members) == 1:
             return ut
         return None
     if isinstance(at, FloatLiteralType):

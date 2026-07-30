@@ -514,6 +514,7 @@ from .checks import (
     _native_ctx_manager_ok,
     _shared_pass_through_arg,
     _str_owned_slot_arg,
+    _own_str_literal_arg,
     _str_pass_through_arg,
     _strlit_method_pin_arg,
     _strlit_overload_pin_arg,
@@ -869,6 +870,9 @@ def _record_ctor_arg_supported(
                 arg, param_type, declared, analyzer, mutated=is_mutated):
             _witness("ctor.str_arg")
             return True
+        if _own_str_literal_arg(arg, param_type):
+            _witness("ctor.own_str_literal")
+            return True
         return (_shared_pass_through_arg(
                     arg, param_type, declared, analyzer, mutated=is_mutated)
                 # A scalar VALUE into a value-repr Optional[scalar] ctor slot
@@ -1031,8 +1035,18 @@ def _record_ctor_arg_supported(
                     and not (is_mutated and isinstance(arg, TpyMethodCall))))
 
     slot = unwrap_readonly(unwrap_ref_type(param_type))
+    if isinstance(slot, OwnType) and _eligible_scalar(
+            unwrap_readonly(slot.wrapped)):
+        # Own[scalar] is a no-op spelling on a value type: the by-value slot
+        # takes the resolved scalar bare, exactly like the plain slot.
+        return (_resolved_scalar(analyzer.get_expr_type(arg), analyzer)
+                and _witness("ctor.own_scalar_peel"))
     if _eligible_scalar(slot):
         return _resolved_scalar(analyzer.get_expr_type(arg), analyzer)
+    if _own_str_literal_arg(arg, param_type):
+        # Temp-free bare render, so the nested position admits it too.
+        _witness("ctor.own_str_literal")
+        return True
     if _own_record_rvalue_arg(arg, param_type, declared, analyzer):
         # Temp-free like the const-rvalue row below (the rvalue binds the
         # T&& slot inline), so the nested position admits it too.
@@ -1770,6 +1784,37 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             f"binop.shape.{e.op}"
             f"{_binop_operand_suffix(e, declared, analyzer)}",
             detail=True)
+
+    def _literal_fold_name(s: TpyExpr) -> bool:
+        # A name the AST's dead-branch machinery may hold a literal fact
+        # for: a match-arm fact (`lc.literal_facts`), or ANY binding whose
+        # declared/read type is a LiteralType -- `==`/`!=` narrowing seeds
+        # the AST's `ctx.literal_facts` from those too, so a nested compare
+        # under the narrowing folds to a constant there.
+        if not isinstance(s, TpyName):
+            return False
+        if s.name in lc.literal_facts:
+            return True
+        dt = declared.get(s.name)
+        if dt is not None and isinstance(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))),
+                LiteralType):
+            return True
+        at = analyzer.get_expr_type(s)
+        return at is not None and isinstance(
+            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
+            LiteralType)
+
+    if ((e.op in ("==", "!=") and any(
+            _literal_fold_name(s) for s in (e.left, e.right)))
+            or (e.op in _MEMBERSHIP_OPS
+                and _literal_fold_name(e.left))):
+        # A compare / membership on a Literal-fact name: the AST folds
+        # these (dead-branch elimination -- `_fold_literal_compare` /
+        # `_try_fold_literal_in` / the &&-|| chain fold, whose leaves are
+        # exactly these compares). The folds are not mirrored yet, so the
+        # body falls back rather than diverge.
+        raise ThirUnsupported("match.literal_fold")
 
     if (e.op in _MEMBERSHIP_OPS and e.typed_dict_in_field is not None
             and not e.typed_dict_in_always_true

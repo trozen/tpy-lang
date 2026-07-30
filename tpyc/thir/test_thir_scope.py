@@ -34,7 +34,11 @@ class TestScopeRegistry:
         # composes its snapshot into branch_scope; analyzer/func/prescan are
         # per-function facts swapped wholesale (the nested-def scope). A new
         # composite slot must be added here CONSCIOUSLY, not slip through.
-        composite = {"narrow", "analyzer", "func", "prescan", "params"}
+        # `literal_facts` is arm-scoped by explicit save/restore in
+        # `_lower_scalar_arms` (a dict -- the branch snapshot's set() copy
+        # would drop its values).
+        composite = {"narrow", "analyzer", "func", "prescan", "params",
+                     "literal_facts"}
         unclassified = []
         for slot in _LowerCtx.__slots__:
             value = getattr(lc, slot)

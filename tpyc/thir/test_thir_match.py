@@ -898,9 +898,11 @@ class TestMatchGateRejections:
         assert not self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_literal_subject_rejects(self):
-        # A Literal[...] subject switches on the AST path, but its arms
-        # carry LiteralType type_facts (dead-branch elimination) -- gated.
+    def test_literal_subject_routes(self):
+        # A Literal[...] subject dispatches on its BASE type; the arms'
+        # LiteralType type_facts register as arm-scope literal facts, and
+        # the un-mirrored dead-branch folds are fenced at the compare
+        # lowering (TestMatchLiteralSubject pins both directions).
         src = (
             "from typing import Literal\n"
             "def f(mode: Literal[\"r\", \"w\"]) -> None:\n"
@@ -911,7 +913,7 @@ class TestMatchGateRejections:
             "            print(1)\n"
             "f(\"r\")\n"
         )
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_str_over_threshold_routes_switch_str(self):
@@ -1273,9 +1275,10 @@ class TestMatchRecordRejections:
         )
         assert not self._routed(src, "f")
 
-    def test_union_field_guard_subpattern_rejects(self):
-        # A class sub-pattern on a union-typed field (holds_alternative +
-        # std::get extraction) is a deferred row.
+    def test_union_field_guard_subpattern_routes(self):
+        # A class sub-pattern on a union-typed field routes on the record
+        # tier: the holds_alternative<T> condition composes into the arm's
+        # `&&` chain (byte-identity is the second assert).
         src = (
             "from tpy import Int32\n"
             "class A:\n"
@@ -1300,7 +1303,7 @@ class TestMatchRecordRejections:
             "    print(f(W(A())))\n"
             "main()\n"
         )
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_field_as_subpattern_rejects(self):
@@ -3137,3 +3140,333 @@ class TestMatchArmComments:
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
         assert "a note about the first arm" not in cpp
+
+
+NESTED_GUARD_PREAMBLE = (
+    "from tpy import Int32\n"
+    "class X:\n"
+    "    k: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.k = 5\n"
+    "class Y:\n"
+    "    k: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.k = 6\n"
+    "class A:\n"
+    "    n: X | Y\n"
+    "    def __init__(self, n: X | Y) -> None:\n"
+    "        self.n = n\n"
+    "class B:\n"
+    "    m: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.m = 0\n"
+    "class W:\n"
+    "    v: A | B\n"
+    "    def __init__(self, v: A | B) -> None:\n"
+    "        self.v = v\n"
+)
+
+
+MIXED_GUARD_PREAMBLE = (
+    "from tpy import Int32\n"
+    "class X:\n"
+    "    k: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.k = 5\n"
+    "class Y:\n"
+    "    k: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.k = 6\n"
+    "class A2:\n"
+    "    n: X | Y\n"
+    "    def __init__(self, n: X | Y) -> None:\n"
+    "        self.n = n\n"
+    "class B2:\n"
+    "    m: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.m = 0\n"
+    "class WM:\n"
+    "    v: A2\n"
+    "    def __init__(self, v: A2) -> None:\n"
+    "        self.v = v\n"
+)
+
+
+class TestMatchNestedSubPatterns:
+    """The nested field sub-pattern cell (record tiers): composed condition
+    paths, union-field guards, `as` binds of the extracted member, and the
+    `__field_` alias chain for keyword captures under a guard."""
+
+    def _routed(self, src: str, name: str) -> bool:
+        thir = _lower_ctx(src)
+        return _fn(thir, name) is not None
+
+    def test_two_level_union_guard_chain_byte_identical(self):
+        # A union-field guard nested INSIDE another guard's keywords: the
+        # conds compose `std::get` wraps around the subject, and the
+        # `__field_` alias chain derives the second temp's name from the
+        # first temp's spelling -- admitted with no corpus witness, so this
+        # pin is the arm's only byte check.
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=A(n=X(k=q))):\n"
+            "            return q\n"
+            "        case _:\n"
+            "            return -1\n"
+            "def main() -> None:\n"
+            "    print(f(W(A(X()))))\n"
+            "main()\n"
+        )
+        assert self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_guard_as_bind_routes(self):
+        # `field=Member() as m`: the bind composes the `std::get` wrap into
+        # the RHS directly (no `__field_` temp), mode from bind_by_value.
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=B() as b):\n"
+            "            return b.m\n"
+            "        case _:\n"
+            "            return -1\n"
+            "def main() -> None:\n"
+            "    print(f(W(B())))\n"
+            "main()\n"
+        )
+        assert self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_union_tier_nested_subpattern_routes(self):
+        # The union SUBJECT tiers admit nested sub-patterns too (second
+        # rung): a nested union-field guard forces the GUARDED union tier
+        # (field condition), where the conds compose around the `__case_`
+        # alias and the bindings ride the base-name map.
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(u: A | B) -> Int32:\n"
+            "    match u:\n"
+            "        case A(n=X()):\n"
+            "            return 1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(A(X())))\n"
+            "main()\n"
+        )
+        assert self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_field_as_wildcard_still_rejects(self):
+        # `field=(_ as x)` stays the AST's double-bind shape -- its own row.
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=(_ as x)):\n"
+            "            return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(f(W(B())))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_optional_chain_tier_nested_still_rejects(self):
+        # The optional CHAIN tiers (if_elif_optional -- no None-arm prefix)
+        # keep rejecting nested sub-patterns: their arm walk passes
+        # allow_conds without nested_ok, and `_emit_match_opt_arm_bindings`
+        # has no base-name map. (The optional PARTITION tier routes nested
+        # forms by reusing the record-tier walk -- that half is covered by
+        # the corpus.)
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: \"W | None\") -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=B() as b):\n"
+            "            return b.m\n"
+            "        case None:\n"
+            "            return -1\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(W(B())))\n"
+            "main()\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestMatchLiteralSubject:
+    """The Literal-subject slice: base-type tier routing + arm-scope
+    literal facts, with the un-mirrored dead-branch folds fenced at the
+    compare/membership lowering."""
+
+    def _routed(self, src: str, name: str) -> bool:
+        thir = _lower_ctx(src)
+        return _fn(thir, name) is not None
+
+    def test_literal_str_chain_routes(self):
+        src = (
+            "from typing import Literal\n"
+            "def f(mode: Literal[\"r\", \"w\"]) -> None:\n"
+            "    match mode:\n"
+            "        case \"r\":\n"
+            "            print(\"read:\" + mode)\n"
+            "        case \"w\":\n"
+            "            print(\"write\")\n"
+            "f(\"r\")\n"
+        )
+        assert self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+    def test_witness_literal_facts(self):
+        src = (
+            "from typing import Literal\n"
+            "def f(mode: Literal[\"r\", \"w\"]) -> None:\n"
+            "    match mode:\n"
+            "        case \"r\":\n"
+            "            print(\"read:\" + mode)\n"
+            "        case \"w\":\n"
+            "            print(\"write\")\n"
+            "f(\"r\")\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.literal_facts", 0) > 0
+
+    def test_literal_fact_compare_defers(self):
+        # An arm body COMPARING the fact name is the AST's dead-branch fold
+        # (`mode == "r"` folds to true) -- un-mirrored, so the body must
+        # fall back rather than render the un-folded compare.
+        src = (
+            "from typing import Literal\n"
+            "def f(mode: Literal[\"r\", \"w\"]) -> None:\n"
+            "    match mode:\n"
+            "        case \"r\":\n"
+            "            if mode == \"r\":\n"
+            "                print(\"read\")\n"
+            "        case \"w\":\n"
+            "            print(\"write\")\n"
+            "f(\"r\")\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_literal_fact_membership_defers(self):
+        # `mode in ("r", "w")` inside an arm folds on the AST path -- same
+        # fence, membership form.
+        src = (
+            "from typing import Literal\n"
+            "def f(mode: Literal[\"r\", \"w\", \"a\"]) -> None:\n"
+            "    match mode:\n"
+            "        case \"r\" | \"w\":\n"
+            "            if mode in (\"r\", \"w\"):\n"
+            "                print(\"rw\")\n"
+            "        case \"a\":\n"
+            "            print(\"append\")\n"
+            "f(\"r\")\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_literal_str_switch_threshold_defers(self):
+        # 5+ unguarded literal alternatives take the DISCRIMINATOR switch
+        # on the AST path (the count is type-blind); that render against a
+        # Literal subject is its own row -- stays AST.
+        src = (
+            "from typing import Literal\n"
+            "def f(m: Literal[\"a\", \"b\", \"c\", \"d\", \"e\"]) -> None:\n"
+            "    match m:\n"
+            "        case \"a\":\n"
+            "            print(1)\n"
+            "        case \"b\":\n"
+            "            print(2)\n"
+            "        case \"c\":\n"
+            "            print(3)\n"
+            "        case \"d\":\n"
+            "            print(4)\n"
+            "        case \"e\":\n"
+            "            print(5)\n"
+            "f(\"a\")\n"
+        )
+        assert not self._routed(src, "f")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_mixed_plain_then_guard_alias_byte_identical(self):
+        # A PLAIN (non-union) level between the subject and a keyword-
+        # bearing union guard: the `__field_` temp name must include the
+        # intervening `.v` segment (`__field_match_subject_1_v_n`) -- the
+        # AST derives it from its threaded case_var; THIR carries the
+        # plain path on the alias row (`alias_path`). This shape had no
+        # witness and its name diverged before the alias_path fix.
+        src = MIXED_GUARD_PREAMBLE + (
+            "def f(w: WM) -> Int32:\n"
+            "    match w:\n"
+            "        case WM(v=A2(n=X(k=q))):\n"
+            "            return q\n"
+            "        case _:\n"
+            "            return -1\n"
+            "def main() -> None:\n"
+            "    print(f(WM(A2(X()))))\n"
+            "main()\n"
+        )
+        assert self._routed(src, "f")
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "__field_match_subject_1_v_n" in cpp
+
+    def test_union_rooted_guard_chain_byte_identical(self):
+        # The same keyword-bearing guard chain rooted at the union-subject
+        # tier's `__case_` alias (the emit's bases map under
+        # _emit_match_guarded_union) -- the union-rooted sibling of the
+        # record-tier chain pin.
+        src = MIXED_GUARD_PREAMBLE + (
+            "def f(u: A2 | B2) -> Int32:\n"
+            "    match u:\n"
+            "        case A2(n=X(k=q)):\n"
+            "            return q\n"
+            "        case _:\n"
+            "            return 0\n"
+            "def main() -> None:\n"
+            "    print(f(A2(X())))\n"
+            "main()\n"
+        )
+        assert self._routed(src, "f")
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "__field_case_0_n" in cpp
+
+    def test_witness_nested_faces(self):
+        # The routing pins above must also WITNESS their faces (the
+        # routed-AND-witnessed half of the three-unit convention).
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=A(n=X(k=q))):\n"
+            "            return q\n"
+            "        case _:\n"
+            "            return -1\n"
+            "def main() -> None:\n"
+            "    print(f(W(A(X()))))\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.field_nested", 0) > 0
+        assert w.get("match.field_union_guard", 0) > 0
+        assert w.get("match.field_alias", 0) > 0
+        assert w.get("match.field_bind", 0) > 0
+
+    def test_witness_guard_as(self):
+        src = NESTED_GUARD_PREAMBLE + (
+            "def f(w: W) -> Int32:\n"
+            "    match w:\n"
+            "        case W(v=B() as b):\n"
+            "            return b.m\n"
+            "        case _:\n"
+            "            return -1\n"
+            "def main() -> None:\n"
+            "    print(f(W(B())))\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("match.field_guard_as", 0) > 0

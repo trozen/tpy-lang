@@ -495,7 +495,7 @@ class _LowerCtx:
                  "value_tuple_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
                  "unpack_ptr_targets",
-                 "unhandled_hoists", "narrow",
+                 "unhandled_hoists", "narrow", "literal_facts",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "nested_def_locals", "error_return_cpp",
                  "walrus_predeclared", "walrus_slot_locals",
@@ -557,6 +557,12 @@ class _LowerCtx:
         # position (the AST's ctx.current_stmt_line).
         self.pre_decl_import_cpp: dict[str, tuple[int, str]] = {}
         self.top_level_line: int = 0
+        # Arm-scoped LiteralType facts (a Literal-subject match narrows the
+        # subject per arm). The AST consumes these for dead-branch FOLDS
+        # (compare / membership / bool-chain); THIR does not mirror the
+        # folds yet, so expression lowering RAISES on a fact-name compare
+        # instead of silently diverging -- the fence at the consumer.
+        self.literal_facts: dict[str, TpyType] = {}
         self.render_type = render_type or (lambda t: t.to_cpp())
         self.render_type_stored = (render_type_stored
                                    or (lambda t: t.to_cpp_stored()))
