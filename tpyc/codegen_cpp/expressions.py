@@ -6135,7 +6135,16 @@ class ExpressionGenerator:
         A storage-form source (field, container subscript, storage-form local)
         holds the element by value (`std::tuple<..., T>`), so `std::get` yields
         a value reference accessed with `.`. Pointer-repr Optional elements are
-        nullable and routed through the optional null-check path instead."""
+        nullable and routed through the optional null-check path instead.
+
+        A per-element-`Own` tuple is the exception, but only where it is still
+        in its MIXED borrow render (`std::tuple<A, B*>`): there the whole-tuple
+        storage verdict describes just the owned half and must not veto the
+        per-element answer `_element_is_pointer_repr` gives. That is a question
+        about the SOURCE, not the type -- `renders_own_borrow_tuple` answers it.
+        The same tuple type read out of real storage has been through
+        `tuple_to_storage`, which materializes the ref element as `B&`/`B`, so
+        it reads `.` like any other storage element."""
         if not isinstance(expr, TpySubscript):
             return False
         obj_type = unwrap_qualifiers(self.ctx.get_expr_type(expr.obj))
@@ -6153,7 +6162,8 @@ class ExpressionGenerator:
         et = obj_type.element_types[idx]
         return (et.value_form() is ValueForm.BORROW_REF
                 and TupleType._element_is_pointer_repr(et)
-                and not self.ctx.is_storage_form_source(expr.obj))
+                and (self.ctx.renders_own_borrow_tuple(expr.obj)
+                     or not self.ctx.is_storage_form_source(expr.obj)))
 
     def _borrow_ptr_form_value(self, elem: TpyExpr,
                                elem_target: 'TpyType') -> str:

@@ -2301,9 +2301,9 @@ class TestBorrowTupleAliasDecl:
 
     def test_per_element_own_call_result_still_defers(self):
         # `tuple[Own[A], B]` returns the BORROW form too, but binds its owned
-        # element by value -- and the AST's decl render for it is ill-formed
-        # (`std::get<1>(p).val` on a `B*`; filed in BUGS.md). Mirroring a
-        # broken oracle is correct here; routing it would be the divergence.
+        # element by value. The AST now reads that per element correctly, so
+        # this is an unported shape rather than a fenced-off broken oracle --
+        # un-rejecting it is tracked migration work (TODO.md).
         src = (
             "from tpy import Int32, Own\n"
             "class Box:\n"

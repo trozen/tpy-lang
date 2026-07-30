@@ -1102,6 +1102,7 @@ class LocalScopeSnap:
     const_indirect_locals: set[str]
     storage_form_tuple_locals: set[str]
     const_storage_form_tuple_locals: set[str]
+    own_borrow_tuple_locals: set[str]
     storage_form_optional_locals: set[str]
     const_storage_form_optional_locals: set[str]
     movable_locals: set[str]
@@ -1308,6 +1309,13 @@ class CodeGenContext:
     # When unpacking these, the storage->pointer wrap must produce const slots
     # because optional_to_ptr returns `const T*` from a const optional<T>&.
     const_storage_form_tuple_locals: set[str] = field(default_factory=set)
+    # Subset of storage_form_tuple_locals: locals bound from a per-element-Own
+    # tuple RETURN, whose C++ shape is that return's MIXED borrow render
+    # (`std::tuple<A, B*>`) rather than a storage materialization. They are
+    # storage-form for the whole-tuple lift (the owned element still needs
+    # `tuple_to_pointer`) but their ref elements are already pointers, so a
+    # per-element read must not take them for by-value slots.
+    own_borrow_tuple_locals: set[str] = field(default_factory=set)
     # Locals whose C++ shape is `std::optional<T>` (storage form) because they
     # bind a pointer-repr-Optional element of a storage-form source:
     #   * for-loop variable iterating `list[P|None]` / `dict[K, P|None]`
@@ -1725,6 +1733,7 @@ class CodeGenContext:
         self.const_indirect_locals = set()
         self.storage_form_tuple_locals = set()
         self.const_storage_form_tuple_locals = set()
+        self.own_borrow_tuple_locals = set()
         self.borrow_form_tuple_locals = set()
         self.const_borrow_form_tuple_locals = set()
         self.optional_borrow_tuple_locals = set()
@@ -1859,6 +1868,7 @@ class CodeGenContext:
             const_indirect_locals=self.const_indirect_locals.copy(),
             storage_form_tuple_locals=self.storage_form_tuple_locals.copy(),
             const_storage_form_tuple_locals=self.const_storage_form_tuple_locals.copy(),
+            own_borrow_tuple_locals=self.own_borrow_tuple_locals.copy(),
             storage_form_optional_locals=self.storage_form_optional_locals.copy(),
             const_storage_form_optional_locals=self.const_storage_form_optional_locals.copy(),
             movable_locals=self.movable_locals.copy(),
@@ -1881,6 +1891,7 @@ class CodeGenContext:
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.storage_form_tuple_locals = snap.storage_form_tuple_locals.copy()
         self.const_storage_form_tuple_locals = snap.const_storage_form_tuple_locals.copy()
+        self.own_borrow_tuple_locals = snap.own_borrow_tuple_locals.copy()
         self.storage_form_optional_locals = snap.storage_form_optional_locals.copy()
         self.const_storage_form_optional_locals = snap.const_storage_form_optional_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
@@ -2389,6 +2400,37 @@ class CodeGenContext:
         if not isinstance(expr, TpyName):
             return False
         return expr.name in self.pointer_globals and self.is_global_name(expr)
+
+    def renders_own_borrow_tuple(self, expr: TpyExpr) -> bool:
+        """True when `expr` yields the MIXED borrow render of a per-element-Own
+        tuple -- `std::tuple<A, B*>`, owned elements by value and plain ref
+        elements as pointers.
+
+        Only a per-element-Own RETURN produces that shape, so it survives in
+        the call result itself and in a local bound straight from one. Every
+        storage sink runs the value through `tuple_to_storage` first, which
+        materializes the ref element as `B&` (container slot) or `B` (nested
+        tuple / dict value) -- so a container element, field or loop variable
+        is NOT this, even though its tuple type still carries the `Own`.
+
+        Distinct from `is_storage_form_source`, which stays True for these:
+        the owned element really is held by value, so the whole-tuple
+        `tuple_to_pointer` lift is still owed. This answers the narrower
+        per-element question those consumers must not read off that verdict.
+        """
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            rt = unwrap_readonly(fi.return_type) if fi is not None else None
+            return isinstance(rt, TupleType) and rt.has_own_element()
+        # Composition mirrors `is_storage_form_source`: C++ evaluates one arm,
+        # so a ternary is this shape only when BOTH arms are (mixed arms have
+        # no common tuple type to deduce anyway).
+        if isinstance(expr, TpyIfExpr):
+            return (self.renders_own_borrow_tuple(expr.then_expr)
+                    and self.renders_own_borrow_tuple(expr.else_expr))
+        if isinstance(expr, TpyName):
+            return expr.name in self.own_borrow_tuple_locals
+        return False
 
     def is_storage_form_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads a value from a storage location.

@@ -2233,6 +2233,12 @@ class StatementGenerator:
                 return f"{prefix}{indent}{borrow_cpp} {cpp_name} = {rhs};\n"
             if self.ctx.is_storage_form_source(stmt.init):
                 self.ctx.storage_form_tuple_locals.add(stmt.name)
+                # A per-element-Own call source hands over its MIXED borrow
+                # render intact (`auto p = make_mixed(b)`), so the local's ref
+                # elements are pointers even though the tuple as a whole is
+                # storage-form for the lift.
+                if self.ctx.renders_own_borrow_tuple(stmt.init):
+                    self.ctx.own_borrow_tuple_locals.add(stmt.name)
                 # A fresh-owned storage tuple (sema proved it owned, not an
                 # alias) is move-only when it owns a @nocopy element and must
                 # auto-move at its last use -- e.g. into an owned-tuple

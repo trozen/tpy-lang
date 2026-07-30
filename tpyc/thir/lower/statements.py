@@ -5819,10 +5819,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # (1) SEMANTIC: a whole `Own[tuple[..]]` has the same element
                 # list but binds owning storage, whose reads stay `.field`.
                 owning = isinstance(cru, OwnType)
-                # (2) BUG-COMPAT: a per-element `tuple[Own[A], B]` returns the
-                # BORROW form, and the AST's element read for it is ill-formed
-                # C++ (BUGS.md). Rejecting mirrors the broken oracle on
-                # purpose; drop this half once that bug is fixed.
+                # (2) UNPORTED: a per-element `tuple[Own[A], B]` returns the
+                # BORROW form -- owned elements by value, plain ref elements as
+                # pointers. The AST reads that per element correctly now; this
+                # half is a plain migration gap, not bug-compat (see TODO.md).
                 mixed_own = isinstance(cru, TupleType) and cru.has_own_element()
                 if cru is not None and not owning and not mixed_own:
                     src_bt = _f1_tuple(analyzer.get_expr_type(stmt.init),
