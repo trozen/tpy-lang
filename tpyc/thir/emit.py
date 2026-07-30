@@ -211,6 +211,15 @@ class TempSink:
         TempState's."""
         self._pending_named.append((name, cpp_type, init))
 
+    def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
+        """Register a uniquely-named hoisted slot (the pointer-select's
+        `std::optional<T> __logical_slot_N`) and return its name -- the
+        counter is shared with `__tmp_N`, like TempState's."""
+        self._counter += 1
+        name = f"{prefix}_{self._counter}"
+        self._pending_named.append((name, cpp_type, None))
+        return name
+
     def checkpoint(self) -> tuple[int, int]:
         """Snapshot the pending queues -- the cond-position seam
         (`has_*_since` / `flush_since` take this token), mirroring
@@ -270,6 +279,9 @@ class CtxTempSink(TempSink):
     def declare_named(self, name: str, cpp_type: str, *,
                       init: 'str | None' = None) -> None:
         self._ctx.temps.declare_named(name, cpp_type, init=init)
+
+    def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
+        return self._ctx.temps.declare_named_auto(prefix, cpp_type)
 
     def checkpoint(self) -> tuple[int, int]:
         return self._ctx.temps.checkpoint()
@@ -1483,10 +1495,30 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         lhs_r = _emit_expr(e.lhs, state)
         if e.lhs_temp_cpp is not None:
             lhs_r = state.temps.create(e.lhs_temp_cpp, lhs_r)
-        truthy = f"(!{lhs_r}.empty())" if e.truthy_nonempty else lhs_r
+        if e.truthy_mode is TruthinessMode.RECORD_LEN:
+            truthy = f"(::tpy::__len__({lhs_r}) != 0)"
+        elif e.truthy_mode is TruthinessMode.NONEMPTY:
+            truthy = f"(!{lhs_r}.empty())"
+        elif e.truthy_mode is TruthinessMode.ALWAYS_TRUE:
+            # The LHS is already evaluated (a bare name or the hoisted
+            # temp), so the fold keeps the bare literal -- unlike
+            # THIRTruthy's operand-effect wrap.
+            truthy = "true"
+        else:
+            truthy = lhs_r
         rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
+        if e.ptr_select_cpp is not None:
+            # Rvalue non-value RHS: materialize lazily into the hoisted
+            # optional slot; `*ptr` keeps the whole select an lvalue.
+            slot = state.temps.declare_named_auto(
+                "__logical_slot", f"std::optional<{e.ptr_select_cpp}>")
+            lhs_p = f"&({lhs_r})"
+            rhs_p = f"({slot}.emplace({rhs_r}), &*{slot})"
+            if e.op == "||":
+                return f"(*({truthy} ? {lhs_p} : {rhs_p}))"
+            return f"(*({truthy} ? {rhs_p} : {lhs_p}))"
         lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
         rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
         if e.op == "||":
@@ -3243,8 +3275,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             const_pfx = "const " if stmt.is_const else ""
             sigil = ("&" if stmt.cpp_local_representation is LocalBinding.REF_ALIAS
                      else "*")
+            # Render before flushing: a container-select init hoists its
+            # non-name LHS as an `auto&& __tmp_N` line that must precede
+            # the alias decl (the AST's TempState flush point).
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
             out.write(f"{indent}{const_pfx}{stmt.cpp_type}{sigil} {name} = "
-                      f"{_emit_expr(stmt.init, state)};\n")
+                      f"{init_cpp};\n")
         elif stmt.init is None:
             cpp = stmt.cpp_type if stmt.cpp_type is not None \
                 else stmt.resolved_type.to_cpp()
@@ -3654,6 +3691,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"(*{escape_cpp_name(stmt.source)});\n")
         elif sb is TupleSourceBind.NAME_REF:
             out.write(f"{indent}auto& {tmp} = {src};\n")
+        elif sb is TupleSourceBind.NAME_MOVE:
+            out.write(f"{indent}auto&& {tmp} = std::move({src});\n")
+        elif sb is TupleSourceBind.NAME_COPY:
+            out.write(f"{indent}auto {tmp} = {src};\n")
         else:
             out.write(f"{indent}const auto& {tmp} = {src};\n")
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):

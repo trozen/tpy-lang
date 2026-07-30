@@ -12,6 +12,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _fn, _lower, _lower_ctx, _lower_ctx_witnessed,
+    _assert_byte_identical,
 )
 
 
@@ -185,12 +186,17 @@ class TestIfExprRejects:
             "    return a if c else None\n")
         assert _fn(thir, "f") is None
 
-    def test_container_result_rejected(self):
-        thir = _lower(
-            "def f(c: bool) -> None:\n"
-            "    xs = [1] if c else [2]\n"
-            "    print(xs[0])\n")
-        assert _fn(thir, "f") is None
+    def test_container_result_routes(self):
+        # RE-PINNED ROUTED (decl-slot track): the container ternary renders
+        # bare with spelled list-literal arms; the all-rvalue decl is the
+        # plain copy (`std::vector<int32_t> xs = ((c) ? (...) : (...));`).
+        src = ("def f(c: bool) -> None:\n"
+               "    xs = [1] if c else [2]\n"
+               "    print(xs[0])\n"
+               "f(True)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_bytes_result_rejected(self):
         # Bytes-literal arm renders are target-threaded inside the ternary --

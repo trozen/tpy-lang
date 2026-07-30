@@ -238,6 +238,10 @@ from .predicates import (
     _eligible_scalar,
     _eligible_value_union,
     _wrapper_member_ctor_slot,
+    _container_rvalue_select,
+    _native_iter_value_slot,
+    _own_record_tuple,
+    _protocol_auto_slot,
     _value_record_slot,
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
@@ -1750,13 +1754,19 @@ def _tuple_unpack_source(
         note_detail("tuple_unpack.source_family")
         return None
     if any(isinstance(e, OwnType) for e in src_t.element_types):
-        # Own elements move OUT of the source: only the call-rvalue capture
-        # is mirrored (a name source takes the AST's one-shot / last-use-move
-        # / copy bind arms, a field source would copy an Own member out).
-        if not call_src or _owned_tuple_call_ret(src_raw, analyzer) is None:
-            note_detail("tuple_unpack.own_source_form")
-            return None
-        return src_t
+        # Own elements move OUT of the source: the call-rvalue capture, or
+        # an Own-record-tuple NAME whose holder either moves (last use:
+        # `auto&& __tup = std::move(t);`) or copies (`auto __tup = t;`) --
+        # the bind choice is the caller's (`_is_move_source`). A field
+        # source would copy an Own member out and stays rejected; a
+        # one-shot frame lift is the resumable arm's.
+        if call_src and _owned_tuple_call_ret(src_raw, analyzer) is not None:
+            return src_t
+        if (isinstance(v, TpyName)
+                and _own_record_tuple(src_raw, analyzer) is not None):
+            return src_t
+        note_detail("tuple_unpack.own_source_form")
+        return None
     if not all(_scalar_or_str_unpack_elem(e, analyzer)
                or _value_tuple_global(e, analyzer) is not None
                # A pointer-repr F1-record element: the borrow-tuple unpack
@@ -2557,6 +2567,11 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # borrow-source build.
         if isinstance(stmt.init, TpySubscript):
             src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
+        elif isinstance(stmt.init, (TpyBinOp, TpyIfExpr)):
+            # A container and/or select (`x = a or b`) or ternary
+            # (`x = a if c else b`) of lvalues: the lowered ternary IS the
+            # aliased lvalue -- the `T&` binds it directly.
+            src = _lower_expr(stmt.init, lc, declared)
         elif isinstance(stmt.init, TpyName):
             # A pointer-local source aliases through the deref
             # (`Point& alias = (*p);`) -- the shared pointer-name-source
@@ -5972,7 +5987,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # rides its own arms (ctor/dunder-binop/method rvalues).
                     or (isinstance(vtype, NominalType)
                         and _f1_record(vtype, analyzer)
-                        and _value_record_slot(vtype)))
+                        and _value_record_slot(vtype))
+                    # An all-rvalue container select / ternary init
+                    # (`x = [1,2] or [3,4]`): the plain spelled copy of
+                    # the pointer-select deref / bare literal ternary.
+                    or _container_rvalue_select(stmt.init, vtype, analyzer)
+                    # A native-iterator value slot (`it = SpanIter(s)` /
+                    # annotated `a.__iter__()`) spells the plain copy; a
+                    # structural-protocol slot (`it = iter(c)`) spells
+                    # `auto` and the init render carries the type.
+                    or _native_iter_value_slot(vtype, analyzer)
+                    or _protocol_auto_slot(vtype)
+                    # A per-element-Own record tuple slot
+                    # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
+                    # is the plain spelled copy like a value tuple.
+                    or _own_record_tuple(vtype, analyzer) is not None)
                 if not slot_ok:
                     # Branch-first REBIND_SLOT and owned-record decls are
                     # handled by the borrow cascade above (its per-arm
@@ -6130,11 +6159,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # (`auto q = p;`), unlike the spelled `T*` of record/scalar pointees.
         # A container decl carrying an enum in its args needs the same
         # render_type spelling rule as a bare enum decl.
-        if _dyn_proto_ptr(vtype):
+        if _dyn_proto_ptr(vtype) or _protocol_auto_slot(vtype):
             cpp_type = "auto"
         elif (_eligible_enum(vtype, analyzer) is not None
               or _container_enum_spell(vtype, analyzer)
               or _callable_value(vtype)
+              # The native-iterator slot spells its generic instantiation
+              # (`::tpy::SpanIter<const int32_t>`) via render_type.
+              or _native_iter_value_slot(vtype, analyzer)
               # The owned-optional record slot spells via render_type
               # (generic instantiation + cross-module qualification --
               # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).
@@ -8188,6 +8220,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 src_bind = TupleSourceBind.STORAGE_WRAP
             elif ref_name_source:
                 src_bind = TupleSourceBind.NAME_REF
+            elif any(b == "move" for b in bind_tags):
+                # An Own-element tuple NAME: the holder moves at the
+                # source's last use, else copies -- `_gen_tuple_unpack`'s
+                # any(is_owned) name arms (the one-shot frame lift is the
+                # resumable path's and never reaches this sync arm).
+                src_bind = (TupleSourceBind.NAME_MOVE
+                            if _is_move_source(stmt.value, lc)
+                            else TupleSourceBind.NAME_COPY)
             else:
                 src_bind = TupleSourceBind.NAME_CREF
             return THIRTupleUnpack(

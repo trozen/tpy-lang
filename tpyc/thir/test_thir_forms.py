@@ -299,6 +299,92 @@ class TestNameAlias:
         assert "std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);" in cpp
         assert "const std::vector<int32_t>& row" not in cpp
 
+    def test_container_field_alias_routes(self):
+        # xs = self.tags -- a container FIELD source binds the `T&` alias
+        # (const-spelled off the inferred-const receiver).
+        src = ("from tpy import Int32\n"
+               "class H:\n"
+               "    tags: list[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.tags = [1, 2]\n"
+               "    def count(self) -> Int32:\n"
+               "        xs = self.tags\n"
+               "        return len(xs)\n"
+               "def main() -> None:\n"
+               "    print(H().count())\nmain()\n")
+        assert _fn(_lower_ctx(src), "count") is not None
+        out = _assert_byte_identical(src)
+        assert ("const std::vector<int32_t>& xs = this->tags;"
+                in (out[0] + out[1]))
+
+    def test_reassigned_container_field_alias_stays_ast(self):
+        # The reassigned container-field sibling is the pointer reseat rung
+        # -- keeps falling back.
+        src = ("from tpy import Int32\n"
+               "class H:\n"
+               "    tags: list[Int32]\n"
+               "    more: list[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.tags = [1, 2]\n"
+               "        self.more = [3]\n"
+               "    def count(self) -> Int32:\n"
+               "        xs = self.tags\n"
+               "        xs = self.more\n"
+               "        xs.append(4)\n"
+               "        return len(self.more)\n"
+               "def main() -> None:\n"
+               "    print(H().count())\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "count") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_pending_container_alias_routes(self):
+        # b = a where a is a literal-seeded LOCAL whose list type is still
+        # pending at the binding: the decl type resolves through the shared
+        # sema record (like the AST's decl-type normalizer), so the alias
+        # binds `std::vector<T>&` instead of falling back.
+        src = ("def f() -> None:\n"
+               "    a = [1, 2, 3]\n"
+               "    b = a\n"
+               "    b.append(4)\n"
+               "    print(len(a))\n"
+               "f()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "std::vector<int32_t>& b = a;" in cpp
+        _assert_byte_identical(src)
+
+    def test_pending_container_alias_chain_routes(self):
+        # c = b -- an alias of a pending-container alias re-binds the same
+        # storage (`std::vector<T>& c = b;`).
+        src = ("def f() -> None:\n"
+               "    a = [1, 2, 3]\n"
+               "    b = a\n"
+               "    c = b\n"
+               "    c.append(4)\n"
+               "    print(len(a))\n"
+               "f()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "std::vector<int32_t>& c = b;" in cpp
+
+    def test_reassigned_pending_container_alias_stays_ast(self):
+        # x = a; x = b -- a REASSIGNED container alias is the pointer-local
+        # reseat rung the slice does not carry; the body must keep falling
+        # back even now that the pending binding type resolves.
+        src = ("def f() -> None:\n"
+               "    a = [1, 2]\n"
+               "    b = [3, 4]\n"
+               "    x = a\n"
+               "    x = b\n"
+               "    x.append(5)\n"
+               "    print(len(a), len(b))\n"
+               "f()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
     def test_global_source_routes_deref_alias(self):
         # RE-PINNED ROUTED (thir-wave-next6): a module-global record seeds
         # as a pointer slot (lc.pointers), so the alias takes the `(*g)`

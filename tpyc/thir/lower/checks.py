@@ -27,6 +27,7 @@ from ...parse.nodes import (
     TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral,
+    TpyIfExpr,
     TpyIntLiteral,
     TpyLambda,
     TpyListComprehension,
@@ -171,6 +172,7 @@ from .predicates import (
     _wrapper_member_ctor_slot,
     _enum_neg_wrap,
     _f1_record,
+    _protocol_auto_slot,
     _field_decl_type,
     _field_markers_clean,
     _field_over_subscript_ok,
@@ -186,6 +188,8 @@ from .predicates import (
     _folded_neg_int_literal,
     _is_bytes_family,
     _is_type_param_slot,
+    _container_tparam_elem,
+    _span_slot,
     _is_string_owned,
     _isinstance_narrow_info,
     _any_narrow_info,
@@ -1046,6 +1050,13 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _container_ref_alias_elem_subscript(stmt.init, declared,
                                                         analyzer)):
             return binding
+        # An open-T element subscript inside a generic record body
+        # (`v = self.items[self.pos]`) binds the per-instantiation `T&`.
+        if (binding is LocalBinding.REF_ALIAS
+                and _is_type_param_slot(target_type)
+                and _borrow_elem_subscript_shape(stmt.init, declared, analyzer,
+                                                 _container_tparam_elem)):
+            return binding
         # A wrapper-union element subscript (`v: JsonValue = d["rows"]`)
         # binds the element lvalue as the wrapper's `T&` alias. LOCAL
         # narrowing-alias receivers only: a PARAM subject's extraction alias
@@ -1067,6 +1078,19 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                  declared, prescan, pointers,
                                                  analyzer)):
             return binding
+        # A container / F1-record and/or select or ternary (`x = a or b`,
+        # `x = a if c else b`): the classifier's lvalue verdict means the
+        # select is itself an lvalue (an rvalue RHS rides the lazily
+        # emplaced `__logical_slot` pointer-select, still an lvalue), so
+        # it binds as the single-assignment `T&` alias. Operand shapes
+        # gate inside the select / ternary lowering.
+        if (binding is LocalBinding.REF_ALIAS
+                and (_alias_ref_container(target_type)
+                     or _f1_record(target_type, analyzer))
+                and ((isinstance(stmt.init, TpyBinOp)
+                      and stmt.init.op in ("&&", "||"))
+                     or isinstance(stmt.init, TpyIfExpr))):
+            return binding
         # The reassigned POINTER sibling of the bare-name alias: a plain record
         # NAME source lifts to a reseatable `[const] T* x = &(a);` (later
         # `x = &(b);`). Record only -- a reassigned container alias is a
@@ -1081,7 +1105,17 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             return binding
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
-        return binding if _f1_record(target_type, analyzer) else None
+        # The FIELD-source aliases: an F1-record field (`r = self.inner` ->
+        # `Inner& r = this->inner;`, REF_ALIAS or the reseatable POINTER)
+        # and, REF_ALIAS-only, a container field (`xs = self.tags` ->
+        # `std::vector<T>& xs = this->tags;`) -- the reassigned container
+        # sibling is a later rung.
+        if _f1_record(target_type, analyzer):
+            return binding
+        if (binding is LocalBinding.REF_ALIAS
+                and _alias_ref_container(target_type)):
+            return binding
+        return None
     # OPTIONAL_TO_PTR: the borrow `T*` points at the optional's inner record.
     inner = target_type.inner if isinstance(target_type, OptionalType) else None
     return binding if _f1_record(inner, analyzer) else None
@@ -4083,12 +4117,16 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         rvalue = False
     elif (isinstance(a, TpyFieldAccess) and not is_dyn_protocol(proto)
           and _field_receiver_ok(a, locals_, analyzer)
-          and _f1_record(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
-                         analyzer)):
-        # An F1-record FIELD read into a STRUCTURAL slot (`len(r.cookies)`
-        # -> `::tpy::__len__(r.cookies)`): the same bare lvalue render as a
-        # conformer name, through the ordinary tail. @dynamic slots keep
-        # their adapter temps on the AST path.
+          and (_f1_record(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                   at))), analyzer)
+               # A CONTAINER field into a structural slot renders the same
+               # bare lvalue (`return iter(self.items)` ->
+               # `::tpy::__iter__(this->items)`).
+               or _alias_ref_container(at))):
+        # An F1-record / container FIELD read into a STRUCTURAL slot
+        # (`len(r.cookies)` -> `::tpy::__len__(r.cookies)`): the same bare
+        # lvalue render as a conformer name, through the ordinary tail.
+        # @dynamic slots keep their adapter temps on the AST path.
         rvalue = False
     elif isinstance(a, TpyCall) and _ctor_shape_ok(a, analyzer):
         rvalue = True
@@ -6773,6 +6811,16 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
                         unwrap_send_sync(ret)))) if ret is not None else None,
                     analyzer)
                 and _witness("method.protocol_own_storage_ret"))
+            # An Own[Self] / protocol-typed result at a STORAGE sink
+            # (`result = d.duplicate()` in the monomorphized template
+            # body): the prvalue lands bare in the `auto` decl slot. Sema
+            # may record no expression type for an open-Self result (ret
+            # is None); the decl side pinned the slot to the auto family.
+            or (storage_ret_ok and is_rvalue_source(analyzer, e)
+                and (ret is None or _protocol_auto_slot(
+                    _unwrap_own(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(ret))))))
+                and _witness("method.protocol_self_storage_ret"))
             or (stmt_position and (ret is None or is_void_like_type(ret)))
             # A DISCARDED result in statement position: nothing consumes it,
             # so the call renders bare whatever its type -- the same reason
@@ -6957,6 +7005,11 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or _resolved_bytes_value(ret, analyzer) is not None
             or _tparam_value(ret)
             or _callable_value(ret)
+            # A Span result (`self.__span__()` feeding a SpanIter ctor):
+            # a VALUE view, the same bare `recv.method(args)` render --
+            # consuming positions gate their own family checks.
+            or (_span_slot(ret, analyzer)
+                and _witness("method.span_ret"))
             # A VALUE-tuple result (`getsockname() -> tuple[str, Int32]`)
             # emits the same bare `recv.method(args)` prvalue; like the
             # TypeParamRef admission above, every consuming position
@@ -8205,6 +8258,12 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
                   AnyType):
         return _witness("print.any")
+    if (isinstance(a, TpyName)
+            and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(at))))):
+        # A protocol-typed local/param (`print(result)` off an `auto`
+        # select result): streams RAW via the concrete type's operator<<.
+        return _witness("print.protocol_name")
     if isinstance(a, (TpyCall, TpyMethodCall)):
         # An F1-record-returning call rvalue streams RAW via the record's
         # emitted operator<< (`print(datetime.fromtimestamp(x))` --
@@ -8217,6 +8276,11 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         if (_f1_record(atu, analyzer)
                 and is_rvalue_source(analyzer, a)):
             return _witness("print.record_call")
+        if _protocol_auto_slot(atu):
+            # A structural-protocol-result call (`print(iter(s))`): the
+            # native render streams RAW via the concrete type's operator<<
+            # (gen_print's fall-through `<< x`), like the record-call row.
+            return _witness("print.protocol_call")
     if isinstance(a, (TpyBinOp, TpyUnaryOp)):
         # An F1-record-result user-dunder binop / unary rvalue streams RAW
         # like the record-call row (`print(td1 + td2)`, `print(-td)` -- the

@@ -273,6 +273,9 @@ from .predicates import (
     _folded_neg_int_literal,
     _generic_root_subst,
     _instantiation_call_fi,
+    _native_iter_value_slot,
+    _own_record_tuple,
+    _protocol_auto_slot,
     _is_borrow_form_name,
     _is_type_param_slot,
     _is_range_call,
@@ -619,6 +622,15 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # `copy(self.value)` -- Own[T] unwraps to T): renders by name,
               # the composing position gates its own family.
               or _tparam_value(ret)
+              # A structural-protocol result (`iter(s)` -> Iterator[T]):
+              # the native helper's render carries the concrete C++ type;
+              # the decl slot spells `auto`.
+              or _protocol_auto_slot(record)
+              # A per-element-Own record tuple result (`make_pair()` ->
+              # `std::tuple<Counter, Counter>`): borrow and storage
+              # coincide, the call lands bare in its spelled slot.
+              or (result is _ExprResultUse.STORAGE
+                  and _own_record_tuple(ret, analyzer) is not None)
               # A value-repr Optional[scalar] result lands bare in its
               # value-optional slot (`r = h(true);`); mismatched consumers
               # reject at their own slot arms.
@@ -1578,6 +1590,14 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
     res_owned = _is_string_owned(rtype)
     if not (_resolved_scalar(rtype, analyzer) or res_str is not None
             or res_owned):
+        rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+               if rtype is not None else None)
+        rtu = resolve_pending_container(rtu, analyzer) or rtu
+        if rtu is not None and (is_list(rtu) or is_dict(rtu) or is_set(rtu)
+                                or _f1_record(rtu, analyzer)):
+            if _contains_isinstance_fact(e.left):
+                rej("valuesel.isinstance_lhs")
+            return _lower_container_select(e, rtu, lc, declared, loc, rej)
         rej("valuesel.result_type")
     if _contains_isinstance_fact(e.left):
         rej("valuesel.isinstance_lhs")
@@ -1649,9 +1669,91 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
     _witness("binop.value_select")
     return THIRValueSelect(
         result_type=rtype, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
-        truthy_nonempty=truthy_nonempty, lhs_temp_cpp=lhs_temp_cpp,
+        truthy_mode=(TruthinessMode.NONEMPTY if truthy_nonempty else None),
+        lhs_temp_cpp=lhs_temp_cpp,
         lhs_cast=lhs_cast, rhs_cast=rhs_cast, rhs_sv=rhs_sv,
         form=form, loc=loc)
+
+
+def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
+                            declared: dict[str, TpyType], loc,
+                            rej) -> THIRExpr:
+    """Non-value and/or -- `_gen_logical_value`'s reference slice over a
+    container (list/dict/set) or F1-record result. An all-lvalue select is
+    the truthy ternary aliasing the chosen operand
+    (`((::tpy::__len__(a) != 0) ? a : b)`, a BORROW lvalue); an RVALUE RHS
+    takes the hoisted-`__logical_slot` pointer-select (`ptr_select_cpp`),
+    materializing lazily so short-circuit holds. Truthiness comes from the
+    LHS operand's record: `__len__` -> the len test, no dunder on a user
+    record -> the folded `true`; a `__bool__` record stays rejected
+    (unwitnessed). Operands: a bare NAME, a nested select (the chain's
+    `auto&& __tmp_N` LHS hoist), a container literal (temp-lifted LHS /
+    emplaced RHS, spelled via typed_brace), or any rvalue RHS whose own
+    lowering arm admits it. Same-spelling operands only: a differing
+    render would take the conversion cast, a COPY that breaks aliasing."""
+    analyzer = lc.analyzer
+
+    def _operand_type(side: TpyExpr) -> 'TpyType':
+        t = analyzer.get_expr_type(side)
+        tu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+              if t is not None else None)
+        if isinstance(tu, OwnType):
+            tu = unwrap_readonly(tu.wrapped)
+        tu = resolve_pending_container(tu, analyzer) or tu
+        if tu is None:
+            rej("valuesel.ref_operand")
+        return tu
+
+    def _lower_operand(side: TpyExpr, side_t: 'TpyType') -> THIRExpr:
+        # The operand renders with ITS OWN resolved type (the AST's
+        # get_resolved_type per side): a LIST literal spells its type
+        # (`std::vector<T>{1, 2}` -- a bare brace-init cannot deduce);
+        # dict/set/Array renders self-describe.
+        lowered = _lower_expr(side, lc, declared, target_type=side_t)
+        if isinstance(lowered, THIRContainerLiteral) and is_list(side_t):
+            lowered = replace(lowered, typed_brace_cpp=lc.render_type(side_t))
+        return lowered
+
+    lt = _operand_type(e.left)
+    rec = analyzer.registry.get_record_for_type(lt)
+    if rec is None:
+        rej("valuesel.ref_lhs")
+    if rec.get_method_overloads("__bool__"):
+        rej("valuesel.ref_bool_dunder")
+    if rec.get_method_overloads("__len__"):
+        truthy_mode = TruthinessMode.RECORD_LEN
+    elif isinstance(lt, NominalType) and lt.is_user_record:
+        truthy_mode = TruthinessMode.ALWAYS_TRUE
+    else:
+        rej("valuesel.ref_lhs")
+
+    lhs_ok = (isinstance(e.left, TpyName)
+              or (isinstance(e.left, TpyBinOp) and e.left.op in ("&&", "||"))
+              or isinstance(e.left, (TpyArrayLiteral, TpyDictLiteral,
+                                     TpySetLiteral)))
+    if not lhs_ok:
+        rej("valuesel.ref_shape")
+    rhs_rvalue = is_rvalue_source(analyzer, e.right)
+    if not rhs_rvalue and not isinstance(e.right, TpyName):
+        rej("valuesel.ref_shape")
+    rt = _operand_type(e.right)
+    # The lhs arm binds/aliases as the result type (`&(lhs)` / the bare
+    # ternary arm), so its render must match; the rvalue RHS is
+    # target-blind (the emplace converts), while an inline lvalue RHS
+    # aliases and must match like the LHS.
+    if lc.render_type(lt) != lc.render_type(rtu) \
+            or (not rhs_rvalue
+                and lc.render_type(rt) != lc.render_type(rtu)):
+        rej("valuesel.ref_mixed")
+    lowered_lhs = _lower_operand(e.left, lt)
+    lhs_temp_cpp = None if isinstance(e.left, TpyName) else "auto&&"
+    lowered_rhs = _lower_operand(e.right, rt)
+    _witness("binop.container_select")
+    return THIRValueSelect(
+        result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
+        truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
+        ptr_select_cpp=lc.render_type(rtu) if rhs_rvalue else None,
+        form=Form.BORROW, loc=loc)
 
 
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
@@ -1702,6 +1804,30 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     opt_eq_targets: 'tuple[TpyType | None, TpyType | None] | None' = None
     if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
         if rb is None or not getattr(rb.method, "cpp_template", None):
+            # A structural-protocol operand pair (`result = a + b` in a
+            # monomorphized template body): sema resolves no dunder (the
+            # constraint is structural) and the AST falls through to the
+            # raw C++ operator -- `(a + b)`, the resolved-None render.
+            # Bare NAME operands only; the `auto` decl slot carries it.
+            if (rb is None
+                    and isinstance(e.left, TpyName)
+                    and isinstance(e.right, TpyName)
+                    and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(
+                            _operand_type(e.left, declared, analyzer)))))
+                    and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(
+                            _operand_type(e.right, declared, analyzer)))))):
+                _witness("binop.protocol_raw")
+                return THIRBinOp(
+                    result_type=(rtype if rtype is not None
+                                 else analyzer.get_expr_type(e.left)),
+                    left=_lower_expr(e.left, lc, declared),
+                    # Floor division maps to C++ `/` (the AST protocol arm's
+                    # cpp_op mapping); a verbatim `//` would be a comment.
+                    op="/" if e.op == "//" else e.op,
+                    right=_lower_expr(e.right, lc, declared),
+                    resolved=None, loc=loc)
             if (rb is None or e.op not in ("+", "*")
                     or not rb.method.native_function
                     or not rb.method.native_name):
@@ -4140,7 +4266,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # ternary's own type, no per-arm conversion); off-slice arm
                 # shapes reject in their own lowering.
                 or isinstance(unwrap_readonly(unwrap_ref_type(rtype)),
-                              TupleType)):
+                              TupleType)
+                # A container ternary renders bare too (`((c) ? (a) : (b))`
+                # -- an lvalue when both arms are lvalues, the REF_ALIAS
+                # decl's init); arm shapes gate in their own lowering.
+                or _ifexpr_container(rtype, analyzer) is not None):
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc,
@@ -4640,6 +4770,25 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     args=tuple(_lower_call_arg(a, p.type, lc, declared)
                                for a, p in zip(e.args, sp_fi.params)),
                     cpp_template=sp_fi.cpp_template,
+                    loc=loc,
+                )
+            ni_fi = (_instantiation_call_fi(e)
+                     if _native_iter_value_slot(
+                         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                             rtype))), analyzer)
+                     else None)
+            if ni_fi is not None:
+                # `SpanIter(rs)` -> `::tpy::SpanIter<const int32_t>(rs)`:
+                # a VALUE iterator built by the resolved ctor's own template
+                # (sema pre-substituted {cpp} with the instantiation), the
+                # same expansion as the span family.
+                _witness("call.native_iter_instantiation")
+                return THIRCall(
+                    result_type=rtype,
+                    callee=e.func_name,
+                    args=tuple(_lower_call_arg(a, p.type, lc, declared)
+                               for a, p in zip(e.args, ni_fi.params)),
+                    cpp_template=ni_fi.cpp_template,
                     loc=loc,
                 )
             if _view_ctor_bare_source(e, rtype, declared, analyzer):
@@ -5709,6 +5858,31 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if not _call_arity_ok(e, fi):
                 note_detail("method.arity_defaults")
                 raise ThirUnsupported("expr.method_call")
+
+            if (fi.native_function and fi.native_name and not fi.cpp_template
+                    and not e.args and not fi.is_consuming
+                    and isinstance(e.obj, TpyName)
+                    and e.obj.name in declared
+                    and e.obj.name not in lc.pointers
+                    and e.obj.name not in lc.narrow.narrowed
+                    and e.obj.name not in lc.inline_narrowed
+                    and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(rtype))))):
+                # `b.__iter__()` -> `::tpy::__iter__(b)`: the free-function
+                # form of a `@native(..., function=True)` method -- the
+                # receiver is the first (only) arg of the qualified native
+                # symbol (gen_call_from_fi's native_function tail). Sliced
+                # to the zero-arg protocol-result shape (the explicit
+                # `__iter__()` family); everything else keeps rejecting at
+                # the family gates below.
+                _witness("method.native_function_form")
+                return THIRCall(
+                    result_type=rtype,
+                    callee=e.method,
+                    args=(_lower_expr(e.obj, lc, declared),),
+                    cpp_template=(f"{qualify_native_name(fi.native_name)}"
+                                  "({0})"),
+                    loc=loc)
 
             recv_type = _method_receiver_type(e.obj, declared, analyzer)
             stmt_position = (result_use is _ExprResultUse.DISCARD
@@ -8790,6 +8964,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # reject stays in force for a NON-union slot.
     slot_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype))) \
         if isinstance(ptype, TpyType) else None
+    if (isinstance(slot_u, NominalType) and slot_u.is_protocol
+            and not slot_u.is_dynamic_protocol
+            and isinstance(a, TpyFieldAccess)
+            and _alias_ref_container(lc.analyzer.get_expr_type(a))):
+        # A container FIELD lvalue into a structural protocol slot
+        # (`iter(self.items)` -> `::tpy::__iter__(this->items)`): the bare
+        # member render rides the ITERABLE result family, like the
+        # dedicated iterable-position arms thread it.
+        return _lower_expr(a, lc, declared,
+                           use=replace(_NESTED_ARG_USE,
+                                       result=_ExprResultUse.ITERABLE))
     # An owned str-family field read passed bare into a value slot (`repr(
     # self.name)` -> `::tpy::repr_of(this->name)`) admits as STORAGE, matching
     # the fstring arg's own owned-str field read; admission already validated
@@ -9359,6 +9544,17 @@ def _bytes_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     rt = unwrap_readonly(rt) if rt is not None else None
     return rt is not None and is_bytes_view_type(rt)
 
+def _ifexpr_container(rtype: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """A list/dict/set ternary RESULT (pending containers resolve through
+    the shared record): the ternary renders bare and its arms gate
+    themselves, so the result family is the whole admission."""
+    if rtype is None:
+        return None
+    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+    tu = resolve_pending_container(tu, analyzer) or tu
+    return tu if (is_list(tu) or is_dict(tu) or is_set(tu)) else None
+
+
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                    declared: dict[str, TpyType], loc, *,
                    cond_temps_ok: bool = False) -> THIRIfExpr:
@@ -9375,6 +9571,11 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     if slot is not None:
         slot = resolve_int_literals(unwrap_readonly(slot),
                                     analyzer.ctx.default_int_for_literal)
+        # A pending container result resolves through the shared record so
+        # the arm slot (and the node's result_type) is the final container.
+        cont_slot = _ifexpr_container(slot, analyzer)
+        if cont_slot is not None:
+            slot = cont_slot
     # The condition evaluates exactly once unconditionally, so the
     # enclosing flush right extends into it (the AST hoists its arg temps
     # before the statement); the ARMS evaluate lazily and never get it.
@@ -9426,6 +9627,17 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         form = (Form.STORAGE
                 if Form.STORAGE in (then.form, orelse.form) else form)
         _witness("ifexpr.tuple")
+    elif _ifexpr_container(slot, analyzer) is not None:
+        # The container ternary render is form-blind (`((c) ? (a) : (b))`);
+        # its lvalue-arm shape is what the REF_ALIAS decl binds. A LIST
+        # literal arm spells its type (a bare brace-init cannot deduce in
+        # ternary context); dict/set renders self-describe.
+        if is_list(slot):
+            if isinstance(then, THIRContainerLiteral):
+                then = replace(then, typed_brace_cpp=lc.render_type(slot))
+            if isinstance(orelse, THIRContainerLiteral):
+                orelse = replace(orelse, typed_brace_cpp=lc.render_type(slot))
+        _witness("ifexpr.container")
     else:
         _witness("ifexpr.value")
     return THIRIfExpr(result_type=slot if slot is not None else rtype,

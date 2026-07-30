@@ -4491,3 +4491,135 @@ union, gen-proto param, os.walk kwarg, argparse widths).
 **Pins:** `test_thir_wave_result_gate.py` (16 units: routing +
 byte-identity per row, template-at-VALUE / er-at-print / concrete-elem
 copy boundaries, the callable-shadow reject).
+
+### Decl-slot track, first grind (2026-07-30): the slot gate's mechanical families
+
+Dial 2743 -> 2760/3632 (+17 flips), markers 889 -> 872. Full suite green
+(10253 passed, exec ran all 3631 cases). The fresh census put
+`stmt.var_decl:decl.slot_type` at 51 sole-blocker cases / 166 units --
+the corpus's largest single site -- and this grind took its mechanical
+families to 107 units. The prior "needs the form design, not gate
+widenings" verdict (2026-07-28) turned out to cover only the
+tuple/ptr-repr half: five of the six clusters fell to ordinary rows.
+
+**What landed.** (a) `_var_decl_type` resolves pending containers
+through the shared sema record -- the root cause behind every bare
+container alias (`b = a`) reading as an unclassifiable PendingListType
+at the gate. (b) The reference-select family: container/record and-or
+with Python operand semantics (`_lower_container_select` -- the
+`__len__`-truthy ternary aliasing the chosen operand; a plain user
+record folds `true`; an rvalue RHS rides the hoisted
+`std::optional<T> __logical_slot_N` pointer-select, lazily emplaced so
+short-circuit holds), the container ternary (bare arm render, spelled
+list-literal arms), the all-rvalue select/ternary as a plain-copy value
+decl, and the REF_ALIAS emit arm's render-then-flush fix so a chain's
+`auto&& __tmp_N` hoist precedes the alias decl. `THIRValueSelect` now
+carries `truthy_mode: TruthinessMode` (the review folded the boolean
+pile into the existing enum) and `ptr_select_cpp`. (c) The
+iterator/protocol rows: the `__next__`-keyed native-iterator value slot
+(`SpanIter`), the structural-protocol / Self `auto` slot, the
+`@native(function=True)` free-form method call (`b.__iter__()` ->
+`::tpy::__iter__(b)`), the SpanIter instantiation (pre-substituted
+`{cpp}` ctor template), protocol-result admissions at the free-call /
+print gates, the Own[Self]/protocol-result storage sink in template
+bodies, the raw protocol-operand binop (`(a + b)`; `//` maps to `/`
+per the AST arm -- review-caught, a verbatim `//` is a C++ comment),
+the open-T element alias (`T& v = __getitem__(this->items, ...)`), and
+the container FIELD alias (`const std::vector<T>& xs = this->tags;`).
+
+**The review paid.** codegen-correctness caught the `//` render on an
+admitted-but-unwitnessed shape (invalid C++, no corpus witness -- the
+skill's dualgen-the-boundary rule exists for exactly this); test-coverage
+caught eight byte-identity-only pins missing their routing half (a
+fallback body is byte-identical BY DESIGN, so those pins could not
+detect re-rejection); cpython-parity found the `it = iter(c)`
+returns-self aliasing divergence -- PRE-EXISTING, shared by both paths
+(`auto` strips the helper's reference and copies), concealed by the
+flipped case's read-only shape; filed in BUGS.md rather than fixed here
+(both paths must change together, snapshot-churning).
+
+**Residue, honestly named.** The tuple family (11 cases: storage-tuple
+call decls, whole-tuple last-use move unpacks, per-element-Own
+rebind/realias) is the next sub-track. Fenced or deeper singles:
+`span_iter_arraylist` (@auto_readonly multi-overload `__iter__`),
+`const_borrow_optional_ptr_recv` (the BUGS.md narrowed-receiver
+const-drop fence), `generic_param_element_rebind` (open-T `T*` reseat
+rung), `warn_borrow_chain_through_reassign` (reassigned record
+subscript reseats), `inheritance_multi_base_field_readonly`
+(class-qualified base-field alias source), tplib's Box/Rc str-lvalue
+Own-temp decls, and the or/ternary shapes over Optional operands
+(`ternary_optional_mixed_form`, `warn_auto_move_optional`).
+
+**Pins:** `test_thir_wave_refselect.py` (11), `test_thir_wave_iterdecl.py`
+(6), `test_thir_wave_protoslot.py` (7), plus the TestNameAlias additions
+and two fence conversions (container ternary decl, record select).
+
+### Decl-slot track, second grind (2026-07-30): the own-record tuple family
+
+Dial 2760 -> 2764/3632 (+4 flips), markers 872 -> 868; decl.slot_type
+107 -> 99 units. Full suite green (10261 passed, exec). The
+`tuple[Own[A], Own[B]]` family: storage decls from calls, the `t[N].field`
+value read (subscript-receiver family + record-field receiver widened
+through the Own unwrap, nested tuples recurse), and the NAME-source
+unpack holder binds (NAME_MOVE at last use / NAME_COPY otherwise). The
+context's own "DELIBERATELY PARTIAL" seeding comment predicted the exact
+gap this hit: the owned-movable tuple-PARAM branch of seed_param_locals
+was unmirrored, and the &&-param source diverged (copy vs move) the
+moment a consumer could see it -- caught by the pin's byte-diff, fixed by
+mirroring the branch. One fence converted (own name source), boundaries
+pinned (ternary source, nested chain read).
+
+**Track closed at its mechanical floor.** Remaining decl.slot_type
+sole-blockers: the reassignable BORROW_TUPLE family (the REGISTERED
+deferred F3 cell -- not a wave row), and per-case singles (the BUGS.md
+narrowed-receiver const-drop fence, @auto_readonly multi-overload,
+open-T `T*` reseat rungs, class-qualified base-field aliases, tplib
+Box/Rc str-lvalue Own temps, Optional-form ternaries). The neighboring
+tags are likewise floored or design-shaped: expr.call / expr.method_call
+residues are the documented 1:1 tails of their closed tracks,
+return.slot_type waits on the form design, container_literal is four
+unrelated shapes, stmt.match is parked. The next wave needs either the
+F3 deferred cells or a fresh probe of the sub-10-case tags.
+
+### Return-slot rows (2026-07-30): the resumed grind past the premature floor
+
+Dial 2764 -> 2773/3632 (+9 flips), markers 868 -> 859; return.slot_type
+111 -> 99 units. Full suite green (10267 passed, exec). The first floor
+call leaned on the 2026-07-28 "return.slot_type waits on the form
+design" verdict WITHOUT re-probing -- the same stale-verdict mistake
+this session had already disproved for decl.slot_type, and the user
+caught it. The re-measure (a per-case return-slot dump, the census
+script's frame var being wrong for this site) named mechanical rows the
+session's own families unlock:
+
+**What landed.** The structural-protocol / native-iterator return slots
+join ret_supported (the C++ signature already spells the concrete/auto
+type; values render bare through the call arms). The container-FIELD
+arg into a structural protocol slot rides the ITERABLE result family
+(`return iter(self.items)` -> `::tpy::__iter__(this->items)`); the
+protocol-slot arg gate's F1-record field row widened to containers.
+The container return families gain bytearray. The review's one finding
+(the SpanIter return slot admitted but unwitnessed) pulled the thread
+one level down: the Span METHOD result (`self.__span__()`) had no row,
+and adding method.span_ret both witnessed the return arm AND unfenced
+the @auto_readonly clone pair -- the overload gate had admitted the
+pair all along; the Span result was the only blocker. Nine flips:
+for_user_iter_protocol_return, warn_user_container_method_borrow,
+bytearray_return_own, for_span_protocol, plus five collateral
+(async_await_proto_param_self, cross_module_refclass_ctor,
+readonly_const_method_mutable_param, ctor_field_init_containers,
+traits_records).
+
+**Residue, honestly named.** return.slot_type's remaining sole-blockers:
+the Own[tuple] returns (the registered tuple_to_storage_move F3 cell),
+the Any-coerce return, generic Optional[T]/Span[T] returns, the
+resumable Poll tuple. Opened but not taken: the module-qualified
+builtin-ctor fold (`tpy.Int32(10)` -> `10`, 2 cases,
+method.marker.builtin_module.ctor) and the module-qualified generic
+free functions (3 cases) -- the next method_call rows; container_literal
+stays four unrelated shapes.
+
+**Pins:** `test_thir_wave_retslot.py` (6: protocol/SpanIter/auto_readonly
+returns routed, bytearray own+borrow+field returns, the Own-NAME-source
+fence), `test_thir_wave_owntuple.py` (4), converted fences in
+test_thir_tuples.py / test_thir_containers.py.

@@ -112,6 +112,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.value_select",           # value-position and/or: the once-
                                     # evaluated-LHS ternary
                                     # (_gen_logical_value's value slice)
+    "binop.container_select",       # container and/or over lvalue
+                                    # operands: the __len__-truthy
+                                    # ternary aliasing the chosen side
+    "binop.protocol_raw",           # protocol-operand arith in a template
+                                    # body: the raw `(a + b)` operator
+    "ifexpr.container",             # container ternary: the bare
+                                    # form-blind arm render
     "stmt.compile_time_assert",     # assert_send/assert_sync statement:
                                     # sema-checked, zero emission (NoOp)
     "ctor.union_pass_arg",          # already-union NAME bare into a
@@ -197,6 +204,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
     "call.float_str_fold",          # float("nan"/"inf") -> spelled numeric-limits constant
     "print.record_call",            # F1-record call rvalue streams raw via operator<<
+    "print.protocol_call",          # protocol-result call (`print(iter(s))`) streams raw
+    "print.protocol_name",          # protocol-typed name streams raw
     "own.union_ctor",               # record-ctor rvalue into Own[union]
     "own.readonly_ctor",            # record-ctor rvalue into readonly slot (sync callee)
     # Self receiver / ctor-call renders (lowering).
@@ -856,12 +865,15 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot -> the owned literal render
     "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
                                     # element slot -> spelled value render
+    "method.protocol_self_storage_ret",  # Own[Self] rvalue into the `auto`
+                                    # decl slot in a template body
     "method.protocol_own_storage_ret",  # Own[record] rvalue off a protocol
                                     # receiver landing bare at a storage sink
     "method.scalar_tuple_ret",      # scalar-receiver stub's value-tuple
                                     # result at a storage/statement sink
     "arg.native_property_container",  # container-returning property read
                                     # bound bare at a native slot (len)
+    "method.span_ret",              # Span-view method result renders bare
     "method.value_opt_view_ret",    # value-opt owned-view method result
                                     # landing bare in a storage decl slot
     "method.ptr_template_span",     # Ptr[T].span(n) template expansion --
@@ -880,6 +892,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.view_instantiation",       # Span/Array ctor over a bare source
     "call.array_literal_instantiation",  # `Array[T, N]([..])` -> the spelled
                                     # array type over the literal's braces
+    "call.native_iter_instantiation",  # `SpanIter(rs)` -> the ctor's own
+                                    # pre-substituted {cpp} template
+    "method.native_function_form",  # `b.__iter__()` -> the qualified
+                                    # native symbol over the receiver
     "call.span_instantiation",      # `Span(p, n)` -> the ctor's own template
                                     # expanded over inline args
     "call.container_literal_instantiation",  # `set([..])` -> the spelled

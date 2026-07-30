@@ -361,9 +361,11 @@ class TestValueSelect:
         assert not w.get("binop.value_select")
         _assert_byte_identical(src)
 
-    def test_record_select_stays_ast(self):
-        # A record-result select needs the reference-bound / pointer-select
-        # machinery -- gate-rejected (tier B).
+    def test_record_select_routes_ref_alias(self):
+        # RE-PINNED ROUTED (decl-slot track): a record-result select now
+        # rides the reference-select machinery -- the always-truthy fold
+        # (`true`) and the `Box&` REF_ALIAS bind (see
+        # test_thir_wave_refselect for the full family).
         src = ("from tpy import Int32\n"
                "class Box:\n"
                "    val: Int32\n"
@@ -373,7 +375,7 @@ class TestValueSelect:
                "    r = a or b\n"
                "    return r.val\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
 

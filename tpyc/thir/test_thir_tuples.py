@@ -1777,14 +1777,21 @@ class TestStandaloneUnpackTargetRungs:
         assert fn is not None
         assert fn.body[0].binds == ("move", "move")
 
-    def test_own_name_source_ineligible(self):
-        # A NAME source with Own elements takes the AST's one-shot /
-        # last-use-move / copy bind arms -- deferred.
-        thir = _lower_ctx(
-            _OWN_PAIR
-            + "def f(t: tuple[Own[Leaf], Own[Leaf]]) -> Int32:\n"
-            + "    a, b = t\n    return a.n + b.n\n")
-        assert _fn(thir, "f") is None
+    def test_own_name_source_routes_move_binds(self):
+        # RE-PINNED ROUTED (decl-slot track): a NAME source with Own
+        # elements now rides the NAME_MOVE / NAME_COPY holder binds
+        # (last-use move here -- `auto&& __tup = std::move(t);`).
+        src = (_OWN_PAIR
+               + "def f(t: tuple[Own[Leaf], Own[Leaf]]) -> Int32:\n"
+               + "    a, b = t\n    return a.n + b.n\n"
+               + "def main() -> None:\n"
+               + "    print(f(mk()))\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].binds == ("move", "move")
+        _assert_byte_identical(src)
 
     def test_own_str_element_ineligible(self):
         # Own[str] elements stay out (only Own[F1-record] moves are mirrored).

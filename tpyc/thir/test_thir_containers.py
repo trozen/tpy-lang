@@ -2467,9 +2467,10 @@ class TestLenFieldReceiver:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
 
-    def test_optional_container_field_rejects(self):
-        # An Optional[list] field types at the DECLARED Optional -> family
-        # reject (the AST unwraps the narrowed read differently).
+    def test_optional_container_field_narrowed_len_routes(self):
+        # RE-PINNED ROUTED (retslot track): the NARROWED Optional[list]
+        # field read into len's structural slot rides the container-field
+        # protocol-slot arm; dualgen-verified byte-identical.
         src = (
             _PRELUDE
             + "from typing import Optional\n"
@@ -2480,9 +2481,15 @@ class TestLenFieldReceiver:
             + "    if h.xs is not None:\n"
             + "        return len(h.xs)\n"
             + "    return 0\n"
+            + "def main() -> None:\n"
+            + "    h = H()\n"
+            + "    h.xs = [1, 2]\n"
+            + "    print(f(h))\n"
+            + "main()\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
 
 class TestContainerFieldIteration:

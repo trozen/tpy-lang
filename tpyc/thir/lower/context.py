@@ -11,6 +11,7 @@ from ...typesys import (
     OptionalType,
     ReadonlyType,
     TpyType,
+    TupleType,
     UnionType,
     VoidType,
     unwrap_optional_own,
@@ -31,7 +32,9 @@ from .predicates import (
     _eligible_scalar,
     _eligible_value_union,
     _is_type_param_slot,
+    _native_iter_value_slot,
     _optional_ptr_borrow,
+    _protocol_auto_slot,
     _own_storage_union_return,
     _own_storage_viewfam_return,
     _own_type_param_slot,
@@ -340,6 +343,12 @@ class _Prescan:
             or _eligible_enum(rt, analyzer) is not None
             or _eligible_ptr_value(rt, analyzer)
             or _span_return(rt)
+            # A native-iterator value return (`def __iter__ -> SpanIter[T]`)
+            # and a structural-protocol return (`-> Iterator[T]`, the C++
+            # signature already spells the concrete/auto type): the value
+            # renders bare through its own call arms.
+            or _native_iter_value_slot(rt, analyzer)
+            or _protocol_auto_slot(rt)
             or self.ret_storage_opt is not None
             or self.ret_ptr_opt is not None
             or self.ret_value_opt is not None
@@ -797,16 +806,14 @@ class _LowerCtx:
         # caller gave up ownership) -- codegen seeds them at body-scope setup
         # (seed_param_locals), not via sema's per-function set, so lowering
         # mirrors that seeding here. Consumed by the Own-slot call-arg row's
-        # move-vs-copy pick; the F2b/F2e write/return converts only ever see
-        # borrow-pointer sources, which are never Own params. DELIBERATELY
-        # PARTIAL: seed_param_locals' owned-movable tuple-param branch is NOT
-        # mirrored -- no current consumer can see those names (the Own-slot
-        # rows admit scalar/F1-record payloads only); a frontier that reuses
-        # lc.movable_locals against tuple sources must extend this. The
-        # resumable RETURN leaf's direct-ready move is such a reuser: its
-        # AST twin reads codegen's full working set, so the partiality is
+        # move-vs-copy pick and the own-tuple unpack's NAME_MOVE holder bind;
+        # the F2b/F2e write/return converts only ever see borrow-pointer
+        # sources, which are never Own params. The owned-movable TUPLE-param
+        # branch is mirrored below (the unpack's move-vs-copy pick reads it).
+        # The resumable RETURN leaf's direct-ready move reads codegen's full
+        # working set on its AST twin, so any remaining seeding gap is
         # masked only by the return-shape gate -- widening that gate to
-        # tuple/force-seeded shapes must extend this seeding in lockstep.
+        # force-seeded shapes must extend this seeding in lockstep.
         # CAVEAT (proven by a corpus divergence): this is the RAW sema set,
         # while codegen registers movables only at NON-VALUE decl arms -- a
         # consumer matching non-record sources must value-type-filter first
@@ -817,6 +824,12 @@ class _LowerCtx:
         for pname, ptype in self.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():
+                self.movable_locals.add(pname)
+            # An owned-movable TUPLE param (`tuple[Own[A], Own[B]]` --
+            # `std::tuple<A, B>&&`): seed_param_locals' tuple branch.
+            pu = unwrap_readonly(unwrap_send_sync(ptype))
+            if (isinstance(pu, TupleType) and pu.is_owned_movable()
+                    and not isinstance(ptype, ReadonlyType)):
                 self.movable_locals.add(pname)
             # A value-repr Optional[expensive-copy] param (`int | None` ->
             # std::optional<BigInt>, `str | None` -> optional<string_view>)

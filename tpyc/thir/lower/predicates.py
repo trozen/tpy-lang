@@ -71,6 +71,7 @@ from ...typesys import (
     PtrType,
     ReadonlyType,
     STR_FAMILY,
+    SelfType,
     TpyType,
     TupleType,
     TypeParamKind,
@@ -531,6 +532,50 @@ def _value_record_slot(t: 'TpyType | None') -> bool:
     which already renders the instantiation."""
     return (isinstance(t, NominalType) and t.is_user_record
             and t.is_value_type())
+
+
+def _native_iter_value_slot(t: 'TpyType | None', analyzer) -> bool:
+    """A VALUE-typed native ITERATOR record DECL slot (`SpanIter[T]` --
+    `::tpy::SpanIter<int32_t> it = a.__iter__();`): the plain spelled copy,
+    `_value_record_slot`'s native sibling keyed on the `__next__` method so
+    only the iterator family is admitted; the local's own reads (the
+    universal loop, explicit `__next__()`) gate themselves."""
+    if not (isinstance(t, NominalType) and not t.is_user_record
+            and not t.is_protocol and t.is_value_type()):
+        return False
+    rec = analyzer.registry.get_record_for_type(t)
+    return rec is not None and bool(rec.get_method_overloads("__next__"))
+
+
+def _protocol_auto_slot(t: 'TpyType | None') -> bool:
+    """A structural-protocol-typed DECL slot (`it = iter(c)` binds
+    `Iterator[T]`) or a Self slot inside a monomorphized protocol body
+    (`result = d.duplicate()` -- Own[Self]): C++ concepts / open Self
+    cannot type a variable, so the AST's `_cpp_decl_type` spells `auto`
+    and the init render carries the concrete type. @dynamic protocols
+    take the adapter machinery instead."""
+    return ((isinstance(t, NominalType) and t.is_protocol
+             and not t.is_dynamic_protocol)
+            or isinstance(t, SelfType))
+
+
+def _container_rvalue_select(init: 'TpyExpr | None', t: 'TpyType | None',
+                             analyzer) -> bool:
+    """An ALL-RVALUE container and/or / ternary init (`x = [1,2] or [3,4]`,
+    `x = [1,2] if c else [3,4]`): the select is an rvalue (both operands
+    are), so the decl is the plain spelled copy -- the deref of the
+    pointer-select, or the bare ternary of spelled literals. Lvalue-operand
+    selects classify REF_ALIAS and never reach the slot gate."""
+    if init is None or t is None:
+        return False
+    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (is_list(tu) or is_dict(tu) or is_set(tu)):
+        return False
+    if isinstance(init, TpyBinOp) and init.op in ("&&", "||"):
+        return is_rvalue_source(analyzer, init)
+    if isinstance(init, TpyIfExpr):
+        return is_rvalue_source(analyzer, init)
+    return False
 
 
 def _span_slot(t: 'TpyType | None', analyzer) -> bool:
@@ -2500,7 +2545,10 @@ def _container_storage_return(t: TpyType | None, analyzer) -> 'TpyType | None':
     if not isinstance(t, OwnType):
         return None
     inner = unwrap_readonly(t.wrapped)
-    return inner if (is_list(inner) or is_dict(inner) or is_set(inner)) else None
+    # bytearray is the container family's mutable-bytes sibling: the same
+    # by-value C++ return (`std::vector<uint8_t>`), same NRVO name render.
+    return inner if (is_list(inner) or is_dict(inner) or is_set(inner)
+                     or is_bytearray_type(inner)) else None
 
 def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
     """The BORROW-form container return slot (`-> list[T]` / `-> readonly[
@@ -2514,7 +2562,8 @@ def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if isinstance(u, OwnType):
         return None
-    return u if (is_list(u) or is_dict(u) or is_set(u)) else None
+    return u if (is_list(u) or is_dict(u) or is_set(u)
+                 or is_bytearray_type(u)) else None
 
 def _plain_container_read(t: TpyType | None) -> bool:
     """A plain (non-`Own`) list/dict/set read at a position where the bare
@@ -2947,6 +2996,35 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """A STORAGE tuple with per-element `Own[record]` ownership
+    (`tuple[Own[A], Own[B]]` -- `std::tuple<A, B>`), or None: the record
+    elements are owned by value, so borrow and storage coincide at the
+    tuple level and a decl / call result is the plain spelled copy
+    (`std::tuple<Counter, Counter> t = make_pair();`). At least one
+    Own-record element is required -- all-value tuples are `_value_tuple`,
+    and plain-record-element tuples are the pointer-repr `_f1_tuple`
+    family (distinct borrow form)."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType) or t.has_pointer_repr_element():
+        return None
+    own_rec = False
+    for e in t.element_types:
+        eu = unwrap_readonly(unwrap_send_sync(e))
+        if (isinstance(eu, OwnType)
+                and _f1_record(unwrap_readonly(eu.wrapped), analyzer)):
+            own_rec = True
+            continue
+        # NESTED own-record tuple elements stay OUT until the
+        # tuple-over-tuple chain read lands: admitting the decl with no
+        # routable consumer is unwitnessed surface (no body completes
+        # through it -- the SpanIter-return treatment).
+        if not _value_tuple_element_ok(e, analyzer):
+            return None
+    return t if own_rec else None
+
 def _value_opt_str(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[str]` type: `str | None` / `StrView | None`,
     bound `std::optional<std::string_view>` at the param boundary (borrow form)
@@ -3268,7 +3346,10 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
         recv_t = eb
         res = (recv_t, idx)
     if not (_value_tuple(recv_t, analyzer) is not None
-            or _f1_tuple(recv_t, analyzer) is not None):
+            or _f1_tuple(recv_t, analyzer) is not None
+            # Own-record-element tuples store by value: `std::get<N>(t)`
+            # yields the record lvalue, `.` member access.
+            or _own_record_tuple(recv_t, analyzer) is not None):
         return None
     return res
 
@@ -3346,16 +3427,22 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
 
 def _subscript_record_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
                                  analyzer) -> 'int | None':
-    """`t[N]` whose element is a plain F1-record (a `BORROW_REF` pointer-repr slot) --
-    a borrow result usable as a scalar-field-read receiver (`t[N].field`). Returns the
-    normalized index, or None. `Optional[record]` elements take the null-check member
-    path (`_subscript_optional_field_recv`) and are excluded here (`_f1_record` rejects
-    them)."""
+    """`t[N]` whose element is a plain F1-record (a `BORROW_REF` pointer-repr
+    slot) or an `Own[record]` stored by value -- a borrow / value lvalue
+    usable as a scalar-field-read receiver (`t[N].field`; the arrow-vs-dot
+    decision keys on the element's pointer-repr-ness downstream, so the Own
+    element reads `.`). Returns the normalized index, or None.
+    `Optional[record]` elements take the null-check member path
+    (`_subscript_optional_field_recv`) and are excluded here (`_f1_record`
+    rejects them)."""
     res = _subscript_recv_tuple(e, locals_, analyzer)
     if res is None:
         return None
     recv_t, idx = res
-    return idx if _f1_record(recv_t.element_types[idx], analyzer) else None
+    el = unwrap_readonly(unwrap_send_sync(recv_t.element_types[idx]))
+    if isinstance(el, OwnType):
+        el = unwrap_readonly(el.wrapped)
+    return idx if _f1_record(el, analyzer) else None
 
 def _subscript_optional_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
                                    analyzer) -> 'int | None':
@@ -3620,6 +3707,16 @@ def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
         # value (`{1:[1,2],2:[3,4]}` -> dict[int, Array[int,2]]).
         return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     return _container_elem_family(t, analyzer, container_elem)
+
+def _container_tparam_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a bare type-param (`list[T]` inside
+    a generic record body): the element subscript yields the per-instantiation
+    `T&` lvalue, bindable as a REF_ALIAS local (`v = self.items[self.pos]` ->
+    `T& v = ::tpy::__getitem__(this->items, this->pos);`). The open-T sibling
+    of `_container_record_elem`."""
+    return _container_elem_family(
+        t, analyzer, lambda a: isinstance(a, TpyType)
+        and _is_type_param_slot(a))
 
 def _container_str_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a resolved str value (`list[str]` /
@@ -6194,4 +6291,9 @@ def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
     target = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target)))
     if isinstance(target, OwnType):
         target = target.wrapped
+    # A pending container binding (an alias of a not-yet-promoted literal
+    # local, `b = a`) resolves through the shared sema record, like the AST's
+    # decl-type normalizer; an unresolved pending stays put and keeps
+    # rejecting at the family gates.
+    target = resolve_pending_container(target, analyzer) or target
     return resolve_int_literals(target, analyzer.ctx.default_int_for_literal)

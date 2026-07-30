@@ -302,22 +302,30 @@ class THIRValueSelect(THIRExpr):
 
     `lhs_temp_cpp` non-None hoists a non-name LHS into a `__tmp_N` off the
     shared counter (`auto&&`, or `std::string_view` for a str literal),
-    reused by the truthy test and the lhs branch. `truthy_nonempty`
-    renders `(!ref.empty())` (str family); False renders the bare ref
-    (scalars' implicit bool). `lhs_cast`/`rhs_cast` are the mixed-operand
-    conversion wraps (`<cpp_result>(x)` when the operand C++ spellings
-    differ); `rhs_sv` wraps a str-literal RHS `std::string_view(...)`.
-    Chains nest naturally (an inner select is a non-name LHS taking its
-    own temp). Record results, rvalue non-value RHS (the pointer-select)
-    and inline-isinstance LHS facts are gate-rejected."""
+    reused by the truthy test and the lhs branch. `truthy_mode` selects
+    the LHS truthiness render: NONEMPTY -> `(!ref.empty())` (str family),
+    RECORD_LEN -> `(::tpy::__len__(ref) != 0)` (containers),
+    ALWAYS_TRUE -> the folded bare `true` (an always-truthy record LHS --
+    already evaluated here, so no THIRTruthy-style operand-effect wrap),
+    None -> the bare ref (scalars' implicit bool). `lhs_cast`/`rhs_cast`
+    are the mixed-operand conversion wraps (`<cpp_result>(x)` when the
+    operand C++ spellings differ); `rhs_sv` wraps a str-literal RHS
+    `std::string_view(...)`. Chains nest naturally (an inner select is a
+    non-name LHS taking its own temp). A non-value select is a BORROW
+    lvalue aliasing the chosen operand. `ptr_select_cpp` non-None is the
+    rvalue non-value RHS: emit hoists `std::optional<cpp>
+    __logical_slot_N;` and renders `(*(t ? &(lhs) : (slot.emplace(rhs),
+    &*slot)))` so the rvalue materializes lazily (short-circuit
+    preserved). Inline-isinstance LHS facts are gate-rejected."""
     lhs: 'THIRExpr'
     rhs: 'THIRExpr'
     op: str
-    truthy_nonempty: bool = False
+    truthy_mode: 'TruthinessMode | None' = None
     lhs_temp_cpp: 'str | None' = None
     lhs_cast: 'str | None' = None
     rhs_cast: 'str | None' = None
     rhs_sv: bool = False
+    ptr_select_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2013,12 +2021,20 @@ class TupleSourceBind(Enum):
                          source_wrap_cpp>(<src>);          (storage-form
                          source lifted so `std::get<i>` yields the `T*`
                          each ref/alias target uses)
+        NAME_MOVE     -> auto&& __tup_N = std::move(<src>); (an Own-element
+                         tuple NAME at its last use -- owned elements move
+                         out of the moved-from holder)
+        NAME_COPY     -> auto __tup_N = <src>;             (the same tuple
+                         NOT at its last use: the holder copies, elements
+                         still move out of the copy)
     """
     NAME_CREF = auto()
     RVALUE = auto()
     ONESHOT_DEREF = auto()
     NAME_REF = auto()
     STORAGE_WRAP = auto()
+    NAME_MOVE = auto()
+    NAME_COPY = auto()
 
 
 @dataclass(frozen=True)
