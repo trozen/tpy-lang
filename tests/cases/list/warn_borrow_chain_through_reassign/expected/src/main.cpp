@@ -14,6 +14,13 @@ void chain_alias_then_reassign() {
     Point& view = (*s);
     // s = items[Int32(1)]
     s = &(::tpy::__getitem__(items, 1));
+    // # Mutate THROUGH the rebound alias: 99 proves `s` aliases items[1]; a
+    // # silent copy would leave the element at 3. Before the append, while the
+    // # borrow is still live.
+    // s.x = 99
+    s->x = 99;
+    // print(items[Int32(1)].x)
+    std::cout << ::tpy::__getitem__(items, 1).x << "\n";
     // items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
     // print(len(items))
@@ -28,6 +35,10 @@ void reassigned_element_borrower_warns() {
     Point* s = &(::tpy::__getitem__(items, 0));
     // s = items[Int32(1)]
     s = &(::tpy::__getitem__(items, 1));
+    // s.x = 88
+    s->x = 88;
+    // print(items[Int32(1)].x)
+    std::cout << ::tpy::__getitem__(items, 1).x << "\n";
     // items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
     // print(len(items))
@@ -44,6 +55,12 @@ void chain_promotes_alias_to_element() {
     Point& view = (*s);
     // s = items[Int32(1)]
     s = &(::tpy::__getitem__(items, 1));
+    // # `view` was taken while `s` aliased items[0], so it still aliases items[0]
+    // # after `s` was rebound away: 77 proves the chain aliased rather than copied.
+    // view.y = 77
+    view.y = 77;
+    // print(items[Int32(0)].y)
+    std::cout << ::tpy::__getitem__(items, 0).y << "\n";
     // # view inherited ELEMENT kind from the chain even though `view = s` was ALIAS
     // items.append(Point(Int32(7), Int32(8)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(7, 8));

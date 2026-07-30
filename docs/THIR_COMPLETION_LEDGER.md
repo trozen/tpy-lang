@@ -5038,5 +5038,100 @@ receiver-DEPTH fences (a field-of-name subscript nested twice; a
 `varargs<T>` receiver, whose subscript spells `args[cast]` rather than
 `__getitem__`). The three `auto_own[Self]` cases chain to
 `sig.overload_set.ret_mismatch` -- the clone-pair frontier, where the
-pair's two members have different return types. `expr.call` (113 distinct
+pair's two members have different return types. (Superseded: the
+clone-pair carve-out landed the next day. Only `auto_own_basic` was
+actually blocked there; the other two chain to `return.slot_type`.) `expr.call` (113 distinct
 blocked shapes) remains the largest tag never measured this session.
+
+### auto_own clone pair + open-T consuming return (2026-07-30)
+
+Dial 2815 -> 2816/3651 (+1: `auto_move/auto_own_basic`), markers 836 ->
+835. Full exec suite green (10352 passed). Two halves of one cell, landed
+together on purpose.
+
+**The carve-out.** A `self: auto_own[Self]` method expands into a
+borrowing + consuming pair, and the overload gate already exempted such a
+pair: `_clone_auto_own` gives each half an independent body (the
+consuming one deep-copies), so neither can hijack the other with an
+unspecialized impl. Only the borrowing half carried a flag, so its twin
+folded at the gate on the pair's return mismatch. The fix sets a
+symmetric `is_auto_own_consuming_clone` at CONSTRUCTION rather than
+re-deriving the pairing in the gate -- `FunctionInfo` does not carry the
+clone flags, and `is_consuming` alone would exempt any consuming method
+in a 2-entry set. Tag the distinction where it is decided.
+
+**Why it did not ship alone.** The carve-out flips NOTHING by itself --
+it is an enabler, and the doctrine says land those inside the wave that
+consumes them. What makes it pay is the second half: the consuming-return
+move chokepoint widened on both axes, the FIELD axis to an open-T slot
+and the RETURN axis additionally to `Own[T]` (`own_return_t<T>`). The two
+are deliberately NOT unified: `Own[T]` on the return is the transfer the
+clone exists for; an `Own[T]` FIELD is a different question (what the
+storage holds). `_is_type_param_slot` unwraps readonly/Ref but not
+`OwnType`, which is what enforces the split.
+
+**The axis discipline paid off immediately.** This is the same chokepoint
+that carried the previous wave's byte divergence (gated on the field type
+while the AST's ladder branches on the return slot). Before trusting the
+widening, both newly-admitted (field, return-slot) pairs were traced
+through the AST ladder by hand to confirm neither hits an early exit --
+and a reviewer independently re-derived the same trace. The hole did not
+reopen.
+
+**A pin round-tripped, which is a signal worth naming.**
+`TestAutoOwnCloneCarveout` asserted "no overload_set fold for the pair".
+The previous wave RELAXED it to "exactly one fold" when removing the
+`is_consuming` short-circuit made the twin fold; this wave restored the
+original. A pin that has to be weakened is often reporting an incomplete
+change rather than a changed truth -- worth asking, at the moment of
+weakening, whether the missing piece is the actual work.
+
+**The arm has zero EXECUTABLE coverage, and the green suite hides that.**
+The consuming half (`own_return_t<T> first() &&`) is emitted but
+unreachable from valid source: a named receiver always resolves to the
+BORROWING overload (`is_consuming_receiver` is hard-coded False for
+general method calls), and the rvalue-receiver form
+(`Pair[Node](a, b).first()`) is the C++-build bug filed in BUGS.md this
+wave. So "3650 cases built+run" proves the moved return COMPILES, never
+that it RUNS. Given this chokepoint shipped a byte divergence one wave
+ago, that distinction is worth stating rather than assuming.
+
+**Probing is the standing requirement at this chokepoint, not optional.**
+A hand-trace of the AST ladder plus one reviewer left a gap that
+adversarial dualgen closed in about two minutes: `T` = scalar, `str` (the
+owned-string family, which has its own ladder exit), record, a two-param
+record returning the second field, and an explicit `self: Own[Self]` with
+an `Own[T]` return -- all byte-identical, zero fallback; `list[T]` and
+`readonly[T]` fields correctly still fold. Only ONE (field, return-slot)
+pair is actually live, incidentally: an `Own[T]` FIELD is sema-rejected
+("a field owns its value inline") and a bare open-T RETURN of a field is
+too ("Cannot return local or temporary as reference"), so the axis
+asymmetry documents which axis the `Own` belongs to rather than guarding
+a reachable shape.
+
+**Two pin failures, one lesson.** The routing pin here asserted C++ text
+the AST fallback emits identically (so reverting the widening left it
+green), and the carve-out pin asserted a FOLD COUNT that was an
+implementation artifact (hence its round-trip). Both asserted OBSERVED
+OUTPUT rather than the PROPERTY. The fix pattern is what the units now
+do: witness the face via `_lower_ctx_witnessed` AND assert byte-identity
+-- never bytes alone, because bytes are what fallback also produces.
+
+**The wave's own dial-mover was parity-blind.** `auto_own_basic` binds
+`x = p.first()` with `T` = a RECORD across a return boundary and only
+READ it -- the exact defect the sibling commit fixed in four other cases,
+sitting in the one case this wave exists to flip, and missed when those
+four were enumerated. It now mutates through the borrow and reads the
+field back. The general lesson: when a rule is worth applying to the
+corpus, apply it FIRST to the cases the current change touches.
+
+**Residue.** `auto_own_iter` / `auto_own_iter_user` do NOT chain here at
+all: their consuming clones return `Own[Int32]` / `Own[Iterator[Int32]]`
+with CONCRETE wrapped types and their return sources are not `self.field`
+reads, so they never reach this gate -- they fail the separate
+`ret_supported` check, which admits `Own[T]` only for generic `T`. The
+`sig.overload_set` residue is now `arity` (4 cases, one missing render:
+the prologue local for a stub's omitted params) and `generic_stub` (2,
+template specializations). `db_compare` is a PRINCIPLED reject, not
+residue: literal-only groups emit through the AST's mangled-name path, so
+admitting them would count bodies migrated while emission stays AST.

@@ -20,6 +20,12 @@ void main() {
     std::cout << std::get<0>(pair)->x << "\n";
     // print(pair[1].x)
     std::cout << std::get<1>(pair)->x << "\n";
+    // # The tuple is readonly, so the mutation goes SOURCE -> alias: 99 proves
+    // # the tuple holds `const P*` into items; a deep copy would still read 1.
+    // items[0].x = 99
+    ::tpy::__getitem__(items, 0).x = 99;
+    // print(pair[0].x)
+    std::cout << std::get<0>(pair)->x << "\n";
 }
 
 void __tpy_init() {

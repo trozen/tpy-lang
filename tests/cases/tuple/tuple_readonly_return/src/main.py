@@ -21,6 +21,10 @@ def main() -> None:
     pair = pick(items)
     print(pair[0].x)
     print(pair[1].x)
+    # The tuple is readonly, so the mutation goes SOURCE -> alias: 99 proves
+    # the tuple holds `const P*` into items; a deep copy would still read 1.
+    items[0].x = 99
+    print(pair[0].x)
 
 
 main()

@@ -261,6 +261,7 @@ from .predicates import (
     _is_borrow_ptr_local,
     _is_string_owned,
     _is_type_param_slot,
+    _own_type_param_slot,
     _narrow_bigint_index,
     _narrow_fact_member,
     _any_narrow_fact,
@@ -7085,10 +7086,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _fn_return_type(lc))))
 
             def _plain_value(t) -> bool:
+                # An open-T slot joins the plain families: a TypeParamRef is
+                # none of the shapes the AST ladder exits early on, so it
+                # reaches the move like any scalar.
                 return bool(_eligible_scalar(t) or _eligible_char(t)
-                            or _eligible_enum(t, analyzer) is not None)
+                            or _eligible_enum(t, analyzer) is not None
+                            or _is_type_param_slot(t))
 
-            if not (_plain_value(fld_t) and _plain_value(ret_t)):
+            # The RETURN axis additionally admits `Own[T]` (`own_return_t<T>`)
+            # -- an auto_own consuming clone's slot, whose whole point is that
+            # the field moves out (`return std::move(this->first_val);`). The
+            # FIELD axis does not, but only defensively: sema rejects an
+            # `Own[T]` FIELD outright ("a field owns its value inline"), so
+            # that shape cannot reach here at all. Keeping the axes separate
+            # documents which one the `Own` belongs to rather than guarding a
+            # reachable case.
+            if not (_plain_value(fld_t)
+                    and (_plain_value(ret_t) or _own_type_param_slot(ret_t))):
                 note_detail("return.consuming_self_field")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             src = _lower_field_source(stmt.value, lc, declared)

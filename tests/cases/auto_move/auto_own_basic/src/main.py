@@ -24,6 +24,11 @@ def test_borrowing() -> None:
     x = p.first()
     print(x.val)
     print(p.second_val.val)
+    # T is a REFERENCE type here, so the borrowing overload must alias the
+    # field rather than copy it: 99 proves the alias, a copy would leave
+    # p.first_val at 10.
+    x.val = 99
+    print(p.first_val.val)
 
 def test_last_use() -> None:
     p = Pair[Node](Node(30), Node(40))

@@ -2247,10 +2247,9 @@ class TestAutoOwnCloneCarveout:
     # borrowing member carries is_auto_own_borrowing_clone, and a general
     # method call always resolves to it (sema hardcodes
     # is_consuming_receiver=False), so the call render is member-blind.
-    # The CONSUMING twin folds at the overload gate on its own merits (the
-    # pair's returns differ); it used to short-circuit earlier as
-    # is_consuming, which is why this carve-out was once observable as "no
-    # overload_set fold at all".
+    # Both halves are exempt: each owns an independent body (the consuming
+    # one deep-copies), so neither can hijack the other with an
+    # unspecialized impl.
     # Non-generic record: the generic auto_own_basic corpus case is
     # excluded by the generics frontier, leaving this branch unit-only.
     SRC = (
@@ -2265,18 +2264,16 @@ class TestAutoOwnCloneCarveout:
         "def main():\n    print(use(Holder(7)))\nmain()\n")
 
     def test_borrowing_clone_def_passes_overload_gate(self):
-        # The DEF-side carve-out: the BORROWING clone is not folded away by
-        # the overload gate (its body then gates on its own content). Only
-        # its consuming twin folds, and only on the pair's return mismatch --
-        # so exactly one fold, attributable to the twin, is the carve-out
-        # holding rather than failing.
+        # The DEF-side carve-out: NEITHER half of the pair is folded away by
+        # the overload gate -- each owns an independent body, so each then
+        # gates on its own content.
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
                 emit_source_comments=False, thir_codegen=True))
         ov = {k: v for k, v in compiler._thir_fallback.items()
               if 'sig.overload_set' in k}
-        assert ov == {'body:sig.overload_set.ret_mismatch': 1}, ov
+        assert not ov, ov
 
     def test_call_site_routes(self):
         thir = _lower_ctx(self.SRC)
@@ -3242,5 +3239,121 @@ class TestConsumingMethodBody:
                + "print(Plain(1).take_opt() is None)\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "take_opt") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+
+class TestAutoOwnConsumingClone:
+    """An `auto_own[Self]` method expands into a borrowing + consuming pair.
+    Both halves own an independent body (the consuming one deep-copies), so
+    neither can hijack the other -- the same argument the property pair and
+    the auto_readonly pair already ride. The flag is set on BOTH halves at
+    construction because FunctionInfo does not carry it, so a consumer cannot
+    re-derive the pairing from the overload group."""
+
+    _SRC = ("from typing import Self\n"
+            "from tpy import Int32, auto_own, copy\n"
+            "class Pair[T]:\n"
+            "    a: T\n"
+            "    b: T\n"
+            "    def __init__(self, x: T, y: T) -> None:\n"
+            "        self.a = copy(x)\n        self.b = copy(y)\n"
+            "    def first(self: auto_own[Self]) -> auto_own[T]:\n"
+            "        return self.a\n")
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return hpp + cpp
+
+    def test_clone_pair_routes_and_consuming_half_moves(self):
+        src = (self._SRC
+               + "def main() -> None:\n"
+               + "    q = Pair[Int32](1, 2)\n"
+               + "    print(q.first())\n"
+               + "main()\n")
+        # Witness the FACE, not just the bytes: the AST fallback emits this
+        # same `std::move` render, so a byte assertion alone stays green if
+        # the arm regresses to falling back.
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("ret.consuming_self_field")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert not compiler._thir_fallback, compiler._thir_fallback
+        both = self._cpp(src, thir=True)
+        # The borrowing half reads bare; the consuming half moves.
+        assert "return this->a;" in both
+        assert "return std::move(this->a);" in both
+        _assert_byte_identical(src)
+
+    def test_composed_overload_set_still_defers(self):
+        # BOUNDARY: the carve-out is for a 2-entry CLONE pair. A clone pair
+        # layered over genuine @overload stubs (4+ entries) keeps rejecting.
+        src = ("from typing import Self, overload\n"
+               "from tpy import Int32, auto_own\n"
+               "class W:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n        self.n = 0\n"
+               "    @overload\n"
+               "    def m(self: auto_own[Self], x: Int32) -> auto_own[Int32]: ...\n"
+               "    @overload\n"
+               "    def m(self: auto_own[Self], x: str) -> auto_own[Int32]: ...\n"
+               "    def m(self: auto_own[Self], x: Int32 | str) -> auto_own[Int32]:\n"
+               "        return self.n\n"
+               "def f(w: W) -> Int32:\n    return w.m(1)\n"
+               "print(f(W()))\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        ov = {k: v for k, v in compiler._thir_fallback.items()
+              if 'overload_set' in k}
+        assert ov, "a composed set must still fold at the overload gate"
+        _assert_byte_identical(src)
+
+    def test_record_typed_T_routes(self):
+        # The other instantiation shape: T bound to a RECORD. Generic bodies
+        # lower once pre-instantiation, so this pins the arm rather than the
+        # instantiation -- but it keeps the coverage off the corpus case.
+        src = ("from typing import Self\n"
+               "from tpy import Int32, auto_own, copy\n"
+               "class Node:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+               "class Box[T]:\n"
+               "    a: T\n"
+               "    def __init__(self, x: T) -> None:\n        self.a = copy(x)\n"
+               "    def take(self: auto_own[Self]) -> auto_own[T]:\n"
+               "        return self.a\n"
+               "def main() -> None:\n"
+               "    b = Box[Node](Node(7))\n"
+               "    print(b.take().v)\n"
+               "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_container_field_return_still_defers(self):
+        # BOUNDARY for the WIDENING itself (the class's other boundary pins
+        # the overload GATE): the move chokepoint admits the plain value
+        # families and open-T. A `list[T]` field is neither, so an auto_own
+        # consuming clone returning one must still fold.
+        src = ("from typing import Self\n"
+               "from tpy import Int32, auto_own\n"
+               "class Bag[T]:\n"
+               "    xs: list[T]\n"
+               "    def __init__(self) -> None:\n        self.xs = []\n"
+               "    def take(self: auto_own[Self]) -> auto_own[list[T]]:\n"
+               "        return self.xs\n"
+               "def main() -> None:\n"
+               "    b = Bag[Int32]()\n"
+               "    print(len(b.take()))\n"
+               "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
         assert not faces.get("ret.consuming_self_field")
         _assert_byte_identical(src)

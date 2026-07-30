@@ -385,16 +385,19 @@ def _check_callable_structure(func: TpyFunction, analyzer,
             # body and keys its own id(func) -- no shared-impl hijack, same
             # argument as the property pair. Detected on the ATTEMPTED func:
             # both auto_readonly clones carry auto_readonly_params_resolved;
-            # an auto_own pair's consuming half reaches this gate (it is no
-            # longer short-circuited as is_consuming) and folds here on the
-            # pair's return mismatch, leaving the flagged borrowing clone
-            # to route. A COMPOSED
+            # an auto_own pair carries the flag on BOTH halves, so the
+            # consuming one is exempt on the same argument as its twin (it is
+            # the half that deep-copies the body). Deriving that here instead
+            # is not available: FunctionInfo does not carry the clone flags,
+            # and `is_consuming` alone would exempt any consuming method in a
+            # 2-entry set. A COMPOSED
             # set (a clone pair over genuine @overload stubs, 4+ entries)
             # keeps rejecting.
             is_clone_pair = (
                 len(overloads) == 2
                 and (func.auto_readonly_params_resolved
-                     or func.is_auto_own_borrowing_clone))
+                     or func.is_auto_own_borrowing_clone
+                     or func.is_auto_own_consuming_clone))
             if not (is_property_pair or is_clone_pair):
                 if stub is not None:
                     _admit_overload_stub(func, overloads, analyzer, stub)

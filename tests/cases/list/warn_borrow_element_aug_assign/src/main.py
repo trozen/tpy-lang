@@ -9,6 +9,10 @@ class Point:
 def test_list_aug_assign() -> None:
     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
     v = items[Int32(0)]
+    # Mutate through the borrow before the aug-assign: 50 proves `v` aliases
+    # items[0]; a silent copy would leave it at 1.
+    v.x = 50
+    print(items[Int32(0)].x)
     items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
     print(len(items))
 
@@ -16,6 +20,8 @@ def test_list_method_still_warns() -> None:
     """Existing method-call warning not broken."""
     items: list[Point] = [Point(Int32(1))]
     v = items[Int32(0)]
+    v.x = 60
+    print(items[Int32(0)].x)
     items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     print(len(items))
 

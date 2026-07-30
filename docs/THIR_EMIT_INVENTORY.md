@@ -188,7 +188,11 @@ receiver/arg families.
   completion criterion, else B is unreachable by construction.
 - **Overload sets** (`sig.overload_set` 10,911 / 44 shapes): a routing exclusion
   (the shared-impl-hijack gate). Needs a decision: per-stub lowering, or accept
-  as a permanent exclusion.
+  as a permanent exclusion. The clone-pair carve-out is symmetric across BOTH
+  halves (auto_readonly's pair, and auto_own's borrowing + consuming pair):
+  each clone owns an independent body, so the hijack the gate guards cannot
+  occur. Genuine `@overload` stub sets, and a clone pair COMPOSED over them
+  (4+ entries), keep rejecting.
 - **str/bytes methods**: real emit (in scope) -- need the receiver-family
   dispatch (str's receiver is not a nominal record). ~2k tail + machinery.
 

@@ -7,12 +7,33 @@
 
 namespace tpyapp::main {
 
+struct Point;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 ::tpy::val_or_ref_t<T> last(std::vector<T>& a);
 void main();
 
+// class Point:
+struct Point {
+    // x: Int32
+    int32_t x;
+
+    // def __init__(self, x: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+    ::tpy::print_object_default(os, "Point", obj);
+    return os;
+}
+
+
+// def __init__(self, x: Int32) -> None:
+inline Point::Point(int32_t x) : x(x) {}
 // def last[T](a: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> last(std::vector<T>& a) {

@@ -343,6 +343,7 @@ def _clone_auto_own(method: TpyFunction) -> list[TpyFunction]:
         body=copy.deepcopy(method.body),
         is_consuming=True,
         auto_own=False,
+        is_auto_own_consuming_clone=True,
         defaults=copy.deepcopy(method.defaults),
         self_annotation=None,
     )

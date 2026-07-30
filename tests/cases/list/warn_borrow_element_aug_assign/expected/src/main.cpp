@@ -10,6 +10,12 @@ void test_list_aug_assign() {
     std::vector<Point> items = {Point(1), Point(2)};
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
+    // # Mutate through the borrow before the aug-assign: 50 proves `v` aliases
+    // # items[0]; a silent copy would leave it at 1.
+    // v.x = 50
+    v.x = 50;
+    // print(items[Int32(0)].x)
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
     // items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
     ::tpy::list_extend(items, std::vector<Point>{Point(3)});
     // print(len(items))
@@ -22,6 +28,10 @@ void test_list_method_still_warns() {
     std::vector<Point> items = {Point(1)};
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
+    // v.x = 60
+    v.x = 60;
+    // print(items[Int32(0)].x)
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
     // items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(2));
     // print(len(items))

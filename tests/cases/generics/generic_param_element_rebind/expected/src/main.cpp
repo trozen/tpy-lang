@@ -14,6 +14,17 @@ void main() {
     std::vector<std::string> strs = {"a", "b", "c"};
     // print(last(strs))
     std::cout << last<std::string>(strs) << "\n";
+    // # A REFERENCE-type T: the return aliases the last element rather than
+    // # copying it, which the value-typed instantiations above cannot show.
+    // # 99 proves the alias; a copy would leave ps[2] at 30.
+    // ps: list[Point] = [Point(10), Point(20), Point(30)]
+    std::vector<Point> ps = {Point(10), Point(20), Point(30)};
+    // r = last(ps)
+    Point& r = last<Point>(ps);
+    // r.x = 99
+    r.x = 99;
+    // print(ps[2].x)
+    std::cout << ::tpy::__getitem__(ps, 2).x << "\n";
 }
 
 void __tpy_init() {

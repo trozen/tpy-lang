@@ -19,6 +19,11 @@ def chain_alias_then_reassign() -> None:
     s = items[Int32(0)]
     view = s
     s = items[Int32(1)]
+    # Mutate THROUGH the rebound alias: 99 proves `s` aliases items[1]; a
+    # silent copy would leave the element at 3. Before the append, while the
+    # borrow is still live.
+    s.x = 99
+    print(items[Int32(1)].x)
     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     print(len(items))
 
@@ -28,6 +33,8 @@ def reassigned_element_borrower_warns() -> None:
     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     s = items[Int32(0)]
     s = items[Int32(1)]
+    s.x = 88
+    print(items[Int32(1)].x)
     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     print(len(items))
 
@@ -38,6 +45,10 @@ def chain_promotes_alias_to_element() -> None:
     s = items[Int32(0)]
     view = s
     s = items[Int32(1)]
+    # `view` was taken while `s` aliased items[0], so it still aliases items[0]
+    # after `s` was rebound away: 77 proves the chain aliased rather than copied.
+    view.y = 77
+    print(items[Int32(0)].y)
     # view inherited ELEMENT kind from the chain even though `view = s` was ALIAS
     items.append(Point(Int32(7), Int32(8)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     print(len(items))

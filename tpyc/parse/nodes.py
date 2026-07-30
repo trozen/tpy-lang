@@ -1377,6 +1377,10 @@ class TpyFunction:
     # Set on the borrowing clone produced by
     # sema.method_expansion._clone_auto_own.
     is_auto_own_borrowing_clone: bool = False
+    # ...and on its consuming twin. Both halves own an independent body (the
+    # consuming one deep-copies), which is what lets a consumer treat the pair
+    # as two separate callables rather than one shared impl.
+    is_auto_own_consuming_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False
