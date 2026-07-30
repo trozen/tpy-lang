@@ -4820,3 +4820,223 @@ str-based Literal-slot pass-through ARG row (a fact-typed name into a
 `Literal[str-...]` slot) falls back byte-identically -- a small row
 when a paying witness appears; the 5+-alternative discriminator
 switch against a Literal subject stays AST (pinned).
+
+### Element-borrow pointer decls + classmethod-through-instance (2026-07-30)
+
+Dial 2798 -> 2803/3651 (+5), markers 853 -> 848. Full exec suite green
+(10329 passed, all 3650 cases built+run). Two cells, both opened by
+splitting a coarse blocker tag by the thing it was actually keyed on
+rather than by sampling its cases.
+
+**`decl.slot_type` is ONE raise site with a TYPE-shaped split.**
+`probe_sites.py` attributed all 28 of its sole-blocker cases to a single
+line -- the value-slot gate's fall-through -- which reads as "no site to
+attack" until you notice the gate is the TAIL of the borrow cascade. The
+useful measurement was a second trace over `_borrow_local_binding`
+recording the shared classifier's verdict AND the `return None` line
+taken: 18 OTHER, 6 REF_ALIAS + 5 POINTER + 2 OPTIONAL_TO_PTR at the
+field-receiver fall-through, 3 REBIND_SLOT. THE LESSON: when a tag maps
+to one site, re-probe the PREDICATE that site consumes -- the histogram
+you need may be over verdicts, not over line numbers.
+
+**Cell 1, the POINTER row (3 cases).** `p = ps[0]; p = ps[1]` binds a
+reseatable `T*`, and the RESEATS already routed
+(`reseat.subscript_elem`) -- only the decl was missing. The
+FormConvert-over-the-element draft hit the validator immediately: a
+container-element read is ALREADY borrow form, so the convert is the
+no-op node -- the same trap the bare-name POINTER arm documents. The
+`&(...)` went into a new PTR_ADDR arm of the pointer-local DECL emit
+(the UNION_ADDR/PTR_ADDR-reseat precedent). Two chain rows followed: a
+later RVALUE reseat needs the decl to pre-declare its `std::optional<T>`
+rebind slot (the AST's lvalue-init branch), and the open-T twin's return
+needed its own deref arm -- an open-T slot never reaches the record
+return ladder (`_f1_record` is False for it), so the generic tail was
+rendering the raw pointer.
+
+**Three pins converted, one shape rebuilt.** Two boundary pins stated the
+exact reason this cell removes; the third
+(`test_for_lowering_reject_falls_back_at_sync_boundary`) was a FALLBACK-
+MECHANISM test that merely happened to use the newly-routing shape --
+its shape was swapped for a nested-container element (still alias-only)
+so the mechanism keeps being tested. Worth restating: re-run every pin
+whose reason the widening touches, and read what each pin is FOR before
+converting it.
+
+**Cell 2, classmethod-through-an-instance (2 cases).** `p.origin()`
+renders as an ordinary member call; the fi-kind gate rejected it because
+the PARSER sets `is_staticmethod=is_staticmethod or is_classmethod` and
+clears `has_self`, so both `fi.is_staticmethod` and `not fi.is_method`
+fire on a classmethod. Keying the two apart routes it; a plain
+`@staticmethod` through an instance carries the same bit, is a different
+shape, and keeps rejecting (pinned + dualgen-verified).
+
+**One widening reverted by the standing net.** A target-less float-literal
+list (`math.dist([1.0, 2.0], ...)`) seeds its element slot from the first
+literal and never resolves it, so the slot is a `FloatLiteralType` and the
+family lands on `other`. Admitting it as "the base scalar slice under
+another spelling" was wrong twice over: THIR's element render emitted
+`std::array<1.0, 3>` (`FloatLiteralType.to_cpp()` returns the literal
+digits -- the pending-leaf hazard the borrow-tuple hoist gate already
+documents) and the AST's arg-temp hoist was missing besides. `probe_one`
+caught both before commit. A pending leaf is not a spelling variant.
+
+**Residue at `decl.slot_type`, honestly named.** The remaining rows are a
+1:1 tail, each a distinct emit: the `optional_to_ptr` lift over sources
+the OPTIONAL_TO_PTR gate does not carry (a reassigned optional, a tuple-
+element storage optional, a mixed-form ternary -- 3 cases); a bare
+pointer-optional NAME copy decl (`const Point* q = a;`); a borrow-tuple
+decl from a storage lvalue (its reseat already routes, but the field
+flavor's source is const and flips every element pointer -- the deferred
+const rung); a property-getter storage-optional slot; a base-class-
+qualified field read; a user `__getitem__` borrow return; a readonly
+borrow-tuple element. The two `const_borrow_optional_ptr_recv` /
+`weak_cycle_breaks` rows sit behind `_const_exact_field_receiver_ok`,
+whose comment fences them against a BUGS.md entry ("borrow locals off a
+narrowed Optional receiver drop inferred constness") that IS NO LONGER
+IN BUGS.md -- the citation outlived the entry. That alone does not prove
+the AST bug is gone, so the fence stays until someone reads the AST's
+current emit for the shape; filed in TODO.md, worth 2 cases. The habit
+worth keeping: a fence's cited justification is evidence, not proof --
+re-read the cited entry before trusting OR removing the fence.
+
+At `expr.method_call`, `probe_sites` splits 15 sole-blocker cases into
+two 6-case sites: `_record_method_call_supported` (of which the
+classmethod pair is now cleared; the rest are a receiver-family row, a
+`method.ret_type` row, and one case where sema hands a generic record's
+method an fi with `is_method=False` -- worth understanding before
+mirroring) and `mk is None` in `_marker_call_kind`, which splits again
+into module-qualified record ctors (2), unresolved-fi generic module
+calls (2), and generic statics (2).
+
+### Borrow-tuple literal return (2026-07-30)
+
+Dial 2803 -> 2809/3651 (+6), markers 848 -> 842. Full exec suite green
+(10334 passed). `stmt.return`'s NINE sole-blocker cases all sat at one
+raise line, and the fix was one arm: `return (n, p)` at a borrow-tuple
+return slot had no route to `_lower_borrow_tuple_literal`, even though
+that builder already carried the NAME / SUBSCRIPT / already-pointer
+element rows for the decl and call-arg sinks. Seven of the nine went
+clean on the arm alone; the remaining two chain on a Span-element read
+(`_container_elem_family`'s `span_ok` fence -- a NAMED deferral, left
+alone) and a field-element row.
+
+**The measurement lesson, restated with a second instrument.** For
+`decl.slot_type` the useful histogram was over the shared classifier's
+VERDICTS, not line numbers. Here `probe_sites` pointed at
+`statements.py:3354` for `expr.list_comp` -- which is the generic
+`_lower_stmt` re-raise wrapper, not a site at all. When a tag's "site"
+is a re-raise or a cascade tail, the number is noise; go to the
+predicate the site consumes (`probe_pred.py`, a frame-scoped line trace
+over one function, now in the wave toolkit's shape).
+
+**A face witnessed too early makes the coverage metric lie.** The first
+draft witnessed `ret.btuple_literal` BEFORE calling the builder, so a
+body whose element fell outside the builder's slice still counted the
+face and then fell back. The boundary pin caught it. Witness after the
+node exists.
+
+**One pin restated rather than converted.**
+`test_optional_record_element_deferred` asserted that a
+`tuple[Int32, R | None]` return stays AST because `_value_opt_scalar`
+rejects the element. That reason is STILL TRUE -- the value-tuple family
+does not claim it -- but the BORROW-tuple family now does. Converting it
+to "routes" would have thrown away what it was actually pinning, so it
+now asserts the observable form instead (`std::tuple<int32_t, R*>{a,
+nullptr}`, not a `std::optional<R>` element). A pin whose REASON
+survives but whose CONCLUSION flips is not the same thing as a pin the
+change obsoletes.
+
+**Two cells opened and abandoned, both recorded so nobody re-prices
+them.** (1) A target-less float-literal list (`math.dist([1.0, 2.0],
+...)`) seeds its element slot from the first literal; admitting the
+`FloatLiteralType` slot as "the base scalar slice under another
+spelling" emitted `std::array<1.0, 3>` (`to_cpp()` returns the literal
+digits) AND dropped the AST's arg-temp hoist. (2) A value-tuple
+comprehension ELEMENT slot: `_comp_elem_slot_ok` excludes the family
+because `_lower_container_elem` branches on the element NODE for it, so
+a node-gated arm looked right -- but the paying case
+(`list/comp_element_copy_warn`) has a `tuple[Int32, Cell]` element,
+which is pointer-repr, i.e. the F3 borrow/storage form frontier rather
+than a spelling gap. The exclusion was correct as written.
+
+**Residue at the tags measured this session, honestly named.**
+`assign.field_write_shape`'s 7 sole-blocker cases are 7 distinct shapes
+in two loose families: an Optional FIELD written with a concrete
+non-None value (str literal / container name at last use / tuple
+literal -- three different value families, one case each) and a field
+write off a SUBSCRIPT receiver (a one-level-field-of-name subscript
+plus a doubly-nested one; and a `varargs<T>` receiver). `expr.list_comp`
+splits into an array route, an owned-`String` element slot, and the
+pointer-repr tuple element above. None of these is a site; they are the
+1:1 tail the doctrine predicts once a tag's big rungs are cleared.
+
+### Tail cells: Optional[str] field write, consuming methods, record needle (2026-07-30)
+
+Dial 2809 -> 2815/3651 (+6 across three cells), markers 842 -> 836. Full
+exec suite green (10345 passed). All three came out of the residue the
+previous entry named, and the session's measurement lesson sharpened into
+a rule of thumb:
+
+**A tag concentrates when it names a MECHANISM and fragments when it names
+a SHAPE.** `sig.special_callable` (6 sole-blocker cases) turned out to be
+ONE flag, `is_consuming`. `stmt.return` was ONE missing route. By
+contrast `assign.field_write_shape` (7 cases) is 7 distinct target/value
+shapes, `stmt.aug_assign` (6) is 6 unrelated targets, `expr.list_comp`
+(8) is four routes, and `if.cond_binop.is not.optional_other_nonetype`
+(5) splits by the Optional's INNER type (Callable / dict / Own[record] /
+subscript source). Probing a shape-named tag hoping for a mechanism is
+how a session burns its measurement budget.
+
+**Consuming methods (+2) -- the cell worth reading.** `is_consuming` sat
+in a blanket `sig.special_callable` reject, but a consuming body differs
+from an ordinary one in exactly ONE way: `self` is an rvalue ref, so
+returning one of its fields moves. The `&&` suffix and the
+`__tpy_owned_ = false` prologue a `__del__` record gets are both
+structural-emitter lines THIR already shares -- verified, not assumed.
+The move is applied at a chokepoint BEFORE the return ladder: the AST
+wraps the FINAL return expression, so every specialized arm (record /
+optional / tuple / container) would otherwise have to re-apply it and a
+missed one drops a move SILENTLY. Only the plain value families are
+threaded; everything else rejects by name. That is the shape of a safe
+widening when the AST applies a transform at a point the mirror does not
+have.
+
+**A pin whose premise my own change removed.** `TestAutoOwnCloneCarveout`
+asserted "no overload_set fold for the pair", and its comment named the
+dependency outright: the consuming twin was "already rejected as
+is_consuming" BEFORE reaching that gate. Dropping the blanket reject let
+the twin reach it and fold on its own merits. Probed to confirm it is the
+TWIN and not the borrowing clone (the carve-out's actual subject), then
+restated the pin to assert exactly one fold attributable to the twin.
+Third pin-restatement of the session; the recurring shape is a pin that
+observes a consequence rather than its subject.
+
+**Optional[str] field write (+1).** `_value_opt_scalar` excludes the str
+family for a PARAM-shape reason -- the `optional<string_view>` vs
+`optional<string>` arg split -- that a FIELD has no equivalent of, its
+storage always being owned. The new predicate is scoped to field sinks
+and says so. LITERAL values only: a NAME or binop source raises the
+owned-vs-view question the literal row never has.
+
+**Record-rvalue membership needle (+2).** A needle is a value position,
+so a ctor rvalue renders bare inside `contains(...)` exactly like the
+NAME row already admitted; the row was name-only for no reason the render
+supports.
+
+**One cell backed out at the validator.** The container twin of the
+Optional-field write (`h.s = initial` at a `set[T] | None` field, moving
+at last use) looked like a sibling one-liner. It is not: a container name
+reads BORROW form and an `optional<container>` field sink is
+pointer-lifted, so THIR's validator rejected the plain assign --
+correctly. The give-away was reaching for `uses_pointer_repr()` on a
+FIELD type at all: that query describes the BORROW form, and a field is
+always storage form. The row is the F2b frontier and needs its own cell.
+
+**Residue, still honestly named.** `assign.field_write_shape` keeps its
+Optional-container row (above), its tuple-literal row, and two
+receiver-DEPTH fences (a field-of-name subscript nested twice; a
+`varargs<T>` receiver, whose subscript spells `args[cast]` rather than
+`__getitem__`). The three `auto_own[Self]` cases chain to
+`sig.overload_set.ret_mismatch` -- the clone-pair frontier, where the
+pair's two members have different return types. `expr.call` (113 distinct
+blocked shapes) remains the largest tag never measured this session.

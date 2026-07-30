@@ -3560,6 +3560,22 @@ def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     st = _resolved_str_value(t, analyzer)
     return st is not None and is_str_type(st)
 
+def _value_opt_owned_str(t: 'TpyType | None', analyzer) -> bool:
+    """A value-repr `Optional[str]` FIELD slot (`std::optional<std::string>`).
+
+    `_value_opt_scalar` excludes the str family for a PARAM-shape reason (the
+    `optional<string_view>` vs `optional<string>` arg split needs the
+    `_maybe_convert_opt_view_param` shim); a FIELD has no such split -- its
+    storage is always the owned `std::optional<std::string>`, into which a str
+    literal assigns bare like any scalar. Scoped to the field sinks for exactly
+    that reason: do NOT reuse this at a param/arg position."""
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_send_sync(t))
+    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
+        return False
+    return _owned_str_slot(unwrap_readonly(t.inner), analyzer)
+
 def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value read renders as a bare value via the
     container subscript emit: `list[scalar|str]`, `Array[scalar|str, N]` (sema's

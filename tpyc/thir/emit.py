@@ -3417,6 +3417,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # source already renders its own `(*p1)` parens (AST: `&{expr}`).
             out.write(f"{indent}{stmt.base_cpp}* {name} = "
                       f"&{_emit_expr(stmt.init, state)};\n")
+        elif stmt.kind is PtrSlotKind.PTR_ADDR:
+            # Address-of an existing lvalue -- the decl itself takes no slot
+            # (the decl twin of the PTR_ADDR reseat). A rebind slot is drawn
+            # ahead of the pointer line, matching the AST's lvalue-init
+            # pre-declaration order.
+            init_cpp = _emit_expr(stmt.init, state)
+            if stmt.needs_rebind_slot:
+                rebind = (state.assert_local_slot() or state.next_slot())
+                _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
+                      f"&({init_cpp});\n")
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
             if stmt.needs_rebind_slot:

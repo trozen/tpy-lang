@@ -410,6 +410,7 @@ from .checks import (
     _iter_rvalue_structural_arg,
     _opt_own_record_name_arg,
     _readonly_container_rvalue_arg,
+    _record_rvalue_source_shape,
     copy_plain_container_source,
     copy_plain_record_source,
     copy_call_arg,
@@ -2153,6 +2154,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and (_resolved_scalar(lt, analyzer)
                          or (isinstance(e.left, TpyName)
                              and _f1_record(lt_bare, analyzer))
+                         # A record ctor RVALUE needle (`time(0) in {time(0),
+                         # time(1)}`) renders bare inside `contains(...)` just
+                         # like the name row -- it is a value position, so the
+                         # ctor's own emit is the whole render.
+                         or (_f1_record(lt_bare, analyzer)
+                             and _record_rvalue_source_shape(e.left, analyzer))
                          or (_resolved_str_value(lt, analyzer) is not None
                              and view_key_target(ct) is None))):
                 reject()

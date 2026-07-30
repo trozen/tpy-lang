@@ -2244,10 +2244,13 @@ class TestPtrDynProtoPointee:
 
 class TestAutoOwnCloneCarveout:
     # The auto_own[Self] half of the clone-pair carve-out: the pair's
-    # borrowing member carries is_auto_own_borrowing_clone (its consuming
-    # twin is already rejected as is_consuming), and a general method call
-    # always resolves to the borrowing member (sema hardcodes
+    # borrowing member carries is_auto_own_borrowing_clone, and a general
+    # method call always resolves to it (sema hardcodes
     # is_consuming_receiver=False), so the call render is member-blind.
+    # The CONSUMING twin folds at the overload gate on its own merits (the
+    # pair's returns differ); it used to short-circuit earlier as
+    # is_consuming, which is why this carve-out was once observable as "no
+    # overload_set fold at all".
     # Non-generic record: the generic auto_own_basic corpus case is
     # excluded by the generics frontier, leaving this branch unit-only.
     SRC = (
@@ -2262,15 +2265,18 @@ class TestAutoOwnCloneCarveout:
         "def main():\n    print(use(Holder(7)))\nmain()\n")
 
     def test_borrowing_clone_def_passes_overload_gate(self):
-        # The DEF-side carve-out: no sig.overload_set fold for the pair
-        # (the borrowing clone body then gates on its own content).
+        # The DEF-side carve-out: the BORROWING clone is not folded away by
+        # the overload gate (its body then gates on its own content). Only
+        # its consuming twin folds, and only on the pair's return mismatch --
+        # so exactly one fold, attributable to the twin, is the carve-out
+        # holding rather than failing.
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
                 emit_source_comments=False, thir_codegen=True))
         ov = {k: v for k, v in compiler._thir_fallback.items()
               if 'sig.overload_set' in k}
-        assert not ov, ov
+        assert ov == {'body:sig.overload_set.ret_mismatch': 1}, ov
 
     def test_call_site_routes(self):
         thir = _lower_ctx(self.SRC)
@@ -3079,3 +3085,162 @@ class TestBuiltinModuleTemplateCall:
                                           thir_codegen=True)) == \
             compiler.generate_code_to_strings(
                 entry, options=CodeGenOptions(emit_source_comments=False))
+
+
+class TestClassmethodThroughInstance:
+    """A @classmethod reached through an instance is an ordinary member call
+    (`p.origin()` -- C++ evaluates the receiver and calls the static member),
+    so it rides the record-method arm despite the parser's `is_staticmethod`
+    bit. A plain @staticmethod through an instance is a distinct shape."""
+
+    _SRC = ("from typing import Self\n"
+            "from tpy import Int32, Own\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "    @classmethod\n"
+            "    def origin(cls) -> Own[Self]:\n        return cls(0)\n"
+            "    @classmethod\n"
+            "    def at(cls, x: Int32) -> Own[Self]:\n        return cls(x)\n"
+            "    @staticmethod\n"
+            "    def helper(n: Int32) -> Int32:\n        return n + 1\n")
+
+    def test_instance_receiver_routes(self):
+        src = (self._SRC
+               + "def f() -> Int32:\n"
+               + "    p = Point(7)\n"
+               + "    q = p.origin()\n"
+               + "    r = p.at(4)\n"
+               + "    return q.x + r.x\n"
+               + "print(f())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_staticmethod_through_instance_still_defers(self):
+        # BOUNDARY: a plain @staticmethod carries the same bit but is not the
+        # witnessed shape -- the gate must keep it out.
+        src = (self._SRC
+               + "def f() -> Int32:\n"
+               + "    p = Point(7)\n"
+               + "    return p.helper(2)\n"
+               + "print(f())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestConsumingMethodBody:
+    """A consuming method (`self: Own[Self]`) binds `self` as an rvalue ref
+    (`&&`), so returning one of its fields MOVES. That is the ONLY body effect
+    of `is_consuming` -- the `&&` suffix and the `__tpy_owned_ = false`
+    prologue on a `__del__` record are both structural-emitter lines THIR
+    shares -- which is why the flag no longer blanket-rejects the signature."""
+
+    _SRC = ("from enum import Enum\n"
+            "from typing import Self\n"
+            "from tpy import Char, Int32, Own\n"
+            "class Color(Enum):\n"
+            "    RED = 1\n"
+            "class Plain:\n"
+            "    n: Int32\n"
+            "    label: str\n"
+            "    c: Char\n"
+            "    hue: Color\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n        self.label = \"x\"\n"
+            "        self.c = Char('z')\n        self.hue = Color.RED\n")
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_scalar_self_field_return_moves(self):
+        src = (self._SRC
+               + "    def take(self: Own[Self]) -> Int32:\n"
+               + "        return self.n\n"
+               + "print(Plain(1).take())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is not None
+        assert faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_non_consuming_self_field_return_does_not_move(self):
+        # BOUNDARY: the move is keyed on the CONSUMING receiver, not on the
+        # `self.field` shape -- a plain method must keep returning it bare.
+        src = (self._SRC
+               + "    def peek(self) -> Int32:\n"
+               + "        return self.n\n"
+               + "print(Plain(1).peek())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "peek") is not None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_str_self_field_return_still_defers(self):
+        # BOUNDARY: the AST moves a str field too, but only the plain value
+        # families are threaded through the chokepoint -- everything else
+        # rejects BY NAME rather than silently skipping the move.
+        src = (self._SRC
+               + "    def take_str(self: Own[Self]) -> str:\n"
+               + "        return self.label\n"
+               + "print(Plain(1).take_str())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_str") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_consuming_local_return_routes_without_move(self):
+        # A consuming body whose return is NOT a self field takes the ordinary
+        # ladder -- admitting the signature is all it needed.
+        src = (self._SRC
+               + "    def take_local(self: Own[Self]) -> Int32:\n"
+               + "        t = self.n + 1\n"
+               + "        return t\n"
+               + "print(Plain(1).take_local())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_local") is not None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_char_and_enum_self_field_returns_move(self):
+        # The other two families the chokepoint admits: both are value types
+        # whose bare field read is the whole render under the move.
+        src = (self._SRC
+               + "    def take_char(self: Own[Self]) -> Char:\n"
+               + "        return self.c\n"
+               + "    def take_enum(self: Own[Self]) -> Color:\n"
+               + "        return self.hue\n"
+               + "print(Plain(1).take_char())\n"
+               + "print(Plain(2).take_enum())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_char") is not None
+        assert _fn(thir, "take_enum") is not None
+        assert faces.get("ret.consuming_self_field") == 2
+        compiler, modules = _compile(src)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        both = hpp + cpp
+        assert "return std::move(this->c);" in both
+        assert "return std::move(this->hue);" in both
+        _assert_byte_identical(src)
+
+    def test_optional_return_slot_still_defers(self):
+        # BOUNDARY, and the one this cell originally got wrong: the FIELD type
+        # and the RETURN SLOT are different axes. The AST's `_gen_return` exits
+        # early for an Optional slot and never reaches its move, so gating on
+        # the field alone ADDED a move the AST never emits. A plain scalar field
+        # at an Optional slot must reject.
+        src = (self._SRC
+               + "    def take_opt(self: Own[Self]) -> Int32 | None:\n"
+               + "        return self.n\n"
+               + "print(Plain(1).take_opt() is None)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_opt") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)

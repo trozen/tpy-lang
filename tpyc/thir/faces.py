@@ -845,6 +845,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
     "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
     "ret.btuple_name",              # already-borrow tuple local returned bare
+    "ret.consuming_self_field",     # consuming method: `return std::move(this->f);`
+    "ret.btuple_literal",           # `return (n, p)` -> std::tuple<..,T*>{n, &(p)}
     "arg.btuple_name",              # already-borrow tuple name passed bare
     "arg.required_protocol_union",  # name at a required multi-protocol
                                     # union slot -> plain value render
@@ -988,6 +990,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # rvalue init: `T __slot_N = init;` + `T* x = &__slot_N;` (the
     # REBIND_SLOT render minus the rebind slot).
     "decl.record_slot_rvalue",
+    # Reassigned container-ELEMENT borrow local's first decl: `[const] T* p =
+    # &(::tpy::__getitem__(ps, i));` -- the decl twin of `reseat.subscript_elem`.
+    "decl.subscript_elem_addr",
     # NAME-reassigned container-LITERAL pointer-local: `std::vector<T>
     # __slot_N = {..};` + `std::vector<T>* xs = &__slot_N;` (the container
     # flavor of the same render).
@@ -1561,6 +1566,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # global, whose definition lives at namespace scope.
     "top_level.native_global_skip", # `native_global(..)` decl: emits nothing
     "ret.record_ptr_opt_local",     # `return std::move((*p));`
+    "ret.tparam_ptr_local",         # open-T `T*` local -> `return (*p);`
     "top_level.global_opt_passthrough",  # `g = <ptr-opt call>;`
     "call.ptr_opt_passthrough",     # free call at that write
     "method.ptr_opt_passthrough",   # method call at that write

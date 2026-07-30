@@ -1077,6 +1077,14 @@ class TestTupleCallSlots:
 # only: the param / decl / subscript-read / bare-name-return sinks stay on the
 # narrow value-tuple family (no bare-copy read arm for a widened-element receiver).
 class TestWidenedValueTupleReturn:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
     def test_nested_tuple_literal_return_routes(self):
         thir = _lower(
             _PRELUDE
@@ -1211,15 +1219,6 @@ class TestWidenedValueTupleReturn:
             + "    return (a, (a, s))\n")
         assert _fn(thir, "f") is None
 
-    def test_optional_record_element_deferred(self):
-        # An `Optional[record]` element is pointer-repr (not a value scalar), so
-        # `_value_opt_scalar` rejects it -- the tuple stays on the AST path.
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "class R:\n    x: Int32\n"
-            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
-            "def f(a: Int32) -> tuple[Int32, R | None]:\n    return (a, None)\n")
-        assert _fn(thir, "f") is None
 
 
 class TestWidenedValueTupleReturnEmit:
@@ -2427,4 +2426,128 @@ class TestStorageTupleAliasSourceShapes:
                + "    print(f(Holder(Box(5))))\n"
                + "main()\n")
         assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestBorrowTupleLiteralReturn:
+    """`return (n, p)` at a borrow-tuple return slot builds the tuple in place
+    -- the per-element `&(...)` lift and the spelled `std::tuple<...>` prefix
+    come from the literal builder, so no `tuple_to_pointer` convert wraps it."""
+
+    _SRC = ("from tpy import Int32, readonly\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n")
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_param_ref_element_routes(self):
+        src = (self._SRC
+               + "def f(n: Int32, p: P) -> tuple[Int32, P]:\n"
+               + "    return (n, p)\n"
+               + "def main() -> None:\n"
+               + "    q = P(1)\n"
+               + "    t = f(2, q)\n"
+               + "    print(t[0], t[1].x)\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("ret.btuple_literal")
+        assert "return std::tuple<int32_t, P*>{n, &(p)};" in self._cpp(
+            src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_readonly_return_spells_const_elements(self):
+        # The const-ness of the element pointers comes from the RETURN type's
+        # readonly-ness, matching the arg sink's `target_readonly` rule.
+        src = (self._SRC
+               + "def f(items: list[P]) -> readonly[tuple[P, P]]:\n"
+               + "    return (items[0], items[1])\n"
+               + "def main() -> None:\n"
+               + "    xs = [P(1), P(2)]\n"
+               + "    t = f(xs)\n"
+               + "    print(t[0].x, t[1].x)\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("ret.btuple_literal")
+        assert "std::tuple<const P*, const P*>{" in self._cpp(src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_field_element_still_defers(self):
+        # BOUNDARY: the literal builder admits NAME and SUBSCRIPT elements
+        # only; a FIELD element is a later rung and must keep rejecting.
+        src = (self._SRC
+               + "class H:\n"
+               + "    inner: P\n"
+               + "    def __init__(self) -> None:\n        self.inner = P(1)\n"
+               + "    def pair(self, other: P) -> tuple[P, P]:\n"
+               + "        return (self.inner, other)\n"
+               + "def main() -> None:\n"
+               + "    h = H()\n"
+               + "    q = P(2)\n"
+               + "    t = h.pair(q)\n"
+               + "    print(t[0].x, t[1].x)\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pair") is None
+        assert not faces.get("ret.btuple_literal")
+        _assert_byte_identical(src)
+
+    def test_optional_record_element_routes_as_borrow_tuple(self):
+        # A pointer-repr element puts this tuple in the BORROW family from the
+        # start -- the two families are mutually exclusive by type
+        # classification, so the value-tuple path is never even attempted.
+        # What this pins is the resulting FORM: `R*`, not `std::optional<R>`.
+        src = ("from tpy import Int32\n"
+               "class R:\n    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+               "def f(a: Int32) -> tuple[Int32, R | None]:\n"
+               "    return (a, None)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("ret.btuple_literal")
+        assert "return std::tuple<int32_t, R*>{a, nullptr};" in self._cpp(
+            src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_three_element_tuple_routes(self):
+        # Arity above the 2 every flipped corpus case uses -- the builder is
+        # arity-general, so pin that rather than assume it.
+        src = (self._SRC
+               + "def f(n: Int32, p: P, m: Int32) -> tuple[Int32, P, Int32]:\n"
+               + "    return (n, p, m)\n"
+               + "def main() -> None:\n"
+               + "    a = P(1)\n"
+               + "    t = f(2, a, 3)\n"
+               + "    print(t[0], t[1].x, t[2])\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("ret.btuple_literal")
+        assert ("std::tuple<int32_t, P*, int32_t>{n, &(p), m}"
+                in self._cpp(src, thir=True))
+        _assert_byte_identical(src)
+
+    def test_already_pointer_optional_element_still_defers(self):
+        # BOUNDARY: an Optional-ptr param element is ALREADY a pointer, so it
+        # would pass bare rather than lift -- a row the builder carries at the
+        # decl/arg sinks but that does not reach this one. Probed, not assumed.
+        src = (self._SRC
+               + "def f(n: Int32, q: P | None) -> tuple[Int32, P | None]:\n"
+               + "    return (n, q)\n"
+               + "def main() -> None:\n"
+               + "    a = P(1)\n"
+               + "    u = f(4, a)\n"
+               + "    print(u[0])\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("ret.btuple_literal")
         _assert_byte_identical(src)

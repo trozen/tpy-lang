@@ -1482,9 +1482,15 @@ class PtrSlotKind(Enum):
     # `name = &*(__slot_N = <rvalue>);` (`_gen_pointer_local_rebind`'s
     # is_hoisted rvalue branch). `val_cpp` carries the slot's T spelling.
     BRANCH_RVALUE = auto()
-    # Lvalue-NAME reseat of a pointer-local (`items = base;` ->
-    # `items = &(base);` -- `_gen_pointer_local_rebind`'s address-of
-    # catch-all). A THIRFormConvert cannot carry it: a non-value name READ
+    # Address-of an lvalue, in BOTH directions of the decl/reseat pair (like
+    # the OPT_NONE / UNION_NONE twins above):
+    #   * as a RESEAT -- `items = base;` -> `items = &(base);`
+    #     (`_gen_pointer_local_rebind`'s address-of catch-all);
+    #   * as a DECL -- a reassigned container-ELEMENT borrow local, `p =
+    #     ps[0]` -> `P* p = &(::tpy::__getitem__(ps, 0));`. The decl draws a
+    #     rebind slot when a later RVALUE reseat needs one, so unlike the
+    #     reseat flavor it CAN call `next_slot()`.
+    # A THIRFormConvert cannot carry either: a non-value name / element READ
     # is already BORROW form, so the convert would be the no-op node the
     # validator rejects; the `&(...)` lives in this kind's emit instead
     # (the UNION_ADDR precedent).

@@ -713,3 +713,137 @@ class TestAliasPtrDerefSource:
         thir, faces = _lower_ctx_witnessed(src)
         assert not faces.get("decl.alias_ptr_deref_src")
         _assert_byte_identical(src)
+
+
+class TestElementBorrowPtrDecl:
+    """A container-ELEMENT borrow local that is later reassigned: the decl
+    lifts the element lvalue to a reseatable `T*` (`decl.subscript_elem_addr`),
+    the twin of the `reseat.subscript_elem` arm every later reseat takes."""
+
+    def test_reassigned_list_elem_decl_routes(self):
+        src = (_F1_RECORDS
+               + "def f(items: list[Inner]) -> Int32:\n"
+               + "    p = items[0]\n"
+               + "    p = items[1]\n"
+               + "    return p.value\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("decl.subscript_elem_addr")
+        decl = fn.body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.PTR_ADDR
+        assert not decl.needs_rebind_slot
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "Inner* p = &(::tpy::__getitem__(items, 0));" in cpp
+        _assert_byte_identical(src)
+
+    def test_readonly_container_elem_still_defers(self):
+        # BOUNDARY: a readonly container's elements are const, and the RESEAT
+        # arm keeps its own const rung -- so the body still falls back whole
+        # even though the decl's const verdict (`const Inner*`, via
+        # `_f1_is_const`) would be right. Widen both in lockstep or not at all.
+        src = (_F1_RECORDS
+               + "def f(items: readonly[list[Inner]]) -> Int32:\n"
+               + "    p = items[0]\n"
+               + "    p = items[1]\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_rvalue_reseat_predeclares_rebind_slot(self):
+        # A later RVALUE reseat needs its own `std::optional<Inner>` slot so
+        # the alias to the init element is not overwritten; the decl reserves
+        # it (held back until the reseat draws it).
+        src = (_F1_RECORDS
+               + "def f(items: list[Inner]) -> Int32:\n"
+               + "    p = items[0]\n"
+               + "    p = Inner(9)\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRPtrLocalDecl)
+        assert decl.kind is PtrSlotKind.PTR_ADDR and decl.needs_rebind_slot
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "std::optional<Inner> __slot_1;" in cpp
+        assert "p = &*(__slot_1 = Inner(9));" in cpp
+
+    def test_reassigned_dict_elem_decl_routes(self):
+        # The element family is shared with dict VALUES, so a dict-element
+        # source reaches the same arm -- pinned because the family predicate
+        # admits it generically, not because a corpus case witnesses it.
+        src = (_F1_RECORDS
+               + "def f(d: dict[str, Inner]) -> Int32:\n"
+               + "    p = d[\"a\"]\n"
+               + "    p = d[\"b\"]\n"
+               + "    return p.value\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.subscript_elem_addr")
+        assert "Inner* p = &(::tpy::__getitem__(d, \"a\"));" in _cpp(src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_reassigned_field_recv_elem_decl_routes(self):
+        # The receiver resolver admits a one-level FIELD off an in-scope name,
+        # so `h.items[i]` reaches the arm too -- same generic-admission reason.
+        src = (_F1_RECORDS
+               + "class Bag:\n"
+               + "    items: list[Inner]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.items = [Inner(1), Inner(2)]\n"
+               + "def f(h: Bag) -> Int32:\n"
+               + "    p = h.items[0]\n"
+               + "    p = h.items[1]\n"
+               + "    return p.value\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.subscript_elem_addr")
+        assert ("Inner* p = &(::tpy::__getitem__(h.items, 0));"
+                in _cpp(src, thir=True))
+        _assert_byte_identical(src)
+
+    def test_tparam_elem_decl_and_return_route(self):
+        # The open-T twin: `result = a[i]` inside a generic function binds
+        # `T* result` and the return derefs it (`return (*result);`).
+        src = ("from tpy import Int32\n"
+               + "def last[T](a: list[T]) -> T:\n"
+               + "    result: T = a[0]\n"
+               + "    for i in range(1, len(a)):\n"
+               + "        result = a[i]\n"
+               + "    return result\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "last") is not None
+        assert faces.get("decl.subscript_elem_addr")
+        assert faces.get("ret.tparam_ptr_local")
+        _assert_byte_identical(src)
+
+    def test_nested_container_elem_reassign_still_defers(self):
+        # BOUNDARY: an element that is itself a CONTAINER binds the REF_ALIAS
+        # `T&` only -- the reseatable pointer form for it is a later rung, so
+        # a reassigned nested-element local must keep falling back.
+        src = (_F1_RECORDS
+               + "def f(m: list[list[Inner]]) -> Int32:\n"
+               + "    row = m[0]\n"
+               + "    row = m[1]\n"
+               + "    return Int32(len(row))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("decl.subscript_elem_addr")
+        _assert_byte_identical(src)
+
+    def test_slice_source_still_defers(self):
+        # BOUNDARY: a SLICE is not an element borrow (it materializes a new
+        # container) -- the shape must not reach the address-of decl.
+        src = (_F1_RECORDS
+               + "def f(items: list[Inner]) -> Int32:\n"
+               + "    part = items[0:2]\n"
+               + "    part = items[1:2]\n"
+               + "    return Int32(len(part))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert not faces.get("decl.subscript_elem_addr")
+        _assert_byte_identical(src)

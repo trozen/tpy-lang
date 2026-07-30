@@ -1510,3 +1510,66 @@ class TestOptViewArgMethodPositionStaysBare:
         assert "return s.take(b);" in out
         assert ("return free_take(b ? std::make_optional(::tpy::bytes_copy(*b))"
                 " : std::nullopt);" in out)
+
+
+class TestValueOptOwnedStrFieldWrite:
+    """`s.label = "hello"` at a `str | None` FIELD: storage is
+    `std::optional<std::string>`, so the literal assigns bare like the
+    value-scalar sibling. `_value_opt_scalar` excludes the str family for a
+    PARAM-shape reason (the optional<string_view>-vs-optional<string> arg
+    split) that a field has no equivalent of."""
+
+    _SRC = ("from tpy import Int32, StrView\n"
+            "class Holder:\n"
+            "    label: str | None\n"
+            "    view: StrView | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.label = None\n"
+            "        self.view = None\n")
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_str_literal_write_routes(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    h = Holder()\n"
+               + "    h.label = \"hello\"\n"
+               + "    print(h.label is None)\n"
+               + "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("field_write.value_opt_scalar")
+        assert 'h.label = "hello";' in self._cpp(src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_str_name_source_still_defers(self):
+        # BOUNDARY: a NAME source raises the owned-vs-view conversion question
+        # the literal row never has -- keep it out until it is priced.
+        src = (self._SRC
+               + "def f(s: str) -> None:\n"
+               + "    h = Holder()\n"
+               + "    h.label = s\n"
+               + "    print(h.label is None)\n"
+               + "f(\"x\")\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_view_typed_field_still_defers(self):
+        # BOUNDARY: a `StrView | None` field is a different storage spelling
+        # (`_owned_str_slot` admits only the owned nominal).
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    h = Holder()\n"
+               + "    h.view = \"v\"\n"
+               + "    print(h.view is None)\n"
+               + "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)

@@ -256,6 +256,7 @@ from .predicates import (
     _value_opt_view_whole_arg,
     _value_opt_member_arg,
     _value_opt_pass_through_arg,
+    _value_opt_owned_str,
     _value_opt_scalar,
     _value_opt_scalar_name,
     _value_opt_str,
@@ -1033,12 +1034,13 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             note_detail("decl.record_call_reassigned")
         return None
     if not _const_exact_field_receiver_ok(stmt.init, declared, analyzer):
-        # A record-element container subscript source (`p = ps[i]` ->
-        # `P& p = ::tpy::__getitem__(ps, i);`) binds the single-assignment
-        # `T&` alias only -- reseats (POINTER) and Optional sources keep the
-        # field-receiver pin. The const verdict mirrors the AST's
-        # element-borrow propagation (see `_f1_is_const`).
-        if (binding is LocalBinding.REF_ALIAS
+        # A record-element container subscript source (`p = ps[i]`) binds the
+        # single-assignment `T&` alias (`P& p = ::tpy::__getitem__(ps, i);`) or,
+        # reassigned, the reseatable `P* p = &(::tpy::__getitem__(ps, i));` --
+        # the same lift the `reseat.subscript_elem` arm applies to every later
+        # `p = ps[j]`. Optional sources keep the field-receiver pin. The const
+        # verdict mirrors the AST's element-borrow propagation (`_f1_is_const`).
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _f1_record(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
                                                      analyzer)):
@@ -1050,9 +1052,11 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _container_ref_alias_elem_subscript(stmt.init, declared,
                                                         analyzer)):
             return binding
-        # An open-T element subscript inside a generic record body
-        # (`v = self.items[self.pos]`) binds the per-instantiation `T&`.
-        if (binding is LocalBinding.REF_ALIAS
+        # An open-T element subscript inside a generic body (`v =
+        # self.items[self.pos]`) binds the per-instantiation `T&`, or the
+        # reseatable `T*` when reassigned (`result = a[i]`) -- the type-param
+        # twin of the record-element rows above.
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _is_type_param_slot(target_type)
                 and _borrow_elem_subscript_shape(stmt.init, declared, analyzer,
                                                  _container_tparam_elem)):
@@ -1229,7 +1233,13 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
               # plain scalar's. Deliberately not the pointer-repr sibling --
               # that one needs the `ptr_to_optional` lift.
               or (_value_opt_scalar(ftype, analyzer) is not None
-                  and not isinstance(stmt.value, TpyNoneLiteral))):
+                  and not isinstance(stmt.value, TpyNoneLiteral))
+              # The owned-str twin (`s.label = "hello"` at a `str | None`
+              # field): same bare store into `std::optional<std::string>`.
+              # LITERAL values only -- a view-form source would raise the
+              # owned-vs-view conversion question the scalar row never has.
+              or (_value_opt_owned_str(ftype, analyzer)
+                  and isinstance(_peel_coerce(stmt.value), TpyStrLiteral))):
         # A generic record's `T` field write emits as a plain assign (`field = v`
         # / `field = std::move(v)`) -- the BORROW->STORAGE convert renders the
         # source bare/moved (its TypeParamRef emit arm), byte-identical to the
@@ -6982,10 +6992,17 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
         not e.inferred_type_args
         or (len(e.inferred_type_args) == len(fi.type_params)
             and all(isinstance(t, TpyType) for t in e.inferred_type_args)))
+    # A @classmethod reached through an INSTANCE renders as an ordinary member
+    # call (`p.origin()` -- C++ evaluates the receiver expression and calls the
+    # static member), so it rides this arm despite carrying the parser's
+    # `is_staticmethod` bit. A plain @staticmethod through an instance is a
+    # distinct, unwitnessed shape and keeps rejecting.
+    classmethod_member = fi.is_classmethod
     if (fi.cpp_template is not None or fi.native_function
             or (fi.native_name and not native_method)
             or (fi.type_params and not generic_method_ok)
-            or fi.is_staticmethod or not fi.is_method):
+            or (fi.is_staticmethod and not classmethod_member)
+            or not (fi.is_method or classmethod_member)):
         return note_detail("method.fi_kind")
     overloads = analyzer.registry.get_method_overloads_with_parents(ri, e.method)
     if len(overloads) != 1:

@@ -358,7 +358,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # Defensive: the parser sets is_method=True on staticmethods, so a free
         # function should never carry the flag.
         raise ThirUnsupported("sig.staticmethod_flag")
-    if func.is_overload_stub or func.native_function or func.is_consuming:
+    if func.is_overload_stub or func.native_function:
         raise ThirUnsupported("sig.special_callable")
     # An overload IMPL body is emitted once per stub with per-stub facts
     # (overload_param_types / literal_overload_facts driving dead-branch
@@ -385,8 +385,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
             # body and keys its own id(func) -- no shared-impl hijack, same
             # argument as the property pair. Detected on the ATTEMPTED func:
             # both auto_readonly clones carry auto_readonly_params_resolved;
-            # an auto_own pair's consuming half is already rejected as
-            # is_consuming, leaving the flagged borrowing clone. A COMPOSED
+            # an auto_own pair's consuming half reaches this gate (it is no
+            # longer short-circuited as is_consuming) and folds here on the
+            # pair's return mismatch, leaving the flagged borrowing clone
+            # to route. A COMPOSED
             # set (a clone pair over genuine @overload stubs, 4+ entries)
             # keeps rejecting.
             is_clone_pair = (
@@ -2074,8 +2076,10 @@ def _rejects_global_slot(node) -> bool:
     counter. At module scope every slot must spell `static __global_slot_N`,
     and only GLOBAL_RVALUE is wired for that -- its three sibling writes
     (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL`,
-    `GLOBAL_PTR_COPY` and `PTR_ADDR` allocate none) call `next_slot()`
-    nowhere.
+    `GLOBAL_PTR_COPY` and the PTR_ADDR RESEAT allocate none) call
+    `next_slot()` nowhere. NB the PTR_ADDR *decl* flavor does draw a slot
+    (its rvalue-reseat rebind slot), which is why the THIRPtrLocalDecl arm
+    below stays a blanket reject rather than exempting the kind by name.
 
     THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
     block-scoped `__slot_N` at namespace scope leaves the global pointing at a

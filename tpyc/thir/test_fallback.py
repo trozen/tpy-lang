@@ -416,17 +416,19 @@ def test_while_bool_literal_routes_at_constructor_boundary():
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
-    # A NON-VALUE (record) loop var read after the loop -> sema hoists it, a
-    # shape the for-loop gate durably rejects (the value-hoist rungs route now).
+    # A hoisted loop var whose element is itself a CONTAINER: the reassigned
+    # nested-element local binds only the single-assignment `T&` alias, so the
+    # body falls back whole. (The plain-record flavor of this shape routes now
+    # -- its element lifts to a reseatable `T*`.)
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "class R:\n    v: Int32\n"
         "    def __init__(self, v: Int32):\n        self.v = v\n"
-        "def rejected(rs: list[R]) -> Int32:\n"
-        "    keep = rs[0]\n"
-        "    for r in rs:\n"
-        "        keep = r\n"
-        "    return keep.v\n"
+        "def rejected(m: list[list[R]]) -> Int32:\n"
+        "    keep = m[0]\n"
+        "    for row in m:\n"
+        "        keep = row\n"
+        "    return Int32(len(keep))\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )

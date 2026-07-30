@@ -135,9 +135,9 @@ class TestProtocolBody:
         assert _fn(_lower_ctx(src), "add3") is None
         _assert_byte_identical(src)
 
-    def test_reassigned_tparam_elem_stays_ast(self):
-        # A REASSIGNED open-T element local takes the `T*` reseat
-        # machinery (`T* result = &(...)`) -- not carried, keeps rejecting.
+    def test_reassigned_tparam_elem_routes(self):
+        # A REASSIGNED open-T element local takes the `T*` reseat machinery
+        # (`T* result = &(...)`) and its return derefs (`return (*result);`).
         src = ("from tpy import Int32\n"
                "def last[T](a: list[T]) -> T:\n"
                "    result: T = a[0]\n"
@@ -147,5 +147,5 @@ class TestProtocolBody:
                "def main() -> None:\n"
                "    print(last([1, 2, 3]))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "last") is None
+        assert _fn(_lower_ctx(src), "last") is not None
         _assert_byte_identical(src)

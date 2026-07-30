@@ -2820,9 +2820,9 @@ class TestRecordElementSubscript:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
 
-    def test_reassigned_alias_rejects(self):
-        # A reassigned element alias is a POINTER (reseat) local -- the
-        # subscript source keeps the field-receiver pin there.
+    def test_reassigned_alias_routes_as_pointer(self):
+        # A reassigned element alias is a POINTER (reseat) local: the decl
+        # lifts the element lvalue with the same address-of the reseats take.
         src = (
             _PRELUDE
             + "class P:\n"
@@ -2833,8 +2833,13 @@ class TestRecordElementSubscript:
             + "    p = ps[1]\n"
             + "    return p.x\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.subscript_elem_addr")
+        cpp = self._cpp(src, thir=True)
+        assert "P* p = &(::tpy::__getitem__(ps, 0));" in cpp
+        assert "p = &(::tpy::__getitem__(ps, 1));" in cpp
+        _assert_byte_identical(src)
 
 
 class TestNestedContainerSubscript:
@@ -4016,3 +4021,86 @@ class TestContainerFieldBareRead:
         thir = _lower_ctx(src)
         assert _fn(thir, "has") is None
         assert _fn(thir, "total") is None
+
+
+class TestRecordRvalueNeedleMembership:
+    """A record ctor RVALUE needle (`Key(1) in s`) renders bare inside
+    `contains(...)` exactly like the record NAME needle beside it -- the needle
+    is a value position, so the ctor's own emit IS the whole render."""
+
+    _SRC = ("from dataclasses import dataclass\n"
+            "from tpy import Int32, Own\n"
+            "@dataclass(frozen=True)\n"
+            "class Key:\n"
+            "    n: Int32\n")
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_ctor_needle_set_literal_routes(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    print(Key(1) in {Key(1), Key(2)})\n"
+               + "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("binop.membership")
+        assert ".contains(Key(1))" in self._cpp(src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_ctor_needle_set_name_routes(self):
+        src = (self._SRC
+               + "def f(s: set[Key]) -> None:\n"
+               + "    print(Key(1) in s)\n"
+               + "    print(Key(9) not in s)\n"
+               + "f({Key(1)})\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "s.contains(Key(1))" in cpp
+        assert "!(s.contains(Key(9)))" in cpp
+        _assert_byte_identical(src)
+
+    def test_ctor_needle_dict_routes(self):
+        src = (self._SRC
+               + "def f(d: dict[Key, Int32]) -> None:\n"
+               + "    print(Key(3) in d)\n"
+               + "f({Key(3): 1})\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        assert "d.contains(Key(3))" in self._cpp(src, thir=True)
+        _assert_byte_identical(src)
+
+    def test_non_record_rvalue_needle_still_defers(self):
+        # BOUNDARY: the widening is the RECORD-rvalue row. A tuple needle is a
+        # different render (and `.items()` membership is its own later cell),
+        # so it must keep rejecting.
+        src = (self._SRC
+               + "def f(d: dict[Key, Int32]) -> None:\n"
+               + "    print((Key(3), 1) in d.items())\n"
+               + "f({Key(3): 1})\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_method_call_rvalue_needle_still_defers(self):
+        # BOUNDARY: `_record_rvalue_source_shape` admits a by-value
+        # record-returning METHOD call at its other call sites, but this needle
+        # row does not reach it -- the widening is the CTOR row only. Probed,
+        # not assumed: an Own-returning method needle still falls back.
+        src = (self._SRC
+               + "class Mint:\n"
+               + "    def __init__(self) -> None:\n        pass\n"
+               + "    def make(self, n: Int32) -> Own[Key]:\n"
+               + "        return Key(n)\n"
+               + "def f(s: set[Key], m: Mint) -> None:\n"
+               + "    print(m.make(1) in s)\n"
+               + "f({Key(1)}, Mint())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)

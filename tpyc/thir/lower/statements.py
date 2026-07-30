@@ -260,6 +260,7 @@ from .predicates import (
     _is_borrow_form_name,
     _is_borrow_ptr_local,
     _is_string_owned,
+    _is_type_param_slot,
     _narrow_bigint_index,
     _narrow_fact_member,
     _any_narrow_fact,
@@ -282,6 +283,7 @@ from .predicates import (
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
     _param_is_const,
+    _value_opt_owned_str,
     _value_opt_scalar,
     _value_opt_str,
     _value_opt_owned_view,
@@ -2517,7 +2519,8 @@ def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
 
 def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding',
                         is_const: bool, lc: _LowerCtx,
-                        declared: dict[str, TpyType], loc) -> THIRVarDecl:
+                        declared: dict[str, TpyType],
+                        loc) -> 'THIRVarDecl | THIRPtrLocalDecl':
     """Lower a non-value borrow local's first declaration. REF_ALIAS binds a `T&`
     alias of the field's storage directly (no conversion node). POINTER lifts a
     plain-record lvalue to a reseatable `T*` via THIRFormConvert (`&(...)`).
@@ -2602,6 +2605,26 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             name=stmt.name, resolved_type=vtype, init=convert,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
+    if binding is LocalBinding.POINTER and isinstance(stmt.init, TpySubscript):
+        # A container-element source reassigned later: `[const] T* p =
+        # &(::tpy::__getitem__(ps, i));`. The element READ is already BORROW
+        # form, so a FormConvert would be the no-op node the validator rejects
+        # -- the `&(...)` lives in the PTR_ADDR emit, exactly as it does for
+        # the `reseat.subscript_elem` arm every later `p = ps[j]` takes (whose
+        # RECEIVER use this mirrors: a value use would copy the element).
+        # A later RVALUE reseat needs its own `std::optional<T>` slot so the
+        # alias to the init element is not overwritten -- the AST pre-declares
+        # it here (held back until the reseat uses it).
+        needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
+        if needs_rebind:
+            lc.rebind_slot_locals.add(stmt.name)
+        _witness("decl.subscript_elem_addr")
+        return THIRPtrLocalDecl(
+            name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
+            init=_lower_expr(stmt.init, lc, declared,
+                             use=_ExprUse(result=_ExprResultUse.RECEIVER)),
+            cpp_type=lc.render_type(vtype), needs_rebind_slot=needs_rebind,
+            is_const=is_const, loc=loc)
     field = _lower_field_source(stmt.init, lc, declared)
     if binding is LocalBinding.POINTER:
         convert = THIRFormConvert(result_type=vtype, value=field, form=Form.BORROW,
@@ -6580,7 +6603,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # (`s.count = 42;`). The generic tail's `ptr_to_optional` lift
             # belongs to the POINTER-repr Optional and would be wrong here;
             # a `None` value took the nullopt arm above.
-            if (_value_opt_scalar(ftype, analyzer) is not None
+            # The owned-str twin carries the gate's LITERAL restriction here
+            # too. Nothing reaches this arm with a non-literal str today (the
+            # admission chokepoint rejects it first), but a lowering arm that
+            # is looser than its gate is a trap for the next widening.
+            if ((_value_opt_scalar(ftype, analyzer) is not None
+                 or (_value_opt_owned_str(ftype, analyzer)
+                     and isinstance(_peel_coerce(stmt.value), TpyStrLiteral)))
                     and not isinstance(stmt.value, TpyNoneLiteral)):
                 _witness("field_write.value_opt_scalar")
                 return THIRAssign(
@@ -7031,6 +7060,43 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         begin_stmt()
         if lc.overload_stub_return is not None:
             stmt = _overload_adjusted_return(stmt, lc)
+        if (lc.func.is_consuming and isinstance(stmt.value, TpyFieldAccess)
+                and isinstance(stmt.value.obj, TpyName)
+                and stmt.value.obj.name == "self"):
+            # A consuming method's `self` is an rvalue ref (`&&`), so returning
+            # one of its fields MOVES (`return std::move(this->_value);`).
+            # Intercepted BEFORE the return ladder on purpose: the AST applies
+            # this to the FINAL return expression, so a specialized arm (record
+            # / optional / tuple / container) would have to re-apply it and a
+            # missed one drops the move silently.
+            #
+            # TWO axes must both be plain for the interception to be a no-op,
+            # and they are NOT the same axis. The FIELD type decides whether the
+            # bare read is the whole render; the RETURN SLOT decides whether the
+            # AST's ladder even REACHES its move (`_gen_return` exits early for
+            # a pointer-repr / value Optional slot, a ptr-variant union, and a
+            # property getter -- none of which ever see the move). Gating on the
+            # field alone ADDS a move the AST never emits: `def take(self:
+            # Own[Self]) -> Int32 | None: return self.x` diverged exactly so,
+            # and no corpus case has that pair.
+            fld_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                analyzer.get_expr_type(stmt.value))))
+            ret_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                _fn_return_type(lc))))
+
+            def _plain_value(t) -> bool:
+                return bool(_eligible_scalar(t) or _eligible_char(t)
+                            or _eligible_enum(t, analyzer) is not None)
+
+            if not (_plain_value(fld_t) and _plain_value(ret_t)):
+                note_detail("return.consuming_self_field")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            src = _lower_field_source(stmt.value, lc, declared)
+            _witness("ret.consuming_self_field")
+            return THIRReturn(
+                value=THIRMove(result_type=src.result_type, value=src,
+                               form=src.form, loc=loc),
+                loc=loc)
         if stmt.finally_deferred_capture:
             # Finally-deferred return capture (borrow before the inline
             # finally chain, materialize after) has no THIR emit recipe yet;
@@ -7135,6 +7201,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 is_const = stmt.value.name in lc.const_locals
                 inner: THIRExpr = _lower_expr(stmt.value, lc, declared)  # STORAGE-form alias
+            elif isinstance(stmt.value, TpyTupleLiteral):
+                # `return (n, p)` builds the borrow tuple in place -- the
+                # per-element `&(...)` lift and the spelled `std::tuple<...>`
+                # prefix are the literal builder's, so no tuple_to_pointer
+                # convert wraps it. A CONST_REF element spelling comes from
+                # the readonly-ness of the RETURN type, like the arg sink's.
+                # rvalue elements stay rejected (rvalue_ok defaults False):
+                # their storage would die at the return, and sema keeps them
+                # out -- the guard is the backstop, not the diagnostic.
+                # Witness AFTER the builder returns: an element outside its
+                # slice raises, and a face counted for a fallen-back body
+                # would make the coverage metric lie.
+                lit = _lower_borrow_tuple_literal(
+                    stmt.value, ret_tuple, lc, declared,
+                    target_readonly=isinstance(
+                        unwrap_ref_type(unwrap_send_sync(
+                            _fn_return_type(lc))), ReadonlyType))
+                _witness("ret.btuple_literal")
+                return THIRReturn(value=lit, loc=loc)
             else:
                 if not (_const_exact_field_receiver_ok(
                             stmt.value, declared, analyzer)
@@ -7653,6 +7738,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             return THIRReturn(
                 value=THIRLiteral(result_type=ret_any_union, value=None,
                                   form=Form.STORAGE, loc=loc), loc=loc)
+        if (isinstance(stmt.value, TpyName)
+                and stmt.value.name in lc.pointers
+                and stmt.value.name not in narrowed
+                and _is_type_param_slot(declared.get(stmt.value.name))):
+            # `return result;` where `result` is a reseatable `T*` element
+            # borrow in a generic body: the AST's indirect-name arm derefs it
+            # into the `val_or_ref_t<T>` slot (`return (*result);`). The
+            # record twin is `ret.record_ptr_opt_local` above; an open-T slot
+            # never reaches that ladder (`_f1_record` is False for it).
+            _witness("ret.tparam_ptr_local")
+            return THIRReturn(
+                value=_lower_expr(stmt.value, lc, declared,
+                                  use=_ExprUse(indirect_read=True)),
+                loc=loc)
         field_prechecked = (
             isinstance(stmt.value, TpyFieldAccess)
             and lc.prescan.ret_str is not None
