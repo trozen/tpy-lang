@@ -156,7 +156,7 @@ struct __gen_Lim_dvals : public ::tpy::next_iter_mixin<__gen_Lim_dvals, int32_t>
     int32_t __state;
     const Lim& __self;
     const ::tpy::ordered_map<std::string, int32_t>& d;
-    std::string_view k;
+    std::string k;
     ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_it_0;
     ::tpy::frame_slot<::tpy::begin_iter_t<const ::tpy::ordered_map<std::string, int32_t>>> __for_end_0;
 

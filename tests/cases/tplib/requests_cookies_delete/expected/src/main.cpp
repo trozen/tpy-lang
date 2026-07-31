@@ -76,6 +76,18 @@ void main() {
             std::cout << "KeyError" << "\n";
         }
     }
+    // # 4. Direct jar iteration hides deleted tombstones, consistent with
+    // # in/len/keys (sid and tmp are deleted; only keep remains visible).
+    // for name in s.cookies:
+    auto& __src_0 = s.cookies;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        std::string_view name = ::tpy::unwrap_ref(*__r_1);
+        // print(name)
+        std::cout << name << "\n";
+    }
 }
 
 void __tpy_init() {

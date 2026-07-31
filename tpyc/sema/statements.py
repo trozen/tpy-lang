@@ -3527,7 +3527,10 @@ class StatementAnalyzer:
             else:
                 source_ids = [var_type.var_id]
             info = ViewVarInfo(var_id=var_id, variable_name=name,
-                               decl_line=line, source_var_ids=source_ids)
+                               decl_line=line, source_var_ids=source_ids,
+                               frame_unsafe_source=(
+                                   init_expr is not None
+                                   and self.deduction.has_nonstatic_view_source(init_expr)))
         else:
             # Fresh from owned type (str or bytes)
             if init_expr is not None:
@@ -3555,7 +3558,10 @@ class StatementAnalyzer:
                         source_storages.append(storage)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, initialized_from_owned=is_owned,
-                               source_storages=source_storages)
+                               source_storages=source_storages,
+                               frame_unsafe_source=(
+                                   not is_owned
+                                   and self.deduction.has_nonstatic_view_source(init_expr)))
             for storage in source_storages:
                 self.ctx.view_source_borrows_map(family).setdefault(storage, set()).add(var_id)
 
@@ -3576,7 +3582,9 @@ class StatementAnalyzer:
 
         When init_expr is None (for-loop var, tuple unpack), the source is
         considered view-compatible (initialized_from_owned=False) because
-        the container outlives the loop/unpack scope.
+        the container outlives the loop/unpack scope -- in a SYNC body; a
+        resumable frame outlives its case-block temps, so these register
+        as frame-unsafe and resolve owned there (frame_unsafe_source).
         """
         if self.ctx.is_top_level:
             return var_type

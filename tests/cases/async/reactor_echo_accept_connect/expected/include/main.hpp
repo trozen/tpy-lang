@@ -62,7 +62,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
     ::tpy::frame_slot<::tpystd::socket::socket> listener;
-    std::string_view host;
+    std::string host;
     int32_t port;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> client;
     ::tpy::frame_slot<::tpystd::socket::socket> conn;

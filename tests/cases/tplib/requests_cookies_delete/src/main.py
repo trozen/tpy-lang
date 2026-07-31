@@ -49,5 +49,10 @@ def main() -> None:
     except KeyError:
         print("KeyError")
 
+    # 4. Direct jar iteration hides deleted tombstones, consistent with
+    # in/len/keys (sid and tmp are deleted; only keep remains visible).
+    for name in s.cookies:
+        print(name)
+
 
 main()

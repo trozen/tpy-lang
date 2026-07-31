@@ -23,7 +23,7 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
     int32_t __state;
     std::vector<std::string>& words;
     int32_t i;
-    std::string_view w;
+    std::string w;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -49,7 +49,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
     int32_t __state;
     std::vector<std::vector<uint8_t>>& blobs;
     int32_t i;
-    std::span<const uint8_t> b;
+    std::vector<uint8_t> b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -76,7 +76,7 @@ struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t>
     std::vector<std::tuple<std::string, int32_t>>& pairs;
     int32_t i;
     std::tuple<std::string, int32_t> __for_tup_0;
-    std::string_view name;
+    std::string name;
     int32_t n;
 
     enum : int32_t {

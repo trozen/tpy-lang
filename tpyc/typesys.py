@@ -4712,6 +4712,13 @@ class ViewVarInfo:
     # demotes the view to owned.
     source_storages: list[str] = field(default_factory=list)
     source_mutated: bool = False
+    # A view-safe source whose storage is not static (param, container
+    # element, tuple-unpack temp, ...). Irrelevant in a sync body -- the
+    # source outlives the function-scoped view -- but in a resumable frame
+    # the binding outlives case-block temps and suspensions, so resolution
+    # promotes the local to owned storage. Literal / Final sources have
+    # static storage and never set this.
+    frame_unsafe_source: bool = False
     resolved_type: Optional[TpyType] = None
 
 

@@ -437,12 +437,11 @@ class CookieJar:
         return out
 
     def __iter__(self) -> Iterator[str]:
-        # Yield from a materialized key list: yielding the dict-key VIEW from
-        # a resumable frame mis-emits it into the owned `str` yield slot
-        # (string_view -> expected<string>, no conversion; BUGS.md).
-        names = self.keys()
-        for name in names:
-            yield name
+        # Deleted markers are tombstones, invisible through every accessor
+        # (get / in / keys / items) -- iteration must hide them too.
+        for name in self._store:
+            if not self._store[name].deleted:
+                yield name
 
     def update(self, other: CookieJar) -> None:
         # Merge another jar in. A deleted marker drops the entry here (a server

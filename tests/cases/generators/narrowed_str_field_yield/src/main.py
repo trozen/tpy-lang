@@ -1,8 +1,7 @@
 # A narrowed str|None FIELD (optional<String> storage, the
 # reference-flavor sibling of the Int32 case) derefs through the widened
 # yield sink when no suspension intervenes. (The frame-reassign face
-# `q = self.s` hits the pre-existing view-form frame-local gap --
-# BUGS.md str-local-across-suspension entry -- so it stays out.)
+# `q = self.s` lives in narrowed_str_field_reassign_yield.)
 from typing import Iterator
 
 

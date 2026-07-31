@@ -559,7 +559,7 @@ This means `Float32` arithmetic stays in single precision without requiring expl
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, record field, `list[str]` element, `dict[K, str]` value source, tuple-unpack target, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed. An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, record field, `list[str]` element, `dict[K, str]` value source, tuple-unpack target, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed. In a generator / `async def` body the "safe" set shrinks to static-lifetime sources (literals, `Final` constants) and explicit-view PARAMS (whose borrow is checked at the call; a local sourced from an explicit-view LOCAL promotes, since that binding's borrow is unchecked against the frame lifetime): any other view local would be hoisted into the resumable frame, which outlives the case-block temps and suspensions the sync judgment assumes the binding shares scope with, so those locals resolve owned instead (the locals side of the owned param capture rule). An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -6938,8 +6938,9 @@ Send/Sync rules for built-in types:
   set non-blocking); `sock_connect` checks `SO_ERROR` after the non-blocking
   connect resolves. All four are sync factories returning hand-written
   `_SockRecv` / `_SockSendAll` / `_SockAccept` / `_SockConnect` awaitables (the
-  `gather(...) -> Own[...]` shape), so they sidestep the async-def
-  view-param coro-frame gap (BUGS.md). The `Reactor` protocol
+  `gather(...) -> Own[...]` shape), so they sidestepped the async-def
+  view-param coro-frame gap (since fixed: view-family params AND locals
+  are now stored owned in the frame). The `Reactor` protocol
   (`register_fd` / `unregister_fd` / `poll` / `count` / `close`) is the
   documented interface a backend implements. The reactor binds through
   `lib/tpy/_bindings/posix_epoll.py` over flat `tpy_epoll_*` wrappers in

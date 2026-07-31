@@ -1073,6 +1073,69 @@ class LocalTypeDeduction:
 
     # --- View-type local tracking (generic across str/bytes families) ---
 
+    def _is_static_view_leaf(self, e: TpyExpr) -> bool:
+        """A view-source leaf that stays safe across a resumable-frame
+        suspension: static storage (str/bytes literal, `Literal[str]`-typed
+        name or call -- every value a compile-time literal -- or a
+        `Final[str]` constant), or an explicit view-typed (StrView/BytesView)
+        PARAM -- the caller-side borrow check backs the user's view contract
+        for the whole call, so the referent outlives the frame. An explicit
+        view-typed LOCAL is NOT safe: its own borrow is unchecked against
+        the frame lifetime, so an un-annotated alias of it must not silently
+        inherit the view. A pending-view name also counts: its safety is
+        inherited through `source_var_ids` (the second resolution pass
+        promotes the chain when the source resolves owned).
+
+        Deliberately a SEPARATE, narrower classifier than
+        `is_view_compatible_source` (which answers sync view-SAFETY, not
+        frame-lifetime staticness) -- but both walk the same leaves via
+        `walk_view_source_leaves`; when adding a source shape to either,
+        audit the other."""
+        if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)):
+            return True
+        if isinstance(e, TpyName):
+            func = self.ctx.func.current_function
+            if isinstance(func, TpyFunction):
+                for pname, ptype in func.params:
+                    if pname == e.name:
+                        ptype = unwrap_readonly(ptype)
+                        if is_str_view_type(ptype) or is_bytes_view_type(ptype):
+                            return True
+                        break
+            scope_type = (self.ctx.func.current_scope.lookup(e.name)
+                          if self.ctx.func.current_scope else None)
+            if scope_type is not None:
+                scope_type = unwrap_readonly(scope_type)
+                if isinstance(scope_type, PendingViewType):
+                    return True
+                if isinstance(scope_type, LiteralType) and scope_type.is_str_base():
+                    return True
+            return e.name in self.ctx.final_globals
+        if isinstance(e, (TpyCall, TpyMethodCall)):
+            t = self.ctx.get_expr_type(e)
+            return isinstance(t, LiteralType) and t.is_str_base()
+        return False
+
+    def has_nonstatic_view_source(self, expr: TpyExpr | None) -> bool:
+        """True when any view-source leaf of `expr` is not static-lifetime
+        (see `_is_static_view_leaf`); None (loop var / tuple unpack -- the
+        source is a container element or a per-statement temp) is always
+        non-static. Feeds `ViewVarInfo.frame_unsafe_source`."""
+        if expr is None:
+            return True
+        return bool(walk_view_source_leaves(
+            expr, lambda e: [] if self._is_static_view_leaf(e) else [e]))
+
+    def mark_view_nonstatic_reassign(self, var_name: str, value_expr: TpyExpr,
+                                     family: ViewTypeFamily) -> None:
+        """OR `frame_unsafe_source` into an existing pending view local on a
+        view-compatible reassign whose source is not static-lifetime."""
+        if not self.has_nonstatic_view_source(value_expr):
+            return
+        var_id = self.ctx.view_var_map(family).get(var_name)
+        if var_id is not None and var_id in self.ctx.view_vars(family):
+            self.ctx.view_vars(family)[var_id].frame_unsafe_source = True
+
     def mark_view_augassign(self, var_name: str, family: ViewTypeFamily) -> None:
         """Mark a pending view-type variable as used in augmented assignment (+=)."""
         var_id = self.ctx.view_var_map(family).get(var_name)
@@ -1144,6 +1207,18 @@ class LocalTypeDeduction:
         pending = self.ctx.view_pending_resolutions(family)
         vars_reg = self.ctx.view_vars(family)
 
+        # A generator/async body hoists every local into the resumable frame
+        # (or the peephole lambda's captures), which outlives the case-block
+        # temps and suspensions the sync view-safety judgment assumes the
+        # binding shares scope with -- so a non-static source forces owned
+        # storage. Locals side of the param doctrine in
+        # `is_owned_in_coro_frame`; explicit StrView/BytesView annotations
+        # never enter Pending resolution, so the user's view contract is
+        # untouched.
+        func = self.ctx.func.current_function
+        in_resumable = (isinstance(func, TpyFunction)
+                        and (func.is_generator or func.is_async))
+
         # First pass: resolve based on direct usage flags
         for var_id in pending:
             info = vars_reg.get(var_id)
@@ -1156,6 +1231,7 @@ class LocalTypeDeduction:
                 or info.passed_to_promote_param
                 or info.reassigned_from_owned
                 or info.source_mutated
+                or (in_resumable and info.frame_unsafe_source)
             )
 
             info.resolved_type = family.owned_type if needs_owned else family.view_type

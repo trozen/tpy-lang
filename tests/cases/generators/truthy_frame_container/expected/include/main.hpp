@@ -422,7 +422,7 @@ inline auto peephole_or(std::vector<int32_t>& xs, std::string_view t) {
     // # a local because a str param cannot be rebound; clearing the borrowed
     // # list plus emptying `rest` ends the loop after one pass.
     // rest = t
-    std::string_view rest = t;
+    std::string rest = std::string(t);
     return ::tpy::make_generator<int32_t>(
         [&xs, t = std::string(t), rest]() mutable -> std::optional<int32_t> {
             while (((::tpy::__len__(xs) != 0) || (!rest.empty()))) {

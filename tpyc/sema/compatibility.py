@@ -1706,6 +1706,7 @@ class TypeCompatibility:
                     self.deduction.mark_view_reassigned_from_owned(name, vf)
                 else:
                     self.deduction.track_view_reassign_source(name, inner_value_owned, vf)
+                    self.deduction.mark_view_nonstatic_reassign(name, value_expr, vf)
             coerced = self.coerce_expr(
                 value_expr, inner_value_owned, inner_existing, ctx,
                 coercion_ctx=CoercionContext.ASSIGN)

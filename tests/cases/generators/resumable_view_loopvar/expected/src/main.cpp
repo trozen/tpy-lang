@@ -24,7 +24,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            std::string_view w = *__beg_0;
+            std::string w = *__beg_0;
             // print(w)
             std::cout << w << "\n";
         }
@@ -74,7 +74,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            std::span<const uint8_t> b = *__beg_0;
+            std::vector<uint8_t> b = *__beg_0;
             // print(len(b))
             std::cout << ::tpy::__len__(b) << "\n";
         }
@@ -127,7 +127,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
             const auto& __for_tup_0 = *__beg_0;
             // for name, n in pairs:
             const auto& __tup_1 = __for_tup_0;
-            std::string_view name = std::get<0>(__tup_1);
+            std::string name = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
             // print(name, n)
             std::cout << name << " " << n << "\n";
