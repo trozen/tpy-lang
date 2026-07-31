@@ -1,0 +1,2 @@
+THIR fences the mixed owned+borrow tuple, so these bodies fall back; the
+per-element pointer-render question is the AST-first decision it will mirror.

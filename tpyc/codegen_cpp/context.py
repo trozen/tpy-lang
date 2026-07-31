@@ -1279,6 +1279,12 @@ class CodeGenContext:
     # return-value temp; 'auto' would reject the braced / std::nullopt
     # spellings some return sites pass.
     current_return_cpp: str | None = None
+    # Whether the current function's return slot was rendered const (a readonly
+    # method projects const onto its borrow returns). The signature reads
+    # `func.is_readonly` at `_resolve_return_type(const=...)`; return-value
+    # emission must read the SAME fact, or the body builds a mutable-pointer
+    # value against a const-pointer slot.
+    current_return_const: bool = False
     # Generator yield type. Set at generator-body entry points (state-machine
     # __next__, simple-for/simple-while inline lambdas) and read by all yield
     # emission sites so they share one source of truth instead of threading
@@ -1797,6 +1803,7 @@ class CodeGenContext:
         self.indent_level = 0
         self.current_return_type = None
         self.current_return_cpp = None
+        self.current_return_const = False
         self.current_yield_type = None
         self.current_error_return = None
         self.error_return_stmt_handled = False
@@ -1996,6 +2003,7 @@ class CodeGenContext:
             self.match_switch_depth,
             self.current_return_type,
             self.current_return_cpp,
+            self.current_return_const,
             self.current_error_return,
             self.error_return_stmt_handled,
             self.in_async_coro_body,
@@ -2021,6 +2029,7 @@ class CodeGenContext:
         self.match_switch_depth = 0
         self.current_return_type = return_type
         self.current_return_cpp = return_cpp
+        self.current_return_const = False
         self.current_error_return = error_return_cpp
         self.error_return_stmt_handled = False
         self.in_async_coro_body = False
@@ -2048,6 +2057,7 @@ class CodeGenContext:
              self.match_switch_depth,
              self.current_return_type,
              self.current_return_cpp,
+             self.current_return_const,
              self.current_error_return,
              self.error_return_stmt_handled,
              self.in_async_coro_body,
@@ -2467,6 +2477,22 @@ class CodeGenContext:
             return expr.name in self.own_borrow_tuple_locals
         return False
 
+    def tuple_elem_renders_pointer(self, obj: TpyExpr, elem: TpyType) -> bool:
+        """Whether element `elem` of the tuple expression `obj` is ALREADY a
+        bare pointer in this source's render, so a consumer wanting a borrow
+        must not lift it again.
+
+        The question is per element and about the SOURCE: a borrow-form tuple
+        renders every pointer-repr element as `T*`, and a MIXED render does too
+        for its borrowed half even though `is_storage_form_source` calls the
+        tuple storage (that verdict describes only its owned half). Keying on
+        the tuple TYPE instead would misjudge every container-stored mixed
+        tuple, which really has been through `tuple_to_storage`.
+        """
+        return (TupleType._element_is_pointer_repr(elem)
+                and (self.renders_own_borrow_tuple(obj)
+                     or not self.is_storage_form_source(obj)))
+
     def needs_tuple_storage_lift(self, expr: TpyExpr) -> bool:
         """Whether an OWNING tuple slot must run `expr` through
         `tuple_to_storage` rather than take its value as-is.
@@ -2491,6 +2517,12 @@ class CodeGenContext:
         tuple-of-pointer-Optional callers to decide whether to emit an
         element-wise tuple_to_pointer wrap; the value's actual type /
         shape is the caller's responsibility to validate.
+
+        Its any-`Own` branch is scoped to that elementwise-conversion reading:
+        it says the OWNED half is storage, not that every element is. A
+        per-element consumer must ask `tuple_elem_renders_pointer` instead --
+        keying on this verdict is what made a mixed render's borrowed element
+        get lifted a second time.
         """
         if isinstance(expr, (TpyFieldAccess, TpySubscript)):
             return True
@@ -3107,6 +3139,14 @@ class CodeGenContext:
                 # element reads use `.` not `->` -- mark it a storage-form
                 # source like the sync owning local.
                 self.storage_form_tuple_locals.add(lname)
+            elif kind is _rcfg.FrameLocalKind.MIXED_TUPLE_SLOT:
+                self.generator_optional_fields.add(lname)
+                self.generator_frame_slot_locals.add(lname)
+                # A MIXED tuple is by value only in its OWNED half, so the
+                # slot holds the mixed render: element reads split, `.` for
+                # the owned element and `->` for the borrowed pointer.
+                self.storage_form_tuple_locals.add(lname)
+                self.own_borrow_tuple_locals.add(lname)
             elif kind in (_rcfg.FrameLocalKind.FRAME_SLOT,
                           _rcfg.FrameLocalKind.PROTOCOL):
                 # Non-pointer-form non-value frame fields are backed by

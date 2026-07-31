@@ -318,6 +318,7 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         self.ctx.current_return_cpp = return_cpp
+        self.ctx.current_return_const = bool(getattr(func, 'is_readonly', False))
         # Set current_yield_type for generator bodies so yield-emission sites
         # don't need it threaded through their call signatures. Skipped for
         # sema-errored generators (no resolved yield type) -- leaves the
@@ -835,8 +836,18 @@ class StatementGenerator:
                     dyn_own_ret = self.expressions._gen_dynamic_protocol_arg(ret_value, ret_type)
                     if dyn_own_ret is not None:
                         return self._make_return(indent, dyn_own_ret)
+                # A readonly method's borrow-form tuple return is rendered with
+                # const element pointers; the value has to be BUILT that way or
+                # the body disagrees with its own signature. Readonly is the
+                # same fact the signature reads, and the readonly target is the
+                # existing route to const element slots.
+                value_target = ret_type
+                if (self.ctx.current_return_const
+                        and isinstance(ret_type, TupleType)
+                        and ret_type.has_pointer_repr_element()):
+                    value_target = ReadonlyType(ret_type)
                 ret_expr = self.expressions.gen_expr(
-                    ret_value, ret_type)
+                    ret_value, value_target)
                 # OPTIONAL_STORAGE source names (Own[Opt[P_ref]] params)
                 # are rendered as std::optional<P>, not P*. When the return
                 # type is the same Own[Optional[P_ref]] shape, std::move the
@@ -1874,6 +1885,13 @@ class StatementGenerator:
         """
         inner = self.ctx.unwrap_copy(init)
         init_expr = self.expressions.gen_expr(init, var_type)
+        # A MIXED render needs no slot: it already IS the local's shape, with
+        # its owned element held by value inside the tuple and its borrowed
+        # element pointing at storage the caller keeps alive. Materializing it
+        # would copy the borrowed half into the slot -- the whole reason the
+        # mixed tuple has no unified borrow form to lift to.
+        if self.ctx.renders_own_borrow_tuple(inner):
+            return "", init_expr
         # An owning-call RHS (Own[tuple] / per-element-Own return) is a dying
         # rvalue -- materialize a slot rather than take its address. The
         # owning-call shape is exactly is_storage_form_source for a call node.

@@ -163,6 +163,14 @@ class FrameLocalKind(Enum):
       * OWNING_TUPLE_SLOT-- `::tpy::frame_slot<std::tuple<...storage...>>`:
                             an owning tuple (Own element / owned call
                             result); emplace writes, `(*name)` reads.
+      * MIXED_TUPLE_SLOT -- the owning slot of a MIXED tuple
+                            (`tuple[Own[A], B]`), whose payload is the mixed
+                            render `std::tuple<A, B*>` rather than a
+                            fully-owned storage tuple: the owned element is
+                            held by value, the borrowed one stays a pointer
+                            into the caller's object. Reads split per element
+                            (`.` owned, `->` borrowed), which is what
+                            separates it from OWNING_TUPLE_SLOT.
       * FRAME_SLOT       -- `::tpy::frame_slot<T> name;` owning slot for
                             plain non-value locals; emplace writes,
                             `(*name)` reads.
@@ -186,6 +194,7 @@ class FrameLocalKind(Enum):
     OPT_PTR = "opt_ptr"
     BORROW_TUPLE = "borrow_tuple"
     OWNING_TUPLE_SLOT = "owning_tuple_slot"
+    MIXED_TUPLE_SLOT = "mixed_tuple_slot"
     FRAME_SLOT = "frame_slot"
     SOURCE_FORM_SLOT = "source_form_slot"
     PROTOCOL = "protocol"
@@ -195,8 +204,10 @@ class FrameLocalKind(Enum):
 class FrameLocalLayout:
     """Placement verdict for one hoisted local. `const` applies to the
     pointer kinds (PTR_ALIAS / OPT_PTR: `const T*` when the alias source
-    is const-rooted). `payload` is the SOURCE_FORM_SLOT field's C++ payload
-    spelling (None for every other kind)."""
+    is const-rooted). `payload` is the frame_slot field's C++ payload
+    spelling for the kinds that cannot re-derive it from the local's type --
+    SOURCE_FORM_SLOT (spelled from the iteration source) and
+    MIXED_TUPLE_SLOT (the mixed render); None for every other kind."""
     kind: FrameLocalKind
     const: bool = False
     payload: 'str | None' = None

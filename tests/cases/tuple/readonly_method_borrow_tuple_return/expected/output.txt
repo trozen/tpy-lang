@@ -1,0 +1,4 @@
+pair: 7 7
+declared: 7
+mixed: 1 7
+bump: 42 42 1

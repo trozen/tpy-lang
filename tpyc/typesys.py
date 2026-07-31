@@ -2826,6 +2826,12 @@ def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     the source like CPython; a per-element `Own[T]` slot would otherwise
     keep it on owning storage form and copy the alias. Collapsing to the
     unified borrow type lets sema and codegen agree on the borrow-slot path.
+
+    A MIXED tuple (`tuple[Own[A], B]`) is left alone: it HAS no unified form
+    to collapse onto. Its owned element must stay by value (a pointer would
+    have nothing to point at but a materialized slot, which then copies the
+    borrowed element), so its one shape is the mixed render
+    `std::tuple<A, B*>` -- which is what the retained `Own` markers spell.
     """
     inner = unwrap_readonly(var_type)
     if isinstance(inner, OptionalType):
@@ -2837,6 +2843,8 @@ def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     if not isinstance(inner, TupleType):
         return var_type
     if not any(isinstance(et, OwnType) for et in inner.element_types):
+        return var_type
+    if inner.is_mixed_own():
         return var_type
     collapsed = TupleType(tuple(
         et.wrapped if isinstance(et, OwnType) else et

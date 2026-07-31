@@ -6924,9 +6924,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # would make the coverage metric lie.
                 lit = _lower_borrow_tuple_literal(
                     stmt.value, ret_tuple, lc, declared,
-                    target_readonly=isinstance(
-                        unwrap_ref_type(unwrap_send_sync(
-                            _fn_return_type(lc))), ReadonlyType))
+                    # A readonly method renders its borrow return with const
+                    # element pointers, so the literal owes the same slots --
+                    # the same fact the signature reads (see the AST sibling in
+                    # `_gen_return`).
+                    target_readonly=(
+                        isinstance(
+                            unwrap_ref_type(unwrap_send_sync(
+                                _fn_return_type(lc))), ReadonlyType)
+                        or bool(getattr(lc.func, 'is_readonly', False))))
                 _witness("ret.btuple_literal")
                 return THIRReturn(value=lit, loc=loc)
             else:

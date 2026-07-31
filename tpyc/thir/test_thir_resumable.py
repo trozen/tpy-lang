@@ -5230,3 +5230,36 @@ class TestFrameLayoutPrecedence:
         assert plan is not None
         assert (plan.bindings["p"].kind
                 is rcfg.FrameLocalKind.SOURCE_FORM_SLOT)
+
+    def test_mixed_own_tuple_local_is_its_own_slot_kind(self):
+        # A MIXED owned+borrow tuple frame local (`tuple[Own[Box], Box]`)
+        # carries an Own element, so it lands in the owning-tuple arm -- but
+        # it has no fully-owned storage form to hold: the borrowed element
+        # must keep pointing at the caller's object. Its own kind carries the
+        # mixed render as the payload; sharing OWNING_TUPLE_SLOT would spell
+        # `frame_slot<std::tuple<Box, Box>>` and copy the borrowed half.
+        src = (_PRE
+               + "from typing import Iterator\n"
+               + "from tpy import Own\n\n"
+               + "class Box:\n"
+               + "    val: Int32\n\n"
+               + "    def __init__(self, val: Int32) -> None:\n"
+               + "        self.val = val\n\n"
+               + "def make_mixed(b: Box) -> tuple[Own[Box], Box]:\n"
+               + "    return (Box(1), b)\n\n"
+               + "def f(b: Box) -> Iterator[Int32]:\n"
+               + "    p = make_mixed(b)\n"
+               + "    yield p[0].val\n"
+               + "    yield p[1].val\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        from ..codegen_cpp import resumable_cfg as rcfg
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        func = next(fn for fn in entry.ast.functions if fn.name == "f")
+        plan = rcfg.resumable_state(func).frame_layout
+        assert plan is not None
+        verdict = plan.bindings["p"]
+        assert verdict.kind is rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
+        assert verdict.payload is not None and verdict.payload.endswith("Box*>")

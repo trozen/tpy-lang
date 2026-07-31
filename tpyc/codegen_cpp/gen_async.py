@@ -1267,8 +1267,16 @@ class AsyncCoroCodegen:
                 # OWNING pointer-repr tuple local: the frame must hold the
                 # element storage (emplace writes, `(*name)` reads) -- a
                 # borrow `std::tuple<..., T*>` field can't own, and the
-                # owning rvalue can't be address-taken into it.
-                kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
+                # owning rvalue can't be address-taken into it. A MIXED tuple
+                # has no fully-owned storage form to hold: its borrowed
+                # element must keep pointing at the caller's object, so its
+                # payload is the mixed render.
+                if (isinstance(ltype_inner, TupleType)
+                        and ltype_inner.is_mixed_own()):
+                    kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
+                    payload = self.types.tuple_borrow_cpp(ltype_inner)
+                else:
+                    kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
             elif (isinstance(ltype_inner, TupleType)
                     and ltype_inner.has_pointer_repr_element()
                     and (not lname.startswith("__for_tup_")
@@ -1378,6 +1386,9 @@ class AsyncCoroCodegen:
                 elif kind is rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
                     storage_cpp = ltype_inner.to_cpp_stored()
                     out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
+                elif kind is rcfg.FrameLocalKind.MIXED_TUPLE_SLOT:
+                    out.write(
+                        f"{INDENT}::tpy::frame_slot<{verdict.payload}> {cpp_name};\n")
                 elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
                     cpp_type = self.types.tuple_borrow_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")

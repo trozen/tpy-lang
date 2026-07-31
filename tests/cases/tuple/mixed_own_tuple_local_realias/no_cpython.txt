@@ -1,0 +1,2 @@
+The mixed local copies the field element 0 where CPython aliases; the
+divergence is the thing under test (it warns, with copy() as the hatch).

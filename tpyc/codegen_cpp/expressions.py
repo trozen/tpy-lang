@@ -6188,10 +6188,11 @@ class ExpressionGenerator:
         if not (0 <= idx < n):
             return False
         et = obj_type.element_types[idx]
+        # The Optional sibling of this question routes through the same
+        # predicate at the subscript's own emit site (the `optional_to_ptr`
+        # pre-lift); here the caller wants the plain-reference slot only.
         return (et.value_form() is ValueForm.BORROW_REF
-                and TupleType._element_is_pointer_repr(et)
-                and (self.ctx.renders_own_borrow_tuple(expr.obj)
-                     or not self.ctx.is_storage_form_source(expr.obj)))
+                and self.ctx.tuple_elem_renders_pointer(expr.obj, et))
 
     def _borrow_ptr_form_value(self, elem: TpyExpr,
                                elem_target: 'TpyType') -> str:
@@ -6299,7 +6300,7 @@ class ExpressionGenerator:
             # predicate causes consumers to silently miss the lift.
             elem_type = tuple_type.element_types[idx]
             if (isinstance(elem_type, OptionalType) and elem_type.uses_pointer_repr()
-                    and self.ctx.is_storage_form_source(expr.obj)):
+                    and not self.ctx.tuple_elem_renders_pointer(expr.obj, elem_type)):
                 result = f"::tpy::optional_to_ptr({result})"
             # Generic slot (val_or_ptr_t<T>): read as a usable value/reference
             # -- derefs the non-value pointer case at instantiation. Consumers
@@ -6704,16 +6705,23 @@ class ExpressionGenerator:
         reassigned_borrow = (borrow_tuple
                              and expr.target in self.ctx.reassigned_vars)
         elem_const = expr.target in self.ctx.const_borrow_form_tuple_locals
+        # A MIXED render is already the local's shape (owned element by value,
+        # borrowed element a pointer into storage the caller keeps): it takes
+        # the borrow spelling and assigns straight, with no owning slot to
+        # materialize into -- materializing would copy the borrowed half.
+        mixed_render = False
         if borrow_tuple:
             val_src = self.ctx.unwrap_copy(expr.value)
             if isinstance(val_src, TpyCoerce):
                 val_src = val_src.expr
-            if isinstance(val_src, (TpyCall, TpyMethodCall)):
-                storage_rvalue = self.ctx.is_storage_form_source(val_src)
-            elif self.ctx.is_storage_form_source(val_src):
-                value_code = (f"::tpy::tuple_to_pointer"
-                              f"<{self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)}>"
-                              f"({value_code})")
+            mixed_render = self.ctx.renders_own_borrow_tuple(val_src)
+            if not mixed_render:
+                if isinstance(val_src, (TpyCall, TpyMethodCall)):
+                    storage_rvalue = self.ctx.is_storage_form_source(val_src)
+                elif self.ctx.is_storage_form_source(val_src):
+                    value_code = (f"::tpy::tuple_to_pointer"
+                                  f"<{self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)}>"
+                                  f"({value_code})")
 
         # Borrow-only walrus target (sema stmt-borrow fact, never rvalue-
         # bound): bind as a pointer to the live source -- owned storage
@@ -6799,7 +6807,8 @@ class ExpressionGenerator:
         # False but still needs its function-scope owning slot, and a later
         # sibling-branch occurrence reuses it (the rvalue-slot return path reads
         # rebind_slots[target]). Function scope when hoisted, else a temp.
-        if reassigned_borrow and expr.target not in self.ctx.rebind_slots:
+        if (reassigned_borrow and not mixed_render
+                and expr.target not in self.ctx.rebind_slots):
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[expr.target] = slot
             self.ctx.persistent_rebind_slots[expr.target] = slot

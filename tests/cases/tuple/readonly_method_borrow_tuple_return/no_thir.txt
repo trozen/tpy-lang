@@ -1,0 +1,2 @@
+The mixed owned+borrow return stays fenced in THIR; the readonly const
+render itself is mirrored, so only that one body falls back.
