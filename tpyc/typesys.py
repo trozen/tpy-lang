@@ -14,7 +14,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Iterator, Optional, TYPE_CHECKING
+from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, TYPE_CHECKING
 
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
@@ -3200,7 +3200,7 @@ class AliasRef(TpyType):
     """Explicit forward reference to a type alias.
 
     Used by the parser for self-references inside a recursive alias body
-    (`type Tree = int | list[Tree]` — the inner `Tree` becomes an
+    (`type Tree = int | list[Tree]` -- the inner `Tree` becomes an
     `AliasRef("Tree", module=...)` because the alias isn't yet in the
     registry when its own body is parsed). Replacing the prior
     "bare NominalType" placeholder makes downstream placeholder
@@ -4970,6 +4970,89 @@ def polymorphic_subclass_into_optional(
     return None
 
 
+def none_default_cpp_spelling(ptype: TpyType) -> str:
+    """How a `None` default/argument spells in C++ for a parameter of `ptype`.
+
+    THE single answer, so a consumer that only needs "is it the bare `nullptr`?"
+    (a target-less render can reproduce that and nothing else) asks the same
+    function that emits it. `Own[T]` forces value form regardless of the inner
+    repr, and a None-including union keeps `std::monostate` first in BOTH reprs,
+    so `{}` default-constructs to None either way.
+    """
+    inner = ptype.wrapped if isinstance(ptype, OwnType) else ptype
+    if isinstance(inner, OptionalType):
+        if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
+            return "std::nullopt"
+    if isinstance(inner, UnionType) and not is_protocol_union(inner):
+        return "{}"
+    return "nullptr"
+
+
+def default_needs_call_site_fill(ptype: TpyType) -> bool:
+    """Whether a default on this parameter must be filled at the CALL site
+    rather than emitted as a C++ default argument.
+
+    A value-form `std::optional<Rec>` / `std::variant<..., Rec, ...>` default
+    has its conversion to the parameter type checked AT THE DECLARATION, and
+    free functions are declared ahead of every record definition -- so the
+    class template instantiates over an incomplete type and the build dies
+    inside <type_traits>. Pointer-form (`Rec*`) members and scalars are
+    complete at that point and keep the C++ default -- except under `Own[T]`,
+    which renders the value form whatever the inner repr says, so the
+    pointer-form escape does not apply to it.
+    """
+    def _is_record(t: TpyType) -> bool:
+        # Only NominalType carries the flag; a NoneType/monostate arm does not.
+        return isinstance(t, NominalType) and t.is_user_record
+
+    own = isinstance(ptype, OwnType)
+    inner = ptype.wrapped if own else ptype
+    if isinstance(inner, OptionalType):
+        return (own or not inner.uses_pointer_repr()) and _is_record(inner.inner)
+    if isinstance(inner, UnionType):
+        if is_protocol_union(inner) or (inner.uses_pointer_repr() and not own):
+            return False
+        return any(_is_record(m) for m in inner.members)
+    return False
+
+
+# (param_type, default_expr); the expr is a parser TpyExpr, spelled Any here for
+# the same circular-import reason as ParamInfo.default_expr.
+DefaultSlot = tuple[TpyType, Any]
+
+
+def default_emittable_at(slots: Sequence[DefaultSlot], i: int,
+                         is_member: bool = False) -> bool:
+    """Whether parameter `i`'s default can be a C++ default argument.
+
+    `slots`: (param_type, default_expr) in signature order. THE rule -- codegen
+    emits from it and the call-site fill is its complement, so the two cannot
+    define "needs filling" differently.
+
+    C++ requires defaults to form a trailing suffix, which Python does not. A
+    default whose type would instantiate a class template over a user record
+    additionally has no spelling where a FREE function is declared, since that
+    block precedes every record definition; inside a record the alternatives
+    are already defined, so a member keeps such a default (a member whose union
+    forward-references a LATER record is the residual, tracked in BUGS.md).
+    """
+    if slots[i][1] is None:
+        return False
+    if not is_member and any(d is not None and default_needs_call_site_fill(t)
+                             for t, d in slots):
+        return False
+    return all(slots[j][1] is not None for j in range(i + 1, len(slots)))
+
+
+def any_default_suppressed(slots: Iterable[DefaultSlot],
+                           is_member: bool = False) -> bool:
+    """True when some default is not emittable, so every call must supply the
+    omitted arguments explicitly. The exact complement of `default_emittable_at`."""
+    slots = list(slots)
+    return any(d is not None and not default_emittable_at(slots, i, is_member)
+               for i, (_t, d) in enumerate(slots))
+
+
 def is_protocol_union(typ: TpyType) -> bool:
     """Check if a type is a union where all non-None members are static protocols.
 
@@ -5221,6 +5304,16 @@ class RecordInfo:
         typing.overload) and should not generate C++ code.
         """
         return self.builtin_type_key is not None and not self.methods and not self.fields
+
+    @property
+    def materializes_defaults(self) -> bool:
+        """True if a ctor default here has no C++ default-argument spelling, so
+        every construction must fill its omitted arguments explicitly. The
+        `FunctionInfo` twin, over `init_params`' (name, type, default) shape."""
+        # A ctor is a member: its record's alternatives are defined by the
+        # time the in-class declaration is read.
+        return any_default_suppressed(((t, d) for _n, t, d in self.init_params),
+                                      is_member=True)
 
     def is_final_class_constant(self, name: str) -> bool:
         """True if `name` is declared on this record as a Final class
@@ -5537,6 +5630,17 @@ class FunctionInfo:
     def has_keyword_only(self) -> bool:
         """True if this function has keyword-only parameters."""
         return any(p.keyword_only for p in self.params)
+
+    @property
+    def materializes_defaults(self) -> bool:
+        """True if a default here has no C++ default-argument spelling, so
+        every call must fill its omitted arguments explicitly. Reads the same
+        rule codegen's `default_emittable` does, so the two cannot disagree
+        about which slots the caller owes.
+        """
+        return any_default_suppressed(
+            ((p.type, p.default_expr) for p in self.params),
+            is_member=self.is_method)
 
     @property
     def min_args(self) -> int:

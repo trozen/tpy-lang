@@ -22,6 +22,7 @@ from typing import Literal, TextIO, TYPE_CHECKING
 MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
 from ..typesys import (
+    default_emittable_at, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
     BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, is_dyn_protocol, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
@@ -72,6 +73,20 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
         if isinstance(inner, IntLiteralType) and inner.value is not None:
             return IntLiteralType(value=-inner.value)
     return None
+
+
+def default_emittable(defaults: list, i: int, n_params: int,
+                      ptype: 'TpyType | None' = None,
+                      params: 'list | None' = None,
+                      is_member: bool = False) -> bool:
+    """Can parameter `i`'s default be a C++ default argument? Thin adapter over
+    `default_emittable_at`, which is the one definition the call-site fill is
+    the complement of."""
+    slots = [(t, defaults[j] if j < len(defaults) else None)
+             for j, (_n, t) in enumerate(params or [])] if params else [
+        (ptype, defaults[j] if j < len(defaults) else None)
+        for j in range(n_params)]
+    return default_emittable_at(slots, i, is_member) if i < len(slots) else False
 
 
 def _narrow_overload_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
@@ -240,20 +255,7 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
             return cpp_bytes_literal_span(expr.value)
         return cpp_bytes_literal_owned(expr.value)
     if isinstance(expr, TpyNoneLiteral):
-        # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
-        # Bare OptionalType with pointer repr -> T* param, needs nullptr.
-        inner = ptype.wrapped if isinstance(ptype, OwnType) else ptype
-        if isinstance(inner, OptionalType):
-            if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
-                return "std::nullopt"
-        if isinstance(inner, UnionType):
-            # None-including unions keep std::monostate as the FIRST variant
-            # alternative in both reprs, so {} default-constructs to None.
-            # Protocol-member unions are the exception: they lower to a
-            # monomorphized template pointer param, so nullptr stands.
-            if not is_protocol_union(inner):
-                return "{}"
-        return "nullptr"
+        return none_default_cpp_spelling(ptype)
     if isinstance(expr, TpyName):
         # Final[T] module constant in default position (sema validated).
         # For imported names: route through the attribute table's
@@ -429,7 +431,8 @@ class FunctionGenerator:
                    defaults: list | None = None,
                    emit_defaults: bool = False,
                    class_type_params: set[str] | None = None,
-                   func: 'TpyFunction | None' = None) -> str:
+                   func: 'TpyFunction | None' = None,
+                   is_member: bool = False) -> str:
         """Generate function parameter list.
 
         Own[T] params are emitted as T&& (rvalue ref) for concrete T, or
@@ -453,13 +456,14 @@ class FunctionGenerator:
         """
         parts = []
         fn_idx = 0
+        member = is_member or bool(func and func.is_method)
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             # Fn params become forwarding-ref template params
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
-                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
@@ -470,7 +474,7 @@ class FunctionGenerator:
             if func and func.vararg_name and pname == func.vararg_name and is_varargs(bare_ptype):
                 inner_cpp = self.types.varargs_elem_cpp(bare_ptype.type_args[0])
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
-                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
@@ -500,7 +504,7 @@ class FunctionGenerator:
                     and ptype.wrapped.name in class_type_params):
                 tp_cpp = ptype.wrapped.to_cpp()
                 part = part.replace(f"std::type_identity_t<{tp_cpp}>&&", f"{tp_cpp}&&")
-            if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             parts.append(part)
         return ", ".join(parts)
@@ -526,7 +530,9 @@ class FunctionGenerator:
                                    use_readonly_params: bool = False,
                                    mutated_params: frozenset[int] | None = None,
                                    defaults: list | None = None,
-                                   emit_defaults: bool = False) -> str:
+                                   emit_defaults: bool = False,
+                                   func: 'TpyFunction | None' = None,
+                                   is_member: bool = False) -> str:
         """Generate function parameter list, using template types for protocol params.
 
         Static protocols use template types (T_paramname).
@@ -537,16 +543,21 @@ class FunctionGenerator:
         mutated_params: frozenset of param indices with confirmed mutations (same
         semantics as gen_params). When provided, non-mutated protocol params use
         const T_x& / const Base& instead of T_x& / Base&.
+
+        `func` carries the same member fallback as gen_params: a default's C++
+        legality depends on whether the declaration sits inside a record, so a
+        caller that knows the callable must not have to remember to say so twice.
         """
         result = []
         fn_idx = 0
+        member = is_member or bool(func and func.is_method)
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             # Fn params become forwarding-ref template params (same as gen_params)
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
-                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 result.append(part)
                 continue
@@ -600,7 +611,7 @@ class FunctionGenerator:
                         use_readonly_params=use_readonly_params,
                     )
                     part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
-            if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             result.append(part)
         return ", ".join(result)
@@ -954,7 +965,8 @@ class FunctionGenerator:
                                                   error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
-                                                     defaults=dfl, emit_defaults=True)
+                                                     defaults=dfl, emit_defaults=True,
+                                                     func=func)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -966,7 +978,8 @@ class FunctionGenerator:
                                                   error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params,
                                                      mutated_params=mp,
-                                                     defaults=dfl, emit_defaults=True)
+                                                     defaults=dfl, emit_defaults=True,
+                                                     func=func)
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            mutated_params=mp, addr_escapes_params=ae,
@@ -1659,11 +1672,13 @@ class FunctionGenerator:
                                                         const_params=True,
                                                         mutated_params=gmp,
                                                         use_readonly_params=const,
-                                                        defaults=dfl, emit_defaults=emit_defaults)
+                                                        defaults=dfl, emit_defaults=emit_defaults,
+                                                        func=method)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         mutated_params=None if declared_const_only else mp,
-                                                        defaults=dfl, emit_defaults=emit_defaults)
+                                                        defaults=dfl, emit_defaults=emit_defaults,
+                                                        func=method)
         else:
             ctp = class_type_params or None
             if use_const_params and not declared_const_only:

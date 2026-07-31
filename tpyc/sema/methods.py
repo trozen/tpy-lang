@@ -391,15 +391,19 @@ class MethodAnalyzer:
         # Resolve kwargs before arity check. For the single-overload path we
         # expand kwargs here; the multi-overload path defers resolution to
         # after overload resolution so kwargs can participate in tier ranking.
-        has_kwonly = any(p.keyword_only for p in (overloads[0].params if len(overloads) == 1 else []))
-        if len(overloads) == 1 and (expr.kwargs or has_kwonly):
+        sole = overloads[0] if len(overloads) == 1 else None
+        has_kwonly = any(p.keyword_only for p in (sole.params if sole else []))
+        # A default with no C++ spelling must be filled here or the emitted
+        # call drops the argument entirely.
+        needs_fill = sole.materializes_defaults if sole else False
+        if len(overloads) == 1 and (expr.kwargs or has_kwonly or needs_fill):
             target = overloads[0]
             resolved_target = (self.type_ops.substitute_method_type_params(target, type_subst)
                                if type_subst else target)
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, resolved_target.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc,
+                call_loc=expr.loc, is_member=True,
             )
             expr.kwargs = {}
 
@@ -461,12 +465,14 @@ class MethodAnalyzer:
                     f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
             expr.resolved_function_info = resolved
             coerce_arg_types: list[TpyType] | None = arg_types
-            if expr.kwargs:
-                # Winner picked; expand kwargs into positional slots against its signature.
+            if expr.kwargs or resolved.materializes_defaults:
+                # Winner picked; expand kwargs into positional slots against its
+                # signature. A default with no C++ spelling must be filled even
+                # with no kwargs, or the emitted call is an argument short.
                 expr.args = resolve_kwargs(
                     expr.args, expr.kwargs, resolved.params, expr.method,
                     lambda msg: self.ctx.error(msg, expr),
-                    call_loc=expr.loc,
+                    call_loc=expr.loc, is_member=True,
                 )
                 expr.kwargs = {}
                 # Pre-analyzed types no longer align with expanded expr.args;
@@ -1544,11 +1550,12 @@ class MethodAnalyzer:
         method = overloads[0]
 
         # Resolve kwargs (also enforces keyword-only constraints when no kwargs)
-        if expr.kwargs or method.has_keyword_only:
+        if (expr.kwargs or method.has_keyword_only
+                or method.materializes_defaults):
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, method.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc,
+                call_loc=expr.loc, is_member=True,
             )
             expr.kwargs = {}
 

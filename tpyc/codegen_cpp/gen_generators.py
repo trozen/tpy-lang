@@ -232,7 +232,7 @@ class GeneratorCodegen:
         if proto_params or has_dynamic:
             return self.functions.gen_params_with_protocols(
                 func.params, func.type_params, emit_defaults=emit_defaults,
-                defaults=dfl)
+                defaults=dfl, func=func)
         return self.functions.gen_params(func.params, func.type_params,
                                          emit_defaults=emit_defaults, func=func,
                                          defaults=dfl)

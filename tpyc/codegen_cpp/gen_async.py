@@ -66,7 +66,7 @@ from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_owned_in_coro_frame, view_owned_copy_init)
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
-from .functions import default_to_cpp
+from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
 
 
@@ -753,8 +753,10 @@ class AsyncCoroCodegen:
         parts: list[str] = []
         for i, cp in enumerate(self._classify_params(func)):
             decl = cp.factory_param_decl()
-            if (emit_defaults and i < len(defaults)
-                    and defaults[i] is not None):
+            if (emit_defaults
+                    and default_emittable(defaults, i, len(func.params),
+                                          func.params[i][1], func.params,
+                                          func.is_method)):
                 decl += f" = {default_to_cpp(self.ctx, defaults[i], func.params[i][1])}"
             parts.append(decl)
         return ", ".join(parts)

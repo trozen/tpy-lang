@@ -212,14 +212,10 @@ design -- the same long pole.)
   not a `Point` with or without `@export` -- and is caught by the parameter-
   default type check sema applies to every declaration.) A dunder keeps rejecting every non-plain
   form: it reaches CPython as a type slot that supplies its operand directly,
-  so there is no argument tuple to parse. **Known limitation, not boundary-
-  specific:** a defaulted parameter placed BEFORE a required keyword-only one
-  (`def f(a, b=10, *, c)`, and equally `def f(*, a=1, b)`) does not build --
-  TPy models defaults as C++ positional default arguments, which must be
-  trailing, so the failure lands as a raw toolchain error on the generated
-  header. The same source fails with no `@export` involved; tracked in
-  BUGS.md. Give the keyword-only parameter a default, or drop the earlier
-  one, until that lowering changes.
+  so there is no argument tuple to parse. A defaulted parameter placed BEFORE a required
+  keyword-only one (`def f(a, b=10, *, c)`) builds: C++ requires default
+  arguments to be trailing, so that default has no C++ spelling and is
+  materialized at the call site instead of emitted on the declaration.
 
 ### Dunder docstrings do not cross (measured, not assumed)
 

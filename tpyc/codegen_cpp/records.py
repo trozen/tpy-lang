@@ -33,7 +33,8 @@ from .. import qnames
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp)
-from .functions import factory_default_to_cpp
+from ..parse import TpyNoneLiteral
+from .functions import default_to_cpp, factory_default_to_cpp
 from .int_literals import render_int_literal_value
 from .resumable_cfg import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
@@ -833,6 +834,7 @@ class RecordGenerator:
                 mutated_params=init_mp,
                 defaults=init_defaults,
                 emit_defaults=emit_defaults,
+                is_member=True,
             )
             template_header = ""
             if proto_params:
@@ -851,6 +853,7 @@ class RecordGenerator:
             defaults=init_defaults,
             emit_defaults=emit_defaults,
             class_type_params=set(record.type_params) if record.type_params else None,
+            is_member=True,
         )
         return "", cpp_params
 
@@ -1463,7 +1466,20 @@ class RecordGenerator:
             parent_type = expr.super_parent_type or expr.unbound_self_parent_type
             if parent_type is None:
                 raise CodeGenError("base __init__ call without resolved parent type", stmt.loc)
-            args = ", ".join(self.expressions.gen_expr(a) for a in expr.args)
+            # A `None` needs its slot's shape to spell (`std::nullopt` for a
+            # value-form optional, not `nullptr`), which a target-less render
+            # cannot know; every other arg keeps the plain render so the
+            # emitted list stays byte-identical.
+            base_info = self.ctx.analyzer.registry.get_record_for_type(parent_type)
+            base_params = base_info.init_params if base_info else []
+
+            def _base_arg(i: int, a) -> str:
+                pt = base_params[i][1] if i < len(base_params) else None
+                if isinstance(a, TpyNoneLiteral) and pt is not None:
+                    return default_to_cpp(self.ctx, a, pt)
+                return self.expressions.gen_expr(a)
+
+            args = ", ".join(_base_arg(i, a) for i, a in enumerate(expr.args))
             code = f"{parent_type.to_cpp()}({args})"
             # Unknown-parent entries sort after all known ones (preserves source
             # order between them via src_idx). Shouldn't happen for well-formed

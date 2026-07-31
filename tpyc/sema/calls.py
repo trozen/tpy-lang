@@ -13,6 +13,8 @@ from typing import Callable, Iterator, NoReturn, TYPE_CHECKING
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
+    any_default_suppressed,
+    default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     deref_dispatch_inner,
@@ -131,6 +133,16 @@ def _init_params_min_args(init_params: list) -> int:
     return sum(1 for _, _, default in init_params if default is None)
 
 
+def materialized_default(p: ParamInfo,
+                         call_loc: 'SourceLocation | None') -> TpyExpr:
+    """Clone a parameter's default for splicing into a call's argument list.
+
+    The clone carries the CALL's loc so an error points at the call rather
+    than the definition.
+    """
+    return dc_replace(p.default_expr, loc=call_loc) if call_loc is not None else p.default_expr
+
+
 def resolve_kwargs(
     expr_args: list[TpyExpr],
     expr_kwargs: dict[str, TpyExpr],
@@ -138,8 +150,13 @@ def resolve_kwargs(
     func_name: str,
     error_fn,
     call_loc: 'SourceLocation | None' = None,
+    is_member: bool = False,
 ) -> list[TpyExpr]:
     """Resolve keyword arguments into a fully-positional argument list.
+
+    `is_member` reaches the shared emit rule: a free function's declaration
+    precedes every record definition, so a record-typed default has no C++
+    spelling there and must be filled here; a member's does not.
 
     Validates kwarg names, detects duplicate/missing args, and fills gaps
     with default expressions from ParamInfo. Gap-filled defaults get the
@@ -160,22 +177,32 @@ def resolve_kwargs(
         raise error_fn(
             f"'{func_name}' takes {pos_count} positional argument(s), got {len(expr_args)}")
 
+    needs_fill = any_default_suppressed(
+        ((p.type, p.default_expr) for p in params), is_member=is_member)
+
     if not expr_kwargs:
         # Even without kwargs, check for missing required keyword-only params
         # and fill in defaults for optional keyword-only params
         for p in params:
             if p.keyword_only and not p.has_default:
                 raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
-        if has_kwonly:
-            # Append keyword-only defaults to the args list
+        if has_kwonly or needs_fill:
+            # Keyword-only defaults are appended positionally, so every
+            # omitted slot BEFORE them has to be filled too -- otherwise a
+            # keyword-only default slides into the skipped positional's slot.
+            # Positional args bind the fixed slots first and only overflow into
+            # *args once those are full, so the omitted fixed slots are the
+            # tail either way and a variadic needs no separate rule.
             result = list(expr_args)
-            for p in params:
-                if not p.keyword_only:
-                    continue
-                default = p.default_expr
-                if call_loc is not None and default is not None:
-                    default = dc_replace(default, loc=call_loc)
-                result.append(default)
+            fixed = [p for p in params if not p.is_variadic and not p.is_kwargs]
+            fixed_pos = [p for p in fixed if not p.keyword_only]
+            pending = (fixed_pos[len(expr_args):]
+                       + [p for p in fixed if p.keyword_only])
+            for p in pending:
+                if not p.keyword_only and not p.has_default:
+                    raise error_fn(
+                        f"'{func_name}' missing required argument: '{p.name}'")
+                result.append(materialized_default(p, call_loc))
             return result
         return expr_args
 
@@ -197,16 +224,25 @@ def resolve_kwargs(
     # Handle separately: raw positional args stay as-is, then append resolved kwonly args.
     if has_variadic:
         result = list(expr_args)
+        # An omitted fixed slot still has to be filled before the keyword-only
+        # args appended below, or one of those slides into it -- the same shift
+        # the no-kwargs branch guards against.
+        fixed_pos = [p for p in params
+                     if not p.keyword_only and not p.is_variadic and not p.is_kwargs]
+        for p in fixed_pos[len(expr_args):]:
+            if p.name in expr_kwargs:
+                result.append(expr_kwargs[p.name])
+            elif p.has_default:
+                result.append(materialized_default(p, call_loc))
+            else:
+                raise error_fn(f"'{func_name}' missing required argument: '{p.name}'")
         for p in params:
             if not p.keyword_only:
                 continue
             if p.name in expr_kwargs:
                 result.append(expr_kwargs[p.name])
             elif p.has_default:
-                default = p.default_expr
-                if call_loc is not None:
-                    default = dc_replace(default, loc=call_loc)
-                result.append(default)
+                result.append(materialized_default(p, call_loc))
             else:
                 raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
         return result
@@ -217,6 +253,19 @@ def resolve_kwargs(
         idx = name_to_index[kw_name]
         if idx > rightmost:
             rightmost = idx
+    # A function whose defaults have no C++ spelling emits none of them, so
+    # the trailing slots have nothing to fall back on and must be filled here.
+    # Fill exactly the slots whose default codegen suppressed -- a default it
+    # still emits needs no argument, so extending past the last suppressed one
+    # would only pad the call.
+    if needs_fill:
+        slots = [(p.type, p.default_expr) for p in params]
+        suppressed = [i for i, p in enumerate(params)
+                      if p.default_expr is not None
+                      and not p.is_variadic and not p.is_kwargs
+                      and not default_emittable_at(slots, i, is_member)]
+        if suppressed:
+            rightmost = max(rightmost, suppressed[-1])
 
     # Build result list up to rightmost
     result: list[TpyExpr] = []
@@ -227,10 +276,7 @@ def resolve_kwargs(
         elif p.name in expr_kwargs:
             result.append(expr_kwargs[p.name])
         elif p.has_default:
-            default = p.default_expr
-            if call_loc is not None:
-                default = dc_replace(default, loc=call_loc)
-            result.append(default)
+            result.append(materialized_default(p, call_loc))
         else:
             raise error_fn(f"'{func_name}' missing required argument: '{p.name}'")
 
@@ -250,6 +296,7 @@ def resolve_kwargs_init_params(
     error_fn,
     call_loc: 'SourceLocation | None' = None,
     keyword_only: bool = False,
+    is_member: bool = False,
 ) -> list[TpyExpr]:
     """Resolve keyword arguments for record constructors using init_params format.
 
@@ -258,7 +305,8 @@ def resolve_kwargs_init_params(
     """
     params = [ParamInfo(name, ptype, default_expr=default, keyword_only=keyword_only)
               for name, ptype, default in init_params]
-    return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
+    return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn,
+                          call_loc=call_loc, is_member=is_member)
 
 
 def _cross_module_cpp_overlay(
@@ -635,12 +683,13 @@ class CallAnalyzer:
 
     def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Resolve keyword arguments on a TpyCall into positional form."""
-        if not expr.kwargs and not func.has_keyword_only:
+        if (not expr.kwargs and not func.has_keyword_only
+                and not func.materializes_defaults):
             return
         expr.args = resolve_kwargs(
             expr.args, expr.kwargs, func.params, expr.func_name,
             lambda msg: self.ctx.error(msg, expr),
-            call_loc=expr.loc,
+            call_loc=expr.loc, is_member=func.is_method,
         )
         expr.kwargs = {}
 
@@ -648,12 +697,10 @@ class CallAnalyzer:
         self, expr: TpyCall, record: RecordInfo,
     ) -> None:
         """Resolve keyword arguments for record constructor calls."""
-        if not expr.kwargs:
-            return
         expr.args = resolve_kwargs_init_params(
             expr.args, expr.kwargs, record.init_params, f"{record.name}()",
             lambda msg: self.ctx.error(msg, expr),
-            call_loc=expr.loc,
+            call_loc=expr.loc, is_member=True,
         )
         expr.kwargs = {}
 
@@ -2847,7 +2894,7 @@ class CallAnalyzer:
                 return
         if not check_type.is_value_type():
             self._check_own_param_arg(arg, check_type, pname, own_ptype)
-        # Own[T] local passed to Own[T] param — mark consumption
+        # Own[T] local passed to Own[T] param -- mark consumption
         if isinstance(arg_type, OwnType):
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
@@ -5438,8 +5485,10 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"TypedDict '{record.name}' only accepts keyword arguments", expr)
 
-        # Resolve kwargs for record constructors
-        if expr.kwargs:
+        # Resolve kwargs for record constructors. A default with no C++
+        # spelling is filled here even without kwargs, or the emitted
+        # construction drops the argument entirely.
+        if expr.kwargs or record.materializes_defaults:
             if record.init_params:
                 self._resolve_call_kwargs_init(expr, record)
             else:

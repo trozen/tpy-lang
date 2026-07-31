@@ -61,6 +61,7 @@ from ...typesys import (
     VoidType,
     contains_type_param,
     error_return_to_cpp,
+    none_default_cpp_spelling,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -1586,7 +1587,10 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     so the admitted rows are exactly the shapes whose bare render matches:
 
       * an eligible-scalar value expression (the M3d-1 row);
-      * a str literal (`"lit"`) / a `None` literal (`nullptr`);
+      * a str literal (`"lit"`) / a `None` literal, the latter only where the
+        slot renders it `nullptr` -- a value-form optional/union slot spells it
+        `std::nullopt` / `{}`, which a target-less render cannot reproduce, so
+        the caller rejects that pairing;
       * an int literal still typed `IntLiteralType` (a BigInt base slot:
         the target-less render is the bare digits), pinned to the +-2^31-1
         literal range like the sibling literal checks;
@@ -1664,8 +1668,17 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
     if expr.kwargs or expr.double_star_unpack is not None:
         return None
     args: list[THIRExpr] = []
-    for a in expr.args:
+    base_info = analyzer.registry.get_record_for_type(parent_type)
+    base_params = base_info.init_params if base_info else []
+    for i, a in enumerate(expr.args):
         if not _base_init_arg_ok(a, declared, lc):
+            return None
+        # Only a slot that spells `None` as the bare `nullptr` can be reproduced
+        # by the target-less render here; `std::nullopt` / `{}` slots need the
+        # target type. Asking the emitter's own spelling keeps every arm (Own,
+        # value-form optional, either-repr union) on one answer.
+        if (isinstance(a, TpyNoneLiteral) and i < len(base_params)
+                and none_default_cpp_spelling(base_params[i][1]) != "nullptr"):
             return None
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")

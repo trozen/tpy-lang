@@ -58,12 +58,11 @@ void __tpy_init() {
     initialized = true;
 
     // # A `= None` default on a None-including union param must default-construct
-    // # the variant's monostate arm (regression: it emitted `nullptr`). Record-
-    // # materializing defaults (value variant, optional-of-record) work on member
-    // # functions whose record alternatives are defined earlier; the free-function
-    // # form is still open (BUGS.md: the decl precedes the record definitions,
-    // # where C++ checks the default's conversion). Pointer variants stay complete
-    // # at any decl, so that arm covers a free function.
+    // # the variant's monostate arm (regression: it emitted `nullptr`). A member
+    // # keeps that as a C++ default argument -- its record alternatives are defined
+    // # by the time the in-class declaration is read -- while a FREE function's
+    // # declaration precedes every record, so there the default is materialized at
+    // # the call site instead.
     // from dataclasses import dataclass
     // main()
     main();
