@@ -855,7 +855,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     value_tuple_locals: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
     unpack_ptr_targets: set[str] = set()
+    source_form_loop_vars: set[str] = set()
     for f_info in rstate.for_info_by_uid.values():
+        if f_info.loop_var_field is not None:
+            source_form_loop_vars.add(f_info.loop_var_field[0])
         if f_info.pointer_form_loop_var is not None:
             ptr_frame_locals.add(f_info.pointer_form_loop_var)
         if f_info.borrow_tuple_loop_var is not None:
@@ -868,6 +871,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     coro_handle_slots: set[str] = set()
     borrow_tuple_locals: set[str] = set()
     for lname, ltype in (func.generator_locals or []):
+        if lname in source_form_loop_vars:
+            # The field's payload comes from the iteration source, so the slot
+            # holds whichever form the trait picked. This must precede the
+            # value/str check: a VALUE element would otherwise be classified a
+            # bare field and read without the `(*name)` deref the skeleton
+            # emits against a frame_slot.
+            frame_slots.add(lname)
+            continue
         if _res_local_ok(ltype, analyzer):
             continue  # value / str / bytes -- bare field
         if lname in ptr_frame_locals:

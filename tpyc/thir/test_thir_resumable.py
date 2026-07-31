@@ -2223,9 +2223,10 @@ class TestSyncLoops:
         assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_generic_slot_loop_var_routes(self):
-        # A2: a generic-T loop var over an Iterable[T] param is a
-        # frame_slot (iter_next strategy): the skeleton binds
-        # `x.emplace(unwrap_ref(*r))`, reads render `(*x)`.
+        # A2: a generic-T loop var over an Iterable[T] param is a frame_slot
+        # (iter_next strategy) whose payload comes from the source, so the same
+        # bind serves whichever form the trait picks: `unwrap_ref_move` hands
+        # `emplace` a reference to bind or a value to move in. Reads `(*x)`.
         src = ("from typing import Iterator, Iterable\n"
                + "from tpy import Int32\n\n"
                + "def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:\n"
@@ -2239,8 +2240,11 @@ class TestSyncLoops:
         assert witnesses.get("res.loop_slot_bind") == 1
         assert not any(k.startswith("resumable:") for k in fallback)
         _, hpp, _cpp = _gen(src, thir=True)
-        assert "x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));" in hpp
+        assert "x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));" in hpp
         assert "return (*x);" in hpp
+        # The field's payload is the trait, not the TPy element type -- a `T`
+        # here would be the classification this strategy no longer does.
+        assert "::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;" in hpp
 
     def test_pointer_loop_var_value_yield_derefs(self):
         # An Iterator[T] param loop var is pointer-form (`T* x`); yielding it
@@ -2260,6 +2264,14 @@ class TestSyncLoops:
         assert not any(k.startswith("resumable:") for k in fallback)
         _, hpp, _cpp = _gen(src, thir=True)
         assert "return (*x);" in hpp
+        # Boundary against the iter_next sibling (test_generic_slot_loop_var_
+        # routes), which spells its field from the source because an arbitrary
+        # `__next__` may lend or hand back fresh. THIS strategy's source always
+        # lends its live yield slot, so the element type decides and the field
+        # stays a legible `T*`. Pinned so widening the trait to `next` /
+        # `begin_end` has to argue with a test rather than just churn snapshots.
+        assert "T* x = nullptr;" in hpp
+        assert "for_elem_next_t" not in hpp
 
     def test_tuple_unpack_loop_routes(self):
         # A non-value tuple-unpack loop: the pointer-form holder binds at

@@ -92,7 +92,7 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     T_it it;
     int32_t n;
     int32_t c;
-    ::tpy::frame_slot<T> x;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<T_it>> x;
     ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
     ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
 
@@ -137,7 +137,7 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
             __state = S_JOIN_1;
             continue;
         }
-        x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
         if ((c >= n)) {
             __state = S_JOIN_1;
             continue;

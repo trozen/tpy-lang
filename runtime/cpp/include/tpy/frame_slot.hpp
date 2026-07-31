@@ -154,4 +154,168 @@ private:
     bool alive_ = false;
 };
 
+/**
+ * frame_slot<T> for a trivial payload - stores T as a real member.
+ *
+ * The primary template's aligned-storage + placement-new exists to defer T's
+ * construction past frame creation. That buys nothing when default-constructing
+ * T is itself a no-op, so a trivial payload skips the indirection: no
+ * reinterpret_cast, no launder, and `emplace` is an assignment. The field also
+ * shows up as a T in a debugger rather than a byte array.
+ *
+ * BOTH constraints are load-bearing, and each rules out a payload the primary
+ * template handles correctly:
+ *
+ *   - Trivially DEFAULT-constructible: what makes a bare member safe at all.
+ *     For any other T, declaring `T v_;` runs a constructor at frame creation --
+ *     the behaviour the primary template exists to avoid -- and is ill-formed
+ *     for a T with no default ctor.
+ *   - Trivially MOVE-ASSIGNABLE and MOVE-CONSTRUCTIBLE: this form assigns
+ *     (`v_ = T(...)`) where the primary placement-constructs, and move-
+ *     constructs its member where the primary moves the payload out of raw
+ *     storage. Requiring both trivial is what makes those substitutions
+ *     unobservable. Note `is_trivially_copyable` would NOT be enough here: it
+ *     holds for a move-only type (deleted copy ops are ignored when the move
+ *     ops are trivial), so it admits payloads whose copy ctor is deleted.
+ *   - Trivially DESTRUCTIBLE: alive_ is then needed only to answer
+ *     has_value()/reset(), never for destruction correctness.
+ *
+ * Together these admit scalars, enums, pointers and trivial aggregates -- and
+ * nothing whose construction, assignment or destruction is observable.
+ *
+ * Excludes references explicitly so it cannot compete with frame_slot<T&>.
+ */
+template <typename T>
+    requires (!std::is_reference_v<T>
+              && std::is_trivially_default_constructible_v<T>
+              && std::is_trivially_destructible_v<T>
+              && std::is_trivially_move_constructible_v<T>
+              && std::is_trivially_move_assignable_v<T>)
+class frame_slot<T> {
+public:
+    frame_slot() noexcept = default;
+
+    frame_slot(const frame_slot&) = delete;
+    frame_slot& operator=(const frame_slot&) = delete;
+    frame_slot& operator=(frame_slot&&) = delete;
+
+    // Moves, mirroring the primary template -- a copy here would reject a
+    // move-only payload that is otherwise perfectly at home in this form.
+    // Guarded on `alive_` for the same reason the primary is: `v_` is
+    // deliberately left uninitialized until the first emplace, so touching it
+    // on a dead slot reads an indeterminate value. The dead case is the common
+    // one, not a corner: a coro struct is moved into its heap wrapper before
+    // any of its frame fields has been written.
+    frame_slot(frame_slot&& other) noexcept {
+        if (other.alive_) {
+            v_ = std::move(other.v_);
+            alive_ = true;
+            other.alive_ = false;
+        }
+    }
+
+    template <typename... Args>
+    T& emplace(Args&&... args) {
+        v_ = T(std::forward<Args>(args)...);
+        alive_ = true;
+        return v_;
+    }
+
+    void reset() noexcept { alive_ = false; }
+
+    bool has_value() const noexcept { return alive_; }
+    explicit operator bool() const noexcept { return alive_; }
+
+    T& get() & {
+#ifndef NDEBUG
+        if (!alive_) {
+            tpy_panic("frame_slot::get on dead slot");
+        }
+#endif
+        return v_;
+    }
+    const T& get() const & {
+#ifndef NDEBUG
+        if (!alive_) {
+            tpy_panic("frame_slot::get on dead slot");
+        }
+#endif
+        return v_;
+    }
+
+    T& operator*() & { return get(); }
+    const T& operator*() const & { return get(); }
+    T* operator->() { return &get(); }
+    const T* operator->() const { return &get(); }
+
+private:
+    T v_;
+    bool alive_ = false;
+};
+
+/**
+ * frame_slot<T&> - the BORROW form of a frame field: it stores the address of
+ * storage that outlives the slot instead of owning a copy.
+ *
+ * Same surface as the primary template, so codegen has one spelling for a frame
+ * field whether it owns or aliases: `emplace(x)` binds, `(*f)` reads. That is
+ * the point -- whether a for-loop element is a borrow of the source or a fresh
+ * value is often only decidable at instantiation (see for_elem_next_t), so the
+ * choice cannot be spelled at the declaration site.
+ *
+ * `emplace` takes `T&`, so binding a prvalue is ill-formed rather than a
+ * dangling pointer. Move leaves the source null; destruction is trivial.
+ */
+template <typename T>
+class frame_slot<T&> {
+public:
+    frame_slot() noexcept = default;
+
+    frame_slot(const frame_slot&) = delete;
+    frame_slot& operator=(const frame_slot&) = delete;
+    frame_slot& operator=(frame_slot&&) = delete;
+
+    frame_slot(frame_slot&& other) noexcept : p_(other.p_) { other.p_ = nullptr; }
+
+    T& emplace(T& target) noexcept {
+        p_ = &target;
+        return target;
+    }
+    // A prvalue dies at the end of the full expression, so storing its address
+    // is always a dangle. `emplace(T&)` alone does not reject one when T is
+    // const-qualified -- `const T&` binds a temporary happily -- and a const
+    // payload is exactly what a readonly element produces, so reject it here.
+    void emplace(std::remove_const_t<T>&&) = delete;
+
+    void reset() noexcept { p_ = nullptr; }
+
+    bool has_value() const noexcept { return p_ != nullptr; }
+    explicit operator bool() const noexcept { return p_ != nullptr; }
+
+    T& get() & {
+#ifndef NDEBUG
+        if (p_ == nullptr) {
+            tpy_panic("frame_slot::get on dead slot");
+        }
+#endif
+        return *p_;
+    }
+    const T& get() const & {
+#ifndef NDEBUG
+        if (p_ == nullptr) {
+            tpy_panic("frame_slot::get on dead slot");
+        }
+#endif
+        return *p_;
+    }
+
+    T& operator*() & { return get(); }
+    const T& operator*() const & { return get(); }
+    T* operator->() { return &get(); }
+    const T* operator->() const { return &get(); }
+
+private:
+    T* p_ = nullptr;
+};
+
 } // namespace tpy

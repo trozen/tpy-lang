@@ -34,6 +34,22 @@ class GeneratorForInfo:
     # preserves CPython aliasing semantics across yield/resume instead of
     # copying the element into the frame. None when copy-storage is used.
     pointer_form_loop_var: str | None = None
+    # (loop var name, fully-spelled C++ payload for its frame field). The
+    # payload is derived from the ITERATION SOURCE rather than the TPy element
+    # type -- e.g. `::tpy::for_elem_next_t<T_items>` -- so C++ decides at
+    # instantiation whether the element aliases the source or is owned, with
+    # `frame_slot` supplying both forms behind one spelling. Name and payload
+    # travel together so they cannot drift.
+    #
+    # Set ONLY by `iter_next`, and only where the choice is genuinely open:
+    # that strategy's source may lend an element or hand back a fresh one, and
+    # a protocol-typed or generic source settles which at instantiation. The
+    # other strategies deliberately keep `pointer_form_loop_var` -- `begin_end`
+    # and `next` can decide from the element type because their sources always
+    # lend an lvalue, `range` synthesizes its element, and a concrete value
+    # element is copy-only whatever the source. Widening this to them would
+    # trade a legible `Box* b` for a trait sandwich and buy nothing.
+    loop_var_field: tuple[str, str] | None = None
     # For a tuple-unpack loop (`for a, b in items:`) whose element tuple
     # contains non-value, non-readonly members, the names of the unpack
     # targets bound to those members. They are stored as `T*` (alias into
@@ -51,6 +67,55 @@ class GeneratorForInfo:
     # refs point into stable node storage, so aliasing across yield/resume
     # still holds. None for non-proxy iterators.
     borrow_tuple_loop_var: str | None = None
+
+
+def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
+    """Whether a frame-resident loop var over elements of this type must be a
+    borrow-form `T*` aliasing the source rather than an owning `frame_slot<T>`.
+    The owning copy hides loop-var mutations from the source elements -- a
+    silent divergence from CPython's aliasing.
+
+    For the `begin_end` and `next` strategies only, and deliberately so: their
+    sources always lend a genuine lvalue -- a container element, a producer's
+    live yield slot -- so the answer is decidable from the element type alone
+    whatever it turns out to be, GENERICS INCLUDED (`*it` on a `vector<T>` is an
+    lvalue for every `T`). `iter_next` cannot use this and does not: an
+    arbitrary `__next__` may hand back a fresh value that looks identical to a
+    lent one here, so its field defers to `for_elem_next_t` and lets C++ decide.
+
+    Value elements copy by their own semantics. `readonly[T]` is excluded
+    because the advance emit has no `const T*` form -- a narrow gap tracked in
+    BUGS.md, and the one thing the trait would express better here.
+    """
+    elem = unwrap_ref_type(elem_type) if elem_type is not None else None
+    return (elem is not None
+            and not isinstance(elem, ReadonlyType)
+            and not elem.is_value_type())
+
+
+def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
+    """Whether the element is a CONCRETE value type, so a plain frame field is
+    right and the storage-form trait is not needed.
+
+    For a scalar this is decidable and cannot be silently wrong, unlike
+    borrow-vs-own for a reference element: copying is the whole semantics, so
+    there is no aliasing outcome to lose. A generic or protocol-typed element is
+    NOT known -- it instantiates either way -- and `readonly[T]` defers too, so
+    the trait can settle its constness.
+
+    A TUPLE element also lands here, but for a weaker reason: `is_value_type()`
+    is unconditionally True for TupleType even when the tuple holds borrows, so
+    "copying is correct" does NOT follow. Returning True is still right, because
+    a tuple loop var has its own established classification (borrow-form tuple
+    fields, tuple-unpack alias targets) and must reach it rather than be
+    rerouted through this trait.
+    """
+    elem = unwrap_ref_type(elem_type) if elem_type is not None else None
+    if elem is None or isinstance(elem, (TypeParamRef, ReadonlyType)):
+        return False
+    if is_protocol_type(elem):
+        return False
+    return elem.is_value_type()
 
 
 def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
@@ -854,13 +919,10 @@ class GeneratorCodegen:
             # Non-value elements alias the producer's live yield slot (T*),
             # mirroring begin_end's pointer-form loop var -- a frame_slot
             # copy would hide loop-var mutations from the source elements.
-            elem_for_form = unwrap_ref_type(elem_type) if elem_type else None
             pointer_form_var = (
                 stmt.var
-                if (elem_for_form is not None
-                    and not stmt.is_tuple_unpack
-                    and not elem_for_form.is_value_type()
-                    and not isinstance(elem_for_form, ReadonlyType))
+                if (not stmt.is_tuple_unpack
+                    and elem_wants_borrow_form(elem_type))
                 else None
             )
             return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
@@ -951,10 +1013,8 @@ class GeneratorCodegen:
             else:
                 pointer_form_var = (
                     stmt.var
-                    if (elem_for_form is not None
-                        and not elem_for_form.is_value_type()
-                        and not isinstance(elem_for_form, ReadonlyType)
-                        and not yields_proxy)
+                    if (not yields_proxy
+                        and elem_wants_borrow_form(native_elem))
                     else None
                 )
             borrow_tuple_var = (
@@ -1006,7 +1066,19 @@ class GeneratorCodegen:
                     "(e.g. `xs = list(...)`) and iterate those",
                     loc=stmt.loc)
             fields.insert(0, (f"__for_src_{uid}", src_cpp))
-        return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
+        # The source's `__next__` may lend an element or hand back a fresh one,
+        # and for a protocol-typed or generic source that is settled only at
+        # instantiation -- so the field's payload comes from the trait, not from
+        # the TPy element type. A CONCRETE value element opts out: copy is the
+        # only correct storage for it, so it keeps the plain field its sibling
+        # value locals use rather than paying a slot for a choice that is not
+        # open. A tuple-unpack loop keeps its own target classification, which
+        # is a separate axis.
+        loop_var_field = (
+            None if (stmt.is_tuple_unpack or elem_is_known_value(elem_type))
+            else (stmt.var, f"::tpy::for_elem_next_t<{src_cpp}>"))
+        return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
+                                loop_var_field=loop_var_field)
 
     def _resolve_same_module_generator_call(
             self, expr: TpyExpr,

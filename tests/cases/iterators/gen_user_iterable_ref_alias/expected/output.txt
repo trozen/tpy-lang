@@ -1,0 +1,5 @@
+101
+101
+102
+102
+mutations reached the bag: 101 102

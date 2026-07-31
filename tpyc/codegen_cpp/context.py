@@ -3059,7 +3059,16 @@ class CodeGenContext:
         # (`gen_async._prescan_resumable_for_loops`) populate
         # `generator_for_loop_info`; bodies with no for-loop leave it empty
         # (the loop is then a no-op).
+        # A source-derived loop var is an ordinary frame slot: reads go through
+        # `(*name)` whether the trait picked alias or own, so it needs no form
+        # classification -- that is the point of deferring the choice to C++.
+        # Local, not a context field: it is consumed by the frame-local
+        # registration further down this same method and nowhere else, so a
+        # field would only add a reset and a save/restore to keep in sync.
+        source_form_loop_vars: set[str] = set()
         for info in self.generator_for_loop_info.values():
+            if info.loop_var_field is not None:
+                source_form_loop_vars.add(info.loop_var_field[0])
             if info.pointer_form_loop_var is not None:
                 self.pointer_locals.add(info.pointer_form_loop_var)
                 self.generator_borrow_form_loop_vars.add(info.pointer_form_loop_var)
@@ -3090,6 +3099,14 @@ class CodeGenContext:
         owning_tuples = self.owning_generator_tuple_locals(func)
         for lname, ltype in func.generator_locals:
             ltype_inner = unwrap_ref_type(ltype)
+            # A source-derived loop var is a frame slot whatever its element
+            # turns out to be -- including a value element, which the
+            # is_value_type() branch below would otherwise leave unclassified
+            # and thus read as a bare name against a frame_slot field.
+            if lname in source_form_loop_vars:
+                self.generator_optional_fields.add(lname)
+                self.generator_frame_slot_locals.add(lname)
+                continue
             # An OWNING pointer-repr tuple local is backed by a storage
             # `tpy::frame_slot<std::tuple<..., T>>` field (emplace writes,
             # `(*name)` reads), like any other owning non-value frame local --

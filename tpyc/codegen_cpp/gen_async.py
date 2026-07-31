@@ -1219,10 +1219,16 @@ class AsyncCoroCodegen:
             owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
             pointer_form_names: set[str] = set()
             borrow_tuple_names: set[str] = set()
+            # Loop vars whose field payload is spelled from the iteration
+            # source; the trait decides alias-vs-own, so no TPy-side form.
+            source_form_fields: dict[str, str] = {}
             for info in state.for_loop_info.values():
                 if info.pointer_form_loop_var is not None:
                     pointer_form_names.add(info.pointer_form_loop_var)
                 pointer_form_names.update(info.pointer_form_unpack_targets)
+                if info.loop_var_field is not None:
+                    name, payload = info.loop_var_field
+                    source_form_fields[name] = payload
                 if info.borrow_tuple_loop_var is not None:
                     borrow_tuple_names.add(info.borrow_tuple_loop_var)
             # Statement-level borrow aliases (single-assign / tuple-unpack)
@@ -1247,7 +1253,16 @@ class AsyncCoroCodegen:
                         "parameter; bind it once from the parameter, or iterate "
                         "the parameter directly",
                         loc=func.loc)
-                if lname in owning_str:
+                if lname in source_form_fields:
+                    # Loop var whose alias-vs-own choice belongs to C++: the
+                    # payload is spelled from the source's iteration protocol,
+                    # and frame_slot's specializations supply either form. Comes
+                    # first -- the type-directed branches below would re-derive a
+                    # form from the TPy element type, which is exactly what this
+                    # field exists to stop doing.
+                    out.write(f"{INDENT}::tpy::frame_slot<"
+                              f"{source_form_fields[lname]}> {cpp_name};\n")
+                elif lname in owning_str:
                     # `with X() as label:` -- `__enter__` returns by
                     # value; storing the view across suspensions
                     # would dangle. Use owning storage. See
@@ -4252,6 +4267,13 @@ class AsyncCoroCodegen:
             src = self._for_src_expr(stmt, uid, info)
             pre = (f"__for_r_{uid}.emplace("
                    f"::tpy::resumable_iter_next(__for_itr_{uid}, {src}));")
+        # A source-derived field takes one spelling whichever form the trait
+        # picked: `unwrap_ref_move` hands `frame_slot` either a reference to bind
+        # or a value to move in, and `emplace` resolves to the right one.
+        if info is not None and info.loop_var_field is not None \
+                and info.loop_var_field[0] == stmt.var:
+            return (pre, f"!{r}.has_value()",
+                    [f"{cpp_var}.emplace(::tpy::unwrap_ref_move(*{r}));"])
         elem = f"::tpy::unwrap_ref(*{r})"
         # Bind form mirrors the loop var's frame storage shape (D2a):
         # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.

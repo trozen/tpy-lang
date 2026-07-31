@@ -762,6 +762,56 @@ using begin_iter_t = decltype(std::declval<C&>().begin());
 template<typename S>
 using aiter_type_t = std::decay_t<decltype(std::declval<S&>().__aiter__())>;
 
+// Storage form for a resumable frame's for-loop VARIABLE. A non-value element
+// the source merely lends must alias it (`T&` -> frame_slot stores `T*`), so
+// mutation through the loop var reaches the source as CPython requires; a fresh
+// value must be owned or the field dangles once the step that produced it ends.
+// Which one applies is frequently not knowable where TPy declares the field --
+// a protocol-typed or generic source can be instantiated either way -- so the
+// two traits below decide it here, from the source's own iteration protocol.
+//
+// The rules differ per protocol because what proves "borrow" differs, and each
+// is unambiguous only within its own protocol:
+//   *it       -- an lvalue reference IS an element of the container. Trustworthy.
+//   __next__  -- a `val_or_ref` result is the borrow marker. A bare `T&` proves
+//                nothing: unwrap_ref yields `T&` for a fresh value too, since
+//                that value lives in the caller's result slot.
+namespace detail {
+    template<typename E>
+    struct elem_form {
+        using bare = std::remove_reference_t<E>;
+        // Only an lvalue reference to a non-value type is worth aliasing;
+        // const-ness is preserved so a readonly element binds as `const T*`.
+        static constexpr bool alias =
+            std::is_lvalue_reference_v<E>
+            && !is_value_type_v<std::remove_cv_t<bare>>;
+        using type = std::conditional_t<alias, bare&, std::remove_cv_t<bare>>;
+    };
+
+    template<typename R>
+    struct next_elem_form {
+        // Not a val_or_ref: a fresh value, so own it.
+        using type = std::remove_cvref_t<R>;
+    };
+    template<typename R>
+        requires requires { typename std::remove_cvref_t<R>::is_val_or_ref_tag; }
+    struct next_elem_form<R> {
+        using type = typename elem_form<decltype(
+            std::declval<const std::remove_cvref_t<R>&>().get())>::type;
+    };
+}
+
+// begin()/end() sources (containers): the element form of `*it`.
+template<typename It>
+using for_elem_deref_t =
+    typename detail::elem_form<decltype(*std::declval<It&>())>::type;
+
+// __iter__()/__next__() sources (protocol params, user iterables, generators):
+// the element form of the step result's payload.
+template<typename S>
+using for_elem_next_t =
+    typename detail::next_elem_form<typename iter_result_t<S>::value_type>::type;
+
 } // namespace tpy
 
 // std::hash specialization for bytes (needed by std::unordered_map/set)
