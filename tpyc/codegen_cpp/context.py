@@ -1569,6 +1569,10 @@ class CodeGenContext:
     # struct).
     frame_layout_builder: 'Callable[[TpyFunction], object] | None' = None
     generator_field_names: set[str] = field(default_factory=set)
+    # id(write stmt) -> frame-field slot name for rvalue writes into
+    # pointer-form frame locals (seeded per body from the resumable
+    # state's ptr_slot_map; consumed by _gen_pointer_local_rebind).
+    resumable_ptr_slot_map: dict[int, str] = field(default_factory=dict)
     # Hoisted locals that are compile-time aliases of a captured static-protocol
     # param (`xs = it`): they occupy no frame field of their own; every storage
     # access resolves to the backing param via `generator_storage_name`.
@@ -3096,6 +3100,11 @@ class CodeGenContext:
         from . import resumable_cfg as _rcfg
         self.one_shot_lift_locals = set(
             _rcfg.resumable_state(func).one_shot_lift_names)
+        # Per-write-site frame homes for rvalue writes into pointer-form
+        # frame locals (see _prescan_resumable_ptr_slots); empty for the
+        # simple-peephole path, whose locals live on the lambda stack.
+        self.resumable_ptr_slot_map = dict(
+            _rcfg.resumable_state(func).ptr_slot_map)
 
         if not func.generator_locals:
             return

@@ -66,6 +66,7 @@ struct __coro_f_opt {
     bool __cancel_pending;
     bool flag;
     Box* b = nullptr;
+    std::optional<Box> __ptr_slot_f0;
 
     enum : int32_t {
         S_INITIAL = 0,

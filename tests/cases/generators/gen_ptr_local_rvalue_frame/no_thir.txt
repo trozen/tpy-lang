@@ -1,0 +1,5 @@
+Every body's pointer-form Optional decl falls back at
+stmt.var_decl:decl.opt_reseat_source (the reseat-source decl family is
+not lowered; make_opt also rejects at return.slot_type); the case exists
+for the frame-slot placement of rvalue writes, which exec + cpy verify
+on the AST path.

@@ -1,0 +1,4 @@
+The pointer-form Optional decl falls back at
+stmt.var_decl:decl.opt_reseat_source (the reseat-source decl family is
+not lowered); the case pins the per-site slot drop order, which the
+exec phase verifies on the AST path.

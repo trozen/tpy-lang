@@ -53,8 +53,7 @@ __coro_f f() {
         // if flag:
         if (flag) {
             // b = Box()
-            Box __slot_1 = Box();
-            b = &__slot_1;
+            b = &*(__ptr_slot_f0 = Box());
         }
         // try:
         {

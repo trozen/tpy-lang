@@ -1299,6 +1299,49 @@ class StatementGenerator:
         """C++ type for a rvalue materialization slot."""
         return f"std::optional<{cpp_type}>" if is_opt_field else cpp_type
 
+    def ptr_slot_field_type(self, init: 'TpyExpr',
+                            target_type: TpyType | None,
+                            cpp_type: str) -> str | None:
+        """The frame-field C++ type an rvalue write into a pointer-form
+        frame local needs for its materialization slot, or None when the
+        write materializes no storage (None literal, alias, optional_to_ptr
+        lift forms).
+
+        Single source of truth shared by the resumable ptr-slot prescan
+        (which reserves the field) and the emit arms in
+        `_gen_pointer_local_rebind` (which consume it): the two MUST agree
+        on which writes need a slot, or a frame write lands back in a
+        dying case-block local -- the emit arms raise on a missing entry
+        rather than fall back. The routing order mirrors the emit arms.
+        """
+        if isinstance(init, TpyNoneLiteral):
+            return None
+        if self.ctx.callee_returns_own_ptr_optional(init):
+            # Own[Optional[T]]-returning call: the slot holds the returned
+            # optional<T> whole; the pointer is lifted via optional_to_ptr.
+            return f"std::optional<{cpp_type}>"
+        if (isinstance(init, TpyName)
+                and self.ctx.needs_optional_to_ptr_lift(init.name)):
+            return None
+        init_type = self.ctx.get_expr_type(init)
+        if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
+            if (self.ctx.is_storage_form_optional_source(init)
+                    and not self.ctx.is_rvalue_source(init)):
+                return None
+            if not self.ctx.is_value_emit_rvalue(init):
+                return None
+        if not self.ctx.is_rvalue_source(init):
+            return None
+        # Polymorphic refinement: a per-site slot can hold the subclass
+        # whole (the shared-slot slicing reject still fires upstream for
+        # the sync-shared shapes; this only spells the site's storage).
+        slot_cpp = cpp_type
+        sub = polymorphic_subclass_into_optional(
+            target_type, init_type, self.ctx.analyzer.registry)
+        if sub is not None:
+            slot_cpp = sub.name
+        return f"std::optional<{slot_cpp}>"
+
     @staticmethod
     def _reject_polymorphic_rvalue_into_optional_local(
             name: str, target_type: 'OptionalType', sub: 'NominalType', loc) -> None:
@@ -1332,7 +1375,6 @@ class StatementGenerator:
         For vars with future rvalue rebinds, a separate rebind slot is
         pre-declared so aliases to the init value aren't overwritten.
         """
-        from ..parse import TpyName as _TpyName
         name = escape_cpp_name(name)
         const_pfx = "const " if name in self.ctx.const_indirect_locals else ""
 
@@ -1496,7 +1538,7 @@ class StatementGenerator:
             slot = self.ctx.slots.next_slot()
             self.ctx.declare_rebind_slot(name, slot, slot_opt_cpp)
 
-        if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
+        if isinstance(init, TpyName) and init.name in self.ctx.pointer_locals:
             return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
             return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
@@ -1528,14 +1570,40 @@ class StatementGenerator:
         code = self.builtins.gen_call_from_fi(fi, subscript_obj, [slice_arg, value])
         return f"{indent}{code};\n"
 
+    def _resumable_ptr_slot_field(self, stmt: 'TpyStmt | None',
+                                  name: str) -> str | None:
+        """The frame-field slot home for a slot-needing pointer-local write
+        in a resumable frame body, else None (sync body, or the name is not
+        a frame field). Called ONLY at slot-materialization points; a frame
+        write with no prescanned entry is a prescan/emit classification
+        drift -- raise loud, since falling back to an inline slot would
+        re-create the case-block dangle this machinery exists to prevent."""
+        if not (self.ctx.in_generator_body
+                and name in self.ctx.generator_field_names):
+            return None
+        field = (self.ctx.resumable_ptr_slot_map.get(id(stmt))
+                 if stmt is not None else None)
+        if field is None:
+            raise CodeGenError(
+                f"internal: rvalue write into pointer-form frame local "
+                f"{name!r} has no prescanned slot field; "
+                f"_prescan_resumable_ptr_slots and its shared classifiers "
+                f"disagree with the emit arm",
+                loc=getattr(stmt, "loc", None))
+        return field
+
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
-                                   target_type: TpyType | None, indent: str) -> str:
+                                   target_type: TpyType | None, indent: str,
+                                   stmt: 'TpyStmt | None' = None) -> str:
         """Generate pointer-local rebinding code (reassignment).
 
         For rvalue sources, reuses the rebind slot declared at init site
-        to avoid creating loop-scoped storage that would dangle.
+        to avoid creating loop-scoped storage that would dangle. In a
+        resumable frame body the materialization slot is a frame FIELD
+        (one per write site, reserved by _prescan_resumable_ptr_slots) --
+        any per-call storage, inline or hoisted, dies across suspensions
+        while the pointer field survives.
         """
-        from ..parse import TpyName as _TpyName
         cpp_name = escape_cpp_name(name)
 
         # None literal -> set to nullptr (Optional/Ptr) or monostate (Union)
@@ -1563,6 +1631,11 @@ class StatementGenerator:
         is_name_src = (isinstance(init, TpyName)
                        and self.ctx.needs_optional_to_ptr_lift(init.name))
         if is_call_src:
+            frame_field = self._resumable_ptr_slot_field(stmt, name)
+            if frame_field is not None:
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return (f"{indent}{frame_field} = {init_expr};\n"
+                        f"{indent}{cpp_name} = ::tpy::optional_to_ptr({frame_field});\n")
             rebind_slot = self.ctx.use_rebind_slot(name, loc=init.loc)
             if rebind_slot is not None:
                 init_expr = self.expressions.gen_expr(init, target_type)
@@ -1611,6 +1684,11 @@ class StatementGenerator:
             if sub is not None:
                 self._reject_polymorphic_rvalue_into_optional_local(
                     name, target_type, sub, init.loc)
+            frame_field = self._resumable_ptr_slot_field(stmt, name)
+            if frame_field is not None:
+                deref = self._ptr_from_rvalue_slot(
+                    frame_field, init_expr, is_opt_field, True)
+                return f"{indent}{cpp_name} = {deref};\n"
             rebind_slot = self.ctx.use_rebind_slot(name, loc=init.loc)
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,
@@ -1630,7 +1708,7 @@ class StatementGenerator:
             deref = self._ptr_from_local_slot(slot, is_opt_field)
             return (f"{indent}{static_kw}{slot_type} {slot} = {init_expr};\n"
                     f"{indent}{cpp_name} = {deref};\n")
-        elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
+        elif isinstance(init, TpyName) and init.name in self.ctx.pointer_locals:
             return f"{indent}{cpp_name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
             return f"{indent}{cpp_name} = {init_expr};\n"
@@ -2034,7 +2112,8 @@ class StatementGenerator:
                              else target_type)
                     cpp_type = self.types.type_to_cpp(inner) if inner else "auto"
                     return self._gen_pointer_local_rebind(
-                        stmt.name, cpp_type, stmt.init, target_type, indent)
+                        stmt.name, cpp_type, stmt.init, target_type, indent,
+                        stmt=stmt)
                 return None
             # Frame-promoted storage-slot local: register movability so a
             # last-use read moves out of the slot instead of copying it.
@@ -2165,7 +2244,9 @@ class StatementGenerator:
                     if (resolve_type and isinstance(resolve_type, NominalType)
                             and resolve_type.is_protocol and not resolve_type.is_dynamic_protocol):
                         cpp_type = "auto"
-                    return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
+                    return self._gen_pointer_local_rebind(
+                        stmt.name, cpp_type, stmt.init, var_type, indent,
+                        stmt=stmt)
                 if form is LocalCppForm.PTR_VARIANT:
                     return self._gen_ptr_variant_local_reassign(stmt, var_type, cpp_name, indent)
                 if form is LocalCppForm.BORROW_TUPLE:
@@ -2535,7 +2616,9 @@ class StatementGenerator:
         if isinstance(stmt.target, TpyName) and stmt.target.name in self.ctx.pointer_locals:
             target_type = self.ctx.var_types.get(stmt.target.name)
             cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
-            return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
+            return self._gen_pointer_local_rebind(
+                stmt.target.name, cpp_type, stmt.value, target_type, indent,
+                stmt=stmt)
 
         # Generator frame_slot rebinding: re-emplace (destroys old
         # payload if alive, constructs fresh). Mirrors the var-decl
@@ -3306,6 +3389,9 @@ class StatementGenerator:
                     if isinstance(target_type, OptionalType):
                         # Pointer-repr Optional element: storage-form
                         # `optional<T>` -> the pointer the slot expects.
+                        # (A call-temp source is mis-lifted to pointer form
+                        # upstream and fails the C++ build before reaching
+                        # this arm.)
                         out.write(
                             f"{indent}{cpp_name} = "
                             f"::tpy::optional_to_ptr({get_expr});\n")

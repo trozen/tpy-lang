@@ -1,0 +1,3 @@
+main.py:15: warning: returns a copy of str field 'self.kind'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:31: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol
+main.py:33: warning: upcast narrows 'Cat' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol

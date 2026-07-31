@@ -92,6 +92,17 @@ class ResumableFuncState:
     for_loop_info: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
     for_info_by_uid: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
     async_for_struct_names: 'dict[int, str]' = field(default_factory=dict)
+    # ptr-slot prescan (_prescan_resumable_ptr_slots): an rvalue write into a
+    # pointer-form frame local materializes its backing storage in a
+    # `std::optional<T>` FRAME FIELD (one per write site), never a case-block
+    # local -- the pointer field outlives the case block, so an inline slot
+    # dangles at the first suspension. ptr_slot_map keys id(TpyVarDecl/
+    # TpyAssign) -> field name; the emit arms in _gen_pointer_local_rebind
+    # consume it and must find an entry for every slot-needing write (loud
+    # internal error otherwise -- silence would be the dangle coming back).
+    ptr_slots_prescanned: bool = False
+    ptr_slot_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    ptr_slot_map: 'dict[int, str]' = field(default_factory=dict)
     # with-stmt prescan (_prescan_with_stmts)
     with_prescanned: bool = False
     with_uid_map: 'dict[int, list[int]]' = field(default_factory=dict)

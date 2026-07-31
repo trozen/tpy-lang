@@ -1,0 +1,1 @@
+main.py:24: error: rvalue construction of 'Dog' into local 'p: Optional[Pet]' with rvalue rebind is not yet supported; pass the value directly as an argument or assign to a typed local of type 'Dog'.

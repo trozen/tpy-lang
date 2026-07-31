@@ -1411,6 +1411,11 @@ class AsyncCoroCodegen:
         for fname, ftype in state.for_fields:
             out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
 
+        # Per-write-site materialization slots for rvalue writes into
+        # pointer-form frame locals (see _prescan_resumable_ptr_slots).
+        for fname, ftype in state.ptr_slot_fields:
+            out.write(f"{INDENT}{ftype} {fname};\n")
+
         # Context-manager fields for CFG-decomposed `with`-with-await
         # bodies. One per WithItem: an owning `frame_slot<T>` for a
         # by-value manager, or a `T*` borrow for a reference-type lvalue
@@ -1585,6 +1590,7 @@ class AsyncCoroCodegen:
         old_borrow_form_tuple_locals = self.ctx.borrow_form_tuple_locals
         old_optional_borrow_tuple_locals = self.ctx.optional_borrow_tuple_locals
         old_type_param_bounds = self.ctx.current_type_param_bounds
+        old_ptr_slot_map = self.ctx.resumable_ptr_slot_map
 
         # Reset frame-specific fields before setup_body_scope, since the
         # `setup_resumable_frame_locals` call inside it reads
@@ -1680,6 +1686,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.generator_const_pointer_alias_locals = old_const_pointer_alias_locals
+            self.ctx.resumable_ptr_slot_map = old_ptr_slot_map
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.owned_view_frame_params = old_owned_view_params
             self.ctx.movable_locals = old_movable_locals
@@ -2161,6 +2168,9 @@ class AsyncCoroCodegen:
         try:
             for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
+            # After the for/with prescans: the frame layout it builds reads
+            # their outputs (for_loop_info, with_owning_str_targets).
+            self._prescan_resumable_ptr_slots(func, body)
             try_finally_uid_map = self._prescan_resumable_try_finally(func, body)
             builder = rcfg.CFGBuilder(
                 payload_factory=self._make_await_payload,
@@ -2576,6 +2586,69 @@ class AsyncCoroCodegen:
         self.ctx.temps.rollback_to(checkpoint)
         return out
 
+
+    def _prescan_resumable_ptr_slots(
+            self, func: TpyFunction, body: list[TpyStmt]) -> None:
+        """Reserve one `std::optional<T>` frame field per rvalue write into
+        a pointer-form frame local (decl init or rebind). The pointer field
+        outlives every case block, so the materialization slot must too --
+        an inline or hoisted per-call slot dies at the next suspension (or
+        the next `__next__` call) while the pointer still aims at it.
+
+        Which writes need a slot is `ptr_slot_field_type`'s call (shared
+        with the emit arms in `_gen_pointer_local_rebind`, which raise on a
+        missing entry). Fields land on `state.ptr_slot_fields`; the site
+        map (`id(stmt) -> field`) on `state.ptr_slot_map`, seeded into the
+        body ctx by `setup_resumable_frame_locals`. Per-site fields (no
+        shared rebind slot): an alias holding the previous value keeps a
+        live target, and a loop's re-executed site destroys the prior
+        payload at the rebind, like sync slot reuse.
+        """
+        state = rcfg.resumable_state(func)
+        if state.ptr_slots_prescanned:
+            return
+        state.ptr_slots_prescanned = True
+        layout = self._frame_layout(func)
+        ptr_kinds = (rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR)
+        ptr_names = {n for n, v in layout.bindings.items()
+                     if v.kind in ptr_kinds}
+        if not ptr_names:
+            return
+        local_types = dict(func.generator_locals or [])
+        fields: list[tuple[str, str]] = []
+        uid_map: dict[int, str] = {}
+
+        def visit(stmt: TpyStmt, name: str, init: 'TpyExpr | None') -> None:
+            if name not in ptr_names or init is None:
+                return
+            target_type = local_types.get(name)
+            inner = (target_type.inner
+                     if isinstance(target_type, OptionalType) else target_type)
+            cpp_type = (self.types.type_to_cpp(unwrap_ref_type(inner))
+                        if inner is not None else "auto")
+            field_cpp = self.statements.ptr_slot_field_type(
+                init, target_type, cpp_type)
+            if field_cpp is None:
+                return
+            fname = f"__ptr_slot_f{len(fields)}"
+            fields.append((fname, field_cpp))
+            uid_map[id(stmt)] = fname
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if isinstance(s, TpyNestedDef):
+                    continue
+                if isinstance(s, TpyVarDecl):
+                    visit(s, s.name, s.init)
+                elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+                    visit(s, s.target.name, s.value)
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        state.ptr_slot_fields = fields
+        state.ptr_slot_map = uid_map
 
     def _prescan_with_stmts(
             self, func: TpyFunction,
