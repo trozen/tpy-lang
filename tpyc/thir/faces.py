@@ -1491,7 +1491,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
-    "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>))
+    "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>)
+                                    # or the bare alias-of-alias pointer copy)
     "res.nested_def_member",        # frame nested def -> the marker-line stmt
     "res.return_self_borrow",       # `return self` at a Poll<T*> slot: &(__self)
     "res.return_tuple_literal",     # value-tuple literal at the async return slot
@@ -1499,6 +1500,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
+    "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
     "res.yield_record_borrow",      # record yield of a routed loop-var name
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)

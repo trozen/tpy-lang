@@ -2308,10 +2308,11 @@ class TestSyncLoops:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.loop_var") == 1
 
-    def test_dict_items_nonvalue_loop_var_defers(self):
-        # A proxy-ref tuple loop var over dict[int, Record].items() reaches
-        # the advance and takes its borrow-tuple reject (res.loop_var): the
-        # element reads/unpacks are their own rung.
+    def test_dict_items_nonvalue_loop_var_routes(self):
+        # A proxy-ref tuple loop var over dict[int, Record].items(): the
+        # advance binds the borrow-form tuple field (skeleton) and the
+        # element reads ride the borrow-tuple subscript family -- routed
+        # and byte-identical.
         src = (_PRE
                + "class Box:\n    v: Int32\n"
                + "    def __init__(self, v: Int32) -> None:\n"
@@ -2322,7 +2323,63 @@ class TestSyncLoops:
                + "    for kv in d.items():\n        total = await step(kv[0])\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.loop_var") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        assert witnesses.get("res.loop_btuple_bind", 0) >= 1
+
+    def test_dict_items_whole_tuple_loop_var_routes(self):
+        # The WHOLE-tuple proxy-ref form (`for kv in d.items()`): kv is
+        # the borrow-form tuple frame field itself; element reads
+        # (`kv[0]`, `kv[1].v` mutation across the await) ride the
+        # borrow-tuple subscript family. Routed and byte-identical -- the
+        # only committed witness of this shape in the resumable path (the
+        # corpus twin's whole-tuple body takes the sgen peephole).
+        src = (_PRE
+               + "class Box:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    d = {n: Box(n)}\n    total = 0\n"
+               + "    for kv in d.items():\n"
+               + "        kv[1].v = kv[1].v + 1\n"
+               + "        total = await step(kv[0])\n"
+               + "    return total + d[n].v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        assert witnesses.get("res.loop_btuple_bind", 0) >= 1
+
+    def test_user_iterator_tuple_unpack_holder_defers(self):
+        # BOUNDARY: a tuple-unpack loop over a USER-defined iterator
+        # (iter_next strategy) never sets borrow_tuple_loop_var, so its
+        # `__for_tup_N` holder sits outside every admitted set and the
+        # body must keep falling back -- the admit is keyed on the
+        # skeleton's per-loop fact, not the holder's type shape.
+        src = (_PRE
+               + "from tpy import Own\n\n"
+               + "class Box:\n    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "class Pairs:\n"
+               + "    i: Int32\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.i = 0\n"
+               + "    def __iter__(self) -> 'Pairs':\n"
+               + "        return self\n"
+               + "    def __next__(self) -> tuple[Int32, Own[Box]]:\n"
+               + "        self.i = self.i + 1\n"
+               + "        if self.i > 2:\n"
+               + "            raise StopIteration\n"
+               + "        return (self.i, Box(self.i))\n\n"
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f() -> Int32:\n"
+               + "    total = 0\n"
+               + "    for k, b in Pairs():\n"
+               + "        total = await step(k + b.v)\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src), _res_fallback(src)
 
     def test_value_tuple_loop_head_unpack_routes(self):
         # A VALUE-tuple holder loop (`for a, b in xs`): the holder binds
@@ -2888,18 +2945,21 @@ class TestAliasBinds:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "const auto& __tup_1 = __for_tup_0;" in cpp
 
-    def test_literal_decomposition_defers(self):
+    def test_literal_decomposition_routes(self):
         # `a, b = (items[0], items[1])` decomposes into synthetic
-        # `__unpack_*` alias temps -- an unmirrored render family; the
-        # synthetics keep the classification reject.
+        # `__unpack_*` alias temps; each takes the single-assign alias
+        # bind (`__unpack_0_0 = &(<elem>);`) and the user names copy the
+        # live pointer bare (`a = __unpack_0_0;`) -- routed and
+        # byte-identical.
         src = (_ALIAS_PRE
                + "async def work(items: list[Box]) -> Int32:\n"
                + "    a, b = (items[0], items[1])\n"
                + "    await asyncio.sleep(0)\n"
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        assert witnesses.get("res.alias_bind", 0) >= 2
 
     def test_own_tuple_call_at_borrow_slot_defers(self):
         # The corpus-caught divergence's unit pin: an `Own[tuple[...]]`-
@@ -5085,6 +5145,52 @@ class TestFlatAssertNarrowScoping:
         _assert_identical(src)
 
     _PRE = "from typing import Iterator\n\n"
+
+
+class TestValueTupleOptionalElem:
+    def test_value_opt_elem_tuple_routes(self):
+        # Routing + identity for the value-repr Optional[scalar] tuple
+        # element: the frame field is a bare std::tuple<int32_t,
+        # std::optional<int32_t>>, the subscript reads render bare
+        # std::get, and the extracted element narrows as a value-opt
+        # local.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "async def pick(n: Int32) -> tuple[Int32, Int32 | None]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    if n > 0:\n"
+               + "        return (n, n * 2)\n"
+               + "    return (n, None)\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    a = await pick(5)\n"
+               + "    v = a[1]\n"
+               + "    if v is not None:\n"
+               + "        print(a[0], v)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback
+
+    def test_ptr_optional_elem_tuple_stays_out(self):
+        # BOUNDARY for the value-opt element widening: a POINTER-repr
+        # Optional element (`Box | None`) makes the tuple borrow-form --
+        # admitting it through the value-tuple family would read a `T*`
+        # element as a bare value. The body must keep falling back.
+        src = ("import asyncio\nfrom tpy import Int32\n\n"
+               + "class Box:\n"
+               + "    n: Int32\n\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n\n"
+               + "async def pick(b: Box) -> tuple[Int32, Box | None]:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return (1, b)\n\n"
+               + "async def main_coro() -> None:\n"
+               + "    b = Box(3)\n"
+               + "    a = await pick(b)\n"
+               + "    v = a[1]\n"
+               + "    if v is not None:\n"
+               + "        print(a[0], v.n)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        fb = _res_fallback(src)
+        assert fb, fb
 
 
 class TestFrameLayoutPrecedence:

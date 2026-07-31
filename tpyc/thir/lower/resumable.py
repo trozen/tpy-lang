@@ -498,8 +498,10 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
     `lc.pointers` (arrow / deref arms) and a frame_slot loop var
     (`x.emplace(..)` at the advance) reads `(*x)` -- both admitted, keyed on
     the skeleton's own classification, never re-derived from the element
-    type. Tuple-unpack holders and proxy-ref tuple loop vars (dict_items)
-    keep the reject: their element unpacks/reads are their own rungs."""
+    type. Proxy-ref borrow-tuple loop vars (dict_items) admit in both the
+    whole-tuple and head-unpack forms (the advance bind is skeleton; reads
+    ride the borrow-tuple family); holders outside every admitted set keep
+    the reject."""
     stmt = t.stmt
     if _res_local_ok(_loop_elem_type(stmt, analyzer), analyzer):
         return None
@@ -509,17 +511,26 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
         # POINTER-form holder (`__for_tup_N = &(*it++);`, non-value
         # elements) binds at the advance like any pointer-form loop var;
         # its head unpack derefs the holder and re-points the alias
-        # targets. Other holder families (borrow-tuple proxies) keep the
-        # reject.
+        # targets.
         if stmt.var in value_tuple_holders:
             _witness("res.loop_tuple_bind")
             return None
         if stmt.var in ptr_loop_vars:
             _witness("res.loop_ptr_bind")
             return None
+        if stmt.var in borrow_tuple_loop_vars:
+            # Proxy-ref holder (dict_items): the advance binds the
+            # borrow-form tuple via tuple_to_pointer (skeleton); the head
+            # unpack mutable-ref-binds it as a borrow-tuple name source.
+            _witness("res.loop_btuple_bind")
+            return None
         return "res.loop_var"
     if stmt.var in borrow_tuple_loop_vars:
-        return "res.loop_var"
+        # Whole-tuple proxy loop var (`for kv in d.items()`): element
+        # reads ride the borrow-tuple subscript family off the frame
+        # field the advance re-binds.
+        _witness("res.loop_btuple_bind")
+        return None
     if stmt.var in ptr_loop_vars:
         _witness("res.loop_ptr_bind")
         return None
@@ -914,12 +925,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # field aliasing live storage: reads ride lc.pointers, and the
             # binds render `name = &(<lvalue>);` at their own leaf arms
             # (single-assign / unpack-target). The synthetic `__unpack_*`
-            # decomposition temps and non-plain alias types keep the reject
-            # (their render family is unmirrored).
+            # decomposition temps (a tuple-literal unpack's desugared
+            # element binds) take the same single-assign alias renders as
+            # a user-named alias. Non-plain alias types keep the reject.
             lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
                   if isinstance(ltype, TpyType) else None)
-            if (lt is not None and is_plain_nonvalue(lt)
-                    and not lname.startswith("__unpack_")):
+            if lt is not None and is_plain_nonvalue(lt):
                 alias_ptr_locals.add(lname)
                 continue
             return _reject("res.local_storage")
@@ -970,10 +981,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _reject("res.local_storage")
         if kind is _K.BORROW_TUPLE:
             # A pointer-repr tuple local is a BORROW-form frame field
-            # (`std::tuple<..., T*>`, bare writes). The `__for_tup_*` loop
-            # element holders (proxy-ref iterators) keep the reject: their
-            # bind is the loop machinery's call, unmirrored.
-            if lname.startswith("__for_tup_"):
+            # (`std::tuple<..., T*>`, bare writes). A `__for_tup_*` loop
+            # element holder is admitted only as the loop's own proxy-ref
+            # borrow-tuple var (dict_items): its bind is the skeleton's
+            # advance (`tuple_to_pointer(*(it)++)`), and the THIR-visible
+            # accesses -- the head unpack's mutable ref-bind and element
+            # reads -- are the same borrow-tuple family as a stable field.
+            if (lname.startswith("__for_tup_")
+                    and lname not in borrow_tuple_loop_vars):
                 return _reject("res.local_storage")
             borrow_tuple_locals.add(lname)
             continue

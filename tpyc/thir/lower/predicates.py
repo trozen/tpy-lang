@@ -3009,6 +3009,12 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
             # value type with no storage/borrow split, read bare like a
             # scalar.
             or is_void_like_type(e)
+            # A value-repr Optional[scalar] element (`tuple[int, int|None]`)
+            # is `std::optional<T>` value storage, read bare; None-tests and
+            # unwraps gate per-shape at the read sinks. Pointer-repr
+            # Optionals (`Box | None`) stay out -- their element form is a
+            # borrow.
+            or _value_opt_scalar(e, analyzer) is not None
             or isinstance(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(e))), AnyType))
 
@@ -3456,8 +3462,12 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     # `const std::string&`) -- bare in every sink on both paths, so it rides
     # the same value-read arm as a scalar element. A nested value-tuple element
     # reads bare as a whole `std::tuple<...>` value (recursively value-tuple),
-    # consumed by print / decl-init / a further subscript.
+    # consumed by print / decl-init / a further subscript. A value-repr
+    # Optional[scalar] element reads bare as `std::optional<T>` STORAGE
+    # (None-tests / unwraps gate at the value-opt consumers); pointer-repr
+    # Optionals stay on the borrow paths.
     return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
+                    or _value_opt_scalar(el, analyzer) is not None
                     or _value_tuple_nested(el, analyzer) is not None)
             else None)
 

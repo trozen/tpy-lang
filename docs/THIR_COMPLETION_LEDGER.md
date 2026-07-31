@@ -1862,6 +1862,24 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: frame-layout render rows, wave 1** (2026-07-31; +3 flips, dial
+  2881 -> 2884/3667). Three rows against the FrameLayoutPlan kinds: the
+  dict_items proxy-ref borrow-tuple loop var (advance-gate admit
+  `res.loop_btuple_bind`, head-unpack alias targets split
+  `frame_ptr_elem` off a borrow-form source vs `frame_ptr_addr` off the
+  pointer-holder's storage tuple, discriminated on `lc.pointers`
+  membership -- the same set that picked the source arm); value-repr
+  `Optional[scalar]` tuple elements at `_value_tuple_element_ok` +
+  `_tuple_subscript_value_read` (pointer-repr Optional elements pinned
+  out); `__unpack_*` decomposition temps through the ordinary
+  single-assign alias renders plus the alias-of-alias bare pointer copy
+  (`a = __unpack_0_0;`). LESSON: probe before admitting -- the
+  owned-optional `Own[T]|None` storage admit was reverted because both
+  its cases move to `res.return_type` / `expr.call` / `res.leaf_try`
+  first (an admit with no routing witness is a blind spot); the erased
+  adapter handle (2 sole-blocker cases) is the remaining direct-yield
+  cell, and the value-variant frame union stays behind the
+  `_narrow_binding_supported` fence.
 - **Landed: frame-local placement plan (FrameLayoutPlan)** (2026-07-31, the
   `res.local_storage` design item). The resumable frame-local storage form is
   now classified ONCE (`gen_async._frame_layout` -> per-name

@@ -4233,13 +4233,19 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         elem_ptr = TupleType._element_is_pointer_repr(
             source_type.element_types[i])
         if name in lc.unpack_ptr_targets:
-            # A loop-head alias target off the deref'd pointer holder:
-            # `name = &(std::get<i>(__tup_N));` -- the element is a live
-            # value lvalue inside the container's storage tuple.
+            # A loop-head alias target: off the deref'd POINTER holder the
+            # element is a live value lvalue inside the container's storage
+            # tuple (`name = &(std::get<i>(__tup_N));`); off a BORROW-form
+            # tuple source the element is already `T*`, so the alias
+            # re-points through the normalizing deref
+            # (`name = &(unwrap_ref(tuple_elem_ref(get)));`).
             if not (elem_ptr and stmt.is_ref[i]):
                 note_detail("unpack.alias_elem")
                 raise ThirUnsupported("res.unpack")
-            binds.append("frame_ptr_addr")
+            src_is_borrow_tuple = (src_name is not None and src_ref
+                                   and src_name not in lc.pointers)
+            binds.append("frame_ptr_elem" if src_is_borrow_tuple
+                         else "frame_ptr_addr")
             wraps.append("")
             continue
         if name in lc.alias_ptr_locals:
@@ -4316,6 +4322,19 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             and _subscript_container_recv_type(
                 init.obj, declared, analyzer) is not None):
         src = _lower_expr(init, lc, declared, subscript_prechecked=True)
+    elif (isinstance(init, TpyName) and init.name in lc.alias_ptr_locals):
+        # An alias-of-an-alias bind (`a = __unpack_0_0;` -- the desugared
+        # tuple-literal unpack's user-name assign): both fields are `T*`,
+        # so the bind is a bare pointer copy of the live alias, no
+        # address-of.
+        _witness("res.alias_bind")
+        return THIRAssign(
+            target=THIRName(name=stmt.name, result_type=declared[stmt.name],
+                            loc=stmt.loc),
+            value=THIRName(name=init.name, result_type=declared[stmt.name],
+                           loc=stmt.loc),
+            loc=stmt.loc,
+            no_source_comment=getattr(stmt, "no_source_comment", False))
     elif (isinstance(init, TpyFieldAccess)
             and _f2_reseat_ok(init, declared, analyzer)):
         src = _lower_field_source(init, lc, declared)

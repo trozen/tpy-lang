@@ -1,3 +1,5 @@
-user module has bodies outside the THIR slice; not yet migrated.
-Auto-managed by --thir-classify; run --thir-check-flip to see if this
-case is now clean enough to un-mark (delete this file).
+The frame_slot<variant<Emit, Push>> local narrows via
+holds_alternative/std::get behind the slot deref -- a VALUE-variant
+binding form the narrowing machinery cannot classify yet. Admission
+must go through _narrow_binding_supported (the union narrow
+binding-form fence), not a type-predicate widening.
