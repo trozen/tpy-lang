@@ -1058,13 +1058,17 @@ class TypeCompatibility:
             # A value-tuple with pointer-repr (reference) members copies each
             # such member into owned storage where CPython aliases, even though
             # the tuple itself is a value type -- so it warns under the same
-            # lvalue/move guard as the scalar case below.
+            # lvalue/move guard as the scalar case below. A borrow-carrying call
+            # result is an rvalue that the lvalue guard would skip, yet its
+            # borrowed members alias the caller and are copied all the same.
             ew = expected.wrapped
             ptr_repr_tuple = isinstance(ew, TupleType) and ew.has_pointer_repr_element()
             ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
+            arrives_borrowed = (self.is_lvalue(source_expr)
+                                or self._tuple_call_carries_borrow(source_expr))
             if (not is_return and source_expr is not None
                     and (ref_scalar or ptr_repr_tuple)
-                    and self.is_lvalue(source_expr)
+                    and arrives_borrowed
                     and not self.is_copy_call(source_expr)
                     and not is_auto_moved):
                 if ptr_repr_tuple:
@@ -3220,6 +3224,55 @@ class TypeCompatibility:
         return (isinstance(rt, TupleType)
                 and any(isinstance(et, OwnType) for et in rt.element_types))
 
+    @classmethod
+    def _borrow_carrying_tuple_return(
+            cls, expr: TpyExpr) -> 'TupleType | None':
+        """The returned tuple type of `expr` when it delivers a tuple with at
+        least one BORROWED element -- all-borrow (`tuple[A, B]`) or mixed
+        (`tuple[Own[A], B]`) -- else None.
+
+        Such a result is an rvalue, so the whole-tuple lvalue tests skip it, but
+        its borrowed elements point at storage the caller still owns: an owning
+        sink materializes them, copying what CPython aliases. Distinct from
+        `_is_owning_tuple_call`, which asks whether the call owns element
+        storage -- a mixed return is BOTH (it owns one half and borrows the
+        other), so neither predicate answers for the other.
+
+        A ternary composes like the codegen sibling `renders_own_borrow_tuple`:
+        C++ evaluates one arm, so the result carries a borrow only when BOTH do.
+        Without this the copy still fired (codegen does recurse) while the
+        warning did not, which is a silent copy.
+        """
+        inner = _peel_value_wrappers(expr)
+        if isinstance(inner, TpyIfExpr):
+            then_t = cls._borrow_carrying_tuple_return(inner.then_expr)
+            else_t = cls._borrow_carrying_tuple_return(inner.else_expr)
+            return then_t if (then_t is not None and else_t is not None) else None
+        if not isinstance(inner, (TpyCall, TpyMethodCall)):
+            return None
+        fi = inner.resolved_function_info
+        if fi is None:
+            return None
+        rt = unwrap_readonly(fi.return_type)
+        if isinstance(rt, TupleType) and rt.has_ref_elements():
+            return rt
+        return None
+
+    @classmethod
+    def _tuple_call_carries_borrow(cls, expr: TpyExpr) -> bool:
+        return cls._borrow_carrying_tuple_return(expr) is not None
+
+    @classmethod
+    def _borrow_carrying_call_elements(
+            cls, expr: TpyExpr | None) -> 'tuple[TpyType, ...] | None':
+        """The element types of a borrow-carrying tuple result, or None when
+        `expr` is not one. Carries the per-element ownership markers the
+        destination slot may have stripped."""
+        if expr is None:
+            return None
+        rt = cls._borrow_carrying_tuple_return(expr)
+        return rt.element_types if rt is not None else None
+
     def warn_pointer_repr_tuple_copy(self, source_expr: TpyExpr | None,
                                      tuple_type: TpyType, dest: str,
                                      loc_node) -> bool:
@@ -3244,11 +3297,26 @@ class TypeCompatibility:
         if source_expr is not None:
             if isinstance(_peel_value_wrappers(source_expr), TpyTupleLiteral):
                 return False
-            if self.is_copy_call(source_expr) or self._is_owning_tuple_call(source_expr):
+            if self.is_copy_call(source_expr):
                 return False
+            # An owning call is exempt only when it owns EVERY non-value element
+            # -- then the sink copies nothing that aliases the caller. A mixed
+            # return also passes _is_owning_tuple_call, and exempting it is what
+            # silenced the borrowed half's copy.
+            if (self._is_owning_tuple_call(source_expr)
+                    and not self._tuple_call_carries_borrow(source_expr)):
+                return False
+        # Which elements ARRIVE borrowed is a fact about the source, and the
+        # target may have had the markers stripped (an annotated
+        # `list[tuple[Box, Box]]` slot fed by a `tuple[Own[Box], Box]` call
+        # spells element 0 as a plain `Box`). Reading the verdict off the target
+        # there would warn about the owned element, which moves and never
+        # copies -- so prefer the source's element forms when we have them.
+        src_elems = self._borrow_carrying_call_elements(source_expr)
         fired = False
         for i, et in enumerate(tuple_type.element_types):
-            if not TupleType._element_is_pointer_repr(et):
+            probe = src_elems[i] if src_elems is not None and i < len(src_elems) else et
+            if not TupleType._element_is_pointer_repr(probe):
                 continue
             if self.ctx.is_type_non_copyable(et):
                 raise self.ctx.error(
@@ -3304,11 +3372,17 @@ class TypeCompatibility:
         """Value-tuple-with-reference-member copy diagnostic for an
         owned-storage element. A literal and a whole-tuple lvalue need
         different gating (per-member-expr vs per-element-type), so dispatch on
-        source shape. Returns whether anything fired."""
+        source shape. Returns whether anything fired.
+
+        A borrow-carrying CALL result is an rvalue, so `is_lvalue` skips it --
+        but its borrowed elements alias the caller exactly as an lvalue's do,
+        and the sink copies them just the same, so it takes the per-element-type
+        path too."""
         peeled = _peel_value_wrappers(elem)
         if isinstance(peeled, TpyTupleLiteral):
             return self.warn_tuple_literal_member_copy(peeled, tuple_type, dest)
-        if self.is_lvalue(elem) and not self._is_auto_moved(elem):
+        if ((self.is_lvalue(elem) and not self._is_auto_moved(elem))
+                or self._tuple_call_carries_borrow(elem)):
             return self.warn_pointer_repr_tuple_copy(elem, tuple_type, dest, elem)
         return False
 

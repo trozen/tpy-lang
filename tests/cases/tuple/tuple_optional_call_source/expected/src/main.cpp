@@ -18,7 +18,7 @@ void main() {
     P b = P(2);
     // pairs: list[tuple[P | None, P | None]] = []
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    // pairs.append(make_pair(a, b))
+    // pairs.append(make_pair(a, b))  # tpyc: warning(/copies/) warning(/copies/)
     pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
     // d: dict[Int32, tuple[P | None, P | None]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();

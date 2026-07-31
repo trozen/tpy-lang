@@ -1,0 +1,1 @@
+Observes the copy that a container store makes: CPython aliases and would print the written values (21 22 / 23 24), TPy copies and prints 2. The copy is the acknowledged divergence under test -- every store here is warned, with copy() as the acknowledgement -- so the divergence is the point of the case, not an oversight.

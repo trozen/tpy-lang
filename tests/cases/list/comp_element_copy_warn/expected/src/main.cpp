@@ -34,7 +34,7 @@ void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& t = *__beg_0;
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(t));
+            __result.push_back(t);
         }
         std::move(__result);
     });

@@ -110,27 +110,32 @@ int32_t wholly_owned_still_dots() {
 }
 
 // # The storage sinks below all run the mixed tuple through tuple_to_storage,
-// # which materializes the ref element as `B&` / `B` -- so they must keep
-// # reading `.`, even though the tuple type still carries the `Own`. Reading
-// # the borrow form off the TYPE instead of the SOURCE breaks exactly these.
-// # The `B&` sinks (list, loop var) still alias, so they mutate and observe.
-// # The `B` sinks (dict, nested tuple) COPY, which diverges from CPython --
-// # they only read here, because mutating would make this case's output
-// # disagree with CPython. That divergence is a filed bug, not a blessing;
-// # see BUGS.md. Do not "fix" these two by adding no_cpython.txt.
+// # which materializes the ref element BY VALUE -- so they must keep reading `.`,
+// # even though the tuple type still carries the `Own`. Reading the borrow form
+// # off the TYPE instead of the SOURCE breaks exactly these.
+// #
+// # Every one of them COPIES the borrowed element -- a container owns its
+// # elements, so element 1 behaves as a standalone `Box` would there: copied,
+// # with the same warning the scalar store gives, silenced by copy(). All four
+// # agree on that because the inferred element type takes the owned storage form.
+// #
+// # The copy is an ACKNOWLEDGED divergence from CPython, which aliases -- the
+// # warnings are the acknowledgement. Observing it needs a mutate-after-store,
+// # which by construction cannot agree with CPython's output, so it lives in the
+// # sibling `mixed_own_tuple_store_copies` (no_cpython). These read only, so this
+// # case stays cpy-visible; the annotations are what pin the copy here. Do NOT
+// # add no_cpython.txt to this case.
 // def in_list(b: Box) -> Int32:
 int32_t in_list(Box& b) {
-    // xs = [make_mixed(b)]
-    std::array<std::tuple<Box, Box&>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box&>>(make_mixed(b))};
-    // xs[0][1].val = 21
-    std::get<1>(::tpy::__getitem__(xs, 0)).val = 21;
-    // return b.val
-    return b.val;
+    // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    // return xs[0][1].val
+    return std::get<1>(::tpy::__getitem__(xs, 0)).val;
 }
 
 // def in_dict(b: Box) -> Int32:
 int32_t in_dict(Box& b) {
-    // d = {1: make_mixed(b)}
+    // d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))}});
     // return d[1][1].val
     return std::get<1>(::tpy::__getitem__(d, 1)).val;
@@ -138,6 +143,9 @@ int32_t in_dict(Box& b) {
 
 // def in_nested_tuple(b: Box) -> Int32:
 int32_t in_nested_tuple(Box& b) {
+    // # No warning here: the member is itself a value tuple, so its borrowed
+    // # element is a level deeper than the per-member check looks (the
+    // # nested-depth limit in BUGS.md). It copies all the same.
     // q = (make_mixed(b), 1)
     std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)), 1};
     // return q[0][1].val
@@ -146,17 +154,32 @@ int32_t in_nested_tuple(Box& b) {
 
 // def as_loop_var(b: Box) -> Int32:
 int32_t as_loop_var(Box& b) {
-    // xs = [make_mixed(b)]
-    std::array<std::tuple<Box, Box&>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box&>>(make_mixed(b))};
+    // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    // n = 0
+    int32_t n = 0;
     // for t in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& t = *__beg_0;
-        // t[1].val = 31
-        std::get<1>(t).val = 31;
+        // n = n + t[1].val
+        n = (::tpy::add_check<int32_t>(n, std::get<1>(t).val));
     }
+    // return n
+    return n;
+}
+
+// def in_list_copy_ack(b: Box) -> Int32:
+int32_t in_list_copy_ack(Box& b) {
+    // # The acknowledgement silences the warning; copy() of a mixed tuple yields
+    // # the fully-owned storage form, so this is the same copy, made explicit --
+    // # and CPython's copy() deep-copies, so this shape agrees with CPython.
+    // xs = [copy(make_mixed(b))]  # tpyc: ok
+    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
+    // xs[0][1].val = 41
+    std::get<1>(::tpy::__getitem__(xs, 0)).val = 41;
     // return b.val
     return b.val;
 }
@@ -226,14 +249,17 @@ void main() {
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(2);
     std::cout << in_nested_tuple(__tmp_10) << " " << as_loop_var(__tmp_11) << "\n";
-    // print(via_ternary(Box(2), Box(3), True))
+    // print(in_list_copy_ack(Box(2)))
     Box __tmp_12 = Box(2);
-    Box __tmp_13 = Box(3);
-    std::cout << via_ternary(__tmp_12, __tmp_13, true) << "\n";
+    std::cout << in_list_copy_ack(__tmp_12) << "\n";
+    // print(via_ternary(Box(2), Box(3), True))
+    Box __tmp_13 = Box(2);
+    Box __tmp_14 = Box(3);
+    std::cout << via_ternary(__tmp_13, __tmp_14, true) << "\n";
     // print(rebound_in_branch(Box(2), Box(3), False))
-    Box __tmp_14 = Box(2);
-    Box __tmp_15 = Box(3);
-    std::cout << rebound_in_branch(__tmp_14, __tmp_15, false) << "\n";
+    Box __tmp_15 = Box(2);
+    Box __tmp_16 = Box(3);
+    std::cout << rebound_in_branch(__tmp_15, __tmp_16, false) << "\n";
 }
 
 void __tpy_init() {

@@ -1,6 +1,6 @@
 # A per-element-Own tuple renders MIXED (`std::tuple<A, B*>`), so subscripting
 # its plain ref element must use `->` while its Own element stays `.`.
-from tpy import Int32, Own
+from tpy import Int32, Own, copy
 
 
 class Box:
@@ -83,34 +83,53 @@ def wholly_owned_still_dots() -> Int32:
 
 
 # The storage sinks below all run the mixed tuple through tuple_to_storage,
-# which materializes the ref element as `B&` / `B` -- so they must keep
-# reading `.`, even though the tuple type still carries the `Own`. Reading
-# the borrow form off the TYPE instead of the SOURCE breaks exactly these.
-# The `B&` sinks (list, loop var) still alias, so they mutate and observe.
-# The `B` sinks (dict, nested tuple) COPY, which diverges from CPython --
-# they only read here, because mutating would make this case's output
-# disagree with CPython. That divergence is a filed bug, not a blessing;
-# see BUGS.md. Do not "fix" these two by adding no_cpython.txt.
+# which materializes the ref element BY VALUE -- so they must keep reading `.`,
+# even though the tuple type still carries the `Own`. Reading the borrow form
+# off the TYPE instead of the SOURCE breaks exactly these.
+#
+# Every one of them COPIES the borrowed element -- a container owns its
+# elements, so element 1 behaves as a standalone `Box` would there: copied,
+# with the same warning the scalar store gives, silenced by copy(). All four
+# agree on that because the inferred element type takes the owned storage form.
+#
+# The copy is an ACKNOWLEDGED divergence from CPython, which aliases -- the
+# warnings are the acknowledgement. Observing it needs a mutate-after-store,
+# which by construction cannot agree with CPython's output, so it lives in the
+# sibling `mixed_own_tuple_store_copies` (no_cpython). These read only, so this
+# case stays cpy-visible; the annotations are what pin the copy here. Do NOT
+# add no_cpython.txt to this case.
 def in_list(b: Box) -> Int32:
-    xs = [make_mixed(b)]
-    xs[0][1].val = 21
-    return b.val
+    xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+    return xs[0][1].val
 
 
 def in_dict(b: Box) -> Int32:
-    d = {1: make_mixed(b)}
+    d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
     return d[1][1].val
 
 
 def in_nested_tuple(b: Box) -> Int32:
+    # No warning here: the member is itself a value tuple, so its borrowed
+    # element is a level deeper than the per-member check looks (the
+    # nested-depth limit in BUGS.md). It copies all the same.
     q = (make_mixed(b), 1)
     return q[0][1].val
 
 
 def as_loop_var(b: Box) -> Int32:
-    xs = [make_mixed(b)]
+    xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+    n = 0
     for t in xs:
-        t[1].val = 31
+        n = n + t[1].val
+    return n
+
+
+def in_list_copy_ack(b: Box) -> Int32:
+    # The acknowledgement silences the warning; copy() of a mixed tuple yields
+    # the fully-owned storage form, so this is the same copy, made explicit --
+    # and CPython's copy() deep-copies, so this shape agrees with CPython.
+    xs = [copy(make_mixed(b))]  # tpyc: ok
+    xs[0][1].val = 41
     return b.val
 
 
@@ -144,6 +163,7 @@ def main() -> None:
     print(wholly_owned_still_dots())
     print(in_list(Box(2)), in_dict(Box(2)))
     print(in_nested_tuple(Box(2)), as_loop_var(Box(2)))
+    print(in_list_copy_ack(Box(2)))
     print(via_ternary(Box(2), Box(3), True))
     print(rebound_in_branch(Box(2), Box(3), False))
 

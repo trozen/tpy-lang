@@ -1650,7 +1650,7 @@ class RecordGenerator:
                 # and skip the wrap.
                 if (isinstance(fld_type, TupleType)
                         and fld_type.has_pointer_repr_element()
-                        and not self.ctx.is_storage_form_source(source)
+                        and self.ctx.needs_tuple_storage_lift(source)
                         and not copy_storage_tuple):
                     fld_cpp = self.types.type_to_cpp(fld_type)
                     value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"

@@ -225,6 +225,30 @@ applied per element (`tuple[Own[T_ref], T_value, ...]`); the
 move/copy decision at the call site is then made per the same
 per-element auto-move + copy-required rules as field assignments.
 
+A tuple is *owned storage* only when EVERY non-value element is owned. A
+**mixed** tuple -- one owned element and one borrowed (`tuple[Own[A], B]`,
+the shape a per-element-`Own` return produces) -- has no single form: its
+owned half wants storage, its borrowed half a pointer, so it renders
+`std::tuple<A, B*>` and stays a `const&` borrow at a parameter rather than
+taking the ownership-transfer `std::tuple<...>&&` ABI. Storing one into any
+owning slot therefore materializes the borrowed half: the slot holds
+`std::tuple<A, B>` and the borrowed element is COPIED. That copy is a
+divergence from CPython, which aliases, and it is acknowledged at most
+sinks -- a container element (literal, `append`/`insert`, subscript-assign,
+comprehension, loop variable), a dict value, and a field warn per element
+(`copies B into owned storage (tuple element i)`), silenced by `copy()`,
+which yields the fully-owned storage form `Own[tuple[A, B]]`. Two sinks
+copy SILENTLY and are tracked in `BUGS.md`: a *nested* tuple slot
+(`q = (make_mixed(b), 1)`, whose borrowed element sits a level deeper than
+the per-member check inspects) and a module GLOBAL.
+
+An *inferred* container element type takes the same owned storage form the
+annotation rule forces you to spell -- `list[tuple[A, B]]`, since `Own` in
+a local, field or container annotation is rejected as redundant. Element
+markers surviving into the slot would render as C++ reference members
+(`std::tuple<A, B&>`), which is how the same store once aliased under a
+fixed `Array` and copied under a `vector`.
+
 An owning `T | None` (pointer-repr Optional) **local** keeps the borrow
 form (`T*` + a function-scope materialization slot) -- so reference
 aliasing matches CPython (`x = A; y = x; x = B` leaves `y` on `A`) -- but

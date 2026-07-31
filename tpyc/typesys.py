@@ -2844,6 +2844,26 @@ def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     return ReadonlyType(collapsed) if isinstance(var_type, ReadonlyType) else collapsed
 
 
+def owned_tuple_storage_type(typ: 'TpyType') -> 'TpyType':
+    """The fully-owned storage form of a tuple type: every element held by
+    value, with both the ownership marker (`Own[T]`) and the borrow marker
+    (`Ref[T]`) removed.
+
+    Stronger than `collapse_tuple_own_elements`, which only drops `Own` and so
+    can leave a `Ref` element behind -- a type that still describes a borrow and
+    will not match an owning slot. This is the form `copy()` produces, and the
+    only tuple form an owning slot can hold without a further lift.
+    """
+    inner = unwrap_readonly(typ)
+    if not isinstance(inner, TupleType):
+        return typ
+    owned = TupleType(tuple(
+        unwrap_ref_type(unwrap_own(et)) for et in inner.element_types))
+    if owned == inner:
+        return typ
+    return ReadonlyType(owned) if isinstance(typ, ReadonlyType) else owned
+
+
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """Type of the `None` literal at value-bearing positions (generic
@@ -3655,6 +3675,16 @@ class TupleType(TpyType):
         # (`tuple[Own[A], A]`) is excluded: its borrow slot aliases the caller,
         # so the whole-tuple move model does not fit (it stays a const& borrow).
         return self.has_own_element() and not self.has_ref_elements()
+
+    def is_mixed_own(self) -> bool:
+        # The complement of is_owned_movable() among Own-carrying tuples: an
+        # owned element AND a borrow element, so the tuple has no single form --
+        # the owned half wants storage, the borrowed half a pointer. Every
+        # owning sink must therefore materialize the borrowed half rather than
+        # take the value as-is, which is what makes "is this tuple owned
+        # storage?" answerable only by is_owned_movable(), never by
+        # has_own_element().
+        return self.has_own_element() and self.has_ref_elements()
 
     def has_pointer_repr_optional_element(self) -> bool:
         """True if any element is a pointer-repr OptionalType.

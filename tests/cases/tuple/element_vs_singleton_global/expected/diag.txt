@@ -1,0 +1,1 @@
+main.py:33: warning: 'singleton' will not keep the object it was given -- 'V' is rebound on each iteration and both names share its storage; use copy(V) for an independent value

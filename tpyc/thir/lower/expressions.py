@@ -7145,9 +7145,23 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                 and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     declared[e.name]))) == su_tup):
             _witness("containerlit.tuple_name_storage")
+            inner = _lower_expr(e, lc, declared)
+            # A name that ALREADY reads storage form -- a loop var over a
+            # storage container -- is copied by the element init itself, so the
+            # AST emits the bare read and a convert here would be a redundant
+            # identity lift, i.e. a byte divergence. Only a borrow-form source
+            # owes the wrap.
+            #
+            # The AST's gate (`needs_tuple_storage_lift`) has two more NAME arms
+            # this does not implement, both kept out upstream rather than here:
+            # a pointer-repr tuple GLOBAL never reaches `declared` (only a
+            # value-tuple global is admitted), and a MIXED-render local rejects
+            # at the decl arm, so neither can enter `storage_tuple_locals`.
+            if e.name in lc.storage_tuple_locals:
+                return inner
             return THIRFormConvert(
                 result_type=su_tup,
-                value=_lower_expr(e, lc, declared),
+                value=inner,
                 form=Form.STORAGE, move=False,
                 loc=getattr(e, "loc", None))
         raise ThirUnsupported("expr.tuple_literal.slot")

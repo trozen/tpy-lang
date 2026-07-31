@@ -27,6 +27,7 @@ int32_t in_list(Box& b);
 int32_t in_dict(Box& b);
 int32_t in_nested_tuple(Box& b);
 int32_t as_loop_var(Box& b);
+int32_t in_list_copy_ack(Box& b);
 int32_t via_ternary(Box& b, Box& c, bool flag);
 int32_t rebound_in_branch(Box& b, Box& c, bool flag);
 void main();

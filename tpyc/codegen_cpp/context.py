@@ -2451,7 +2451,7 @@ class CodeGenContext:
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             fi = expr.resolved_function_info
             rt = unwrap_readonly(fi.return_type) if fi is not None else None
-            return isinstance(rt, TupleType) and rt.has_own_element()
+            return isinstance(rt, TupleType) and rt.is_mixed_own()
         # Composition mirrors `is_storage_form_source`: C++ evaluates one arm,
         # so a ternary is this shape only when BOTH arms are (mixed arms have
         # no common tuple type to deduce anyway).
@@ -2461,6 +2461,19 @@ class CodeGenContext:
         if isinstance(expr, TpyName):
             return expr.name in self.own_borrow_tuple_locals
         return False
+
+    def needs_tuple_storage_lift(self, expr: TpyExpr) -> bool:
+        """Whether an OWNING tuple slot must run `expr` through
+        `tuple_to_storage` rather than take its value as-is.
+
+        A borrow-form source obviously must. A MIXED-render source must too,
+        even though `is_storage_form_source` calls it storage: that verdict
+        describes only its owned half, while its borrowed half is a pointer the
+        owning slot has to materialize. Asking `is_storage_form_source` alone
+        here is what let every storage sink take the mixed render unconverted.
+        """
+        return (not self.is_storage_form_source(expr)
+                or self.renders_own_borrow_tuple(expr))
 
     def is_storage_form_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads a value from a storage location.

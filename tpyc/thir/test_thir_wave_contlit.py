@@ -475,6 +475,22 @@ class TestCompRouteRows:
         assert w.get("containerlit.tuple_name_storage", 0) >= 1
         _assert_byte_identical(src)
 
+    def test_tuple_name_storage_lift_arm(self):
+        # BOUNDARY for the row above: a storage-form loop var takes the SKIP
+        # path, so that test alone would stay green if the convert were deleted.
+        # A tuple PARAM read as the element is NOT storage form, so it still
+        # owes the `tuple_to_storage` wrap -- this pins the arm that emits it.
+        src = (_P
+               + "def lift(p: tuple[Int32, P]) -> None:\n"
+               + "    xs: list[tuple[Int32, P]] = [p for _ in range(2)]\n"
+               + "    print(len(xs))\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "lift") is not None
+        assert w.get("containerlit.tuple_name_storage", 0) >= 1
+        emitted = _assert_byte_identical(src)
+        assert "::tpy::tuple_to_storage<std::tuple<int32_t, P>>(p)" in \
+            "".join(emitted)
+
     def test_items_record_unpack_routes(self):
         src = (_P
                + "def f() -> None:\n"

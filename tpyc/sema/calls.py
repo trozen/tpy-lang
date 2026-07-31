@@ -32,7 +32,7 @@ from ..typesys import (
     is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
-    del_suppresses_default_ctor)
+    del_suppresses_default_ctor, owned_tuple_storage_type)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -1671,6 +1671,10 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # copy() yields owned storage: `copy(t)` on `tuple[Own[A], B]` is an
+        # owned `tuple[A, B]`. Leaving either marker on an element would keep
+        # describing a borrow, so the sink would lift the value a SECOND time.
+        arg_type = owned_tuple_storage_type(arg_type)
         # Use declared union type instead of narrowed member type so copy()
         # preserves the full union (e.g. copy(pet) where pet: Dog | Cat is
         # narrowed to Dog still returns Own[Dog | Cat])

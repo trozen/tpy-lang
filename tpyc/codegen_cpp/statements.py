@@ -1928,7 +1928,7 @@ class StatementGenerator:
         if not (isinstance(unwrapped, TupleType)
                 and unwrapped.has_pointer_repr_element()):
             return expr
-        if source is not None and self.ctx.is_storage_form_source(source):
+        if source is not None and not self.ctx.needs_tuple_storage_lift(source):
             return expr
         resolved = self.types.resolve_tuple_pending(unwrapped)
         return self.ctx.convert(

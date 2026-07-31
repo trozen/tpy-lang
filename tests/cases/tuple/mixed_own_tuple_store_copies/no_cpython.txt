@@ -1,0 +1,1 @@
+TPy copies where CPython aliases at every storage sink for this shape -- see the sibling mixed_own_element_read, which stays cpy-visible by reading only.

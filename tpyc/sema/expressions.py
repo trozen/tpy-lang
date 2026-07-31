@@ -25,7 +25,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements,
+    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, owned_tuple_storage_type,
     ConcreteCoroType,
     yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
@@ -2309,6 +2309,15 @@ class ExpressionAnalyzer:
             for elem, et in zip(expr.elements, elem_types):
                 self._warn_storage_element_copy(elem, et)
 
+        # A container owns its elements, so an inferred TUPLE element type takes
+        # the owned storage form -- the same type the annotation rule forces the
+        # user to spell (`list[tuple[Box, Box]]`; `Own` there is rejected as
+        # redundant). Left uncollapsed, the element keeps its `Own`/`Ref`
+        # markers, which to_cpp() renders as reference members
+        # (`std::tuple<Box, Box&>`) -- so the same store aliased under a fixed
+        # Array and copied under a vector, purely by which one inference picked.
+        first_type = owned_tuple_storage_type(first_type)
+
         size = len(expr.elements)
 
         # Global context (no current function) -> ListType (std::vector)
@@ -3366,8 +3375,12 @@ class ExpressionAnalyzer:
 
         # Container elements are stored owned; collapse a per-element Own so the
         # node field matches the storage slot. Own[DynProtocol] would otherwise
-        # render `unique_ptr<P>` here against a bare `P` slot.
-        result_elem_type = unwrap_own(result_elem_type)
+        # render `unique_ptr<P>` here against a bare `P` slot. The unwrap only
+        # peels the OUTER Own, so a tuple element additionally takes its owned
+        # storage form -- otherwise its per-element markers survive and render as
+        # reference members, and the comprehension aliases where the equivalent
+        # literal copies.
+        result_elem_type = owned_tuple_storage_type(unwrap_own(result_elem_type))
         expr.result_elem_type = result_elem_type
         self._track_pending_elem_field(expr, "result_elem_type", result_elem_type)
 
@@ -3505,6 +3518,12 @@ class ExpressionAnalyzer:
             value_type = expected_value
 
         self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
+        # A dict owns its values, so a tuple value takes the owned storage form
+        # like every other container element. Left uncollapsed it keeps its
+        # per-element markers and renders a reference member into the map value
+        # (`ordered_map<K, std::tuple<A, B&>>`), which then ALIASES while the
+        # store's copy warning says otherwise.
+        value_type = owned_tuple_storage_type(value_type)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
         self._track_pending_elem_field(expr, "result_key_type", key_type)

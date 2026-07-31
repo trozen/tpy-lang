@@ -1169,25 +1169,37 @@ class ExpressionGenerator:
             # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
             # mismatch on either side needs an element-wise converter.
             tuple_ptype_inner = ptype_inner
+            # A MIXED slot wants the mixed render verbatim -- same hybrid shape,
+            # no conversion either way. Keyed on the slot, not the arg: the same
+            # mixed arg into an ALL-BORROW slot still owes the pointer lift,
+            # because its owned half is held by value and needs addressing.
+            slot_is_mixed = (isinstance(ptype_inner, TupleType)
+                             and ptype_inner.is_mixed_own())
             slot_is_storage = isinstance(tuple_ptype_inner, OwnType)
             if slot_is_storage:
                 tuple_ptype_inner = unwrap_readonly(unwrap_ref_type(tuple_ptype_inner.wrapped))
             elif (isinstance(tuple_ptype_inner, TupleType)
                     and not isinstance(arg, TpyTupleLiteral)
-                    and any(isinstance(unwrap_readonly(e), OwnType)
-                            for e in tuple_ptype_inner.element_types)):
-                # A per-element-Own tuple param is storage form (std::tuple<
-                # ..., T>): collapse Own[T]->T so a borrow-form arg (a tuple
-                # local that didn't move the element in) gets a tuple_to_storage
-                # copy, matching the scalar T->Own[T] copy. A literal arg is
-                # already built storage form (its Own slots are VALUE-captured),
-                # so it needs no wrap and is excluded here.
+                    and tuple_ptype_inner.is_owned_movable()):
+                # A FULLY owned tuple param is storage form (std::tuple<..., T>):
+                # collapse Own[T]->T so a borrow-form arg (a tuple local that
+                # didn't move the element in) gets a tuple_to_storage copy,
+                # matching the scalar T->Own[T] copy. A literal arg is already
+                # built storage form (its Own slots are VALUE-captured), so it
+                # needs no wrap and is excluded here. A MIXED param is NOT
+                # storage -- it stays a const& borrow of the mixed render
+                # (`const std::tuple<A, const B*>&`), so lifting into it would
+                # hand it the wrong shape.
                 slot_is_storage = True
                 tuple_ptype_inner = collapse_tuple_own_elements(tuple_ptype_inner)
             if (isinstance(tuple_ptype_inner, TupleType)
                     and tuple_ptype_inner.has_pointer_repr_element()):
+                # The two directions ask different questions of a MIXED render:
+                # to a borrow slot its owned half still needs addressing (so it
+                # counts as storage), while to an owning slot its borrowed half
+                # still needs materializing. One boolean cannot answer both.
                 arg_is_storage = self.ctx.is_storage_form_source(arg)
-                if arg_is_storage and not slot_is_storage:
+                if arg_is_storage and not slot_is_storage and not slot_is_mixed:
                     # A const storage source (self.field in a readonly method,
                     # const param/local) yields const element addresses, so the
                     # pointer form must be const-slotted to type-check.
@@ -1197,7 +1209,7 @@ class ExpressionGenerator:
                                  else tuple_ptype_inner.to_cpp_return())
                     gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
                     arg_was_lifted = True
-                elif not arg_is_storage and slot_is_storage:
+                elif slot_is_storage and self.ctx.needs_tuple_storage_lift(arg):
                     # Tuple literal source: sema's per-element Own check
                     # cleared every element as movable (last-use lvalue,
                     # fresh rvalue, or copy() rvalue), so the lift moves
@@ -5786,7 +5798,8 @@ class ExpressionGenerator:
             from ..coercions import wrap_into_any, CoercionContext
             return wrap_into_any(code, resolved, CoercionContext.INIT)
         if (isinstance(slot_type, TupleType)
-                and slot_type.has_pointer_repr_element()):
+                and slot_type.has_pointer_repr_element()
+                and self.ctx.needs_tuple_storage_lift(expr)):
             return f"::tpy::tuple_to_storage<{slot_type.to_cpp()}>({code})"
         return code
 

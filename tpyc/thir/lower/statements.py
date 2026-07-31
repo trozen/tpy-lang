@@ -5864,6 +5864,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # BORROW form -- owned elements by value, plain ref elements as
                 # pointers. The AST reads that per element correctly now; this
                 # half is a plain migration gap, not bug-compat (see TODO.md).
+                # Deliberately `has_own_element()`, NOT `is_mixed_own()`: this
+                # is a REJECT gate, so the broader predicate keeps a fully-owned
+                # tuple call out of the alias arm too and falls back rather than
+                # risking divergence. When this is ported, the AST rule to mirror
+                # is `is_mixed_own()` (owned AND borrowed elements) plus
+                # `needs_tuple_storage_lift()` at the sinks -- not this gate.
                 mixed_own = isinstance(cru, TupleType) and cru.has_own_element()
                 if cru is not None and not owning and not mixed_own:
                     src_bt = _f1_tuple(analyzer.get_expr_type(stmt.init),

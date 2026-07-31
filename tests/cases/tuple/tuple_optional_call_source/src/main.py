@@ -20,7 +20,7 @@ def main() -> None:
     b = P(2)
 
     pairs: list[tuple[P | None, P | None]] = []
-    pairs.append(make_pair(a, b))
+    pairs.append(make_pair(a, b))  # tpyc: warning(/copies/) warning(/copies/)
 
     d: dict[Int32, tuple[P | None, P | None]] = {}
     d[Int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)

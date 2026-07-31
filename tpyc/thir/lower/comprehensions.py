@@ -634,6 +634,45 @@ def _lower_comprehension(
                 body_declared[name] = tt
     else:
         body_declared[gen.var] = route.et
+    # A comprehension loop var over a container of pointer-repr tuples reads
+    # STORAGE form, exactly as the for-statement loop var does -- the AST
+    # registers it at comp-scope entry (`register_loop_var_storage_form`) so the
+    # element consumer sees it. Without the mirror the element wrap re-lifts an
+    # already-storage read.
+    #
+    # Membership makes EVERY read of the name in the body STORAGE form (the Form
+    # verdict in `expressions.py`), not just the element wrap -- filters and
+    # subscripts included, which is what the AST does too.
+    #
+    # PARTIAL against `register_loop_var_storage_form`, each part unreachable
+    # today via a gate elsewhere rather than anything here, so widening any of
+    # those routes must revisit this: no `is_native_iterable` gate (a generator
+    # yields borrow-form tuples; the owns-arm keeps `et` an OwnType), no
+    # `borrow_form_tuple_locals` exclusion (those shapes reject at the outer
+    # decl), no `const_storage_tuple_locals` channel, no storage-Optional
+    # family, and this sits AFTER the array_range/array_source early returns
+    # (those routes admit only value-tuple slots with literal elements).
+    comp_storage_var = None
+    et_peeled = unwrap_readonly(route.et) if route.et is not None else None
+    if (route.unpack_types is None and isinstance(et_peeled, TupleType)
+            and et_peeled.has_pointer_repr_element()
+            and gen.var not in lc.storage_tuple_locals):
+        comp_storage_var = gen.var
+        lc.storage_tuple_locals.add(gen.var)
+    try:
+        return _build_comprehension_body(
+            init, result_type, route, lc, declared, body_declared, gen,
+            analyzer, loc, pointers)
+    finally:
+        if comp_storage_var is not None:
+            lc.storage_tuple_locals.discard(comp_storage_var)
+
+
+def _build_comprehension_body(init, result_type, route, lc, declared,
+                              body_declared, gen, analyzer, loc, pointers):
+    """The comprehension body build, split out so the loop-var storage-form
+    registration above can scope itself symmetrically (mirroring the AST's
+    comp-scope enter/exit)."""
     _witness(f"comp.{route.kind}")
     _witness(f"comp.{route.loop}")
     if gen.conditions:

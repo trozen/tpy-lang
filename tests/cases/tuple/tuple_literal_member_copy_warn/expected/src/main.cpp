@@ -10,7 +10,7 @@ void list_literal(const std::vector<std::tuple<int32_t, P>>& items) {
     // # literal would infer a fixed Array and hit a separate borrow-form codegen
     // # gap (see BUGS.md).
     // xs: list[tuple[Int32, P]] = [items[0]]  # tpyc: warning(/copies P into owned storage/)
-    std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(::tpy::__getitem__(items, 0))};
+    std::vector<std::tuple<int32_t, P>> xs = {::tpy::__getitem__(items, 0)};
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
@@ -18,7 +18,7 @@ void list_literal(const std::vector<std::tuple<int32_t, P>>& items) {
 // def dict_value(items: list[tuple[Int32, P]]) -> None:
 void dict_value(const std::vector<std::tuple<int32_t, P>>& items) {
     // d: dict[Int32, tuple[Int32, P]] = {0: items[0]}  # tpyc: warning(/copies P into owned storage/)
-    ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>>({{0, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(::tpy::__getitem__(items, 0))}});
+    ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>>({{0, ::tpy::__getitem__(items, 0)}});
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
