@@ -103,3 +103,70 @@ class TestAccessorReceiverOptFieldWrite:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
         _assert_byte_identical(src)
+
+
+class TestValueOptRecordSlot:
+    """The VALUE-record twin (`decl.opt_value_record`): an
+    `Optional[Coord]` slot off a property/call binds the plain spelled
+    `std::optional<Coord>` copy; the None-test reads has_value off the
+    registered binding. Reassigned targets stay AST; a narrowed FIELD
+    read off the local is a separate unported read row (atomic
+    fallback, byte-identical)."""
+
+    _SRC = (
+        "from typing import Optional\n"
+        "from tpy import Int32, ValueType\n"
+        "class Coord(ValueType):\n"
+        "    x: Int32\n"
+        "    y: Int32\n"
+        "    def __init__(self, x: Int32, y: Int32) -> None:\n"
+        "        self.x = x\n"
+        "        self.y = y\n"
+        "class Track:\n"
+        "    _has: bool\n"
+        "    def __init__(self) -> None:\n"
+        "        self._has = True\n"
+        "    @property\n"
+        "    def goal(self) -> Optional[Coord]:\n"
+        "        if not self._has:\n"
+        "            return None\n"
+        "        return Coord(1, 2)\n"
+    )
+
+    def test_property_slot_and_none_test_route(self):
+        src = (self._SRC
+               + "def use(t: Track) -> None:\n"
+               + "    g = t.goal\n"
+               + "    print(g is None)\n"
+               + "use(Track())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.opt_value_record")
+        _assert_byte_identical(src)
+
+    def test_reassigned_target_stays_out(self):
+        src = (self._SRC
+               + "def use(t: Track) -> None:\n"
+               + "    g = t.goal\n"
+               + "    print(g is None)\n"
+               + "    g = t.goal\n"
+               + "    print(g is None)\n"
+               + "use(Track())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        assert not faces.get("decl.opt_value_record")
+        _assert_byte_identical(src)
+
+    def test_narrowed_field_read_still_defers(self):
+        # The `(*g).x` receiver read is not ported; the body falls back
+        # whole (byte-identical), the decl arm does not mask it.
+        src = (self._SRC
+               + "def use(t: Track) -> Int32:\n"
+               + "    g = t.goal\n"
+               + "    if g is not None:\n"
+               + "        return g.x\n"
+               + "    return -1\n"
+               + "print(use(Track()))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)

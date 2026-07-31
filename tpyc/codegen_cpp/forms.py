@@ -226,10 +226,11 @@ def classify_local_binding(
         # any non-REF_ALIAS binding (its own arms decide the render).
         if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
             return LocalBinding.OPT_PTR_SLOT
-        # A reassigned optional off an LVALUE init still needs the
-        # lvalue-lift + mixed-reseat machinery -- deferred.
-        if is_reassigned:
-            return LocalBinding.OTHER
+        # A reassigned optional off an LVALUE init binds the same
+        # OPTIONAL_TO_PTR lift as the single-assignment shape; its reseats
+        # ride the pointer-local reseat arms (lvalue lift / nullptr /
+        # inline-rvalue slot). Transparent to the AST caller, which treats
+        # every non-REF_ALIAS verdict as a pointer-local.
         if reads_storage_form_optional(analyzer, init):
             return LocalBinding.OPTIONAL_TO_PTR
         return LocalBinding.OTHER

@@ -5449,3 +5449,76 @@ Session total for the thir-grind-loop branch: dial 2816 -> 2871
 (+55 flips), markers 835 -> 780, five review rounds applied (rounds
 3-4 in this stretch; one Critical and one dualgen-confirmed
 divergence caught and fixed across them).
+
+### thir-slot-type-wave: the decl.slot_type decl-ladder rows (2026-07-31)
+
+Markers 806 -> 794 (12 flips, repo-verified as of the review-round
+commit; the subsequent master merge imported one marker-bearing case
+and the readiness pass added one migrated witness case, landing the
+branch at dial 2904/3693, 789 markers). The wave started against the
+pre-merge corpus, where the queue memory recorded 2871/3651 --
+master-side case growth moved the denominator mid-wave, so no
+comparable start dial exists. Site: the
+`decl.slot_type` slot_ok ladder (29 sole-blocker census cases,
+`thir/lower/statements.py`). Eight cells:
+
+**Storage-call tuple decl** (`decl.storage_call_tuple`): an owning
+non-value-element tuple call result decls the storage copy (`auto` /
+the spelled collapsed type). The owning-signal split (Own-declared
+return vs per-element all-Own vs the borrow-tuple F1 alias) was
+tightened by a corpus byte-diff catch: stamping a borrow-tuple return
+storage DIVERGED, and the boundary pin asserts that shape routes via
+the borrow-decl arm instead.
+
+**Readonly span peel + Optional name-copy** (`_peel_readonly`,
+`decl.opt_name_copy`): stacked-readonly span elements resolve through
+one peel helper at three sites; a same-repr pointer-Optional name init
+re-tags OTHER -> OPTIONAL_TO_PTR for the bare pointer copy.
+
+**Reassigned borrow-tuple decls** (`decl.btuple_lift` /
+`decl.btuple_literal` / `decl.btuple_rebind_slot`): ONE fixed borrow
+shape across all bindings -- the tuple_to_pointer lift, the
+REF-capture literal, and the owning-call `std::optional<...>` slot +
+emplace (the statement twin of the walrus btuple slot). Const
+bindings, borrow-call inits, owning calls at RESEAT position, and the
+mixed own-borrow hybrid stay named rejects.
+
+**Narrowed Optional-ptr receiver borrow locals**: the gate-reject
+mirrored a since-fixed AST bug (inferred-const receivers used to drop
+constness); THIR now reads the same deep-const verdict
+(`_opt_ptr_param_deep_const`) the AST's seed_param_locals reads, and
+the stale fence pin converted to a four-body byte pin over both const
+verdicts.
+
+**Reassigned Optional local off an lvalue field init**: the shared
+classifier verdict flipped (AST-transparent), reseats ride the
+slotless pointer arms plus the new `reseat.opt_field_lift` rung. The
+INLINE_RVALUE block slot moved to its own emit registry -- registering
+it in `rebind_slots` let the THIRAssign rebind-slot special case
+hijack later field lifts into `p = &*(__slot_1 = ...)` (byte-diff
+catch, pinned as a regression).
+
+**Optional[value-record] slot** (`decl.opt_value_record`) and the
+**Array last-use alias move** (`decl.move_through_array`): the
+value-record twin of the owned-optional record slot, and the
+expensive-copy value container admitted into the move-through decl
+arm.
+
+Cleared: 4 tuple realias/rebind cases, const_borrow_optional_ptr_recv,
+optional_field_to_local_rebind, property_value_record_return,
+reassign_list_alias_no_mutation, plus the first harvest's 4
+(span_method_builtin, warn_auto_move_optional,
+tuple_own_call_local_use, gen_yield_view_from_frame). Site tail
+(~12): every remaining case chains into an unported expression family
+(class-attr reads, record-getitem subscripts, call-receiver chains,
+the Optional[StrView] append shim, the own-borrow hybrid tuple reads),
+is fenced (the const borrow-tuple row, the mixed hybrid realias, the
+literal-init owned-view optional whose narrow flips the None-test
+render -- documented at the gate), deferred (the ternary ptr-select
+render mode), or parked (the Rc/Box `.new` adapter fork).
+
+Lesson (hijack class): emit-side slot registries are per-CONCEPT, not
+per-name -- a plain block slot and the decl-time rebind slot share a
+name key but not a consumer, and the shared dict let one consumer's
+special case capture the other's plain assigns. Same-name registries
+merged "for convenience" are the divergence seed.

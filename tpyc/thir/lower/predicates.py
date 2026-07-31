@@ -607,6 +607,14 @@ def _container_rvalue_select(init: 'TpyExpr | None', t: 'TpyType | None',
     return False
 
 
+def _peel_readonly(t: 'TpyType') -> 'TpyType':
+    """Strip STACKED ReadonlyType layers: the readonly-span projections
+    (`ro.__span__()`) stamp `readonly[readonly[T]]` elements, which render as
+    one `const` -- every span element check peels them all."""
+    while isinstance(t, ReadonlyType):
+        t = t.wrapped
+    return t
+
 def _span_slot(t: 'TpyType | None', analyzer) -> bool:
     """A `Span[T]` DECL slot over a scalar or plain-record element
     (`std::span<Node> s = ::tpy::as_mut_span(b);`): the decl only spells the
@@ -623,7 +631,7 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
     args = getattr(u, "type_args", None)
     if not args:
         return False
-    elem = unwrap_readonly(args[0])
+    elem = _peel_readonly(args[0])
     return _eligible_scalar(elem) or _f1_record(elem, analyzer)
 
 
@@ -1975,7 +1983,9 @@ def _span_value(t: TpyType | None) -> bool:
     if isinstance(u, OwnType) or not is_span(u):
         return False
     args = getattr(u, "type_args", None)
-    return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
+    if not args:
+        return False
+    return _eligible_scalar(_peel_readonly(args[0]))
 
 def _span_return(t: TpyType | None) -> bool:
     """The span RETURN slot -- see `_span_value` (the return is one of its
@@ -3691,7 +3701,7 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
         if span_elem_ok is not None:
             return bool(args) and span_elem_ok(args[0])
         return (span_ok and bool(args)
-                and _eligible_scalar(unwrap_readonly(args[0])))
+                and _eligible_scalar(_peel_readonly(args[0])))
     if is_dict(t):
         if not args or len(args) < 2:
             return False
@@ -4050,19 +4060,16 @@ def _bytes_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
 
 def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
                                    analyzer) -> bool:
-    """`_field_receiver_ok` minus Optional-ptr borrow-name receivers -- for the
-    const-SPELLING sinks (borrow-local decls, storage-tuple aliases, union
-    locals from fields, borrow-tuple returns), whose emitted decl spells the
-    receiver's const verdict. THIR reads the inferred verdict
-    (`_param_is_const` / `const_locals`), but the AST keys these decls on
-    `const_indirect_locals`, which `seed_param_locals` populates for an
-    Optional-ptr receiver only when it is `readonly[...]`-ANNOTATED -- an
-    inferred-const narrowed receiver thus emits a non-compiling mutable decl
-    (`A& g = h->g;` off `const H* h`; the BUGS.md "borrow locals off a
-    narrowed Optional receiver drop inferred constness" entry). Mirroring
-    would fork the verdict solely to reproduce the bug -> gate-reject per the
-    ledger criterion. Render-const-blind consumers (field reads/writes, arg
-    lifts, reseats, MIL copies) keep the plain `_field_receiver_ok`."""
+    """`_field_receiver_ok` minus Optional-ptr borrow-name receivers -- for
+    the const-SPELLING sinks (storage-tuple aliases, union locals from
+    fields, borrow-tuple returns), whose emitted decl spells the receiver's
+    const verdict. An Optional-ptr receiver's const-ness comes from
+    `seed_param_locals`' const_indirect_locals seeding (readonly annotation
+    or the DEEP-const verdict); the borrow-local decl sink mirrors that via
+    `_opt_ptr_param_deep_const` and admits these receivers separately, while
+    the remaining sinks keep the reject pending their own const wiring.
+    Render-const-blind consumers (field reads/writes, arg lifts, reseats,
+    MIL copies) keep the plain `_field_receiver_ok`."""
     if not _field_receiver_ok(e, declared, analyzer):
         return False
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is None
@@ -4589,6 +4596,20 @@ def _param_is_deep_const(name: str, func: TpyFunction, analyzer,
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "deep_const_borrow_params")
 
+def _opt_ptr_param_deep_const(name: str, func: TpyFunction, analyzer,
+                              record_name: str | None) -> bool:
+    """An Optional-ptr PARAM receiver spelled `const H*`: seed_param_locals
+    seeds const_indirect_locals for a pointer-repr Optional param from the
+    readonly annotation (raw-sema ReadonlyType, caught by the upstream
+    checks) or the DEEP-const verdict -- this is the inferred half, gated
+    to the pointer-repr-Optional param shape that seeding arm covers."""
+    pt = next((t for n, t in func.params if n == name), None)
+    if pt is None:
+        return False
+    bare = unwrap_readonly(unwrap_send_sync(pt))
+    return (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+            and _param_is_deep_const(name, func, analyzer, record_name))
+
 def _param_is_const(name: str, func: TpyFunction, analyzer,
                     record_name: str | None = None) -> bool:
     """Whether param `name` is emitted `const` -- read from the sema fact
@@ -4676,10 +4697,21 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     if isinstance(svt, OptionalType) and isinstance(svt.inner, ReadonlyType):
         return True
     if binding is LocalBinding.OPTIONAL_TO_PTR:
-        recv = stmt.init.obj  # TpyName (validated by _field_receiver_ok)
-        if (recv.name in const_locals
-                or _param_is_const(recv.name, func, analyzer, record_name)):
-            return True
+        if isinstance(stmt.init, TpyName):
+            # The name-copy row: const-ness follows the SOURCE pointer
+            # (`const Point* q = a;` off a const Optional param/local).
+            if (stmt.init.name in const_locals
+                    or _param_is_const(stmt.init.name, func, analyzer,
+                                       record_name)):
+                return True
+        else:
+            recv = stmt.init.obj  # TpyName (validated by _field_receiver_ok)
+            if (recv.name in const_locals
+                    or _param_is_const(recv.name, func, analyzer,
+                                       record_name)
+                    or _opt_ptr_param_deep_const(recv.name, func, analyzer,
+                                                 record_name)):
+                return True
     # A readonly method's ref return binds `const T&` -- the method-call
     # branch of `_is_const_indirect`.
     if isinstance(stmt.init, TpyMethodCall):
@@ -4727,8 +4759,13 @@ def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
     if isinstance(expr, (TpyFieldAccess, TpySubscript)):
         obj = expr.obj
         if isinstance(obj, TpyName):
+            # The Optional-ptr param disjunct mirrors const_indirect_locals
+            # membership (seed_param_locals' deep-const seeding); a const
+            # OPTIONAL_TO_PTR local rides `const_locals` like any F1 local.
             return (obj.name in const_locals
-                    or _param_is_const(obj.name, func, analyzer, record_name))
+                    or _param_is_const(obj.name, func, analyzer, record_name)
+                    or _opt_ptr_param_deep_const(obj.name, func, analyzer,
+                                                 record_name))
         return _f1_const_rooted_source(obj, func, analyzer, const_locals, record_name)
     return False
 
@@ -5097,6 +5134,33 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                       analyzer) is not None):
             return None
     return t
+
+def _nested_owned_tuple_call_ret(ret: TpyType | None,
+                                 analyzer) -> 'TupleType | None':
+    """A call-result tuple OF owned tuples (`two_pairs() ->
+    tuple[tuple[Own[Handle], Own[Handle]], ...]`): the outer tuple has no
+    direct Own element, so `_owned_tuple_call_ret` cannot see it, but each
+    inner tuple is exactly that family (or a plain value tuple), and the
+    whole result lands as one storage copy (`std::tuple<std::tuple<Handle,
+    Handle>, ...> pp = two_pairs();`). Scoped to the STORAGE decl sink
+    (use.tuple_source) alongside its flat sibling."""
+    if ret is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+    if not isinstance(t, TupleType):
+        return None
+    saw_owned_inner = False
+    for e in t.element_types:
+        eb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+        if isinstance(eb, TupleType) and eb.has_own_element():
+            if _owned_tuple_call_ret(eb, analyzer) is None:
+                return None
+            saw_owned_inner = True
+        elif not (_eligible_scalar(eb)
+                  or _resolved_str_value(eb, analyzer) is not None
+                  or _value_tuple_nested(eb, analyzer) is not None):
+            return None
+    return t if saw_owned_inner else None
 
 def _storage_call_container(t: TpyType) -> bool:
     """Whether a `_storage_call_ret` verdict is the container family -- the

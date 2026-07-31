@@ -687,15 +687,18 @@ class TestF2PointerReceiver:
         cpp = self._cpp(self.SRC, thir=True)
         assert "x->opt = ::tpy::ptr_to_optional(leaf);" in cpp
 
-    def test_reassigned_optional_local_is_ineligible(self):
-        # A reassigned OPTIONAL_TO_PTR (optional pointer-local) needs the rebind-
-        # slot machinery, so it stays on the AST path (the optional branch of
-        # classify_local_binding returns OTHER for a reassigned name).
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
-            + "    p = b.opt\n    if which < 0:\n        p = c.opt\n    return 0\n")
-        assert _fn(thir, "f") is None
+    def test_reassigned_optional_local_routes(self):
+        # A reassigned OPTIONAL_TO_PTR off an lvalue field init classifies
+        # like the single-assignment shape; reseats (including branch
+        # reseats) ride the slotless pointer reseat arms.
+        src = (_F1_RECORDS
+               + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+               + "    p = b.opt\n    if which < 0:\n        p = c.opt\n"
+               + "    return 0\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("reseat.opt_field_lift")
+        _assert_byte_identical(src)
 
 
 

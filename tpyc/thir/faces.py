@@ -874,6 +874,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
+    "decl.btuple_rebind_slot",      # reassigned btuple decl off an owning call:
+                                    # optional slot + emplace + tuple_to_pointer
+    "decl.btuple_lift",             # reassigned btuple decl off a storage lvalue
+    "decl.btuple_literal",          # reassigned btuple decl off a REF-capture literal
     "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
     "ret.btuple_name",              # already-borrow tuple local returned bare
     "ret.consuming_self_field",     # consuming method: `return std::move(this->f);`
@@ -965,6 +969,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Move-through owned record local (`Handle a = std::move(h);`): a NAME
     # source consumed at its last use, target flagged in `move_through`.
     "decl.move_through_record",
+    "decl.move_through_array",      # Array last-use alias: spelled decl + std::move
     # `copy(a)` of a plain F1-record source into an owned record local
     # (`T b = T(a);`, the copy-construct rvalue).
     "decl.copy_record",
@@ -972,6 +977,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # returning call init -- the bare `T x = f(...);` / plain reassign,
     # rendered by the shared generic decl tail).
     "decl.storage_call",
+    # An owning pointer-repr-element tuple call result declared storage-form
+    # (`auto t = make_pair(5);` + storage element reads).
+    "decl.storage_call_tuple",
+    # A same-repr pointer-Optional name-copy decl (`const Point* q = a;`).
+    "decl.opt_name_copy",
     # Native record-returning free-call local decl (`f = open(path)` ->
     # `::tpy::TextFile f = ::tpy::builtin_open(path);`) -- a plain-value decl,
     # single-assignment rvalue only.
@@ -1020,6 +1030,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`std::optional<Rc<T>> upgraded = w.upgrade();`); the name registers
     # for the narrowed `(*name)` deref + has_value None-test reads.
     "decl.opt_record_call",
+    "decl.opt_value_record",        # Optional[value-record] slot: plain spelled copy
     # A registered owned-optional record local's NARROWED read -- the
     # `(*upgraded)` deref consumed as a receiver / member position.
     "name.opt_record_deref",
@@ -1055,6 +1066,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Lvalue reseat of a slotless Optional local: lift a bare record param or an
     # F1-record field source via `x = &(...);`.
     "reseat.opt_lvalue",
+    "reseat.opt_field_lift",        # slotless opt local = optional_to_ptr(field)
     # Ptr-variant union local from a concrete-member rvalue: value-variant
     # `__slot_N` + `to_ptr_variant(__slot_N)` (+ the rebind-slot pre-decl).
     "decl.union_slot_rvalue",

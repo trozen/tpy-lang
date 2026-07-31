@@ -446,6 +446,13 @@ class _EmitState:
     # produce site rather than emitting an undeclared `__slot_N`.
     hoist_drainable: bool = True
     rebind_slots: dict[str, int] = field(default_factory=dict)
+    # Plain block slots allocated by a slotless local's first INLINE_RVALUE
+    # reseat (function-top only). A SEPARATE registry from `rebind_slots`:
+    # the THIRAssign rebind-slot special case keys on that dict, and a
+    # slotless local's later field-lift / pointer-copy reseats are plain
+    # assigns the AST renders without consulting the slot -- registering
+    # here keeps them from being hijacked into `p = &*(__slot = ...)`.
+    inline_rvalue_slots: dict[str, int] = field(default_factory=dict)
     # Names whose rebind slot backs a ptr-variant UNION local: their rvalue
     # reseats spell `.emplace` + `to_ptr_variant(*slot)` via THIRPtrLocalRebind,
     # so a plain THIRAssign on them (a same-union name copy) must NOT take the
@@ -1860,7 +1867,7 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
              state.loop_else_labels, dict(state.rebind_slots),
              set(state.union_slot_locals), state.error_return_cpp,
              state.try_except_label, state.try_except_err_opt,
-             state.in_except_tier)
+             state.in_except_tier, dict(state.inline_rvalue_slots))
     state.finally_frames = []
     state.return_cpp = stmt.ret_cpp
     state.loop_depth = 0
@@ -1886,7 +1893,7 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
          state.loop_else_labels, state.rebind_slots,
          state.union_slot_locals, state.error_return_cpp,
          state.try_except_label, state.try_except_err_opt,
-         state.in_except_tier) = saved
+         state.in_except_tier, state.inline_rvalue_slots) = saved
     out.write(f"{indent}}};\n")
 
 
@@ -3327,6 +3334,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             cpp = stmt.cpp_type if stmt.cpp_type is not None \
                 else stmt.resolved_type.to_cpp()
             out.write(f"{indent}{cpp} {name};\n")
+        elif stmt.btuple_slot_cpp is not None:
+            # Reassigned borrow-tuple decl off an owning call: the rvalue
+            # emplaces into a per-target `std::optional<...>` slot the local
+            # aliases. Init renders before the slot draws its number (the
+            # AST's _borrow_tuple_rhs gen_expr-then-next_slot order); the
+            # slot registers for sibling reuse, and the btuple_slot_locals
+            # membership keeps THIRAssign's rebind-slot reseat off these
+            # names (their reseats are plain tuple_to_pointer assigns).
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            slot = (state.assert_local_slot() or state.next_slot())
+            state.rebind_slots[stmt.name] = slot
+            state.btuple_slot_locals.add(stmt.name)
+            out.write(f"{indent}std::optional<{stmt.btuple_slot_cpp}> "
+                      f"__slot_{slot};\n")
+            out.write(f"{indent}{stmt.cpp_type} {name} = "
+                      f"::tpy::tuple_to_pointer<{stmt.cpp_type}>"
+                      f"(__slot_{slot}.emplace({init_cpp}));\n")
         else:
             # Render before flushing: the init may register arg temps, whose
             # decls the AST flushes between the source comment and the
@@ -3503,10 +3528,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # matching _gen_pointer_local_rebind's order); later rvalue
             # reseats reuse it.
             val_cpp = _emit_expr(stmt.value, state)
-            slot = _use_rebind_slot(state, stmt.name)
+            slot = state.inline_rvalue_slots.get(stmt.name)
             if slot is None:
                 slot = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[stmt.name] = slot
+                state.inline_rvalue_slots[stmt.name] = slot
                 out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = "
                           f"{val_cpp};\n")
                 out.write(f"{indent}{name} = &__slot_{slot};\n")

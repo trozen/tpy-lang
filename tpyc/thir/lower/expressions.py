@@ -342,6 +342,7 @@ from .predicates import (
     _str_name_form,
     _storage_call_container,
     _container_storage_return_call_ret,
+    _nested_owned_tuple_call_ret,
     _owned_tuple_call_ret,
     _storage_call_ret,
     _record_getitem_key,
@@ -709,6 +710,10 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _call_ret_union_ok(ret, analyzer))
               or (result is _ExprResultUse.STORAGE and use.tuple_source
                   and _owned_tuple_call_ret(ret, analyzer) is not None)
+              # A tuple OF owned tuples (`two_pairs()`) at the same sink:
+              # one storage copy of the whole nested result.
+              or (result is _ExprResultUse.STORAGE and use.tuple_source
+                  and _nested_owned_tuple_call_ret(ret, analyzer) is not None)
               # An F1 BORROW-tuple call result (`first_two(xs) ->
               # tuple[Box, Box]` returning `std::tuple<Box*, Box*>`) at
               # the tuple-source sink: the call renders bare into the

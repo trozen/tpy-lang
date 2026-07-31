@@ -3353,6 +3353,36 @@ class TestSpanLocalDecl:
             + "    return s[0]\n")
         assert _fn(thir, "f") is not None
 
+    def test_readonly_span_projection_decl_routes(self):
+        # `ro.__span__()` on a `Span[readonly[T]]` stamps a STACKED
+        # `readonly[readonly[Int32]]` element; the decl slot, span value,
+        # and subscript element checks all peel it (_peel_readonly).
+        src = (self._SPAN
+               + "def f() -> None:\n"
+               + "    a: Array[Int32, 3] = [7, 8, 9]\n"
+               + "    ro: Span[readonly[Int32]] = a\n"
+               + "    s = ro.__span__()\n"
+               + "    print(len(s), s[0])\n"
+               + "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_record_elem_span_projection_stays_out(self):
+        # BOUNDARY: the span VALUE/read slice stays scalar-only -- a
+        # record-element readonly-span projection keeps rejecting (its
+        # reads have no admitted arm).
+        src = (self._SPAN
+               + "class P:\n"
+               + "    x: Int32\n"
+               + "    def __init__(self, x: Int32):\n        self.x = x\n"
+               + "def f(sp: Span[readonly[P]]) -> None:\n"
+               + "    s = sp.__span__()\n"
+               + "    print(len(s))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
     def test_span_method_decl_routes(self):
         thir = _lower_ctx(
             self._SPAN
@@ -4103,4 +4133,34 @@ class TestRecordRvalueNeedleMembership:
                + "f({Key(1)}, Mint())\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestArrayMoveThroughDecl:
+    """Array last-use alias decl (`decl.move_through_array`): sema marks the
+    expensive-copy value container move-through, so the decl spells the type
+    and moves (`std::array<int32_t, 3> b = std::move(a);`). A non-last-use
+    alias is a plain copy row -- unported, stays AST."""
+
+    def test_last_use_alias_moves(self):
+        src = ("def main() -> None:\n"
+               "    a = [1, 2, 3]\n"
+               "    b = a\n"
+               "    print(len(b))\n"
+               "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("decl.move_through_array")
+        _assert_byte_identical(src)
+
+    def test_live_source_alias_stays_out(self):
+        src = ("def main() -> None:\n"
+               "    a = [1, 2, 3]\n"
+               "    b = a\n"
+               "    print(len(b))\n"
+               "    print(len(a))\n"
+               "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is None
+        assert not faces.get("decl.move_through_array")
         _assert_byte_identical(src)

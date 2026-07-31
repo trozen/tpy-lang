@@ -2551,3 +2551,213 @@ class TestBorrowTupleLiteralReturn:
         assert _fn(thir, "f") is None
         assert not faces.get("ret.btuple_literal")
         _assert_byte_identical(src)
+
+
+# --- storage-call tuple decl (decl.storage_call_tuple) ---
+
+class TestStorageCallTupleDecl:
+    """An owning tuple call result declared storage-form: `auto t = f(...);`
+    (spelled collapsed type when no ref elements) + storage element reads."""
+
+    _SRC = (_PRELUDE
+            + "from tpy import Own\n"
+            + "class Box:\n"
+            + "    val: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.val = v\n")
+
+    def test_own_call_tuple_decl_routes(self):
+        src = (self._SRC
+               + "def make_pair(v: Int32) -> Own[tuple[Int32, Box]]:\n"
+               + "    return (v, Box(v))\n"
+               + "def use() -> Int32:\n"
+               + "    t = make_pair(5)\n"
+               + "    return t[0] + t[1].val\n"
+               + "print(use())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.storage_call_tuple")
+        _assert_byte_identical(src)
+
+    def test_nested_owned_tuple_decl_routes(self):
+        # The body deliberately never reads an element: nested-tuple
+        # element reads (`pp[0][0].fd`) are an unported subscript row and
+        # would fall the whole body back, so only the decl's storage copy
+        # is pinnable here (byte-asserted below).
+        src = (self._SRC
+               + "def two() -> tuple[tuple[Own[Box], Own[Box]], Int32]:\n"
+               + "    a = Box(1)\n"
+               + "    b = Box(2)\n"
+               + "    return ((a, b), 3)\n"
+               + "def use() -> Int32:\n"
+               + "    pp = two()\n"
+               + "    return 0\n"
+               + "print(use())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.storage_call_tuple")
+        _assert_byte_identical(src)
+
+    def test_borrow_tuple_return_decl_not_captured(self):
+        # BOUNDARY: the callee returns an ALIAS (borrow-form tuple, no Own
+        # anywhere in its signature) -- stamping the decl storage diverged
+        # (the per-element-own rebind-alias-return corpus catch). The shape
+        # must route via the borrow-decl arm, NOT this face.
+        src = (self._SRC
+               + "class Holder:\n"
+               + "    pair: tuple[Int32, Box]\n"
+               + "    def __init__(self, b: Box):\n"
+               + "        self.pair = (7, b)\n"
+               + "def pick(h: Holder) -> tuple[Int32, Box]:\n"
+               + "    return h.pair\n"
+               + "def use(h: Holder) -> Int32:\n"
+               + "    pr = pick(h)\n"
+               + "    pr[1].val = 55\n"
+               + "    return pr[0]\n"
+               + "h = Holder(Box(5))\n"
+               + "print(use(h))\n"
+               + "print(h.pair[1].val)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert not faces.get("decl.storage_call_tuple")
+        _assert_byte_identical(src)
+
+    def test_reassigned_target_takes_rebind_slot(self):
+        # A reassigned target takes the btuple-rebind-slot decl row
+        # (owning slot + emplace), NOT the storage face.
+        src = (self._SRC
+               + "class Holder:\n"
+               + "    pair: tuple[Int32, Box]\n"
+               + "    def __init__(self, b: Box):\n"
+               + "        self.pair = (7, b)\n"
+               + "def make_pair(v: Int32) -> Own[tuple[Int32, Box]]:\n"
+               + "    return (v, Box(v))\n"
+               + "def pick(h: Holder) -> tuple[Int32, Box]:\n"
+               + "    t = make_pair(9)\n"
+               + "    t = h.pair\n"
+               + "    return t\n"
+               + "h = Holder(Box(5))\n"
+               + "print(pick(h)[0])\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert faces.get("decl.btuple_rebind_slot")
+        assert not faces.get("decl.storage_call_tuple")
+        _assert_byte_identical(src)
+
+
+class TestBtupleRebindDecl:
+    """Reassigned borrow-tuple local decls: ONE fixed borrow shape
+    (`std::tuple<..., T*>`) across all bindings -- storage-lvalue init via
+    the tuple_to_pointer lift, REF-capture literal directly, owning-call
+    init via the optional slot + emplace (that row's routing pin is the
+    converted boundary above). Const bindings, borrow-call inits, owning
+    calls at RESEAT position, and the mixed own-borrow hybrid stay AST."""
+
+    _SRC = (_PRELUDE
+            + "class Box:\n"
+            + "    val: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.val = v\n"
+            + "class Holder:\n"
+            + "    pair: tuple[Int32, Box]\n"
+            + "    def __init__(self, b: Box):\n"
+            + "        self.pair = (7, b)\n")
+
+    def test_subscript_init_lift_routes(self):
+        src = (self._SRC
+               + "def use(items: list[tuple[Int32, Box]]) -> None:\n"
+               + "    t = items[0]\n"
+               + "    t[1].val = 99\n"
+               + "    t = items[1]\n"
+               + "    t[1].val = 88\n"
+               + "b = Box(1)\n"
+               + "use([(1, b), (2, b)])\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.btuple_lift")
+        _assert_byte_identical(src)
+
+    def test_literal_init_routes(self):
+        src = (self._SRC
+               + "def use(h: Holder, b: Box) -> Int32:\n"
+               + "    t = (1, b)\n"
+               + "    first = t[1].val\n"
+               + "    t = h.pair\n"
+               + "    t[1].val = 42\n"
+               + "    return first\n"
+               + "print(use(Holder(Box(5)), Box(3)))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.btuple_literal")
+        _assert_byte_identical(src)
+
+    def test_borrow_call_init_stays_out(self):
+        # BOUNDARY: an aliasing (non-owning) tuple-returning call init has
+        # no owning rvalue to emplace -- the direct borrow assign is an
+        # unported row, so the body stays AST.
+        src = (self._SRC
+               + "def pick(h: Holder) -> tuple[Int32, Box]:\n"
+               + "    return h.pair\n"
+               + "def use(h: Holder, h2: Holder) -> Int32:\n"
+               + "    t = pick(h)\n"
+               + "    first = t[1].val\n"
+               + "    t = h2.pair\n"
+               + "    return first\n"
+               + "print(use(Holder(Box(5)), Holder(Box(9))))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        assert not faces.get("decl.btuple_lift")
+        assert not faces.get("decl.btuple_rebind_slot")
+        _assert_byte_identical(src)
+
+    def test_owning_call_reseat_stays_out(self):
+        # BOUNDARY: an owning call at RESEAT position needs the rebind-slot
+        # reuse machinery (the AST's rebind_slots read) -- unported, so any
+        # such binding source rejects the whole name.
+        src = (self._SRC
+               + "from tpy import Own\n"
+               + "def make_pair(v: Int32) -> Own[tuple[Int32, Box]]:\n"
+               + "    return (v, Box(v))\n"
+               + "def use(h: Holder) -> Int32:\n"
+               + "    t = h.pair\n"
+               + "    first = t[1].val\n"
+               + "    t = make_pair(9)\n"
+               + "    return first + t[1].val\n"
+               + "print(use(Holder(Box(5))))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
+
+    def test_annotated_const_decl_stays_out(self):
+        # BOUNDARY: the annotated decl sets sema's borrow-decl bit, which
+        # the AST ORs into `const T*` element pointers -- the const row is
+        # unported, so the body stays AST.
+        src = (self._SRC
+               + "def f(h: Holder, h2: Holder) -> Int32:\n"
+               + "    t: tuple[Int32, Box] = h.pair\n"
+               + "    t = h2.pair\n"
+               + "    return t[1].val\n"
+               + "print(f(Holder(Box(5)), Holder(Box(7))))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_mixed_own_call_init_stays_out(self):
+        # BOUNDARY: a MIXED Own+ref-element call renders the own-borrow
+        # hybrid (`std::tuple<Box, Box*>`), whose rebind partially COPIES --
+        # fenced with the storage arm's still-defers pin.
+        src = (self._SRC
+               + "from tpy import Own, copy\n"
+               + "class Pair2:\n"
+               + "    pair: tuple[Box, Box]\n"
+               + "    def __init__(self, b: Box):\n"
+               + "        self.pair = (copy(b), copy(b))\n"
+               + "def make_mixed(b: Box) -> tuple[Own[Box], Box]:\n"
+               + "    return (Box(1), b)\n"
+               + "def use(h: Pair2, b: Box) -> None:\n"
+               + "    p = make_mixed(b)\n"
+               + "    p = h.pair\n"
+               + "    p[1].val = 66\n"
+               + "use(Pair2(Box(5)), Box(3))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        assert not faces.get("decl.btuple_rebind_slot")
+        _assert_byte_identical(src)

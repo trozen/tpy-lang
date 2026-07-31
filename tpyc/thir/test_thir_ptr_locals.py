@@ -851,3 +851,185 @@ class TestElementBorrowPtrDecl:
         thir, faces = _lower_ctx_witnessed(src)
         assert not faces.get("decl.subscript_elem_addr")
         _assert_byte_identical(src)
+
+
+class TestOptNameCopyDecl:
+    """Same-repr pointer-Optional name-copy decl (`const Point* q = a;`)."""
+
+    _SRC = ("from tpy import Int32, Own\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n")
+
+    def test_opt_name_copy_routes(self):
+        src = (self._SRC
+               + "def f(a: Point | None) -> Int32:\n"
+               + "    q: Point | None = a\n"
+               + "    if q is not None:\n"
+               + "        return q.x\n"
+               + "    return 0\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.opt_name_copy")
+        _assert_byte_identical(src)
+
+    def test_reassigned_target_stays_out(self):
+        # BOUNDARY: a reassigned Optional target needs the lvalue-lift +
+        # mixed-reseat machinery -- stays on the AST path.
+        src = (self._SRC
+               + "def f(a: Point | None, b: Point | None) -> Int32:\n"
+               + "    q: Point | None = a\n"
+               + "    q = b\n"
+               + "    if q is not None:\n"
+               + "        return q.x\n"
+               + "    return 0\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("decl.opt_name_copy")
+        _assert_byte_identical(src)
+
+    def test_narrowed_inner_target_stays_out(self):
+        # BOUNDARY: a plain-T target off a narrowed Optional name reads the
+        # inner ((*a) / bare) -- a DIFFERENT target type, not this row.
+        src = (self._SRC
+               + "def f(a: Point | None) -> Int32:\n"
+               + "    if a is not None:\n"
+               + "        p = a\n"
+               + "        return p.x\n"
+               + "    return 0\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert not faces.get("decl.opt_name_copy")
+        _assert_byte_identical(src)
+
+
+class TestOptReassignedFieldDecl:
+    """Reassigned pointer-Optional local off an lvalue FIELD init: the same
+    OPTIONAL_TO_PTR lift as the single-assignment shape (`Point* p =
+    optional_to_ptr(h.value);`), reseats via the slotless pointer arms --
+    the field re-lift (reseat.opt_field_lift), nullptr, and the inline
+    rvalue slot. Subscript-optional sources stay out."""
+
+    _SRC = ("from tpy import Int32, Own, copy\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n        self.x = x\n"
+            "class Holder:\n"
+            "    value: Point | None\n"
+            "    def __init__(self):\n        self.value = None\n")
+
+    def test_field_decl_and_reseats_route(self):
+        src = (self._SRC
+               + "def test(h: Holder):\n"
+               + "    p: Point | None = h.value\n"
+               + "    print(p is None)\n"
+               + "    h.value = copy(Point(1))\n"
+               + "    p = h.value\n"
+               + "    print(p is None)\n"
+               + "    p = None\n"
+               + "    print(p is None)\n"
+               + "test(Holder())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "test") is not None
+        assert faces.get("reseat.opt_field_lift")
+        _assert_byte_identical(src)
+
+    def test_inline_rvalue_then_field_lift_no_hijack(self):
+        # REGRESSION: the INLINE_RVALUE reseat's plain block slot must NOT
+        # register in the THIRAssign rebind-slot registry -- the later field
+        # lift is a plain `p = optional_to_ptr(h.value);`, not the hijacked
+        # `p = &*(__slot_1 = ...)` render.
+        src = (self._SRC
+               + "def test(h: Holder):\n"
+               + "    p: Point | None = h.value\n"
+               + "    print(p is None)\n"
+               + "    p = Point(9)\n"
+               + "    if p is not None:\n"
+               + "        print(p.x)\n"
+               + "    h.value = copy(Point(3))\n"
+               + "    p = h.value\n"
+               + "    if p is not None:\n"
+               + "        print(p.x)\n"
+               + "test(Holder())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "test") is not None
+        assert faces.get("reseat.opt_inline_rvalue")
+        assert faces.get("reseat.opt_field_lift")
+        _assert_byte_identical(src)
+
+    def test_inline_rvalue_then_ptr_copy_no_hijack(self):
+        # The pointer-copy sibling of the hijack regression: `p = q` after
+        # the inline-rvalue reseat stays the bare pointer copy.
+        src = (self._SRC
+               + "def test(h: Holder):\n"
+               + "    q: Point | None = h.value\n"
+               + "    p: Point | None = h.value\n"
+               + "    p = Point(9)\n"
+               + "    if p is not None:\n"
+               + "        print(p.x)\n"
+               + "    p = q\n"
+               + "    print(p is None)\n"
+               + "h = Holder()\n"
+               + "h.value = copy(Point(3))\n"
+               + "test(h)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "test") is not None
+        assert faces.get("reseat.opt_ptr_copy")
+        _assert_byte_identical(src)
+
+    def test_nested_def_inline_slot_isolated(self):
+        # REGRESSION: nested-def emission must snapshot/restore
+        # inline_rvalue_slots like its rebind_slots sibling. Without it, a
+        # lambda-local inline block slot leaks to a same-named outer local,
+        # whose rvalue reseat then references the lambda's out-of-scope
+        # __slot_N instead of declaring its own.
+        src = (self._SRC
+               + "def outer(h: Holder):\n"
+               + "    def helper():\n"
+               + "        p: Point | None = h.value\n"
+               + "        p = Point(9)\n"
+               + "        print(p is None)\n"
+               + "    helper()\n"
+               + "    p: Point | None = h.value\n"
+               + "    p = Point(20)\n"
+               + "    print(p is None)\n"
+               + "h = Holder()\n"
+               + "h.value = copy(Point(1))\n"
+               + "outer(h)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "outer") is not None
+        _assert_byte_identical(src)
+
+    def test_branch_field_reseat_byte_identical(self):
+        # A branch reseat of the reassigned optional local renders the same
+        # plain lift at branch indent (no slot, no hoist).
+        src = (self._SRC
+               + "def f(b: Holder, c: Holder, which: Int32) -> Int32:\n"
+               + "    p = b.value\n"
+               + "    if which < 0:\n"
+               + "        p = c.value\n"
+               + "    if p is not None:\n"
+               + "        return p.x\n"
+               + "    return 0\n"
+               + "c = Holder()\n"
+               + "c.value = copy(Point(5))\n"
+               + "print(f(Holder(), c, -1))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("reseat.opt_field_lift")
+        _assert_byte_identical(src)
+
+    def test_subscript_optional_source_stays_out(self):
+        # BOUNDARY: a subscript-optional source keeps the field-receiver
+        # pin at the decl -- the body stays AST.
+        src = (self._SRC
+               + "from typing import Optional\n"
+               + "def test(items: list[Optional[Point]]):\n"
+               + "    p = items[0]\n"
+               + "    print(p is None)\n"
+               + "    p = items[1]\n"
+               + "    print(p is None)\n"
+               + "test([None, None])\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "test") is None
+        assert not faces.get("reseat.opt_field_lift")
+        _assert_byte_identical(src)

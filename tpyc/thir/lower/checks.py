@@ -1093,6 +1093,22 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         reassigned=prescan.reassigned, rvalue_reassigned=prescan.rvalue_reassigned,
         hoisted=prescan.hoisted, move_through=prescan.move_through)
     if binding is LocalBinding.OTHER:
+        # A SAME-repr pointer-Optional NAME source classifies OTHER (it is
+        # not a storage-form optional read -- both sides are already `T*`),
+        # but the decl is just the bare pointer copy (`const Point* q = a;`);
+        # re-tag it for the name-copy row.
+        if (isinstance(stmt.init, TpyName)
+                and stmt.name not in prescan.reassigned):
+            src_t = declared.get(stmt.init.name)
+            tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                target_type))) if target_type is not None else None)
+            st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(src_t)))
+                  if src_t is not None else None)
+            if (isinstance(tt, OptionalType) and tt.uses_pointer_repr()
+                    and st == tt
+                    and _f1_record(_unwrap_own(unwrap_readonly(tt.inner)),
+                                   analyzer)):
+                return LocalBinding.OPTIONAL_TO_PTR
         return None
     if binding is LocalBinding.OPT_PTR_SLOT:
         # The slot-hoist Optional pointer-local: init/reseat sub-shapes are
@@ -1138,7 +1154,20 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                           analyzer):
             note_detail("decl.record_call_reassigned")
         return None
-    if not _const_exact_field_receiver_ok(stmt.init, declared, analyzer):
+    # An Optional-ptr borrow-name receiver (`g = h.g` off a narrowed
+    # `H | None` param / OPTIONAL_TO_PTR local) is a plain field lift off
+    # the pointer (`h->g`); its const verdict is computable exactly --
+    # seed_param_locals seeds const_indirect_locals from the readonly
+    # annotation or the DEEP-const verdict, both mirrored in
+    # `_f1_is_const` / `_f1_const_rooted_source`. The sibling
+    # const-spelling sinks still pin on `_const_exact_field_receiver_ok`
+    # pending their own const wiring.
+    recv_opt_ptr = (isinstance(stmt.init, TpyFieldAccess)
+                    and _field_receiver_ok(stmt.init, declared, analyzer)
+                    and _optional_ptr_borrow_name(stmt.init.obj, declared,
+                                                  analyzer) is not None)
+    if not (_const_exact_field_receiver_ok(stmt.init, declared, analyzer)
+            or recv_opt_ptr):
         # A record-element container subscript source (`p = ps[i]`) binds the
         # single-assignment `T&` alias (`P& p = ::tpy::__getitem__(ps, i);`) or,
         # reassigned, the reseatable `P* p = &(::tpy::__getitem__(ps, i));` --

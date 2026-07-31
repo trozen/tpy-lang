@@ -1435,6 +1435,11 @@ class THIRVarDecl(THIRStmt):
     form: Form = Form.VALUE
     is_const: bool = False
     cpp_local_representation: 'LocalBinding | None' = None
+    # Reassigned borrow-tuple decl bound from an owning call: the storage
+    # spelling of the function-local `std::optional<...>` slot the rvalue
+    # emplaces into; the decl aliases the slot via tuple_to_pointer. The
+    # statement twin of THIRWalrus.slot_cpp.
+    btuple_slot_cpp: str | None = None
 
 
 class PtrSlotKind(Enum):

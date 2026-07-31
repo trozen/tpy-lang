@@ -331,13 +331,11 @@ class TestGateRejects:
             + "def use(xs: list[Int32] | None) -> bool:\n    return xs is None\n")
         assert _fn(thir, "use") is None
 
-    def test_borrow_local_off_optional_receiver_rejects(self):
-        # A borrow local bound off a narrowed Optional receiver spells the
-        # receiver's const verdict, which the AST derives from
-        # `const_indirect_locals` (annotation-keyed) -- an inferred-const
-        # receiver miscompiles there (BUGS.md: "borrow locals off a narrowed
-        # Optional receiver drop inferred constness"), so the shape is
-        # gate-rejected rather than mirrored.
+    def test_borrow_local_off_optional_receiver_routes(self):
+        # Borrow locals off a narrowed Optional receiver route: the const
+        # verdict reads the same deep-const fact seed_param_locals seeds
+        # into const_indirect_locals (_opt_ptr_param_deep_const), so both
+        # alias shapes spell the receiver's inferred const-ness.
         thir = _lower_ctx(
             _PRELUDE
             + "class G:\n"
@@ -352,8 +350,46 @@ class TestGateRejects:
             + "    q = h.f\n"
             + "    if q is None:\n        return 1\n"
             + "    return q.x\n")
-        assert _fn(thir, "ref_alias") is None
-        assert _fn(thir, "opt_lift") is None
+        assert _fn(thir, "ref_alias") is not None
+        assert _fn(thir, "opt_lift") is not None
+
+    def test_borrow_local_off_optional_receiver_byte_identical(self):
+        # Byte pins for both const verdicts: the read-only bodies spell
+        # `const A& g = h->g;` / `const A* q = optional_to_ptr(h->f);`
+        # (deep-const receiver), the mutating twins spell the mutable
+        # forms (`A& g = h->g;`) -- the verdict comes from
+        # deep_const_borrow_params, not the annotation.
+        src = (_PRELUDE
+               + "class R:\n"
+               + "    g: A\n"
+               + "    f: A | None\n"
+               + "    def __init__(self):\n"
+               + "        self.g = A(1)\n        self.f = A(2)\n"
+               + "def read_ref(h: R | None) -> Int32:\n"
+               + "    if h is None:\n        return -1\n"
+               + "    g = h.g\n"
+               + "    return g.x\n"
+               + "def bump(h: R | None):\n"
+               + "    if h is None:\n        return\n"
+               + "    g = h.g\n"
+               + "    g.x += 10\n"
+               + "def read_opt(h: R | None) -> Int32:\n"
+               + "    if h is None:\n        return -1\n"
+               + "    q = h.f\n"
+               + "    if q is not None:\n        return q.x\n"
+               + "    return -1\n"
+               + "def bump_opt(h: R | None):\n"
+               + "    if h is None:\n        return\n"
+               + "    q = h.f\n"
+               + "    if q is not None:\n        q.x += 5\n"
+               + "r = R()\n"
+               + "bump(r)\n"
+               + "bump_opt(r)\n"
+               + "print(read_ref(r), read_opt(r))\n")
+        thir = _lower_ctx(src)
+        for name in ("read_ref", "bump", "read_opt", "bump_opt"):
+            assert _fn(thir, name) is not None
+        _assert_byte_identical(src)
 
     def test_const_blind_writes_off_optional_receiver_route(self):
         # The const-blind faces off the same receiver still route: scalar
