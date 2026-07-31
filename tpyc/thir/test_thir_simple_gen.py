@@ -213,8 +213,8 @@ class TestSlicedOutShapes:
         assert not any("sgen." in k for k in fallback)
 
     def test_str_yield_routes(self):
-        # A str yield: the skeleton's optional<std::string> slot converts
-        # the bare view-source render.
+        # A str yield whose source is the OWNED param capture: the skeleton's
+        # optional<std::string> slot absorbs the bare render.
         src = ("from typing import Iterator\n"
                + "from tpy import Int32\n\n"
                + "def echo(s: str, n: Int32) -> Iterator[str]:\n"
@@ -227,6 +227,47 @@ class TestSlicedOutShapes:
         witnesses, fallback = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert not any("sgen." in k for k in fallback)
+
+    def test_static_view_yield_materializes(self):
+        # Same slot, still-a-VIEW source: a literal-sourced local keeps its
+        # zero-copy view (static storage), so string_view -> string is explicit
+        # and the peephole needs the same copy the frame path takes. A `while`
+        # body is deliberate -- a for-loop head falls back (sgen.loop_var_type),
+        # which would make the render assertion read the AST output instead.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def parts(n: Int32) -> Iterator[str]:\n"
+               + "    lit = \"static\"\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield lit\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for v in parts(2):\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "std::string(lit)" in hpp
+
+    def test_static_bytes_view_yield_materializes(self):
+        # bytes sibling: span -> vector has no implicit conversion at all, so
+        # the missing copy here was a hard build failure, not a silent one.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def chunks(n: Int32) -> Iterator[bytes]:\n"
+               + "    view = b\"xy\"\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield view\n"
+               + "        i = i + 1\n\n"
+               + "def main() -> None:\n"
+               + "    for c in chunks(2):\n        print(len(c))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("sgen." in k for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "::tpy::bytes_copy(view)" in hpp
 
     def test_tuple_yield_literal_routes(self):
         # A tuple-literal yield now routes through the borrow builder (the

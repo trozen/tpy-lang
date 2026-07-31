@@ -1602,6 +1602,13 @@ class CodeGenContext:
     generator_const_pointer_alias_locals: set[str] = field(default_factory=set)
     # When generating a generator method's __next__() body, self -> __self
     generator_self_ref: str | None = None
+    # Params whose str/bytes view was copied into OWNED storage on the way into
+    # this generator/coroutine body (`is_owned_in_coro_frame` -- the resumable
+    # frame's OWNED_COPY field, the simple-generator lambda's init-capture).
+    # A read of one is owned storage even though the enclosing function's
+    # SIGNATURE takes a view; the yield sink consults this so its view->owned
+    # copy does not fire on an already-owned source.
+    owned_view_frame_params: set[str] = field(default_factory=set)
 
     # --- Async coroutine function codegen ---
     # When generating an `async def` body inside its struct's poll() method,

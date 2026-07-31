@@ -51,6 +51,7 @@ from ...typesys import (
 )
 from ...codegen_cpp.gen_generators import (
     for_range_uses_counter_loop,
+    owned_view_frame_params,
     split_at_yield,
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
@@ -67,6 +68,7 @@ from .predicates import (
     _field_receiver_ok,
     _resolved_bytes_value,
     _resolved_str_value,
+    _wrap_view_owned_sink,
 )
 from .resumable import _res_value_ok
 from .statements import _lower_stmts
@@ -303,6 +305,7 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
         yt = lc.func.generator_yield_type
         yt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt)))
                    if isinstance(yt, TpyType) else None)
+        owned_view_params = owned_view_frame_params(lc.func.params)
         if isinstance(yt_bare, TupleType):
             # Tuple yield slot -- the resumable Yield tuple arm's mirror:
             # a LITERAL takes the borrow or value builder per the slot's
@@ -332,9 +335,15 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
             else:
                 # gen_yield_value threads the yield type into the render
                 # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
-                yv = _slot_literal_retype(
-                    _lower_expr(yield_stmt.value, lc, body_declared),
-                    yt, lc)
+                yv = _lower_expr(yield_stmt.value, lc, body_declared)
+                # The lambda's `__val` slot owns its str/bytes payload just
+                # like the frame's, so a still-view source takes the same
+                # explicit copy the resumable arm applies -- except a param
+                # the init-capture already copied owned.
+                if not (isinstance(yield_stmt.value, TpyName)
+                        and yield_stmt.value.name in owned_view_params):
+                    yv = _wrap_view_owned_sink(yv, yt_bare, yield_stmt.loc)
+                yv = _slot_literal_retype(yv, yt, lc)
         _witness("sgen.yield_value")
         post_l = _lower_stmts(post, lc, body_declared, in_branch=True,
                               branch_decls_ok=True, loop_depth=loop_depth)

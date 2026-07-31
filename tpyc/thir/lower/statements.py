@@ -303,6 +303,7 @@ from .predicates import (
     _storage_call_ret,
     _span_slot,
     _str_field_value_read,
+    _wrap_view_owned_sink,
     _str_self_append_rhs,
     _type_family_tag,
     _peel_coerce,
@@ -3949,26 +3950,19 @@ def _leaf_finally_crossing(stmt: TpyTry) -> bool:
 
 def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
                             loc) -> 'THIRExpr | None':
-    """An owned-str/bytes return slot (std::string / std::vector<uint8_t> by
-    value) fed a view-form source (view param / view local) copies explicitly
-    -- `return std::string(a);` / `return ::tpy::bytes_copy(a);` -- the
-    view->owned construction being explicit. Mirrors _view_source_to_owned at
-    the return boundary, keyed on the lowered value's own form fact; a literal
-    (VALUE) or owned local / owned call result (STORAGE) returns bare. The ONE
-    wrap decision for both return sinks: the sync return tail and the
-    resumable return-value leaf (`_async_return_value_cpp` renders the same
-    wrap at all three async scaffolding sites, and `_async_ret_to_borrow` is a
-    no-op for str/bytes)."""
+    """The return boundary's flavor of `_wrap_view_owned_sink`. The ONE wrap
+    decision for both return sinks: the sync return tail and the resumable
+    return-value leaf (`_async_return_value_cpp` renders the same wrap at all
+    three async scaffolding sites, and `_async_ret_to_borrow` is a no-op for
+    str/bytes)."""
     ret_str = lc.prescan.ret_str
     ret_bytes = lc.prescan.ret_bytes
-    if value is not None and value.form is Form.BORROW:
-        if ret_str is not None and is_str_type(ret_str):
-            return THIRFormConvert(result_type=ret_str, value=value,
-                                   form=Form.STORAGE, loc=loc)
-        if ret_bytes is not None and is_bytes_type(ret_bytes):
-            return THIRFormConvert(result_type=ret_bytes, value=value,
-                                   form=Form.STORAGE, loc=loc)
-    return value
+    slot = None
+    if ret_str is not None and is_str_type(ret_str):
+        slot = ret_str
+    elif ret_bytes is not None and is_bytes_type(ret_bytes):
+        slot = ret_bytes
+    return _wrap_view_owned_sink(value, slot, loc)
 
 
 def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',

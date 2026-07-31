@@ -92,6 +92,7 @@ from ...typesys import (
 )
 from ...type_def_registry import is_dict, is_list, is_set
 from ...codegen_cpp import resumable_cfg as rcfg
+from ...codegen_cpp.gen_generators import owned_view_frame_params
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.gen_async import collect_frame_nested_defs
 from ..nodes import Form
@@ -133,6 +134,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _str_field_value_read,
+    _wrap_view_owned_sink,
     _unwrap_own,
     _value_opt_scalar,
     _value_opt_view,
@@ -859,6 +861,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if frame_layout is None and func.generator_locals:
         return _reject("res.local_storage")
     rstate = rcfg.resumable_state(func)
+    # str/bytes params whose view the frame copied into owned storage on the
+    # way in: their reads are storage form here, so the owning-sink wrap must
+    # not copy them a second time (the skeleton's `owned_view_frame_params`).
+    owned_view_params = owned_view_frame_params(func.params)
     ptr_frame_locals: set[str] = set()
     opt_ptr_locals: set[str] = set()
     alias_ptr_locals: set[str] = set()
@@ -1630,6 +1636,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # pointer_value_expr deref (`return (*x);`); the name arm
                 # keeps pointer names bare for the arrow/pass positions.
                 yv_lowered = replace(yv_lowered, deref=True)
+            # The iterator slot owns its str/bytes payload, so a borrow-form
+            # value takes the same explicit view->owned copy the return sinks
+            # take. A str FIELD read (prechecked above) is already storage form
+            # and lands bare, as does a param the frame captured owned.
+            if not (isinstance(ys.value, TpyName)
+                    and ys.value.name in owned_view_params):
+                yv_lowered = _wrap_view_owned_sink(yv_lowered, yt_bare, ys.loc)
             yield_values[id(ys)] = _slot_literal_retype(yv_lowered, yt, lc)
             _witness("res.yield_value")
         elif isinstance(t, rcfg.Yield):

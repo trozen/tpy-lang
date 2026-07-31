@@ -398,6 +398,26 @@ def _coerce_disposition(e: TpyCoerce, *,
         return "materialize"
     return None
 
+
+def _wrap_view_owned_sink(value: 'THIRExpr | None',
+                          slot_type: 'TpyType | None',
+                          loc) -> 'THIRExpr | None':
+    """An owned-str/bytes slot (std::string / std::vector<uint8_t> by value)
+    fed a view-form source copies explicitly -- `std::string(a)` /
+    `::tpy::bytes_copy(a)` -- the view->owned construction being explicit.
+    Mirrors the AST's `_view_source_to_owned` chokepoint, keyed on the lowered
+    value's own form fact; a literal (VALUE) or owned local / owned call result
+    (STORAGE) lands bare. Shared by the return sinks and the generator's
+    iterator slot.
+    """
+    if value is None or value.form is not Form.BORROW or slot_type is None:
+        return value
+    if is_str_type(slot_type) or is_bytes_type(slot_type):
+        return THIRFormConvert(result_type=slot_type, value=value,
+                               form=Form.STORAGE, loc=loc)
+    return value
+
+
 def _peel_stale_view_owned_coerce(init: TpyExpr, binding_t: TpyType | None,
                                   analyzer) -> TpyExpr:
     """gen_expr's stale-coerce identity arm, mirrored at the decl/reassign

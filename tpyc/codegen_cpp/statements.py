@@ -1814,6 +1814,17 @@ class StatementGenerator:
         if (isinstance(yield_stmt.value, TpyName)
                 and yield_stmt.value.name in self.ctx.generator_borrow_form_loop_vars):
             return f"(*{expr})"
+        # The iterator slot owns its str/bytes payload (`expected<std::string,
+        # StopIteration>`), so a view-form source needs the same view->owned
+        # copy the return sink applies. Sema cannot have coerced it: a str/bytes
+        # local still carries an unresolved PendingViewType while the body is
+        # analyzed, which compares compatible with the owned element type, and
+        # the borrow-vs-owned choice is only made afterwards. A param the frame
+        # already copied into owned storage is exempt -- wrapping it would copy
+        # an owned string a second time.
+        if not self.expressions.param_owned_in_frame(yield_stmt.value):
+            expr = self.expressions._view_source_to_owned(
+                yield_stmt.value, yield_type, expr)
         return self._maybe_wrap_tuple_to_pointer(
             expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
 

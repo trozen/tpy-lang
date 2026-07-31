@@ -1077,9 +1077,13 @@ class TestStrBytesReturns:
 
 
 class TestStrBytesYields:
-    """str/bytes yields on the resumable frame: the owned return slot's ctor
-    absorbs the bare source render (the sgen families' reasoning); the
-    slot-literal retype mirrors gen_yield_value's target threading."""
+    """str/bytes yields on the resumable frame. The owned iterator slot's ctor
+    absorbs the bare source render whenever the source is already owned -- a
+    str/bytes PARAM is copied into owned frame storage on the way in, so it
+    stays bare (the sgen families' reasoning). A source that is still a VIEW in
+    the frame takes the explicit view->owned copy instead, since
+    `string_view -> string` is not implicit. The slot-literal retype mirrors
+    gen_yield_value's target threading."""
 
     def test_str_yields_route(self):
         src = ("from typing import Iterator\n\n"
@@ -1101,6 +1105,56 @@ class TestStrBytesYields:
                + "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
+
+    # A LITERAL source has static storage, so view deduction leaves it a view
+    # even in a frame -- the one source shape that still meets the owning
+    # iterator slot as a `std::string_view`.
+    STATIC_VIEW_SRC = (
+        "from typing import Iterator\n\n"
+        + "def parts() -> Iterator[str]:\n"
+        + "    lit = \"static\"\n"
+        + "    yield lit\n"
+        + "    yield \"end\"\n\n"
+        + "def main() -> None:\n    pass\nmain()\n")
+
+    def test_static_view_yield_materializes(self):
+        # Without the copy the owning slot rejects the view (string_view ->
+        # expected<string> has no implicit conversion).
+        witnesses, fallback = _assert_identical(self.STATIC_VIEW_SRC)
+        assert witnesses.get("res.yield_value", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(self.STATIC_VIEW_SRC, thir=True)
+        assert "return std::string(lit);" in cpp
+
+    def test_promoted_local_yield_stays_bare(self):
+        # Boundary: a frame-unsafe source resolves OWNED during view deduction,
+        # so the same yield sink must leave it alone rather than copy twice.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def keys(d: dict[str, Int32]) -> Iterator[str]:\n"
+               + "    for k in d:\n"
+               + "        yield k\n"
+               + "    yield \"end\"\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return k;" in cpp
+        assert "std::string(k)" not in cpp
+
+    def test_owned_param_yield_stays_bare(self):
+        # Boundary: the adjacent shape that must NOT take the copy. `name` is
+        # captured owned, so wrapping it would copy an owned string again.
+        src = ("from typing import Iterator\n\n"
+               + "def twice(name: str) -> Iterator[str]:\n"
+               + "    yield name\n"
+               + "    yield name\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return name;" in cpp
+        assert "std::string(name)" not in cpp
 
 
 class TestStaticProtocolParams:

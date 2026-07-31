@@ -1775,6 +1775,19 @@ class ExpressionGenerator:
             return True
         return self._is_bytes_view_at_runtime(expr)
 
+    def param_owned_in_frame(self, expr: TpyExpr) -> bool:
+        """True when `expr` is a param name that reads as OWNED storage in the
+        body being emitted although the enclosing function's signature takes a
+        view: a generator/coroutine copies its str/bytes params into owned frame
+        storage on the way in.
+
+        Consulted at the YIELD sink only. The view-form predicates below still
+        answer from the declared param type, which is wrong inside such a body
+        -- pre-existing, and reachable only through this sink today (BUGS.md).
+        """
+        return (isinstance(expr, TpyName)
+                and expr.name in self.ctx.owned_view_frame_params)
+
     def _is_optional_str_param(self, expr: TpyExpr) -> bool:
         """True if expr is an Optional[str] parameter (string_view in C++)."""
         if not isinstance(expr, TpyName):
@@ -1825,7 +1838,7 @@ class ExpressionGenerator:
 
     def _view_source_to_owned(self, expr: TpyExpr,
                               slot_type: 'TpyType | None', code: str) -> str:
-        """One chokepoint (return / var-init boundary, container
+        """One chokepoint (return / var-init boundary, yield, container
         literals/comprehensions, container inserts) for the str/bytes
         view->owned-storage copy. Keyed on the SOURCE being view-form, not the
         slot, so an owned rvalue source is left for the caller's move path. The

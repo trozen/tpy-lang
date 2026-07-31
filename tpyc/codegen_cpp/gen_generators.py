@@ -69,6 +69,19 @@ class GeneratorForInfo:
     borrow_tuple_loop_var: str | None = None
 
 
+def owned_view_frame_params(
+        params: 'list[tuple[str, TpyType]]') -> 'set[str]':
+    """Param names whose view is copied into OWNED storage entering a
+    generator/coroutine body.
+
+    The resumable frame (`_CoroParamKind.OWNED_COPY`) and the simple-generator
+    lambda (owned init-capture) both key the copy on
+    `is_owned_in_coro_frame`, so one derivation serves both shapes and they
+    cannot drift on which params a body reads as owned.
+    """
+    return {pname for pname, ptype in params if is_owned_in_coro_frame(ptype)}
+
+
 def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
     """Whether a frame-resident loop var over elements of this type must be a
     borrow-form `T*` aliasing the source rather than an owning `frame_slot<T>`.
@@ -303,13 +316,19 @@ class GeneratorCodegen:
         """Generate a simple generator as an inline function using make_generator + lambda."""
         leaf = self._thir_simple_gen_leaf(func)
         last = func.body[-1]
-        if isinstance(last, TpyForEach):
-            self._gen_simple_for_generator(out, func, record_name=record_name,
-                                           leaf=leaf)
-        else:
-            self._gen_simple_while_generator(out, func,
-                                             record_name=record_name,
-                                             leaf=leaf)
+        old_owned_view_params = self.ctx.owned_view_frame_params
+        self.ctx.owned_view_frame_params = owned_view_frame_params(func.params)
+        try:
+            if isinstance(last, TpyForEach):
+                self._gen_simple_for_generator(out, func,
+                                               record_name=record_name,
+                                               leaf=leaf)
+            else:
+                self._gen_simple_while_generator(out, func,
+                                                 record_name=record_name,
+                                                 leaf=leaf)
+        finally:
+            self.ctx.owned_view_frame_params = old_owned_view_params
 
     # -- THIR simple-generator seam -----------------------------------------
     # The lambda peephole skeleton (signature, captures, make_generator

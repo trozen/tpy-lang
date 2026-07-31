@@ -61,7 +61,8 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
 from ..value_category import async_return_form, AsyncReturnForm
-from .gen_generators import GeneratorCodegen, GeneratorForInfo
+from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
+                             owned_view_frame_params)
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_owned_in_coro_frame, view_owned_copy_init)
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
@@ -1571,6 +1572,7 @@ class AsyncCoroCodegen:
         old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
         old_const_pointer_alias_locals = self.ctx.generator_const_pointer_alias_locals
         old_self_ref = self.ctx.generator_self_ref
+        old_owned_view_params = self.ctx.owned_view_frame_params
         old_movable_locals = self.ctx.movable_locals
         old_in_method = self.ctx.in_method
         old_method_record = self.ctx.current_method_record_type
@@ -1628,6 +1630,7 @@ class AsyncCoroCodegen:
         )
 
         self.ctx.in_generator_body = True
+        self.ctx.owned_view_frame_params = owned_view_frame_params(func.params)
         # Nested defs are frame members: register their names up front so
         # call sites in any resume case (and finally-helper bodies) render
         # the unqualified member call.
@@ -1678,6 +1681,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.generator_const_pointer_alias_locals = old_const_pointer_alias_locals
             self.ctx.generator_self_ref = old_self_ref
+            self.ctx.owned_view_frame_params = old_owned_view_params
             self.ctx.movable_locals = old_movable_locals
             self.ctx.in_method = old_in_method
             self.ctx.current_method_record_type = old_method_record
