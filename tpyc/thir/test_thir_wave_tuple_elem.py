@@ -35,19 +35,21 @@ class TestOptionalMemberTupleElements:
         assert w.get("btuple.elem_optptr", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_plain_record_member_stays_ast(self):
-        # A non-Optional record member is a ref element too, but
+    def test_plain_record_member_routes_const_ref(self):
+        # A non-Optional record member is a ref element too:
         # `_tuple_literal_slot_info` sends a simple lvalue of that shape to
-        # CONST_REF in a STORAGE context (`const T*`), a rule
-        # `_lower_borrow_tuple_literal` does not carry -- so the arm is
-        # restricted to the all-Optional shape both ladders agree on.
+        # CONST_REF in a STORAGE context (`const T*` + `&(t1)`), a rule the
+        # borrow ladder now carries via `storage_context` (the
+        # `_tuple_elem_slots_record_lvalue` admission).
         src = (_T
                + "def use() -> None:\n"
                + "    t1 = T(1)\n"
                + "    items: list[tuple[T, Int32]] = [(t1, 7)]\n"
                + "    print(len(items))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("containerlit.tuple_borrow_storage", 0) >= 1
+        _assert_byte_identical(src)
 
 
 class TestTupleLiteralFieldWrite:

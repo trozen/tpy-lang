@@ -9,6 +9,7 @@ from ...parse.nodes import TpyFunction, TpyGlobal
 from ...typesys import (
     CallableType,
     OptionalType,
+    OwnType,
     ReadonlyType,
     TpyType,
     TupleType,
@@ -16,6 +17,7 @@ from ...typesys import (
     VoidType,
     unwrap_optional_own,
     unwrap_readonly,
+    unwrap_ref_type,
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_ptr_variant_union
@@ -47,6 +49,7 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_view,
     _generic_value_tuple_return,
+    _own_storage_tuple_return,
     _value_tuple_return,
 )
 
@@ -97,6 +100,11 @@ class _ExprUse:
     # free call (`with open(path, mode) as f`) -- the result is stored in the
     # `__ctx_N` manager slot, whatever native symbol the overload resolves to.
     ctx_manager: bool = False
+    # The record FIELD-WRITE copy sink only: admit a borrow-returning
+    # record call source (`h.p = identity(pt);` -- the C++ copy-assign
+    # absorbs the `T&`). Other STORAGE sinks (decls) bind REF_ALIAS off
+    # the same result and must keep rejecting.
+    record_copy_sink: bool = False
     # TARGET-LESS positions only (print args, compare operands): the AST's
     # pure-literal binop fold fires there (`_gen_binop` folds only when
     # target_type is None), so the THIR fold arm may mirror it. Slot-threaded
@@ -143,6 +151,7 @@ class _Prescan:
                  "ret_container_storage", "ret_container_borrow",
                  "ret_res_container",
                  "ret_value_tuple", "ret_generic_tuple",
+                 "ret_own_storage_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
                  "ret_supported", "ret_callable",
@@ -248,6 +257,18 @@ class _Prescan:
         # rides the generic return tail (its type-exact / coerce-wrapped
         # rendering matches the AST's `gen_expr_deref`).
         self.ret_value_opt = _value_opt_scalar(rt, analyzer)
+        if self.ret_value_opt is None and rt is not None:
+            # A value-BOUND `Optional[T]` return in a generic body
+            # (`-> T | None` under `T: ValueType` -> `std::optional<T>`)
+            # renders like the scalar family: `return None` -> nullopt,
+            # a member/field source rides the generic tail's implicit
+            # optional conversion. Return-slot only -- bindings/args keep
+            # the scalar-keyed classification.
+            _rvb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+            if (isinstance(_rvb, OptionalType)
+                    and not _rvb.uses_pointer_repr()
+                    and _is_type_param_slot(unwrap_readonly(_rvb.inner))):
+                self.ret_value_opt = _rvb
         # The value-repr Optional[view] return slot -- str (`-> str | None` ->
         # `std::optional<std::string>`) OR bytes (`-> bytes | None` ->
         # `std::optional<std::vector<uint8_t>>`): `return None` -> `std::nullopt`,
@@ -296,6 +317,10 @@ class _Prescan:
         # the sync return arm does not read it, so sync generic-tuple returns
         # stay on the AST path (not in ret_supported).
         self.ret_generic_tuple = _generic_value_tuple_return(rt, analyzer)
+        # The Own[tuple] STORAGE return slot with a non-value member
+        # (`-> Own[tuple[str, Resource]]`): a tuple LITERAL of storage-direct
+        # members returns the spelled brace-init.
+        self.ret_own_storage_tuple = _own_storage_tuple_return(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.
@@ -335,10 +360,24 @@ class _Prescan:
         # (`return add;` -- the lambda converts implicitly).
         self.ret_callable = bool(
             isinstance(rt, CallableType) and not rt.is_template)
+        # `Own[T]` on a VALUE scalar is a no-op spelling (resolves to plain
+        # T -- `auto_own[Int32]` returns `int32_t`); unwrap for the scalar
+        # rows only, the non-value Own families keep their own fields.
+        own_v = (unwrap_readonly(rt.wrapped)
+                 if isinstance(rt, OwnType) else None)
+        own_value_scalar = (own_v is not None
+                            and (_eligible_scalar(own_v)
+                                 or _eligible_char(own_v)
+                                 # `Own[<structural protocol>]` returns the
+                                 # same `auto` slot as the bare protocol
+                                 # (`auto_own[Iterator[T]]`); @dynamic Own
+                                 # keeps the adapter machinery out.
+                                 or _protocol_auto_slot(own_v)))
         self.ret_supported = bool(
             rt is None or isinstance(rt, VoidType)
             or self.ret_callable
             or _eligible_scalar(rt) or _eligible_char(rt)
+            or own_value_scalar
             or _is_type_param_slot(rt) or _own_type_param_slot(rt)
             or _eligible_enum(rt, analyzer) is not None
             or _eligible_ptr_value(rt, analyzer)
@@ -359,6 +398,7 @@ class _Prescan:
             or self.ret_container_storage is not None
             or self.ret_container_borrow is not None
             or self.ret_value_tuple is not None
+            or self.ret_own_storage_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
             or self.ret_union is not None or self.ret_ptr_union is not None
             or self.ret_own_union is not None)

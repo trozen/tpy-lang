@@ -317,9 +317,10 @@ class TestOwnedElementLiteralAppends:
         assert _fn(thir, "use2") is None
         _assert_byte_identical(src)
 
-    def test_pointer_repr_tuple_literal_append_still_defers(self):
+    def test_pointer_repr_tuple_literal_append_routes(self):
         # The pointer-repr element tuple takes the tuple_to_storage_move
-        # lift -- a different render the value arm must not capture.
+        # lift -- the consuming borrow-tuple row renders it (never the
+        # value arm; the witness keys the distinction).
         src = (
             "from tpy import Int32\n"
             "class P:\n"
@@ -329,8 +330,10 @@ class TestOwnedElementLiteralAppends:
             "def use() -> None:\n"
             "    pairs: list[tuple[P | None, P | None]] = []\n"
             "    pairs.append((P(5), None))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("arg.own_btuple_literal", 0) >= 1
+        assert w.get("arg.own_value_tuple_literal", 0) == 0
         _assert_byte_identical(src)
 
 

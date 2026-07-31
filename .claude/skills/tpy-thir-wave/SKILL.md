@@ -49,6 +49,9 @@ improvise.
 5. **Chain-walk.** Clearing one blocker promotes the next; keep going on the
    same cases until CLEAN or the chain leaves this site.
 6. **Pin:** routing + byte-identity + boundary units for every new arm.
+   Every dualgen boundary probe becomes a COMMITTED pin before the cell
+   commit -- probe-only boundary evidence has slipped through three review
+   rounds in a row; the probe file is the pin's draft, convert it.
 7. **Commit the cell.** Auto-commit on the working branch.
 
 Repeat 3-7 until the site is empty.

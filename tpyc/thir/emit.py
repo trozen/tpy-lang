@@ -822,9 +822,22 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         buf.write(f"{ind1}::tpy::array_from_index<{e.array_elem_cpp}, "
                   f"{e.array_size_cpp}>("
                   f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
-        binding = loop_var_binding(
-            e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
-        buf.write(f"{ind2}{binding}\n")
+        if e.unpack_targets:
+            # Unpack heads over the indexed element (`auto& __tup_N =
+            # __obj_N[__i_N];` + per-var `std::get` decls -- the begin_end
+            # arm's prologue at the indexed read, plain `auto&`).
+            un = state.next_unpack()
+            tmp = f"__tup_{un}"
+            buf.write(f"{ind2}auto& {tmp} = {obj}[__i_{n}];\n")
+            for i, name in enumerate(e.unpack_targets):
+                if name is None:
+                    continue
+                buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
+                          f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
+        else:
+            binding = loop_var_binding(
+                e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
+            buf.write(f"{ind2}{binding}\n")
         buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
         buf.write(f"{ind1}}});\n")
         buf.write(f"{stmt_ind}}})")
@@ -1665,9 +1678,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"{e.spelled_cpp}({elems})"
         return f"{e.spelled_cpp}{{{elems}}}"
     if isinstance(e, THIRTupleValueToBorrow):
+        vwraps = e.elem_wraps or (None,) * len(e.elements)
         elems = ", ".join(
-            f"&({_emit_expr(x, state)})" if lift else _emit_expr(x, state)
-            for x, lift in zip(e.elements, e.addr_of))
+            w.format(_emit_expr(x, state)) if w is not None
+            else f"&({_emit_expr(x, state)})" if lift
+            else _emit_expr(x, state)
+            for x, lift, w in zip(e.elements, e.addr_of, vwraps))
         src = (f"{e.src_cpp}({elems})" if len(e.elements) == 1
                else f"{e.src_cpp}{{{elems}}}")
         return f"::tpy::tuple_value_to_borrow<{e.dst_cpp}>({src})"
@@ -3716,6 +3732,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         src = (stmt.source_cpp if stmt.source_cpp is not None
                else escape_cpp_name(stmt.source))
         if sb is TupleSourceBind.STORAGE_WRAP:
+            if stmt.source_expr is not None:
+                # An expression source (`pairs[0]`): render + flush its
+                # temps like the RVALUE arm, then lift the whole element.
+                src = _emit_expr(stmt.source_expr, state)
+                state.temps.flush(out, indent)
             out.write(f"{indent}auto {tmp} = ::tpy::tuple_to_pointer<"
                       f"{stmt.source_wrap_cpp}>({src});\n")
         elif sb is TupleSourceBind.RVALUE:

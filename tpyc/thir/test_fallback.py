@@ -971,7 +971,12 @@ def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.tuple_unpack") == 1
+    # The reject composes from the subscript source's element read now
+    # (the ref-target unpack admits ptr-Optional-element subscript sources,
+    # so a plain-record-member tuple rejects one level deeper, with the
+    # drilldown detail appended to the tag).
+    assert sum(n for k, n in compiler._thir_fallback.items()
+               if k.startswith("body:stmt.tuple_unpack")) == 1
     assert "clean" in routed
 
 

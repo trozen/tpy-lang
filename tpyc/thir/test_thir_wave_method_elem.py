@@ -169,9 +169,10 @@ class TestUnionElement:
 
 
 class TestElementBoundaries:
-    def test_pointer_repr_tuple_element_append_stays_ast(self):
-        # `list[tuple[P | None, ...]]` inserts through a
-        # `tuple_to_storage_move` lift -- a bare push_back would diverge.
+    def test_pointer_repr_tuple_element_append_routes(self):
+        # `list[tuple[P | None, ...]]` inserts through the
+        # `tuple_to_storage_move` lift -- the consuming borrow-tuple row
+        # (arg.own_btuple_literal) renders it byte-identically now.
         src = (
             "from tpy import Int32\n"
             "class P:\n"
@@ -185,8 +186,9 @@ class TestElementBoundaries:
             "    print(len(pairs))\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        _out, faces, fallback = _gen_thir(src)
+        assert not fallback
+        assert faces.get("arg.own_btuple_literal", 0) >= 1
         _assert_byte_identical(src)
 
     def test_non_discarded_open_t_pop_stays_ast(self):

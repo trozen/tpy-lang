@@ -52,14 +52,17 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.iter_proto",           # gen-factory / iter() / dict-view rvalue
                                     # at a structural slot -> un-spelled
                                     # `auto __tmp_N = <rvalue>;` temp
+    "argtemp.marker_protocol_literal",  # container literal at a PLAIN module
+                                    # callee's structural slot -> the qualcall
+                                    # loop's `auto __tmp_N = <self-spelled>` hoist
+    "argtemp.marker_protocol_range",    # range rvalue at the same slot ->
+                                    # `auto __tmp_N = ::tpy::Range<...>(..);`
     "arg.deref_coerce_inline",      # Ptr[T] deref coercion at a record slot
                                     # -> inline `::tpy::deref_check(p)`
     "move.opt_own_last_use",        # record name moved bare into an
                                     # Optional[Own[T]] slot (converting ctor)
     "arg.native_protocol_value",    # scalar/Char/str value at a native
                                     # protocol slot -> bare render (__hash__)
-    "arg.native_int_literal",       # int literal at a native callee's
-                                    # fixed-int slot -> slot-threaded render
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
                                     # -> inline typed rvalue (const-ref bind)
     "arg.ru_wrapper_narrowed",      # F6-narrowed member alias passed bare
@@ -292,6 +295,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # user-record arm over a `::tpy::__getitem__(xs, i)` borrow lvalue, `.`
     # access -- never `->`, mirroring the field-access-off-subscript receiver).
     "method.recv.subscript",
+    "method.recv.tuple_elem_subscript",  # `xs[i][j].append(v)` -- std::get<j>
+                                    # over a container-element borrow, the
+                                    # container-method arm over a `.` receiver
     # Method-call method receiver (`a.b().c()` -> the user-record arm over an
     # inner-call receiver whose result is a plain non-pointer record, `.`
     # access; the inner call renders via the shared method lowering).
@@ -340,6 +346,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> the inline closure, temp-free
     "method.callable_field",        # callable-field invocation h.cb(3) ->
                                     # the bare member call (std::function)
+    "cfield.container_arg",         # container FIELD arg to a callable-field
+                                    # call reads bare into the `T&` param
     "ctor.own_arg",                 # Own-slot ctor arg via the shared cascade
                                     # rows (last-use move / copy+move temp)
     "ctor.container_literal_arg",   # list literal into a ctor's list slot:
@@ -365,6 +373,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # the owned-str element sink copy and the aug-assign desugar).
     "setitem.slice",                # `c[a:b] = v` / `c[a:b:s] = v` ->
                                     # list_set_slice / list_set_stepped_slice
+    "aug.inplace_dunder",           # resolved inplace method (`b += 10` on
+                                    # Atomic -> `b.__iadd__(10);`, `s |= {3}`
+                                    # -> set_update) via gen_call_from_fi
     "aug.container_inplace",        # `c OP= v` -> mutating dunder native
                                     # free-function (list_extend, ...)
     "setitem.checked",              # `::tpy::__setitem__(c, k, v);`
@@ -376,6 +387,13 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # __setitem__ -> ::tpy::__setitem__(recv,k,v)
     "setitem.container_value",      # nested-container element: literal value,
                                     # type-prefixed on the checked path
+    "setitem.btuple_call",          # ptr-Optional-tuple value slot: a
+                                    # borrow-tuple call lifts via the
+                                    # non-move tuple_to_storage
+    "setitem.btuple_literal",       # ... a tuple LITERAL value: the borrow
+                                    # tuple with plain lifts, same non-move
+    "setitem.btuple_elem_pass",     # ... a same-tuple element read passes
+                                    # bare (`d2[k] = d[k]`)
     "setitem.borrow_lift",          # Optional/union element: borrow NAME lifts
                                     # via ptr_to_optional / to_value_variant
                                     # (narrowed member names store bare)
@@ -437,6 +455,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.any_subscript",            # `return d[k]` at an Any return slot ->
                                     # bare `::tpy::__getitem__(d, k)`
     "ret.any_name",                 # `return a` -- a bare Any value name
+    "ret.any_wrap",                 # non-Any value at an Any return slot ->
+                                    # `return ::tpy::make_any(..);`
                                     # (value type, returns bare, no move)
     "expr_stmt.macro_discard",      # void stmt-position macro expansion
                                     # (setattr/delattr builtins) dispatched
@@ -715,6 +735,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.move",            # `std::move(name)` element at last use
     "containerlit.copy_record",     # `copy(p)` element: the shared
                                     # copy-construct row at a record slot
+    "containerlit.union_name_lift",  # tracked ptr-variant NAME at a value-
+                                    # union slot -> `to_value_variant<..>(a)`
+    "containerlit.tparam_elem",     # plain declared NAME at a `T` element
+                                    # slot -> bare brace init (`return {x};`)
+    "containerlit.tuple_name_storage",  # bare NAME at a non-value tuple
+                                    # element slot -> the whole non-move
+                                    # tuple_to_storage copy
+    "containerlit.union_narrowed_elem",  # narrowed alias at a value-union
+                                    # slot -> bare member (`{__a, ..}`)
     # A spanlike coerce over an array-literal inner: the helper wraps the
     # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
     "coerce.span_array_literal",
@@ -816,6 +845,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # `std::tuple<...>{...}` literal render at returns / decls, and the bare
     # value-tuple name return.
     "ret.tuple_literal",
+    "ret.own_storage_tuple",        # Own[tuple[.., record]] literal return ->
+                                    # spelled `std::tuple<..>{rvalues}`
     "ret.tuple_name",
     "decl.tuple_literal",
     # A VALUE-capture record/Own tuple LITERAL decl bound by value (storage
@@ -867,6 +898,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot -> the owned literal render
     "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
                                     # element slot -> spelled value render
+    "arg.own_btuple_literal",       # ref-element tuple literal at an
+                                    # Own[tuple[T|None, ..]] element slot ->
+                                    # tuple_to_storage_move<S>(borrow tuple
+                                    # with per-element moves)
+    "arg.own_btuple_call",          # borrow-tuple-returning call at the same
+                                    # slot -> non-move tuple_to_storage lift
+    "call.btuple_pass",             # borrow-tuple call result at a MATCHING
+                                    # borrow-form tuple param -> binds bare
     "method.protocol_self_storage_ret",  # Own[Self] rvalue into the `auto`
                                     # decl slot in a template body
     "method.protocol_own_storage_ret",  # Own[record] rvalue off a protocol
@@ -1238,6 +1277,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # `auto& __tup_N = p` (NAME_REF, no tuple_to_pointer lift) and ref targets
     # alias via unwrap_ref/tuple_elem_ref.
     "stmt.tuple_unpack.ref_param_source",
+    "stmt.tuple_unpack.subscript_wrap_source",  # `a0, b0 = pairs[0]` -- the
+                                    # whole storage element lifts via
+                                    # tuple_to_pointer off __getitem__
+    "stmt.tuple_unpack.call_borrow_source",  # `a, b = both(t1, t2)` -- the
+                                    # borrow-form call result captures via
+                                    # the plain RVALUE bind, no lift
     # A pointer-repr Optional[F1-record] unpack target off a borrow-form tuple
     # param: a plain nullable-pointer local `const T* a = std::get<i>(__tup_N);`
     # (const tracks the source param), registered as a pointer-optional local so
@@ -1548,6 +1593,18 @@ THIR_FACES: frozenset[str] = frozenset({
     # A tuple LITERAL at a tuple field: the spelled value brace-init, plus
     # the `tuple_to_storage` wrap at an F3 (non-value-element) slot.
     "field_write.tuple_literal",
+    "call.field_copy_borrow_ret",   # the T&-returning call admitted at the
+                                    # field-write COPY sink (renders bare)
+    "setitem.borrow_call_copy",     # the T&-returning call value copies
+                                    # into the checked setitem's V param
+    "field_write.field_copy",       # `h.p = h2.p;` -- the field-read
+                                    # reference source copies bare
+    "field_write.subscript_copy",   # `h.p = pts[0];` -- the record-elem
+                                    # subscript reference source copies bare
+    "field_write.borrow_call_copy",  # `h.p = identity(pt);` -- the T&-
+                                     # returning call copies bare on assign
+    "field_write.ptr_local_copy",   # `this->r = (*saved);` -- pointer-local
+                                    # record source copies through the deref
     # `copy()` sources at a record / Optional[record] FIELD write: the
     # copy-CONSTRUCT rvalue (`field = T(x);`) and the constructor-argument
     # peel (`copy(T(...))` renders as the bare `T(...)` prvalue).

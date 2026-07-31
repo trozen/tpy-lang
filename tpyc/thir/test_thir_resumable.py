@@ -527,13 +527,21 @@ class TestAwaitModes:
         assert "&(::tpy::__getitem__((*items), 0))" in cpp
 
     def test_erased_operand_reject_composes(self):
-        # An ERASED operand whose expression lowering rejects (walrus arg --
-        # a landmark construct) falls back with the positional tag
-        # (res.await_operand_shape), never routes a partial body.
+        # An ERASED operand whose expression lowering rejects (a ternary of
+        # task handles -- no ifexpr arm for erased frame borrows) falls back
+        # with the positional tag (res.await_operand_shape), never routes a
+        # partial body. (The former walrus-arg witness routes byte-identically
+        # now that the resolved-scalar arg row admits literal-typed walruses.)
         src = ("import asyncio\n"
                + _PRE
-               + "async def snooze() -> None:\n"
-               + "    await asyncio.sleep((d := 0.01))\n\n"
+               + "async def tick() -> Int32:\n"
+               + "    await asyncio.sleep(0.01)\n"
+               + "    return 1\n\n"
+               + "async def snooze(c: bool) -> None:\n"
+               + "    t = asyncio.create_task(tick())\n"
+               + "    u = asyncio.create_task(tick())\n"
+               + "    v: Int32 = await (t if c else u)\n"
+               + "    print(v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.await_operand_shape") == 1
 

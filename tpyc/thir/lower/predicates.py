@@ -77,6 +77,7 @@ from ...typesys import (
     TypeParamKind,
     TypeParamRef,
     UnionType,
+    ValueForm,
     is_any_bytes_type,
     is_any_str_type,
     is_dyn_protocol,
@@ -112,6 +113,7 @@ from ...type_def_registry import (
     is_set,
     is_slice_type,
     is_span,
+    is_varargs,
     is_str_type,
     is_str_view_type,
     is_string_type,
@@ -125,6 +127,7 @@ from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     reads_storage_form_optional,
 )
+from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
     bigint_index_narrow_type,
@@ -679,13 +682,14 @@ def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
 
 
 def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None':
-    """An `Own[A | B]` return slot over F1-RECORD members: a by-value
-    `std::variant<A, B>` (the storage form -- ownership makes the union a
-    value at the return boundary, never the pointer variant). The routed
-    source is a member-record ctor rvalue, which returns bare (the variant's
-    converting ctor absorbs it). A None member keeps the slot out (the
-    monostate/None renders are the Optional families'); value-member unions
-    ride `_eligible_value_union` at the plain-union return arm."""
+    """An `Own[A | B]` return slot over F1-RECORD and value-scalar members:
+    a by-value `std::variant<...>` (the storage form -- ownership makes the
+    union a value at the return boundary, never the pointer variant). The
+    routed sources are a member-record ctor rvalue and a scalar-typed value
+    (`Own[Bag | int]` <- `return 0`), both returned bare (the variant's
+    converting ctor absorbs them). A None member keeps the slot out (the
+    monostate/None renders are the Optional families'); all-value-member
+    unions ride `_eligible_value_union` at the plain-union return arm."""
     if t is None:
         return None
     u = unwrap_readonly(unwrap_send_sync(t))
@@ -694,7 +698,9 @@ def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None'
     inner = unwrap_readonly(u.wrapped)
     if not isinstance(inner, UnionType) or inner.has_none_member():
         return None
-    if not all(_f1_record(m, analyzer) for m in inner.members):
+    if not all(_f1_record(m, analyzer)
+               or _eligible_scalar(unwrap_readonly(m))
+               for m in inner.members):
         return None
     return inner
 
@@ -1953,8 +1959,19 @@ def _span_value(t: TpyType | None) -> bool:
 
 def _span_return(t: TpyType | None) -> bool:
     """The span RETURN slot -- see `_span_value` (the return is one of its
-    bare-render positions)."""
-    return _span_value(t)
+    bare-render positions). A `Span[T]` / `Span[readonly[T]]` over a TYPE
+    PARAM admits too (the auto_readonly getter pair): the slot renders
+    per-instantiation and the witnessed sources are the element-blind
+    spanlike coerces (`as_span` / `as_mut_span`)."""
+    if _span_value(t):
+        return True
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType) or not is_span(u):
+        return False
+    args = getattr(u, "type_args", None)
+    return bool(args) and _is_type_param_slot(unwrap_readonly(args[0]))
 
 def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     """A generic user-record type-arg that THIR spells byte-identically to the
@@ -3553,12 +3570,14 @@ def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
 
 def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     """An owned `str` container element/key/value slot (S5). Only the owned
-    nominal is admitted: a `StrView`/`BytesView` slot makes the container hold
-    views, whose literal keys/elements the AST pins to static storage
-    (`view_key_target` threads the key type into the literal render) -- a shape
-    this slice does not reproduce; the bytes family rides S6."""
+    nominals are admitted -- `str` and `tpy.String` (both `std::string`
+    storage; the form axis treats String as owned, see `_resolved_str_value`):
+    a `StrView`/`BytesView` slot makes the container hold views, whose literal
+    keys/elements the AST pins to static storage (`view_key_target` threads
+    the key type into the literal render) -- a shape this slice does not
+    reproduce; the bytes family rides S6."""
     st = _resolved_str_value(t, analyzer)
-    return st is not None and is_str_type(st)
+    return st is not None and (is_str_type(st) or is_string_type(st))
 
 def _value_opt_owned_str(t: 'TpyType | None', analyzer) -> bool:
     """A value-repr `Optional[str]` FIELD slot (`std::optional<std::string>`).
@@ -3612,15 +3631,18 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             or isinstance(kb, AnyType))
 
 def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
-                           *, span_ok: bool = False) -> bool:
+                           *, span_ok: bool = False,
+                           span_elem_ok=None) -> bool:
     """The shared container-shape dispatch behind the per-element-family
     predicates (`_container_scalar_read` / `_bytes_elem_container` /
     `_container_record_elem`): list/Array admit on `elem_ok(elem)`, dict on
     the shared key slice (fixed-int / runtime-BigInt / owned-str) plus
-    `elem_ok(value)`, `Own[container]` always rejects (move-in ABI). Only
-    the scalar family admits `Span` (`span_ok`) -- span reads of str /
-    record / bytes elements ride later cells. Adding an element family
-    means one new thin front, not a fourth copy of this dispatch."""
+    `elem_ok(value)`, `Own[container]` always rejects (move-in ABI). `Span`
+    admits the scalar slice under `span_ok`; a caller with a witnessed
+    non-scalar span element passes its own `span_elem_ok` (the record
+    family) -- str / bytes span elements still ride later cells. Adding an
+    element family means one new thin front, not a fourth copy of this
+    dispatch."""
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -3629,13 +3651,17 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
     args = getattr(t, "type_args", None)
     if is_list(t) or is_array(t):
         return bool(args) and elem_ok(args[0])
-    if span_ok and is_span(t):
+    if is_span(t) or is_varargs(t):
         # `Span[scalar]` / `Span[readonly[scalar]]` (`std::span<T>` /
-        # `std::span<const T>`, a by-value view param): subscript / len /
-        # iteration emit exactly like list (the bounds-safe operator[] /
+        # `std::span<const T>`, a by-value view param) and the `*args` body
+        # view (`varargs[T]`, span-backed): subscript / len / iteration emit
+        # exactly like list (the bounds-safe operator[] /
         # `::tpy::__getitem__`, `::tpy::__len__`, the begin/end capture
-        # loop).
-        return bool(args) and _eligible_scalar(unwrap_readonly(args[0]))
+        # loop). The record family passes its own element gate.
+        if span_elem_ok is not None:
+            return bool(args) and span_elem_ok(args[0])
+        return (span_ok and bool(args)
+                and _eligible_scalar(unwrap_readonly(args[0])))
     if is_dict(t):
         if not args or len(args) < 2:
             return False
@@ -3723,8 +3749,9 @@ def _container_record_elem(t: TpyType | None, analyzer) -> bool:
     in expressions.py owns the expression shape). `Optional`-element and
     generic-record-element containers reject at `_f1_record` (the AST wraps
     those reads differently)."""
-    return _container_elem_family(
-        t, analyzer, lambda a: _f1_record(a, analyzer))
+    def elem_ok(a: 'TpyType | int') -> bool:
+        return _f1_record(a, analyzer) if isinstance(a, TpyType) else False
+    return _container_elem_family(t, analyzer, elem_ok, span_elem_ok=elem_ok)
 
 def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is itself a plain list/dict/set: the
@@ -3967,7 +3994,13 @@ def _str_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(e, TpyFieldAccess)
             and _field_receiver_or_unbound_self_ok(e, declared, analyzer)):
         return False
-    st = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
+    return _str_view_family_value(analyzer.get_expr_type(e), analyzer)
+
+def _str_view_family_value(t: TpyType | None, analyzer) -> bool:
+    """The str/StrView slice of `_resolved_str_value` -- `String` resolves
+    inside the slice but is excluded (its owned form has no view sink to
+    convert at, so no body arm renders it)."""
+    st = _resolved_str_value(t, analyzer)
     return st is not None and (is_str_type(st) or is_str_view_type(st))
 
 def _bytes_field_value_read(e: TpyExpr, declared: dict[str, TpyType],
@@ -4142,6 +4175,24 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
             return f.type
     return None
 
+def _container_field_bare_read(e: TpyExpr, declared: dict[str, TpyType],
+                               analyzer) -> bool:
+    """A container FIELD read whose bare member render IS the whole
+    argument -- the `std::ranges::contains` haystack and the callable-field
+    call's `T&` arg slot. The caller witnesses its own face; DECLARED-type
+    keyed so a narrowed Optional-container read (whose AST render unwraps)
+    stays out."""
+    return (isinstance(e, TpyFieldAccess)
+            and _plain_container_read(_field_decl_type(e, declared, analyzer))
+            and _field_receiver_ok(e, declared, analyzer))
+
+def _method_member_cpp(fi, name: str) -> str:
+    """gen_call_from_fi's member-name rule: the @native rename over the
+    escaped source name (a native FUNCTION's rename rides
+    native_function_name instead, so it never lands here)."""
+    return (fi.native_name if fi.native_name and not fi.native_function
+            else escape_cpp_name(name))
+
 def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
                                    analyzer) -> 'TpyType | None':
     """The receiver binding type for a container subscript read/write/del: a
@@ -4267,6 +4318,65 @@ def _tuple_literal_has_ref_elements(e: TpyTupleLiteral,
     return any(isinstance(t, TypeParamRef)
                or (not t.is_value_type() and not isinstance(t, OwnType))
                for t in slot.element_types)
+
+
+def _own_storage_tuple_return(rt: 'TpyType | None',
+                              analyzer) -> 'TupleType | None':
+    """An `Own[tuple[...]]` STORAGE return slot with a NON-VALUE member
+    (`-> Own[tuple[str, Resource]]` -> a by-value `std::tuple<...>`): a
+    tuple LITERAL whose members pass the storage-direct container-element
+    rules returns the spelled brace-init
+    (`return std::tuple<std::string, Resource>{...};`). None otherwise;
+    all-value tuples keep the `ret_value_tuple` family."""
+    if not isinstance(rt, OwnType):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt.wrapped)))
+    if not isinstance(t, TupleType):
+        return None
+    members = [unwrap_readonly(unwrap_ref_type(unwrap_send_sync(m)))
+               for m in t.element_types]
+    if all(m.is_value_type() for m in members):
+        return None
+    return t
+
+
+def _ptr_optional_tuple(t: 'TpyType | None',
+                        analyzer=None) -> 'TupleType | None':
+    """The matched ptr-Optional-element storage tuple, or None: a TupleType
+    with a pointer-repr element whose every non-value slot is a pointer-repr
+    Optional -- the Own[tuple[T | None, ..]] consuming family's shape key
+    (matched-type-or-None like `_eligible_ptr_union` / `_value_tuple`)."""
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (isinstance(u, TupleType) and u.has_pointer_repr_element()
+            and _tuple_elem_slots_ptr_optional(u)):
+        return None
+    return u
+
+
+def _tuple_elem_slots_record_lvalue(e: 'TpyTupleLiteral', slot: 'TupleType',
+                                    analyzer) -> bool:
+    """The plain-record sibling of the all-Optional borrow admission
+    (`_tuple_elem_slots_ptr_optional`): every non-value element slot is a
+    plain BORROW_REF pointer-repr record whose element is a simple lvalue --
+    the storage-context CONST_REF row (`const P*` slot + `&(c)` lift,
+    `_tuple_literal_slot_info`'s storage rule, carried by the borrow ladder's
+    `storage_context`). Rvalue members keep the storage-direct arm."""
+    if len(e.elements) != len(slot.element_types):
+        return False
+    for i, t in enumerate(slot.element_types):
+        tb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if tb.is_value_type():
+            continue
+        if isinstance(tb, (OptionalType, UnionType, TypeParamRef)):
+            return False
+        if (tb.value_form() is not ValueForm.BORROW_REF
+                or not TupleType._element_is_pointer_repr(tb)):
+            return False
+        if not _is_simple_lvalue(e.elements[i]):
+            return False
+    return True
 
 
 def _tuple_elem_slots_ptr_optional(slot: 'TupleType') -> bool:
@@ -4402,7 +4512,15 @@ def _value_tuple_field_literal_write_ok(stmt: TpyAssign,
         return False
     if not _field_receiver_ok(stmt.target, declared, analyzer):
         return False
-    vt = _value_tuple(analyzer.get_expr_type(stmt.target), analyzer)
+    tt = analyzer.get_expr_type(stmt.target)
+    ut = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt))) \
+        if tt is not None else None
+    if isinstance(ut, OptionalType):
+        # An Optional[value-tuple] FIELD stores `std::optional<std::tuple
+        # <..>>`, whose operator= absorbs the same spelled brace-init the
+        # plain tuple field gets (`s.auth = std::tuple<..>{"u", "p"};`).
+        tt = ut.inner
+    vt = _value_tuple(tt, analyzer)
     if vt is None:
         return False
     return (len(stmt.value.elements) == len(vt.element_types)
@@ -4939,7 +5057,14 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                 return None
         elif not (_eligible_scalar(e)
                   or _resolved_str_value(unwrap_ref_type(e), analyzer)
-                  is not None):
+                  is not None
+                  # A nested VALUE-tuple element (`accept() ->
+                  # tuple[Own[socket], tuple[str, Int32]]`): the capture
+                  # holds it by value; a kept target copies it out like a
+                  # scalar, a discarded one emits nothing.
+                  or _value_tuple_nested(
+                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))),
+                      analyzer) is not None):
             return None
     return t
 
@@ -6297,7 +6422,11 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     fi = e.resolved_function_info
     if fi is None or not _plain_method_fi_ok(fi) or fi.params:
         return False
-    return _container_scalar_read(locals_[e.obj.name], analyzer)
+    # Record-VALUE dicts admit too (`[p for _, p in point_map.items()]`):
+    # the caller's element/unpack-target gates decide what the loop var can
+    # bind; the view call render is value-family-blind.
+    return (_container_scalar_read(locals_[e.obj.name], analyzer)
+            or _container_record_elem(locals_[e.obj.name], analyzer))
 
 def _plain_scalar_slot(ptype: TpyType | None, analyzer) -> bool:
     """A NON-Own value-scalar param slot. The user-record sibling of

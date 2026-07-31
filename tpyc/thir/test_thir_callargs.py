@@ -2563,12 +2563,26 @@ class TestNativeIterableLiteralArg:
         assert _fn(_lower(src, default_int="BigInt"), "f") is not None
         _assert_byte_identical(src, default_int="BigInt")
 
-    def test_make_path_element_falls_back(self):
-        # A move-source element flips the literal onto make_ordered_set; the
-        # native-arg arm rejects the make path (unverified in-place render).
+    def test_string_slot_set_element_routes(self):
+        # A promoted concat local's set slot resolves to tpy.String (owned
+        # std::string storage): the owned-str slice admits it and the
+        # element is NOT a move source on either path (owned str is a value
+        # type), so the plain ordered_set render is byte-identical -- the
+        # former make-path fallback pin's witness never was on the make path.
         src = ("def f(s: str) -> None:\n"
                "    t = s + \"x\"\n"
                "    print(any({t}))\n")
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_make_path_element_falls_back(self):
+        # A genuinely movable element -- a narrowed expensive-copy
+        # Optional[str] param (seed_param_locals marks it movable) -- flips
+        # the literal onto make_ordered_set; the native-arg arm rejects the
+        # make path (unverified in-place render).
+        src = ("def f(p: str | None) -> None:\n"
+               "    if p is not None:\n"
+               "        print(any({p}))\n")
         assert _fn(_lower(src), "f") is None
 
 

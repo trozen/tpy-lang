@@ -174,9 +174,11 @@ class TestNativeProtocolValueArg:
             "    h3: UInt64 = hash(3.14)\n"
             "    print(h1 == h1, h2 == h2, h3 == h3)\n"
         )
+        # The int/float literals ride the general resolved-scalar row now;
+        # the value-arg face fires for the str literal.
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
-        assert faces["arg.native_protocol_value"] >= 3
+        assert faces["arg.native_protocol_value"] >= 1
         _assert_byte_identical(src)
 
     def test_hash_name_args_route(self):

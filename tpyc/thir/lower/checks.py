@@ -106,7 +106,7 @@ from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import LocalBinding, classify_local_binding
 from ...codegen_cpp.protocols import classify_dyn_own_arg
-from ...value_category import is_rvalue_source
+from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import (
     escape_cpp_name,
     imported_free_callee_cpp,
@@ -135,6 +135,7 @@ from ..nodes import (
 from .predicates import (
     _bare_module_recv,
     _module_var_read_cpp,
+    _subscript_index_and_tuple,
     _callable_value,
     _ptr_opt_borrow_call_ret,
     _f1_tuple,
@@ -182,6 +183,7 @@ from .predicates import (
     copy_call_arg,
     _tuple_literal_has_ref_elements,
     _tuple_elem_slots_ptr_optional,
+    _tuple_elem_slots_record_lvalue,
     _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
     _user_deref_field_recv_ok,
@@ -530,7 +532,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                            allow_record: bool = False,
                            allow_nested: bool = False,
                            allow_optional: bool = False,
-                           note: bool = False) -> bool:
+                           note: bool = False,
+                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
     """One container-literal element / dict value against its RESOLVED slot.
 
     `threaded` = the parent literal itself was rendered with a target;
@@ -599,6 +602,14 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         if isinstance(e, TpyNoneLiteral):
             return True  # -> std::nullopt (the STORAGE-form None)
         return True
+    if fam == "tparam":
+        # A `T` element slot in a generic body (`return [x]` ->
+        # `return {x};`): a bare declared NAME renders bare into the brace
+        # init. The lowering row enforces the strict slice (non-narrowed,
+        # non-pointer, non-move) and rejects the rest.
+        if isinstance(e, TpyName) and e.name in declared:
+            return True
+        return note_detail("container_lit.elem.tparam") if note else False
     if fam == "union":
         # A VALUE-union element slot (`std::variant<...>`): literal elements
         # convert implicitly and render BARE on both paths (`{1, "two"}`
@@ -614,10 +625,40 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # paths (`{Leaf(1), Leaf(2)}` into `std::vector<Tree>`).
         if _wrapper_member_ctor_slot(e, su, analyzer):
             return True
+        # A scalar LITERAL at a wrapper element slot renders bare the same
+        # way (`std::vector<V> xs = {1, 2, 3}` -- the converting ctor
+        # absorbs the literal), the wrapper twin of the value-union row.
+        if (_eligible_wrapper_union(su, analyzer) is not None
+                and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
+                                   TpyBoolLiteral, TpyStrLiteral))):
+            return True
         # The plain-union twin: a member-record ctor rvalue into an
         # all-record value-variant element slot (`{Dog("Rex"), Cat("W")}`).
         if _union_member_ctor_slot(e, su, analyzer):
             return True
+        # A member-record NAME into the same all-record value-variant slot
+        # (`[r, Circle()]` -> `make_vector<variant<..>>(std::move(r),
+        # Circle())`): the converting ctor absorbs the bare/moved name; the
+        # make/move switch rides the shared move facts. Pointer-locals stay
+        # out. A SAME-UNION name (`[a, b]` over `a: Cat | Dog`) admits too:
+        # the lowering row discriminates the tracked ptr-variant binding
+        # (the `to_value_variant` lift) from a narrowed alias (bare member)
+        # and REJECTS untracked bindings -- the union narrow binding-form
+        # fence -- so this admission alone never picks a render.
+        if (isinstance(e, TpyName) and e.name not in pointers
+                and isinstance(su, UnionType) and not su.needs_wrapper()):
+            bt = declared.get(e.name)
+            bu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
+                  if bt is not None else None)
+            members = [unwrap_readonly(m) for m in su.members]
+            all_record = (bool(members)
+                          and all(isinstance(m, NominalType)
+                                  and m.is_user_record for m in members))
+            if (all_record and isinstance(bu, NominalType)
+                    and bu.is_user_record and any(m == bu for m in members)):
+                return True
+            if all_record and isinstance(bu, UnionType) and bu == su:
+                return True
         return note_detail("container_lit.elem.union") if note else False
     if fam == "tuple":
         if not threaded:
@@ -653,7 +694,16 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             # union / nested-tuple members route through a borrow intermediate
             # (`tuple_value_to_borrow`, `&name`) the AST spells differently --
             # they defer, along with any non-value lvalue NAME member.
-            if _container_lit_slot_family(mbare, analyzer) not in (None, "record"):
+            mfam = _container_lit_slot_family(mbare, analyzer)
+            if mfam == "container":
+                # A nested list LITERAL member renders its bare brace inside
+                # the storage tuple (`S{1, {2, 3}}` -- the jagged-list shape);
+                # container NAMES / dict / set literals defer.
+                if not (isinstance(sub, TpyArrayLiteral)
+                        and (is_list(mbare) or is_array(mbare))):
+                    return (note_detail("container_lit.elem.tuple")
+                            if note else False)
+            elif mfam not in (None, "record"):
                 return note_detail("container_lit.elem.tuple") if note else False
             if (not mbare.is_value_type()
                     and not is_rvalue_source(analyzer, sub)):
@@ -661,7 +711,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return _container_lit_elem_ok(
                 sub, mslot, declared, analyzer, threaded=True, forced=True,
                 allow_record=True, allow_nested=True, allow_optional=True,
-                note=note)
+                note=note, pointers=pointers)
         if (isinstance(e, TpyTupleLiteral) and isinstance(su, TupleType)
                 and len(e.elements) == len(su.element_types)):
             # A ref-element tuple takes the BORROW ladder
@@ -670,7 +720,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             # and rejects there -- the storage-direct member rules below do not
             # describe it.
             if (_tuple_literal_has_ref_elements(e, su)
-                    and _tuple_elem_slots_ptr_optional(su)):
+                    and (_tuple_elem_slots_ptr_optional(su)
+                         or _tuple_elem_slots_record_lvalue(e, su, analyzer))):
                 return True
             # Otherwise the storage-DIRECT member rules still apply: this arm
             # ADDS the borrow ladder, it does not replace the rows that were
@@ -715,6 +766,13 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             if (bt is not None and _f1_record(bt, analyzer)):
                 return True
             return note_detail("container_lit.elem.record") if note else False
+        # `copy(name)` -- the copy-construct rvalue (`P(p)`): the elem
+        # lowering's `_lower_copy_record` row (exact slot match) renders it;
+        # a shape that slips past this admission (pointer-local source not in
+        # `pointers`) returns None there and the generic call tail rejects --
+        # body fallback, never a divergent render.
+        if copy_plain_record_source(e, analyzer, pointers) is not None:
+            return True
         return (_record_source_call(e, analyzer)
                 or (note_detail("container_lit.elem.record") if note else False))
     if fam == "any":
@@ -738,9 +796,15 @@ def _container_lit_slot_family(t: 'TpyType | None', analyzer) -> 'str | None':
     families."""
     if t is None:
         return "untyped"
-    if _eligible_scalar(t) or _owned_str_slot(t, analyzer):
+    # _resolved_scalar, not _eligible_scalar: a native CALL-ARG literal keeps
+    # Int/FloatLiteralType element slots (sema resolves decl slots, not arg
+    # slots) -- the AST resolves them at render and the element lands bare,
+    # so the base-scalar family is the byte-identical classification.
+    if _resolved_scalar(t, analyzer) or _owned_str_slot(t, analyzer):
         return None
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, TypeParamRef):
+        return "tparam"
     if isinstance(u, OptionalType):
         return "optional"
     if isinstance(u, UnionType):
@@ -822,6 +886,13 @@ def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
     if e.slice_function_info is not None or isinstance(e.index, TpySlice):
         return False
     recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
+    if recv_t is None and isinstance(e.obj, TpyFieldAccess) \
+            and _field_over_container_subscript_ok(e.obj, locals_, analyzer):
+        # A CHAINED element receiver (`a.bs[0].as_[0]`): the inner
+        # `a.bs[0].as_` is itself a field over an admitted record-element
+        # subscript, so each level renders the same `__getitem__` / bare
+        # member nest. Recursion is on strictly smaller receivers.
+        recv_t = _field_decl_type(e.obj, locals_, analyzer)
     if recv_t is None or not elem_family(recv_t, analyzer):
         return False
     return (_bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
@@ -838,6 +909,40 @@ def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
     clean excludes the Optional null-check / property / setattr shapes."""
     return (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)
             and _container_record_elem_subscript(e.obj, locals_, analyzer))
+
+def _tuple_container_elem_over_subscript_ok(e: TpyExpr,
+                                            locals_: dict[str, TpyType],
+                                            analyzer) -> bool:
+    """A tuple-element read over a container-element subscript, as a METHOD
+    receiver (`xs[i][j].append(v)` over `list[tuple[.., list[T]]]`): the inner
+    `xs[i]` is a container-element borrow lvalue whose element is a TUPLE, and
+    the outer const-index read is `std::get<j>(::tpy::__getitem__(xs, i))` --
+    a container element (`T&`, `.` access) on both paths, routing the
+    container-method arm. Value/record elements keep their own rows; only a
+    container element admits here (the shape's method consumer)."""
+    if not (isinstance(e, TpySubscript)
+            and not e.needs_optional_runtime_check
+            and e.slice_function_info is None
+            and not isinstance(e.index, TpySlice)):
+        return False
+    if not _borrow_elem_subscript_shape(
+            e.obj, locals_, analyzer,
+            # A literal-seeded binding is still PENDING here (the receiver
+            # gates read the declared type); resolve before the family check.
+            lambda t, a: _container_elem_family(
+                resolve_pending_container(t, a) or t, a,
+                lambda m: isinstance(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(m))),
+                    TupleType))):
+        return False
+    if _subscript_index_and_tuple(e, analyzer) is None:
+        return False
+    rt = analyzer.get_expr_type(e)
+    rt = resolve_pending_container(rt, analyzer) or rt
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    return bool((is_list(rt) or is_dict(rt) or is_set(rt))
+                and _witness("method.recv.tuple_elem_subscript"))
+
 
 def _subscript_over_container_subscript_ok(e: TpyExpr,
                                            locals_: dict[str, TpyType],
@@ -1321,8 +1426,10 @@ def _record_field_write_ok(
         pointers: set[str], narrowed: AbstractSet[str],
         prescan: '_Prescan') -> bool:
     """A plain F1-record field write `recv.field = <source>` off an F1-record
-    receiver -- the AST's default field assign, no borrow<->storage lift. Two
-    source rows:
+    receiver -- the AST's default field assign, no borrow<->storage lift.
+    Source rows (beyond the two below: a borrow-returning call, a field
+    read, a record-element subscript, and a pointer-local -- each copies
+    bare, the last through its deref):
 
       * a **record rvalue** (the `_record_rvalue_source_shape` -- a ctor /
         by-value record-returning call): a direct copy
@@ -1360,6 +1467,37 @@ def _record_field_write_ok(
     if _record_rvalue_source_shape(stmt.value, analyzer):
         return analyzer.get_expr_type(stmt.value) == ftype
     v = stmt.value
+    # A BORROW-returning record call source copies bare on assignment
+    # (`h.p = identity(pt);` -- the C++ copy-assign absorbs the `T&`).
+    if (isinstance(v, TpyCall) and v.resolved_function_info is not None
+            and call_returns_cpp_ref(analyzer, v.resolved_function_info)
+            and analyzer.get_expr_type(v) == ftype
+            and _f1_record(ftype, analyzer)):
+        return _witness("field_write.borrow_call_copy")
+    # A FIELD or record-element SUBSCRIPT source copies bare
+    # (`h.p = h2.p;` / `h.p = ::tpy::__getitem__(pts, 0);` -- the reads
+    # are references, the assign copies; never movable).
+    if isinstance(v, TpyFieldAccess):
+        return (_field_receiver_ok(v, declared, analyzer)
+                and _f1_record(analyzer.get_expr_type(v), analyzer)
+                and analyzer.get_expr_type(v) == ftype
+                and _witness("field_write.field_copy"))
+    if isinstance(v, TpySubscript):
+        return (_container_record_elem_subscript(v, declared, analyzer)
+                and analyzer.get_expr_type(v) == ftype
+                and _witness("field_write.subscript_copy"))
+    # A POINTER-local record source copies through the deref
+    # (`this->result = (*saved);` -- gen_expr_deref's indirect-name read;
+    # pointers are never movable, so no move wrap).
+    if (isinstance(v, TpyName) and v.name in pointers
+            and v.name in declared and v.name not in narrowed
+            and not (prescan.has_self and v.name == "self")):
+        vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared[v.name])))
+        return (_f1_record(vt, analyzer)
+                and vt == unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ftype)))
+                and _witness("field_write.ptr_local_copy"))
     if not (isinstance(v, TpyName) and v.name in declared
             and v.name not in narrowed and v.name not in pointers
             and not (prescan.has_self and v.name == "self")):
@@ -1906,6 +2044,13 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
     return (_container_scalar_read(elem_t, analyzer)
             or _optional_record_field_inner(elem_t, analyzer) is not None
             or _eligible_ptr_union(elem_t, analyzer) is not None
+            # A ptr-Optional-element tuple value slot (`d[k] = make_pair(..)`
+            # on `dict[K, tuple[P | None, ..]]`): the non-move
+            # tuple_to_storage lift; the value shape narrows at the arm.
+            or (isinstance(_swe_b := unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(elem_t))), TupleType)
+                and _swe_b.has_pointer_repr_element()
+                and _tuple_elem_slots_ptr_optional(_swe_b))
             # An open-T element write (`self.data[idx] = val` off
             # Array[T, N]): the bare checked `__setitem__` with the
             # form-neutral T value.
@@ -2878,24 +3023,8 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # the native loop renders the value bare, position-independent.
             or _native_protocol_value_arg(a, ptype, analyzer)
             or _native_protocol_field_arg(a, ptype, analyzer)
-            or _native_int_literal_slot_arg(a, ptype)
             or _native_iterable_comp_arg(a, ptype, analyzer) is not None
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
-
-
-def _native_int_literal_slot_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
-    """A bare int literal at a native/template callee's fixed-int slot
-    (`bytearray(16)` -> `::tpy::bytes_from_size(16)`). Sema does not coerce a
-    native callee's args, so the literal keeps its IntLiteralType and misses
-    the resolved-scalar row; the slot-threaded `_slot_literal_retype` at the
-    lowering tail gives it the same `render_int_literal_value` spelling
-    `_gen_call_arg`'s target threading does."""
-    if not isinstance(a, TpyIntLiteral):
-        return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    return bool(pt is not None and is_fixed_int_type(pt)
-                and _witness("arg.native_int_literal"))
 
 
 def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3918,7 +4047,10 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     is callee-local, the slot stays by value) and the lvalue-NAME rows
     (record / container / owned-String names bind a `T&` legally; sema's
     readonly system rejects a const violation upstream) stay admitted."""
-    return ((_eligible_scalar(analyzer.get_expr_type(a))
+    # _resolved_scalar, not _eligible_scalar: a ctor-position literal arg
+    # (`tpy.Int32(10)`) keeps IntLiteralType on its expr type -- the slot
+    # threads the render either way (_slot_literal_retype).
+    return ((_resolved_scalar(analyzer.get_expr_type(a), analyzer)
              and not _member_valued_union_slot(a, ptype, analyzer)
              and not _own_cascade_fires(ptype))
             # A scalar-based `Literal[...]` SLOT (spelled as its base):
@@ -5251,10 +5383,14 @@ def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
     """The method receiver's binding type. A bare name reads the declared
     binding (`locals_`, the pre-resolution container type -- mirrors
     method-call lowering's docstring note); a field-access receiver reads
-    its sema-resolved type."""
+    its sema-resolved type. A non-name receiver whose sema type is still a
+    PENDING container (a literal-seeded element read, `xs[i][j]`) resolves
+    it -- the AST reads get_resolved_type at emit, and an unresolved type
+    here can only mis-classify the family to an auto-reject."""
     if isinstance(recv, TpyName):
         return locals_.get(recv.name)
-    return analyzer.get_expr_type(recv)
+    t = analyzer.get_expr_type(recv)
+    return resolve_pending_container(t, analyzer) or t
 
 def _indirect_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                                 analyzer) -> bool:
@@ -5366,6 +5502,8 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         return ((_container_record_elem_subscript(recv, locals_, analyzer)
                  or _container_ref_alias_elem_subscript(recv, locals_, analyzer)
                  or _subscript_over_container_subscript_ok(
+                     recv, locals_, analyzer)
+                 or _tuple_container_elem_over_subscript_ok(
                      recv, locals_, analyzer)
                  # A str-element read (`argv[i].startswith(...)`): the element
                  # lvalue feeds the native str view-method positionally, the
@@ -5661,13 +5799,17 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
             # (`Poll[Probe].ready(..)`), a module-qualified generic
             # (`helpers.identity[Int32](x)` -- the user-module generic arm),
             # and a builtin-module template (`tpy.unsafe.unsafe_cast[U](p)`
-            # -- gen_call_from_fi's type-arg substitution). The equality pin
-            # keeps any diverging explicit list out.
+            # -- gen_call_from_fi's type-arg substitution). The PREFIX pin
+            # keeps any diverging explicit list out: a partial explicit
+            # spelling (`unsafe_cast[UInt32](p)` giving one of [T, U]) folds
+            # as the inferred list's head, and the render still comes from
+            # `inferred_type_args` alone.
             or (e.type_args
                 and not ((e.is_static_call
                           or e.user_module_call is not None
                           or e.builtin_module_call is not None)
-                         and tuple(e.type_args) == tuple(e.inferred_type_args)))
+                         and tuple(e.type_args)
+                         == tuple(e.inferred_type_args)[:len(e.type_args)]))
             or e.deref_depth
             or e.deref_narrowed_to is not None
             or e.needs_optional_runtime_check):
@@ -5676,9 +5818,17 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     if fi is None:
         return None
     # A module-qualified record ctor (`m.Rec(...)`) resolves to __init__ --
-    # the record-ctor frontier, not this arm.
+    # the record-ctor frontier, not this arm. EXCEPT the builtin-module
+    # @cpp_template TYPE ctor (`tpy.Int32(10)`): its AST arm is the same
+    # gen_template_or_native_call expansion the static template takes
+    # (non-generic overloads only, mirroring that arm's `not fi.type_params`
+    # guard; the specials/native rejects below still apply).
     if fi.is_method and fi.name == "__init__":
-        return None
+        if not (e.builtin_module_call is not None
+                and fi.cpp_template is not None
+                and not fi.type_params
+                and not fi.native_function and not fi.native_name):
+            return None
     # Bespoke sema/emit arms keyed on the resolved function: the four
     # @builtin_function specials and special-handling builtins. The asyncio
     # spawn pair (run/create_task) is NOT bespoke at emit time: sema analyzed
@@ -6651,6 +6801,34 @@ def _container_method_arg_ok(
                 and (_own_vt := _plain_own_slot(ptype)) is not None
                 and _value_tuple(_own_vt, analyzer) is not None
                 and _witness("arg.own_value_tuple_literal"))
+            # A ref-element tuple LITERAL at an Own[tuple[T | None, ..]]
+            # element slot (`pairs.append((a, b))`): the consuming storage
+            # lift (`tuple_to_storage_move<S>(..)` over the borrow tuple
+            # with per-element moves). Per-element admission (last-use
+            # lvalue / fresh rvalue / copy() / None) lives in the ladder
+            # and rejects there.
+            or (isinstance(a, TpyTupleLiteral)
+                and (_own_bt := _plain_own_slot(ptype)) is not None
+                and isinstance(
+                    _bt_bare := unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(_own_bt))), TupleType)
+                and _bt_bare.has_pointer_repr_element()
+                and _tuple_elem_slots_ptr_optional(_bt_bare)
+                and _witness("arg.own_btuple_literal"))
+            # A whole storage-tuple ELEMENT read (`pairs2.append(pairs[0])`,
+            # bare `__getitem__`) or a borrow-tuple-returning CALL
+            # (`pairs.append(make_pair(a, b))`, the non-move
+            # tuple_to_storage lift) into the same tuple's Own slot; the
+            # source's own gates re-check at lowering.
+            or (isinstance(a, (TpySubscript, TpyCall, TpyMethodCall))
+                and (_own_bt2 := _plain_own_slot(ptype)) is not None
+                and isinstance(
+                    _bt2_bare := unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(_own_bt2))), TupleType)
+                and _bt2_bare.has_pointer_repr_element()
+                and _tuple_elem_slots_ptr_optional(_bt2_bare)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(a)))) == _bt2_bare)
             or note_detail("method.arg_shape"))
 
 
@@ -6897,6 +7075,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  iterable_ret_ok: bool = False,
                                  value_opt_ret_ok: bool = False,
                                  ptr_opt_passthrough: bool = False,
+                                 owned_tuple_ret_ok: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -7091,6 +7270,12 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # (`std::span<T> s = b.as_span();`). An owned-optional record
             # return (`-> Own[Rc[T]] | None`) lands bare in its registered
             # `std::optional<T>` decl slot the same way.
+            # The owned-tuple move-out family at the tuple-unpack source
+            # ONLY (`conn, _ = srv.accept()` -> the bare rvalue capture +
+            # per-element std::move decls); an Own-tuple DECL stays an
+            # unrouted slot, so the plain storage escape must not admit it.
+            or (owned_tuple_ret_ok
+                and _owned_tuple_call_ret(ret, analyzer) is not None)
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
                      or _span_value(ret)
@@ -7557,7 +7742,13 @@ def _container_method_elem(t: 'TpyType | None', analyzer) -> bool:
                 or is_bytes_type(au)
                 # Recursive-alias wrappers hold their members indirectly --
                 # their inserts carry a wrap the bare push_back does not.
-                or (isinstance(au, UnionType) and not au.needs_wrapper()))
+                or (isinstance(au, UnionType) and not au.needs_wrapper())
+                # A ptr-Optional-element tuple (`list[tuple[P | None, ..]]`):
+                # the insert's consuming tuple_to_storage_move lift is the
+                # arg gate's own row; reads keep their per-consumer gates.
+                or (isinstance(au, TupleType)
+                    and au.has_pointer_repr_element()
+                    and _tuple_elem_slots_ptr_optional(au)))
 
     return _container_elem_family(t, analyzer, elem_ok)
 

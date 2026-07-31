@@ -478,15 +478,17 @@ class TestFieldWriteFamilies:
         assert _fn(thir, "set_copy") is not None
         _assert_byte_identical(src)
 
-    def test_record_pointer_local_source_stays_ast(self):
-        # A pointer-local source needs the `(*p)` deref (+ possible move) --
-        # kept on the AST path by the ws.pointers reject.
-        thir = _lower_ctx(
+    def test_record_pointer_local_source_routes_deref(self):
+        # A pointer-local source copies through the `(*x)` deref (pointers
+        # are never movable) -- the field_write.ptr_local_copy row.
+        src = (
             _F1_RECORDS
             + "    def graft(self, other: Box):\n"
             + "        x = self.inner\n        x = other.inner\n"
             + "        self.inner = x\n")
-        assert _fn(thir, "graft") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "graft") is not None
+        _assert_byte_identical(src)
 
     def test_container_literal_write_routes(self):
         thir = _lower_ctx(

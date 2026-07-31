@@ -39,23 +39,27 @@ class TestNativeIntLiteralArg:
     )
 
     def test_routes_and_witnesses(self):
-        thir, faces = _lower_ctx_witnessed(self.SRC)
+        # The bare literal rides the general resolved-scalar row now (the
+        # dedicated arg.native_int_literal row was shadowed and deleted);
+        # byte-identity pins the slot-threaded render.
+        thir = _lower_ctx(self.SRC)
         assert _fn(thir, "main") is not None
-        assert faces["arg.native_int_literal"] >= 1
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
 
-    def test_literal_binop_arg_stays_ast(self):
-        # The boundary: only a BARE literal takes the slot-threaded render.
-        # A constant-valued BINOP keeps IntLiteralType through sema but the
-        # AST renders it as an ordinary binop, so it must keep rejecting.
+    def test_literal_binop_arg_routes(self):
+        # A constant-valued BINOP keeps IntLiteralType through sema; the
+        # resolved-scalar row admits it and the ordinary binop render is
+        # byte-identical on both paths (dualgen-verified).
         src = _PRELUDE + (
             "def main() -> None:\n"
             "    ba = bytearray(4000000000 // 1000000000)\n"
             "    print(len(ba))\n"
         )
-        assert _fn(_lower_ctx(src), "main") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        _assert_byte_identical(src)
 
 
 class TestBytearrayNamePassThrough:

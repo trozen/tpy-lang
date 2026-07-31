@@ -959,6 +959,17 @@ class THIRTupleValueToBorrow(THIRExpr):
     src_cpp: str
     elements: tuple[THIRExpr, ...]
     addr_of: tuple[bool, ...]
+    # Per-element `{0}` render template, exclusive with addr_of[i] (the
+    # consuming append's `std::move(&({0}))` lvalue wrap); None entries keep
+    # the addr_of/bare treatment. None = no wraps at all.
+    elem_wraps: 'tuple[str | None, ...] | None' = None
+
+    def __post_init__(self) -> None:
+        # Same contract as THIRBorrowTupleLiteral: a wrap replaces the
+        # element's whole render, so it is exclusive with the addr_of lift.
+        if self.elem_wraps:
+            assert not any(w is not None and a
+                           for w, a in zip(self.elem_wraps, self.addr_of))
 
 
 @dataclass(frozen=True)
@@ -2113,12 +2124,17 @@ class THIRTupleUnpack(THIRStmt):
     def __post_init__(self) -> None:
         # The payload/discriminator pairings the old boolean pile left
         # unchecked: each source form consumes exactly its own payload.
-        if (self.source_expr is not None) != (
-                self.source_bind is TupleSourceBind.RVALUE):
-            raise ValueError("source_expr belongs to RVALUE sources only")
-        if (self.source_wrap_cpp is not None) != (
-                self.source_bind is TupleSourceBind.STORAGE_WRAP):
-            raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
+        # STORAGE_WRAP takes either a NAME source or an expression source
+        # (`a0, b0 = pairs[0]` lifts the rendered element read).
+        if self.source_bind is TupleSourceBind.STORAGE_WRAP:
+            if self.source_wrap_cpp is None:
+                raise ValueError("STORAGE_WRAP requires source_wrap_cpp")
+        else:
+            if (self.source_expr is not None) != (
+                    self.source_bind is TupleSourceBind.RVALUE):
+                raise ValueError("source_expr belongs to RVALUE sources only")
+            if self.source_wrap_cpp is not None:
+                raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
         bad = {b for b in self.binds
                if b is not None and b not in self._BIND_TOKENS}
         if bad:

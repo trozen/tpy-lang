@@ -394,15 +394,19 @@ class TestPtrSpanCoerceDispositions:
         assert "take_ro(::tpy::as_span(lst))" in cpp
         assert "take_ro(sp)" in cpp
 
-    def test_array_literal_span_arg_rejects(self):
-        # The make_array-prefixed literal render stays AST (wrap is None).
-        thir = _lower_ctx(
-            "from tpy import Int32, Span, readonly\n"
-            "def take_ro(values: Span[readonly[Int32]]) -> Int32:\n"
-            "    return len(values)\n"
-            "def f() -> None:\n"
-            "    print(take_ro([5, 5]))\n")
-        assert _fn(thir, "f") is None
+    def test_array_literal_span_arg_routes(self):
+        # A scalar array literal at a `Span[readonly[T]]` slot: the readonly
+        # element slot resolves through `_resolved_scalar` (readonly peeled),
+        # and the spelled-aggregate coerce render is byte-identical
+        # (`::tpy::as_span(std::array<int32_t, 2>{5, 5})`).
+        src = ("from tpy import Int32, Span, readonly\n"
+               "def take_ro(values: Span[readonly[Int32]]) -> Int32:\n"
+               "    return len(values)\n"
+               "def f() -> None:\n"
+               "    print(take_ro([5, 5]))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
 
 class TestBranchHoistDecls:

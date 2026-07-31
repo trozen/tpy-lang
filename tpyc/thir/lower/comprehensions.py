@@ -5,6 +5,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
+    TpyTupleLiteral,
     TpyCall,
     TpyCoerce,
     TpyDictComprehension,
@@ -59,6 +60,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _resolved_viewfam_value,
+    _value_tuple,
 )
 from .context import (
     _ExprResultUse,
@@ -220,8 +222,14 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # std::get<i>(tup);` -- the AST's is_value_type branch over the
             # tuple's OWNED element spelling), unlike the for-each unpack's
             # view binding; the owned declared type keeps the target's reads
-            # STORAGE-form (bare inserts).
-            if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)):
+            # STORAGE-form (bare inserts). An F1-record target BORROWS
+            # (`const auto& p = std::get<1>(__tup_N);` -- the const view
+            # element aliased for the iteration), const sources only.
+            if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
+                    or (gen.const_loop_var
+                        and _f1_record(
+                            unwrap_readonly(unwrap_send_sync(tt)),
+                            analyzer))):
                 return None
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
@@ -295,6 +303,19 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     return is_list(su) or is_array(su)
 
+def _unpack_target_cpps(unpack_types, lc: '_LowerCtx') -> tuple:
+    """The per-target decl spellings of a comp unpack head: None for `_`
+    discards, `const auto&` for F1-record targets (the const view element
+    aliased for the iteration), the rendered type otherwise. Shared by the
+    begin_end and array_source arms."""
+    return tuple(
+        None if tt is None
+        else ("const auto&" if _f1_record(
+                  unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
+              else lc.render_type(tt))
+        for tt in unpack_types)
+
+
 def _comp_lowering_route(
         init, t: 'TpyType | None', declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
@@ -314,8 +335,24 @@ def _comp_lowering_route(
     if not args:
         return None
     if route.kind == "list" and not (is_list(t)
-                                     and _comp_elem_slot_ok(args[0], analyzer,
-                                                            allow_container=True)):
+                                     and (_comp_elem_slot_ok(
+                                              args[0], analyzer,
+                                              allow_container=True)
+                                          # A NON-VALUE tuple element slot,
+                                          # node-gated like the other
+                                          # shape-sensitive families: a tuple
+                                          # LITERAL rides the storage-direct/
+                                          # borrow-ladder rows, a bare NAME
+                                          # the whole tuple_to_storage copy.
+                                          or (isinstance(
+                                                  init.element_expr,
+                                                  (TpyTupleLiteral, TpyName))
+                                              and isinstance(
+                                                  unwrap_readonly(
+                                                      unwrap_ref_type(
+                                                          unwrap_send_sync(
+                                                              args[0]))),
+                                                  TupleType)))):
         return None
     if route.kind == "set" and not (is_set(t)
                                     and _comp_elem_slot_ok(args[0], analyzer,
@@ -363,17 +400,32 @@ def _comp_array_route(
     if not isinstance(init, TpyListComprehension):
         return None
     gen = init.generator
-    if gen.owns_elements or gen.conditions or gen.unpack_vars is not None:
+    if gen.owns_elements or gen.conditions:
         return None
     args_t = getattr(t, "type_args", None)
-    if not args_t or not _comp_elem_slot_ok(args_t[0], analyzer,
-                                            allow_container=True):
+    if not args_t or not (
+            _comp_elem_slot_ok(args_t[0], analyzer, allow_container=True)
+            # A VALUE-tuple element slot with a tuple-LITERAL element
+            # (`[(i, i * 10) for i in range(3)]` demoted to an Array of
+            # tuples): the spelled value render, shape-gated on the node
+            # like the other shape-sensitive families.
+            or (isinstance(init.element_expr, TpyTupleLiteral)
+                and _value_tuple(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        args_t[0]))), analyzer) is not None)):
         return None
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
-    if gen.var in special:
+    if gen.unpack_vars is not None:
+        # Unpack heads ride the SOURCE arm only (the range arm has no tuple
+        # to destructure); the shadow check covers each head var.
+        if any(name is not None and name in special
+               for name in gen.unpack_vars):
+            return None
+    elif gen.var in special:
         return None
     it = gen.iterable
-    if _is_range_call(it) and len(it.args) in (1, 2, 3):
+    if gen.unpack_vars is None and _is_range_call(it) \
+            and len(it.args) in (1, 2, 3):
         counter = _range_counter_type(it, analyzer)
         if not _eligible_scalar(counter):
             return None
@@ -387,15 +439,19 @@ def _comp_array_route(
     # require a statically-sized Array source (the only shape sema demotes to
     # Array). A view result off the source rebinds it_type in _comp_route.
     base = _comp_route(init, declared, narrowed, analyzer)
-    if base is None or base.loop != "begin_end" or base.unpack_types is not None:
+    if base is None or base.loop != "begin_end":
         return None
     src = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base.it_type)))
     if not is_array(src):
         return None
+    # UNPACK heads ride along (`[a + b for a, b in ps]` over an Array of
+    # tuples): the per-index lambda binds `auto& __tup_N = __obj_N[__i_N];`
+    # and per-var `std::get` decls, the begin_end arm's prologue at the
+    # indexed read.
     return _CompRoute(
         kind="list", loop="array_source", counter_type=None,
         it_type=base.it_type, et=base.et, iterable_lvalue=base.iterable_lvalue,
-        sized_reserve=False, unpack_types=None)
+        sized_reserve=False, unpack_types=base.unpack_types)
 
 def _lower_array_comprehension(
         init, result_type: TpyType, route: _CompRoute, lc: '_LowerCtx',
@@ -443,7 +499,17 @@ def _lower_array_source_comprehension(
     _witness("comp.array_source")
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     body_declared = dict(declared)
-    body_declared[gen.var] = route.et
+    unpack_targets: tuple = ()
+    unpack_cpps: tuple = ()
+    if route.unpack_types is not None:
+        _witness("comp.unpack")
+        for name, tt in zip(gen.unpack_vars, route.unpack_types):
+            if name is not None:
+                body_declared[name] = tt
+        unpack_targets = tuple(gen.unpack_vars)
+        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc)
+    else:
+        body_declared[gen.var] = route.et
     if isinstance(it, TpyFieldAccess):
         iterable = _lower_field_source(it, lc, declared)
     else:
@@ -460,6 +526,8 @@ def _lower_array_source_comprehension(
         array_size_cpp=str(result_type.type_args[1]),
         iterable=iterable,
         iterable_lvalue=route.iterable_lvalue,
+        unpack_targets=unpack_targets,
+        unpack_target_cpps=unpack_cpps,
         element=_lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared),
         loc=getattr(init, "loc", None),
@@ -636,8 +704,7 @@ def _lower_comprehension(
     if route.unpack_types is not None:
         _witness("comp.unpack")
         unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = tuple(None if tt is None else lc.render_type(tt)
-                            for tt in route.unpack_types)
+        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc)
     return THIRComprehension(
         result_type=result_type,
         kind=route.kind,
