@@ -47,6 +47,13 @@ class NameBinding:
     # record's own and has no C++ spelling of its own (`cls` in a
     # @classmethod), so consumers must spell the record, never the binding.
     is_sema_alias: bool = False
+    # Registered for name resolution only, so frame collection skips it. Set
+    # where the enclosing construct provides the resumable-frame storage
+    # itself: a `with` item slot, or match's per-arm state. That coverage is
+    # narrower than the constructs are -- a target the construct does not
+    # cover has no slot at all today (see BUGS.md) -- so this flag preserves
+    # the pre-existing frame layout rather than asserting one.
+    frame_exempt: bool = False
 
 
 class Namespace:
@@ -72,6 +79,21 @@ class Namespace:
     def bind_variable(self, name: str, typ: TpyType) -> None:
         """Convenience method to bind a variable."""
         self.bind(NameBinding(kind=BindingKind.VARIABLE, name=name, type=typ))
+
+    def bind_capture(self, name: str, typ: TpyType, *,
+                     frame_exempt: bool) -> None:
+        """Bind an `as`-capture (except / with / match target) as a variable.
+
+        Never downgrades frame residency: when the name is already a
+        frame-resident local, its assignments write to that slot, so a capture
+        reusing the name must not strip it.
+        """
+        prior = self._bindings.get(name)
+        if (prior is not None and prior.kind == BindingKind.VARIABLE
+                and not prior.frame_exempt):
+            frame_exempt = False
+        self.bind(NameBinding(kind=BindingKind.VARIABLE, name=name, type=typ,
+                              frame_exempt=frame_exempt))
 
     def bind_function(self, info: FunctionInfo) -> None:
         """Convenience method to bind a single user-defined function."""
@@ -111,6 +133,15 @@ class Namespace:
     def bind_builtin(self, name: str, typ: TpyType) -> None:
         """Convenience method to bind a builtin name."""
         self.bind(NameBinding(kind=BindingKind.BUILTIN, name=name, type=typ))
+
+    def unbind(self, name: str) -> None:
+        """Remove a binding from this namespace, if present.
+
+        Only the local level -- an outer binding of the same name becomes
+        visible again, which is what a scoped capture (`except ... as`)
+        going out of scope means.
+        """
+        self._bindings.pop(name, None)
 
     def lookup(self, name: str) -> Optional[NameBinding]:
         """Look up a name in this namespace and its parents.

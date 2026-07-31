@@ -45,7 +45,7 @@ from ..parse import (
     is_stable_address_lvalue,
 )
 from ..coercions import CoercionContext
-from ..namespace import BindingKind
+from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
     ScanResult, scan_reassigned_vars, parse_deref_view_key,
@@ -950,6 +950,24 @@ class StatementAnalyzer:
         if self.ctx.func.current_ns:
             for name, typ in saved.items():
                 self.ctx.func.current_ns.update_variable_type(name, typ)
+
+    def _retire_capture_binding(self, name: str | None,
+                                prev: NameBinding | None,
+                                was_bound: bool) -> None:
+        """Undo an `except ... as` capture binding once its handler ends.
+
+        Restores whatever the name meant before rather than just dropping it:
+        a same-named local keeps the frame slot its assignments write to.
+        `was_bound` guards the unbind -- the caller only registers a capture
+        when the exception type resolved, so without it an unresolved handler
+        would drop a pre-existing local of that name.
+        """
+        if not name or not was_bound or not self.ctx.func.current_ns:
+            return
+        if prev is not None:
+            self.ctx.func.current_ns.bind(prev)
+        else:
+            self.ctx.func.current_ns.unbind(name)
 
     def _sync_ns_var_type(self, name: str, typ: TpyType) -> None:
         """Sync a single variable's namespace type to match scope."""
@@ -2383,12 +2401,20 @@ class StatementAnalyzer:
 
         # Register except binding -- use find_record_by_qname because
         # handler.exception_type may be module-qualified (e.g. from macros).
+        prev_ns_binding = None
+        ns_bound = False
         if handler.binding:
             exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
             if exc_record:
                 exc_type = NominalType(exc_record.name, _module_qname=exc_record.qualified_name())
                 self.ctx.func.current_scope.bindings[handler.binding] = exc_type
                 self.init.mark_assigned(handler.binding)
+                if self.ctx.func.current_ns:
+                    prev_ns_binding = self.ctx.func.current_ns.lookup_local(
+                        handler.binding)
+                    self.ctx.func.current_ns.bind_capture(
+                        handler.binding, exc_type, frame_exempt=True)
+                    ns_bound = True
 
         # Set in_except_tier for bare raise validation
         prev_except_tier = self.ctx.func.in_except_tier
@@ -2402,6 +2428,7 @@ class StatementAnalyzer:
 
         if handler.binding and handler.binding in self.ctx.func.current_scope.bindings:
             del self.ctx.func.current_scope.bindings[handler.binding]
+        self._retire_capture_binding(handler.binding, prev_ns_binding, ns_bound)
         else_state = self.init.save()
         consumed_after_else = self.ctx.func.current_consumed_own_params.copy()
         else_terminated = self.ctx.func.init_terminated
@@ -2485,10 +2512,18 @@ class StatementAnalyzer:
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
             record = handler_records[i]
+            prev_ns_binding = None
+            ns_bound = False
             if h.binding and record is not None:
                 exc_type = NominalType(record.name, _module_qname=record.qualified_name())
                 self.ctx.func.current_scope.bindings[h.binding] = exc_type
                 self.init.mark_assigned(h.binding)
+                if self.ctx.func.current_ns:
+                    prev_ns_binding = self.ctx.func.current_ns.lookup_local(
+                        h.binding)
+                    self.ctx.func.current_ns.bind_capture(
+                        h.binding, exc_type, frame_exempt=True)
+                    ns_bound = True
 
             prev_except_tier = self.ctx.func.in_except_tier
             self.ctx.func.in_except_tier = "throw"
@@ -2498,6 +2533,7 @@ class StatementAnalyzer:
 
             if h.binding and h.binding in self.ctx.func.current_scope.bindings:
                 del self.ctx.func.current_scope.bindings[h.binding]
+            self._retire_capture_binding(h.binding, prev_ns_binding, ns_bound)
 
             handler_states.append((
                 self.init.save(),
@@ -2898,6 +2934,9 @@ class StatementAnalyzer:
                 self.ctx.func.current_scope.define(item.target, resolved)
                 self.ctx.func.nonstmt_bound_names.add(item.target)
                 self.init.mark_assigned(item.target)
+                if self.ctx.func.current_ns:
+                    self.ctx.func.current_ns.bind_capture(
+                        item.target, resolved, frame_exempt=True)
 
             if stmt.is_async:
                 # This item's `__aenter__` awaits before the next item's

@@ -1445,9 +1445,11 @@ class SemanticAnalyzer:
 
         Excludes params, `self` (methods), and `global`-declared names -- a
         global lives in the module slot, so a frame field would shadow it and
-        swallow writes. Must run after `resolve_all` so resolved (not
-        Pending*) types reach the frame fields. Shared by the free-function
-        and method paths so the exclusion policy can't drift between them.
+        swallow writes -- plus `frame_exempt` bindings, whose storage the
+        enclosing construct already owns. Must run after `resolve_all` so
+        resolved (not Pending*) types reach the frame fields. Shared by the
+        free-function and method paths so the exclusion policy can't drift
+        between them.
         """
         param_names = {pname for pname, _ in func.params}
         global_decls = self.ctx.func.global_declarations
@@ -1458,7 +1460,7 @@ class SemanticAnalyzer:
 
         locals_dict: dict[str, 'TpyType'] = {}
         for name, binding in local_ns.all_bindings().items():
-            if keep(name) and binding.type is not None:
+            if keep(name) and binding.type is not None and not binding.frame_exempt:
                 locals_dict[name] = binding.type
         for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
             if keep(name) and vtype is not None:

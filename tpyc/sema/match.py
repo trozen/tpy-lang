@@ -287,13 +287,12 @@ class MatchAnalyzer:
                 # Resumable frame (H1): a `match` carrying a suspension
                 # decomposes into per-arm body states, so a pattern binding
                 # read in an arm body must live in the frame rather than as a
-                # dispatch-local that vanishes at the state split. Register it
-                # in the function namespace so `_analyze_function` collects it
-                # into `generator_locals` (-> a struct field). Pattern
-                # bindings otherwise only land in `current_scope`, which the
-                # generator-local collection does not read.
-                if needs_frame_field and self.ctx.func.current_ns is not None:
-                    self.ctx.func.current_ns.bind_variable(name, ty)
+                # dispatch-local that vanishes at the state split -- that is
+                # what `frame_exempt=False` buys here. Without a suspension the
+                # binding is registered for resolution only.
+                if self.ctx.func.current_ns is not None:
+                    self.ctx.func.current_ns.bind_capture(
+                        name, ty, frame_exempt=not needs_frame_field)
 
             # Narrow subject variable for class patterns. For polymorphic
             # dispatch the fact lets the arm body resolve `subject.method()`
