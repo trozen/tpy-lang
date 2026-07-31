@@ -3741,6 +3741,25 @@ class TupleType(TpyType):
         (borrow -> storage). Drives the storage<->pointer wrap sites."""
         return any(self._element_is_pointer_repr(e) for e in self.element_types)
 
+    def has_nested_pointer_repr_element(self) -> bool:
+        """True if any element AT ANY DEPTH through nested value tuples is a
+        bare-pointer borrow.
+
+        The aliasing question, not the form question: storing this tuple into
+        owned storage copies a borrowed reference somewhere in its element
+        tree, so the copy diagnostics need this depth. `has_pointer_repr_element`
+        deliberately stays direct-only because the outer tuple genuinely has no
+        pointer slot of its own when the reference sits a level down -- every
+        codegen form site must keep asking that shallower question."""
+        for e in self.element_types:
+            if self._element_is_pointer_repr(e):
+                return True
+            inner = unwrap_own(unwrap_readonly(unwrap_ref_type(e)))
+            if (isinstance(inner, TupleType)
+                    and inner.has_nested_pointer_repr_element()):
+                return True
+        return False
+
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
         """C++ type for a tuple element in param/return (borrow) context.
 

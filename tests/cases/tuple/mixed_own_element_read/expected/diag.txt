@@ -1,3 +1,4 @@
 main.py:102: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
 main.py:107: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:115: warning: copies Box into owned storage (tuple element 0.1); use copy() to make this explicit
 main.py:120: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit

@@ -1,0 +1,8 @@
+main.py:21: warning: copies P into field (tuple element 1.1); use copy() to make this explicit
+main.py:25: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:35: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:44: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:46: warning: copies P into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:52: warning: copies P into field (tuple element 1.1); use copy() to make this explicit
+main.py:61: warning: copies P into container (tuple element 1.1); use copy() to make this explicit
+main.py:67: warning: copies P into owned storage (tuple element 1.1.1); use copy() to make this explicit

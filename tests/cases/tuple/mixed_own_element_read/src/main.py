@@ -109,10 +109,10 @@ def in_dict(b: Box) -> Int32:
 
 
 def in_nested_tuple(b: Box) -> Int32:
-    # No warning here: the member is itself a value tuple, so its borrowed
-    # element is a level deeper than the per-member check looks (the
-    # nested-depth limit in BUGS.md). It copies all the same.
-    q = (make_mixed(b), 1)
+    # The member is itself a value tuple, so its borrowed element sits a level
+    # below the direct members -- the per-member check walks into it and names
+    # the depth in the element path.
+    q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
     return q[0][1].val
 
 

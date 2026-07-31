@@ -763,7 +763,8 @@ class StatementAnalyzer:
 
     def _annotate_tuple_elem_capture(
         self, literal: TpyTupleLiteral, tuple_type: TupleType,
-        *, is_return: bool = False, is_field: bool = False
+        *, is_return: bool = False, is_field: bool = False,
+        sink_dest: str = "owned storage"
     ) -> None:
         """Annotate each element of a tuple literal with its capture mode.
 
@@ -772,6 +773,7 @@ class StatementAnalyzer:
             tuple_type: The resolved TupleType for the literal.
             is_return: True if this literal is in a return statement.
             is_field: True if this literal is assigned to a class field.
+            sink_dest: How to name the destination in a copy diagnostic.
         """
         V = TupleElemCapture.VALUE
         R = TupleElemCapture.REF
@@ -789,6 +791,17 @@ class StatementAnalyzer:
 
             # Value types, Own[T], and TypeParamRef are always VALUE.
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
+                # A nested value-tuple member is a storage lift all the same --
+                # its own reference members are copied, and this per-member walk
+                # never sees below the direct level. Even a LOCAL is a sink
+                # here: only a DIRECT reference element gives the tuple a borrow
+                # form, so a nested one lands in owned storage. A return is not
+                # this kind of sink -- a nested reference member is rejected
+                # there outright.
+                if (not is_return and isinstance(et, TupleType)
+                        and et.has_nested_pointer_repr_element()):
+                    self.compat.warn_storage_tuple_copy(
+                        elem, et, sink_dest, f"{i}.")
                 literal.elem_capture.append(V)
                 continue
 
@@ -5472,7 +5485,11 @@ class StatementAnalyzer:
             if tuple_target is not None:
                 is_field = isinstance(stmt.target, TpyFieldAccess)
                 self._annotate_tuple_elem_capture(
-                    stmt.value, tuple_target, is_field=is_field)
+                    stmt.value, tuple_target, is_field=is_field,
+                    sink_dest=("field" if is_field
+                               else "container"
+                               if isinstance(stmt.target, TpySubscript)
+                               else "owned storage"))
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if stmt.loc is not None and not copy_warning_fired:

@@ -309,6 +309,14 @@ fed to `tuple_to_storage` uses a const pointer slot). A dict-literal
 *value* tuple literal still hits a pre-existing build error rather than
 the warning -- tracked in `BUGS.md`.
 
+The check walks into **nested value tuples**: a reference member of an
+inner tuple (`[(1, (2, c))]`) is copied into storage exactly like a
+direct one, so it warns too, with the depth spelled in the element path
+(`tuple element 1.1`). Only a *direct* reference element gives a tuple a
+borrow form, so a nested one lands in owned storage even at a plain
+local binding (`q = (make_pair(b), 1)`) -- that binding warns where the
+direct spelling (`q = make_pair(b)`, a borrow-form local) does not.
+
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
   source is in borrow form and the slot wants storage form.

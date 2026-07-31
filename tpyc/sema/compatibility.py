@@ -1062,7 +1062,8 @@ class TypeCompatibility:
             # result is an rvalue that the lvalue guard would skip, yet its
             # borrowed members alias the caller and are copied all the same.
             ew = expected.wrapped
-            ptr_repr_tuple = isinstance(ew, TupleType) and ew.has_pointer_repr_element()
+            ptr_repr_tuple = (isinstance(ew, TupleType)
+                              and ew.has_nested_pointer_repr_element())
             ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
             arrives_borrowed = (self.is_lvalue(source_expr)
                                 or self._tuple_call_carries_borrow(source_expr))
@@ -3276,7 +3277,7 @@ class TypeCompatibility:
 
     def warn_pointer_repr_tuple_copy(self, source_expr: TpyExpr | None,
                                      tuple_type: TpyType, dest: str,
-                                     loc_node) -> bool:
+                                     loc_node, elem_path: str = "") -> bool:
         """Copy diagnostic for a whole value-tuple lvalue source with pointer-repr
         (reference) members stored into owned storage: each such member is
         deep-copied where CPython aliases. Warn per member (error for @nocopy);
@@ -3289,11 +3290,12 @@ class TypeCompatibility:
         fresh tuple LITERAL source (whose per-member copy is handled by
         `warn_tuple_literal_member_copy` -- a literal needs per-member-expr
         gating, not the per-element-type rule here), an explicit `copy()`, and
-        an owning-tuple-call rvalue. Direct elements only, matching the storage
-        codegen's depth (a nested value-tuple's deeper reference member is not
-        detected -- pre-existing, shared with the assignment path)."""
+        an owning-tuple-call rvalue. A nested value-tuple element is walked
+        into (the storage lift copies its reference members just the same);
+        `elem_path` carries the outer indices so the message names the member
+        as `1.0` rather than restarting at `0`."""
         if not (isinstance(tuple_type, TupleType)
-                and tuple_type.has_pointer_repr_element()):
+                and tuple_type.has_nested_pointer_repr_element()):
             return False
         if source_expr is not None:
             if isinstance(_peel_value_wrappers(source_expr), TpyTupleLiteral):
@@ -3317,20 +3319,28 @@ class TypeCompatibility:
         fired = False
         for i, et in enumerate(tuple_type.element_types):
             probe = src_elems[i] if src_elems is not None and i < len(src_elems) else et
+            path = f"{elem_path}{i}"
             if not TupleType._element_is_pointer_repr(probe):
+                nested = unwrap_own(unwrap_readonly(unwrap_ref_type(probe)))
+                if isinstance(nested, TupleType):
+                    # The source's own shape gated the whole store above; the
+                    # nested walk is a pure type question, so no source expr.
+                    fired |= self.warn_pointer_repr_tuple_copy(
+                        None, nested, dest, loc_node, f"{path}.")
                 continue
             if self.ctx.is_type_non_copyable(et):
                 raise self.ctx.error(
                     f"cannot copy non-copyable type '{et}' into {dest} "
-                    f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}", loc_node)
+                    f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", loc_node)
             self.ctx.warning(
-                f"copies {et} into {dest} (tuple element {i}); "
+                f"copies {et} into {dest} (tuple element {path}); "
                 f"use copy() to make this explicit", loc_node)
             fired = True
         return fired
 
     def warn_tuple_literal_member_copy(self, literal: TpyTupleLiteral,
-                                       tuple_type: TpyType, dest: str) -> bool:
+                                       tuple_type: TpyType, dest: str,
+                                       elem_path: str = "") -> bool:
         """Per-member copy diagnostic for a fresh tuple LITERAL element stored
         into owned storage (`[(1, c)]`). A literal's members are individual
         expressions, so only an lvalue reference member is copied where CPython
@@ -3342,34 +3352,42 @@ class TypeCompatibility:
         suppressed -- the copy is then unobservable (the source is dead),
         matching the scalar last-use rule. Members come back Own-wrapped (owned
         storage form), so unwrap before applying the same pointer-repr
-        predicate the whole-lvalue `warn_pointer_repr_tuple_copy` path uses
-        (direct members only)."""
+        predicate the whole-lvalue `warn_pointer_repr_tuple_copy` path uses.
+        A nested value-tuple member is walked into through
+        `warn_storage_tuple_copy`, so the deeper level re-dispatches on ITS
+        own source shape (an inner literal keeps per-member-expr gating, an
+        inner lvalue takes the per-element-type rule)."""
         if not isinstance(tuple_type, TupleType):
             return False
         fired = False
         for i, et in enumerate(tuple_type.element_types):
             member_t = unwrap_own(et)
-            if not TupleType._element_is_pointer_repr(member_t):
-                continue
+            path = f"{elem_path}{i}"
             if i >= len(literal.elements):
                 continue
             m = literal.elements[i]
+            if not TupleType._element_is_pointer_repr(member_t):
+                nested = unwrap_readonly(unwrap_ref_type(member_t))
+                if isinstance(nested, TupleType):
+                    fired |= self.warn_storage_tuple_copy(
+                        m, nested, dest, f"{path}.")
+                continue
             if not self.is_lvalue(m) or self.is_copy_call(m):
                 continue
             if self.ctx.is_type_non_copyable(member_t):
                 raise self.ctx.error(
                     f"cannot copy non-copyable type '{member_t}' into {dest} "
-                    f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}", m)
+                    f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", m)
             if self._is_auto_moved(m):
                 continue
             self.ctx.warning(
-                f"copies {member_t} into {dest} (tuple element {i}); "
+                f"copies {member_t} into {dest} (tuple element {path}); "
                 f"use copy() to make this explicit", m)
             fired = True
         return fired
 
     def warn_storage_tuple_copy(self, elem: TpyExpr, tuple_type: TpyType,
-                                dest: str) -> bool:
+                                dest: str, elem_path: str = "") -> bool:
         """Value-tuple-with-reference-member copy diagnostic for an
         owned-storage element. A literal and a whole-tuple lvalue need
         different gating (per-member-expr vs per-element-type), so dispatch on
@@ -3381,10 +3399,12 @@ class TypeCompatibility:
         path too."""
         peeled = _peel_value_wrappers(elem)
         if isinstance(peeled, TpyTupleLiteral):
-            return self.warn_tuple_literal_member_copy(peeled, tuple_type, dest)
+            return self.warn_tuple_literal_member_copy(
+                peeled, tuple_type, dest, elem_path)
         if ((self.is_lvalue(elem) and not self._is_auto_moved(elem))
                 or self._tuple_call_carries_borrow(elem)):
-            return self.warn_pointer_repr_tuple_copy(elem, tuple_type, dest, elem)
+            return self.warn_pointer_repr_tuple_copy(
+                elem, tuple_type, dest, elem, elem_path)
         return False
 
     def _derive_owning_storage(self, expr: TpyExpr) -> bool:

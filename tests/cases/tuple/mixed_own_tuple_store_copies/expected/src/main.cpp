@@ -56,12 +56,10 @@ int32_t via_setitem(Box& b) {
 
 // def via_nested_tuple(b: Box) -> Int32:
 int32_t via_nested_tuple(Box& b) {
-    // # UNWARNED, and the one sink here that is: the per-member check inspects
-    // # direct members only, and this member is itself a value tuple, so its
-    // # borrowed element sits a level too deep to be seen. Tracked in BUGS.md as
-    // # the nested-depth limit -- the copy below still happens, which is why this
-    // # sink is worth observing even without the diagnostic.
-    // q = (make_mixed(b), 1)  # tpyc: ok
+    // # The member is itself a value tuple, so its borrowed element sits a level
+    // # below the direct members; the check walks in and names the depth in the
+    // # element path (`0.1`) rather than stopping at the outer level.
+    // q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
     std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)), 1};
     // q[0][1].val = 25
     std::get<1>(std::get<0>(q)).val = 25;

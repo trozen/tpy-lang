@@ -137,3 +137,30 @@ class TestPointerReprElement:
         # tuple_to_storage converter handles both slot kinds.
         tt = TupleType((OptionalType(RECORD), RECORD))
         assert tt.has_pointer_repr_element()
+
+
+class TestNestedPointerReprElement:
+    """has_nested_pointer_repr_element: the copy-diagnostic depth question."""
+
+    def test_direct_element_still_counts(self):
+        assert TupleType((INT32, RECORD)).has_nested_pointer_repr_element()
+
+    def test_nested_element_counts(self):
+        tt = TupleType((INT32, TupleType((INT32, RECORD))))
+        assert tt.has_nested_pointer_repr_element()
+        # The form question stays shallow: the outer tuple has no pointer slot
+        # of its own, so codegen must keep rendering it as plain storage.
+        assert not tt.has_pointer_repr_element()
+
+    def test_three_levels(self):
+        tt = TupleType((INT32, TupleType((INT32, TupleType((INT32, RECORD))))))
+        assert tt.has_nested_pointer_repr_element()
+
+    def test_nested_values_only_is_not(self):
+        tt = TupleType((INT32, TupleType((INT32, STR))))
+        assert not tt.has_nested_pointer_repr_element()
+
+    def test_nested_own_is_not(self):
+        # An Own element is moved into the slot, never copied out of a borrow.
+        tt = TupleType((INT32, TupleType((INT32, OwnType(RECORD)))))
+        assert not tt.has_nested_pointer_repr_element()
