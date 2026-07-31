@@ -1862,6 +1862,21 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: field-write plan-dispatch decomposition** (2026-07-31, the hard
+  gate from the readiness retrospective). The 17-predicate admission
+  disjunction + ~400-line `TpyFieldAccess`-target if/elif chain in
+  `_lower_stmt_dispatch` is now `tpyc/thir/lower/field_write.py`: nine
+  (classify, lower) families over frozen plans -- opt-none, class-const,
+  value (scalar/value-opt/str/bytes), record (PLAIN + OPT slots merged, one
+  source-row cascade), container (its own collapsed tail slice), tuple,
+  union, opt-lift (F2b), and a residual for the type-param-slot /
+  readonly-btuple shapes no render row claims. The old generic tail's
+  borrow/name render survives as ONE named helper (`_lower_tail_value`)
+  shared by four families exactly as the chain shared its else arm; the
+  five-boolean multiplexing is gone. Byte-identical: every family keeps its
+  arm's witness strings, reject tags, and target-vs-value evaluation order
+  (temp numbering follows lowering order). New field-write rows now land as
+  one classifier row + one render row keyed by a plan enum.
 - **Counter-order dual-path risk:** THIR emit reproduces `SlotState` /
   loop-index / temp-counter allocation order in a second code path with only
   the corpus byte-diff guarding drift -- a structural-unification candidate

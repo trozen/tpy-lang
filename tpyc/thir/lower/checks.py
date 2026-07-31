@@ -1541,25 +1541,6 @@ def _optional_value_record_field_inner(t: 'TpyType | None',
     return None
 
 
-def _optional_field_none_write_ok(
-        stmt: TpyAssign, declared: dict[str, TpyType], analyzer) -> bool:
-    """`recv.opt = None` at an Optional FIELD: field storage is
-    `std::optional<T>` whatever the inner repr, so None renders the storage-form
-    `std::nullopt` (the generic field-write tail). Covers value-storage inners --
-    nocopy wrappers (`Box`/`Rc`), scalars -- that the record-specific F2b /
-    optrec None arms do not; the render is inner-independent for a field."""
-    if not isinstance(stmt.value, TpyNoneLiteral):
-        return False
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
-        return False
-    # The DECLARED field type -- a flow-narrowed write site retypes the read to
-    # the inner (`self.slot` proven non-None), but the storage stays optional.
-    fdt = _field_decl_type(stmt.target, declared, analyzer)
-    if fdt is None:
-        return False
-    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
-    return isinstance(ft, OptionalType)
-
 def _optional_record_field_write_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
         analyzer, narrowed: AbstractSet[str], prescan: '_Prescan') -> bool:

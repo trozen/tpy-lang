@@ -97,7 +97,6 @@ from ...typesys import (
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
-    unwrap_optional_own,
     unwrap_send_sync,
 )
 from ...type_def_registry import (
@@ -216,7 +215,6 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
-    copy_ptr_optional_peel,
     _bigint_index_disposition,
     _call_iterable_lvalue,
     _chain_post_if_fact,
@@ -248,13 +246,10 @@ from .predicates import (
     _f1_param_lvalue_reseat_ok,
     _f1_record,
     _f1_tuple,
-    _f1_tuple_field_write_ok,
     _f2_reseat_ok,
-    _f2b_optional_field_write_ok,
     _facts_have_concrete,
     _field_decl_type,
     _method_member_cpp,
-    _plain_container_read,
     _field_markers_clean,
     _field_receiver_ok,
     _typed_dict_recv_ok,
@@ -287,7 +282,6 @@ from .predicates import (
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
     _param_is_const,
-    _value_opt_owned_str,
     _value_opt_scalar,
     _value_opt_str,
     _value_opt_owned_view,
@@ -319,7 +313,6 @@ from .predicates import (
     _ru_container_literal_ok,
     _ru_instance_literal_ok,
     _value_tuple,
-    _value_tuple_field_literal_write_ok,
     _value_tuple_global,
     _value_tuple_nested,
     _var_decl_type,
@@ -332,16 +325,12 @@ from .context import (
     _Prescan,
 )
 from .checks import (
-    copy_ctor_rvalue_source,
     _container_lit_elem_ok,
     _assert_narrow_info,
     _borrow_local_binding,
     _bytes_aug_concat_ok,
     _class_const_aug_assign_ok,
-    _class_const_write_target_ok,
     _container_aug_setitem_ok,
-    _container_copy_field_write_ok,
-    _container_field_write_ok,
     _container_record_elem_subscript,
     _container_literal_decl_ok,
     _container_literal_shape_ok,
@@ -360,31 +349,20 @@ from .checks import (
     _narrow_cond_info,
     _any_narrow_cond_info,
     _optional_record_field_inner,
-    _optional_value_record_field_inner,
-    _optional_record_field_write_ok,
     _covariant_record_upcast_ok,
-    _optional_record_field_upcast_write_ok,
-    _optional_field_none_write_ok,
     _print_arg_form,
     _print_arg_ok,
     _wrap_print_form,
     _print_optval_form,
     _print_optval_opt,
-    _ptr_union_field_write_ok,
-    _union_member_ctor_rvalue,
     _ptr_union_source_ok,
     _ctor_shape_ok,
     _native_ctx_manager_ok,
     _native_record_rvalue_call_shape,
     _rvalue_storage_decl_binop,
     _rvalue_storage_decl_call,
-    _record_field_write_ok,
     _scalar_aug_assign_ok,
-    _scalar_field_write_ok,
-    _user_deref_field_write_ok,
     _str_aug_append_ok,
-    _bytes_field_write_ok,
-    _str_field_write_ok,
     _str_list_method_iterable_ok,
     _user_iterator_iterable,
 )
@@ -402,7 +380,6 @@ from .expressions import (
     _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target,
-    _lower_copy_container,
     _lower_copy_record,
     _lower_ctor_call_args,
     _lower_container_elem,
@@ -416,7 +393,6 @@ from .expressions import (
     _cond_mixed_walrus_temps,
     _lower_borrow_tuple_literal,
     _lower_generic_tuple_literal,
-    _subscript_yields_borrow_ptr,
     _lower_ru_literal,
     _lower_tuple_literal,
     _rb_operand_slots,
@@ -428,6 +404,7 @@ from .expressions import (
     _value_opt_view_param,
 )
 from . import comprehensions as _comprehensions
+from . import field_write as _field_write
 from . import match as _match
 
 def _kind_detail(prefix: str, e: TpyExpr) -> bool:
@@ -559,48 +536,6 @@ def _any_dict_setitem_ok(
             and v.name not in pointers and v.name not in narrowed
             and _is_any_type(analyzer.get_expr_type(v))
             and _witness("setitem.any_value"))
-
-def _container_name_field_write_ok(
-        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
-        narrowed: 'AbstractSet[str]', analyzer) -> bool:
-    """`recv.field = name` where field and name are the same builtin container
-    family: the AST's default field assign renders the bare name and
-    `_maybe_move` moves an owned local at its last use
-    (`this->_data = std::move(d);`) -- the container sibling of the F1
-    record-name field write, riding the generic storage-convert tail."""
-    v = stmt.value
-    if not isinstance(v, TpyName):
-        return False
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
-        return False
-    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(stmt.target))))
-    if isinstance(ft, OptionalType):
-        # An Optional[container] FIELD stores `std::optional<T>` whose
-        # operator= absorbs the same bare/moved name render the plain
-        # container field gets (`h.s = std::move(initial);`).
-        ft = unwrap_readonly(ft.inner)
-    if not (is_dict(ft) or is_list(ft) or is_set(ft) or is_array(ft)):
-        return False
-    if v.name in pointers or v.name in narrowed or v.name not in declared:
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
-    # An `Own[...]` param binds the same storage the field wants; the wrapper
-    # only decides whether the generic tail MOVES it at its last use
-    # (`this->_items = std::move(v);`), not what family it is. A property
-    # setter's param is the shape that made this load-bearing.
-    own = unwrap_optional_own(vt)
-    if own is not None:
-        vt = unwrap_readonly(own.wrapped)
-    return (((is_dict(ft) and is_dict(vt)) or (is_list(ft) and is_list(vt))
-             or (is_set(ft) and is_set(vt))
-             # An Array field copies a same-typed param bare (or moves it at
-             # last use) exactly like the container families -- `std::array`
-             # is a plain value member. Callable is NOT here: its store has no
-             # borrow->storage convert arm, so admitting it CRASHES the
-             # emitter instead of falling back.
-             or (is_array(ft) and is_array(vt)))
-            and _witness("field_write.container_name"))
 
 def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
                             declared: dict[str, TpyType]) -> THIRExpr:
@@ -2147,30 +2082,6 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
     srcs = _borrow_tuple_binding_sources(name, lc)
     return (srcs is not None
             and all(_borrow_tuple_source_ok(s, lc) for s in srcs))
-
-
-def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                                lc: '_LowerCtx', analyzer) -> bool:
-    """A value-scalar field write through a borrow-tuple element
-    (`t[1].val = 99` -> `std::get<1>(t)->val = 99;`): the target rides the
-    tuple-subscript field READ arm (the `_subscript_yields_borrow_ptr`
-    arrow) off an in-scope borrow-tuple NAME receiver; only value-scalar /
-    Char field slots admit (record/container slots carry write machinery
-    not mirrored here)."""
-    target = stmt.target
-    if not (isinstance(target, TpyFieldAccess)
-            and isinstance(target.obj, TpySubscript)
-            and isinstance(target.obj.obj, TpyName)
-            and _borrow_tuple_local_type(target.obj.obj.name, declared, lc)
-            is not None
-            # Plain borrow elements only: an Optional element write needs
-            # the deref_check machinery (stays AST, pinned).
-            and _subscript_yields_borrow_ptr(target.obj, lc)):
-        return False
-    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(target))))
-    return bool((_eligible_scalar(ft) or _eligible_char(ft))
-                and _witness("assign.btuple_elem_field"))
 
 
 def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
@@ -6309,37 +6220,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 expr=_lower_dyn_setattr_call(
                     stmt.target.dyn_setattr_call, lc, declared),
                 loc=loc)
-        elif not (
-                _f2b_optional_field_write_ok(
-                    stmt, declared, pointers, analyzer)
-                or _class_const_write_target_ok(
-                    stmt.target, declared, lc.pointers, analyzer)
-                or _scalar_field_write_ok(stmt, declared, analyzer, pointers)
-                or _user_deref_field_write_ok(
-                    stmt, declared, narrowed, analyzer, pointers)
-                or _value_tuple_field_literal_write_ok(
-                    stmt, declared, analyzer)
-                or _f1_tuple_field_write_ok(
-                    stmt, declared, lc.storage_tuple_locals, analyzer)
-                or _ptr_union_field_write_ok(stmt, declared, analyzer)
-                or _record_field_write_ok(
-                    stmt, declared, analyzer, pointers, narrowed, lc.prescan)
-                or _optional_record_field_write_ok(
-                    stmt, declared, pointers, analyzer, narrowed, lc.prescan)
-                or _optional_record_field_upcast_write_ok(
-                    stmt, declared, analyzer)
-                or _optional_field_none_write_ok(stmt, declared, analyzer)
-                or _container_field_write_ok(stmt, declared, analyzer)
-                or _container_copy_field_write_ok(
-                    stmt, declared, pointers, analyzer)
-                or _str_field_write_ok(stmt, declared, analyzer)
-                or _bytes_field_write_ok(stmt, declared, analyzer)
-                or _container_name_field_write_ok(
-                    stmt, declared, pointers, narrowed, analyzer)
-                or _btuple_elem_field_write_ok(stmt, declared, lc, analyzer)):
+        elif isinstance(stmt.target, TpyFieldAccess):
+            return _field_write.lower_field_write(stmt, lc, declared,
+                                                  pointers, loc)
+        else:
             note_detail("assign.field_write_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        target_prechecked = isinstance(stmt.target, TpyFieldAccess)
         if isinstance(stmt.target, TpySubscript) and user_setitem:
             # User-record `recv[key] = v` -> the checked THIRSetItem, which
             # emits `::tpy::__setitem__(recv, key, v)` (the AST's no-container
@@ -6380,7 +6266,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 stmt.target.obj, declared, analyzer))
             target = _lower_expr(
                 stmt.target, lc, declared,
-                field_prechecked=target_prechecked,
                 subscript_prechecked=(any_dict_write or widened_elem
                                       or ba_write))
             if eu is not None and (is_list(eu) or is_dict(eu) or is_array(eu)):
@@ -6613,400 +6498,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(stmt.target.obj, TpyFieldAccess):
                 _witness("setitem.field_recv")
             return THIRSetItem(target=target, value=value, loc=loc)
-        if isinstance(stmt.target, TpyFieldAccess):
-            # A borrow `T*` stored into a storage `optional<T>` field lifts
-            # borrow->storage via THIRFormConvert (`ptr_to_optional`, F2b); a
-            # `None` literal stores as a STORAGE-form None (`std::nullopt`, F2c).
-            # The target field-access renders `recv.field` / `recv->field`.
-            ftype = analyzer.get_expr_type(stmt.target)
-            # `recv.opt = None` at an Optional field: the storage is
-            # `std::optional<T>` regardless of the (possibly flow-narrowed to the
-            # inner) read type, so the store is `std::nullopt`. Keyed on the
-            # DECLARED field type so a narrowed write site (`self.slot` proven
-            # non-None) still stores nullopt, not a misrouted inner-typed None.
-            if isinstance(stmt.value, TpyNoneLiteral):
-                fdt = _field_decl_type(stmt.target, declared, analyzer)
-                fdt_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
-                         if fdt is not None else None)
-                if isinstance(fdt_u, OptionalType):
-                    _witness("field_write.opt_none")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=THIRLiteral(result_type=fdt_u, value=None,
-                                          form=Form.STORAGE, loc=loc),
-                        loc=loc)
-            # A class-constant / classvar write: the bare qualified lvalue
-            # (receiver eval split off), then the same target-typed value
-            # render as the scalar field write -- the AST's class-constant
-            # assign arm shares its value shape with the default field path.
-            if stmt.target.class_constant_owner is not None:
-                target, recv_eval, recv_wrap = _lower_class_const_write_target(
-                    stmt.target, lc, declared, loc)
-                _witness("field_write.class_const")
-                return THIRAssign(
-                    target=target,
-                    value=_slot_literal_retype(
-                        _flush_witness(
-                            "flush.field_write",
-                            _lower_expr(stmt.value, lc, declared,
-                                        use=_ExprUse(
-                                            result=_ExprResultUse.STORAGE,
-                                            allow_temps=True))),
-                        ftype, lc),
-                    recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
-            # A scalar / Char / Ptr field is a plain value assign -- no
-            # borrow<->storage lift. The field write is the fifth flushable
-            # statement position (`temp_args`).
-            if (_eligible_scalar(ftype) or _eligible_char(ftype)
-                    or _eligible_enum(ftype, analyzer) is not None
-                    or _eligible_ptr_value(ftype, analyzer)):
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=_slot_literal_retype(
-                                      _flush_witness(
-                                          "flush.field_write",
-                                          _lower_expr(stmt.value, lc, declared,
-                                                      use=_ExprUse(
-                                                          result=_ExprResultUse.STORAGE,
-                                                          allow_temps=True))),
-                                      ftype, lc), loc=loc)
-            # `self.items = copy(data)` -- the container copy-construct row
-            # (`this->items = std::vector<int32_t>(data);`), the container
-            # sibling of the record `copy()` field write above.
-            if is_list(ftype) or is_dict(ftype) or is_set(ftype):
-                ccopy = _lower_copy_container(stmt.value, lc, declared,
-                                              loc=loc)
-                if ccopy is not None:
-                    _witness("field_write.container_copy")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=ccopy, loc=loc)
-            # A VALUE-repr `Optional[scalar]` field (`std::optional<int32_t>`):
-            # the scalar converts implicitly, so the store is BARE
-            # (`s.count = 42;`). The generic tail's `ptr_to_optional` lift
-            # belongs to the POINTER-repr Optional and would be wrong here;
-            # a `None` value took the nullopt arm above.
-            # The owned-str twin carries the gate's LITERAL restriction here
-            # too. Nothing reaches this arm with a non-literal str today (the
-            # admission chokepoint rejects it first), but a lowering arm that
-            # is looser than its gate is a trap for the next widening.
-            if ((_value_opt_scalar(ftype, analyzer) is not None
-                 or (_value_opt_owned_str(ftype, analyzer)
-                     and isinstance(_peel_coerce(stmt.value), TpyStrLiteral)))
-                    and not isinstance(stmt.value, TpyNoneLiteral)):
-                _witness("field_write.value_opt_scalar")
-                return THIRAssign(
-                    target=_lower_field_write_target(stmt, lc, declared),
-                    value=_slot_literal_retype(
-                        _flush_witness(
-                            "flush.field_write",
-                            _lower_expr(stmt.value, lc, declared,
-                                        use=_ExprUse(
-                                            result=_ExprResultUse.STORAGE,
-                                            allow_temps=True))),
-                        ftype, lc), loc=loc)
-            # A plain F1-record field write (`_record_field_write_ok`): a
-            # record rvalue -- a ctor (STORAGE) or a by-value record-returning
-            # call (VALUE) of the field's own type -- copies bare into the
-            # field, no borrow<->storage lift (the AST's default field assign);
-            # a record NAME source copies bare (`field = p;`) or moves at a
-            # movable name's last use (`std::move(p)`, the plain-record
-            # STORAGE convert arm -- `_maybe_move`'s mirror). A plain record
-            # ftype reaching here is uniquely these shapes (scalar/char/enum/
-            # ptr handled above; Optional/tuple/union are not NominalType
-            # records, so `_f1_record` excludes them).
-            if _f1_record(ftype, analyzer):
-                copy_row = _lower_copy_record(stmt.value, lc, declared,
-                                              slot_type=ftype, loc=loc)
-                if copy_row is not None:
-                    _witness("field_write.record_copy")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=copy_row, loc=loc)
-                ctor_peel = copy_ctor_rvalue_source(stmt.value, analyzer)
-                if ctor_peel is not None:
-                    # Lowered exactly like the BARE ctor rvalue arm below --
-                    # target-typed, no arg-temps -- because the peel's whole
-                    # claim is that `copy(T(...))` and `T(...)` render the
-                    # same. The optrec sibling threads the flushable-position
-                    # temps because ITS neighbour (the optrec rvalue arm)
-                    # does; each peel follows the arm it must match.
-                    _witness("field_write.record_copy_ctor")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=_lower_expr(ctor_peel, lc, declared,
-                                          target_type=ftype), loc=loc)
-                if isinstance(stmt.value, TpyName):
-                    _witness("field_write.record_name")
-                    lowered = _lower_expr(stmt.value, lc, declared)
-                    # A pointer-local source reads through the deref
-                    # (`this->result = (*saved);` -- gen_expr_deref's
-                    # indirect name; pointers are never movable).
-                    if (stmt.value.name in lc.pointers
-                            and isinstance(lowered, THIRName)):
-                        lowered = replace(lowered, deref=True)
-                    if _is_move_source(stmt.value, lc):
-                        lowered = THIRFormConvert(result_type=ftype,
-                                                  value=lowered,
-                                                  form=Form.STORAGE,
-                                                  move=True, loc=loc)
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=lowered, loc=loc)
-                _witness("field_write.record_rvalue")
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=_lower_expr(
-                                      stmt.value, lc, declared,
-                                      target_type=ftype,
-                                      use=_ExprUse(record_copy_sink=True)),
-                                  loc=loc)
-            # A container-literal field write (`_container_field_write_ok`):
-            # the target-threaded literal render assigns bare (a literal is
-            # never a movable name) -- the same THIRContainerLiteral emit a
-            # decl init gets, consumed by the field lvalue.
-            if isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
-                                       TpySetLiteral)):
-                _witness("field_write.container_lit")
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            # A tuple-literal field write: the spelled value-form brace-init
-            # (`_gen_tuple_literal`'s all-VALUE path). A VALUE-tuple field
-            # takes it directly -- borrow and storage coincide -- while an F3
-            # tuple field adds the assign's `tuple_to_storage` wrap
-            # (`_maybe_wrap_tuple_to_storage`).
-            if isinstance(stmt.value, TpyTupleLiteral):
-                # An Optional[value-tuple] FIELD absorbs the same spelled
-                # brace-init the plain tuple field gets (the gate's
-                # Optional unwrap twin).
-                ft_lit = (unwrap_readonly(ftype.inner)
-                          if isinstance(ftype, OptionalType) else ftype)
-                vt_field = _value_tuple(ft_lit, analyzer)
-                ft_tuple = (None if vt_field is not None
-                            else _f1_tuple(ftype, analyzer))
-                slot_t = vt_field if vt_field is not None else ft_tuple
-                if slot_t is not None:
-                    lit = _lower_tuple_literal(stmt.value, slot_t, lc,
-                                               declared)
-                    _witness("field_write.tuple_literal")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=(lit if vt_field is not None else
-                               THIRFormConvert(result_type=ftype, value=lit,
-                                               form=Form.STORAGE, move=False,
-                                               loc=loc)),
-                        loc=loc)
-            # A str-family field write (`_str_field_write_ok`): the value
-            # renders BARE -- `std::string::operator=(string_view)` absorbs a
-            # view source, so no view->owned construction and no move wrap
-            # (str names are never in codegen's movable set).
-            if _resolved_str_value(ftype, analyzer) is not None:
-                _witness("field_write.str")
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            # An owned `bytes` field write: a view (span) source copies via the
-            # S6 `::tpy::bytes_copy(...)` STORAGE convert (vector has no span
-            # ctor) -- an owned source (bytes literal / owned local) lands bare.
-            bytes_ft = _resolved_bytes_value(ftype, analyzer)
-            if bytes_ft is not None and is_bytes_type(bytes_ft):
-                _witness("field_write.bytes")
-                bval = _lower_expr(stmt.value, lc, declared)
-                if bval.form is Form.BORROW:
-                    bval = THIRFormConvert(result_type=bytes_ft, value=bval,
-                                           form=Form.STORAGE, move=False, loc=loc)
-                return THIRAssign(target=_lower_field_write_target(
-                                      stmt, lc, declared),
-                                  value=bval, loc=loc)
-            # A value-storage Optional[record] field (`std::optional<inner>`):
-            # a record RVALUE / record NAME source copies bare
-            # (optional::operator= absorbs the inner lvalue/rvalue) or moves the
-            # inner at a movable name's last use -- the record-field-write shape
-            # at an Optional slot (`_optional_record_field_write_ok`). The F2b
-            # `T*`->ptr_to_optional lift keeps its pointer-local source, in
-            # `lc.pointers`, on the generic tail below.
-            opt_inner = (_optional_record_field_inner(ftype, analyzer)
-                         or _optional_value_record_field_inner(
-                             ftype, analyzer))
-            # A `copy()` over a pointer-repr Optional is the identity, so the
-            # pointer-local exclusion has to see THROUGH it -- otherwise the
-            # wrapper hides a borrow `T*` source here and the optrec arm emits
-            # it with no borrow->storage lift.
-            opt_src = copy_ptr_optional_peel(stmt.value, analyzer) or stmt.value
-            # This arm serves sources typed as the INNER record (which
-            # `optional::operator=` absorbs), matching its gate. A source typed
-            # as the WHOLE pointer-repr Optional is a borrow `T*` and belongs
-            # to the lifting tail (`ptr_to_optional`), so it must not be
-            # captured here.
-            opt_src_t = analyzer.get_expr_type(opt_src)
-            if (opt_inner is not None
-                    and not isinstance(opt_src, TpyNoneLiteral)
-                    and not (isinstance(opt_src_t, OptionalType)
-                             and opt_src_t.uses_pointer_repr())
-                    and not (isinstance(opt_src, TpyName)
-                             and opt_src.name in lc.pointers)):
-                copy_row = _lower_copy_record(stmt.value, lc, declared,
-                                              slot_type=opt_inner, loc=loc)
-                if copy_row is not None:
-                    _witness("field_write.optrec_copy")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=copy_row, loc=loc)
-                ctor_peel = copy_ctor_rvalue_source(stmt.value, analyzer)
-                if ctor_peel is not None:
-                    _witness("field_write.optrec_copy_ctor")
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=_flush_witness(
-                            "flush.assign",
-                            _lower_expr(ctor_peel, lc, declared,
-                                        use=_ExprUse(
-                                            result=_ExprResultUse.STORAGE,
-                                            allow_temps=True))),
-                        loc=loc)
-                if isinstance(stmt.value, TpyName):
-                    _witness("field_write.optrec_name")
-                    lowered = _lower_expr(stmt.value, lc, declared)
-                    mv = _is_move_source(stmt.value, lc)
-                    # A BORROW source (a borrow record param / REF_ALIAS) lifts to
-                    # the INNER record storage -- the `is_plain_nonvalue` STORAGE
-                    # arm renders it bare, optional::operator= then absorbs it --
-                    # so the pointer-lifted-sink validator sees no BORROW form
-                    # lie. A move (an owned name at last use) wraps to render
-                    # `std::move(inner)`. A move-free STORAGE source (an Own param
-                    # NOT at last use) copies bare -- no (no-op) convert. Convert
-                    # to the INNER record, NOT the Optional: that would spell the
-                    # F2b `ptr_to_optional` lift.
-                    if lowered.form is Form.BORROW or mv:
-                        lowered = THIRFormConvert(result_type=opt_inner,
-                                                  value=lowered,
-                                                  form=Form.STORAGE, move=mv,
-                                                  loc=loc)
-                    return THIRAssign(
-                        target=_lower_field_write_target(stmt, lc, declared),
-                        value=lowered, loc=loc)
-                _witness("field_write.optrec_rvalue")
-                # The assign is a statement-position flush point, so the
-                # rvalue's arg rows that hoist a `__tmp_N` (the Own-slot
-                # copy+move row) are admissible here -- same flushable use as
-                # the generic assign tail.
-                return THIRAssign(
-                    target=_lower_field_write_target(stmt, lc, declared),
-                    value=_flush_witness(
-                        "flush.assign",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True))),
-                    loc=loc)
-            # A covariant-upcast rvalue admitted by
-            # `_optional_record_field_upcast_write_ok` always lands on the
-            # optrec arm above: at emit the inner is F1 (generation context
-            # qualifies its dyn-protocol arg via native_cpp_names), so
-            # `opt_inner` is non-None wherever the gate admitted. If that
-            # assumption ever breaks (a spelling-divergent inner), fall the
-            # body back rather than reach the generic tail's unrelated
-            # FormConvert render.
-            if _optional_record_field_upcast_write_ok(stmt, declared, analyzer):
-                note_detail("field_write.optrec_upcast_inner")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            if isinstance(stmt.value, TpyNoneLiteral):
-                fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
-                                               form=Form.STORAGE, loc=loc)
-            elif (isinstance(stmt.value, TpyFieldAccess)
-                    and _eligible_ptr_union(ftype, analyzer) is not None):
-                # F4 U2 field-to-field union copy: a field source is not a
-                # ptr-variant source on the AST path, so it assigns
-                # storage-to-storage bare -- no to_value_variant lift.
-                fvalue = _lower_field_source(stmt.value, lc, declared)
-            elif ((u := _eligible_ptr_union(ftype, analyzer)) is not None
-                    and _union_member_ctor_rvalue(stmt.value, u, analyzer)):
-                # A member-typed ctor rvalue stores bare (`field = Cat(9);`
-                # -- the variant assignment absorbs the member; a
-                # to_value_variant lift would be ill-formed). The assign is
-                # a flushable statement position like the optrec arm.
-                _witness("field_write.union_member_ctor")
-                fvalue = _flush_witness(
-                    "flush.assign",
-                    _lower_expr(stmt.value, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                             allow_temps=True)))
-            else:
-                # A pointer-slot GLOBAL source feeds the `ptr_to_optional`
-                # lift as a POINTER (`h->v = ptr_to_optional(g);`), so the
-                # value-position deref it takes at every other sink must not
-                # fire -- RECEIVER says exactly that. Pointer LOCALS are
-                # unaffected (they never deref at a name read of record type).
-                # `copy()` over a pointer-repr Optional is the identity, so the
-                # tail renders the peeled source (the `_gen_copy_expr` early
-                # return); the sink's own lift is what copies.
-                peeled = copy_ptr_optional_peel(stmt.value, analyzer)
-                tail_src = peeled if peeled is not None else stmt.value
-                ptr_src = (isinstance(tail_src, TpyName)
-                           and tail_src.name in lc.prescan.global_slots)
-                # An Optional[container] FIELD stores value-repr
-                # (`std::optional<ordered_set<..>>`) regardless of the
-                # position-blind `uses_pointer_repr` -- its writes take the
-                # plain-container renders, never the ptr_to_optional lift.
-                # Family set mirrors _container_name_field_write_ok's gate
-                # (list/dict/set/Array) -- a narrower check here routed an
-                # Optional[Array] param source through the ptr_to_optional
-                # lift where the AST copies bare.
-                val_opt_container = (
-                    isinstance(ftype, OptionalType)
-                    and (_plain_container_read(unwrap_readonly(ftype.inner))
-                         or is_array(unwrap_readonly(ftype.inner))))
-                ptr_opt_field = (isinstance(ftype, OptionalType)
-                                 and not val_opt_container
-                                 and ftype.uses_pointer_repr())
-                lowered = _lower_expr(
-                    tail_src, lc, declared,
-                    use=(_ExprUse(result=_ExprResultUse.RECEIVER)
-                         if ptr_src
-                         else _ExprUse(ptr_opt_lift=ptr_opt_field)),
-                    # A FIELD source of the same Optional is consumed WHOLE
-                    # (the `std::optional<T>` member copies bare); the read
-                    # must not take the narrowing deref a value position gets.
-                    allow_whole_optional=(ptr_opt_field and not ptr_src
-                                          and isinstance(tail_src,
-                                                         TpyFieldAccess)))
-                # The AST applies `_maybe_move` to the WHOLE value expression,
-                # and a `copy(...)` call is never a movable name -- so an
-                # explicit copy suppresses the move even when the peeled
-                # argument is at its last use. That is also what `copy()`
-                # means, so the mirror and the semantics agree.
-                mv = peeled is None and _is_move_source(tail_src, lc)
-                # A storage-form source of the field's own type needing no move
-                # is a bare copy (`field = v`); the borrow->storage convert would
-                # be a no-op (validate.py rejects it). This is the value-bound
-                # `Own[T]` field write: the param is passed by value and copied
-                # here, mirroring the AST method body -- unlike the ctor MIL,
-                # which moves. The movable case keeps the convert (it emits
-                # `std::move`).
-                # A whole-Optional FIELD read is `std::optional<T>` member
-                # STORAGE (the read arm tags it VALUE -- its form axis is the
-                # str/bytes view-vs-owned one, which says nothing here), so it
-                # copies bare; the `ptr_to_optional` lift belongs to the
-                # borrow `T*` sources.
-                whole_opt_field = (ptr_opt_field
-                                   and isinstance(tail_src, TpyFieldAccess))
-                # A value-repr Optional[container] FIELD (`std::optional<
-                # ordered_set<..>>`) absorbs the same bare/moved name render
-                # the plain container field gets (`h.s = std::move(v);`) --
-                # the ptr_to_optional lift belongs to pointer-repr record
-                # optionals, so the convert targets the INNER family type.
-                cnv_t = (unwrap_readonly(ftype.inner) if val_opt_container
-                         else ftype)
-                if (not mv and lowered.result_type == cnv_t
-                        and (lowered.form is Form.STORAGE or whole_opt_field)):
-                    fvalue = lowered
-                else:
-                    fvalue = THIRFormConvert(result_type=cnv_t, value=lowered,
-                                             form=Form.STORAGE, move=mv, loc=loc)
-            return THIRAssign(
-                target=_lower_field_write_target(stmt, lc, declared),
-                value=fvalue, loc=loc)
         # Name-target assign: the same self-append peephole as the var-decl
         # reassignment (the AST checks it at both sites).
         if (isinstance(stmt.target, TpyName)
@@ -7017,9 +6508,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRStrAppend(target=stmt.target.name,
                                      value=_lower_expr(rhs, lc, declared), loc=loc)
         return THIRAssign(
-            target=(_lower_field_write_target(stmt, lc, declared)
-                    if target_prechecked
-                    else _lower_expr(stmt.target, lc, declared)),
+            target=_lower_expr(stmt.target, lc, declared),
             value=_slot_literal_retype(
                 _flush_witness("flush.assign",
                                _lower_expr(
@@ -9427,18 +8916,6 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         return_tier=return_tier,
         loc=loc,
     )
-
-def _lower_field_write_target(stmt: TpyAssign, lc: '_LowerCtx',
-                              declared: dict[str, TpyType]) -> THIRExpr:
-    """A plain-assign FIELD target renders via gen_expr (not gen_expr_deref):
-    a narrowed Optional field assigns into the bare optional storage
-    (`this->f = v;`), so the value-position narrowed deref is stripped from
-    the top-level node only -- a narrowed RECEIVER inside the chain keeps
-    its unwrap (`(*this->opt).x = v;`, the AST's receiver-deref arm)."""
-    target = _lower_expr(stmt.target, lc, declared, field_prechecked=True)
-    if isinstance(target, THIRFieldAccess) and target.narrowed_deref:
-        target = replace(target, narrowed_deref=False)
-    return target
 
 def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 pointers: set[str], loc, *, in_branch: bool = False,
