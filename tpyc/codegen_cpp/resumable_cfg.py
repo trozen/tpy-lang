@@ -119,6 +119,12 @@ class ResumableFuncState:
     try_finally_prescanned: bool = False
     try_finally_uid_map: 'dict[int, int]' = field(default_factory=dict)
     try_finally_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    # frame-local placement plan (gen_async._frame_layout): one verdict per
+    # hoisted local, consumed by the struct field-decl emit, the body-context
+    # seeding, and THIR admission -- the single source of truth for the
+    # frame-field form. Built lazily after the prescans have populated the
+    # binding sets above.
+    frame_layout: 'FrameLayoutPlan | None' = None
     # resumable-generator eligibility memoization (generator.py gate)
     gen_eligible: 'bool | None' = None
 
@@ -130,6 +136,77 @@ def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
         state = ResumableFuncState()
         func._resumable_state = state
     return state
+
+
+# -- Frame-local placement plan.
+
+class FrameLocalKind(Enum):
+    """The C++ field form backing one hoisted frame local.
+
+    One verdict per local, decided once (gen_async._frame_layout) and
+    consumed by every reader of the frame-field form: the struct
+    field-decl emit, `setup_resumable_frame_locals`, and THIR admission.
+    A consumer re-deriving the form from the local's TYPE is the defect
+    class this plan exists to remove -- the form depends on binding facts
+    (write sources, loop machinery, prescan sets) the type alone cannot
+    recover.
+
+      * VALUE            -- bare `T name;` (value types).
+      * OWNED_STR        -- `std::string name;`: a `with ... as` str target
+                            whose `__enter__` result would dangle as a view.
+      * PTR_ALIAS        -- `T* name = nullptr;` aliasing live storage
+                            (pointer-form loop var, unpack target, or
+                            statement-level borrow alias).
+      * OPT_PTR          -- `T* name = nullptr;` for a pointer-repr
+                            Optional local (nullptr doubles as None).
+      * BORROW_TUPLE     -- `std::tuple<..., T*> name;` borrow-form tuple.
+      * OWNING_TUPLE_SLOT-- `::tpy::frame_slot<std::tuple<...storage...>>`:
+                            an owning tuple (Own element / owned call
+                            result); emplace writes, `(*name)` reads.
+      * FRAME_SLOT       -- `::tpy::frame_slot<T> name;` owning slot for
+                            plain non-value locals; emplace writes,
+                            `(*name)` reads.
+      * SOURCE_FORM_SLOT -- a loop var whose alias-vs-own choice belongs to
+                            C++: `::tpy::frame_slot<payload>` where the
+                            payload spelling comes from the iteration
+                            source's protocol (`for_elem_deref_t` /
+                            `for_elem_next_t`) and frame_slot's
+                            specializations supply either form at
+                            instantiation.
+      * PROTOCOL         -- a static-protocol-typed local: no concrete C++
+                            backing exists for a frame FIELD (rendering one
+                            is a user-facing CodeGenError at the struct
+                            emit); body-context seeding treats it like
+                            FRAME_SLOT, matching the peephole path where no
+                            field is ever rendered.
+    """
+    VALUE = "value"
+    OWNED_STR = "owned_str"
+    PTR_ALIAS = "ptr_alias"
+    OPT_PTR = "opt_ptr"
+    BORROW_TUPLE = "borrow_tuple"
+    OWNING_TUPLE_SLOT = "owning_tuple_slot"
+    FRAME_SLOT = "frame_slot"
+    SOURCE_FORM_SLOT = "source_form_slot"
+    PROTOCOL = "protocol"
+
+
+@dataclass(frozen=True)
+class FrameLocalLayout:
+    """Placement verdict for one hoisted local. `const` applies to the
+    pointer kinds (PTR_ALIAS / OPT_PTR: `const T*` when the alias source
+    is const-rooted). `payload` is the SOURCE_FORM_SLOT field's C++ payload
+    spelling (None for every other kind)."""
+    kind: FrameLocalKind
+    const: bool = False
+    payload: 'str | None' = None
+
+
+@dataclass
+class FrameLayoutPlan:
+    """Frame-local placement for one resumable body: `bindings` maps every
+    `func.generator_locals` name to its verdict."""
+    bindings: 'dict[str, FrameLocalLayout]'
 
 
 # -- Resumable-frame shape: which state machine the emitter produces.

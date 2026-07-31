@@ -1557,6 +1557,11 @@ class CodeGenContext:
 
     # --- Generator function codegen ---
     in_generator_body: bool = False
+    # Builder for the frame-local placement plan (wired by AsyncCoroCodegen;
+    # `setup_resumable_frame_locals` calls it for bodies whose plan is not
+    # yet cached -- the simple-peephole path, which never emits a frame
+    # struct).
+    frame_layout_builder: 'Callable[[TpyFunction], object] | None' = None
     generator_field_names: set[str] = field(default_factory=set)
     # Hoisted locals that are compile-time aliases of a captured static-protocol
     # param (`xs = it`): they occupy no frame field of their own; every storage
@@ -3053,96 +3058,68 @@ class CodeGenContext:
         self.one_shot_lift_locals = set(
             _rcfg.resumable_state(func).one_shot_lift_names)
 
-        # Pointer-form iter vars are seeded up-front so the for-loop
-        # emit path doesn't need to mutate `pointer_locals` mid-emission.
-        # Both the legacy struct path and the resumable for-loop emit
-        # (`gen_async._prescan_resumable_for_loops`) populate
-        # `generator_for_loop_info`; bodies with no for-loop leave it empty
-        # (the loop is then a no-op).
-        # A source-derived loop var is an ordinary frame slot: reads go through
-        # `(*name)` whether the trait picked alias or own, so it needs no form
-        # classification -- that is the point of deferring the choice to C++.
-        # Local, not a context field: it is consumed by the frame-local
-        # registration further down this same method and nowhere else, so a
-        # field would only add a reset and a save/restore to keep in sync.
-        source_form_loop_vars: set[str] = set()
-        for info in self.generator_for_loop_info.values():
-            if info.loop_var_field is not None:
-                source_form_loop_vars.add(info.loop_var_field[0])
-            if info.pointer_form_loop_var is not None:
-                self.pointer_locals.add(info.pointer_form_loop_var)
-                self.generator_borrow_form_loop_vars.add(info.pointer_form_loop_var)
-            # Tuple-unpack targets aliasing a non-value container member:
-            # stored as `T*` (alias into the live element), same dispatch
-            # as a pointer-form loop var.
-            self.pointer_locals.update(info.pointer_form_unpack_targets)
-            self.generator_borrow_form_loop_vars.update(info.pointer_form_unpack_targets)
-            # Proxy-ref iterators (dict_items): the loop element is a
-            # borrow-form tuple field (std::tuple<..., T*>), not a `T*` --
-            # reads/unpacks must treat it as a value holding borrows.
-            if info.borrow_tuple_loop_var is not None:
-                self.borrow_form_tuple_locals.add(info.borrow_tuple_loop_var)
-
-        # Statement-level borrow aliases (single-assign `a = items[0]`,
-        # tuple-unpack `a, b = first_two(items)`): same `T*`-alias dispatch as
-        # a pointer-form loop var, so the alias survives the suspension instead
-        # of being value-copied into the frame.
-        self.pointer_locals.update(self.generator_pointer_alias_locals)
-        self.generator_borrow_form_loop_vars.update(
-            self.generator_pointer_alias_locals)
-        self.const_indirect_locals.update(
-            self.generator_const_pointer_alias_locals)
-
         if not func.generator_locals:
             return
 
-        owning_tuples = self.owning_generator_tuple_locals(func)
-        for lname, ltype in func.generator_locals:
-            ltype_inner = unwrap_ref_type(ltype)
-            # A source-derived loop var is a frame slot whatever its element
-            # turns out to be -- including a value element, which the
-            # is_value_type() branch below would otherwise leave unclassified
-            # and thus read as a bare name against a frame_slot field.
-            if lname in source_form_loop_vars:
+        # One placement verdict per hoisted local, shared with the struct
+        # field-decl emit (gen_async._frame_layout). The resumable path has
+        # the plan cached by struct-emit time; the simple-peephole path (no
+        # frame struct, locals on the lambda stack) builds it here -- its
+        # prescan sets are empty by construction, which is what keeps the
+        # peephole verdicts alias-free.
+        plan = _rcfg.resumable_state(func).frame_layout
+        if plan is None:
+            plan = self.frame_layout_builder(func)
+        for lname, verdict in plan.bindings.items():
+            kind = verdict.kind
+            if kind is _rcfg.FrameLocalKind.PTR_ALIAS:
+                # A `T*` field aliasing live storage (pointer-form loop var,
+                # unpack target, or statement-level borrow alias): same
+                # dispatch as sync pointer-locals, seeded up-front so the
+                # for-loop emit path doesn't mutate `pointer_locals`
+                # mid-emission.
+                self.pointer_locals.add(lname)
+                self.generator_borrow_form_loop_vars.add(lname)
+                if verdict.const:
+                    self.const_indirect_locals.add(lname)
+            elif kind is _rcfg.FrameLocalKind.OPT_PTR:
+                self.pointer_locals.add(lname)
+                if verdict.const:
+                    self.const_indirect_locals.add(lname)
+            elif kind is _rcfg.FrameLocalKind.BORROW_TUPLE:
+                # Borrow-form tuple frame fields are declared
+                # std::tuple<..., T*> (gen_coro_struct), so assignments from
+                # storage sources need the element-wise pointer lift like any
+                # borrow-form local; proxy-ref loop elements (dict_items)
+                # carry the same form.
+                self.borrow_form_tuple_locals.add(lname)
+            elif kind is _rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
+                # A source-derived loop var is a frame slot whatever its
+                # element turns out to be -- including a value element:
+                # reads go through `(*name)` whether the trait picked alias
+                # or own; that is the point of deferring the choice to C++.
                 self.generator_optional_fields.add(lname)
                 self.generator_frame_slot_locals.add(lname)
-                continue
-            # An OWNING pointer-repr tuple local is backed by a storage
-            # `tpy::frame_slot<std::tuple<..., T>>` field (emplace writes,
-            # `(*name)` reads), like any other owning non-value frame local --
-            # not a borrow-form field (which can't hold the owned elements).
-            if lname in owning_tuples:
+            elif kind is _rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
                 self.generator_optional_fields.add(lname)
                 self.generator_frame_slot_locals.add(lname)
                 # The frame slot holds the tuple BY VALUE (storage form), so
                 # element reads use `.` not `->` -- mark it a storage-form
                 # source like the sync owning local.
                 self.storage_form_tuple_locals.add(lname)
-                continue
-            # Borrow-form tuple frame fields are declared std::tuple<..., T*>
-            # (gen_coro_struct), so assignments from storage sources need the
-            # element-wise pointer lift like any borrow-form local. Pointer-form
-            # loop vars / `__for_tup_*` holders keep the loop machinery's form.
-            if (isinstance(ltype_inner, TupleType)
-                    and ltype_inner.has_pointer_repr_element()
-                    and not lname.startswith("__for_tup_")
-                    and lname not in self.pointer_locals):
-                self.borrow_form_tuple_locals.add(lname)
-                continue
-            if ltype_inner.is_value_type():
-                continue
-            if (isinstance(ltype_inner, OptionalType)
-                    and ltype_inner.uses_pointer_repr()):
-                self.pointer_locals.add(lname)
-                continue
-            if lname in self.pointer_locals:
-                continue
-            self.generator_optional_fields.add(lname)
-            # User-local non-pointer-form non-value frame fields are backed by
-            # `tpy::frame_slot<T>` (emitted by the resumable struct field-decl
-            # path in `gen_async.gen_coro_struct`). Writes route through
-            # `.emplace(...)`; reads use the `(*name)` access.
-            self.generator_frame_slot_locals.add(lname)
+            elif kind in (_rcfg.FrameLocalKind.FRAME_SLOT,
+                          _rcfg.FrameLocalKind.PROTOCOL):
+                # Non-pointer-form non-value frame fields are backed by
+                # `tpy::frame_slot<T>`: writes route through `.emplace(...)`,
+                # reads use the `(*name)` access. PROTOCOL locals seed the
+                # same sets: the resumable struct emit raises its user-facing
+                # error before any read renders, and the peephole never
+                # renders fields at all, so the membership is inert but keeps
+                # the dispatch total.
+                self.generator_optional_fields.add(lname)
+                self.generator_frame_slot_locals.add(lname)
+            # VALUE / OWNED_STR: no context seeding -- value-typed access
+            # needs no peel, and the owned-str field reads as a plain string.
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:
         """True when `expr` renders as a `T*` value with no further lifting.

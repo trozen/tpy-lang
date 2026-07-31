@@ -305,6 +305,10 @@ class AsyncCoroCodegen:
         self.expressions = expressions
         self.statements = statements
         self.functions = functions
+        # The body-context seeding (`setup_resumable_frame_locals`) consumes
+        # the frame-layout plan but runs on the ctx, which has no emitter
+        # back-reference -- hand it the builder.
+        ctx.frame_layout_builder = self._frame_layout
         # Set by CodeGenerator after init; the resumable for-loop emit reuses
         # the legacy strategy analysis (`_analyze_for_strategy`).
         self.gen_generators: GeneratorCodegen
@@ -1173,6 +1177,128 @@ class AsyncCoroCodegen:
             elif hasattr(v, "children"):
                 self._replace_in_expr(v, old_expr, new_expr)
 
+    # -- Frame-local placement -------------------------------------------------
+
+    def _frame_layout(self, func: TpyFunction) -> 'rcfg.FrameLayoutPlan':
+        """Get-or-build the frame-local placement plan for this body: one
+        `FrameLocalLayout` verdict per `func.generator_locals` name.
+
+        Must run after the for/with/alias prescans and the await/arg lifting
+        have populated `ResumableFuncState` (every caller sits downstream of
+        `_build_resumable_cfg`). Arm PRECEDENCE is load-bearing: pointer-form
+        is checked before `is_value_type` because a pointer-form `__for_tup`
+        holder is itself a value tuple; borrow-tuple excludes `__for_tup_*`
+        holders (their form is the loop machinery's call) unless the loop
+        classified them borrow-tuple explicitly.
+        """
+        state = rcfg.resumable_state(func)
+        if state.frame_layout is not None:
+            return state.frame_layout
+
+        owning_str = state.with_owning_str_targets
+        owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
+        pointer_form_names: set[str] = set()
+        borrow_tuple_names: set[str] = set()
+        # Loop vars whose field payload is spelled from the iteration
+        # source; the trait decides alias-vs-own, so no TPy-side form.
+        source_form_fields: dict[str, str] = {}
+        for info in state.for_loop_info.values():
+            if info.pointer_form_loop_var is not None:
+                pointer_form_names.add(info.pointer_form_loop_var)
+            pointer_form_names.update(info.pointer_form_unpack_targets)
+            if info.loop_var_field is not None:
+                name, payload = info.loop_var_field
+                source_form_fields[name] = payload
+            if info.borrow_tuple_loop_var is not None:
+                borrow_tuple_names.add(info.borrow_tuple_loop_var)
+        # Statement-level borrow aliases (single-assign / tuple-unpack)
+        # also get a `T*` field rather than an owning frame_slot<T>. The
+        # alias model belongs to the resumable FRAME (a `T*` field kept
+        # live across suspensions); a simple-peephole generator keeps its
+        # locals on the lambda stack, so its plan must classify with the
+        # empty set -- running the prescan here would change its verdicts.
+        if not GeneratorCodegen.is_simple_generator(func):
+            pointer_form_names.update(self._classify_pointer_alias_locals(func))
+        const_aliases = state.const_pointer_alias_locals
+
+        bindings: dict[str, rcfg.FrameLocalLayout] = {}
+        for lname, ltype in (func.generator_locals or []):
+            ltype_inner = unwrap_ref_type(ltype)
+            # A protocol-typed local has no concrete C++ backing -- only
+            # captured params carry the deduced template arg `T_<pname>`. A
+            # *single-assignment* alias of a bare protocol param (`xs = it`)
+            # is forwarded to that param by sema (see
+            # `_extract_proto_param_forwarding`) and never reaches here.
+            # What lands here is the unforwarded remainder -- chiefly a
+            # *reassigned* alias -- which has no single backing param. The
+            # verdict is a kind (not an error) so non-frame consumers can
+            # classify; rendering a frame FIELD for it raises at the struct
+            # emit.
+            payload: str | None = None
+            if self.functions.protocols.is_static_protocol_param(ltype_inner):
+                kind = rcfg.FrameLocalKind.PROTOCOL
+            elif lname in source_form_fields:
+                # Loop var whose alias-vs-own choice belongs to C++: the
+                # payload is spelled from the source's iteration protocol,
+                # and frame_slot's specializations supply either form. Comes
+                # before the type-directed arms below -- they would re-derive
+                # a form from the TPy element type, which is exactly what
+                # this field exists to stop doing.
+                kind = rcfg.FrameLocalKind.SOURCE_FORM_SLOT
+                payload = source_form_fields[lname]
+            elif lname in owning_str:
+                # `with X() as label:` -- `__enter__` returns by value;
+                # storing the view across suspensions would dangle. Use
+                # owning storage. See `_prescan_with_stmts`.
+                kind = rcfg.FrameLocalKind.OWNED_STR
+            elif lname in pointer_form_names:
+                # Pointer-form alias: a for-loop var (non-value element
+                # over a stable source) or a tuple-unpack target bound to
+                # a non-value container member. Stored as `T*` (alias the
+                # live element) rather than `frame_slot<T>` (value-copy),
+                # so mutations propagate and resume preserves aliasing;
+                # also works for @nocopy / move-only elements. Bound by
+                # address in `_emit_async_for_advance` / the tuple-unpack
+                # emit.
+                kind = rcfg.FrameLocalKind.PTR_ALIAS
+            elif lname in owning_tuple_locals:
+                # OWNING pointer-repr tuple local: the frame must hold the
+                # element storage (emplace writes, `(*name)` reads) -- a
+                # borrow `std::tuple<..., T*>` field can't own, and the
+                # owning rvalue can't be address-taken into it.
+                kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
+            elif (isinstance(ltype_inner, TupleType)
+                    and ltype_inner.has_pointer_repr_element()
+                    and (not lname.startswith("__for_tup_")
+                         or lname in borrow_tuple_names)):
+                # Borrow-form tuple local (std::tuple<..., T*>): a value-form
+                # field would copy the element across the suspension (the
+                # silent-copy divergence). Pointers default-construct to
+                # null, so no frame_slot wrapper is needed.
+                kind = rcfg.FrameLocalKind.BORROW_TUPLE
+            elif ltype_inner.is_value_type():
+                kind = rcfg.FrameLocalKind.VALUE
+            elif (isinstance(ltype_inner, OptionalType)
+                    and ltype_inner.uses_pointer_repr()):
+                # Pointer-repr Optional: bare `T* = nullptr` aliases the
+                # source and uses nullptr as both "uninitialized" and
+                # "None"; no outer `std::optional<...>` wrap.
+                kind = rcfg.FrameLocalKind.OPT_PTR
+            else:
+                kind = rcfg.FrameLocalKind.FRAME_SLOT
+            bindings[lname] = rcfg.FrameLocalLayout(
+                kind=kind,
+                # Const-rooted alias sources (borrow of self's field in a
+                # readonly method) need `const T*` -- classified into
+                # const_pointer_alias_locals at the initializing decl.
+                const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
+                                rcfg.FrameLocalKind.OPT_PTR)
+                       and lname in const_aliases),
+                payload=payload)
+
+        state.frame_layout = rcfg.FrameLayoutPlan(bindings=bindings)
+        return state.frame_layout
+
     # -- Struct definition ----------------------------------------------------
 
     def gen_coro_struct(self, out: "TextIO", func: TpyFunction,
@@ -1213,112 +1339,51 @@ class AsyncCoroCodegen:
             out.write(f"{INDENT}{p.field_decl()};\n")
 
         state = rcfg.resumable_state(func)
-        # Hoisted local fields (mirrors generator behavior).
+        # Hoisted local fields: one field per placement verdict. The
+        # classification itself lives in `_frame_layout` (shared with the
+        # body-context seeding and THIR admission); this loop only RENDERS
+        # each verdict.
         if func.generator_locals:
-            owning_str = state.with_owning_str_targets
-            owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
-            pointer_form_names: set[str] = set()
-            borrow_tuple_names: set[str] = set()
-            # Loop vars whose field payload is spelled from the iteration
-            # source; the trait decides alias-vs-own, so no TPy-side form.
-            source_form_fields: dict[str, str] = {}
-            for info in state.for_loop_info.values():
-                if info.pointer_form_loop_var is not None:
-                    pointer_form_names.add(info.pointer_form_loop_var)
-                pointer_form_names.update(info.pointer_form_unpack_targets)
-                if info.loop_var_field is not None:
-                    name, payload = info.loop_var_field
-                    source_form_fields[name] = payload
-                if info.borrow_tuple_loop_var is not None:
-                    borrow_tuple_names.add(info.borrow_tuple_loop_var)
-            # Statement-level borrow aliases (single-assign / tuple-unpack)
-            # also get a `T*` field rather than an owning frame_slot<T>.
-            pointer_form_names.update(self._classify_pointer_alias_locals(func))
+            layout = self._frame_layout(func)
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_name = escape_cpp_name(lname)
-                # A protocol-typed local has no concrete C++ backing in the
-                # frame -- only captured params carry the deduced template arg
-                # `T_<pname>`, so rendering it would emit `frame_slot<Concept>`
-                # (ill-formed). A *single-assignment* alias of a bare protocol
-                # param (`xs = it`) is forwarded to that param by sema (see
-                # `_extract_proto_param_forwarding`) and never reaches here.
-                # What lands here is the unforwarded remainder -- chiefly a
-                # *reassigned* alias -- which has no single backing param.
-                if self.functions.protocols.is_static_protocol_param(ltype_inner):
+                verdict = layout.bindings[lname]
+                kind = verdict.kind
+                const_pfx = "const " if verdict.const else ""
+                if kind is rcfg.FrameLocalKind.PROTOCOL:
+                    # No concrete C++ backing for a frame field -- rendering
+                    # would emit `frame_slot<Concept>` (ill-formed).
                     raise CodeGenError(
                         f"local {lname!r} of protocol type aliasing a "
                         "protocol-typed parameter is only supported across a "
                         "suspension when bound exactly once directly from the "
-                        "parameter; bind it once from the parameter, or iterate "
-                        "the parameter directly",
+                        "parameter; bind it once from the parameter, or "
+                        "iterate the parameter directly",
                         loc=func.loc)
-                if lname in source_form_fields:
-                    # Loop var whose alias-vs-own choice belongs to C++: the
-                    # payload is spelled from the source's iteration protocol,
-                    # and frame_slot's specializations supply either form. Comes
-                    # first -- the type-directed branches below would re-derive a
-                    # form from the TPy element type, which is exactly what this
-                    # field exists to stop doing.
+                if kind is rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
+                    # The payload spelling came from the iteration source at
+                    # classification; frame_slot's specializations supply
+                    # either the alias or the owning form.
                     out.write(f"{INDENT}::tpy::frame_slot<"
-                              f"{source_form_fields[lname]}> {cpp_name};\n")
-                elif lname in owning_str:
-                    # `with X() as label:` -- `__enter__` returns by
-                    # value; storing the view across suspensions
-                    # would dangle. Use owning storage. See
-                    # `_prescan_with_stmts`.
+                              f"{verdict.payload}> {cpp_name};\n")
+                elif kind is rcfg.FrameLocalKind.OWNED_STR:
                     out.write(f"{INDENT}std::string {cpp_name};\n")
-                elif lname in pointer_form_names:
-                    # Pointer-form alias: a for-loop var (non-value element
-                    # over a stable source) or a tuple-unpack target bound to
-                    # a non-value container member. Stored as `T*` (alias the
-                    # live element) rather than `frame_slot<T>` (value-copy),
-                    # so mutations propagate and resume preserves aliasing;
-                    # also works for @nocopy / move-only elements. Bound by
-                    # address in `_emit_async_for_advance` / the tuple-unpack
-                    # emit. Checked before is_value_type because the loop var
-                    # of a tuple-unpack (`__for_tup`) is itself a value tuple.
+                elif kind is rcfg.FrameLocalKind.PTR_ALIAS:
                     inner_cpp = self.types.type_to_cpp(ltype_inner)
-                    const_pfx = ("const " if lname in
-                                 state.const_pointer_alias_locals else "")
                     out.write(
                         f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
-                elif lname in owning_tuple_locals:
-                    # OWNING pointer-repr tuple local: the frame must hold the
-                    # element storage, so use a storage `frame_slot<std::tuple
-                    # <..., T>>` (emplace writes, `(*name)` reads) -- a borrow
-                    # `std::tuple<..., T*>` field can't own, and the owning
-                    # rvalue can't be address-taken into it.
+                elif kind is rcfg.FrameLocalKind.OWNING_TUPLE_SLOT:
                     storage_cpp = ltype_inner.to_cpp_stored()
                     out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
-                elif (isinstance(ltype_inner, TupleType)
-                        and ltype_inner.has_pointer_repr_element()
-                        and (not lname.startswith("__for_tup_")
-                             or lname in borrow_tuple_names)):
-                    # Borrow-form tuple local (std::tuple<..., T*>): a value-form
-                    # field would copy the element across the suspension (the
-                    # silent-copy divergence). Pointers default-construct to
-                    # null, so no frame_slot wrapper is needed. The synthetic
-                    # `__for_tup_*` loop element holders are excluded -- their
-                    # form is the loop machinery's call (pointer-to-element for
-                    # stable sources, storage copy otherwise) and the loop
-                    # advance assigns the source element shape directly.
+                elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
                     cpp_type = self.types.tuple_borrow_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
-                elif ltype_inner.is_value_type():
+                elif kind is rcfg.FrameLocalKind.VALUE:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
-                elif (isinstance(ltype_inner, OptionalType)
-                        and ltype_inner.uses_pointer_repr()):
-                    # Pointer-repr Optional: bare `T* = nullptr` aliases
-                    # the source and uses nullptr as both "uninitialized"
-                    # and "None"; no outer `std::optional<...>` wrap.
-                    # Const-rooted sources (borrow of self's field in a
-                    # readonly method) need `const T*` -- classified into
-                    # const_pointer_alias_locals at the initializing decl.
+                elif kind is rcfg.FrameLocalKind.OPT_PTR:
                     inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
-                    const_pfx = ("const " if lname in
-                                 state.const_pointer_alias_locals else "")
                     out.write(
                         f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
@@ -1921,21 +1986,18 @@ class AsyncCoroCodegen:
         from ..thir.shape import record_shape
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
-        # The skeleton's own borrow-alias classification (cached, idempotent):
-        # a plain-nonvalue local NOT in this set is an owning frame_slot the
-        # THIR path renders `.emplace()` / `(*name)`; one IN it is a `T*` alias
-        # (a later cell). Reusing the skeleton's set (vs re-deriving) keeps the
-        # frame-field form decision identical on both paths.
-        pointer_aliases = self._classify_pointer_alias_locals(func)
         # The case-label set (cached on the CFG) doubles as the lowering's
         # narrowing-alias boundary: case entries re-establish `__{var}`.
         case_entry_ids = frozenset(self._compute_case_entries(cfg))
+        # The frame-layout plan is the skeleton's own placement decision;
+        # reusing it (vs re-deriving) keeps the frame-field form decision
+        # identical on both paths.
         rb = lower_resumable(func, self.ctx.analyzer, self.types.type_to_cpp,
                              cfg, record_name=record_name,
                              render_type_stored=self.types.type_to_cpp_stored,
-                             pointer_aliases=pointer_aliases,
                              case_entry_ids=case_entry_ids,
-                             native_globals=self.ctx.native_global_names)
+                             native_globals=self.ctx.native_global_names,
+                             frame_layout=self._frame_layout(func))
         cache[key] = rb
         if rb is not None:
             commit_attempt()

@@ -5085,3 +5085,42 @@ class TestFlatAssertNarrowScoping:
         _assert_identical(src)
 
     _PRE = "from typing import Iterator\n\n"
+
+
+class TestFrameLayoutPrecedence:
+    def test_source_form_beats_pointer_alias_for_reused_loop_var(self):
+        # One NAME is a loop var under two strategies: over a list[Point]
+        # param (begin_end -> pointer-form alias) and over an
+        # Iterable[Point] protocol param (iter_next -> source-form slot).
+        # The builder's arm order is load-bearing: the source-form verdict
+        # must win -- its frame_slot field serves whichever element form
+        # the trait picks, while a bare `T*` field cannot hold an owned
+        # fresh element. No corpus case collides the two strategies on one
+        # name, so this pin is the only witness of the order.
+        src = (_PRE
+               + "import asyncio\n"
+               + "from typing import Iterable\n\n"
+               + "class Point:\n"
+               + "    x: Int32\n\n"
+               + "    def __init__(self, x: Int32) -> None:\n"
+               + "        self.x = x\n\n"
+               + "async def f(items: list[Point], it: Iterable[Point]) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for p in items:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        total = total + p.x\n"
+               + "    for p in it:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        total = total + p.x\n"
+               + "    return total\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        from ..codegen_cpp import resumable_cfg as rcfg
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=True))
+        func = next(fn for fn in entry.ast.functions if fn.name == "f")
+        plan = rcfg.resumable_state(func).frame_layout
+        assert plan is not None
+        assert (plan.bindings["p"].kind
+                is rcfg.FrameLocalKind.SOURCE_FORM_SLOT)

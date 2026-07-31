@@ -1862,6 +1862,22 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: frame-local placement plan (FrameLayoutPlan)** (2026-07-31, the
+  `res.local_storage` design item). The resumable frame-local storage form is
+  now classified ONCE (`gen_async._frame_layout` -> per-name
+  `FrameLocalKind` verdicts + const/payload, cached on
+  `ResumableFuncState.frame_layout`) and consumed by all three former
+  independent classifiers: the struct field-decl ladder, the body-context
+  seeding (`setup_resumable_frame_locals`), and THIR admission (through the
+  seam; the old `pointer_aliases` seam channel is deleted). The
+  simple-generator peephole builds the plan on demand with its
+  empty-by-construction prescan sets; the protocol-local error moved from
+  classification to the struct field render. Byte-identical refactor (dial
+  unchanged); THIR's per-kind arms now carry only ADMISSION (which render
+  families are mirrored), so the remaining `res.local_storage` rejects are
+  per-family render cells, and any new placement family (cf. master's
+  SOURCE_FORM_SLOT, which landed mid-branch in triplicate and merged into
+  one arm) is one builder row + one render row per consumer.
 - **Landed: field-write plan-dispatch decomposition** (2026-07-31, the hard
   gate from the readiness retrospective). The 17-predicate admission
   disjunction + ~400-line `TpyFieldAccess`-target if/elif chain in
