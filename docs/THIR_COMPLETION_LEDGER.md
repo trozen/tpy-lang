@@ -5522,3 +5522,373 @@ per-name -- a plain block slot and the decl-time rebind slot share a
 name key but not a consumer, and the shared dict let one consumer's
 special case capture the other's plain assigns. Same-name registries
 merged "for convenience" are the divergence seed.
+### thir-longtail-grind wave 1: the expr.call ARG site (2026-07-31)
+
+Dial 2904/3693 -> 2907/3694, markers 787. Site: the free-call arg gate
+at `thir/lower/expressions.py`'s `_lower_free_call_arg` ladder -- the
+top row of the fresh census (`body:expr.call` 16 sole-blocker, five of
+them at this one raise site). Three cells; the site is now empty except
+`set/set_comp_owned_move`, which stays parked on the comprehension
+per-condition temp-sink design fork.
+
+**Borrow-tuple NAME rows** (`arg.btuple_storage_name` + the bare-bind
+widening). The gate had lift rows for a storage F3-tuple FIELD and
+SUBSCRIPT but none for a NAME, so `consume(it)` over a list of
+storage-form tuples fell the whole body back. The storage half takes
+the same `tuple_to_pointer` with the AST's want_const pair; the bare
+half widens `_borrow_tuple_name_arg`'s name set from params to
+`_borrow_tuple_bare_names`, which adds a REASSIGNED pointer-repr tuple
+local (the AST's `borrow_form_tuple_locals`). Resumable frame names are
+excluded: the lane's owning tuple slots reach neither
+`storage_tuple_locals` nor a borrow render the AST agrees on, so
+admitting them drops the lift -- the owning-tuple-frame fence pin
+caught exactly that on the first attempt. The for-each storage
+registration also gained a readonly peel: the AST asks through
+`ctx.get_expr_type`, which always strips readonly, so a
+`readonly[list[..]]` source registers its loop var storage there and
+did not here, leaving the const half of the new row unreachable.
+
+**Recursive-union borrow call** (`arg.recursive_union_borrow_call`). A
+wrapper-returning accessor at a `const Value&` slot binds inline. It
+asks the SLOT rather than the arg's value category, unlike its record
+twin: `call_returns_cpp_ref` gives every union return value semantics,
+so a wrapper accessor always reads as an rvalue, and an rvalue binds a
+const-ref slot fine. A mutable ref slot stays out. NO routing witness
+-- `union/union_mutual_mixed` moves to the method-call receiver gate --
+so the pin asserts the face is witnessed and that `expr.call` is gone
+from the reasons.
+
+**Own[Optional[record]] slot** (`own.opt_ptr_name_rebuild`). Own forces
+the OWNING value form where a bare Optional would use pointer repr. The
+ctor-rvalue half needed no new predicate -- `_own_optional_record_rvalue_arg`
+already existed at the ctor gate and is now wired into the free-call gate
+too (the review caught a duplicate written beside it; the duplicate is
+deleted). The NAME half is the new row: `gen_expr_deref`'s null-safe
+rebuild `r ? std::optional<Rec>(std::move(*r)) : std::nullopt` under the
+Own-slot move, via the new node `THIROwnOptRebuild`, the payload sibling
+of `THIROptViewArg`. Gated to the LAST-USE slice -- a boundary pin
+written during the review round caught that a non-last-use occurrence
+takes the AST's Own-slot copy-TEMP cascade (`Holder(std::move(__tmp_N))`),
+an entirely different render. Narrowed occurrences are excluded too.
+
+**LESSON -- the wholesale movable_locals seed.** The AST's
+`movable_locals` is a WORKING set grown at the var-decl arms as they
+emit; `_gen_error_return_var_decl` is not one of them, so an
+unwrap-bound local never becomes auto-movable there. THIR seeds the
+whole per-function sema fact up front. The gap was latent until the
+Own[Optional[record]] rows removed the `expr.call` fallback masking
+`tplib/json_model_user_type`'s macro-generated `__json_decode__`, and
+the corpus byte-diff surfaced it the same run as
+`events.push_back(std::move(__elem_1))`. Fixed with a discard at the
+bind; every other AST add site is decl-driven too, so the wholesale
+seed remains the general hazard -- the rest are fail-safe (a name the
+AST adds and THIR does not simply copies), but the next widening that
+unmasks one will look exactly like this.
+
+**Review-round consolidation**: the four `_borrow_tuple_*_arg`
+predicates hit the project's fourth-twin fold threshold and now share one
+`_borrow_tuple_arg` body parameterized on (shape test, type lookup);
+`_borrow_tuple_local_type` moved from statements.py to checks.py, taking
+the storage set as a parameter instead of `lc` and removing a
+function-local import. The recursive-union row's `is_ref_param()`
+mutable-slot guard was dead code (it answers `uses_pointer_repr()` first,
+always False for a wrapper) and is replaced by a note saying what a real
+mutability signal would have to be.
+
+**Pre-existing AST bug found**: the resumable borrow-form frame field
+assigned a storage tuple has a SECOND site (a tuple-literal decl, not
+only the loop advance). Folded into the existing BUGS.md entry.
+### thir-longtail-grind wave 2: del, print-element, try-hoist (2026-08-01)
+
+Dial 2907/3694 -> 2918/3694, markers 776. Three sites off the fresh
+census's flat tail, 11 flips.
+
+**Element-blind `del` receivers** (`delitem.container`, 5 flips). The del
+emit `::tpy::__delitem__(c, k)` never constructs, converts or reads the
+element slot, so the container receiver is admitted regardless of element
+family and the key slice alone decides byte-parity. That is exactly the
+reasoning `_any_value_dict` already carried for a `dict[K, Any]` VALUE,
+so the del gate COLLAPSES from three disjuncts (scalar-read, dict-Any
+escape, user record) to two, and the `delitem.any_value` face is deleted
+as dead. `_record_has_delitem` also dropped its no-type-args guard --
+the del render spells the receiver name bare and never the record type,
+so a monomorphized generic reaches no part of the emit, and its read-side
+sibling `_record_getitem_key` already had no such guard. The sixth case
+at this site chain-walks to a module-var receiver (`os.environ`).
+
+**F1-record tuple elements at a print sink** (`print.tuple_record_elem`,
+4 flips). One row, two renders: a BORROW-form tuple holds `T*` elements
+and print is a VALUE position, so the referent streams
+(`(*std::get<1>(t))`); a STORAGE-form one holds the element by value and
+streams bare. The split reuses the arg rows' storage-vs-borrow evidence
+(a field read is always a storage source, a NAME only when registered as
+one). `THIRPrintArg` gained a `deref` flag; the subscript lowers
+prechecked, since the predicate validated the tuple shape.
+
+**try hoists inside a branch or loop** (2 flips). `_gen_try` emits the
+predecl AT THE TRY, so a nested try declares into the enclosing C++ block
+on both paths -- the `in_branch or loop_depth > 0` guard mirrored
+nothing.
+
+**LESSON -- three fence pins whose reason had gone stale.** The guard was
+written for a real hazard (THIR scopes `declared` per block, the AST's
+declared_vars is body-global, so a later same-named decl outside the loop
+could classify differently), and three pins encoded it. Probing the named
+hazard directly rather than trusting the prose: the value flavor agrees
+byte-for-byte, the non-value flavor still rejects at the OPTIONAL_STORAGE
+flavor gate -- which was doing the actual holding all along -- and a read
+after the branch with no binding rejects (`name.global_read`) rather than
+mis-rendering. All three pins were CONVERTED to pin the new truth plus
+the hazard itself, not deleted. A fence's stated reason is a hypothesis
+about the other path; test it against that path before believing it.
+
+Remaining at these sites: `iterators/iter_builtin` (method-call gate),
+and two try cases needing the OPTIONAL_STORAGE per-flavor rungs
+(container and reassigned-record hoists) that the if cascade already
+carries -- a separate cell.
+### thir-longtail-grind wave 3: tuple literals + the kind-blind lift (2026-08-01)
+
+Dial 2918/3694 -> 2924/3694, markers 770. Two sites, 6 flips.
+
+**Slot-less value-tuple literals** (`expr.value_tuple_self_typed`, 3
+flips). Tuple literals had no generic `_lower_expr` arm AT ALL -- every
+sink lowered them against its own slot, so a literal reaching
+`_lower_expr` with no slot threaded from the position (`t = astuple(p)`,
+an unpack source) fell the whole body back. The AST spells the tuple's
+own type there, so the slot IS the expression type: take it from sema.
+Only a VALUE tuple qualifies; a pointer-repr one has a borrow-vs-storage
+form the position decides, and keeps deferring.
+
+**Two borrow-tuple element sources** (2 flips). An element read off
+another BORROW-form tuple already yields the element POINTER
+(`std::get<i>(p)` is `T*`), so it passes through with no `&(...)` --
+taking its address would build a `T**`. It was a named reject calling
+itself "the pass-through face, not sliced"; the read lowers prechecked
+from the lift decision, since the generic tuple-subscript arm has no row
+for it standalone. Separately, `rvalue_ok` was granted only to the
+call-arg sink, but a container-literal element is equally a flush point
+for the `tuple_value_to_borrow` source tuple, so a ctor rvalue at a
+pointer-repr Optional element slot renders there the same way.
+
+**The storage lift is kind-blind** (1 flip). A storage-form tuple NAME at
+a NATIVE/TEMPLATE callee's tuple slot takes the same `tuple_to_pointer`
+lift as at a plain callee (`str(t)`). The row was gated to plain callees
+for no reason the AST shares -- the lift wraps the read rather than
+hoisting a temp, so it is position-independent.
+
+**LESSON -- a fence pin that argued for its own conversion.** The astuple
+pin's reason was "a bare TUPLE LITERAL has no generic `_lower_expr` arm
+... that peel is its own rung" -- it named the missing arm rather than a
+render split, so building the arm converted it. Its predecessor also
+insisted on asserting the FALLBACK rather than byte-identity, because a
+fallback body emits byte-identical AST by construction; the replacement
+keeps that discipline by asserting the FACE plus the exact render string.
+
+**LESSON -- two reviewers, one Critical, on a gate keyed off the wrong
+fact.** The element pass-through decided "already a pointer" from the
+subscripted object's static TYPE alone. A STORAGE-form tuple local (an
+`auto&&` alias) has the same type but holds its elements BY VALUE, so
+`std::get<i>` there is a `T&` and the address-of is required -- the bare
+pass-through would have emitted a `T&` into a `T*` slot. The file already
+had the right helper (`_subscript_yields_borrow_ptr`, which gates on
+`storage_tuple_locals`); the row now calls it instead of re-deriving.
+Same defect class as the wave-1 borrow-tuple NAME split: a type-level
+test standing in for a BINDING-form fact. No corpus case witnessed it --
+the codegen and safety reviewers each found it independently by probe.
+
+Remaining at the native-arg site: five unrelated 1:1 arg shapes (a None
+literal at a template slot, a vararg pack at a native slot, an open-T
+field at a Sized slot, a str name at a template slot, a storage tuple
+LITERAL at a Hashable slot), each its own row.
+
+### thir-longtail-grind wave 4: the native-arg 1:1 tail (2026-08-01)
+
+Dial 2924/3694 -> 2928/3694, markers 766. All six sole-blocker cases at
+`call.native_arg.other` rejected at ONE gate but carried six unrelated arg
+shapes, so this wave is five independent 1:1 rows rather than a site
+grind. All five landed and the site is EMPTY.
+
+**`call.template_arg_dropped`.** A `@cpp_template` body that never
+substitutes `{i}` DISCARDS that arg's render, so no shape check on it can
+matter -- `filter(None, xs)` expands to
+`::tpy::builtin_filter_truthy<T>({1})`, where the None predicate selects
+the callee and then vanishes. The arg index is threaded to the gate for
+this.
+
+**Pending view-var str slots.** A generic callee's slot can still carry
+the parser's unresolved view var: `repr(b)` where `b: str =
+make_default()` arrives with a `PendingStrType` slot that the nominal
+check missed even though arg and slot both resolve to `str`.
+
+**Vararg packs at native callees.** `gen_call_arg` renders the pack the
+same way whatever the callee kind and the temp hoists at the same flush
+point, so the native/template exclusion mirrored nothing.
+
+**`arg.native_protocol_open_field`.** `len(self.value)` inside a generic
+body has the field typed as the open `T` and the slot still the
+unsubstituted protocol, so the exact-match rows could not fire.
+
+**`arg.native_protocol_tuple_literal`.** A tuple LITERAL at the same kind
+of slot (`hash((1, Box(5)))`): the monomorphized slot threads no target,
+so the literal spells its own sema type with every element captured BY
+VALUE. The element literal types have to be RESOLVED before spelling --
+the first attempt emitted `std::tuple<1, Box>`, caught by the byte-diff.
+
+**LESSON -- a boundary pin that cannot fail is not a boundary pin.** The
+test reviewer bug-injected all four and found THREE whose boundary was
+undetectable: two put the boundary case in the same program and asserted
+on emitted C++, but the neighbouring row's render is textually IDENTICAL,
+so deleting the restriction changed nothing observable; the third had no
+boundary case at all. Fixed by pinning face COUNTS (2-and-1 rather than
+`>= 1`) so a swallowed neighbour shows up as 3-and-0, giving the peel its
+own face so it is countable at all, and adding the missing
+`call.vararg_view_elem` reject. Both injections are now verified caught.
+Where a widened row's render coincides with the row next door, only a
+count discriminates -- a string assertion is decoration.
+
+### thir-longtail-grind wave 5: the container-method receiver collapse (2026-08-01)
+
+Dial 2929/3694 -> 2930/3694, markers 764. The bundled version of the cell
+wave 3 measured, reverted and PRICED in TODO.md -- taken now because the
+two arg rows it needed came with it, exactly as that entry prescribed.
+
+**`_container_method_recv` collapses six element predicates into one
+element-blind test.** A method receiver renders bare whatever the element
+is (`xs.push_back(...)`), so the element reaches only the arg and result
+gates -- the argument `_container_method_elem`'s own docstring already
+made for its own families, generalized. `_set_method_recv` stays a
+separate disjunct: it answers a method-surface question, not an element
+one.
+
+**`arg.own_tuple_call_rvalue`.** An owning CALL whose result IS the
+`Own[tuple]` element slot binds the by-value slot with no lift, so the
+insert renders bare whatever the element family -- the tuple twin of
+`_own_record_rvalue_arg`'s call row. The borrow-tuple rows beside it each
+render a conversion, which is why they stay element-gated.
+
+**`arg.ptr_addr_of_elem` + the `Own[Ptr[T]]` coerce admission.** TPy takes
+the address at a Ptr slot, so a record-element lvalue lifts
+`&(::tpy::__getitem__(items, 0))`. The gate row alone was not enough: the
+coerce disposition rejected the whole `Own[...]` family on the grounds
+that "the arg cascade owns the render decision" -- true for a reference
+payload, but `Own[Ptr[T]]` is a NO-OP spelling (Own over a value type),
+so there is no cascade and the address-taking render stands.
+
+**REVIEW ROUND**: both new arg rows shipped with corpus coverage only --
+no unit pins at all, which the test reviewer caught. Added, with the
+counts as the boundary (`ps.append(p0)` feeds an ALREADY-pointer source to
+the same slot and must ride the pass-through row, whose render differs
+from the lift only in the absence of `&`). Both reverts verified caught.
+The converted fence pin had also dropped its routing assertion, leaving
+only byte-identity -- which cannot notice the widening being reverted,
+since fallback and routing render this body identically. Restored.
+
+**LESSON -- price a cell, then take it when its price is paid.** Standalone
+the collapse was byte-identical corpus-wide and worth ZERO flips, so wave
+3 reverted it and wrote down the measurement plus what it was waiting for.
+Two rows later that condition held and the same change was worth two
+cases. The recorded measurement is what made the second attempt cheap --
+no re-deriving, and the drift-risk fence pin it trips was converted with
+the evidence already in hand: the receiver is element-blind, and the
+value-opt-VIEW family is actually protected by its ARG and read-position
+gates, which is where its render genuinely differs.
+
+### thir-longtail-grind wave 6: both remaining sites measured (2026-08-01)
+
+Dial 2930/3694 -> 2932/3694, markers 762. Both multi-case sites re-probed
+at site level; the measurement is the durable output.
+
+**`body:expr.call` (12) is FULLY FRAGMENTED** -- 2+2+1x7 over nine raise
+sites. The pending-list pair landed (`iterators/gen_proto_param_*`, 2
+flips): a literal-seeded local (`xs = [1, 2]`) is still `PendingListType`
+at a protocol param slot, and the arg-temp arm rejected rather than risk
+a crash in `render_type`. Sema's resolution is final by lowering time --
+the lookup is keyed by `literal_id`, populated once before either path
+runs -- so asking for it gives the same type the AST reaches later. The
+residual guard stays for a genuinely unresolvable binding.
+
+**Expression callees** got their construct (`calls/expr_callee`, 0 flips
+-- it chain-walks to a container literal). `make_adder(10)(5)` /
+`fns[i](x)` have a non-Name func and every call arm reads `func_name`, so
+the whole construct fell back. New `callee_expr` field on `THIRCall`
+renders the callee parenthesized ahead of the args.
+
+**`body:stmt.var_decl:decl.slot_type` (16) is ONE site but mostly PARKED
+families.** Seven are the Rc/Box/Weak spelling forks and the mixed-own
+hybrid tuples. The four-case remainder is NOT a slot-ladder row at all:
+every one is a REFERENCE-type slot off an LVALUE init (subscript / field),
+i.e. a borrow-alias decl the classified-local cascade ABOVE the ladder
+owns. Widening slot_ok would be the wrong site.
+
+**LESSON -- "byte-identity rides the corpus case" is a claim to check.**
+The expression-callee pins said exactly that, and it was FALSE: the
+corpus case still carries `no_thir.txt` and falls back on an unrelated
+blocker, so nothing byte-diffed the new render against the oracle. A cell
+that flips ZERO cases has no corpus net by construction -- its unit pins
+are the only net, and a byte-identity pin is not optional there. The same
+review also refuted the "no negative boundary exists" claim: three of the
+arm's four guards are genuinely unreachable (sema rejects them first),
+but `**kwargs` is reachable and was untested. Both fixed.
+
+### thir-longtail-grind wave 7: instantiation-arg movability (2026-08-01)
+
+Dial 2932/3694 -> 2933/3694, markers 761. One row, and it is a BUG rather
+than a widening.
+
+**The consuming instantiation wrap keys on MOVABILITY, not last use.**
+`list(dirnames)` where `dirnames` comes from `for _, dirnames, _ in
+os.walk(..)` was rejected: the arm asked `all_last_uses` alone, and an
+unpack target IS a last use, so it went looking for the consuming
+`::tpy::own_iter(std::move(x))` wrap and rejected when none applied. But
+such a target is never MOVABLE -- it aliases a slot the generator frame
+overwrites each iteration -- and the AST renders it bare. Gated on
+`_is_move_source`, which asks both facts, exactly as the AST's
+`_is_last_use_movable` does.
+
+Second instance of this defect class on one branch (the first was the
+error-return `movable_locals` seed). **A last-use fact used without the
+movability fact beside it is now a known THIR failure mode** -- worth
+grepping for at the next audit.
+
+**LESSON -- byte-identity makes a routing pin mandatory, and I got this
+wrong three times.** The review caught the pin for this fix asserting
+only the two renders plus byte-identity. Reverting the fix makes the body
+fall back SILENTLY, and the AST emits the identical text -- so every
+assertion still passed. Worse, the program I chose never routed the bare
+arm at all: its `list(items)` render came from the fallback the whole
+time, so the arm under test was unexercised. Fixed by rebuilding the pin
+on a shape that genuinely routes (a borrowed param rather than an unpack
+target), asserting `_fn(...) is not None` for both bodies, and giving the
+bare arm its own face so the two arms are countable. Revert-injection now
+verified caught. THE GENERAL RULE: in a byte-identical migration, a pin
+without a routing or face assertion proves nothing about routing, no
+matter how specific its render strings look.
+
+### thir-longtail-grind: readiness retrospective (2026-08-01)
+
+**The flip count is 28, not 29.** 28 `no_thir.txt` markers deleted
+(789 -> 761); the dial moved 2904 -> 2933 while the denominator moved
+3693 -> 3694, and the branch added zero test cases. One dial point is
+unattributed -- report the marker delta, which is what the branch
+actually did.
+
+**The pin-discipline lesson is 0-for-5 as documentation, and this
+branch is where that became undeniable.** The three-unit rule has been
+in CLAUDE.md since 2026-07-28 and this ledger teaches it four separate
+times. Five pins on this branch alone could not fail. Three were caught
+by review; TWO more were found only by auditing the branch's own added
+tests at the readiness gate -- and one of those pinned this branch's own
+`movable_locals` bug fix, so the fix shipped with a vacuous test. Writing
+the rule down a fifth time is not a remedy; the enforcement proposals are
+in TODO.md. The working detector on this branch was revert-injection, and
+the record shows the REVIEWER running it every time and the author never
+running it before presenting -- that asymmetry is the actual finding.
+
+**Every collapse-shaped cell here wanted `dualgen.py` and the ledger
+cannot show it got one.** The del-gate three-into-one, the
+`_container_method_recv` six-into-one, `_record_has_delitem`'s dropped
+type-args guard, the kind-blind storage lift, the removed vararg
+native/template exclusion -- each admits a whole family on one to five
+witnesses, which is the exact shape CLAUDE.md names dualgen as the ONLY
+detector for. Every defect caught in that class here was found by a
+reviewer's ad-hoc probe instead. Record the probe per cell.

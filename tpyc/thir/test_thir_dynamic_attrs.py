@@ -195,7 +195,7 @@ class TestAnyValueDictPositions:
         thir, faces = _lower_ctx_witnessed(_DYN_BAG)
         fn = _fn(thir, "__delattr__")
         assert fn is not None
-        assert faces.get("delitem.any_value", 0) == 1
+        assert faces.get("delitem.container", 0) == 1
         stmt = fn.body[0]
         assert isinstance(stmt, THIRExprStmt)
         call = stmt.expr

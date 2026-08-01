@@ -5,7 +5,7 @@ finally bodies -- [[maybe_unused]] capture, suppressed exits), the throw
 tier (C++ catch arms, bare except, as-bindings, else labels off the
 module-cumulative counter, except+finally wrapping), raise statements
 (ctor/no-arg/bare forms), and the gate rejections (expression raise,
-non-value hoists, branch/loop-scoped fresh hoists). The return tier's
+non-value hoists). The return tier's
 shape pins live in test_thir_error_return.py."""
 
 from __future__ import annotations
@@ -632,7 +632,9 @@ class TestTryGateRejections:
         assert not self._rejected(src, "f")
         _assert_byte_identical(src)
 
-    def test_fresh_hoist_in_branch_rejected(self):
+    def test_fresh_hoist_in_branch_routes(self):
+        # `_gen_try` emits the predecl AT THE TRY, so a try inside a branch
+        # declares into the enclosing block on both paths.
         src = (
             "def f(n: int) -> None:\n"
             "    if n > 0:\n"
@@ -643,9 +645,10 @@ class TestTryGateRejections:
             "            print(0)\n"
             "f(1)\n"
         )
-        assert self._rejected(src, "f")
+        assert not self._rejected(src, "f")
+        _assert_byte_identical(src)
 
-    def test_fresh_hoist_in_loop_rejected(self):
+    def test_fresh_hoist_in_loop_routes(self):
         src = (
             "def f(k: int) -> None:\n"
             "    for i in range(k):\n"
@@ -656,7 +659,56 @@ class TestTryGateRejections:
             "            print(0)\n"
             "f(2)\n"
         )
-        assert self._rejected(src, "f")
+        assert not self._rejected(src, "f")
+        _assert_byte_identical(src)
+
+    def test_same_name_decl_after_the_branch_agrees(self):
+        # The if-branch twin of the loop case below: both were held by the
+        # one removed condition, and both branch and loop bodies lower over
+        # a `declared` copy, so both need the pin.
+        src = (
+            "from tpy import Int32\n"
+            "def get(n: Int32) -> Int32:\n"
+            "    return n\n"
+            "def use(flag: bool) -> None:\n"
+            "    if flag:\n"
+            "        try:\n"
+            "            items = get(1)\n"
+            "        except Exception:\n"
+            "            return\n"
+            "        print(items)\n"
+            "    items = get(9)\n"
+            "    print(items)\n"
+            "use(True)\n"
+        )
+        assert not self._rejected(src, "use")
+        _assert_byte_identical(src)
+
+    def test_same_name_decl_after_the_loop_agrees(self):
+        # THIR scopes `declared` per block while the AST's declared_vars is
+        # body-global, so a later same-named decl OUTSIDE the loop is where
+        # the two could classify differently. They do not; and where the
+        # scopes genuinely disagree the gap is fail-safe -- a read with no
+        # binding rejects (`name.global_read`) rather than mis-rendering.
+        src = (
+            "from tpy import Int32\n"
+            "def get(n: Int32) -> Int32:\n"
+            "    return n\n"
+            "def use() -> None:\n"
+            "    i = 0\n"
+            "    while i < 2:\n"
+            "        try:\n"
+            "            items = get(i)\n"
+            "        except Exception:\n"
+            "            break\n"
+            "        print(items)\n"
+            "        i += 1\n"
+            "    items = get(9)\n"
+            "    print(items)\n"
+            "use()\n"
+        )
+        assert not self._rejected(src, "use")
+        _assert_byte_identical(src)
 
     def test_native_global_hoist_collision_rejected(self):
         # Sema treats the unadorned assign as a local first-declare and

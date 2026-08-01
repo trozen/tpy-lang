@@ -374,6 +374,14 @@ def _coerce_disposition(e: TpyCoerce, *,
     if isinstance(e.expected_type, OwnType):
         if own_slot_arg and name == "strview_to_str":
             return "materialize"
+        if (name in _ADDR_PTR_COERCIONS
+                and isinstance(unwrap_readonly(e.expected_type.wrapped),
+                               PtrType)):
+            # `Own[Ptr[T]]` is a no-op spelling -- Own over a VALUE type adds
+            # nothing, so there is no auto-move cascade to own the decision
+            # and the address-taking render stands (`ps.append(items[0])` ->
+            # `push_back(&::tpy::__getitem__(items, 0))`).
+            return "template"
         return None
     if name in _PTR_IDENTITY_COERCIONS:
         return "identity"
@@ -3657,6 +3665,17 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
         lambda a: _eligible_scalar(a) or _owned_str_slot(a, analyzer),
         span_ok=True)
 
+def _container_del_recv(t: 'TpyType | None', analyzer) -> bool:
+    """A container receiver for `del c[k]`, ELEMENT-BLIND. The del emit
+    (`::tpy::__delitem__(c, k)`) never constructs, converts or reads the
+    element slot, so the key alone decides byte-parity -- the same reasoning
+    `_any_value_dict` already applies to a `dict[K, Any]` value, generalized
+    to every element family. Key shapes still ride the shared dict slice, and
+    `Own[container]` still rejects (move-in ABI)."""
+    return _container_elem_family(t, analyzer, lambda _a: True,
+                                  span_elem_ok=lambda _a: True)
+
+
 def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
     """The ADMITTED dict/set key slice, written once for the dict-literal
     gate, the container elem-family dispatch, and the subscript reject
@@ -4289,11 +4308,14 @@ def _record_setitem_value(obj_type: 'TpyType | None', analyzer) -> 'TpyType | No
 
 
 def _record_has_delitem(obj_type: 'TpyType | None', analyzer) -> bool:
-    """A CONCRETE user record defining `__delitem__` (so `del recv[key]` spells
-    `::tpy::__delitem__(recv, key)`). Same concrete / non-@native restriction as
-    `_record_getitem_key`."""
+    """A user record defining `__delitem__` (so `del recv[key]` spells
+    `::tpy::__delitem__(recv, key)`). Non-@native only, and monomorphized
+    generic records included -- the del render spells the receiver name bare
+    and never the record type, so an instantiation reaches no part of the
+    emit. Same slice as `_record_getitem_key`, which likewise has no
+    type-args guard."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record and not t.type_args):
+    if not (isinstance(t, NominalType) and t.is_user_record):
         return False
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
@@ -6084,6 +6106,33 @@ def _native_iterable_genexpr_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
         return False
     pb = _protocol_binding(ptype)
     return pb is not None and pb.name == "Iterable"
+
+def _template_positional_indices(tmpl: str) -> 'set[int]':
+    """The positional placeholder indices a `@cpp_template` body actually
+    substitutes. Walks the same brace grammar `_positional_only_template`
+    does, so a `{{0}}` literal-brace escape is NOT counted as a reference --
+    which a substring test would get wrong."""
+    seen: set[int] = set()
+    i, n = 0, len(tmpl)
+    while i < n:
+        c = tmpl[i]
+        if c == "{":
+            if i + 1 < n and tmpl[i + 1] == "{":
+                i += 2
+                continue
+            close = tmpl.find("}", i + 1)
+            if close == -1:
+                break
+            field = tmpl[i + 1:close]
+            if field.isdigit():
+                seen.add(int(field))
+            i = close + 1
+        elif c == "}" and i + 1 < n and tmpl[i + 1] == "}":
+            i += 2
+        else:
+            i += 1
+    return seen
+
 
 def _positional_only_template(tmpl: str, n_args: int) -> bool:
     """Whether a `@cpp_template` body contains only in-range positional

@@ -413,6 +413,22 @@ class THIROptViewArg(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIROwnOptRebuild(THIRExpr):
+    """A pointer-repr `Optional[record]` INDIRECT name passed into an
+    `Own[Optional[record]]` slot -- `gen_expr_deref`'s null-safe Own
+    conversion: `n ? std::optional<Inner>(std::move(*n)) : std::nullopt`.
+
+    The binding is a `T*`, the slot is the owning `std::optional<T>`, so the
+    pointee has to be moved into a fresh optional rather than dereferenced
+    unconditionally (a null `n` would UB). `inner_cpp` is the pointee's
+    spelling; `result_type` is the Optional slot. The shape sibling of
+    `THIROptViewArg` -- same name-keyed ternary rebuild at an arg boundary,
+    different payload conversion. VALUE form."""
+    name: str = ""
+    inner_cpp: str = ""
+
+
+@dataclass(frozen=True)
 class THIRMembership(THIRExpr):
     """A `needle in c` / `needle not in c` test over a dict/set container name
     whose `__contains__` is a plain @native member -- `(c.contains(needle))`,
@@ -520,7 +536,12 @@ class THIRIfExpr(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCall(THIRExpr):
-    """Call to a plain free function. `callee` is the source name; the
+    """Call to a plain free function, or -- when `callee_expr` is set -- to a
+    computed callable (`make_adder(10)(5)`, `fns[i](x)`): the callee renders
+    parenthesized ahead of the arg list (`(make_adder(10))(5)`), which is
+    `_gen_call`'s expression-callee arm. `callee` is empty there.
+
+    Otherwise `callee` is the source name; the
     emitter renders `escape_cpp_name(callee)(args)` for the same-module
     case. Eligibility guarantees no generic/overload name mangling.
 
@@ -560,6 +581,7 @@ class THIRCall(THIRExpr):
     native_name: str | None = None
     cpp_template: str | None = None
     callee_cpp: str | None = None
+    callee_expr: 'THIRExpr | None' = None
     template_args_cpp: tuple[str, ...] | None = None
 
 
@@ -2796,10 +2818,15 @@ class THIRPrintArg:
     `print_form` is named distinctly from `THIRExpr.form` (the unrelated
     borrow/storage axis) to keep the two from being conflated. `opt_inner_cpp`
     carries the Optional inner's C++ spelling for the templated
-    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` wrappers (None for every other form)."""
+    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` wrappers (None for every other form).
+    `deref` streams the referent of a pointer-shaped read (`(*std::get<1>(t))`
+    -- a borrow-tuple record element): print is a VALUE position, so the
+    pointer the element read hands back has to be dereferenced here rather
+    than by a member access."""
     expr: THIRExpr
     print_form: PrintForm
     opt_inner_cpp: str | None = None
+    deref: bool = False
 
 
 @dataclass(frozen=True)

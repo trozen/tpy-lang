@@ -1010,11 +1010,10 @@ class TestMarkerCallMacroExpansion:
         cpp = _cpp(self.SRC)
         assert '::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}})' in cpp
 
-    def test_astuple_expansion_still_defers(self):
-        # `astuple`'s expansion is a bare TUPLE LITERAL, which has no generic
-        # `_lower_expr` arm -- sinks lower those against their slot, and the
-        # decl sink keys on `stmt.init` being the literal rather than a macro
-        # call wrapping one. That peel is its own rung.
+    def test_astuple_expansion_routes(self):
+        # `astuple`'s expansion is a bare TUPLE LITERAL reaching `_lower_expr`
+        # with no slot threaded from the position, so it spells its own sema
+        # type (`std::tuple<int32_t, int32_t>{p.x, p.y}`) -- the AST's render.
         src = ("import dataclasses\n"
                "from tpy import Int32\n"
                "@dataclasses.dataclass\n"
@@ -1024,9 +1023,34 @@ class TestMarkerCallMacroExpansion:
                "    t = dataclasses.astuple(p)\n"
                "    print(t)\n"
                "main()\n")
-        # Assert the FALLBACK, not just byte-identity: a fallback body emits
-        # byte-identical AST by construction, so identity alone would pass even
-        # if this shape started routing wrongly. This row ships with no corpus
-        # case behind it, so its pins are the only net under it.
-        assert _fn(_lower_ctx(src), "main") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces["expr.value_tuple_self_typed"] >= 1
+        assert ("std::tuple<int32_t, int32_t>{p.x, p.y}") in _cpp(src)
+        _assert_byte_identical(src)
+
+    def test_nonvalue_element_expansion_still_defers(self):
+        # The boundary: only a VALUE tuple can be spelled from its own type.
+        # A reference-typed field makes the expansion a pointer-repr tuple,
+        # whose borrow-vs-storage form the position decides -- so the
+        # self-typed arm must not claim it.
+        src = ("import dataclasses\n"
+               "from tpy import Int32\n"
+               "class Rec:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "@dataclasses.dataclass\n"
+               "class Holder:\n    r: Rec\n    k: Int32\n"
+               "def main() -> None:\n"
+               "    h = Holder(Rec(5), 6)\n"
+               "    u = dataclasses.astuple(h)\n"
+               "    print(u[1])\n"
+               "main()\n")
+        # Assert the FALLBACK, not just byte-identity: a fallback body
+        # emits byte-identical AST by construction, so identity alone would
+        # pass even if this shape started routing through some other arm.
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is None
+        assert faces.get("expr.value_tuple_self_typed", 0) == 0
         _assert_byte_identical(src)

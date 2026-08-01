@@ -636,3 +636,803 @@ class TestViewInstantiation:
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("call.view_instantiation", 0) == 0
         _assert_byte_identical(src)
+
+
+_TUPLE_PRELUDE = _PRELUDE + (
+    "class T:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n"
+    "        self.x = x\n"
+    "def consume(p: tuple[T | None, T | None]) -> None:\n"
+    "    a, b = p\n"
+    "    if a is not None:\n"
+    "        print(a.x)\n"
+)
+
+
+class TestBorrowTupleNameArgRows:
+    """The two NAME rows at a borrow-tuple param slot: a STORAGE-form tuple
+    local takes the `tuple_to_pointer` lift, a BORROW-form one binds bare.
+    Both key on positive evidence, so the split cannot drift into passing a
+    storage source bare (a wrong-value render)."""
+
+    STORAGE_SRC = _TUPLE_PRELUDE + (
+        "def main() -> None:\n"
+        "    t1 = T(1)\n"
+        "    items: list[tuple[T | None, T | None]] = [(t1, None)]\n"
+        "    for it in items:\n"
+        "        consume(it)\n"
+        "    snap = items[0]\n"
+        "    consume(snap)\n"
+        "main()\n"
+    )
+
+    BARE_SRC = _TUPLE_PRELUDE + (
+        "def main() -> None:\n"
+        "    t1 = T(1)\n"
+        "    items: list[tuple[T | None, T | None]] = [(t1, None)]\n"
+        "    last = items[0]\n"
+        "    for last in items:\n"
+        "        pass\n"
+        "    consume(last)\n"
+        "main()\n"
+    )
+
+    def test_storage_name_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.STORAGE_SRC)
+        assert _fn(thir, "main") is not None
+        assert faces["arg.btuple_storage_name"] >= 2
+
+    def test_storage_name_renders_the_lift(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.STORAGE_SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        wrap = "::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>"
+        assert f"consume({wrap}(it))" in cpp
+        assert f"consume({wrap}(snap))" in cpp
+
+    def test_storage_name_byte_identical(self):
+        _assert_byte_identical(self.STORAGE_SRC)
+
+    def test_reassigned_borrow_local_binds_bare(self):
+        # A REASSIGNED pointer-repr tuple local is borrow form for all its
+        # bindings (the AST's `borrow_form_tuple_locals`), so it must NOT
+        # pick up the lift the storage rows take.
+        thir, faces = _lower_ctx_witnessed(self.BARE_SRC)
+        assert _fn(thir, "main") is not None
+        assert faces.get("arg.btuple_storage_name", 0) == 0
+        assert faces["arg.btuple_name"] >= 1
+
+    def test_reassigned_borrow_local_byte_identical(self):
+        _assert_byte_identical(self.BARE_SRC)
+
+    def test_const_iterated_source_takes_the_const_lift(self):
+        # A loop var over a `readonly[list[..]]` is a CONST storage source:
+        # its element pointers come out `const T*`, and the readonly peel in
+        # the for-each registration is what makes it storage at all.
+        src = _TUPLE_PRELUDE + (
+            "from tpy import readonly\n"
+            "def show(rows: readonly[list[tuple[T | None, T | None]]]) -> None:\n"
+            "    for cit in rows:\n"
+            "        consume(cit)\n"
+            "def main() -> None:\n"
+            "    show([])\n"
+            "main()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "show") is not None
+        assert faces["arg.btuple_storage_name"] >= 1
+        _assert_byte_identical(src)
+
+    def test_mixed_and_owned_tuple_slots_still_reject(self):
+        # The boundary: an Own-element param slot is either the MIXED render
+        # (kept verbatim) or fully-owned STORAGE form -- neither takes the
+        # plain storage->borrow lift, and `_f1_tuple` is what keeps them out.
+        src = _PRELUDE + (
+            "from tpy import Own\n"
+            "class R:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "class C:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def take_mixed(p: tuple[Own[R], C]) -> Int32:\n"
+            "    return 0\n"
+            "def take_owned(p: tuple[Own[R], Own[C]]) -> Int32:\n"
+            "    return 0\n"
+            "def feed(mixed: list[tuple[R, C]], owned: list[tuple[R, C]]) -> None:\n"
+            "    for m in mixed:\n"
+            "        print(take_mixed(m))\n"
+            "    for o in owned:\n"
+            "        print(take_owned(o))\n"
+            "def main() -> None:\n"
+            "    feed([], [])\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("arg.btuple_storage_name", 0) == 0
+        assert "call.arg_shape.tuple" in _fallback_reasons(src)
+        _assert_byte_identical(src)
+
+
+class TestRecursiveUnionBorrowCallArg:
+    """A wrapper-returning accessor at a `const Value&` slot binds inline --
+    the recursive-union twin of the record borrow-call row. `Box.get()` reads
+    as an RVALUE (`call_returns_cpp_ref` gives every union return value
+    semantics), which is exactly why this row asks the slot instead."""
+
+    SRC = (
+        "from tplib import Box\n"
+        "type Value = int | str | Neg\n"
+        "class Neg:\n"
+        "    inner: Box[Value]\n"
+        "def show(v: Value) -> str:\n"
+        "    return \"v\"\n"
+        "def unwrap(b: Box[Value]) -> str:\n"
+        "    return show(b.get())\n"
+        "def main() -> None:\n"
+        "    print(show(42))\n"
+        "main()\n"
+    )
+
+    def test_the_arg_gate_admits_and_witnesses(self):
+        # The body still rejects downstream (the method-call RESULT gate has
+        # no recursive-union row yet), so the honest claim is that the ARG
+        # row no longer blocks -- `expr.call` is gone from the reasons.
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces["arg.recursive_union_borrow_call"] >= 1
+        assert "expr.call" not in _fallback_reasons(self.SRC)
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_plain_union_slot_is_not_claimed(self):
+        # The boundary: a NON-recursive value union is a bare std::variant
+        # slot with its own lift rows -- `recursive_union_alternatives`
+        # returning None is what keeps it out.
+        src = _PRELUDE + (
+            "class A:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "def take(u: Int32 | A) -> Int32:\n"
+            "    return 0\n"
+            "def hand(src: list[Int32 | A]) -> Int32:\n"
+            "    return take(src[0])\n"
+            "def main() -> None:\n"
+            "    print(hand([]))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("arg.recursive_union_borrow_call", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestOwnOptionalRecordSlotArgs:
+    """`Own[Optional[record]]` forces the OWNING value form (`std::optional<
+    T>&&`) where a bare Optional would use pointer repr. The ctor-rvalue half
+    was already covered by `_own_optional_record_rvalue_arg` at the ctor gate
+    and is now wired into the free-call gate too; the NAME half is the new
+    row -- a pointer-repr Optional binding rebuilt null-safely before the
+    Own-slot move."""
+
+    _PRE = _PRELUDE + (
+        "from tpy import Own\n"
+        "class Rec:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "class Holder:\n"
+        "    def __init__(self, r: Own[Rec | None] = None) -> None:\n"
+        "        self.slot = r\n"
+        "    def value(self) -> Int32:\n"
+        "        if self.slot is None:\n"
+        "            return -1\n"
+        "        return self.slot.v\n"
+    )
+
+    SRC = _PRE + (
+        "def store(r: Own[Rec | None] = None) -> Own[Holder]:\n"
+        "    return Holder(r)\n"
+        "def main() -> None:\n"
+        "    print(store(Rec(4)).value())\n"
+        "    print(store().value())\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses_the_name_row(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "store") is not None
+        assert _fn(thir, "main") is not None
+        assert faces["own.opt_ptr_name_rebuild"] >= 1
+
+    def test_renders_the_null_safe_rebuild_under_the_move(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert ("Holder(std::move(r ? std::optional<Rec>(std::move(*r))"
+                " : std::nullopt))") in cpp
+        assert "store(Rec(4))" in cpp
+        assert "store(std::nullopt)" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_narrowed_occurrence_is_not_claimed(self):
+        # The boundary: a narrowed name reads as the extracted value, a
+        # different render -- only the ctor-rvalue row may fire here.
+        src = self._PRE + (
+            "def take(r: Own[Rec | None]) -> Int32:\n"
+            "    if r is not None:\n"
+            "        return Holder(r).value()\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(take(Rec(3)))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("own.opt_ptr_name_rebuild", 0) == 0
+        _assert_byte_identical(src)
+
+    def test_non_last_use_name_renders_without_the_outer_move(self):
+        # The outer `std::move` is the AST's `_maybe_move`, so it is gated on
+        # the same last-use fact: a name read again afterwards renders the
+        # bare rebuild.
+        src = self._PRE + (
+            "def twice(r: Own[Rec | None]) -> Int32:\n"
+            "    a = Holder(r)\n"
+            "    b = Holder(r)\n"
+            "    return a.value() + b.value()\n"
+            "def main() -> None:\n"
+            "    print(twice(Rec(6)))\n"
+            "main()\n"
+        )
+        _assert_byte_identical(src)
+
+    def test_plain_own_record_slot_keeps_its_own_row(self):
+        # The other boundary: a non-Optional `Own[record]` slot is the plain
+        # value form and rides `own.record_rvalue`, not these rows.
+        src = self._PRE + (
+            "def keep(r: Own[Rec]) -> Int32:\n"
+            "    return r.v\n"
+            "def main() -> None:\n"
+            "    print(keep(Rec(2)))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("own.opt_ptr_name_rebuild", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestBorrowTupleBareNamesFrameCarveOut:
+    """`_borrow_tuple_bare_names` excludes every resumable frame name. The
+    lane's owning tuple slots reach neither `storage_tuple_locals` nor a
+    borrow render the AST agrees on, so admitting one would pass a storage
+    source bare and drop its `tuple_to_pointer` lift."""
+
+    SRC = _TUPLE_PRELUDE + (
+        "from typing import Iterator\n"
+        "def gen(items: list[tuple[T | None, T | None]]) -> Iterator[Int32]:\n"
+        "    cur = items[0]\n"
+        "    for cur in items:\n"
+        "        yield 1\n"
+        "    consume(cur)\n"
+        "    yield 0\n"
+        "def main() -> None:\n"
+        "    t1 = T(1)\n"
+        "    items: list[tuple[T | None, T | None]] = [(t1, None)]\n"
+        "    for n in gen(items):\n"
+        "        print(n)\n"
+        "main()\n"
+    )
+
+    def test_the_frame_local_is_not_bare_bound(self):
+        # A reassigned pointer-repr tuple local in a RESUMABLE body: the
+        # bare-bind row must not claim it (the body rejects elsewhere today;
+        # what this pins is that the widening is not the reason it routes).
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("arg.btuple_name", 0) == 0
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestBorrowTupleStorageNameAtTemplateSlot:
+    """The lift is kind-blind: a native/template callee's tuple slot is the
+    same borrow form, and `tuple_to_pointer` wraps the read rather than
+    hoisting, so it applies in any position."""
+
+    SRC = _PRELUDE + (
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "    def __repr__(self) -> str:\n"
+        "        return \"P\"\n"
+        "def main() -> None:\n"
+        "    p = P(1)\n"
+        "    items: list[tuple[P, Int32]] = [(p, 1)]\n"
+        "    for it in items:\n"
+        "        print(str(it))\n"
+        "    t = (p, 2)\n"
+        "    print(str(t))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert faces["arg.btuple_storage_name"] >= 2
+
+    def test_storage_names_take_the_lift(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        # Both sources are storage form -- the loop var over a storage
+        # container and the VALUE-capture literal local -- so both lift.
+        wrap = "::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>"
+        assert f"::tpy::tuple_to_str({wrap}(it))" in cpp
+        assert f"::tpy::tuple_to_str({wrap}(t))" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_borrow_form_name_at_a_template_slot_binds_bare(self):
+        # The boundary for dropping `plain_kind`: a BORROW-form tuple name
+        # (a ptr-repr tuple PARAM) must keep the bare bind at a
+        # native/template slot too -- the widening must not hand the lift
+        # to the sibling bare-bind row's shapes.
+        src = _PRELUDE + (
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "    def __repr__(self) -> str:\n"
+            "        return \"P\"\n"
+            "def show(p: tuple[P, Int32]) -> None:\n"
+            "    print(str(p))\n"
+            "def main() -> None:\n"
+            "    show((P(1), 2))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("arg.btuple_storage_name", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestTemplateArgDropped:
+    """A `@cpp_template` body that never spells `{i}` DISCARDS that arg's
+    render, so no shape check on it can matter -- the expansion cannot
+    contain it."""
+
+    SRC = _PRELUDE + (
+        "def main() -> None:\n"
+        "    print(list(filter(None, [0, 1, 2, 0, 3])))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert faces["call.template_arg_dropped"] >= 1
+
+    def test_the_dropped_arg_is_absent_from_the_expansion(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "::tpy::builtin_filter_truthy<int32_t>(" in cpp
+        assert "nullptr" not in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_a_referenced_template_arg_keeps_its_gate(self):
+        # The boundary: `{0}` IS spelled, so the arg reaches the expansion
+        # and its shape still has to be checked.
+        src = _PRELUDE + (
+            "def main() -> None:\n"
+            "    print(repr(\"hi\"))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("call.template_arg_dropped", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestPendingStrSlotArg:
+    """A generic callee's param slot can still carry the parser's unresolved
+    view var (`PendingStrType`). It renders the same `std::string_view` once
+    resolved, so the str row asks the resolver rather than the nominal
+    spelling."""
+
+    SRC = (
+        "from tpy import Int32, make_default\n"
+        "class Rec:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "def main() -> None:\n"
+        "    b: str = make_default()\n"
+        "    print(repr(b))\n"
+        "    print(repr(\"hi\"))\n"
+        "    r: Rec = Rec(1)\n"
+        "    print(repr(r))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        # EXACTLY once: only `b`'s slot is the unresolved view var. A count
+        # is what makes the boundary detectable -- the record arg's bare
+        # render is identical whichever row admits it, so a string check
+        # cannot tell a correct route from the peel swallowing it.
+        assert faces["arg.pending_str_slot"] == 1
+
+    def test_renders_the_bare_arg(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "::tpy::repr_of(b)" in cpp
+        # The boundary rides the same program: a RECORD slot is not a str
+        # slot, so the peel must not sweep it into the str row -- it keeps
+        # its own bare-name render.
+        assert "::tpy::repr_of(r)" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestVarargPackAtNativeCallee:
+    """`gen_call_arg` renders a vararg pack (`std::array` temp +
+    `::tpy::varargs<T>(__tmp_N)`) the same way whatever the callee kind, and
+    the temp hoists at the same enclosing flush point -- so the row is
+    kind-blind."""
+
+    SRC = _PRELUDE + (
+        "from tpy.extern import native\n"
+        "@native(\"__user_sum_ints\")\n"
+        "def user_sum_ints(*xs: Int32) -> Int32: ...\n"
+        "@native(\"__user_join\")\n"
+        "def user_join(*parts: str) -> Int32: ...\n"
+        "def plain_sum(*xs: Int32) -> Int32:\n"
+        "    total = 0\n"
+        "    for x in xs:\n"
+        "        total += x\n"
+        "    return total\n"
+        "def main() -> None:\n"
+        "    print(user_sum_ints(1, 2, 3))\n"
+        "    print(user_join(\"a\", \"b\"))\n"
+        "    print(plain_sum(4, 5))\n"
+        "main()\n"
+    )
+
+    def test_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "main") is not None
+
+    def test_native_and_plain_callees_render_the_same_pack(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "::__user_sum_ints(::tpy::varargs<int32_t>(" in cpp
+        # The plain callee's inferred-readonly slot spells `const int32_t`;
+        # the @native one keeps its declared signature (mutated_params is
+        # None for a bodyless binding). Same pack shape, different element
+        # const-ness -- which is exactly the fact this case exists for.
+        assert "plain_sum(::tpy::varargs<const int32_t>(" in cpp
+        # A str-element pack at a native callee takes the same shape.
+        assert "::__user_join(::tpy::varargs<std::string>(" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_view_source_element_still_rejects(self):
+        # The boundary the widening must not have loosened: a str VIEW
+        # source element needs the AST's owned-copy wrap, so the pack still
+        # raises `call.vararg_view_elem` -- at a NATIVE callee too, now that
+        # the kind check is gone.
+        src = _PRELUDE + (
+            "from tpy.extern import native\n"
+            "@native(\"__user_join\")\n"
+            "def user_join(*parts: str) -> Int32: ...\n"
+            "def go(s: str) -> None:\n"
+            "    print(user_join(s, \"b\"))\n"
+            "def main() -> None:\n"
+            "    go(\"a\")\n"
+            "main()\n"
+        )
+        assert _fn(_lower_ctx(src), "go") is None
+        assert "call.vararg_view_elem" in _fallback_reasons(src)
+        _assert_byte_identical(src)
+
+
+class TestOpenTypeParamProtocolFieldArg:
+    """An OPEN type-param field at a still-unsubstituted protocol slot
+    (`len(self.value)` inside a generic body): the member read is
+    form-neutral for an open T, so the bare render is whatever the
+    monomorphization resolves it to."""
+
+    # `Sizeable.__len__` is a PROTOCOL stub with no body, so the only two
+    # `len(field)` args in the program are the two under test -- one open-T,
+    # one concrete. That keeps the face count unambiguous.
+    SRC = _PRELUDE + (
+        "from typing import Protocol\n"
+        "class Sizeable(Protocol):\n"
+        "    def __len__(self) -> Int32: ...\n"
+        "class Msg:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __len__(self) -> Int32:\n"
+        "        return self.n\n"
+        "class Container[T: Sizeable]:\n"
+        "    value: T\n"
+        "    def __init__(self, value: T) -> None:\n"
+        "        self.value = value\n"
+        "    def describe(self) -> None:\n"
+        "        print(len(self.value))\n"
+        "class Holder:\n"
+        "    items: list[Int32]\n"
+        "    def __init__(self, items: list[Int32]) -> None:\n"
+        "        self.items = items\n"
+        "    def show(self) -> None:\n"
+        "        print(len(self.items))\n"
+        "def main() -> None:\n"
+        "    Container(Msg(2)).describe()\n"
+        "    Holder([1, 2, 3]).show()\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        # The open-T field witnesses TWICE (the predicate runs at the gate
+        # and again at the lowering arm) and the CONCRETE field lands on the
+        # exact-match row instead. Pinning both COUNTS is what makes the
+        # boundary detectable: the two renders are textually identical, so
+        # dropping the `TypeParamRef` restriction would move `self.items`
+        # across without changing a single character of C++ -- it would show
+        # up here as 3-and-0 rather than 2-and-1.
+        assert faces["arg.native_protocol_open_field"] == 2
+        assert faces["arg.native_protocol_field"] == 1
+
+    def test_both_field_kinds_render_the_bare_member_read(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        both = hpp + cpp
+        assert "::tpy::__len__(this->value)" in both
+        assert "::tpy::__len__(this->items)" in both
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestNativeProtocolTupleLiteralArg:
+    """A tuple LITERAL at a native callee's protocol slot: the monomorphized
+    slot threads no target, so the literal spells its own sema type with
+    every element captured BY VALUE -- the storage form."""
+
+    SRC = _PRELUDE + (
+        "from tpy import UInt64\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "    def __hash__(self) -> UInt64:\n"
+        "        return UInt64(self.val)\n"
+        "def main() -> None:\n"
+        "    b = Box(5)\n"
+        "    t = (1, b)\n"
+        "    print(hash(t) == hash((1, Box(5))))\n"
+        "    print(hash((1, 2)) == hash((1, 2)))\n"
+        "    print(hash(7) == hash(7))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        # EXACTLY six: three tuple literals reach the slot (one
+        # record-element, two value-only), each witnessing at the gate and
+        # again at the lowering arm. The count is the boundary -- the two
+        # bare `hash(7)` scalars ride the shared resolved-scalar row, and
+        # nothing in the emitted C++ would change if this row swallowed
+        # them, so only a count catches that.
+        assert faces["arg.native_protocol_tuple_literal"] == 6
+
+    def test_spells_the_resolved_storage_type(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        # The element literal's type must be RESOLVED before spelling --
+        # the unresolved form would emit `std::tuple<1, Box>`.
+        assert "::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)})" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestOwnElemSlotInsertRows:
+    """Two insert rows at an `Own[...]` element slot: an owning CALL whose
+    result IS the slot binds bare, and a record-element lvalue at a `Ptr`
+    slot takes the `&(...)` lift."""
+
+    SRC = _PRELUDE + (
+        "from tpy import Own, Ptr\n"
+        "from tplib.rc import Rc\n"
+        "class Node:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def make_pair(i: Int32, v: Int32) -> Own[tuple[Int32, Rc[Node]]]:\n"
+        "    return (i, Rc.new(Node(v)))\n"
+        "def main() -> None:\n"
+        "    pairs: list[tuple[Int32, Rc[Node]]] = []\n"
+        "    pairs.append(make_pair(1, 10))\n"
+        "    print(len(pairs))\n"
+        "    items = [Node(1), Node(2)]\n"
+        "    ps: list[Ptr[Node]] = []\n"
+        "    ps.append(items[0])\n"
+        "    print(len(ps))\n"
+        "    p0 = ps[0]\n"
+        "    ps.append(p0)\n"
+        "    print(len(ps))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses_each_row_once(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        # EXACTLY once each. The counts are the boundary: `ps.append(p0)`
+        # feeds an ALREADY-pointer source to the same slot and must ride
+        # `_ptr_pass_through_arg`, whose render (`push_back(p0)`) differs
+        # from the lift only in the absence of `&` -- so a count catches an
+        # over-capture that a lax `>= 1` would not.
+        assert faces["arg.own_tuple_call_rvalue"] == 1
+        assert faces["arg.ptr_addr_of_elem"] == 1
+
+    def test_renders_the_bare_bind_and_the_lift(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "pairs.push_back(make_pair(1, 10));" in cpp
+        assert "ps.push_back(&::tpy::__getitem__(items, 0));" in cpp
+        # The already-pointer source keeps its bare pass-through.
+        assert "ps.push_back(p0);" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestPendingLocalAtProtocolSlot:
+    """A literal-seeded local (`xs = [1, 2]`) is still `PendingListType` when
+    it reaches a protocol param slot. Sema's resolution is final by lowering
+    time, so asking for it gives the same type the AST reaches at its own
+    later render point."""
+
+    SRC = (
+        "from typing import Iterator, Iterable\n"
+        "def echo(it: Iterable[int]) -> Iterator[int]:\n"
+        "    for x in it:\n"
+        "        yield x\n"
+        "def total(it: Iterable[int]) -> int:\n"
+        "    n = 0\n"
+        "    for x in it:\n"
+        "        n += x\n"
+        "    return n\n"
+        "def main() -> None:\n"
+        "    xs = [1, 2]\n"
+        "    print(total(xs))\n"
+        "    for v in echo(xs):\n"
+        "        print(v)\n"
+        "    ys: list[int] = [3, 4]\n"
+        "    print(total(ys))\n"
+        "main()\n"
+    )
+
+    def test_routes(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "main") is not None
+
+    def test_the_pending_and_annotated_locals_render_alike(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        # Both bind the protocol slot bare -- resolution changed the TYPE
+        # the temp machinery sees, never the arg render.
+        assert "total(xs)" in cpp
+        assert "total(ys)" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+
+class TestInstantiationArgMovability:
+    """The consuming `own_iter(std::move(x))` wrap at a container
+    instantiation keys on MOVABILITY, not on last use alone. A borrowed
+    param is a last use but never movable, and the AST renders it bare."""
+
+    SRC = (
+        "from tpy import Own\n"
+        "def pairs_of() -> Own[list[str]]:\n"
+        "    return [\"a\", \"b\"]\n"
+        "def borrowed_param(items: list[str]) -> int:\n"
+        "    copy = list(items)\n"
+        "    return len(copy)\n"
+        "def movable_local() -> int:\n"
+        "    xs = pairs_of()\n"
+        "    ys = list(xs)\n"
+        "    return len(ys)\n"
+        "def main() -> None:\n"
+        "    print(borrowed_param([\"a\"]))\n"
+        "    print(movable_local())\n"
+        "main()\n"
+    )
+
+    def test_both_bodies_route_through_their_own_arms(self):
+        # The load-bearing pin. THIR is byte-identical by design, so a
+        # silent whole-body fallback reproduces the same C++ -- neither the
+        # substring checks below nor byte-identity can tell "lowered
+        # through this arm" from "fell back". Only routing + the two faces
+        # can, which is why the bare arm was given a face of its own.
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "borrowed_param") is not None
+        assert _fn(thir, "movable_local") is not None
+        assert faces["call.inst_bare_name_arg"] == 1
+        assert faces["call.own_iter_arg"] == 1
+
+    def test_borrowed_param_renders_bare_and_movable_local_wraps(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        ctor = "::tpy::construct<std::vector<std::string>>"
+        assert f"{ctor}(items)" in cpp
+        assert f"{ctor}(::tpy::own_iter(std::move(xs)))" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)

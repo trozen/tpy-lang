@@ -133,6 +133,7 @@ from .nodes import (
     TupleSourceBind,
     THIRTruthy,
     THIROptViewArg,
+    THIROwnOptRebuild,
     THIRUnaryNot,
     THIRUnaryArith,
     THIRUnionArgLift,
@@ -692,6 +693,10 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
         return expand_cpp_template(e.cpp_template, None,
                                    *[_emit_expr(a, state) for a in e.args])
     args = ", ".join(_emit_expr(a, state) for a in e.args)
+    if e.callee_expr is not None:
+        # A computed callable: the callee renders parenthesized ahead of the
+        # arg list (`(make_adder(10))(5)`, `(::tpy::__getitem__(fns, 0))(100)`).
+        return f"({_emit_expr(e.callee_expr, state)})({args})"
     if e.native_name is not None:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
         # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
@@ -1589,6 +1594,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         fam = view_family_for_type(e.result_type.inner)
         conv = view_to_owned_conv(fam.owned_type)
         return f"{n} ? std::make_optional({conv}(*{n})) : std::nullopt"
+    if isinstance(e, THIROwnOptRebuild):
+        n = escape_cpp_name(e.name)
+        return (f"{n} ? std::optional<{e.inner_cpp}>(std::move(*{n}))"
+                f" : std::nullopt")
     if isinstance(e, THIRIfExpr):
         # _gen_if_expr's render; arm targets and the mixed-arm str wraps were
         # decided at lowering, so the emit is pure spelling.
@@ -3986,6 +3995,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
 
 def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
     inner = _emit_expr(a.expr, state)
+    if a.deref:
+        inner = f"(*{inner})"
     if a.print_form is PrintForm.BOOL:
         return f"::tpy::print_bool({inner})"
     if a.print_form is PrintForm.FLOAT:

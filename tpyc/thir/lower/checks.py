@@ -67,6 +67,7 @@ from ...typesys import (
     UnionType,
     container_to_str_template,
     contains_type_param,
+    recursive_union_alternatives,
     substitute_type_params_simple,
     del_suppresses_default_ctor,
     is_dyn_protocol,
@@ -2964,8 +2965,12 @@ def _native_iterable_iterator_call_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer) -> bool:
-    """A field-access arg at a native/template callee's monomorphized
-    protocol slot whose bare member read the slot binds directly
+    """A field-access arg at a native/template callee's protocol slot whose
+    bare member read the slot binds directly. TWO regimes, checked in this
+    order: an OPEN type-param field at a still-UNSUBSTITUTED protocol slot
+    (form-neutral, so the bare read is whatever monomorphization resolves
+    it to), and -- the rest of this docstring -- a SUBSTITUTED slot keyed on
+    an exact type match
     (`repr(self.label)` -> `::tpy::repr_of(this->label)`): a value-repr
     Optional field passed WHOLE (repr_of/std::format take the optional
     directly), an Optional[F1-record] field (storage-form
@@ -2983,6 +2988,15 @@ def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
          if at is not None else None)
     slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
             if ptype is not None else None)
+    if (slot is not None and is_protocol_type(slot)
+            and isinstance(t, TypeParamRef)):
+        # An OPEN type-param field at a still-unsubstituted protocol slot
+        # (`len(self.value)` inside a generic body -> `::tpy::__len__(
+        # this->value)`): the member read is form-neutral for an open T, so
+        # the bare render is whatever the monomorphization resolves it to --
+        # the same one the AST emits. A SUBSTITUTED slot rides the
+        # exact-match rows below.
+        return _witness("arg.native_protocol_open_field")
     if t is None or slot is None or t != slot:
         return False
     if isinstance(t, OptionalType):
@@ -3001,7 +3015,8 @@ def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                        locals_: dict[str, TpyType], analyzer) -> bool:
+                        locals_: dict[str, TpyType], analyzer, *,
+                        storage_tuple_locals: 'AbstractSet[str]') -> bool:
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
             # Callable args at a template callee (`builtin_filter<T>(
             # is_even, nums)`): a func-ref renders its bare C++ name and a
@@ -3032,8 +3047,16 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # protocol slot (`hash("hello")` -> `::tpy::__hash__("hello")`):
             # the native loop renders the value bare, position-independent.
             or _native_protocol_value_arg(a, ptype, analyzer)
+            or _native_protocol_tuple_literal_arg(
+                a, ptype, analyzer) is not None
             or _native_protocol_field_arg(a, ptype, analyzer)
             or _native_iterable_comp_arg(a, ptype, analyzer) is not None
+            # A storage-form tuple NAME at a native/template tuple slot takes
+            # the same `tuple_to_pointer` lift as at a plain callee
+            # (`str(t)` -> `::tpy::tuple_to_str(tuple_to_pointer<..>(t))`);
+            # the lift wraps the read, so it is position-independent.
+            or _borrow_tuple_storage_name_arg(
+                a, ptype, locals_, storage_tuple_locals, analyzer) is not None
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
 
 
@@ -3061,6 +3084,36 @@ def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
         ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.call_type)))
         return inner if ct == inner else None
     return None
+
+
+def _native_protocol_tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                       analyzer) -> 'TupleType | None':
+    """A tuple LITERAL at a native callee's protocol slot (`hash((1,
+    Box(5)))` -> `::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)})`).
+    The slot is a monomorphized protocol, so it threads no target -- the
+    literal spells its own sema type, and every element is captured BY
+    VALUE there (the storage form), whatever the element family.
+
+    Returns the storage TupleType, or None. `_lower_tuple_literal` owns the
+    per-element admission from there, so an element shape it cannot render
+    still falls the body back."""
+    proto = _protocol_arg_slot(ptype)
+    if proto is None or is_dyn_protocol(proto):
+        return None
+    if not isinstance(a, TpyTupleLiteral):
+        return None
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if not isinstance(atu, TupleType):
+        return None
+    # The literal's own type can still carry unresolved element literals
+    # (`tuple[IntLiteral(1), Box]`); the slot threads no target to resolve
+    # them, so the spelling has to (`std::tuple<int32_t, Box>`).
+    atu = resolve_int_literals(atu, analyzer.ctx.default_int_for_literal)
+    if not isinstance(atu, TupleType):
+        return None
+    return atu if _witness("arg.native_protocol_tuple_literal") else None
 
 
 def _native_protocol_value_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3262,6 +3315,8 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # gate checks only the slot/arity pairing.
             or _tuple_literal_arg(a, ptype)
             or _record_borrow_call_arg(a, ptype, analyzer)
+            or _own_optional_record_rvalue_arg(a, ptype, analyzer)
+            or _recursive_union_borrow_call_arg(a, ptype, analyzer)
             or _record_elem_subscript_arg(a, ptype, analyzer)
             or (temps_ok and _container_comp_arg(a, ptype))
             or _borrow_tuple_field_arg(a, ptype, analyzer) is not None
@@ -3296,6 +3351,35 @@ def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     return (atu == slot and not is_rvalue_source(analyzer, a))
 
 
+def _recursive_union_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                     analyzer) -> bool:
+    """The recursive-union twin of `_record_borrow_call_arg`: a borrow
+    -returning call at a recursive-union WRAPPER slot (`show(v.inner.get())`
+    -> `show(__v.inner.get())`). The wrapper is a struct bound `const Value&`
+    exactly like a record ref slot, so the accessor's borrow result binds
+    inline.
+
+    Where the record row excludes rvalue results, this one cannot:
+    `call_returns_cpp_ref` gives every union return value semantics, so a
+    wrapper accessor reads as an rvalue no matter how it is spelled, and an
+    rvalue binds the wrapper slot fine -- `to_cpp_param_type` renders a
+    recursive-union param `const Value&` unconditionally (it dispatches on
+    `needs_wrapper()` before any mutability test), so no mutable-ref slot of
+    this family exists to exclude. If one ever does, this row needs a real
+    mutability signal: `is_ref_param()` is NOT one here, since it answers
+    `uses_pointer_repr()` first and so is always False for a wrapper."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if slot is None or recursive_union_alternatives(slot) is None:
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return atu == slot
+
+
 def _container_comp_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A list/set/dict comprehension at a plain callee's concrete container
     ref slot (`accept_wide([x for x in items])`): the slot-typed
@@ -3314,24 +3398,61 @@ def _container_comp_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     return False
 
 
+def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
+                             storage_tuple_locals: 'AbstractSet[str]'
+                             ) -> 'TupleType | None':
+    """The pointer-repr TupleType of a BORROW-form tuple local, or None.
+    Borrow is the default form for a declared ptr-repr tuple name (params,
+    btuple.decl literals, branch hoists); the storage registrations
+    (`storage_tuple_locals`) carve out the owning locals."""
+    t = declared.get(name)
+    if not isinstance(t, TpyType):
+        return None
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
+            and name not in storage_tuple_locals):
+        return bare
+    return None
+
+
+def _borrow_tuple_slot(ptype: 'TpyType | None', analyzer) -> 'TupleType | None':
+    """The F3 borrow-tuple PARAM slot every row below shares -- a pointer-repr
+    tuple whose elements are all F1-renderable, so storage and borrow form
+    genuinely differ."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if not isinstance(slot, TupleType) or _f1_tuple(slot, analyzer) is None:
+        return None
+    return slot
+
+
+def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
+                      shape_ok, arg_type) -> 'TupleType | None':
+    """The shared body of the borrow-tuple ARG rows: an argument whose own
+    type EQUALS the F3 slot, so the only question left is which C++ form it
+    already reads as. `shape_ok` picks the arg shapes a row claims, `arg_type`
+    says where that shape's type comes from (the expression for an lvalue
+    read, the locals table for a name). Adding a row means one thin front,
+    not a fifth copy of this body."""
+    slot = _borrow_tuple_slot(ptype, analyzer)
+    if slot is None or not shape_ok(a):
+        return None
+    at = arg_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return slot if atu == slot else None
+
+
 def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
                             analyzer) -> 'TupleType | None':
     """A storage F3-tuple FIELD read at a borrow-tuple param slot
     (`bump(h.pair)` -> `::tpy::tuple_to_pointer<std::tuple<int32_t,
     Box*>>(h.pair)`): the bare member read feeds the storage->borrow
     wrap. Returns the slot's TupleType, or None."""
-    if not isinstance(a, TpyFieldAccess):
-        return None
-    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-            if ptype is not None else None)
-    if not isinstance(slot, TupleType):
-        return None
-    if _f1_tuple(slot, analyzer) is None:
-        return None
-    at = analyzer.get_expr_type(a)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    return slot if atu == slot else None
+    return _borrow_tuple_arg(
+        a, ptype, analyzer,
+        shape_ok=lambda x: isinstance(x, TpyFieldAccess),
+        arg_type=analyzer.get_expr_type)
 
 
 def _borrow_tuple_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -3342,16 +3463,32 @@ def _borrow_tuple_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
     const T*>>(::tpy::__getitem__(items, 0))`). The checked element read is
     the same storage lvalue the member read is, so it feeds the identical
     storage->borrow wrap. Slice subscripts are a different read entirely."""
-    if not isinstance(a, TpySubscript) or isinstance(a.index, TpySlice):
-        return None
-    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-            if ptype is not None else None)
-    if not isinstance(slot, TupleType) or _f1_tuple(slot, analyzer) is None:
-        return None
-    at = analyzer.get_expr_type(a)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    return slot if atu == slot else None
+    return _borrow_tuple_arg(
+        a, ptype, analyzer,
+        shape_ok=lambda x: (isinstance(x, TpySubscript)
+                            and not isinstance(x.index, TpySlice)),
+        arg_type=analyzer.get_expr_type)
+
+
+def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   locals_: dict[str, TpyType],
+                                   storage_tuple_locals: 'AbstractSet[str]',
+                                   analyzer) -> 'TupleType | None':
+    """The NAME sibling of the two lift rows above: a local ALREADY reading
+    storage form (a loop var over a storage container, a local bound from
+    another storage source) at a borrow-tuple param slot
+    (`consume(it)` -> `::tpy::tuple_to_pointer<std::tuple<const T*, const
+    T*>>(it)`).
+
+    Keyed on `storage_tuple_locals` membership -- the positive fact the AST's
+    `is_storage_form_source` reads for a Name. A borrow-form name is NOT in
+    that set and rides `_borrow_tuple_name_arg`'s bare-bind row instead, so
+    the two NAME rows partition on positive evidence, never on absence."""
+    return _borrow_tuple_arg(
+        a, ptype, analyzer,
+        shape_ok=lambda x: (isinstance(x, TpyName)
+                            and x.name in storage_tuple_locals),
+        arg_type=lambda x: locals_.get(x.name))
 
 
 def _required_protocol_union_slot(ptype: 'TpyType | None') -> bool:
@@ -3396,28 +3533,23 @@ def _borrow_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
 
     Keyed on POSITIVE evidence (the name is such a param) rather than on
     absence from `lc.storage_tuple_locals`. Absence proves borrow form only
-    where that set is populated, and it is not: a for-each loop var over a
-    storage container never lands there, and the resumable lane keeps its
-    owning tuples in codegen's `storage_form_tuple_locals` instead. Reading
-    absence as borrow form passed both shapes bare and dropped the lift --
-    a wrong-value render. Storage sources ride the lift rows instead.
+    where that set is populated, and the resumable lane does not populate it
+    (its owning tuples live in codegen's `storage_form_tuple_locals`).
+    Reading absence as borrow form passed a storage source bare and dropped
+    the lift -- a wrong-value render. Storage sources ride the lift rows
+    instead.
 
     Lane-blind on purpose: a resumable's params are frame fields, but they
     reach this row through `lc.params` exactly like a plain function's and
     render byte-identically. The absence-keyed predecessor DID need a lane
     guard here; the positive key subsumes it, and the guard was suppressing
     a body that routes correctly."""
-    if not isinstance(a, TpyName) or a.name not in borrow_params:
-        return False
-    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-            if ptype is not None else None)
-    if not isinstance(slot, TupleType) or _f1_tuple(slot, analyzer) is None:
-        return False
-    at = locals_.get(a.name)
-    if at is None:
-        return False
-    atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-    return atu == slot and _witness("arg.btuple_name")
+    ok = _borrow_tuple_arg(
+        a, ptype, analyzer,
+        shape_ok=lambda x: (isinstance(x, TpyName)
+                            and x.name in borrow_params),
+        arg_type=lambda x: locals_.get(x.name)) is not None
+    return ok and _witness("arg.btuple_name")
 
 
 def _record_getitem_rvalue_arg(a: TpyExpr, analyzer) -> bool:
@@ -4621,6 +4753,45 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     return (_record_rvalue_call_shape(a, analyzer)
             and _witness("own.record_rvalue"))
 
+def _own_opt_record_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':
+    """An `Own[Optional[F1-record]]` param slot -- C++ `std::optional<T>&&`.
+    Own forces the OWNING value form even though the bare Optional would use
+    pointer repr, which is what makes both arg rows below differ from their
+    plain-`Own[record]` siblings."""
+    w = _plain_own_slot(ptype)
+    if w is None:
+        return None
+    w = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
+    if not (isinstance(w, OptionalType) and w.uses_pointer_repr()):
+        return None
+    return w if _f1_record(unwrap_readonly(w.inner), analyzer) else None
+
+
+def _own_opt_ptr_name_arg(a: TpyExpr, ptype: TpyType | None,
+                          locals_: dict[str, TpyType],
+                          narrowed: 'AbstractSet[str]',
+                          analyzer) -> 'OptionalType | None':
+    """A pointer-repr `Optional[record]` INDIRECT name at an
+    `Own[Optional[record]]` slot (`Holder(r)` where `r: Own[Rec | None]` is a
+    param): the `T*` binding cannot be dereferenced unconditionally, so
+    `gen_expr_deref` rebuilds the owning optional null-safely
+    (`THIROwnOptRebuild`). Returns the slot's OptionalType.
+
+    A NARROWED occurrence reads as the extracted value and takes a different
+    render, so it stays out."""
+    w = _own_opt_record_slot(ptype, analyzer)
+    if w is None or not isinstance(a, TpyName) or a.name in narrowed:
+        return None
+    at = locals_.get(a.name)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if isinstance(atu, OwnType):
+        atu = unwrap_readonly(atu.wrapped)
+    if not (isinstance(atu, OptionalType) and atu.uses_pointer_repr()):
+        return None
+    return w if unwrap_readonly(atu.inner) == unwrap_readonly(w.inner) else None
+
+
 def _copy_record_own_arg(a: TpyExpr, ptype: TpyType | None,
                          analyzer) -> bool:
     """`copy(name)` of a plain F1-record into a SAME-nominal plain
@@ -5135,8 +5306,15 @@ def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
             return (isinstance(a, TpyName) and _is_string_owned(at))
         return ((_resolved_str_value(at, analyzer) is not None
                  or _is_string_owned(at)))
-    if not (isinstance(pt, NominalType) and (is_str_type(pt) or is_str_view_type(pt))):
-        return False
+    if not (isinstance(pt, NominalType)
+            and (is_str_type(pt) or is_str_view_type(pt))):
+        # A generic callee's slot can still carry the parser's unresolved
+        # view var (`repr(b)` at `PendingStrType`); it renders the same
+        # `std::string_view` once resolved, so ask the resolver rather than
+        # the nominal spelling.
+        if _resolved_str_value(pt, analyzer) is None:
+            return False
+        _witness("arg.pending_str_slot")
     if isinstance(a, TpyStrLiteral):
         return True
     return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None)
@@ -6839,7 +7017,64 @@ def _container_method_arg_ok(
                 and _tuple_elem_slots_ptr_optional(_bt2_bare)
                 and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(a)))) == _bt2_bare)
+            # An owning CALL whose result IS the Own element slot
+            # (`pairs.append(make_pair(1, 10))` at `Own[tuple[Int32,
+            # Rc[Node]]]`): a prvalue binds the by-value slot directly, so
+            # the insert renders bare whatever the element family -- the
+            # tuple twin of `_own_record_rvalue_arg`'s call row. Element
+            # families the rows above claim are matched there first.
+            or _own_tuple_call_rvalue_arg(a, ptype, analyzer)
+            or _ptr_addr_of_elem_arg(a, ptype, analyzer)
             or note_detail("method.arg_shape"))
+
+
+def _ptr_addr_of_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          analyzer) -> bool:
+    """A record-element lvalue at a `Ptr[record]` ELEMENT slot
+    (`ps.append(items[0])` on `list[Ptr[Node]]` ->
+    `ps.push_back(&::tpy::__getitem__(items, 0))`): TPy takes the address at
+    a Ptr slot, and the checked element read is the lvalue to take it of.
+    `_ptr_pass_through_arg` covers sources that ALREADY are pointers; this
+    is the lift half."""
+    w = _plain_own_slot(ptype)
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        w if w is not None else ptype))) if ptype is not None else None
+    if not isinstance(slot, PtrType):
+        return False
+    pointee = unwrap_readonly(slot.pointee)
+    if not _f1_record(pointee, analyzer):
+        return False
+    # Sema wraps the source in the address-of coercion; the lvalue under it
+    # is what the render addresses.
+    inner = _peel_coerce(a)
+    if not (isinstance(inner, TpySubscript)
+            and not isinstance(inner.index, TpySlice)):
+        return False
+    at = analyzer.get_expr_type(inner)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return atu == pointee and _witness("arg.ptr_addr_of_elem")
+
+
+def _own_tuple_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """An owning-call rvalue whose result type IS the `Own[tuple]` element
+    slot. The prvalue binds the by-value slot with no lift, so the element
+    family is unobservable at the insert -- unlike the borrow-tuple rows
+    above, which each render a conversion."""
+    w = _plain_own_slot(ptype)
+    if w is None or not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
+    if not isinstance(slot, TupleType):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if isinstance(atu, OwnType):
+        atu = unwrap_readonly(atu.wrapped)
+    return (atu == slot and is_rvalue_source(analyzer, a)
+            and _witness("arg.own_tuple_call_rvalue"))
 
 
 def _stub_method_ret_ok(
@@ -7765,12 +8000,8 @@ def _container_method_elem(t: 'TpyType | None', analyzer) -> bool:
 
 def _container_method_recv(recv_type: 'TpyType | None', analyzer,
                            tparam_bounds: 'dict | None') -> bool:
-    return (_container_scalar_read(recv_type, analyzer)
-            or _container_record_elem(recv_type, analyzer)
-            or _container_ref_alias_elem(recv_type, analyzer)
-            or _container_value_opt_scalar_elem(recv_type, analyzer)
-            or _container_value_tuple_elem(recv_type, analyzer)
-            or _container_method_elem(recv_type, analyzer)
+    return (_container_elem_family(recv_type, analyzer, lambda _a: True,
+                                   span_elem_ok=lambda _a: True)
             or _set_method_recv(recv_type, analyzer))
 
 
@@ -8481,6 +8712,44 @@ def _print_kwarg_token(
             is not None):
         return ("name", None)
     return None
+
+def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
+                             storage_tuple_locals: 'AbstractSet[str]',
+                             analyzer) -> 'str | None':
+    """`print(t[1])` where the element is an F1 record: the record streams
+    through its emitted operator<<, and the only question is whether the
+    element read hands back the value or a pointer to it. Returns "deref" or
+    "bare", or None when the shape is outside the row.
+
+    A BORROW-form tuple holds `T*` elements, and print is a VALUE position, so
+    the referent streams (`(*std::get<1>(t))`); a STORAGE-form one holds the
+    element by value and streams bare (`std::get<0>(p.points)`). The split is
+    the same storage-vs-borrow evidence the arg rows use: a field read is
+    always a storage source, a NAME is one only when it is registered as such.
+    The subscript twin of `print.record_call`."""
+    if not isinstance(a, TpySubscript) or isinstance(a.index, TpySlice):
+        return None
+    recv = a.obj
+    if isinstance(recv, TpyName):
+        rt = locals_.get(recv.name)
+        storage = recv.name in storage_tuple_locals
+    elif isinstance(recv, TpyFieldAccess) and _field_receiver_ok(
+            recv, locals_, analyzer):
+        rt = _field_decl_type(recv, locals_, analyzer)
+        storage = True
+    else:
+        return None
+    rb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+          if rt is not None else None)
+    if not (isinstance(rb, TupleType) and rb.has_pointer_repr_element()):
+        return None
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(a))))
+    if not _f1_record(at, analyzer):
+        return None
+    _witness("print.tuple_record_elem")
+    return "bare" if storage else "deref"
+
 
 def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """One print arg in the no-kwargs common-arg subset: a str/bytes literal,

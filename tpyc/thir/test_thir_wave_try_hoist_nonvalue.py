@@ -70,10 +70,10 @@ class TestTryHoistNonValueBoundaries:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
 
-    def test_hoist_inside_a_loop_stays_ast(self):
-        # THIR scopes `declared` per block while the AST's declared_vars is
-        # body-global, so a hoist under a loop could diverge on a later
-        # same-named decl outside it.
+    def test_hoist_inside_a_loop_routes(self):
+        # `_gen_try` emits the predecl at the try, so the loop body IS the
+        # C++ scope on both paths. The per-block-vs-body-global `declared`
+        # question is pinned directly in test_thir_try.py.
         src = ("from tpy import Own\n"
                "def get() -> Own[list[int]]:\n"
                "    return [1]\n"
@@ -87,7 +87,29 @@ class TestTryHoistNonValueBoundaries:
                "        print(len(items))\n"
                "        i += 1\n")
         thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
+
+    def test_nonvalue_hoist_with_a_later_same_name_decl_stays_ast(self):
+        # The non-value flavor rejects at the OPTIONAL_STORAGE flavor gate,
+        # which is what holds this shape -- not the enclosing block's scope.
+        src = ("from tpy import Own\n"
+               "def get() -> Own[list[int]]:\n"
+               "    return [1]\n"
+               "def use() -> None:\n"
+               "    i = 0\n"
+               "    while i < 2:\n"
+               "        try:\n"
+               "            items = get()\n"
+               "        except Exception:\n"
+               "            break\n"
+               "        print(len(items))\n"
+               "        i += 1\n"
+               "    items = get()\n"
+               "    print(len(items))\n")
+        thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
 
     def test_resumable_body_hoist_stays_ast(self):
         # A generator frame has no function-top drain for the hoist line.

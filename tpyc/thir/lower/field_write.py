@@ -59,6 +59,7 @@ from ..nodes import (
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import (
+    _borrow_tuple_local_type,
     _bytes_field_write_ok,
     _class_const_write_target_ok,
     _container_copy_field_write_ok,
@@ -137,8 +138,9 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not (isinstance(target, TpyFieldAccess)
             and isinstance(target.obj, TpySubscript)
             and isinstance(target.obj.obj, TpyName)
-            and _statements._borrow_tuple_local_type(
-                target.obj.obj.name, declared, lc) is not None
+            and _borrow_tuple_local_type(
+                target.obj.obj.name, declared,
+                lc.storage_tuple_locals) is not None
             # Plain borrow elements only: an Optional element write needs
             # the deref_check machinery (stays AST, pinned).
             and _subscript_yields_borrow_ptr(target.obj, lc)):

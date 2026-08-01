@@ -555,10 +555,15 @@ def test_iterator_protocol_param_iterable_routes():
     assert fn is not None
 
 
-def test_protocol_arg_pending_type_falls_back():
-    # A literal-seeded local passed into a protocol param slot can still be
-    # PENDING at lowering; the protocol arg-temp must reject (fall back),
-    # never crash in render_type.
+def test_protocol_arg_pending_type_resolves():
+    # A literal-seeded local passed into a protocol param slot is still
+    # PENDING at lowering. Sema's resolution is final by then, so asking for
+    # it here gives the same type the AST reaches at its own later render
+    # point -- the row routes rather than falling back. The residual
+    # `PendingListType` guard stays for an UNRESOLVABLE binding, but NO test
+    # pins it: no TPy program reaching this arm is known to leave a binding
+    # unresolvable after `resolve_pending_container`, so the guard is
+    # defensive-only. Tracked in TODO.md; write the pin if a shape appears.
     compiler, entry, f = _fn_body(
         "from typing import Iterator, Iterable\n"
         "def echo(it: Iterable[int]) -> Iterator[int]:\n"
@@ -575,7 +580,7 @@ def test_protocol_arg_pending_type_falls_back():
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
             fold_attempt("body")
-    assert fn is None
+    assert fn is not None
 
 
 def test_for_each_gen_call_record_rvalue_arg_routes():

@@ -910,3 +910,51 @@ class TestErrorReturnMethod:
 
     def test_byte_identical(self):
         assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+
+class TestErrorReturnBindIsNotAutoMovable:
+    """The AST's `movable_locals` is a WORKING set grown at the var-decl arms,
+    and `_gen_error_return_var_decl` is not one of them. THIR seeds the whole
+    sema fact up front, so the unwrap bind has to drop the name -- otherwise
+    its last use picks up a `std::move` the AST never emits."""
+
+    SRC = _ERR + (
+        "from tpy import Int32, Own\n"
+        "class Rec:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "@error_return(Err)\n"
+        "def make(n: Int32) -> Own[Rec]:\n"
+        "    if n < 0:\n"
+        "        raise Err\n"
+        "    return Rec(n)\n"
+        "def collect() -> Int32:\n"
+        "    out: list[Rec] = []\n"
+        "    try:\n"
+        "        for i in range(3):\n"
+        "            r = make(i)\n"
+        "            out.append(r)\n"
+        "    except Err:\n"
+        "        return -1\n"
+        "    return len(out)\n"
+        "def main() -> None:\n"
+        "    print(collect())\n"
+        "main()\n"
+    )
+
+    def test_routes(self):
+        # The load-bearing pin: THIR is byte-identical by design, so if this
+        # body fell back the AST would emit the same C++ and every render
+        # assertion below would pass vacuously.
+        from .testutil import _lower_ctx, _fn
+        assert _fn(_lower_ctx(self.SRC), "collect") is not None
+
+    def test_the_unwrap_bound_local_is_appended_without_a_move(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert "Rec r;" in cpp
+        assert "out.push_back(r);" in cpp
+        assert "out.push_back(std::move(r));" not in cpp
+
+    def test_byte_identical(self):
+        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)

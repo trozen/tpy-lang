@@ -73,6 +73,7 @@ from .nodes import (
     THIRTupleUnpack,
     THIRTruthy,
     THIROptViewArg,
+    THIROwnOptRebuild,
     THIRUnaryNot,
     THIRUnaryArith,
     THIRUnionArgLift,
@@ -186,6 +187,8 @@ def _expr(e: THIRExpr) -> str:
         return f"truthy[{e.mode.name.lower()}]({deref}{_expr(e.operand)})"
     if isinstance(e, THIROptViewArg):
         return f"opt_view_arg({e.name})"
+    if isinstance(e, THIROwnOptRebuild):
+        return f"own_opt_rebuild({e.name})"
     if isinstance(e, THIRIfExpr):
         # The form tag is emit-relevant for a str-family result (the
         # owned-sink copy fires on BORROW), so surface it.
@@ -195,7 +198,9 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRCall):
         # Surface the emit arm: a scalar-ctor cpp_template, a @native
         # free-function symbol, or the bare callee name.
-        if e.cpp_template is not None:
+        if e.callee_expr is not None:
+            name = f"({_expr(e.callee_expr)})"
+        elif e.cpp_template is not None:
             name = f"{e.callee} [template {e.cpp_template!r}]"
         elif e.native_name:
             name = f"{e.callee} [{e.native_name}]"

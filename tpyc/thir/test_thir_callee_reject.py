@@ -13,7 +13,7 @@ from __future__ import annotations
 from ..compilation_context import activate_compiler
 from .fallback import begin_attempt
 from .lower import iter_module_callables, lower_function
-from .testutil import _compile, _entry
+from .testutil import _assert_byte_identical, _compile, _entry
 
 
 def _reject_detail(src: str, fn_name: str):
@@ -92,30 +92,69 @@ class TestLiteralOverloadMangleRejects:
         assert detail == "call.literal_overload"
 
 
-class TestExprCalleeRejects:
+class TestExprCalleeRoutes:
     # An expression callee -- calling the result of a call (`f()()`) or a
-    # subscript (`fns[i](x)`) -- has a non-Name func. Every call arm reads
-    # `e.func_name` (which asserts a Name callee), so the whole-body lowering
-    # rejects early rather than crashing (regression guard: this used to hit
-    # `func_name on non-Name callee` inside the ord()-fold arm).
+    # subscript (`fns[i](x)`) -- has a non-Name func, so it gets its own
+    # arm: the callee renders parenthesized ahead of the args. That arm
+    # returns before any `e.func_name` read, which is what keeps the old
+    # `func_name on non-Name callee` crash (the ord()-fold arm) unreachable.
+    #
+    # Three of the arm's four guards are unreachable defense-in-depth: sema
+    # rejects a non-callable callee outright ("Expression is not callable"),
+    # checks arity itself, and never routes an `Fn` template through here.
+    # The FOURTH -- `**kwargs` -- IS reachable (`mk(10)(5, **d)` matches on
+    # positional arity, so sema accepts it) and is pinned below.
     _MK = ("from typing import Callable\n"
            "from tpy import Int32\n"
            "def mk(n: Int32) -> Callable[[Int32], Int32]:\n"
            "    def add(x: Int32) -> Int32:\n        return x + n\n"
            "    return add\n")
 
-    def test_call_result_callee_rejects(self):
+    def test_call_result_callee_routes(self):
         src = self._MK + "def f() -> Int32:\n    return mk(10)(5)\n"
-        routed, reason, _ = _reject_detail(src, "f")
-        assert routed is False
-        assert reason == "expr.call"
+        routed, _reason, _ = _reject_detail(src, "f")
+        assert routed is True
 
-    def test_subscript_callee_rejects(self):
-        # `fns` is a param (not a local list-literal decl) so the reject
-        # isolates on the subscript callee, not the container init.
+    def test_subscript_callee_routes(self):
+        # `fns` is a param (not a local list-literal decl) so this isolates
+        # the subscript callee, not the container init.
         src = (self._MK
                + "def f(fns: list[Callable[[Int32], Int32]]) -> Int32:\n"
                + "    return fns[0](100)\n")
+        routed, _reason, _ = _reject_detail(src, "f")
+        assert routed is True
+
+    def test_renders_the_parenthesized_callee(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self._PROG)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "(mk(10))(5)" in cpp
+        assert "(::tpy::__getitem__(fns, 0))(100)" in cpp
+
+    _PROG = (_MK
+             + "def f(fns: list[Callable[[Int32], Int32]]) -> Int32:\n"
+             + "    return mk(10)(5) + fns[0](100)\n"
+             + "def main() -> None:\n"
+             + "    print(f([mk(1)]))\n"
+             + "main()\n")
+
+    def test_byte_identical(self):
+        # The corpus case (calls/expr_callee) still falls back on an
+        # unrelated container-literal blocker, so it does NOT byte-diff this
+        # render -- this pin is the only thing that does.
+        _assert_byte_identical(self._PROG)
+
+    def test_double_star_unpack_still_rejects(self):
+        # The one REACHABLE guard: positional arity matches, so sema accepts
+        # `mk(10)(5, **d)` and it reaches lowering. The arm has no slot to
+        # bind the unpacked keywords against.
+        src = (self._MK
+               + "def f(d: dict[str, Int32]) -> Int32:\n"
+               + "    return mk(10)(5, **d)\n")
         routed, reason, _ = _reject_detail(src, "f")
         assert routed is False
         assert reason == "expr.call"

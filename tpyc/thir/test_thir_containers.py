@@ -3656,14 +3656,39 @@ class TestValueOptElemContainer:
         assert _fn(_lower(src), "f") is None
         _assert_byte_identical(src)
 
-    def test_view_elem_receiver_deferred(self):
-        # The value-opt-VIEW element family (`list[str | None]`) stays off
-        # the widened receiver sites -- the drift-risk boundary the
-        # widening deliberately excluded.
+    def test_view_elem_receiver_routes_but_its_arg_rows_still_gate(self):
+        # The METHOD RECEIVER is element-blind (the render never spells the
+        # element), so the value-opt-VIEW family reaches the gate like any
+        # other container. What actually protects this family is the ARG
+        # side, which keeps deciding per shape -- so the body routes only
+        # as far as its arg rows allow, and the surrounding read positions
+        # (setitem, for-each) keep their own element gates.
         src = ("from typing import Optional\n"
                + "def f(items: list[Optional[str]]) -> None:\n"
                + "    items.append(None)\n")
-        assert _fn(_lower(src), "f") is None
+        # The routing assertion is the pin: AST fallback and THIR routing
+        # render this body byte-identically, so identity alone would not
+        # notice the receiver widening being reverted.
+        assert _fn(_lower(src), "f") is not None
+        _assert_byte_identical(src)
+
+    def test_view_elem_arg_and_read_positions_still_defer(self):
+        # The boundary that matters after the receiver widening: an
+        # Optional[str] ELEMENT still gates at the arg / setitem / for-each
+        # positions, which is where its render actually differs.
+        src = ("from typing import Optional\n"
+               + "from tpy import Int32\n"
+               + "def read(items: list[Optional[str]]) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for it in items:\n"
+               + "        if it is not None:\n"
+               + "            total += len(it)\n"
+               + "    return total\n"
+               + "def main() -> None:\n"
+               + "    ys: list[Optional[str]] = [\"b\"]\n"
+               + "    print(read(ys))\n"
+               + "main()\n")
+        assert _fn(_lower(src), "read") is None
         _assert_byte_identical(src)
 
 class TestGenericRecordSetItem:
@@ -4163,4 +4188,129 @@ class TestArrayMoveThroughDecl:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is None
         assert not faces.get("decl.move_through_array")
+        _assert_byte_identical(src)
+
+
+class TestDelItemElementBlindReceiver:
+    """`del c[k]` never constructs, converts or reads the element slot, so the
+    container receiver is admitted ELEMENT-BLIND and the key slice alone
+    decides byte-parity -- the generalization of the dict[K, Any] row."""
+
+    SRC = _PRELUDE + (
+        "from tplib import ArrayList\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def main() -> None:\n"
+        "    recs: list[P] = [P(1), P(2)]\n"
+        "    del recs[0]\n"
+        "    print(len(recs))\n"
+        "    nested: list[list[Int32]] = [[1], [2]]\n"
+        "    del nested[0]\n"
+        "    print(len(nested))\n"
+        "    dmap: dict[Int32, P] = {1: P(3)}\n"
+        "    del dmap[1]\n"
+        "    print(len(dmap))\n"
+        "    a = ArrayList[Int32, 8]()\n"
+        "    a.append(10)\n"
+        "    del a[0]\n"
+        "    print(len(a))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        # record / container / dict-value elements all ride the one row...
+        assert faces["delitem.container"] >= 3
+        # ...and the GENERIC user record rides the __delitem__ row (its
+        # instantiation reaches no part of the bare-receiver render).
+        assert faces["delitem.user_record"] >= 1
+
+    def test_renders_the_bare_helper_call(self):
+        cpp = _module_cpp(self.SRC, thir=True)
+        assert "::tpy::__delitem__(recs, 0);" in cpp
+        assert "::tpy::__delitem__(a, 0);" in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_own_container_receiver_still_rejects(self):
+        # The boundary: an `Own[container]` receiver is the move-in ABI, whose
+        # C++ shape differs from the borrow the del emit assumes.
+        src = _PRELUDE + (
+            "from tpy import Own\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "def take(rows: Own[list[P]]) -> Int32:\n"
+            "    del rows[0]\n"
+            "    return len(rows)\n"
+            "def main() -> None:\n"
+            "    print(take([P(1), P(2)]))\n"
+            "main()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is None
+        assert faces.get("delitem.container", 0) == 0
+        _assert_byte_identical(src)
+
+
+class TestPrintTupleRecordElement:
+    """An F1-record tuple element at a print sink streams through the record's
+    operator<<. The only question is whether the element read hands back the
+    value or a pointer to it -- borrow-form derefs, storage-form is already
+    the value."""
+
+    SRC = _PRELUDE + (
+        "class Pt:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "    def __repr__(self) -> str:\n"
+        "        return \"Pt(\" + str(self.x) + \")\"\n"
+        "class Holder:\n"
+        "    points: tuple[Pt, Pt]\n"
+        "    def __init__(self, a: Pt, b: Pt) -> None:\n"
+        "        self.points = (a, b)\n"
+        "def main() -> None:\n"
+        "    p = Pt(1)\n"
+        "    t = (Int32(0), p)\n"
+        "    print(t[1])\n"
+        "    p.x = 9\n"
+        "    print(t[1])\n"
+        "    h = Holder(Pt(2), Pt(3))\n"
+        "    print(h.points[0])\n"
+        "    print(t[0])\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert faces["print.tuple_record_elem"] >= 3
+
+    def test_borrow_element_derefs_and_storage_element_does_not(self):
+        cpp = _module_cpp(self.SRC, thir=True)
+        assert "std::cout << (*std::get<1>(t)) << " in cpp
+        assert "std::cout << std::get<0>(h.points) << " in cpp
+        # the value-scalar element keeps its own row -- no deref
+        assert "std::cout << std::get<0>(t) << " in cpp
+
+    def test_byte_identical(self):
+        _assert_byte_identical(self.SRC)
+
+    def test_value_scalar_element_is_not_claimed(self):
+        # The boundary: only an F1-RECORD element rides this row; a scalar
+        # element streams through the ordinary print-form dispatch.
+        src = _PRELUDE + (
+            "def main() -> None:\n"
+            "    t = (Int32(1), Int32(2))\n"
+            "    print(t[0])\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("print.tuple_record_elem", 0) == 0
         _assert_byte_identical(src)

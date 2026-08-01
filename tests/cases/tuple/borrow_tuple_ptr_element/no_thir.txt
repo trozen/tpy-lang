@@ -1,4 +1,0 @@
-main's `ps.append(items[0])` falls back at expr.method_call -- building a
-list[Ptr[T]] needs .append, which the container-literal path doesn't cover.
-The bodies under test (via_local / via_param / via_subscript / via_plain)
-all route; only main is un-migrated.

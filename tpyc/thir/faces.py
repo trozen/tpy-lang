@@ -189,6 +189,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
+    "own.opt_ptr_name_rebuild",     # ptr-repr Optional name into the
+                                    # same slot: null-safe move rebuild
     "own.record_copy",              # copy(name) into Own[record]: T(x)
     "method.protocol_discard",      # discarded protocol-method result in
                                     # statement position -- bare call
@@ -217,6 +219,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.imported",                # cross-module callee -> pre-rendered
                                     # `::tpyapp::mod::f` (callee_cpp)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
+    "call.template_arg_dropped",    # @cpp_template never spells {i}: the
+                                    # arg render cannot reach the expansion
+    "call.expr_callee",             # computed callable: (callee)(args)
     "call.strlit_overload_pin",     # str literal pinned to its overloaded slot
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
@@ -235,6 +240,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `StrView("x")`/`String("x")` -> the ctor
                                     # @cpp_template over inline args
 
+    "call.inst_bare_name_arg",      # non-movable name at a container
+                                    # instantiation: the bare render
     "call.inst_call_rvalue_arg",    # `set(make_nodes())` -> an owning call
                                     # rvalue inline in the construct template
     "call.inst_ctor_arg",           # `dict(PairIter(3))` -> a user-iterator
@@ -441,7 +448,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Dynamic-attrs (D16) family faces.
     "setitem.any_value",            # `d[k] = v` into a dict[K, Any] slot from
                                     # an Any-typed name (bare, no make_any)
-    "delitem.any_value",            # `del d[k]` on a dict[K, Any] receiver
+    "delitem.container",            # del over an element-blind container
     "delitem.user_record",          # `del recv[k]` on a user record with
                                     # __delitem__ -> ::tpy::__delitem__(recv, k)
     "field_write.container_name",   # container FIELD write from a same-family
@@ -865,8 +872,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # Widened value-tuple RETURN elements: a NESTED value-tuple element (spelled
     # recursively) and a value-`Optional[scalar]` element (`None`->`std::nullopt`
     # / a scalar value bare). Return-slot only.
+    "expr.value_tuple_self_typed",  # a slot-less value-tuple literal spelled
+                                    # from its own sema type
     "ret.tuple_nested_elem",
     "btuple.literal",               # borrow-slot tuple literal (spelled + lifts)
+    "btuple.elem_btuple_subscript",  # element read off a borrow-form tuple:
+                                    # already a T*, no address-of
     "btuple.elem_optptr",           # pointer-repr Optional elem slot: None ->
                                     # nullptr, plain lvalue name -> &(name)
     "gentuple.literal",             # generic-slot tuple literal (to_val_or_ptr)
@@ -902,6 +913,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot -> the owned literal render
     "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
                                     # element slot -> spelled value render
+    "arg.ptr_addr_of_elem",         # record-element lvalue at a Ptr elem
+                                    # slot: the &(...) lift
+    "arg.own_tuple_call_rvalue",    # owning call whose result IS the
+                                    # Own[tuple] element slot: bare insert
     "arg.own_btuple_literal",       # ref-element tuple literal at an
                                     # Own[tuple[T|None, ..]] element slot ->
                                     # tuple_to_storage_move<S>(borrow tuple
@@ -1325,6 +1340,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # tuple_to_pointer at a borrow-tuple slot
     "arg.borrow_tuple_subscript",   # the container-element twin: a checked
                                     # element read through the same wrap
+    "arg.btuple_storage_name",      # storage-form tuple LOCAL (loop var /
+                                    # storage-bound local) through the wrap
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
     "subscript.borrow_tuple_elem",  # borrow-form tuple element at a
                                     # BORROW_BIND sink (the arg wrap)
@@ -1332,6 +1349,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # BORROW_BIND sink (record ref-slot arg)
     "arg.record_borrow_call",       # T&-returning call bound inline at a
                                     # record ref slot (bump(find_first(..)))
+    "arg.recursive_union_borrow_call",  # the wrapper-slot twin
+                                    # (show(v.inner.get()) at `const Value&`)
+    "arg.native_protocol_tuple_literal",  # tuple literal at a native
+                                    # protocol slot: its own storage type
+    "arg.pending_str_slot",         # unresolved view-var str slot admitted
+                                    # through the resolver, not the spelling
+    "arg.native_protocol_open_field",  # open-T field at an unsubstituted
+                                    # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
     "call.native_range_arg",        # range(...) rvalue bare at a native
@@ -1356,6 +1381,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.tuple_record_elem",      # std::get<i>(t) record element at a
+                                    # print sink; deref iff borrow-form
     "print.self_arg",             # `print(self)` -> the `(*this)` receiver
                                     # streamed raw via operator<<
     "print.wrap_field_arg",         # container FIELD read print arg -> its

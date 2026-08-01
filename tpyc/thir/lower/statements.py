@@ -217,6 +217,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _container_del_recv,
     _bigint_index_disposition,
     _call_iterable_lvalue,
     _chain_post_if_fact,
@@ -329,6 +330,8 @@ from .context import (
     _Prescan,
 )
 from .checks import (
+    _print_tuple_record_elem,
+    _borrow_tuple_local_type,
     _container_lit_elem_ok,
     _assert_narrow_info,
     _borrow_local_binding,
@@ -2111,22 +2114,6 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
             and all(_borrow_tuple_source_ok(s, lc) for s in srcs))
 
 
-def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
-                             lc: '_LowerCtx') -> 'TupleType | None':
-    """The pointer-repr TupleType of a BORROW-form tuple local, or None.
-    Borrow is the default form for a declared ptr-repr tuple name (params,
-    btuple.decl literals, branch hoists); the storage registrations
-    (`storage_tuple_locals`) carve out the owning locals."""
-    t = declared.get(name)
-    if not isinstance(t, TpyType):
-        return None
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
-            and name not in lc.storage_tuple_locals):
-        return bare
-    return None
-
-
 def _optional_storage_hoist_entry(name: str, var_type: TpyType,
                                   declared: dict[str, TpyType],
                                   lc: '_LowerCtx') -> tuple[str, str]:
@@ -2420,6 +2407,12 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
             raise ThirUnsupported(stmt_reject_reason(stmt))
         decl_cpp = unwrap_ref_type(var_type).to_cpp()
         declared[name] = vtype
+        # The AST's `movable_locals` is a WORKING set grown at the var-decl
+        # arms, and `_gen_error_return_var_decl` is not one of them -- an
+        # unwrap-bound local never becomes auto-movable there. THIR seeds the
+        # whole sema fact up front, so drop the name here or its last use
+        # would pick up a `std::move` the AST never emits.
+        lc.movable_locals.discard(name)
     call = _lower_expr(init, lc, declared,
                        use=_ExprUse(result=_ExprResultUse.STORAGE,
                                     allow_temps=True),
@@ -5231,7 +5224,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # there (ill-formed C++, the BUGS.md reassigned-borrow-tuple-param
         # entry) -- keep the whole-body fallback until that arm is fixed,
         # then widen in lockstep. Param READS keep the borrow default.
-        bt_t = (_borrow_tuple_local_type(stmt.name, declared, lc)
+        bt_t = (_borrow_tuple_local_type(stmt.name, declared,
+                                 lc.storage_tuple_locals)
                 if is_reassign and stmt.name not in lc.prescan.param_names
                 else None)
         if bt_t is not None:
@@ -8020,18 +8014,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                           or recv.name in lc.narrow.narrowed):
             raise ThirUnsupported("stmt.del_item:recv_shape")
         recv_t = _subscript_container_recv_type(recv, declared, analyzer)
-        # A CONCRETE user record defining `__delitem__` takes the same
+        # A user record defining `__delitem__` takes the same
         # `::tpy::__delitem__(recv, key)` fallback the container path emits --
         # so the record receiver rides the container arm's key slice.
         user_del = recv_t is not None and _record_has_delitem(recv_t, analyzer)
-        # A dict[K, Any] receiver is admitted alongside the scalar families:
-        # the del emit never touches the value slot, so the key slice alone
-        # decides byte-parity.
+        # The container receiver is admitted ELEMENT-BLIND: the del emit never
+        # constructs, converts or reads the element slot, so the key slice
+        # alone decides byte-parity (the reasoning `_any_value_dict` applies
+        # to a dict[K, Any] value, generalized to every element family).
         if not (recv_t is not None
                 and (user_del
-                     or _container_scalar_read(recv_t, analyzer)
-                     or (_any_value_dict(recv_t, analyzer)
-                         and _witness("delitem.any_value")))
+                     or (_container_del_recv(recv_t, analyzer)
+                         and _witness("delitem.container")))
                 and _bigint_index_disposition(
                         sub.index, analyzer.get_expr_type(sub.obj),
                         analyzer) != "reject"):
@@ -8538,7 +8532,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # be flagged storage.
                 _et_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
                             if et is not None else None)
-                _it_type = analyzer.get_expr_type(stmt.iterable)
+                # Readonly is peeled first: the AST asks this through
+                # `ctx.get_expr_type`, which always strips it, so a
+                # `readonly[list[..]]` source is native-iterable there and
+                # its loop var IS registered storage.
+                _it_type = unwrap_readonly(
+                    analyzer.get_expr_type(stmt.iterable))
                 storage_tuple_loop_var = (
                     _it_type is not None
                     and is_native_iterable(_it_type, analyzer.registry)
@@ -8549,7 +8548,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # the storage registration must not flip its reads
                     # (mirrors the AST's borrow_form_tuple_locals exclusion
                     # in register_loop_var_storage_form).
-                    and _borrow_tuple_local_type(stmt.var, declared, lc)
+                    and _borrow_tuple_local_type(stmt.var, declared,
+                                             lc.storage_tuple_locals)
                     is None)
                 if storage_tuple_loop_var:
                     lc.storage_tuple_locals.add(stmt.var)
@@ -8671,7 +8671,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 result_type=iterable.result_type, value=iterable,
                 native_name=route.consuming_native_name, form=Form.VALUE,
                 loc=loc)
-        hoisted_bt = (_borrow_tuple_local_type(stmt.var, declared, lc)
+        hoisted_bt = (_borrow_tuple_local_type(stmt.var, declared,
+                                             lc.storage_tuple_locals)
                       if stmt.hoist_loop_var else None)
         return THIRForEach(
             var=stmt.var,
@@ -8823,6 +8824,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
                               and _witness("print.wrap_field_arg"))
+                          or _print_tuple_record_elem(
+                              arg, declared, lc.storage_tuple_locals,
+                              analyzer) is not None
                           or (isinstance(arg, TpySubscript)
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None
@@ -8956,8 +8960,10 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     """Lower a `try` of any sync tier (see `THIRTry` for the emit
     shapes). The hoisted predecls render here (`render_type`, codegen's
     type_to_cpp; names spell RAW like the AST arm) in sema's sorted order,
-    and enter the CALLER's `declared` -- hoisted names are function-scope per
-    Python scoping, visible in every body and after the statement. Each body
+    and enter the CALLER's `declared`. That dict is the enclosing block's,
+    which for a try nested in a branch or loop is narrower than the
+    function-scope Python gives the name -- see the placement comment on the
+    hoist loop for why the gap is fail-safe. Each body
     lowers under its own narrowing-scope snapshot (the AST restores narrowed
     state between sibling blocks); a handler's `as` binding enters its body's
     scope typed like sema binds it, the catch parameter being the binding.
@@ -8975,10 +8981,16 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     for name, raw in hoists.items():
         if name in declared:
             continue
-        if (name in lc.prescan.native_globals
-                or in_branch or loop_depth > 0):
+        if name in lc.prescan.native_globals:
             note_detail("try.hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        # A try inside a branch / loop hoists here rather than at function
+        # top, matching the AST -- `_gen_try` emits the predecl at the try
+        # itself, so the C++ scope IS the enclosing block. The name enters
+        # the caller's branch-local `declared`, which is narrower than
+        # Python's function scope; that gap is fail-safe, since a read after
+        # the branch finds no binding and rejects (`name.global_read`) rather
+        # than mis-rendering.
         if _try_hoist_type_ok(unwrap_ref_type(raw), lc.analyzer):
             continue
         # Non-value single-bind hoists take the if flavor's OPTIONAL_STORAGE
@@ -9160,10 +9172,12 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     `narrowed_vars` / `declared_persistent_aliases` restore around the try
     body. `body_terminates` calls the same `stmts_terminate` the AST reads, so
     the per-layer normal-exit elision folds identically at emit. Sema's hoist
-    (`if_branch_decls`) admits and renders like `_lower_try`'s: the
-    plain-value predecl family, at statement level only, entering the
-    CALLER's `declared` (function-scope names; body writes lower as
-    reassigns against the predecl slot)."""
+    (`if_branch_decls`) renders like `_lower_try`'s -- the plain-value
+    predecl family entering the CALLER's `declared` (body writes lower as
+    reassigns against the predecl slot) -- but ADMITS less: a with nested in
+    a branch or loop still rejects, where the try side does not. Nothing is
+    known to break if this widens; it simply has no witness, so the narrower
+    gate stands until one appears."""
     if stmt.is_async:
         raise ThirUnsupported(stmt_reject_reason(stmt))
     hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
@@ -9377,6 +9391,18 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # folds (literal_fold_ok). The record-call branch drops the flag --
     # fine while the two shapes stay mutually exclusive (a record-call arg
     # is never a both-literal int binop); revisit if that ever changes.
+    tup_rec = _print_tuple_record_elem(a, declared, lc.storage_tuple_locals,
+                                      lc.analyzer)
+    if tup_rec is not None:
+        # A borrow-form element read hands back the POINTER and print is a
+        # value position, so the referent streams; a storage-form one already
+        # IS the value.
+        return THIRPrintArg(
+            _lower_expr(a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                     allow_temps=temps_ok),
+                        subscript_prechecked=True),
+            PrintForm.RAW, deref=tup_rec == "deref")
     use = _ExprUse(allow_temps=temps_ok, literal_fold_ok=True)
     if _record_call_rvalue_operand(a, lc.analyzer):
         use = _ExprUse(allow_temps=temps_ok,

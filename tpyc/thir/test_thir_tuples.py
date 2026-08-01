@@ -2761,3 +2761,148 @@ class TestBtupleRebindDecl:
         assert _fn(thir, "use") is None
         assert not faces.get("decl.btuple_rebind_slot")
         _assert_byte_identical(src)
+
+
+class TestBorrowTupleElementSources:
+    """Two element sources at a borrow-tuple literal slot: a read off another
+    BORROW-form tuple is already the pointer, and a ctor RVALUE at a
+    pointer-repr Optional slot takes the `tuple_value_to_borrow` source."""
+
+    SWAP_SRC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def swap(p: tuple[P, Int32]) -> tuple[Int32, P]:\n"
+        "    return (p[1], p[0])\n"
+        "def main() -> None:\n"
+        "    p = P(1)\n"
+        "    t = (p, 10)\n"
+        "    result = swap(t)\n"
+        "    print(result[0])\n"
+        "    p.x = 9\n"
+        "    print(result[1].x)\n"
+        "main()\n"
+    )
+
+    LIT_SRC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def main() -> None:\n"
+        "    items: list[tuple[P | None, Int32]] = [\n"
+        "        (P(1), 10),\n"
+        "        (None, 20),\n"
+        "    ]\n"
+        "    print(len(items))\n"
+        "main()\n"
+    )
+
+    def test_btuple_subscript_element_passes_through(self):
+        thir, faces = _lower_ctx_witnessed(self.SWAP_SRC)
+        assert _fn(thir, "swap") is not None
+        # Only `p[0]` reaches this row -- `p[1]` is an Int32 at a VALUE
+        # slot, which the value-element arm claims earlier.
+        assert faces["btuple.elem_btuple_subscript"] == 1
+
+    def test_no_address_of_on_the_passthrough(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SWAP_SRC)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "std::tuple<int32_t, P*>{std::get<1>(p), std::get<0>(p)}" in cpp
+        assert "&(std::get<" not in cpp
+
+    def test_swap_byte_identical(self):
+        _assert_byte_identical(self.SWAP_SRC)
+
+    def test_container_literal_element_admits_the_rvalue_source(self):
+        # A container-literal element is a flush position for the
+        # `tuple_value_to_borrow` source tuple, so a ctor rvalue at a
+        # pointer-repr Optional slot renders there as it does at a call arg.
+        thir, faces = _lower_ctx_witnessed(self.LIT_SRC)
+        assert _fn(thir, "main") is not None
+        assert faces["btuple.value_to_borrow"] >= 1
+        _assert_byte_identical(self.LIT_SRC)
+
+    def test_storage_tuple_source_still_lifts(self):
+        # The boundary the pass-through must NOT swallow: a STORAGE-form
+        # tuple local (an `auto&&` alias) holds its elements by value, so
+        # `std::get<i>(it)` is a `T&` and the address-of is required. The
+        # shared `_subscript_yields_borrow_ptr` is what draws that line.
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "def swap(p: tuple[P, Int32]) -> tuple[Int32, P]:\n"
+            "    return (p[1], p[0])\n"
+            "def via_storage(items: list[tuple[P, Int32]]) -> Int32:\n"
+            "    for it in items:\n"
+            "        r = swap((it[0], it[1]))\n"
+            "        return r[0]\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    p = P(1)\n"
+            "    print(via_storage([(p, 3)]))\n"
+            "main()\n"
+        )
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "std::tuple<P*, int32_t>{&(std::get<0>(it)), std::get<1>(it)}" in cpp
+        _assert_byte_identical(src)
+
+    def test_rvalue_element_at_a_plain_slot_still_defers(self):
+        # The boundary for the container-literal `rvalue_ok` grant: the flag
+        # only reaches the borrow-tuple ELEMENT rows. A ctor rvalue at a
+        # plain (non-Optional) pointer-repr element slot has no address to
+        # lift and no witnessed render, so it keeps rejecting.
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "def main() -> None:\n"
+            "    rows: list[tuple[P, Int32]] = [(P(1), 2)]\n"
+            "    print(len(rows))\n"
+            "main()\n"
+        )
+        # A fence needs a FACE assertion, not byte-identity: a fallback body
+        # emits the same C++ by construction, so identity alone cannot tell
+        # "still rejecting" from "started routing".
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("btuple.value_to_borrow", 0) == 0
+        _assert_byte_identical(src)
+
+    def test_container_element_subscript_still_lifts(self):
+        # The boundary: a subscript off a CONTAINER (not a borrow tuple) is
+        # an lvalue element, so it keeps the `&(...)` lift.
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "def take(t: tuple[P, Int32]) -> Int32:\n"
+            "    return t[1]\n"
+            "def main() -> None:\n"
+            "    xs = [P(1)]\n"
+            "    print(take((xs[0], 3)))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("btuple.elem_btuple_subscript", 0) == 0
+        _assert_byte_identical(src)
