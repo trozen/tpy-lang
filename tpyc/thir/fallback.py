@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterator
 from dataclasses import fields as dataclass_fields, is_dataclass
 
 from ..compilation_context import get_current_compiler
@@ -50,13 +51,21 @@ from .faces import (begin_witness_journal, commit_witnesses,
                     rollback_witnesses)
 from ..parse.nodes import (
     TpyAwait,
+    TpyComprehensionGenerator,
     TpyDictComprehension,
+    TpyExceptHandler,
+    TpyExpr,
+    TpyFStringValue,
+    TpyFunction,
     TpyGeneratorExpression,
     TpyLambda,
     TpyListComprehension,
+    TpyMatchCase,
     TpyNamedExpr,
+    TpyPattern,
     TpySetComprehension,
     TpyStmt,
+    TpyWithItem,
 )
 
 # Landmark constructs the statement-shape axis has not opened: their
@@ -174,6 +183,46 @@ def fold_attempt(component: str, node: object = None) -> None:
         compiler._thir_reject_by_node[id(node)] = reason
 
 
+def _arm_kind(node_type: type) -> str:
+    return _CAMEL_SPLIT.sub("_", node_type.__name__.removeprefix("Tpy")).lower()
+
+
+def _concrete_subclasses(base: type) -> Iterator[type]:
+    # Leaves only: an intermediate base is never instantiated, so seeding it
+    # would park a non-arm at 0 forever and report it deletable. Erring strict
+    # is the safe direction -- a real arm dropped this way is caught by the
+    # dump's observed-vs-universe drift line, an invented one is not.
+    for sub in base.__subclasses__():
+        if sub.__subclasses__():
+            yield from _concrete_subclasses(sub)
+        else:
+            yield sub
+
+
+def arm_universe() -> set[str]:
+    """Every arm kind `record_arm_residual` COULD name.
+
+    The census is a counter over observed kinds, so an arm at residual 0 --
+    the whole point of the metric -- is ABSENT rather than present-with-0.
+    Seeding the dump from this universe is what makes zero reportable; without
+    it the deletable count is empty by construction, whatever the tree.
+
+    Derived from the walk's own reach: the concrete statement / expression /
+    pattern nodes, plus the body-structure dataclasses that carry no shared
+    base. Named as classes, not strings, so a rename breaks here.
+
+    The baseless group cannot be derived, so it can drift; the dump side
+    unions the OBSERVED kinds over this seed and reports any kind missing
+    from it, which turns drift into a visible line instead of a lost arm."""
+    kinds = set()
+    for base in (TpyStmt, TpyExpr, TpyPattern):
+        kinds.update(_arm_kind(sub) for sub in _concrete_subclasses(base))
+    kinds.update(_arm_kind(t) for t in (TpyExceptHandler, TpyComprehensionGenerator,
+                                        TpyWithItem, TpyMatchCase,
+                                        TpyFStringValue, TpyFunction))
+    return kinds
+
+
 def record_arm_residual(body: 'list') -> None:
     """Tally, per AST construct kind, how many FALLBACK units CONTAIN it -- the
     deletion residual for that construct's AST emit arm (smallest = closest to
@@ -191,8 +240,7 @@ def record_arm_residual(body: 'list') -> None:
     kinds: set[str] = set()
     for stmt in body:
         for node in _walk_deep(stmt):
-            kinds.add(_CAMEL_SPLIT.sub("_", type(node).__name__
-                                      .removeprefix("Tpy")).lower())
+            kinds.add(_arm_kind(type(node)))
     r = compiler._thir_arm_residual
     for k in kinds:
         r[k] = r.get(k, 0) + 1

@@ -5892,3 +5892,77 @@ native/template exclusion -- each admits a whole family on one to five
 witnesses, which is the exact shape CLAUDE.md names dualgen as the ONLY
 detector for. Every defect caught in that class here was found by a
 reviewer's ad-hoc probe instead. Record the probe per cell.
+
+### The arm ledger could not report its own headline (2026-08-01)
+
+The arm residual is the per-arm deletion-progress view: residual = fallback
+bodies keeping that AST arm alive, and **residual 0 = no body needs the
+arm**. The generated `THIR_ARM_LEDGER.md` had reported `0/67 arms
+deletable` since it was created. That number was not a measurement -- it
+was structurally unreachable.
+
+**`record_arm_residual` is a counter over OBSERVED kinds.** An arm that
+reaches residual 0 stops being seen, so it is ABSENT from the dump rather
+than present with 0. The renderer computed `deletable = [k for k, v in
+items if v == 0]` over that dump: empty by construction, whatever the
+tree. It would have printed `0/N deletable` on the day fallback hit zero.
+Confirmed against a fresh dump before the fix: min value 1, zero keys
+equal to 0.
+
+**The real answer was 4.** Seeding the dump from a derived `arm_universe()`
+(`thir/fallback.py`) makes zero reportable: `continue`, `del_attr`,
+`type_param_construct`, `chained_compare` are at residual 0 on master
+(dial 2933/3694). All four have real AST emit arms and THIR lowering
+counterparts. `continue` (was 6) and `type_param_construct` (was 1) are
+present->absent since the last regeneration, which is a SOUND inference in
+that direction only because the census walk got WIDER in between
+(`_walk_deep` reaches nested container fields the flat walk missed) -- a
+kind that stopped being seen genuinely stopped occurring.
+
+**Residual 0 is not a deletion license.** It is measured over fallback
+BODIES. The Gate D3 checklist-item-4 skeleton positions
+(`records.py:404/1480/1619`, `functions.py:1924`) call `gen_expr` on
+arbitrary expressions from outside that population, so for the two
+EXPRESSION arms here, "no body needs this" is not "nothing needs this".
+The two STATEMENT arms are unaffected by that caveat -- and none of the
+four gets deleted anyway, per the no-piecemeal contract.
+
+**THE DOC IS DELETED, and that is the durable half of this entry.** It was
+also stale by half the migration -- last regenerated at dial 1182->1240,
+read at 2933 (movers since: `with`/`with_item` 103->15, `assert` 62->12,
+`lambda` 60->11, `break` 54->6, `star_unpack` 24->1). Both failures are
+the same one: a committed COPY of tool output cannot be told apart from a
+current one, so it rots silently and a cold reader -- exactly the person
+the file exists for -- is the one who cannot detect it. The same rot hit
+the hand-copied zero-witness FACE list in TODO.md: it names 8, the tree
+has 26, and 20 of those were never filed. So the summary lines are now
+the canonical data (`--thir-codegen` prints arm-residual unconditionally,
+on the same footing as the face tally; `$THIR_ARM_RESIDUAL_JSON` gates
+only the dump), and prose carries only JUDGMENT -- why a face is
+permanently unwitnessed, which arm is worth a wave. Data belongs to the
+tool; a dated snapshot in this ledger is honest in a way a
+current-looking generated file is not. Do not reintroduce a generated
+status doc without staleness detection that fires on ordinary runs.
+
+**LESSON -- a metric whose DONE state is the ABSENCE of a key cannot
+report done.** This is the pin-discipline finding's family: an instrument
+reading green while proving nothing. The distinguishing feature is that no
+amount of staring at the output reveals it -- the missing rows are the
+signal, so the only detector is a diff against the key space the metric
+COULD name. Seed the key space, or accept that the metric is blind at
+exactly the value you built it to find.
+
+**LESSON -- the underivable part of a key space rots immediately.**
+`arm_universe()` derives concrete `TpyStmt`/`TpyExpr`/`TpyPattern`
+subclasses mechanically, but six body dataclasses carry no shared base and
+must be named. The first draft missed two of them (`f_string_value`,
+`function`) -- and that was caught by the observed-vs-universe check on a
+smoke run, not by review. The summary now emits a WARNING line naming any
+observed kind missing from the universe, and unions observed over the seed
+so drift can only fail to report a zero, never lose a count.
+
+Pins: `test_arm_universe_covers_what_the_walk_names` (asserts the baseless
+trio specifically -- the part that rots) and
+`test_arm_universe_excludes_non_body_nodes` (decl containers and
+type-annotation refs would park at 0 forever and report non-arms as
+deletable). Both verified by revert-injection.

@@ -8,6 +8,7 @@ from __future__ import annotations
 from ..compilation_context import _current_compiler, activate_compiler
 from . import fallback as _fb
 from .fallback import (
+    arm_universe,
     begin_attempt,
     begin_stmt,
     classify_stmt,
@@ -101,6 +102,45 @@ def test_arm_residual_sees_nested_container_fields(monkeypatch):
     r = compiler._thir_arm_residual
     assert r["match"] == 1
     assert r["capture_pattern"] == 1
+
+
+def test_arm_universe_covers_what_the_walk_names(monkeypatch):
+    # The census counts only OBSERVED kinds, so a residual-0 arm is absent
+    # rather than zero -- the universe is what makes zero reportable. Any kind
+    # the walk can name must be in it, or that arm's 0 is unreportable.
+    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
+    compiler, _, f = _fn_body(
+        "from tpy import Int32\n"
+        "def f(xs: list[Int32]) -> Int32:\n"
+        "    t = 0\n"
+        "    with open('/dev/null') as fh:\n        pass\n"
+        "    try:\n"
+        "        for a in xs:\n            t += a\n"
+        "    except ValueError as e:\n        raise\n"
+        "    print(f'{t}')\n"
+        "    return t\n", "f")
+    with activate_compiler(compiler):
+        record_arm_residual(f.body)
+    named = set(compiler._thir_arm_residual)
+    # Pin the BASELESS group specifically: it is the part of the universe that
+    # cannot be derived, so it is the part that silently rots.
+    assert {"except_handler", "with_item", "f_string_value"} <= named
+    assert named <= arm_universe(), sorted(named - arm_universe())
+
+
+def test_arm_universe_excludes_non_body_nodes():
+    # Decl containers and type-annotation refs are never reached by a BODY
+    # walk, so seeding them would park them at 0 forever and report non-arms
+    # as deletable.
+    u = arm_universe()
+    for kind in ("module", "record", "protocol", "enum",
+                 "type_ref", "union_ref", "callable_ref"):
+        assert kind not in u
+    # ...while the baseless body dataclasses, which have no derivable base,
+    # ARE present.
+    for kind in ("except_handler", "comprehension_generator", "with_item",
+                 "match_case", "f_string_value", "function"):
+        assert kind in u
 
 
 def test_arm_residual_inert_when_gate_off(monkeypatch):

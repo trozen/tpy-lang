@@ -56,6 +56,8 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
+from tpyc.thir import fallback as thir_fallback
+from tpyc.thir.fallback import arm_universe
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -1373,6 +1375,12 @@ def pytest_configure(config):
     # comp-only run, measured 2026-07-30).
     if config.getoption("--thir-stdlib") or config.getoption("--thir-codegen"):
         THIR_STDLIB = True
+    # ...and the arm-residual census, on the same footing as the face tally: a
+    # deletion metric that needs an env var remembered is a metric that gets
+    # forgotten. The walk covers fallback bodies only -- noise against a
+    # whole-corpus run. $THIR_ARM_RESIDUAL_JSON now gates only the DUMP.
+    if THIR_IGNORE_MARKERS:
+        thir_fallback._ARM_RESIDUAL_ON = True
 
     # --dep-mode: parsed before the xdist-worker early return -- workers do
     # the per-case compiles, so they need the same modes as the master.
@@ -2644,24 +2652,44 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             # The SMALLEST residual is the arm closest to deletable; report it
             # ascending so the next target reads off the top.
             arm_dump = os.environ.get("THIR_ARM_RESIDUAL_JSON")
-            residual = dict(_thir_arm_residual)
+            observed = dict(_thir_arm_residual)
             for key, n in _thir_arm_residual_agg.items():
-                residual[key] = residual.get(key, 0) + n
-            if arm_dump and residual:
-                Path(arm_dump).write_text(
-                    json.dumps(dict(sorted(residual.items(),
-                                           key=lambda kv: kv[1])), indent=2)
-                    + "\n")
-                smallest = sorted(residual.items(), key=lambda kv: kv[1])[:10]
+                observed[key] = observed.get(key, 0) + n
+            if observed:
+                # An arm at residual 0 is ABSENT from the counter, so seed the
+                # universe first: without it "deletable" is empty whatever the
+                # tree, which is what the metric exists to report.
+                universe = arm_universe()
+                residual = {k: 0 for k in universe} | observed
+                if arm_dump:
+                    Path(arm_dump).write_text(
+                        json.dumps(dict(sorted(residual.items(),
+                                               key=lambda kv: kv[1])), indent=2)
+                        + "\n")
+                deletable = sorted(k for k, v in residual.items() if v == 0)
+                terminalreporter.write_line(
+                    f"{_LOG_PREFIX} thir arm-residual: {len(deletable)}/"
+                    f"{len(residual)} arms DELETABLE (residual 0)"
+                    + (f": {', '.join(deletable)}" if deletable else "")
+                )
+                smallest = sorted(((k, v) for k, v in residual.items() if v),
+                                  key=lambda kv: kv[1])[:10]
                 nearest = ", ".join(f"{k} {v}" for k, v in smallest)
                 terminalreporter.write_line(
                     f"{_LOG_PREFIX} thir arm-residual (bodies keeping each AST "
                     f"arm alive; smallest = closest to deletable): {nearest}"
                 )
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir arm-residual: full counts written to "
-                    f"{arm_dump}"
-                )
+                drift = sorted(set(observed) - universe)
+                if drift:
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir arm-residual: WARNING -- observed "
+                        f"kinds missing from arm_universe(): {', '.join(drift)}"
+                    )
+                if arm_dump:
+                    terminalreporter.write_line(
+                        f"{_LOG_PREFIX} thir arm-residual: full counts written "
+                        f"to {arm_dump}"
+                    )
             # Distinct-SHAPE coverage: the de-inflated complement of the routed
             # count (which repeats the stdlib body per case). `R/T distinct
             # shapes routed` is the honest progress %; the top blocked shapes are
