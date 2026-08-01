@@ -1221,11 +1221,12 @@ by theme; each is a rule the next cell should apply.
   alias where the AST copies. The promotion rule is per-ARM, not global: the frame and
   owned-tuple arms promote value-typed names, the tier-1 fallthrough does not, so no
   type-keyed filter over the raw set can express it.
-- **Separately**, a value-type filter still lives at the container-literal element sink
-  (`_container_elem_move_source`). That one is a SINK rule, not a set correction: a
-  frame-promoted `Int32` yielded as a tuple element is legitimately movable and the AST
-  still renders it bare. The two sinks disagree -- see the container-literal gap in
-  TODO.md.
+- **Separately**, `_container_elem_move_source` carries a SINK rule, not a set
+  correction, and the two sinks it serves DISAGREE on a value-typed movable payload:
+  a container literal moves it (`make_vector<BigInt>(std::move(n))`), a tuple literal
+  renders it bare (`{n, ...}`). One shared helper serves both, so the rule keys on the
+  sink the caller represents (`tuple_elem`), never on the payload type -- collapsing it
+  either way diverges one side.
 - **Own params own their storage** -> they read STORAGE form (a validator sink-rule catch;
   an Own-param BORROW mislabel was the rule's first live catch).
 - **Position-blind vs target-typed render:** the async frame-field-write arm and the async

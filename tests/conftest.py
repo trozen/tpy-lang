@@ -56,6 +56,7 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
+from tpyc import move_audit
 from tpyc.thir import fallback as thir_fallback
 from tpyc.thir.fallback import arm_universe
 
@@ -995,6 +996,30 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         record_thir_fallback(compiler._thir_fallback)
         record_thir_arm_residual(compiler._thir_arm_residual)
         record_thir_shapes(compiler._thir_shapes)
+        # Cross-path move-verdict join. Scoped to ROUTED bodies by the journal
+        # in move_audit, so a fallback body's verdicts (which drove no emitted
+        # C++) cannot raise it. Any hit is a move-vs-copy divergence the
+        # byte-diff structurally cannot see.
+        # Label relative to the corpus when it lives there; the harness's own
+        # synthetic cases are built in a tmpdir and have no corpus-relative
+        # path, so fall back to the leaf name rather than raising.
+        try:
+            _mv_label = str(case_dir.relative_to(CASES_DIR))
+        except ValueError:
+            _mv_label = case_dir.name
+        move_diffs = move_audit.disagreements(compiler)
+        record_move_verdicts(_mv_label, move_diffs,
+                             joined=move_audit.joined(compiler))
+        if move_diffs:
+            rows = "\n".join(
+                f"  {n} in `{fn or '?'}`: ast={a} thir={t}"
+                for n, a, t, fn in move_diffs)
+            pytest.fail(
+                f"move-verdict divergence ({len(move_diffs)}): a name the two "
+                f"paths judge differently at its last use -- one moves where "
+                f"the other copies.\n{rows}\nA wrong verdict at a site whose "
+                f"render ignores it emits identical C++, so the byte-diff "
+                f"cannot catch this. See tpyc/move_audit.py.")
         if thir_active:
             fell = sum(compiler._thir_fallback.values())
             if THIR_CLASSIFY_WRITE:
@@ -1360,6 +1385,12 @@ def pytest_configure(config):
     if not updating and not config.getoption("--no-thir"):
         TEST_CODEGEN_OPTIONS = dataclasses.replace(
             TEST_CODEGEN_OPTIONS, thir_codegen=True)
+        # The cross-path move-verdict join (tpyc/move_audit.py): on whenever
+        # the overlay runs, since it needs BOTH passes over the same nodes.
+        # Same footing as the face tally -- it is the only detector for a
+        # move-vs-copy divergence at a site whose render ignores the verdict,
+        # which the byte-diff cannot see, so it must not need remembering.
+        move_audit.set_enabled(True)
     # --thir-codegen / --thir-check-flip / --thir-classify run THIR on ALL user
     # cases (ignoring no_thir.txt) -- the whole-corpus check / classification;
     # the default run respects the markers so only migrated cases assert THIR.
@@ -2334,6 +2365,21 @@ def run_interop_thir_overlay(mod_py: Path, case_dir: Path,
                 f"{label}\n"
                 + _format_unified_diff(oracle, actual, "ast", "thir"))
 
+    # The move-verdict join, on the same footing as the main corpus path: both
+    # passes ran on THIS compiler, so the verdicts are joinable here too.
+    # Without this the interop half records verdicts nobody ever compares,
+    # while CLAUDE.md promises the gate covers every routed body.
+    move_diffs = move_audit.disagreements(compiler)
+    record_move_verdicts(f"interop/{case_dir.name}", move_diffs,
+                         joined=move_audit.joined(compiler))
+    for name, ast_v, thir_v, fn in move_diffs:
+        divergences.append(
+            f"move-verdict divergence in `{fn or '?'}`: `{name}` "
+            f"ast={ast_v} thir={thir_v} -- "
+            f"one path moves where the other copies. A wrong verdict at a "
+            f"site whose render ignores it emits identical C++, so the text "
+            f"compare above cannot catch this.")
+
     _interop_thir["routed"] += compiler._thir_routed_bodies
     if THIR_CLASSIFY_WRITE:
         _apply_no_thir_marker(case_dir, dirty=(fell > 0))
@@ -2375,6 +2421,30 @@ def record_thir_fallback(counts: dict[str, int]) -> None:
     """Fold one case's fallback-reason counts (empty when the flag is off)."""
     for key, n in counts.items():
         _thir_fallback[key] = _thir_fallback.get(key, 0) + n
+
+
+# Cross-path move-verdict divergences (tpyc/move_audit.py): `case -> [(name,
+# ast, thir)]` for names the two paths judge differently at a last use in a
+# ROUTED body. FAILS the case -- the corpus is at zero, and a wrong verdict at
+# a site whose render ignores it emits identical C++, so this is the only
+# thing standing between such a divergence and a silent miscompile later.
+# The summary line still prints at zero: an absent line and a silently
+# unwired detector would otherwise look the same.
+_move_verdicts: dict[str, list] = {}
+_move_verdicts_agg: dict[str, list] = {}
+
+
+_move_joined = [0]
+_move_joined_agg = [0]
+
+
+def record_move_verdicts(case: str, diffs: list, joined: int) -> None:
+    # `joined` is REQUIRED, not defaulted: the denominator exists because "0
+    # divergences" over an unknown count is a silently-unwired detector, and a
+    # default of 0 would reintroduce exactly that one layer up.
+    _move_joined[0] += joined
+    if diffs:
+        _move_verdicts[case] = diffs
 
 
 # Per-construct arm residual: fallback bodies CONTAINING each construct (the
@@ -2453,6 +2523,8 @@ def pytest_sessionfinish(session):
         workeroutput["thir_arm_residual"] = dict(_thir_arm_residual)
         workeroutput["thir_shapes"] = _thir_shapes
         workeroutput["thir_divergences"] = list(_thir_divergences)
+        workeroutput["move_verdicts"] = dict(_move_verdicts)
+        workeroutput["move_joined"] = _move_joined[0]
         workeroutput["thir_cases"] = dict(_thir_cases)
         workeroutput["interop_thir"] = dict(_interop_thir)
         workeroutput["thir_flip"] = list(_thir_flip)
@@ -2481,6 +2553,8 @@ def pytest_testnodedown(node, error):
         _thir_arm_residual_agg[key] = _thir_arm_residual_agg.get(key, 0) + n
     _fold_shapes(_thir_shapes_agg, wo.get("thir_shapes", {}))
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
+    _move_verdicts_agg.update(wo.get("move_verdicts", {}))
+    _move_joined_agg[0] += wo.get("move_joined", 0)
     tc = wo.get("thir_cases")
     if tc:
         for k in _thir_cases_agg:
@@ -2751,6 +2825,27 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                     f"{_LOG_PREFIX}   ... and {len(divergences) - len(shown)} "
                     f"more (see individual failures)"
                 )
+        # The move-verdict join (tpyc/move_audit.py). A hit here is a
+        # move-vs-copy divergence in a ROUTED body that the byte-diff cannot
+        # see, so it is worth a line even at zero -- an absent line would be
+        # indistinguishable from the detector having been silently unwired.
+        mv = {**_move_verdicts, **_move_verdicts_agg}
+        if mv:
+            rows = sum(len(v) for v in mv.values())
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir move-verdicts: {rows} divergence(s) in "
+                f"{len(mv)} case(s) -- one path moves where the other copies:"
+            )
+            for case in sorted(mv)[:10]:
+                names = ", ".join(f"{n} in `{fn or '?'}` (ast={a} thir={t})"
+                                  for n, a, t, fn in mv[case])
+                terminalreporter.write_line(f"{_LOG_PREFIX}   {case}: {names}")
+        elif _thir_tally["bodies"] or _thir_tally_agg["bodies"]:
+            # The denominator is the point: "0 divergences" over 0 joined
+            # nodes is a silently-unwired detector, not a clean run.
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir move-verdicts: 0 divergences over "
+                f"{_move_joined[0] + _move_joined_agg[0]} joined nodes")
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:

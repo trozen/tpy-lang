@@ -80,6 +80,16 @@ The orchestrator passes you a base ref and the changed-file list.
 **BUGS.md**
 - If a fix references a known bug, is the BUGS.md entry updated/removed?
 - If a bug-fix discovered an adjacent defect, is there a new BUGS.md entry?
+- **A DELETED entry must be justified claim by claim, not by its headline.**
+  Entries here routinely bundle several claims (a symptom, a second symptom
+  on another path, a residual divergence, a blocked follow-up). Deleting the
+  whole entry when the fix closed only one claim silently drops the others.
+  For each removed entry, check every sentence that asserts something still
+  broken, and confirm the diff closes it or that it was re-filed.
+- **Re-point every reference to a deleted entry.** `TODO.md`, code comments
+  and the design docs cite BUGS entries by phrase ("BUGS.md's <x> entry").
+  Deleting the anchor leaves a dangling reference that reads as live. Grep
+  the tree for references to the removed entry's subject.
 - Right section used: `## Compiler bugs` for compiler defects; `## Safety / borrow checker` for borrow-checker / view-lifetime gaps
 
 **TODO.md**

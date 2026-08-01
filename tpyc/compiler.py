@@ -63,6 +63,7 @@ from .symbol_binding import (
 
 if TYPE_CHECKING:
     from .codegen_cpp.context import CodeGenContext
+    from .parse.nodes import TpyName
     from .typesys import ModuleInfo, ModuleVarInfo
 
 
@@ -679,6 +680,14 @@ class Compiler:
         # callable -- the same reason the tally aggregates, kept per body so
         # `--dump-thir` can name WHY a body did not route.
         self._thir_reject_by_node: dict[int, str] = {}
+        # Per-path auto-move verdicts, keyed by id() of the TpyName both paths
+        # judged -- the cross-path divergence detector (move_audit.py). Keyed
+        # by object identity, so they MUST stay per-Compiler: id() is recycled
+        # after GC and a process-wide dict invents cross-module rows. The
+        # journal is the routed-body window, mirroring _thir_face_journal.
+        self._move_verdict_ast: 'dict[int, tuple[TpyName, bool, str | None]]' = {}
+        self._move_verdict_thir: 'dict[int, tuple[TpyName, bool, str | None]]' = {}
+        self._move_verdict_journal: set[int] | None = None
         # Per-construct arm-residual (fallback bodies CONTAINING each construct
         # -- the deletion metric; see fallback.record_arm_residual). Populated
         # only when $THIR_ARM_RESIDUAL_JSON is set.

@@ -33,6 +33,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
+from .. import move_audit
 from ..symbol_binding import lookup_imported, SymbolKind
 from .variant_access import VariantAccess
 
@@ -795,14 +796,21 @@ class ExpressionGenerator:
         to membership in `movable_locals` (the body-walk case); the member-init
         list passes its own param-derived set, since `movable_locals` is not
         populated when synthesizing a constructor's MIL."""
+        own_set = movable_names is None
         if movable_names is None:
             movable_names = self.ctx.movable_locals
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
-        return (isinstance(inner, TpyName)
-                and inner.name in movable_names
-                and id(inner) in self.ctx.analyzer.ctx.all_last_uses)
+        verdict = (isinstance(inner, TpyName)
+                   and inner.name in movable_names
+                   and id(inner) in self.ctx.analyzer.ctx.all_last_uses)
+        # The MIL's caller-supplied set is not this function's working set, so
+        # it has no THIR counterpart to join against (both paths pass their own
+        # param set there, agreeing by construction).
+        if own_set and isinstance(inner, TpyName):
+            move_audit.record("ast", inner, verdict)
+        return verdict
 
     def _move_is_inert(self, expr: TpyExpr) -> bool:
         """True when moving a coercion's result cannot differ from copying it.

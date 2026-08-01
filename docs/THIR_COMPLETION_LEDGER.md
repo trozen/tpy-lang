@@ -6049,3 +6049,60 @@ detector (the only mechanism that catches this class -- the byte-diff
 cannot, since a wrong verdict no arm reads emits identical C++), and
 `_assert_routes_byte_identical` in `testutil.py`. The detector runs on
 four fixtures; wiring it to the corpus is filed in TODO.md.
+
+### The await-bind move gap: the same lesson, third instance (2026-08-01)
+
+Not a wave -- an AST defect the move-verdict detector surfaced on its
+first corpus run, plus the THIR mirror it forced.
+
+`x = await f()` ASSIGNS a frame field rather than DECLARING a local, so it
+never reaches `_gen_var_decl`'s promotion and `movable_locals` under-covered
+every await-bound name. Its last use COPIED: for a `@nocopy` payload that is
+`error: use of deleted function` with no front-end diagnostic -- valid Python
+the C++ build rejects. Fixed by promoting at the resume-bind seam
+(`gen_async.py`), which is where the binding actually happens.
+
+**THREE consumers had each patched around the incomplete set.** Two died with
+it; the third turned out to be a different rule wearing the same clothes:
+
+1. the async direct-ready return passed `sema_movable_locals | movable_locals`
+   -- the union, with a comment naming the exact gap it was compensating for;
+2. THIR's `_own_move_source_slice` carried a value-type filter, added because
+   "a sema-movable scalar would over-move where the AST renders bare" -- true
+   only because scalars were never promoted;
+3. `_container_elem_move_source` carried the same filter for what looked like
+   the same reason -- but removing it diverged the TUPLE element sink. It was
+   not a set correction at all: the helper serves TWO sinks that the AST
+   itself treats differently (a container literal moves a value-typed movable
+   payload, a tuple literal renders it bare), and it was applying the tuple
+   rule to both. SPLIT by sink, which closed a routed divergence a list
+   literal had been emitting all along. Two of three compensations were the
+   set's fault; assuming the third was too would have been wrong.
+
+   The split took two attempts, and the difference was method. The first
+   threaded the flag through `_lower_tuple_literal` -- which is not the
+   lowerer a yield tuple uses -- and broke both sinks. The second took the
+   call sites from an instrumented stack trace, then classified all 17
+   callers of the shared helper before touching any. Guessing at lowering
+   topology failed three times on this branch and instrumenting worked three
+   times. "Instrument first" is advice nobody disagrees with and nobody
+   follows under pressure, so the actionable form is a TRIGGER: a hypothesis
+   a unit test can settle never gets a corpus run. `test_thir_movable_set.py`
+   could have settled at least two of the three in seconds each; instead they
+   cost ~10 minutes apiece to be told "no".
+
+Each read as locally justified, each cited the symptom rather than the cause,
+and each silently blocked the fix from reaching its own sink. That is the
+signature: **when two or more consumers independently compensate for one set,
+the set is the bug.** Grep for the compensation, not the symptom.
+
+Also a limit of the detector, worth knowing: it joins the base predicate
+(`_is_move_source` / `_is_last_use_movable`), NOT the final emit decision. A
+sink that overrides the verdict downstream -- exactly consumer (2) -- reads as
+`0 divergences` while the byte-diff differs. The two checks are complementary;
+neither subsumes the other.
+
+LESSON: a filter justified by "the other path renders bare HERE" is a
+hypothesis about why, not a fact. Both filters above were right about the
+render and wrong about the reason, so both outlived the condition that made
+them correct.

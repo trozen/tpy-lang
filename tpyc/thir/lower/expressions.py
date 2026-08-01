@@ -7,6 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 import math
 from dataclasses import field, fields as dataclass_fields, replace
+from ... import move_audit
 from ... import qnames
 from ...parse.nodes import (
     FSTRING_CONV_NONE,
@@ -843,8 +844,9 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
                            lc: '_LowerCtx',
                            declared: dict[str, TpyType]) -> bool:
     """The temp-free MOVE-SOURCE slice of the Own-slot copy+move row: a bare
-    non-self, non-narrowed NAME of NON-VALUE payload at its last movable use
-    into an eligible Own slot -- renders `std::move(name)` position-
+    non-self, non-narrowed NAME at its last movable use -- of ANY payload,
+    value-typed or not -- into an eligible Own slot; renders `std::move(name)`
+    position-
     independently. Shared by the NESTED ctor tail (which admits exactly this
     slice; the flushable copy half stays DIRECT-only) and `_lower_call_arg`'s
     Own-slot arm (which picks THIRMove on the same facts), so the two cannot
@@ -856,14 +858,13 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     if (a.name in lc.narrow.narrowed or a.name in lc.inline_narrowed
             or a.name not in declared):
         return False
-    if not _is_move_source(a, lc):
-        return False
-    at = lc.analyzer.get_expr_type(a)
-    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    if isinstance(at, OwnType):
-        at = unwrap_readonly(at.wrapped)
-    return at is not None and not at.is_value_type()
+    # No value-type filter: movability alone decides, because the working set
+    # only ever holds names an arm actually promoted. A sync scalar is never
+    # promoted (the tier-1 arm's own value filter), while a frame-promoted or
+    # await-bound scalar IS -- and the AST moves it here. Filtering by payload
+    # type instead of trusting the set is what made `asyncio_queue`'s
+    # `out.append(x)` render bare against the AST's `std::move(x)`.
+    return _is_move_source(a, lc)
 
 
 def _template_arg_unreferenced(kind: 'tuple[str, str] | None',
@@ -7147,6 +7148,7 @@ def _lower_checked_container_elem(
         allow_optional: bool = False,
         retype_scalars: bool = True,
         suppress_move: bool = False,
+        tuple_elem: bool = False,
         frame_bare_tuple: bool = False) -> THIRExpr:
     if not _container_lit_elem_ok(
             e, slot, declared, lc.analyzer, threaded=threaded, forced=forced,
@@ -7155,7 +7157,8 @@ def _lower_checked_container_elem(
         raise ThirUnsupported("expr.container_literal")
     return _lower_container_elem(
         e, slot, lc, declared, retype_scalars=retype_scalars,
-        suppress_move=suppress_move, frame_bare_tuple=frame_bare_tuple)
+        suppress_move=suppress_move, tuple_elem=tuple_elem,
+        frame_bare_tuple=frame_bare_tuple)
 
 
 def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
@@ -7213,6 +7216,7 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           retype_scalars: bool = True,
                           suppress_move: bool = False,
                           field_str_ok: bool = False,
+                          tuple_elem: bool = False,
                           frame_bare_tuple: bool = False) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
@@ -7323,7 +7327,7 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                 result_type=su,
                 elements=tuple(
                     _lower_container_elem(e.elements[i], su.element_types[i],
-                                          lc, declared)
+                                          lc, declared, tuple_elem=True)
                     for i in range(len(e.elements))),
                 loc=getattr(e, "loc", None))
             if lc.resumable_leaf_mode and frame_bare_tuple:
@@ -7452,34 +7456,38 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     # A list-repeat element is copied into EVERY slot (one source, N slots), so
     # it must never move (the AST's `_gen_list_repeat` omits `_maybe_move`);
     # moving would use-after-move the source for slots 1..N-1.
-    if not suppress_move and _container_elem_move_source(e, lc):
+    if not suppress_move and _container_elem_move_source(
+            e, lc, tuple_elem=tuple_elem):
         _witness("containerlit.move")
         el = THIRMove(result_type=el.result_type, value=el, form=el.form,
                       loc=getattr(e, "loc", None))
     return el
 
-def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx') -> bool:
-    """`_maybe_move` for a container-literal element/key/value: movability AND
-    a value-type filter.
+def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx', *,
+                                tuple_elem: bool = False) -> bool:
+    """`_maybe_move` for a container element / dict key-value / tuple element.
 
-    The filter is NOT a correction to the movable set (that set is now built at
-    the decl arms that promote). It was kept because removing it diverged at the
-    TUPLE element sink: a frame-promoted `Int32` yielded as a tuple element
-    (`generators/yield_loop_body_local_borrow`) is legitimately movable and the
-    AST renders it bare. But the two sinks DISAGREE -- at a CONTAINER literal
-    the AST does move such a local (`make_vector<BigInt>(std::move(n))`) while
-    this returns False. That divergence is pre-existing and currently
-    unwitnessed; see the container-literal element gap in TODO.md. Do not
-    generalize this filter to a rule about value payloads.
+    THE TWO SINKS DISAGREE on a value-typed movable payload, and the split is
+    the AST's, not a correction to the movable set:
 
-    The exception is a value-Optional binding, whose narrowed `(*a)` element
-    does move -- including through the view->owned coerce wrap
+    - CONTAINER element (a list/dict/set literal, a container insert) -- the
+      AST's `_maybe_move` wraps ANY movable name, value-typed or not, so a
+      frame-promoted BigInt reaches `make_vector<BigInt>(std::move(n))`.
+    - TUPLE element (`tuple_elem=True`) -- the AST renders such a name BARE,
+      witnessed by `generators/yield_loop_body_local_borrow`. That is what
+      removing the filter outright broke, and why it is keyed on the SINK
+      the caller represents rather than on the payload type.
+
+    The value-Optional binding is the exception on the tuple side: its narrowed
+    `(*a)` element does move, including through the view->owned coerce wrap
     (`std::string((*a))`, the make_vector face).
 
     The ptr-variant clause this used to carry is GONE, and stays gone: no
     decl arm promotes a ptr-variant local, so the set excludes it already."""
     if not _is_move_source(e, lc):
         return False
+    if not tuple_elem:
+        return True
     inner = _peel_coerce(e)
     if isinstance(inner, TpyName) and (
             _value_opt_scalar_binding(inner.name, lc)
@@ -7522,7 +7530,7 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             else:
                 _witness("ret.tuple_opt_elem")
         return _lower_container_elem(
-            e.elements[i], elem_slot, lc, declared)
+            e.elements[i], elem_slot, lc, declared, tuple_elem=True)
 
     return THIRTupleLiteral(
         result_type=slot,
@@ -7594,7 +7602,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             mode = TupleElemCapture.CONST_REF
         if mode == TupleElemCapture.VALUE:
             lowered.append(_lower_container_elem(
-                e.elements[i], slot.element_types[i], lc, declared))
+                e.elements[i], slot.element_types[i], lc, declared,
+                tuple_elem=True))
             lifts.append(False)
             wraps.append(None)
             parts.append(lc.render_type(et_bare))
@@ -7823,7 +7832,8 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             parts.append(lc.render_type(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(et)))))
             lowered.append(_lower_container_elem(elem, et, lc, declared,
-                                                 field_str_ok=True))
+                                                 field_str_ok=True,
+                                                 tuple_elem=True))
             wraps.append(None)
             continue
         note_detail("gentuple.elem_slot")
@@ -10442,6 +10452,11 @@ def _is_move_source(value: TpyExpr, lc: _LowerCtx,
     MIL time (the MIL runs before the body) and its movable sources are the Own params."""
     names = lc.movable_locals if movable_names is None else movable_names
     inner = _peel_coerce(value)
-    return (isinstance(inner, TpyName)
-            and inner.name in names
-            and id(inner) in lc.analyzer.ctx.all_last_uses)
+    verdict = (isinstance(inner, TpyName)
+               and inner.name in names
+               and id(inner) in lc.analyzer.ctx.all_last_uses)
+    # See the AST twin: the MIL's own param set has no counterpart to join.
+    if movable_names is None and isinstance(inner, TpyName):
+        move_audit.record("thir", inner, verdict,
+                          func=getattr(lc.func, "name", None))
+    return verdict

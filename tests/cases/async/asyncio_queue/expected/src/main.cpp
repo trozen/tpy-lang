@@ -61,7 +61,7 @@ __coro_producer producer(::tpystd::asyncio::Queue<int32_t>& q) {
         x = std::move(__r0).value();
         __sub_0.reset();
         // out.append(x)
-        out.push_back(x);
+        out.push_back(std::move(x));
         // q.task_done()
         q.task_done();
         // n += 1

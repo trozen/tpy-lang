@@ -1529,6 +1529,7 @@ Auto-move applies to:
 - **Tier 1 locals** (rvalue-initialized, not reassigned)
 - **`Own[T]` parameters** (caller gave up ownership)
 - **Reassigned locals** when every assignment is a value-creating rvalue (emits `std::move((*p))` through the pointer)
+- **`await`-bound locals** (`p = await make()`) at every sink -- call arg, container insert, field write, return. The binding lives in the coroutine frame, so it is a frame FIELD rather than a C++ local, but it is still an ordinary owned local to last-use analysis; the "field accesses" exclusion below is about reading `self.x`, not about where a local happens to be stored. A bind inside a loop body still moves: it is consumed within the same iteration and re-assigned on the next, which is not "used across loop iterations". This previously copied -- a silent extra copy for reference types, and an uncompilable one for a `@nocopy` payload.
 
 Auto-move does NOT apply to:
 - Regular parameters (borrowed by reference)

@@ -12,8 +12,12 @@ shared AST node and fails on any disagreement.
 
 from __future__ import annotations
 
+import pytest
+
+from .. import move_audit
 from ..codegen_cpp.context import CodeGenOptions
 from ..codegen_cpp.expressions import ExpressionGenerator
+from ..compilation_context import get_current_compiler
 from ..parse.nodes import TpyCoerce, TpyName
 from .lower.context import _LowerCtx
 from .testutil import (_assert_routes_byte_identical, _compile, _entry)
@@ -163,13 +167,273 @@ class TestPromotingArmsStillMove:
         _assert_routes_byte_identical(_FRAME_VALUE)
 
 
+# The BOUNDARY for the Own-slot move row (`_own_move_source_slice`). That row
+# used to carry its own `not is_value_type()` filter; the AST twin never had
+# one, so the filter was strictly more conservative than its own oracle and
+# blocked a legitimate move. This is the shape that proves it: a VALUE-typed
+# payload (Int32) that reaches `movable_locals` via the await-bind promotion,
+# passed as a bare last-use NAME into an `Own[T]` element slot. Reinstating
+# the filter renders `push_back(x)` against the AST's `push_back(std::move(x))`
+# -- verified by injection, so this pin can fail.
+_OWN_SLOT_VALUE = (
+    "import asyncio\n"
+    "from tpy import Int32\n"
+    "async def get_one() -> Int32:\n"
+    "    return 7\n"
+    "async def collect(out: list[Int32]) -> None:\n"
+    "    x = await get_one()\n"
+    "    out.append(x)\n"
+    "def main() -> None:\n"
+    "    xs: list[Int32] = []\n"
+    "    asyncio.run(collect(xs))\n"
+    "    print(xs[0])\n"
+    "main()\n"
+)
+
+# The over-trigger guard at the same site: a name read AGAIN after the slot
+# is not a last use, so it must copy however movable it is.
+_OWN_SLOT_VALUE_REUSED = (
+    "import asyncio\n"
+    "from tpy import Int32\n"
+    "async def get_one() -> Int32:\n"
+    "    return 7\n"
+    "async def collect(out: list[Int32]) -> Int32:\n"
+    "    x = await get_one()\n"
+    "    out.append(x)\n"
+    "    return x\n"
+    "def main() -> None:\n"
+    "    xs: list[Int32] = []\n"
+    "    print(asyncio.run(collect(xs)))\n"
+    "main()\n"
+)
+
+
+class TestOwnSlotValuePayload:
+    """A value-typed payload at an `Own[T]` slot moves when it is movable --
+    movability is decided by the working set, never re-derived from the
+    payload type at the consumer."""
+
+    def test_value_payload_moves_at_an_own_slot(self):
+        cpp = _cpp(_OWN_SLOT_VALUE, thir=True)
+        assert "out.push_back(std::move(x));" in cpp
+
+    def test_routes_and_stays_byte_identical(self):
+        _assert_routes_byte_identical(_OWN_SLOT_VALUE)
+
+    def test_a_non_last_use_still_copies(self):
+        cpp = _cpp(_OWN_SLOT_VALUE_REUSED, thir=True)
+        assert "out.push_back(x);" in cpp
+        assert "out.push_back(std::move(x));" not in cpp
+
+    def test_the_reused_shape_is_byte_identical(self):
+        _assert_routes_byte_identical(_OWN_SLOT_VALUE_REUSED)
+
+
+# The element-sink split. A value-typed payload promoted into `movable_locals`
+# (here a BigInt frame local) renders DIFFERENTLY at the two sinks, and the
+# difference is the AST's:
+#   container literal -> `make_vector<BigInt>(std::move(n))`
+#   tuple literal     -> `{n, ...}`, bare
+# One shared helper serves both, so the rule keys on the SINK the caller
+# represents (`tuple_elem`), never on the payload type. Collapsing them either
+# way diverges one side -- both directions verified by injection.
+_SINK_CONTAINER = (
+    "from tpy import Own\n"
+    "import asyncio\n"
+    "async def one() -> int:\n"
+    "    return 1\n"
+    "async def collect(k: int) -> Own[list[int]]:\n"
+    "    n = 0\n"
+    "    while n < k:\n"
+    "        n = n + await one()\n"
+    "    return [n]\n"
+    "def main() -> None:\n"
+    "    print(asyncio.run(collect(3)))\n"
+    "main()\n"
+)
+
+_SINK_TUPLE = (
+    "import asyncio\n"
+    "async def one() -> int:\n"
+    "    return 1\n"
+    "async def pair() -> tuple[int, int]:\n"
+    "    n = 0\n"
+    "    while n < 3:\n"
+    "        n = n + await one()\n"
+    "    return (n, 2)\n"
+    "def main() -> None:\n"
+    "    print(asyncio.run(pair()))\n"
+    "main()\n"
+)
+
+
+# The dict half of the container rule: a distinct call path (keys lower
+# through `_lower_container_elem` directly, values through the checked
+# wrapper) with its own `make_ordered_map` decision.
+_SINK_DICT = (
+    "from tpy import Own\n"
+    "import asyncio\n"
+    "async def one() -> int:\n"
+    "    return 1\n"
+    "async def build() -> Own[dict[int, int]]:\n"
+    "    n = 0\n"
+    "    while n < 3:\n"
+    "        n = n + await one()\n"
+    "    return {n: 2}\n"
+    "def main() -> None:\n"
+    "    print(asyncio.run(build()))\n"
+    "main()\n"
+)
+
+
+class TestElementSinkSplit:
+    """The two element sinks disagree on a value-typed movable payload, and
+    the shared helper must ask which sink it is serving."""
+
+    def test_container_literal_moves_the_value_payload(self):
+        cpp = _cpp(_SINK_CONTAINER, thir=True)
+        assert "make_vector<::tpy::BigInt>(std::move(n))" in cpp
+
+    def test_container_sink_routes_and_is_byte_identical(self):
+        _assert_routes_byte_identical(_SINK_CONTAINER)
+
+    def test_dict_literal_moves_the_value_payload_key(self):
+        cpp = _cpp(_SINK_DICT, thir=True)
+        assert "make_ordered_map<::tpy::BigInt, ::tpy::BigInt>(std::move(n)" in cpp
+
+    def test_dict_sink_routes_and_is_byte_identical(self):
+        _assert_routes_byte_identical(_SINK_DICT)
+
+    def test_tuple_literal_renders_the_value_payload_bare(self):
+        cpp = _cpp(_SINK_TUPLE, thir=True)
+        assert "{n, ::tpy::BigInt(2)}" in cpp
+        assert "std::move(n)" not in cpp
+
+    def test_tuple_sink_routes_and_is_byte_identical(self):
+        _assert_routes_byte_identical(_SINK_TUPLE)
+
+
+class TestMoveAuditJournal:
+    """The detector's own contract: only a ROUTED body's THIR verdicts count.
+
+    A body that falls back emits its whole tree through the AST path, so its
+    verdicts drove no emitted C++ -- counting them would report divergences
+    that cannot exist. Mirrors `faces.rollback_witnesses`, and is opened and
+    closed at the same seams so the two windows cannot drift."""
+
+    @staticmethod
+    def _node():
+        return TpyName(name="x")
+
+    def test_a_routed_bodys_verdict_survives(self):
+        was = move_audit.enabled()
+        move_audit.set_enabled(True)
+        try:
+            n = self._node()
+            move_audit.begin_body()
+            move_audit.record("thir", n, True)
+            move_audit.commit_body()
+            rec = get_current_compiler()._move_verdict_thir[id(n)]
+            assert (rec[0] is n, rec[1]) == (True, True), (
+                "the NODE must be stored, not just its name -- it is what "
+                "keeps id() from being recycled mid-compile")
+        finally:
+            move_audit.set_enabled(was)
+
+    def test_a_fallback_bodys_verdict_is_dropped(self):
+        was = move_audit.enabled()
+        move_audit.set_enabled(True)
+        try:
+            n = self._node()
+            move_audit.begin_body()
+            move_audit.record("thir", n, True)
+            move_audit.rollback_body()
+            assert id(n) not in get_current_compiler()._move_verdict_thir
+        finally:
+            move_audit.set_enabled(was)
+
+    def test_the_ast_side_is_not_journalled(self):
+        """The AST always emits, so its verdicts are never rolled back --
+        otherwise a THIR fallback would erase the very side it is joined
+        against, and every divergence would silently read as agreement."""
+        was = move_audit.enabled()
+        move_audit.set_enabled(True)
+        try:
+            n = self._node()
+            move_audit.begin_body()
+            move_audit.record("ast", n, True)
+            move_audit.rollback_body()
+            rec = get_current_compiler()._move_verdict_ast[id(n)]
+            assert (rec[0] is n, rec[1]) == (True, True)
+        finally:
+            move_audit.set_enabled(was)
+
+    def test_disabled_records_nothing(self):
+        """Explicitly disables rather than assuming the default: the test
+        harness turns the detector on for the whole session, so a test that
+        relied on the module default passed alone and failed in a full run."""
+        was = move_audit.enabled()
+        move_audit.set_enabled(False)
+        try:
+            n = self._node()
+            move_audit.record("thir", n, True)
+            assert id(n) not in get_current_compiler()._move_verdict_thir
+        finally:
+            move_audit.set_enabled(was)
+
+    def test_rollback_without_a_window_asserts(self):
+        """The mirroring of `faces.rollback_witnesses` is asserted in prose;
+        pin it. A new fallback seam that forgets `begin_attempt` must fail
+        loudly rather than roll back verdicts belonging to whatever ran
+        last."""
+        get_current_compiler()._move_verdict_journal = None
+        with pytest.raises(AssertionError, match="no move-audit journal open"):
+            move_audit.rollback_body()
+
+    def test_the_verdict_carries_its_enclosing_function(self):
+        """A bare `x (ast=True thir=False)` is a poor starting position in a
+        3700-case run; the byte-diff labels its divergences with the
+        enclosing function and this gate should too."""
+        move_audit.set_enabled(True)
+        was = move_audit.enabled()
+        try:
+            n = self._node()
+            c = get_current_compiler()
+            move_audit.begin_body()
+            move_audit.record("ast", n, True)
+            move_audit.record("thir", n, False, func="consume")
+            move_audit.commit_body()
+            assert move_audit.disagreements(c) == [("x", True, False, "consume")]
+        finally:
+            move_audit.set_enabled(was)
+
+    def test_the_join_counts_its_denominator(self):
+        """`0 divergences` over 0 joined nodes is a silently unwired detector,
+        not a clean run -- the count is what tells them apart."""
+        was = move_audit.enabled()
+        move_audit.set_enabled(True)
+        try:
+            n = self._node()
+            c = get_current_compiler()
+            move_audit.begin_body()
+            move_audit.record("ast", n, True)
+            assert move_audit.joined(c) == 0, "one-sided node must not count"
+            move_audit.record("thir", n, True)
+            move_audit.commit_body()
+            assert move_audit.joined(c) == 1
+        finally:
+            move_audit.set_enabled(was)
+
+
 class TestVerdictsAgreeWithTheAst:
     """The durable detector. Both paths decide moves with the same shape of
     predicate over the SAME TpyName objects, so their verdicts join exactly on
     node identity -- any disagreement is a move-vs-copy divergence, including
     one no current arm happens to render."""
 
-    SOURCES = (_VALUE_STR, _PTR_VARIANT, _OWN_TUPLE, _FRAME_VALUE)
+    SOURCES = (_VALUE_STR, _PTR_VARIANT, _OWN_TUPLE, _FRAME_VALUE,
+               _OWN_SLOT_VALUE, _OWN_SLOT_VALUE_REUSED,
+               _SINK_CONTAINER, _SINK_DICT, _SINK_TUPLE)
 
     @staticmethod
     def _peel(e):

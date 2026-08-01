@@ -4214,21 +4214,16 @@ class StatementGenerator:
                 and async_return_form(ret_type) is AsyncReturnForm.STORAGE):
             # Direct-ready storage slot: a last-use movable bare name moves
             # out (the frame is completing, nothing can read it after).
-            # Every ctx.movable_locals member is already trusted for
-            # mid-body call-arg moves (_maybe_move), and this site is
-            # strictly safer than any call arg; the union's point is the
-            # SEMA-ONLY members -- an await-result frame field is assigned,
-            # never declared, so the working set alone under-covers it.
+            # Reads the plain working set: the await bind registers its own
+            # target now, so the set no longer under-covers await-result
+            # frame fields and this site needs no compensation for them.
             # A coerce-wrapped source is excluded (its render is a fresh
             # conversion temp), and wants_move keeps trivial scalars bare.
             # Borrow-form slots (pointer payloads) and the generic trait
             # form alias, not move -- the move gate and the borrow lift
             # are mutually exclusive by form.
             if (isinstance(stmt.value, TpyName)
-                    and self.expressions._is_last_use_movable(
-                        stmt.value,
-                        self.ctx.sema_movable_locals
-                        | self.ctx.movable_locals)):
+                    and self.expressions._is_last_use_movable(stmt.value)):
                 vt = self.ctx.get_expr_type(stmt.value)
                 if vt is not None and wants_move(vt):
                     expr_cpp = f"std::move({expr_cpp})"

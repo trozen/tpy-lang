@@ -257,6 +257,8 @@ Independent extensions, listed in no particular order. Each is its own design ex
 
 `Coroutine[T]` is the type returned by `async def`. Each `async def` lowers to a distinct generated struct conforming to `Awaitable[T]`.
 
+An **await-bound local participates in auto-move like any other owned local**: `p = await make()` followed by a last use of `p` moves at that use, whatever the sink (call arg, container insert, field write, return). The bind assigns a frame field rather than declaring a C++ local, so codegen registers it at the resume-bind seam (`gen_async.py`) instead of at the var-decl arm; missing that registration is what made a `@nocopy` payload emit an uncompilable copy. Moving out of a frame field is safe under loop re-entry because the next read is preceded by the next iteration's write.
+
 ### Single-use, must-use semantics
 
 A `Coroutine[T]` value is **single-use** (consumed by `await` or `Task` wrap) and **must-use** (constructing one and dropping it without consumption is a sema error). Concretely:

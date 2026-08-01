@@ -1,0 +1,2 @@
+main.py:20: warning: Own[Payload] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:29: warning: copies Payload into owned storage; use copy() to make this explicit

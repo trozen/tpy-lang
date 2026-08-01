@@ -7646,7 +7646,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     elements=tuple(
                         _lower_container_elem(source.elements[i],
                                               ret_ost.element_types[i],
-                                              lc, declared)
+                                              lc, declared, tuple_elem=True)
                         for i in range(len(source.elements))),
                     loc=loc),
                 loc=loc)

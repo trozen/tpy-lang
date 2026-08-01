@@ -4613,6 +4613,11 @@ class AsyncCoroCodegen:
         if (payload.kind is rcfg.AwaitKind.ASSIGN
                 or payload.kind is rcfg.AwaitKind.VARDECL):
             target = escape_cpp_name(payload.bind_target)
+            # This bind ASSIGNS a frame field rather than DECLARING a local, so
+            # it never reaches `_gen_var_decl`'s promotion -- register the name
+            # here or the working set under-covers every await-bound local and
+            # its last use copies (an uncompilable copy for a @nocopy payload).
+            self.statements.promote_movable(payload.bind_target)
             if payload.bind_target in self.ctx.generator_optional_fields:
                 out.write(f"{indent}{target}.emplace({moved});\n")
             else:

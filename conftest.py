@@ -44,6 +44,11 @@ class _TestCompilerContext:
     _thir_reject_reason: str | None = None
     _thir_reject_detail: str | None = None
     _thir_fallback: dict[str, int] = field(default_factory=dict)
+    _move_verdict_ast: dict[int, tuple[Any, bool, str | None]] = field(
+        default_factory=dict)
+    _move_verdict_thir: dict[int, tuple[Any, bool, str | None]] = field(
+        default_factory=dict)
+    _move_verdict_journal: set[int] | None = None
 
 
 @pytest.fixture(autouse=True)
