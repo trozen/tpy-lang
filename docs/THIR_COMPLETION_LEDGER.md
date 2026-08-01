@@ -6106,3 +6106,54 @@ LESSON: a filter justified by "the other path renders bare HERE" is a
 hypothesis about why, not a fact. Both filters above were right about the
 render and wrong about the reason, so both outlived the condition that made
 them correct.
+
+### thir-alias-decl wave: the decl.slot_type live cluster (2026-08-01)
+
+The four-case `decl.slot_type` cluster the 08-01 site measurement had
+diagnosed as "a classifier question, not a slot spelling one" landed as
+four decl rows, +4 flips (`operators/getitem_key_return`,
+`readonly/readonly_tuple_value_mix`, `tplib/requests_cookies_domain`,
+`inheritance/inheritance_multi_base_field_readonly`). Pins in
+`test_thir_wave_alias_decl.py`; three earlier boundary pins that had
+pinned these exact shapes as rejecting were flipped to routing pins in
+place (test_thir_tuples / wave_fieldrecv / wave_unbound_self).
+
+- **User-getitem borrow subscript** (`r = e[k]` -> `Node& r = e[k];`):
+  REF_ALIAS row over the existing prechecked record-getitem emit (form
+  BORROW). The subscript node carries no resolved fi -- the predicate
+  re-resolves `__getitem__` from the registry like the AST fallback, and
+  widens the index shapes with a record-typed NAME key (the borrow shim's
+  `T&` key param takes the bare name). Own-returning getitems and the
+  reassigned POINTER sibling stay pinned out.
+- **Borrow-tuple param element** (`b = p[1]` ->
+  `const Counter& b = (*std::get<1>(p));`): the first REFERENT consumer
+  of a borrow-tuple element. `deref: bool` on THIRSubscript (the deref
+  twin of THIRName's flag, beside `opt_deref_check`), set by the
+  REF_ALIAS arm off the analyzer-pure `_borrow_tuple_param_elem_subscript`
+  -- PARAM receivers only, exactly because the storage-vs-borrow
+  membership question that needs walk state cannot arise for a param;
+  `Own[tuple]` params (storage form, `std::get` yields `T&`) pinned out.
+- **Base-qualified field** (`nums = A.buf` -> `this->A::buf`):
+  `_unbound_self_field_ok` joined the borrow-decl admission beside the
+  receiver-shape gate (the class-name receiver has no value type), and
+  `_lower_field_source` grew the same THIRSelf-receiver spelling as the
+  read arm, resumable fence included. Const rides the raw sema
+  ReadonlyType via `_f1_is_const`; the mutable-method sibling is
+  witnessed non-const in the unit fixture.
+- **Field-of-rvalue-call copy decl** (`jar = s.get(url).cookies;`):
+  NOT a borrow row -- the measurement's one misread. `Session.get`
+  returns `Own[Response]`, so the field is a member of a dying temporary:
+  classifier verdict OTHER was already correct, the copy is the only
+  legal emit (and C++ selects the move ctor on the xvalue member), and
+  the missing piece was an `_owned_record_decl_ok` disjunct
+  (`_field_over_call_ok` + rvalue receiver). Opened by explicit user
+  ratification as a value-position copy row; the BORROW-returning
+  receiver sibling (`h.peek().jar` -- a LIVE object's member, the
+  REF_ALIAS design stop) is pinned closed.
+
+LESSON: the registry re-probe that preceded this wave found both
+form-design wake conditions stale (Q9 resolved, F3 landed) and two more
+entries partially landed (G4 survivors, F5 negation) -- four of eleven
+design-gated entries had rotted since 2026-07-30. A parked cell's wake
+line is a claim about OTHER work, so it rots faster than the cell itself;
+re-probe the wake, not just the blocking body.

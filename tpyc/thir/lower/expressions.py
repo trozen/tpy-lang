@@ -3298,25 +3298,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # picks one ancestor subobject in non-virtual MI, so the parent
             # spelling IS the member render -- carried in `field_cpp`, the
             # node's "rendered C++ member name". Read and write target alike.
-            if lc.self_cpp != "this":
-                # A resumable method coro spells its receiver `__self` (a
-                # `Record&`, read with `.`), but the AST hardcodes `this->`
-                # here -- an unwitnessed render, so it keeps falling back.
-                raise ThirUnsupported("field.unbound_self_receiver",
-                                      detail=True)
             viewfam = _resolved_str_value(rtype, analyzer)
             if viewfam is None:
                 viewfam = _resolved_bytes_value(rtype, analyzer)
-            _witness("field.unbound_self")
-            return THIRFieldAccess(
-                result_type=rtype,
-                receiver=THIRSelf(result_type=e.unbound_self_parent_type,
-                                  form=Form.BORROW, cpp=lc.self_cpp, loc=loc),
-                field_cpp=(f"{e.unbound_self_parent_type.to_cpp()}::"
-                           f"{_field_cpp(e)}"),
-                is_arrow=True,
-                form=_viewfam_result_form(viewfam),
-                loc=loc)
+            return _unbound_self_field_access(
+                e, lc, rtype, _viewfam_result_form(viewfam), loc)
         if e.enum_member_of is not None:
             # Type-level enum member access: `Color.RED` -> `Color::RED`
             # (gen_expr's BindingKind.ENUM arm, spelled at lowering).
@@ -10386,6 +10372,29 @@ def _field_cpp(e: TpyFieldAccess) -> str:
     return (e.native_field_name if e.native_field_name is not None
             else escape_cpp_name(e.field))
 
+def _unbound_self_field_access(e: TpyFieldAccess, lc: '_LowerCtx',
+                               rtype: 'TpyType | None', form: Form,
+                               loc) -> THIRFieldAccess:
+    """The one `this->BaseN::field` spelling (THIRSelf receiver + base-
+    qualified field_cpp), shared by the read arm and the borrow-source arm
+    so the render and its fence cannot drift. The AST hardcodes `this->`,
+    so a resumable receiver spelling (`__self`, a `Record&` read with `.`)
+    keeps falling back."""
+    if lc.self_cpp != "this":
+        raise ThirUnsupported("field.unbound_self_receiver", detail=True)
+    _witness("field.unbound_self")
+    return THIRFieldAccess(
+        result_type=rtype,
+        receiver=THIRSelf(result_type=e.unbound_self_parent_type,
+                          form=Form.BORROW, cpp=lc.self_cpp, loc=loc),
+        field_cpp=(f"{e.unbound_self_parent_type.to_cpp()}::"
+                   f"{_field_cpp(e)}"),
+        is_arrow=True,
+        form=form,
+        loc=loc,
+    )
+
+
 def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
                         declared: dict[str, TpyType]) -> THIRFieldAccess:
     """The storage-form field read backing a borrow-local binding or an F3 tuple
@@ -10401,6 +10410,13 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     `(*recv.field)` exactly like the value-position read; the un-narrowed
     OPTIONAL_TO_PTR lift keeps the whole optional (its analyzed type stays
     Optional, so the predicate is inert there)."""
+    if _unbound_self_field_ok(e):
+        # `BaseN.field` as a borrow-local source: the class-name receiver
+        # has no value type, so the recursion below cannot apply; form
+        # STORAGE like every field source.
+        return _unbound_self_field_access(
+            e, lc, lc.analyzer.get_expr_type(e), Form.STORAGE,
+            getattr(e, "loc", None))
     # The prechecked receiver recursion below skips the receiver ladders --
     # an UNPROVEN Optional intermediate link (`o.mid.f` with `o.mid`
     # analyzed Optional) would silently drop the AST's deref_optional_check

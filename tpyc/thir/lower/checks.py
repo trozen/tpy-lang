@@ -179,6 +179,8 @@ from .predicates import (
     _field_markers_clean,
     _field_over_subscript_ok,
     _field_over_record_getitem_ok,
+    _record_getitem_borrow_subscript,
+    _borrow_tuple_param_elem_subscript,
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
     copy_call_arg,
@@ -1167,8 +1169,13 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                     and _field_receiver_ok(stmt.init, declared, analyzer)
                     and _optional_ptr_borrow_name(stmt.init.obj, declared,
                                                   analyzer) is not None)
+    # A base-qualified field source (`nums = A.buf` -> `this->A::buf`) has no
+    # value-typed receiver at all, so it rides its own admission beside the
+    # receiver-shape gate (exactly like the read arm); const follows the raw
+    # sema type (`readonly[...]` in an @readonly method) via `_f1_is_const`.
     if not (_const_exact_field_receiver_ok(stmt.init, declared, analyzer)
-            or recv_opt_ptr):
+            or recv_opt_ptr
+            or _unbound_self_field_ok(stmt.init)):
         # A record-element container subscript source (`p = ps[i]`) binds the
         # single-assignment `T&` alias (`P& p = ::tpy::__getitem__(ps, i);`) or,
         # reassigned, the reseatable `P* p = &(::tpy::__getitem__(ps, i));` --
@@ -1179,6 +1186,24 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _f1_record(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
                                                      analyzer)):
+            return binding
+        # A borrow-returning user-record `__getitem__` subscript (`r = e[k]`)
+        # binds the single-assignment `T&` alias of the bare operator[]
+        # lvalue. REF_ALIAS only: the reassigned POINTER sibling needs the
+        # `&(e[k])` reseat lift, unwitnessed.
+        if (binding is LocalBinding.REF_ALIAS
+                and _f1_record(target_type, analyzer)
+                and _record_getitem_borrow_subscript(stmt.init, declared,
+                                                     analyzer, pointers)):
+            return binding
+        # A pointer-repr record element off a borrow-form tuple PARAM
+        # (`b = p[1]`) binds the `T&` alias of the element referent (the
+        # deref-flagged std::get render). REF_ALIAS only -- a reassigned
+        # sibling's reseat is unwitnessed.
+        if (binding is LocalBinding.REF_ALIAS
+                and _f1_record(target_type, analyzer)
+                and _borrow_tuple_param_elem_subscript(stmt.init, prescan,
+                                                       analyzer)):
             return binding
         # A nested-container element subscript (`row = matrix[0]`) binds the
         # `T&` alias of the element list/dict/set.

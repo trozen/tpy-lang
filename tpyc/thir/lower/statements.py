@@ -202,6 +202,7 @@ from ..nodes import (
     THIRTupleLiteral,
     THIRSelf,
     THIRSetItem,
+    THIRSubscript,
     THIRSliceAssign,
     THIRStmt,
     THIRStrAppend,
@@ -217,6 +218,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _borrow_tuple_param_elem_subscript,
     _container_del_recv,
     _bigint_index_disposition,
     _call_iterable_lvalue,
@@ -348,6 +350,7 @@ from .checks import (
     _print_kwarg_token,
     _setitem_widened_elem_ok,
     _tuple_elem_slots_ptr_optional,
+    _field_over_call_ok,
     _is_builtin_print,
     _is_len_call,
     _iter_proto_call_ret,
@@ -2444,6 +2447,17 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
             and (_record_rvalue_source_shape(stmt.init, analyzer)
                  or (isinstance(stmt.init, TpyMethodCall)
                      and _f1_record(analyzer.get_expr_type(stmt.init), analyzer)
+                     and is_rvalue_source(analyzer, stmt.init))
+                 # A record field off an RVALUE call receiver (`jar =
+                 # s.get(url).cookies` -- member of a dying temporary): the
+                 # only legal emit is the plain copy decl (C++ moves the
+                 # xvalue member), exactly the AST's. A BORROW-returning
+                 # receiver keeps rejecting -- copying a live object's field
+                 # is the REF_ALIAS value-position design stop.
+                 or (isinstance(stmt.init, TpyFieldAccess)
+                     and _field_over_call_ok(stmt.init, analyzer)
+                     and _f1_record(analyzer.get_expr_type(stmt.init),
+                                    analyzer)
                      and is_rvalue_source(analyzer, stmt.init))))
 
 def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
@@ -2538,6 +2552,14 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # borrow-source build.
         if isinstance(stmt.init, TpySubscript):
             src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
+            if (isinstance(src, THIRSubscript)
+                    and _borrow_tuple_param_elem_subscript(
+                        stmt.init, lc.prescan, lc.analyzer)):
+                # A borrow-form tuple PARAM element: std::get yields the
+                # element `T*`, so the `T&` alias binds its referent --
+                # the deref-flagged render (`(*std::get<1>(p))`).
+                src = replace(src, deref=True)
+                _witness("decl.btuple_elem_alias")
         elif isinstance(stmt.init, (TpyBinOp, TpyIfExpr)):
             # A container and/or select (`x = a or b`) or ternary
             # (`x = a if c else b`) of lvalues: the lowered ternary IS the

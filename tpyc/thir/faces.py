@@ -885,6 +885,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
+    "decl.btuple_elem_alias",       # T& alias of a borrow-tuple param's ptr element
     "decl.btuple_rebind_slot",      # reassigned btuple decl off an owning call:
                                     # optional slot + emplace + tuple_to_pointer
     "decl.btuple_lift",             # reassigned btuple decl off a storage lvalue

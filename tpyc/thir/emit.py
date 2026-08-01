@@ -1157,7 +1157,8 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
         # Mirrors _gen_subscript's tuple branch (value-scalar element, no lift).
         if not isinstance(e.index, THIRLiteral):
             raise THIRCodeGenError("tuple subscript index is not a THIRLiteral")
-        return f"std::get<{e.index.value}>({recv})"
+        get = f"std::get<{e.index.value}>({recv})"
+        return f"(*{get})" if e.deref else get
     # Container (list / dict) index/key lookup, mirroring _gen_subscript's
     # container branch. A runtime-BigInt index arrives pre-wrapped in its
     # `.to_fixed_check<int32_t>()` THIRCoerce (lowering's _narrow_bigint_index

@@ -612,8 +612,9 @@ class TestTupleLiteralMembership:
 
 # The routing-heavy subscript cell: a record-element read `t[N].field`. The subscript
 # yields a borrow -- `std::get<N>(t)->field` off a borrow-form tuple param, or
-# `std::get<N>(t).field` off a storage `auto&&` alias. Optional-element member access
-# (null-check path), standalone binds, and writes stay on the AST path.
+# `std::get<N>(t).field` off a storage `auto&&` alias. A standalone bind off a
+# borrow-form PARAM routes as the deref-flagged REF_ALIAS decl; Optional-element
+# member access (null-check path) and writes stay on the AST path.
 class TestTupleSubscriptRecordRead:
     def test_record_element_via_borrow_param_routes(self):
         thir = _lower_ctx(
@@ -681,13 +682,14 @@ class TestTupleSubscriptRecordRead:
         assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
         assert isinstance(ret.value.receiver, THIRSubscript)
 
-    def test_standalone_record_element_read_is_ineligible(self):
-        # `b = t[1]` binds a record borrow local from a subscript -- the borrow-local
-        # binding source path keeps its name-receiver gate, so this stays on AST.
+    def test_standalone_record_element_read_routes(self):
+        # `b = t[1]` off a borrow-form tuple PARAM binds the element referent
+        # (`Leaf& b = (*std::get<1>(t));`) -- the alias-decl wave's row; the
+        # Own-param/storage boundary lives in test_thir_wave_alias_decl.
         thir = _lower_ctx(
             _F3_RECORDS
             + "def f(t: tuple[Int32, Leaf]) -> Int32:\n    b = t[1]\n    return b.n\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
 
 

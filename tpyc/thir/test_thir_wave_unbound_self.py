@@ -126,12 +126,11 @@ class TestUnboundSelfBoundaries:
         thir = _lower_ctx(src)
         assert _fn(thir, "read") is None
 
-    def test_container_field_borrow_decl_stays_ast(self):
-        # `nums = Buf.items` binds a `const std::vector<T>&` REF_ALIAS: the
-        # const-SPELLING decl sinks pin their source on
-        # `_const_exact_field_receiver_ok`, which this arm deliberately does
-        # NOT widen -- the read admission must not leak into the borrow-local
-        # classifier.
+    def test_container_field_borrow_decl_routes(self):
+        # `nums = Buf.items` binds the base-qualified member as a const
+        # REF_ALIAS (`const std::vector<int32_t>& nums = this->Buf::items;`)
+        # -- the alias-decl wave's row; the resumable fence stays pinned in
+        # test_thir_wave_alias_decl.
         src = ("from tpy import Int32, readonly\n"
                "class Buf:\n"
                "    items: list[Int32]\n"
@@ -143,4 +142,4 @@ class TestUnboundSelfBoundaries:
                "        nums = Buf.items\n"
                "        return Int32(len(nums))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "size") is None
+        assert _fn(thir, "size") is not None

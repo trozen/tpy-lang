@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _POINT = (
@@ -84,15 +85,15 @@ class TestRecordGetitemReceiver:
         assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
-    def test_value_position_bind_stays_ast(self):
-        # `q = g[0]` consumes the borrow in a VALUE position -- the decl
-        # gates own that seam; the RECEIVER-only admission must not leak.
+    def test_borrow_bind_decl_routes(self):
+        # `q = g[0]` binds the borrow-returning operator[] lvalue as a
+        # REF_ALIAS (`Point& q = g[0];`) -- the alias-decl wave's row; the
+        # Own-returning/value boundary lives in test_thir_wave_alias_decl.
         src = (self._SRC
                + "def use(g: Grid) -> None:\n"
                + "    q = g[0]\n"
                + "    print(q.x)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        _assert_routes_byte_identical(src)
 
 
 class TestOptionalFieldChainCheck:

@@ -3370,6 +3370,33 @@ def _subscript_index_and_tuple(sub: TpySubscript,
         return None
     return recv_t, idx
 
+def _borrow_tuple_param_elem_subscript(sub: TpyExpr, prescan, analyzer) -> bool:
+    """A pointer-repr record element read off a borrow-form tuple PARAM
+    (`b = p[1]` off `readonly[tuple[Int32, Counter]]` -> `const Counter& b =
+    (*std::get<1>(p));`): `std::get` on the borrow tuple yields the element
+    `T*`, so the REF_ALIAS decl binds its referent via the deref-flagged
+    subscript render -- the AST's value-context wrap. PARAM receivers only:
+    the storage-vs-borrow membership question that needs walk state (an
+    `auto&&` alias local holds elements by value) cannot arise for a param;
+    an `Own[tuple]` param is storage form and excluded the same way."""
+    if not isinstance(sub, TpySubscript) or sub.needs_optional_runtime_check:
+        return False
+    if not (isinstance(sub.obj, TpyName)
+            and sub.obj.name in prescan.param_names):
+        return False
+    pt = unwrap_readonly(unwrap_send_sync(analyzer.get_expr_type(sub.obj)))
+    if isinstance(pt, OwnType):
+        return False
+    res = _subscript_index_and_tuple(sub, analyzer)
+    if res is None:
+        return False
+    recv_t, idx = res
+    et = recv_t.element_types[idx]
+    return (et.value_form() is ValueForm.BORROW_REF
+            and TupleType._element_is_pointer_repr(et)
+            and _f1_record(et, analyzer))
+
+
 def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
                           analyzer) -> 'tuple[TupleType, int] | None':
     """`(tuple_type, normalized_idx)` for a subscript `t[N]` off an in-scope
@@ -3593,6 +3620,43 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                or (isinstance(sub.obj, TpyFieldAccess)
                    and _field_receiver_ok(sub.obj, locals_, analyzer)))
     return bool(idx_ok and recv_ok)
+
+
+def _record_getitem_borrow_subscript(sub: TpyExpr,
+                                     locals_: dict[str, TpyType], analyzer,
+                                     pointers: 'AbstractSet[str]') -> bool:
+    """A borrow-returning user-record `__getitem__` subscript source
+    (`r = e[k]` -> `Node& r = e[k];`): the record's bare operator[] `T&`
+    lvalue binds a REF_ALIAS decl directly (the prechecked record-getitem
+    emit renders it form-BORROW). Index/receiver shapes are the
+    record-getitem arm's, widened with a record-typed NAME key -- the
+    borrow shim's `T&` key param takes the bare name render. Slices and
+    value-returning getitems keep their own arms."""
+    if not isinstance(sub, TpySubscript) or isinstance(sub.index, TpySlice):
+        return False
+    if sub.needs_optional_runtime_check:
+        return False
+    if _record_getitem_key(analyzer.get_expr_type(sub.obj), analyzer) is None:
+        return False
+    # The subscript node carries no resolved fi (the AST fallback re-resolves
+    # from the registry too), so the return convention reads off the record's
+    # own `__getitem__`.
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(sub.obj))))
+    ri = analyzer.registry.get_record_for_type(t)
+    fi = ri.get_method("__getitem__") if ri is not None else None
+    if fi is None or not call_returns_cpp_ref(analyzer, fi):
+        return False
+    if not _f1_record(analyzer.get_expr_type(sub), analyzer):
+        return False
+    if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers):
+        return True
+    idx = sub.index
+    recv_ok = (isinstance(sub.obj, TpyName) and sub.obj.name in locals_
+               and sub.obj.name not in pointers)
+    return bool(recv_ok and isinstance(idx, TpyName)
+                and idx.name in locals_ and idx.name not in pointers
+                and _f1_record(locals_.get(idx.name), analyzer))
 
 
 def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],

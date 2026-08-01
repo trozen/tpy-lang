@@ -1302,6 +1302,10 @@ class THIRSubscript(THIRExpr):
     # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
     # runtime-checked unwrap), the subscript twin of THIRName's flag.
     opt_deref_check: bool = False
+    # A borrow-form tuple's pointer-repr element consumed as its REFERENT
+    # (`std::get<N>` yields the element `T*`; a `T&` alias bind needs
+    # `(*std::get<N>(t))`) -- the deref twin of THIRName's flag.
+    deref: bool = False
 
 
 @dataclass(frozen=True)
