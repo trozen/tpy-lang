@@ -7459,32 +7459,28 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     return el
 
 def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx') -> bool:
-    """`_maybe_move` for a container-literal element/key/value: the sema
-    movable set filtered to NON-VALUE sources. Codegen registers a
-    sema-movable local into `ctx.movable_locals` only at the non-value decl
-    arms (the tier-1 `not is_value_type()` filter in _gen_var_decl), so a
-    sema-movable VALUE local (e.g. a view-resolved promoted `str`) never
-    moves on the AST path -- `lc.movable_locals` (the unfiltered sema set)
-    must not move it here either. The value-Optional param exception:
-    seed_param_locals adds its (value-typed but expensive-copy) name to
-    codegen's movable set, so a narrowed `(*p)` element does move despite the
-    value-type filter."""
+    """`_maybe_move` for a container-literal element/key/value: movability AND
+    a value-type filter.
+
+    The filter is NOT a correction to the movable set (that set is now built at
+    the decl arms that promote). It was kept because removing it diverged at the
+    TUPLE element sink: a frame-promoted `Int32` yielded as a tuple element
+    (`generators/yield_loop_body_local_borrow`) is legitimately movable and the
+    AST renders it bare. But the two sinks DISAGREE -- at a CONTAINER literal
+    the AST does move such a local (`make_vector<BigInt>(std::move(n))`) while
+    this returns False. That divergence is pre-existing and currently
+    unwitnessed; see the container-literal element gap in TODO.md. Do not
+    generalize this filter to a rule about value payloads.
+
+    The exception is a value-Optional binding, whose narrowed `(*a)` element
+    does move -- including through the view->owned coerce wrap
+    (`std::string((*a))`, the make_vector face).
+
+    The ptr-variant clause this used to carry is GONE, and stays gone: no
+    decl arm promotes a ptr-variant local, so the set excludes it already."""
     if not _is_move_source(e, lc):
         return False
     inner = _peel_coerce(e)
-    # A pointer-variant union LOCAL is a non-owning alias (its `__slot_N`
-    # owns the value), so codegen never registers it movable -- a last-use
-    # read at an element slot copies via to_value_variant / the extraction
-    # alias, never std::move.
-    if isinstance(inner, TpyName) and inner.name in lc.ptr_variant_locals:
-        return False
-    # The value-Optional binding exceptions to the value-type filter
-    # (scalar AND view): the _LowerCtx mirror seeds expensive-copy
-    # value-Optional params movable exactly like seed_param_locals, so
-    # `_is_move_source` above is the movability authority; this row only
-    # confirms the binding SHAPE so the narrowed `(*a)` element moves --
-    # including through the view->owned coerce wrap
-    # (`std::string((*a))`, the make_vector face).
     if isinstance(inner, TpyName) and (
             _value_opt_scalar_binding(inner.name, lc)
             or _value_opt_view_param(inner.name, lc)):
@@ -9306,10 +9302,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                and (ow_bare.name in lc.narrow.narrowed
                                     or ow_bare.name in lc.inline_narrowed)):
         own_form = Form.VALUE if _eligible_scalar(ow) else Form.STORAGE
-        # VALUE payloads never move: lc.movable_locals is the RAW sema set
-        # (the _LowerCtx caveat), while codegen registers movables only at
-        # NON-VALUE decl arms -- a sema-movable scalar local would over-move
-        # (`xs.append(std::move(n))` where the AST renders bare). The filter
+        # VALUE payloads never move: the arms that promote a value-typed name
+        # (frame locals, owned tuples, unpack targets) can put one in
+        # `movable_locals`, and moving it here would render
+        # `xs.append(std::move(n))` where the AST renders bare. The filter
         # keys on the ARG's own declared payload (like the gate row and the
         # seeding), not the callee slot's type param: TypeParamRef.__eq__
         # ignores bounds, so a caller's value-bound T can slot-match an

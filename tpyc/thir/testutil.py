@@ -42,6 +42,24 @@ def _lower_ctx(source: str):
         return lower_module(entry.ast, entry.analyzer)
 
 
+def _assert_no_fallback(compiler, source: str) -> None:
+    """Fail unless every body in `source` ROUTED.
+
+    A pin that claims routing but whose body silently fell back cannot fail:
+    the AST re-emits that body, so render-string and byte-identity assertions
+    pass either way. That is how five dead pins reached review on one branch.
+
+    Module-wide, deliberately blunt: it cannot tell WHICH body fell back, so a
+    fixture carrying a deliberately-unroutable sibling trips it. Use it via
+    `_assert_routes_byte_identical` on a fixture written to route end to end."""
+    fell = getattr(compiler, "_thir_fallback", {})
+    total = sum(fell.values())
+    assert total == 0, (
+        f"the pin claims routing but {total} body/bodies fell back "
+        f"({dict(fell)}) -- the assertions would pass on AST output alone.\n"
+        f"source:\n{source}")
+
+
 def _lower_ctx_witnessed(source: str, extra_lib_dirs=None,
                          default_int: str = "Int32"):
     """_lower_ctx plus the per-face witness counts the run recorded
@@ -65,8 +83,12 @@ def _fn(thir, name):
 def _assert_byte_identical(source: str, default_int: str = "Int32",
                            extra_lib_dirs=None, comments: bool = True):
     """Compile `source` through both codegen paths and assert the emitted
-    (.hpp, .cpp) are byte-identical -- the routing contract for a shape a
-    reject-unit used to gate.
+    (.hpp, .cpp) are byte-identical.
+
+    Byte-identity ALONE proves nothing about routing -- a fallback emits the
+    AST verbatim, so this passes either way. That is fine for a reject-unit
+    (where identity IS the claim); a pin that claims its shape ROUTES must use
+    `_assert_routes_byte_identical` instead.
 
     The source-comment echo is ON by default, matching what the corpus runs
     with: comment TRIVIA divergences are invisible without it, since a
@@ -86,6 +108,26 @@ def _assert_byte_identical(source: str, default_int: str = "Int32",
                                       comment_line_numbers=False,
                                       thir_codegen=True))
     assert thir == ast
+    return thir
+
+
+def _assert_routes_byte_identical(source: str, default_int: str = "Int32",
+                                  extra_lib_dirs=None, comments: bool = True):
+    """`_assert_byte_identical` PLUS the routing claim: every body in `source`
+    lowered through THIR. The pair is the minimum honest pin for a new arm --
+    identity alone is satisfied by a whole-body fallback, so without the
+    routing half a pin cannot fail. Write the fixture to route end to end; put
+    the shapes that must keep rejecting in their own reject-unit."""
+    from ..codegen_cpp.context import CodeGenOptions
+    thir = _assert_byte_identical(source, default_int, extra_lib_dirs,
+                                  comments)
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=comments,
+                                                comment_line_numbers=False,
+                                                thir_codegen=True))
+    _assert_no_fallback(compiler, source)
     return thir
 
 

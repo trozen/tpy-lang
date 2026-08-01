@@ -2079,6 +2079,23 @@ class StatementGenerator:
             FormValue(value_code, bare, form, is_const=self.ctx.is_const_storage_source(src)),
             dst_type=bare, dst_form=CppForm.STORAGE)
 
+    def promote_movable(self, name: str) -> None:
+        """Promote a sema-owned local into the body's working movable set.
+
+        `sema_movable_locals` is the RAW per-function fact ("sema proved this
+        local owned"); `movable_locals` is what the move sites actually read,
+        and a name joins it only when its declaration reaches a decl arm that
+        promotes. The arms that DON'T call this -- ptr-variant unions,
+        non-Own @dynamic protocol locals, `val_or_ref_t` TypeParamRef locals,
+        REF_ALIAS borrows, frame-promoted POINTER locals -- alias rather than
+        own, so a last-use read there must copy, not steal. Grep this method's
+        callers for the authoritative promoting-arm set: THIR's `_is_move_source`
+        mirrors exactly it, and the two sets silently diverging is a move-vs-copy
+        miscompile no byte-diff can see.
+        """
+        if name in self.ctx.sema_movable_locals:
+            self.ctx.movable_locals.add(name)
+
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
         from ..parse.nodes import VarLinkage
@@ -2117,8 +2134,7 @@ class StatementGenerator:
                 return None
             # Frame-promoted storage-slot local: register movability so a
             # last-use read moves out of the slot instead of copying it.
-            if stmt.name in self.ctx.sema_movable_locals:
-                self.ctx.movable_locals.add(stmt.name)
+            self.promote_movable(stmt.name)
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
                 var_type = self.ctx.var_types.get(stmt.name)
@@ -2322,8 +2338,7 @@ class StatementGenerator:
             # element is @nocopy. Tuples that DO have a borrow form go through
             # the has_pointer_repr_element block below instead.
             self.ctx.storage_form_tuple_locals.add(stmt.name)
-            if stmt.name in self.ctx.sema_movable_locals:
-                self.ctx.movable_locals.add(stmt.name)
+            self.promote_movable(stmt.name)
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
                 and target_type.has_pointer_repr_element()):
@@ -2354,8 +2369,7 @@ class StatementGenerator:
                 # auto-move at its last use -- e.g. into an owned-tuple
                 # `std::tuple<...>&&` param. sema_movable_locals already
                 # excludes lvalue-aliasing sources (field/subscript inits).
-                if stmt.name in self.ctx.sema_movable_locals:
-                    self.ctx.movable_locals.add(stmt.name)
+                self.promote_movable(stmt.name)
             else:
                 # A literal whose non-value members are VALUE-captured (sema
                 # marks fresh members owned, e.g. `(a.clone(), b.clone())`)
@@ -2371,8 +2385,7 @@ class StatementGenerator:
                                     target_type.element_types[i])
                                 for i, cap in enumerate(init_inner.elem_capture))):
                     self.ctx.storage_form_tuple_locals.add(stmt.name)
-                    if stmt.name in self.ctx.sema_movable_locals:
-                        self.ctx.movable_locals.add(stmt.name)
+                    self.promote_movable(stmt.name)
 
         # A storage-form tuple local bound from an LVALUE storage source
         # aliases the source (CPython shares the elements): bind a reference
@@ -2416,8 +2429,7 @@ class StatementGenerator:
                 and is_dyn_protocol(unwrap_readonly(target_type.wrapped))):
             assert stmt.init, f"owned @dynamic local '{stmt.name}' requires initializer"
             protocol = unwrap_readonly(target_type.wrapped)
-            if stmt.name in self.ctx.sema_movable_locals:
-                self.ctx.movable_locals.add(stmt.name)
+            self.promote_movable(stmt.name)
             if isinstance(protocol, ConcreteCoroType):
                 owned_cpp = self.types.type_to_cpp(target_type)
                 init_inner = self.ctx.unwrap_copy(stmt.init)
@@ -2482,8 +2494,7 @@ class StatementGenerator:
             if binding is not LocalBinding.REF_ALIAS:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
-                if stmt.name in self.ctx.sema_movable_locals:
-                    self.ctx.movable_locals.add(stmt.name)
+                self.promote_movable(stmt.name)
                 if stmt.init:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
                 else:
@@ -2506,10 +2517,11 @@ class StatementGenerator:
                     return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
                 return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"
 
-        # Tier 1 non-value-type locals are eligible for auto-move at last use
-        if (target_type and not target_type.is_value_type()
-                and stmt.name in self.ctx.sema_movable_locals):
-            self.ctx.movable_locals.add(stmt.name)
+        # Tier 1 non-value-type locals are eligible for auto-move at last use.
+        # The value-type filter is THIS arm's alone -- the frame, owned-tuple
+        # and unpack arms above deliberately promote value-typed names.
+        if target_type and not target_type.is_value_type():
+            self.promote_movable(stmt.name)
 
         if stmt.init:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
@@ -3342,8 +3354,7 @@ class StatementGenerator:
             # (std::move) instead of copying -- mirrors the TpyVarDecl/TpyAssign
             # promotion paths. sema_movable_locals already gates to owned,
             # non-hoisted, non-lvalue-reassigned targets.
-            if name in self.ctx.sema_movable_locals:
-                self.ctx.movable_locals.add(name)
+            self.promote_movable(name)
             target_type = stmt.target_types[i]
             # Ref in target type means reference binding -- unwrap for C++ type
             # since the binding mode (ref/const_ref/value) is handled below.
@@ -5814,8 +5825,7 @@ class StatementGenerator:
                                 or self._match_capture_borrows_const(stmt, name))
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
-                    if name in self.ctx.sema_movable_locals:
-                        self.ctx.movable_locals.add(name)
+                    self.promote_movable(name)
                     const_pfx = "const " if is_const else ""
                     if name in self.ctx.rvalue_reassigned_vars:
                         slot = self.ctx.slots.next_slot()

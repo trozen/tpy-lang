@@ -5966,3 +5966,86 @@ trio specifically -- the part that rots) and
 `test_arm_universe_excludes_non_body_nodes` (decl containers and
 type-annotation refs would park at 0 forever and report non-arms as
 deletable). Both verified by revert-injection.
+
+### thir-movable-audit: a raw fact read as a derived one (2026-08-01)
+
+No dial movement -- a correctness pass, not a wave. `lc.movable_locals`
+(which drives auto-`std::move` at last use) was seeded wholesale from
+`analyzer.function_movable_locals`. That fact means "sema proved this
+local OWNED"; the set the move sites read means "owned AND declared by an
+arm that PROMOTES". The AST grows the second from the first at nine
+var-decl arms. THIR seeded the first and read it as the second.
+
+**The divergence was LIVE, not latent.** Instrumenting both move
+predicates and joining their verdicts on the shared `TpyName` (the THIR
+overlay re-emits the same node objects, so the join is exact) found 10
+disagreements across 6 corpus cases, **5 of them in unmarked, routed
+cases** -- a value-typed sema-owned local (a view-promoted `str`, a
+BigInt) and a ptr-variant local, which aliases its `__slot_N` rather than
+owning it. Byte-identical only because the arms those names reached did
+not act on the verdict. After the fix: 1, in a marked case.
+
+**The cheap fix was REFUTED by measurement, not by argument.** Hoisting
+`_container_elem_move_source`'s compensations (value-type filter,
+ptr-variant filter, value-Optional exception) to the query point regresses
+17 cases: the promotion rule is per-ARM, not global -- the frame and
+owned-tuple arms promote value-typed names, the tier-1 fallthrough does
+not. No type-keyed filter over the raw set can express an arm-keyed rule.
+The AST-side consolidation onto one `promote_movable` (previously filed
+twice as a cleanup) is what made the mirror auditable: the promoting-arm
+set became greppable from one place.
+
+**LESSON 1 -- a shared analyzer fact and a codegen working set are two
+facts.** THIR mirrors codegen's WORKING sets elsewhere (`pointers`,
+`storage_tuple_locals`); this one was seeded from the analyzer instead
+because the raw set was conveniently to hand and agreed on the shapes
+that happened to be migrated. When a lowering reads an `analyzer.*` map
+directly, ask whether codegen reads THAT map or a set it derives from it.
+
+**LESSON 2 -- a compensating filter can be load-bearing for a reason
+other than the one it documents.** `_container_elem_move_source`'s
+value-type filter was documented as correcting the raw set. With the set
+fixed it should have been redundant -- removing it diverged one case, and
+not the expected way: a frame-promoted `Int32` yielded as a TUPLE element
+is legitimately movable and the AST renders it bare. The filter is a SINK
+rule that was misattributed to the set. Its two sinks then turned out to
+DISAGREE (the container-literal sink does move such a local on the AST
+path) -- a pre-existing unwitnessed divergence, now filed. Before deleting
+a compensation, remove it and read what actually breaks; the reason in
+the comment is a hypothesis.
+
+**LESSON 3 -- when THIR seeds from a sema fact, the seed and the working
+set must not share a name.** The whole defect is one identifier,
+`movable_locals`, meaning "sema-owned" on one path and "promoted at a decl
+arm" on the other; the seeding line read correctly in isolation on both
+readings. The split into `sema_movable_locals` + `movable_locals` is what
+makes a future misuse visible at the call site, and it is the cheap rule
+to apply pre-emptively to the remaining `analyzer.*` seeds.
+
+**LESSON 4 -- a known-wrong AST render gets MIRRORED, not diverged from,
+and "unreachable today" is a claim to probe.** The
+frame-local promotion is imprecise for an await-bind decl, which I
+justified in-code as unreachable because such bodies fall back. Review
+falsified it: `async/asyncio_queue_nocopy` routes with exactly that bind,
+and a two-line probe shows the shape diverging today. The AST side is
+itself wrong there (a `@nocopy` payload emits an uncompilable copy) --
+both now in BUGS.md. Direction of divergence is the severity axis: THIR
+moving where the AST copies is SILENT (a hollowed source), THIR copying
+where the AST moves is LOUD (a @nocopy payload fails the C++ build), so
+the first deserves the narrow fix and the second can wait.
+
+The narrow fix was then attempted and REFUTED, which is the more useful
+record: excluding await inits from the frame promotion breaks
+`await_in_with` and `await_in_with_multi_cm`, because a BigInt bound by
+`x = await f()` IS promoted on the AST path and moves at its return. The
+divergence was never about `await` -- it is `_frame_ptr_locals` failing to
+equal the AST's frame-field `pointer_locals` membership for one
+classification. Two probes agreeing on a hypothesis (an `Own[record]`
+copying, a `@nocopy` failing) still under-determined the RULE; the corpus
+is what discriminated. Probe a dormancy claim, and probe the fix too.
+
+Tooling this left behind: `test_thir_movable_set.py`'s verdict-join
+detector (the only mechanism that catches this class -- the byte-diff
+cannot, since a wrong verdict no arm reads emits identical C++), and
+`_assert_routes_byte_identical` in `testutil.py`. The detector runs on
+four fixtures; wiring it to the corpus is filed in TODO.md.

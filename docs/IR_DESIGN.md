@@ -1213,10 +1213,19 @@ by theme; each is a rule the next cell should apply.
   source must never be mislabeled VALUE.
 - `ptr_to_optional` is reserved for **borrow-`T*`** sources; a record *value* source
   constructs the field (or its Optional) directly (`opt(Inner(v))`).
-- `lc.movable_locals` is the **raw sema set**; codegen only registers a movable at
-  non-value decl arms. A non-record consumer must value-type-filter before emitting a
-  move (an unfiltered move over the raw set over-moved a promoted-str local and a scalar
-  local -- both caught by the byte-diff).
+- **Two distinct facts, once conflated:** `lc.sema_movable_locals` is sema's raw
+  "this local is owned"; `lc.movable_locals` is the WORKING set the move sites read,
+  which a name joins only via `promote_movable` at a decl arm that promotes -- the
+  mirror of `StatementGenerator.promote_movable`. Seeding the working set from the raw
+  fact moves a value-typed local (a view-promoted `str`, a BigInt) and a ptr-variant
+  alias where the AST copies. The promotion rule is per-ARM, not global: the frame and
+  owned-tuple arms promote value-typed names, the tier-1 fallthrough does not, so no
+  type-keyed filter over the raw set can express it.
+- **Separately**, a value-type filter still lives at the container-literal element sink
+  (`_container_elem_move_source`). That one is a SINK rule, not a set correction: a
+  frame-promoted `Int32` yielded as a tuple element is legitimately movable and the AST
+  still renders it bare. The two sinks disagree -- see the container-literal gap in
+  TODO.md.
 - **Own params own their storage** -> they read STORAGE form (a validator sink-rule catch;
   an Own-param BORROW mislabel was the rule's first live catch).
 - **Position-blind vs target-typed render:** the async frame-field-write arm and the async

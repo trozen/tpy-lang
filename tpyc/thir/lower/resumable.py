@@ -323,6 +323,24 @@ def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
     return et if isinstance(et, TpyType) else None
 
 
+def _var_decl_names(stmts: list) -> 'set[str]':
+    """Every name a `TpyVarDecl` binds anywhere in the body -- the frame-local
+    promotion's mirror of "the AST's `_gen_var_decl` ran for this name".
+
+    Do NOT also exclude await inits: tried, and it breaks `await_in_with` +
+    `await_in_with_multi_cm`, because a BigInt bound by `x = await f()` IS
+    promoted on the AST path and moves at its return. The residual divergence
+    (BUGS.md) is not about await at all -- it is a frame-field POINTER-set
+    disagreement, so it must be fixed by aligning that membership."""
+    out: 'set[str]' = set()
+    for s in stmts:
+        if isinstance(s, TpyVarDecl):
+            out.add(s.name)
+        for body in s.sub_bodies():
+            out |= _var_decl_names(body)
+    return out
+
+
 def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
     """Whether the `__{var}` extraction alias would collide with a real frame
     field (or `self`). On a collision the AST bumps the alias name
@@ -1135,6 +1153,28 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # R1c: frame_slot local reads render `(*name)` (THIRName.deref) and writes
     # `name.emplace(value)` (THIRFrameSlotWrite).
     lc.frame_slots = frame_slots
+    # The AST's frame-body var-decl arm promotes a frame-promoted STORAGE slot
+    # (its pointer-form sibling returns before the promotion) with no
+    # value-type filter -- a last-use read moves out of the slot rather than
+    # copying it, which is how a BigInt frame local moves at an async return.
+    # Promoted here rather than per-decl because the frame classification is
+    # an up-front pass on this path, not a decl-time one.
+    # Restricted to names an actual `TpyVarDecl` binds, because the AST's
+    # frame promotion lives in `_gen_var_decl`: a for-loop variable that
+    # happens to be frame-promoted is bound by the loop arm instead, whose own
+    # promotion is gated on a CONSUMING iterable -- promoting it here moved a
+    # yielded loop element the AST copies.
+    # `_frame_ptr_locals` is this mirror's weak joint: it must equal the AST's
+    # `pointer_locals` membership for frame fields, and for at least one
+    # classification it does not, so an `Own[record]` frame local moves here
+    # and copies there (BUGS.md). Align the two memberships to fix it -- the
+    # await bind is a red herring, see `_var_decl_names`.
+    _frame_ptr_locals = (ptr_frame_locals | opt_ptr_locals | alias_ptr_locals
+                         | unpack_ptr_targets)
+    _frame_decl_names = _var_decl_names(list(func.body))
+    for _lname, _ in (func.generator_locals or []):
+        if _lname not in _frame_ptr_locals and _lname in _frame_decl_names:
+            lc.promote_movable(_lname)
     # Frame nested defs are struct members callable from EVERY resume
     # case, so their names register up front (the AST's
     # collect_frame_nested_defs pass), not just at their statement.

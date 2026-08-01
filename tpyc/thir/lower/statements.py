@@ -2286,6 +2286,7 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 continue
             hoist_decls.append((name, f"{cpp}*"))
             lc.pointers.add(name)
+            lc.promote_movable(name)
             if name in lc.prescan.rvalue_reassigned:
                 hoist_slots.append((name, cpp))
                 lc.rebind_slot_locals.add(name)
@@ -4953,6 +4954,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 node = _lower_opt_ptr_slot_decl(stmt, vt0, lc, declared,
                                                 loc)
                 lc.pointers.add(stmt.name)
+                lc.promote_movable(stmt.name)
                 if node.needs_rebind_slot:
                     lc.rebind_slot_locals.add(stmt.name)
                 declared[stmt.name] = vt0
@@ -5000,6 +5002,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                    loc)
             if rec_node is not None:
                 lc.pointers.add(stmt.name)
+                lc.promote_movable(stmt.name)
                 if rec_node.needs_rebind_slot:
                     lc.rebind_slot_locals.add(stmt.name)
                 declared[stmt.name] = vtype
@@ -5008,6 +5011,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                        declared, loc)
             if cont_node is not None:
                 lc.pointers.add(stmt.name)
+                lc.promote_movable(stmt.name)
                 declared[stmt.name] = cont_node.resolved_type
                 return cont_node
         # First decl of a non-value borrow local (REF_ALIAS / OPTIONAL_TO_PTR /
@@ -5045,6 +5049,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     node = _lower_opt_ptr_slot_decl(stmt, vtype, lc, declared,
                                                     loc)
                     lc.pointers.add(stmt.name)
+                    lc.promote_movable(stmt.name)
                     if node.needs_rebind_slot:
                         lc.rebind_slot_locals.add(stmt.name)
                     declared[stmt.name] = vtype
@@ -5054,6 +5059,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # const). Recorded in both sets, as eligibility did.
                     lc.pointers.add(stmt.name)
                     lc.rebind_slot_locals.add(stmt.name)
+                    lc.promote_movable(stmt.name)
                     declared[stmt.name] = vtype
                     return _lower_borrow_local(
                         stmt, vtype, binding, False, lc, declared, loc)
@@ -5063,6 +5069,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     lc.const_locals.add(stmt.name)
                 if binding is LocalBinding.POINTER:
                     lc.pointers.add(stmt.name)  # later assignments reseat this `T*`
+                    lc.promote_movable(stmt.name)
                 elif binding is LocalBinding.REF_ALIAS:
                     # `T& name = ...` -- tracked for the del-var skip (the
                     # alias never owns the value it names).
@@ -5074,6 +5081,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # the slotless pointer reseat arms (lvalue lift /
                     # nullptr / inline-rvalue slot).
                     lc.pointers.add(stmt.name)
+                    lc.promote_movable(stmt.name)
                 declared[stmt.name] = vtype
                 return _lower_borrow_local(
                     stmt, vtype, binding, is_const, lc, declared, loc)
@@ -5129,6 +5137,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt.init, vtype, lc, declared,
                     scope.admission_pointers())
                 declared[stmt.name] = vtype
+                if not vtype.is_value_type():
+                    lc.promote_movable(stmt.name)
                 return THIRVarDecl(name=stmt.name, resolved_type=vtype,
                                    init=comp, loc=loc)
             # Open-T local from a T-returning call in a generic body:
@@ -5166,6 +5176,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if copy_row is not None:
                 _witness("decl.copy_record")
                 declared[stmt.name] = vtype
+                lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype, init=copy_row,
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
@@ -5180,6 +5191,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                          if isinstance(stmt.init, TpyMethodCall)
                          else "decl.owned_record")
                 declared[stmt.name] = vtype
+                lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
                     init=_lower_expr(
@@ -5210,6 +5222,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                 declared[stmt.name] = vtype
+                if not vtype.is_value_type():
+                    lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
                     init=THIRMove(result_type=src.result_type, value=src,
@@ -5777,6 +5791,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                              allow_temps=True,
                                              tuple_source=True)))
                 lc.storage_tuple_locals.add(stmt.name)
+                lc.promote_movable(stmt.name)
                 declared[stmt.name] = _ct
                 _witness("decl.storage_call_tuple")
                 return THIRVarDecl(
@@ -6093,6 +6108,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # type would otherwise render the borrow spelling), mirroring the
                 # AST's `_cpp_decl_type` auto arm.
                 lc.storage_tuple_locals.add(stmt.name)
+                lc.promote_movable(stmt.name)
                 declared[stmt.name] = tuple_t
                 cpp = "auto" if tuple_t.has_ref_elements() else None
                 _witness("decl.storage_record_tuple")
@@ -6302,6 +6318,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             init = THIRFormConvert(result_type=str_t if str_t is not None else bytes_t,
                                    value=init, form=Form.STORAGE, loc=loc)
         declared[stmt.name] = vtype
+        # The AST's tier-1 fallthrough promotion: the value-type filter belongs
+        # to THIS arm only (the frame, owned-tuple and unpack arms deliberately
+        # promote value-typed names).
+        if vtype is not None and not vtype.is_value_type():
+            lc.promote_movable(stmt.name)
+        # An Own-element tuple is by-value storage with no borrow form, so it
+        # owns its elements and moves at last use -- promoted by its own AST
+        # arm, ahead of (and despite) the value-type filter above.
+        elif (stmt.init is not None and isinstance(vtype, TupleType)
+                and vtype.has_own_element()
+                and not vtype.has_pointer_repr_element()
+                and stmt.name not in lc.prescan.reassigned):
+            lc.promote_movable(stmt.name)
         # A value-repr Optional[scalar] LOCAL binds `std::optional<T>` just like a
         # value-opt param, so register it so its reads ride the binding-keyed
         # arms (deref-on-narrow `(*y)`, the whole-optional None-test/print).
@@ -8191,6 +8220,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 continue
             tt, bind = target_binds[i]
             assert tt is not None
+            # The AST promotes every unpack target it declares, with no
+            # value-type filter -- an Own[T] element moved out of the source
+            # tuple is a fresh owned local whatever T is.
+            lc.promote_movable(name)
             if bind == "assign":
                 # Reused target: bare assign, no decl -- the declared entry
                 # keeps its original type (the AST leaves var_types alone).

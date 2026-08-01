@@ -525,6 +525,7 @@ class _LowerCtx:
                  "ref_alias_locals",
                  "value_opt_locals", "value_opt_view_locals",
                  "value_opt_record_locals", "movable_locals",
+                 "sema_movable_locals",
                  "params",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
@@ -841,13 +842,20 @@ class _LowerCtx:
         # Subset of storage_tuple_locals iterated from a const source (a const
         # loop var): the borrow tuple wrap spells `const T*` element pointers.
         self.const_storage_tuple_locals: set[str] = set()
-        # F2e: sema's movable (owned) locals -- a borrow write/return source that
-        # is one of these at last use moves (`ptr_to_optional_move`). The set only
-        # grows during the body walk, so the final sema set matches the working
-        # set at any post-decl write/return (see _is_move_source). Copied: the
-        # param seeding below must not mutate the analyzer's set.
-        self.movable_locals: set[str] = set(
+        # F2e: sema's RAW owned-locals fact, the mirror of codegen's
+        # `ctx.sema_movable_locals`. It means "sema proved this local owned",
+        # NOT "movable" -- a name becomes movable only by joining the working
+        # set below, at a decl arm that promotes. Read ONLY through
+        # `promote_movable`; a consumer reading it directly re-introduces the
+        # conflation that made a value-typed local (a view-promoted `str`, a
+        # BigInt) and a ptr-variant alias move where the AST copies.
+        self.sema_movable_locals: frozenset[str] = frozenset(
             analyzer.function_movable_locals.get(id(func), ()))
+        # The WORKING set the move sites read -- codegen's `ctx.movable_locals`.
+        # Starts at the param seeds below (codegen's seed_param_locals) and
+        # grows during the body walk at exactly the arms whose codegen twin
+        # calls `StatementGenerator.promote_movable`.
+        self.movable_locals: set[str] = set()
         # Own[T] / Own[T]|None params of non-value payload are movable (the
         # caller gave up ownership) -- codegen seeds them at body-scope setup
         # (seed_param_locals), not via sema's per-function set, so lowering
@@ -860,13 +868,6 @@ class _LowerCtx:
         # working set on its AST twin, so any remaining seeding gap is
         # masked only by the return-shape gate -- widening that gate to
         # force-seeded shapes must extend this seeding in lockstep.
-        # CAVEAT (proven by a corpus divergence): this is the RAW sema set,
-        # while codegen registers movables only at NON-VALUE decl arms -- a
-        # consumer matching non-record sources must value-type-filter first
-        # (see _container_elem_move_source), else a sema-movable VALUE local
-        # (a view-resolved promoted str) over-moves. The value-Optional param
-        # arm below is the deliberate exception: seed_param_locals adds it to
-        # codegen's movable set too, so it moves at its narrowed last-use read.
         for pname, ptype in self.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():
@@ -910,6 +911,20 @@ class _LowerCtx:
         # return pass-through / return-tier raise admissions and rides
         # THIRFunction into the emit state.
         self.error_return_cpp: 'str | None' = None
+
+    def promote_movable(self, name: str) -> None:
+        """Mirror of `StatementGenerator.promote_movable`: a sema-owned local
+        joins the working movable set when its decl reaches a promoting arm.
+
+        Call this from a decl arm exactly when the AST twin calls its version,
+        and NOWHERE else -- the arms that stay silent (ptr-variant unions,
+        non-Own @dynamic locals, `val_or_ref_t` TypeParamRef locals, REF_ALIAS
+        borrows, frame-promoted pointer locals) hand back an alias, so a
+        last-use read there copies. Over-promoting is invisible to the
+        byte-diff until some later arm starts trusting the verdict, then
+        renders a `std::move` the AST does not."""
+        if name in self.sema_movable_locals:
+            self.movable_locals.add(name)
 
     @contextmanager
     def branch_scope(self):
