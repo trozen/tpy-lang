@@ -250,6 +250,8 @@ from .predicates import (
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
     _f1_record,
+    _method_rvalue_f1_record,
+    _single_member_of_family,
     _f1_tuple,
     _f2_reseat_ok,
     _facts_have_concrete,
@@ -1947,6 +1949,11 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
         return _container_literal_shape_ok(init, target_t, analyzer)
     if _record_rvalue_source_shape(init, analyzer):
         return True
+    # An rvalue F1-record METHOD call (`cur = nxt.clone()` ->
+    # `cur = &*(__slot_N = nxt->clone());`): the reseat twin of the decl's
+    # method-rvalue REBIND_SLOT admission, same shared disjunct.
+    if _method_rvalue_f1_record(init, analyzer):
+        return True
     if (isinstance(init, (TpyCall, TpyMethodCall))
             and is_rvalue_source(analyzer, init)):
         fam = _storage_call_ret(analyzer.get_expr_type(init), analyzer)
@@ -2445,9 +2452,7 @@ def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
             and _f1_record(vtype, analyzer)
             and stmt.init is not None
             and (_record_rvalue_source_shape(stmt.init, analyzer)
-                 or (isinstance(stmt.init, TpyMethodCall)
-                     and _f1_record(analyzer.get_expr_type(stmt.init), analyzer)
-                     and is_rvalue_source(analyzer, stmt.init))
+                 or _method_rvalue_f1_record(stmt.init, analyzer)
                  # A record field off an RVALUE call receiver (`jar =
                  # s.get(url).cookies` -- member of a dying temporary): the
                  # only legal emit is the plain copy decl (C++ moves the
@@ -2632,6 +2637,19 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             name=stmt.name, resolved_type=vtype, init=src,
             cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
+    if (binding is LocalBinding.OPTIONAL_TO_PTR
+            and isinstance(stmt.init, TpySubscript)):
+        # The tuple-field element source (`first = h.t[0]`): the storage
+        # element read lifts through the same optional_to_ptr convert as a
+        # field source.
+        src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
+        convert = THIRFormConvert(result_type=vtype, value=src,
+                                  form=Form.BORROW, is_const=is_const, loc=loc)
+        _witness("decl.opt_tuple_elem_lift")
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=convert,
+            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            is_const=is_const, cpp_local_representation=binding, loc=loc)
     field = _lower_field_source(stmt.init, lc, declared)
     if binding is LocalBinding.POINTER:
         convert = THIRFormConvert(result_type=vtype, value=field, form=Form.BORROW,
@@ -2704,6 +2722,24 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
                 return None
             scalar_member = True
     if whole_union:
+        # A sema-coerced scalar LITERAL (`b3: Int32 | Container = 99`):
+        # the value-variant slot takes the bare literal render
+        # (`std::variant<Container, int32_t> __slot_N = 99;` -- the
+        # converting ctor picks the single matching member), the decl twin
+        # of the value-union arg-temp literal rows.
+        lit = init
+        while isinstance(lit, TpyCoerce):
+            lit = lit.expr
+        if isinstance(lit, TpyIntLiteral):
+            if _single_member_of_family(
+                    ptr_u.members, lambda m: is_fixed_int_type(m)
+                    or is_big_int_type(m)):
+                return PtrSlotKind.UNION_RVALUE
+            return None
+        if isinstance(lit, TpyStrLiteral):
+            if _single_member_of_family(ptr_u.members, is_str_type):
+                return PtrSlotKind.UNION_RVALUE
+            return None
         # An `Own[A | B]`-returning free call: the F1-record type gate of
         # `_record_rvalue_source_shape` cannot apply, so run the
         # return-type-blind callee/arg-shape half directly.
@@ -2783,8 +2819,12 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
             note_detail("decl.opt_slot_source")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         kind = PtrSlotKind.OPT_RVALUE
+        # The decl is a flush position: the ctor init's arg temps (a
+        # value-union member temp) print before the slot line, the same
+        # drain the union-slot arm takes.
         init = _lower_expr(stmt.init, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=True),
                            target_type=pointee)
         _witness("decl.opt_slot_rvalue")
     return THIRPtrLocalDecl(
@@ -2984,20 +3024,23 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # bare; anything else is the address-of catch-all. Only NAME sources
         # are mirrored -- a deeper lvalue would have to re-derive the AST's
         # own `gen_expr` render at a position with no witness.
-        if (isinstance(stmt.init, TpyMethodCall)
+        if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
                 and init_bare is not None and init_bare == slot_t):
-            # A BORROW-returning method call (`points.load(0)` ->
-            # `pt = &(points->load(0));`): the callee owns the storage, so the
-            # slot points AT it -- the address-of catch-all, with no
-            # `__global_slot_N` allocated. Same-type only: a subclass borrow
-            # would retype the slot (the polymorphic arm's business). RECEIVER
-            # use because the call is consumed under the `&(...)` lift.
+            # A BORROW-returning call -- method (`points.load(0)` ->
+            # `pt = &(points->load(0));`) or free/generic (`get_item(points,
+            # 0)` -> `p = &(get_item<Point>((*points), 0));`): the callee
+            # owns the storage, so the slot points AT it -- the address-of
+            # catch-all, with no `__global_slot_N` allocated. Same-type only:
+            # a subclass borrow would retype the slot (the polymorphic arm's
+            # business). RECEIVER use because the call is consumed under the
+            # `&(...)` lift.
             _witness("top_level.global_addr_call")
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
                 value=_lower_expr(
                     stmt.init, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.RECEIVER)),
+                    use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                 addr_call=True)),
                 loc=loc)
         if not isinstance(stmt.init, TpyName):
             note_detail("top_level.global_slot_shape")
@@ -5660,9 +5703,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         val_cpp=_union_storage_val_cpp(ptr_u), loc=loc)
                 needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
                 if slot_kind is PtrSlotKind.UNION_RVALUE:
+                    # The decl statement is a flush position: a member-ctor
+                    # init's own arg temps (`Container("world")` -> the
+                    # value-union `__tmp_N` hoist) land before the slot line,
+                    # exactly the AST's statement-level temp drain.
                     u_slot_init = _lower_expr(
                         stmt.init, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                     allow_temps=True))
                     _witness("decl.union_slot_rvalue")
                 else:
                     u_slot_init = _lower_expr(stmt.init, lc, declared)
@@ -7648,7 +7696,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         mslot)))
                     if (not mbare.is_value_type()
-                            and not is_rvalue_source(analyzer, sub)):
+                            and not is_rvalue_source(analyzer, sub)
+                            # ... or a movable NAME at its last use: the
+                            # element moves into the storage slot
+                            # (`{std::move(w1), ...}`), the auto-move the
+                            # AST applies member-wise.
+                            and not (isinstance(sub, TpyName)
+                                     and _is_move_source(sub, lc))):
                         ost_ok = False
                         break
                     if not _container_lit_elem_ok(

@@ -44,6 +44,7 @@ from ...parse.nodes import (
 )
 from ...modules.defs import get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
+from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
     RecursiveAliasInstanceType,
     AliasRef,
@@ -2014,11 +2015,14 @@ def _span_return(t: TpyType | None) -> bool:
 def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     """A generic user-record type-arg that THIR spells byte-identically to the
     resolver. The resolver recurses args via `type_to_cpp`, THIR via each arg's
-    own `to_cpp()`; the two coincide only on this slice -- a raw INT type param,
-    an eligible value scalar, or a (recursively) F1-renderable record. Union /
-    enum / tuple / nested-container args diverge (union alias names, enum
-    renames, tuple element qualification) and keep the outer generic on the AST
-    path. A `TypeParamRef` arg (`Pair[T]` -- the generic record's OWN definition
+    own `to_cpp()`; the two coincide on this slice -- a raw INT type param, an
+    eligible value scalar, a (recursively) F1-renderable record, and the arms
+    below: str/container/None, spelling-equal enums, element-wise-admitted
+    tuples, and alias-registered unions. The genuinely divergent leftovers keep
+    the outer generic on the AST path: PendingView args (`to_cpp()` raises),
+    LOCAL plain union aliases (registered mid-emission AFTER lowering), and
+    resolver-only-qualified @dynamic-protocol / enum spellings. A
+    `TypeParamRef` arg (`Pair[T]` -- the generic record's OWN definition
     context) renders `Pair<T>` byte-identically (both paths spell the bare param
     name `T`); admitting it opens the sig/ctor gate for the record's templated
     bodies (stage B/C), whose T-typed slots are gated separately."""
@@ -2047,6 +2051,41 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         # resolves to the default double on both.
         if isinstance(u, (NoneType, FloatLiteralType)):
             return True
+        # Enum arg (`Box[Color]`): the resolver spells via `enum_cpp_name`,
+        # THIR via `to_cpp()`'s native-name lookup; both maps are populated
+        # before lowering, so admit exactly the measured-equal slice. A bare
+        # local spelling falls through the resolver to `to_cpp()` itself.
+        if isinstance(u, NominalType) and is_enum_type(u):
+            spelled = enum_cpp_name(u, analyzer.ctx.module_name)
+            return spelled == u.name or spelled == u.to_cpp()
+        # Tuple arg (`Box[tuple[Int32, Point]]`): both paths spell
+        # `std::tuple<...>` recursing elements, so the spellings coincide
+        # iff every element is itself in the byte-identical slice (a
+        # PendingView element rejects here BEFORE anything can call its
+        # raising `to_cpp()`).
+        if isinstance(u, TupleType):
+            return all(_f1_record_type_arg_ok(e, analyzer)
+                       for e in u.element_types)
+        # Union arg: both paths read the SAME `union_alias_names` map, so
+        # the spellings coincide whenever an alias is ALREADY registered at
+        # lowering time (recursive / cross-module aliases). A module-LOCAL
+        # plain alias registers mid-emission AFTER lowering, so its members
+        # miss the map here and the arg keeps rejecting -- admitting it
+        # would pre-spell `std::variant<...>` where the AST walk spells the
+        # alias name.
+        if isinstance(u, UnionType):
+            compiler = get_current_compiler()
+            return (compiler is not None
+                    and compiler.union_alias_names.get(u.members) is not None)
+        # A Pending view arg (`Box(s)` on a str local -> `Box[PendingStr]`):
+        # sema's usage resolution is FINAL pre-lowering, so resolve through
+        # the same per-analyzer view_vars the resolver reads and recurse.
+        # The RAW type's `to_cpp()` raises -- callers that admit through
+        # this arm must spell via the resolver (`lc.render_type`), never
+        # the bare `to_cpp()`.
+        if isinstance(u, PendingViewType):
+            rv = _resolve_pending_view(u, analyzer)
+            return rv is not None and _f1_record_type_arg_ok(rv, analyzer)
     return (_eligible_scalar(a) or _eligible_char(a)
             or _f1_record(a, analyzer)
             or _f1_dyn_protocol_type_arg(a, analyzer))
@@ -2064,6 +2103,15 @@ def _f1_dyn_protocol_type_arg(a: 'TpyType | int', analyzer) -> bool:
     if not (isinstance(u, NominalType) and is_dyn_protocol(u)):
         return False
     return dynamic_base_name(u, analyzer) == u.to_cpp()
+
+def _method_rvalue_f1_record(init: 'TpyExpr | None', analyzer) -> bool:
+    """An F1-record rvalue produced by a METHOD call (`a.clone()`): the
+    owned-decl / REBIND_SLOT / rebind-reseat gates share this disjunct, so
+    the three admissions cannot drift; the method-call lowering's own gates
+    validate callee/args downstream."""
+    return (isinstance(init, TpyMethodCall)
+            and _f1_record(analyzer.get_expr_type(init), analyzer)
+            and is_rvalue_source(analyzer, init))
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
     """The byte-identical THIR record slice: any concrete user record whose
@@ -4791,13 +4839,21 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
                                        record_name)):
                 return True
         else:
-            recv = stmt.init.obj  # TpyName (validated by _field_receiver_ok)
-            if (recv.name in const_locals
-                    or _param_is_const(recv.name, func, analyzer,
-                                       record_name)
-                    or _opt_ptr_param_deep_const(recv.name, func, analyzer,
-                                                 record_name)):
-                return True
+            recv = stmt.init.obj
+            if isinstance(recv, TpyName):
+                if (recv.name in const_locals
+                        or _param_is_const(recv.name, func, analyzer,
+                                           record_name)
+                        or _opt_ptr_param_deep_const(recv.name, func,
+                                                     analyzer, record_name)):
+                    return True
+            # A method-call receiver (`child.get().parent`) contributes NO
+            # const of its own: the AST's `is_const_union_source` stops at
+            # a call node unconditionally, so the lift is const only via
+            # the raw-sema branches above (a readonly receiver makes the
+            # field read's sema type ReadonlyType, caught there). Adding a
+            # const-rooted or readonly-fi disjunct here diverged from the
+            # oracle on an inferred-readonly inner method.
     # A readonly method's ref return binds `const T&` -- the method-call
     # branch of `_is_const_indirect`.
     if isinstance(stmt.init, TpyMethodCall):
@@ -4963,6 +5019,47 @@ def _value_opt_rvalue(e: TpyExpr, analyzer) -> 'OptionalType | None':
         return u
     return None
 
+def _tuple_field_opt_elem_subscript(init: TpyExpr,
+                                    declared: dict[str, TpyType],
+                                    analyzer) -> bool:
+    """A ptr-repr Optional element read off a TUPLE-typed field
+    (`first = h.t[0]` at `tuple[Optional[Box], Box]`): the storage element
+    lifts to the borrow `T*` via `optional_to_ptr(std::get<0>(h.t))` -- the
+    tuple-field sibling of the field-source OPTIONAL_TO_PTR lift. Literal
+    index only (the std::get spelling); the receiver is an admitted field
+    read whose bare type is a TupleType with a ptr-Optional element at that
+    index."""
+    if not (isinstance(init, TpySubscript)
+            and not isinstance(init.index, TpySlice)
+            and init.slice_function_info is None):
+        return False
+    if not (isinstance(init.obj, TpyFieldAccess)
+            and _field_markers_clean(init.obj)
+            and _field_receiver_ok(init.obj, declared, analyzer)):
+        return False
+    rt = analyzer.get_expr_type(init.obj)
+    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+           if rt is not None else None)
+    if not isinstance(rtu, TupleType):
+        return False
+    idx = fixed_int_literal_value_from_expr(init.index)
+    if idx is None or not (0 <= idx < len(rtu.element_types)):
+        return False
+    et = unwrap_readonly(rtu.element_types[idx])
+    return (isinstance(et, OptionalType) and et.uses_pointer_repr()
+            and _f1_record(_unwrap_own(unwrap_readonly(et.inner)), analyzer))
+
+
+def _empty_instantiation_family(t: 'TpyType | None') -> bool:
+    """The builtin container families whose ZERO-ARG instantiation renders
+    the bare `type_cpp()` default ctor -- one list for both entry paths
+    (the call_type empty-instantiation arm and `_ctor_instantiation_ok`'s
+    constructor-fi row), so a family addition cannot update one and miss
+    the other."""
+    return (t is not None
+            and (is_list(t) or is_dict(t) or is_set(t) or is_array(t)))
+
+
 def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                              analyzer) -> 'TpyExpr | None':
     """The Optional operand of an admitted `is [not] None` test, or None. The
@@ -4996,7 +5093,12 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             and not _ptr_value_none_name(operand, locals_, analyzer)
             and not _ptr_value_none_field(operand, locals_, analyzer)
             and not _optional_field_none_subject(operand, locals_, analyzer)
-            and _union_none_name(operand, locals_, analyzer) is None):
+            and _union_none_name(operand, locals_, analyzer) is None
+            # A ptr-Optional TUPLE-field element read (`h.t[0] is None`):
+            # the pre-lifted pointer compare
+            # (`optional_to_ptr(std::get<0>(h.t)) == nullptr`).
+            and not _tuple_field_opt_elem_subscript(operand, locals_,
+                                                    analyzer)):
         return None
     return operand
 
@@ -5326,6 +5428,14 @@ def _record_call_rvalue_operand(a: TpyExpr, analyzer) -> bool:
     return (isinstance(stu, NominalType) and stu.is_user_record
             and is_rvalue_source(analyzer, a))
 
+def _single_member_of_family(members, pred) -> bool:
+    """Exactly one union member satisfies `pred` -- the shared rule behind
+    the bare-literal admissions: a literal lands in the variant's SINGLE
+    matching member; two candidates would make the converting-ctor pick
+    ambiguous, so both the decl and arg-temp literal arms reject."""
+    return sum(1 for m in members if pred(unwrap_readonly(m))) == 1
+
+
 def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType],
                            analyzer) -> 'UnionType | None':
@@ -5382,19 +5492,16 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # (unlike the free-call row): the AST hoists the temp with the
         # target-less literal render (`__tmp_N = 1;`, the variant's
         # converting ctor picks the single int-family member).
-        int_members = [m for m in ut.members
-                       if is_fixed_int_type(unwrap_readonly(m))
-                       or is_big_int_type(unwrap_readonly(m))]
-        if len(int_members) == 1:
+        if _single_member_of_family(
+                ut.members, lambda m: is_fixed_int_type(m)
+                or is_big_int_type(m)):
             return ut
         return None
     if isinstance(a, TpyStrLiteral):
         # A bare str literal at a value-union ctor slot hoists the same
         # temp; the variant's converting ctor picks the single str member
         # (`std::variant<int32_t, std::string> __tmp_N = "hello";`).
-        str_members = [m for m in ut.members
-                       if is_str_type(unwrap_readonly(m))]
-        if len(str_members) == 1:
+        if _single_member_of_family(ut.members, is_str_type):
             return ut
         return None
     if isinstance(at, FloatLiteralType):
@@ -5502,6 +5609,29 @@ def _ru_wrapper_scalar_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     # `already_union` routes a union-typed / same-alias source elsewhere (bare,
     # no temp); a literal can only be one of those through a sema coerce.
     if at is None or isinstance(at, (UnionType, AliasRef)):
+        return None
+    return ut
+
+
+def _ru_wrapper_member_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                  analyzer) -> 'UnionType | None':
+    """A member-typed record-CTOR rvalue into a wrapper-union slot
+    (`eval_expr(Lit(42))` -> `Expr __tmp_N = Lit(::tpy::BigInt(42));` + the
+    bare temp name) -- the ctor sibling of the literal / NAME rows.
+    `_gen_union_arg`'s value branch hoists the same create_typed temp; the
+    init is the ctor's ordinary folded render, no move (a prvalue init).
+    Ctor rvalues of a MEMBER type only: a general call source brings
+    result-form questions the neighbouring rows own."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None:
+        return None
+    if not isinstance(a, TpyCall) or not is_rvalue_source(analyzer, a):
+        return None
+    at = analyzer.get_expr_type(a)
+    if at is None or isinstance(at, (UnionType, AliasRef)):
+        return None
+    atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if not any(atu == m for m in ut.members if not is_void_like_type(m)):
         return None
     return ut
 
@@ -5774,6 +5904,24 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # stays out: no witness, and its local view/owned form split is a
         # separate render axis.
         if not isinstance(a, TpyFieldAccess):
+            return None
+        return w if (isinstance(at, NominalType)
+                     and (is_str_type(at) or is_str_view_type(at)
+                          or is_string_type(at))) else None
+    w_res = _resolve_pending_view(w, analyzer)
+    if w_res is not None:
+        w = w_res
+    at_res = _resolve_pending_view(at, analyzer)
+    if at_res is not None:
+        at = at_res
+    if isinstance(w, NominalType) and is_str_view_type(w):
+        # A VIEW payload (`Box(s)` on `Box[StrView]` -- the Own[T] slot's T
+        # resolved through the pending registry): the copy temp declares
+        # the view type with brace init (`std::string_view __tmp_N{s};`,
+        # the AST's `is_any_str_type` branch at the view-resolved slot).
+        # Form-blind for the NAME: an owned or view local renders the same
+        # bare name inside the braces.
+        if not isinstance(a, TpyName):
             return None
         return w if (isinstance(at, NominalType)
                      and (is_str_type(at) or is_str_view_type(at)

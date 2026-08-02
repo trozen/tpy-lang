@@ -753,11 +753,17 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     # user-record pointer-local receiver (`is_arrow`, the _gen_method_call
     # indirect-name arm); container receivers are pinned to bare names.
     recv = _emit_expr(e.receiver, state)
+    arrow = e.is_arrow
     if e.move_receiver:
         # Consuming method: the rvalue-qualified call moves the receiver
-        # (_gen_method_call's is_consuming wrap; bare-name receivers only,
-        # so no deref composes here).
-        recv = f"std::move({recv})"
+        # (_gen_method_call's is_consuming wrap). A pointer-local receiver
+        # moves its DEREF (`std::move(*w).take()` -- the arrow folds into
+        # the deref, so the member access is `.`).
+        if arrow:
+            recv = f"std::move(*{recv})"
+            arrow = False
+        else:
+            recv = f"std::move({recv})"
     args = [_emit_expr(a, state) for a in e.args]
     if e.cpp_template is not None:
         return expand_cpp_template(e.cpp_template, recv, *args)
@@ -779,7 +785,7 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")
-    return (f"{recv}{'->' if e.is_arrow else '.'}"
+    return (f"{recv}{'->' if arrow else '.'}"
             f"{e.method_cpp}{mtargs}({', '.join(args)})")
 
 
@@ -3395,6 +3401,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (its needs_rebind_slot is always False -- an rvalue-reassigned
             # record is the REBIND_SLOT binding, not this kind).
             init_cpp = _emit_expr(stmt.init, state)
+            # The decl is a flush position: an init's arg temps print before
+            # the slot line (the AST's statement-level drain).
+            state.temps.flush(out, indent)
             init_slot = (state.assert_local_slot() or state.next_slot())
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
                       f"{init_cpp};\n")
@@ -3442,6 +3451,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"&*(__slot_{init_slot} = {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
+            # Flush position, like the plain-decl arms: a member-ctor init's
+            # value-union arg temps print before the `__slot_N` line
+            # (`std::variant<...> __tmp_1 = "world";` then the slot).
+            state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())

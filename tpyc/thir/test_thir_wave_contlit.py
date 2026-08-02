@@ -363,9 +363,11 @@ class TestReturnSlotRows:
         assert w.get("ret.own_storage_tuple", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_own_storage_tuple_name_member_stays_ast(self):
-        # A non-value member NAME is not an rvalue -- the storage-direct
-        # member rules keep it out (a borrow render this row does not carry).
+    def test_own_storage_tuple_movable_name_member_routes(self):
+        # A non-value member NAME that is MOVABLE at its last use moves
+        # into the storage slot (`{..., std::move(r)}` -- the wave-3c
+        # widening); the non-last-use sibling stays pinned out in
+        # test_thir_wave_pending_view_own.py.
         src = ("from tpy import Int32, Own, copy\n"
                "class Res:\n"
                "    v: Int32\n"
@@ -375,7 +377,7 @@ class TestReturnSlotRows:
                "    r = Res(x)\n"
                "    r.v += 1\n"
                "    return (str(x), r)\n")
-        assert _fn(_lower_ctx(src), "make_pair") is None
+        assert _fn(_lower_ctx(src), "make_pair") is not None
 
     def test_value_bound_optional_return_routes(self):
         src = ("from tpy import Int32, ValueType\n"

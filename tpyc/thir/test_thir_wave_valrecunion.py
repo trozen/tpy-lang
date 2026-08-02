@@ -532,12 +532,17 @@ class TestModuleQualifiedCtorArgTemp:
         assert "auto __tmp_1 = Ready(7);" in _body(thir, "f")
         _assert_byte_identical(src)
 
-    def test_qualified_nonctor_call_arg_still_defers(self, tmp_path):
-        # A qualified NON-ctor record-returning call at the slot keeps
-        # falling back (only the is_constructor slice rides the temp row).
+    def test_qualified_nonctor_own_call_arg_hoists_temp(self, tmp_path):
+        # A qualified Own-returning NON-ctor call rides the same
+        # create-lend-drop temp as the ctor slice (oracle-verified: the AST
+        # hoists `::tpyapp::pkg::sub::Rec __tmp_1 =
+        # ::tpyapp::pkg::sub::make(9);`) -- the method-rvalue widening's
+        # module-qualified face. Only NATIVE record calls render inline.
         lib = self._setup(tmp_path)
         src = ("from pkg import sub\nfrom tpy import Int32\n"
                "def use(r: sub.Rec) -> Int32:\n    return r.n\n"
                "def f() -> None:\n    print(use(sub.make(Int32(9))))\n")
-        thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
-        assert _fn(thir, "f") is None
+        thir, faces = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.record_rvalue", 0) >= 1
+        assert (self._emit(src, lib, True) == self._emit(src, lib, False))

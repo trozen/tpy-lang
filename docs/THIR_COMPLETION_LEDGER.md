@@ -6157,3 +6157,462 @@ entries partially landed (G4 survivors, F5 negation) -- four of eleven
 design-gated entries had rotted since 2026-07-30. A parked cell's wake
 line is a claim about OTHER work, so it rots faster than the cell itself;
 re-probe the wake, not just the blocking body.
+
+### F1 type-arg fence re-scope: three family arms, zero direct flips (2026-08-01)
+
+The approved re-scope from the 08-01 measurement landed:
+`_f1_record_type_arg_ok` grew three arms, each admitting exactly the
+slice the measurement proved byte-identical at lowering time. Full
+corpus green (byte-diff + ratchet + move-verdict join), 0 flip
+candidates -- expected: the fence was the PREREQUISITE, the case yield
+(the `expr.method_call` receiver trio + `union_mutual_*`) arrives with
+the reverted receiver row's re-land, which is the next wave.
+
+- **Enum args** (`Pair[Color]`): admit iff the resolver-side spelling
+  equals `to_cpp()` (`enum_cpp_name == name` -- the resolver falls
+  through to `to_cpp()` itself -- or `== to_cpp()`), the
+  `_f1_dyn_protocol_type_arg` equality pattern. Both name maps populate
+  in the generator's setup block, before lowering.
+- **Tuple args** (`Pair[tuple[Int32, str]]`): both paths spell
+  `std::tuple<...>` recursing elements, so element-wise recursion
+  through the fence IS the equality check; a PendingView element
+  rejects before anything can call its raising `to_cpp()`.
+- **Union args** (`Pair[Num]` / `Pair[Tree]`): admit iff
+  `union_alias_names` already holds the members AT LOWERING TIME. Both
+  paths read the same map, so a registered alias is identical by
+  construction; the check mechanically excludes the module-LOCAL plain
+  alias (registered mid-emission at the generator's header pass, AFTER
+  lowering -- the real hole the measurement isolated). Local RECURSIVE
+  aliases register in the setup block and are admitted.
+
+Pins in `test_thir_wave_f1_typeargs.py` (12 units): per-family routing
++ byte-identity + boundary, plus adversarial pins on the three measured
+holes (PendingView arg; local plain alias; the un-imported
+@dynamic-protocol arg riding the BUGS.md bare-vs-qualified `Cancellable`
+entry -- AST-first, the fence must not route the uncompilable shape).
+Three old boundary pins that had pinned enum/tuple args as rejecting
+moved to the new boundary in place (test_thir_ctor / _methods flipped
+their fixture arg to a local plain-alias union; test_thir_generics'
+enum pin became a routing pin). Adjacent arg-row gaps surfaced and
+pinned as still-rejecting, NOT opened here: an enum MEMBER-ACCESS arg
+into an `Own[T]` ctor slot, and a wrapper-union value into a ctor `T`
+slot.
+
+The TODO re-probe rider was answered en passant:
+`own_generic_set_forward_ref` now rejects at
+`_method_nonname_receiver_ok` (field-chain receiver `h.c.item`), i.e.
+purely the receiver row -- the spelling half of its blocker is gone.
+
+### The receiver-row re-land: the F1 re-scope's yield arrives (2026-08-02)
+
+The wave the fence re-scope was priced for: four rows at the
+method-receiver and wrapper-union seams, +5 flips
+(`set/own_generic_set_forward_ref`, `tplib/rc_in_tuple`,
+`union/union_mutual_mixed`, `union/union_mutual_basic`,
+`union/union_mutual_reverse_order`). `union/union_mutual_contexts` stays
+marked on two OTHER parked families (`container_lit.slot_family` -- the
+`t: Tree = [1, [2, 3]]` decl -- and an `if.narrow_shape` fragment), not
+on anything this wave touched. Pins in
+`test_thir_wave_f1_receivers.py`; two old chain boundary pins flipped to
+routing pins in place (test_thir_containers / test_thir_methods).
+
+- **Field-CHAIN method receiver** (`h.c.item.add(x)`):
+  `_chain_field_receiver_ok` -- every parent link a plain-value
+  F1-record member, innermost link `_field_receiver_ok`-admitted --
+  wired at RECEIVER-POSITION scope only (`_method_field_receiver_ok`),
+  exactly the scope the reverted first cut should have kept: the shared
+  `_field_receiver_ok` also feeds read/write sinks carrying deref/lift
+  decisions a chain render does not. The arg-position twin rides
+  `_protocol_slot_arg`'s field arm (`len(h.c.item)` bare at a structural
+  slot), and `_native_protocol_field_arg`'s list/set element whitelist
+  widened to F1-record elements (the element never appears in the bare
+  member-read render).
+- **Tuple-element F1-RECORD subscript receiver** (`t[0].get()`):
+  `_tuple_record_elem_subscript_recv` -- NAME receivers, plain
+  (non-Own, non-Optional) record elements. The arrow decision reuses
+  `_subscript_yields_borrow_ptr` (the field-read rule): a borrow-form
+  tuple param's element is a bare `T*` (`std::get<0>(t)->get()`), a
+  storage local's a value (`std::get<0>(pair).get()`). The
+  `tuple_to_pointer` call-site lift needed no work -- the
+  `_borrow_tuple_storage_name_arg` row already admitted record
+  elements.
+- **Wrapper-union borrow method return** (`show(v.inner.get())`):
+  `method.ru_wrapper_ret` joined `_record_method_call_supported`'s
+  record_ret_ok family -- the accessor's `Value&` binds the
+  `const Value&` wrapper slot inline; the arg side
+  (`arg.recursive_union_borrow_call`) had been built and sat
+  zero-witness waiting for exactly this ret row.
+- **Member-CTOR rvalue at a wrapper-union arg slot**
+  (`eval_expr(Lit(42))` -> `Expr __tmp_N = Lit(...);`):
+  `_ru_wrapper_member_rvalue_arg`, the ctor sibling of the M4c
+  literal/NAME rows, same create_typed ArgTemp; is_rvalue_source keeps
+  borrow-returning call sources out (pinned).
+
+LESSON: the "receiver trio + union_mutual family" price was quoted
+against the fence alone, but the family's blockers were STACKED -- the
+fence hid a ret-gate gap, which hid an arg-temp gap. Post-fence
+re-probing per case (rather than trusting the original trio/family
+labels) found each next blocker in minutes; the labels from the
+pre-fence map were all stale by one layer.
+
+### Mechanical residue, first slice: the owning reseat + the indirect
+### opt-ptr lift (2026-08-02)
+
+Two rows off the F3/parked-registry residue, +3 flips
+(`tplib/rc_recursive_type`, `pointers/escape_explicit_rc`,
+`tplib/weak_cycle_breaks`). Pins in `test_thir_wave_owning_reseat.py`.
+
+- **Method-call rvalue at the REBIND_SLOT decl and reseat**
+  (`cur = a.clone()` -> `Rc<Node>* cur = &__slot_1;` ...
+  `cur = &*(__slot_2 = nxt->clone());`): the classifier already returned
+  REBIND_SLOT for the rvalue-reassigned name; only the two eligibility
+  gates (`_borrow_local_binding`'s F2d arm, `_rebind_rvalue_source_ok`)
+  were ctor/free-call-shaped. Both grew the method-call disjunct
+  `_owned_record_decl_ok` already carried; the method-call lowering's own
+  gates validate callee/args from there. A borrow-returning method decl
+  stays pinned out (not an rvalue source).
+- **OPTIONAL_TO_PTR lift off a field of a method-call receiver**
+  (`parent_ref = child.get().parent` -> `Weak<Node>* parent_ref =
+  ::tpy::optional_to_ptr(child.get().parent);`): the
+  `_indirect_field_receiver_ok` arm from the receiver-row wave, applied
+  at the borrow-decl classifier -- restricted to METHOD-call receivers
+  (a free-call receiver could hand the lift a dying temporary).
+  `_f1_is_const`'s OPTIONAL_TO_PTR arm learned the non-Name receiver:
+  const iff the inner call binds const (readonly ref return, or a
+  const-rooted receiver picking the const twin) -- the const sibling is
+  pinned (`const Rc<Node>* nxt = ...` off a readonly param).
+
+Notable: `weak_cycle_breaks` flipped WITHOUT touching
+`_const_exact_field_receiver_ok` (the registry had queued it behind that
+fence's stale-BUGS citation) -- its actual blocker was the receiver
+shape, not the const fence. The remaining F3 residue (mixed-own hybrid
+tuple locals with element writes, the borrow-form tuple local binding
+set, Own[tuple] returns, OPTIONAL_BORROW_TUPLE, the Pending-str
+`Box(s)`/`Rc.new(s)` ctor+view-temp family, the Rc rvalue-arg row, the
+generic-record MIL field default) is queued as the next slice -- each
+needs its own binding/temp machinery, not a gate widening.
+
+### Mechanical residue, second slice: Own-method rvalues at two more
+### sinks (2026-08-02)
+
+Two rows reusing the shared `_method_rvalue_f1_record` disjunct, +2 flips
+(`tplib/rc_new_arg_passing`, `tplib/rc_field_default_init`). Pins in
+`test_thir_wave_own_method_rvalues.py`.
+
+- **The borrow-param arg temp** (`read_rc(Rc.new(Counter(3)))` ->
+  `Rc<Counter> __tmp_1 = ...; read_rc(__tmp_1)`):
+  `_record_rvalue_temp_arg` grew the method-rvalue disjunct and the
+  ArgTemp hoist arm's method-call exclusion was re-derived from the
+  oracle: PLAIN and MODULE-QUALIFIED Own-returning methods hoist the
+  create-lend-drop temp (the old defer-pin for `use(sub.make(9))`
+  flipped to a verified routing pin -- the AST hoists there too);
+  NATIVE record calls and MARKER-position args render inline. The
+  marker half was caught by the corpus byte-diff mid-wave
+  (`stdlib/ospath_roundout` diverged: THIR hoisted
+  `samestat(s, os.stat(d))`'s inner call where the qualcall loop
+  renders inline) -- fixed by threading a `marker_arg` flag from
+  `_lower_marker_method_arg` into `_lower_call_arg`, since neither
+  const-ness nor the callee's own fi discriminates (the OUTER callee's
+  emit path does).
+- **The ctor MIL field** (`self.shared = Rc.new(Val(0))` ->
+  `shared(Rc<Val>::new_<Val>(Val(0)))`): `_is_record_value_source` grew
+  the same disjunct and the MIL tail lowers the method source at
+  STORAGE use (face `mil.record_method_rvalue`); a borrow-returning
+  method at the field slot stays pinned out.
+
+LESSON: "the AST renders qualified non-ctor record calls inline" was a
+one-example generalization (os.stat at a MARKER call) that a second
+example (sub.make at a FREE call) refuted -- the axis was the enclosing
+callee's arg loop, not the arg's callee kind. The corpus byte-diff
+caught the wrong first guess within one measurement run; the defer-pin
+it violated was doing exactly its job.
+
+### Mechanical residue, third slice: Pending-view Own args + the movable
+### tuple-return member (2026-08-02)
+
+Two rows, +3 flips (`tplib/box_str_lvalue`, `tplib/rc_new_str_lvalue`,
+`tplib/weak_outlives_payload`). Pins in
+`test_thir_wave_pending_view_own.py`; the wave-1 PendingView hole pin
+flipped from "keeps rejecting" to "resolves and routes" (the hole is
+RESOLVED, not fenced, as of this slice), and contlit's storage-tuple
+NAME-member boundary flipped to a routing pin with the non-last-use
+sibling as the new boundary.
+
+- **Pending-view type-args resolve through the fence**:
+  `_f1_record_type_arg_ok` gained a PendingViewType arm that resolves
+  via the existing `_resolve_pending_view` mirror (sema's usage
+  resolution is final pre-lowering) and recurses. The raw `to_cpp()`
+  still raises by design -- admission is safe because the spell sites
+  in the routed paths go through the resolver (`lc.render_type`). The
+  Own[T] slot's VIEW payload then takes the brace-init copy temp
+  (`std::string_view __tmp_1{s};` + `std::move(__tmp_1)`):
+  `_own_lvalue_temp_slot` resolves Pending on both sides and admits a
+  str-family NAME at a view-resolved slot (form-blind -- an owned or
+  view local renders the same bare name inside the braces), and the
+  ArgTemp arm's brace-init render extends from `is_str_type` to the
+  view payload. The owned-str NAME source stays pinned out (its
+  view/owned form split is a real render axis).
+- **Own[tuple] returns admit MOVABLE NAME members**: the storage-tuple
+  return gate's "non-value members must be rvalues" rule grew the
+  movable-last-use disjunct; `_lower_container_elem` already carried
+  the `std::move(name)` render. A non-last-use name member (the same
+  name feeding two members) stays pinned out.
+
+SKIPPED with evidence, back to the registry: (a) the mixed-own tuple
+LOCAL binding set -- the AST computes `const_borrow_form_tuple_locals`
+via a per-function FIXPOINT over binding chains
+(codegen_cpp/statements.py:356), and mirroring a fixpoint is a design
+decision (mirror strategy vs moving the fact), not a gate widening;
+(d) OPTIONAL_BORROW_TUPLE -- zero THIR handling, same class. Both stay
+in the F3-residue registry entry as design-gated.
+
+### Grind wave 4: the method_call junk-drawer site, two rows (2026-08-02)
+
+Fresh corpus map (blockers.json, 746 marked): the sole-blocker ranking is
+a long tail (top tag `body:expr.method_call` = 10 cases over FOUR raise
+sites; second `expr.call` 8). The top site (the record-method shape gate)
+held four unrelated shapes -- two on parked lanes (deferred-inference
+generics; the borrow-form auto-tuple decl, the same binding-set design
+class as the mixed-own hybrids) and two live, both landed. +6 flips
+(`iterators/span_iter_arraylist`, `auto_move/consuming_method_reassign`,
+plus four the harvest surfaced: `imports/cross_module_builtin_type_field
+_decl`, `tuple/tuple_own_outer_return`, `threading/mutex_wrap_cross
+_module`, `records/nocopy_del_field_via_factory`). Pins in
+`test_thir_wave_grind4.py`.
+
+- **`method.native_iter_ret`**: a VALUE-typed native iterator method
+  result (SpanIter) at a STORAGE sink -- the decl slot admitted the
+  shape all along (`_native_iter_value_slot`'s docstring even names
+  `a.__iter__()`); only the record-method ret gate was missing the row.
+  Opening it also unblocked the @auto_readonly `__iter__` clone pair
+  (iterdecl's boundary pin converted to a routing pin -- its stated
+  fence reason WAS this ret gate).
+- **Consuming POINTER-LOCAL receivers**: `std::move(*w).take()` -- the
+  consuming_ok gate dropped its pointer exclusion, the method-call emit
+  folds the arrow into the deref (`std::move(*{recv})` + `.` access),
+  and the node invariant now permits move_receiver+is_arrow. The
+  narrowed-Optional-ptr receiver turned out to be the SAME shape on
+  both paths (pinned routing, not boundary).
+
+Remaining method_call sole-blockers, all parked or priced for wave 5:
+deferred generics / function-macro bodies / overload+generic (lanes),
+iterator `__next__` protocol returns (parked), `os.walk` generator
+factory (generics-lane), requests_session (a G3 arg sub-shape),
+rc_dyn_structural (the G4 both-targs 1:1).
+
+### Grind wave 5: the value-union ctor-arg temp chain at decl sinks
+### (2026-08-02)
+
+The `body:expr.call` sole-blocker tag is fully fragmented (8 cases over
+six raise sites); the top pair (`match/nested_type_pattern_combos`,
+`match/nested_type_pattern_edges`) was one blocker STACK five links deep,
+all landed by chain-walking. +2 flips. Pins in
+`test_thir_wave_grind5.py`.
+
+- The union ptr-slot and opt-ptr-slot DECL inits thread `allow_temps`
+  (a decl statement is a flush position -- the AST hoists a member
+  ctor's value-union arg temp before the `__slot_N` line).
+- `_ptr_union_slot_kind` admits a sema-coerced scalar LITERAL as a
+  whole-union rvalue (`b3: Int32 | Container = 99` -> the bare literal
+  slot init; the variant's converting ctor picks the single matching
+  member).
+- `_union_ctor_temp_arg` admits GENERIC member ctors
+  (`Outer(Box("abc"))` -- `_ctor_instantiation_ok` beside
+  `_ctor_shape_ok`).
+- Container-literal ELEMENTS inherit the enclosing flush right
+  (`allow_temps` threaded through `_lower_checked_container_elem` /
+  `_lower_container_elem` off `use.allow_temps`), so an element ctor's
+  union/Own arg temps hoist at the decl statement exactly like the AST.
+  This also flipped ctorargs7's not-last-use Own-copy pin to a routing
+  pin (the AST hoists `auto __tmp_1 = a;` there -- byte-verified).
+- The EMIT's ptr-decl arms flush pended temps before their slot lines
+  and the VALIDATOR grants THIRPtrLocalDecl inits the flush position --
+  the ordering divergence the corpus byte-diff caught mid-wave (temps
+  after the slot lines) was exactly this missing drain.
+- Boundary: a ternary ARM stays flushless (its temp must not hoist
+  eagerly); pinned.
+
+The rest of the fragmented expr.call tail: argparse/fixed_width_types,
+owned_optional_local_move_out, cross_module_dup_name_union,
+isinstance_typeparam_tuple (1:1 singles, next grind iterations);
+set_comp_owned_move stays the parked comprehension-temp-sink design
+fork.
+
+### Grind wave 6: the type-ctor str-parse overload (2026-08-02)
+
++1 flip (`argparse/fixed_width_types`). `Int32(tok)` on a str token
+resolves the from_str `__init__` overload whose own @cpp_template
+carries the parse render (`::tpy::from_str_check<int32_t>(tok)`); the
+scalar-ctor arg gate admits a str-family arg at a str param slot beside
+the scalar check. The witness lives in a builder-trace-macro-synthesized
+parse body, so the row's reach is any `IntN(str)` conversion. Pins in
+`test_thir_wave_grind6.py`.
+
+Probe notes for wave 7, recorded before parking:
+`auto_move/owned_optional_local_move_out` is a two-link stack -- the
+`Boxed(tmp)` ctor arg's ORACLE render is `::tpy::ptr_to_optional_move`
+(the FormConvert move lift the emit already carries), NOT the
+THIROwnOptRebuild the existing Own-opt row spells, and the gate rejects
+before either (instrument `_own_opt_ptr_name_arg`); plus a
+`call.ret_type.optional_record` return link.
+`imports/cross_module_dup_name_union`'s member-NAME lift rejects
+silently in `_union_member_lift_arg` -- likely the colliding-short-name
+spelling fence (two `Point`s from different modules in one variant;
+probe BOTH members' spellings before widening).
+
+### Grind wave 7: the owned-optional move-out stack (2026-08-02)
+
++1 flip (`auto_move/owned_optional_local_move_out`) -- one case, FOUR
+stacked links, each landed by chain-walking. Pins in
+`test_thir_wave_grind7.py`; optrecord's narrowed-field-read defer pin
+converted to routing (its stated fence WAS the last link).
+
+- **ptr-repr Optional NAME at an `Optional[Own[record]]` BY-VALUE slot**
+  (`Boxed(tmp)` on `tmp: Box | None` -- the `std::optional<Box>` param):
+  `_opt_own_ptr_opt_name_arg` + a FormConvert STORAGE move arm renders
+  `::tpy::ptr_to_optional_move(tmp)` at a movable last use. The COPY
+  half (`ptr_to_optional`, a non-last-use source) stays pinned out.
+  NB the wave-6 probe note guessed the slot was Own[Optional]; it is
+  Optional[Own] -- a different row family than THIROwnOptRebuild's.
+- **Storage-optional free-call returns**: `_call_use_supported` gained
+  the `_storage_optional_return_type` STORAGE escape the method gate
+  already had (`std::optional<Box> r = move_out(true);`).
+- **Narrowed owned-optional record NAME receivers**: the field-access
+  receiver chain admits a `value_opt_record_locals` name; the name read
+  derefs and the field appends (`(*r).v`).
+
+`imports/cross_module_dup_name_union` (the union-lift colliding-name
+fence) stays the wave-8 opener.
+
+### Grind wave 8: the short-name collision override (2026-08-02)
+
++1 flip (`imports/cross_module_dup_name_union`). The `_ctor_shape_ok`
+fence rejected any ctor whose LAST-WRITE-WINS short-name registry lookup
+disagreed with sema's qname-first type resolution ("reject the
+ambiguous shape rather than mirror the override") -- but the AST emits
+FROM THE TYPE, and the THIRCtorCall lowering already reads
+`get_record_for_type`, so validating against the type-resolved record
+is the honest mirror, not an override. Instrumentation showed
+`get_record("Point")` returning world/Point while sema (and the oracle)
+resolved screen/Point. Pins: both colliding records exercised in ONE
+fixture (ctors spell their own modules' qualifications; both union
+members lift fully qualified) per the
+survey-both-colliding-types-in-one-container rule; the old
+falls-back boundary pin in test_thir_methods.py converted to routing
+(both Tag ctors route qualified).
+
+### Grind wave 9: comp unpack heads with record targets + the
+### storage-form tuple return at an Own slot (2026-08-02)
+
++1 flip (`list/list_comp_unpack_clone`). Two pieces, chained by the one
+case. (1) `_comp_route`'s unpack arm now admits record-element tuple
+iterables (`allow_record`, the for-head unpack's knob) and drops the
+const-only F1-target admission: the AST's `_emit_inline_tuple_unpack`
+keys the ref binding (`auto&` / `const auto&`) for EVERY non-value
+target on `gen.const_loop_var` alone, so `_unpack_target_cpps` now
+threads that flag instead of hardcoding `const auto&` (the const-only
+arm was DEAD in practice -- a plain record-element tuple is a value
+type and not expensive-copy, so `worth_const_ref` never set the flag;
+the const side IS reachable via a str+record tuple and is pinned).
+(2) Routing the body exposed a latent mis-lowering: `_lower_call_arg`'s
+Own[ptr-repr tuple] slot arm wrapped EVERY tuple-returning call in
+`tuple_to_storage`, but a STORAGE-form return -- `Own[tuple[..]]` or
+the all-Own per-element synthesis -- already matches the owning slot
+and passes bare (`push_back(make_pair(1, 10))`;
+`needs_tuple_storage_lift`'s call verdict); only borrow-form and
+MIXED-render returns owe the copy lift. The wrap had never materialized
+before: every prior witness fired in bodies that later fell back whole
+(witness-before-raise), so the corpus byte-diff could not see it --
+the divergence surfaced the moment the first consumer body routed.
+Boundary walked, not forced: the site's remaining cases are other axes
+(storage-optional unpack targets need the `storage_form_optional_locals`
+mirror THIR explicitly does not have yet -- a future multi-cell track;
+narrowed-ternary elements; inline-comp render residue).
+
+### Grind wave 10: the top_level:expr.call site, three rows (2026-08-02)
+
++4 flips (`generics/generic_func_regression`, `pascal/bubble_sort`,
+`pascal/panic_array_index` -- caused by this wave's rows -- plus
+`int/panic_int32_from_str`, which was already clean before the wave and
+harvested as a stale marker in the same check-flip pass). (1) The zero-arg
+container instantiation with EXPLICIT type args (`items = list[Int32]()`)
+rides the existing `call.instantiation_empty` arm: the `not e.type_args`
+exclusion was a phantom fence -- sema folds the spelling into `call_type`
+and the zero-arg render reads nothing else (the user-generic subscript
+form is excluded by `subscript_callee`, which builtins never set, and
+already routes on its OWN arm -- the boundary pin asserts non-capture,
+not rejection). Array joins the family disjunct (`Array[Int32, 8]()`
+locals). (2) The same call synthesized by the pascal frontend arrives
+with a CONSTRUCTOR fi and dies at the ctor gate instead --
+`_ctor_instantiation_ok` gets a zero-arg builtin-container row (same
+`type_cpp()` render, no arg arms to diverge). (3) The global ptr-slot's
+address-of catch-all widens from method calls to free calls
+(`p = &(get_item<Point>((*points), 0));`) via the `use.addr_call`-scoped
+`call.recv_borrow_ret` row. LESSON: the first cut keyed that row on bare
+RECEIVER use and the unit suite's design-stop pin
+(`TestRecordBorrowCallReturnDesignStop`) caught the over-capture -- a
+field read off the same borrow-returning call shape (`shared(a).x`) is
+the REF_ALIAS place/loan frontier and must stay AST; the row is now
+position-scoped by a dedicated `_ExprUse.addr_call` flag, the design
+fence re-verified green. `calls/unsafe_cast_arg_type_context` chain-walked
+off the site (now a method-ARG gate reject at `parg_list.append(carg_ptr)`
+-- a pointer-slot GLOBAL name arg, the M-family's business) and stays
+marked; the tag's other two attributed singles
+(`generics/generic_func_multi` at the generic plain-arg gate,
+`records/optional_field_ctor_param_optional` at a ctor-arg family) are
+1:1 residues at their own sites.
+
+### Grind wave 11: the ptr-Optional tuple-field element stack
+### (2026-08-02)
+
++1 flip (`tuple/tuple_mixed_elem_field`), one case chaining three rows.
+(1) The DECL lift: `first = h.t[0]` classifies OTHER via the
+classifier's tuple carve-out (the AST pre-lifts tuple-element reads at
+the CONSUMER, so `reads_storage_form_optional` deliberately returns
+False for tuple receivers) -- the decl IS that consumer, so the OTHER
+re-tag arm gains the subscript row and the borrow-local lowering wraps
+the prechecked subscript read in the optional_to_ptr FormConvert
+(`Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));`). Const rides
+the existing `_f1_const_rooted_source` subscript-receiver arm (pinned
+via a readonly receiver). (2) The SAME-repr pointer-Optional NAME
+element at a borrow-tuple literal slot passes bare (`h.set((n, y))` ->
+`{n, &(y)}`): the builder's optptr arm only knew the addr_of render and
+deferred already-pointer sources. Converting that row un-deferred THREE
+existing boundary pins (return-position btuple literal, post-if
+narrowed ctor arg, resumable yields) -- each byte-diffed IDENTICAL and
+converted to a routing pin per the conversion rule. (3) The
+`is [not] None` subject over the same element read takes the pre-lifted
+pointer compare (`optional_to_ptr(std::get<0>(h.t)) == nullptr`).
+Pins in `test_thir_wave_grind11.py` (+ the three conversions); the
+local-tuple-receiver sibling stays deferred (field receivers only).
+The tag's other two sole cases are DOCUMENTED fences, not rows:
+`list_append_optional_strview_from_str` waits on the value-opt read
+arms keying on the BINDING rather than the narrow (the literal-init
+divergence note inside `_owned_view_opt_whole_src`), and
+`ternary_optional_mixed_form` needs per-arm Form threading through
+`expr.ifexpr` (the res.btuple_source theme). NB: a lesson re-learned --
+a broad `str.replace` on a test file clobbered nine sibling defer pins
+sharing the same tail; caught by the file's own suite run, redone
+scoped.
+
+### Grind wave 12: the flushless Own-slot MOVE rescue (2026-08-02)
+
++1 flip (`async/await_bind_move`). `_own_lvalue_arg` (the Own-slot
+copy+move gate row) is temps_ok-gated because its COPY half hoists a
+`__tmp_N`; the MOVE half renders `std::move(<name read>)`
+position-independently and already had a flushless rescue on the
+native/template branch -- the plain branch gains the identical rescue
+(`_own_move_source_slice`), unblocking the await-bound frame local at
+an `Own[T]` param inside a resumable leaf (`take(std::move((*p)))`;
+the name's own read supplies the deref; the move-verdict join covers
+the verdict, 5 joined nodes on the flipped case). The rest of
+`resumable:expr.call` PARKS with verified reasons: `await_bind_no_move`
++ `async_own_copy_escape` need the COPY half's temp at a leaf position
+-- the leaf emitters have no hoist-line drain (the deliberately-
+deferred structural piece already noted on `decl.record_slot_resumable`
+in TODO.md; wiring the drain is a design decision, presented not
+improvised); `channel/channel_async` chains through the coro-factory
+adapter into the asyncio library surface (avoid-listed, S1/S2);
+`async_bind_generic` + `gen_resumable_delegate_generic_call` are
+generics-lane (parked). Pins in `test_thir_wave_grind12.py`: the
+deref-move routing pin and the copy-shape boundary (still defers).

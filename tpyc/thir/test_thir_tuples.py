@@ -2537,10 +2537,10 @@ class TestBorrowTupleLiteralReturn:
                 in self._cpp(src, thir=True))
         _assert_byte_identical(src)
 
-    def test_already_pointer_optional_element_still_defers(self):
-        # BOUNDARY: an Optional-ptr param element is ALREADY a pointer, so it
-        # would pass bare rather than lift -- a row the builder carries at the
-        # decl/arg sinks but that does not reach this one. Probed, not assumed.
+    def test_already_pointer_optional_element_passes_bare(self):
+        # An Optional-ptr param element is ALREADY a pointer and passes bare
+        # (`{n, q}`) -- the same-repr pointer-name row; it used to defer
+        # when the builder only knew the addr_of render.
         src = (self._SRC
                + "def f(n: Int32, q: P | None) -> tuple[Int32, P | None]:\n"
                + "    return (n, q)\n"
@@ -2550,8 +2550,9 @@ class TestBorrowTupleLiteralReturn:
                + "    print(u[0])\n"
                + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("ret.btuple_literal")
+        assert _fn(thir, "f") is not None
+        assert faces.get("btuple.elem_optptr")
+        assert "{n, q}" in self._cpp(src, thir=True)
         _assert_byte_identical(src)
 
 

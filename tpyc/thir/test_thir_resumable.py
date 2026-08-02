@@ -1395,15 +1395,13 @@ class TestBorrowTupleLocals:
         assert witnesses.get("res.btuple_yield", 0) >= 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_optional_element_yield_defers(self):
-        # A pointer-repr Optional element slot spells its own form
-        # (`T*` via the Optional arm of the slot-info ladder, None ->
-        # nullptr) -- sliced out (btuple.elem_slot). NB the rvalue-into-
-        # borrow machinery is unreachable from these sinks: sema rejects
-        # rvalue elements at borrow yield slots outright, and decl rvalues
-        # go VALUE-capture (storage) -- the btuple.elem_rvalue guard is
-        # defensive here; the live rvalue shapes are call args (their own
-        # cell).
+    def test_optional_element_yield_routes(self):
+        # A pointer-repr Optional PARAM element is already the pointer and
+        # passes bare at the yield slot -- the same-repr pointer-name row;
+        # it deferred while the builder only knew addr_of. NB
+        # the rvalue-into-borrow machinery is unreachable from these
+        # sinks: sema rejects rvalue elements at borrow yield slots
+        # outright, and decl rvalues go VALUE-capture (storage).
         src = (self._PRE_BOX.replace("import asyncio\n", "")
                + "from typing import Iterator, Optional\n\n"
                + "def pairs(b: Box, o: Optional[Box], n: Int32)"
@@ -1415,7 +1413,7 @@ class TestBorrowTupleLocals:
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
+        assert not fallback, fallback
         _assert_identical(src)
 
     def test_call_init_at_borrow_slot_routes(self):

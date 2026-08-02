@@ -1130,9 +1130,10 @@ class TestMethodReceiverShape:
             "    def peek(self) -> Int32:\n        return self.opt.get()\n")
         assert _fn(thir, "peek") is None
 
-    def test_deep_chain_receiver_excluded(self):
-        # `o.mid.inner.get()`: a two-level field chain -- the receiver's own
-        # receiver is a field access, not a name -> only one level is admitted.
+    def test_deep_chain_receiver_routes(self):
+        # `d.mid.inner.get()`: a two-level field chain routes via the
+        # chain-receiver row (every link a plain F1-record member off an
+        # admitted innermost binding).
         thir = _lower_ctx(
             _RECV_SHAPE
             + "class Mid:\n    inner: Inner\n"
@@ -1140,7 +1141,7 @@ class TestMethodReceiverShape:
             "class Deep:\n    mid: Mid\n"
             "    def __init__(self, x: Int32):\n        self.mid = Mid(x)\n"
             "def reach(d: Deep) -> Int32:\n    return d.mid.inner.get()\n")
-        assert _fn(thir, "reach") is None
+        assert _fn(thir, "reach") is not None
 
 
 class TestMethodReceiverShapeEmit:
@@ -1464,12 +1465,11 @@ class TestCrossModuleRecordFrontier:
                                           thir_codegen=True))
         assert "= ::tpyapp::geo::Point(3, 4);" in cpp
 
-    def test_short_name_collision_falls_back(self, tmp_path):
-        # Two records both named Tag in different modules: the ambiguous
-        # short-name lookup (`Tag(5)` resolving to a DIFFERENT record than
-        # sema's result type) rejects at `_ctor_shape_ok` -> that body falls
-        # back; the unambiguous alias (`BlueTag(10)`) routes qualified. The
-        # collision guard is what keeps the lowering's qual spelling honest.
+    def test_short_name_collision_routes_via_type(self, tmp_path):
+        # Two records both named Tag in different modules: the short-name
+        # lookup is last-write-wins, but sema resolves the TYPE qname-first
+        # and both paths emit from the type-resolved record, so BOTH ctors
+        # route with their own modules' qualifications.
         (tmp_path / "red.py").write_text(
             "from tpy import Int32\n"
             "class Tag:\n    n: Int32\n"
@@ -1483,7 +1483,7 @@ class TestCrossModuleRecordFrontier:
                "def make_red() -> None:\n    t = Tag(5)\n    print(t.n)\n"
                "def make_blue() -> None:\n    b = BlueTag(10)\n    print(b.n)\n")
         thir = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])[0]
-        assert _fn(thir, "make_red") is None
+        assert _fn(thir, "make_red") is not None
         assert _fn(thir, "make_blue") is not None
         def emit(thir_flag):
             compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
@@ -1544,13 +1544,15 @@ class TestGenericRecordConcreteArgFrontier:
         assert self._emit(_GEN_CONCRETE, thir=True) == self._emit(_GEN_CONCRETE, thir=False)
 
     def test_nonslice_arg_still_excluded(self):
-        # A generic arg outside the byte-identical slice (a tuple) keeps the
-        # outer generic on the AST path (element qualification diverges).
+        # A generic arg outside the byte-identical slice (a plain-alias
+        # union -- the alias registers only mid-emission, after lowering)
+        # keeps the outer generic on the AST path.
         thir = _lower_ctx(
-            "from tpy import Int32\n"
+            "from tpy import Int32, StrView\n"
+            "type Num = Int32 | StrView\n"
             "class Box2[T]:\n    v: Int32\n"
             "    def __init__(self, v: Int32):\n        self.v = v\n"
-            "def read(b: Box2[tuple[Int32, Int32]]) -> Int32:\n    return b.v\n")
+            "def read(b: Box2[Num]) -> Int32:\n    return b.v\n")
         assert _fn(thir, "read") is None
 
     def test_generic_field_in_nongeneric_ctor_routes(self):

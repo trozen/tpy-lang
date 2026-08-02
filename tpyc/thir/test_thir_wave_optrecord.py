@@ -157,9 +157,10 @@ class TestValueOptRecordSlot:
         assert not faces.get("decl.opt_value_record")
         _assert_byte_identical(src)
 
-    def test_narrowed_field_read_still_defers(self):
-        # The `(*g).x` receiver read is not ported; the body falls back
-        # whole (byte-identical), the decl arm does not mask it.
+    def test_narrowed_field_read_routes(self):
+        # The `(*g).x` receiver read ported in grind wave 7
+        # (field.opt_record_recv): the narrowed owned-optional record name
+        # derefs and the field appends -- byte-identical.
         src = (self._SRC
                + "def use(t: Track) -> Int32:\n"
                + "    g = t.goal\n"
@@ -168,5 +169,6 @@ class TestValueOptRecordSlot:
                + "    return -1\n"
                + "print(use(Track()))\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        assert faces.get("field.opt_record_recv", 0) >= 1
         _assert_byte_identical(src)

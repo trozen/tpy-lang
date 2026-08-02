@@ -130,6 +130,7 @@ from .predicates import (
     _eligible_scalar,
     _eligible_value_union,
     _f1_record,
+    _method_rvalue_f1_record,
     _f1_tuple,
     _field_receiver_ok,
     _is_borrow_ptr_local,
@@ -158,6 +159,8 @@ from .checks import (
     _ptr_union_source_ok,
 )
 from .expressions import (
+    _ExprResultUse,
+    _ExprUse,
     _is_move_source,
     _lower_expr,
     _lower_tuple_literal,
@@ -900,6 +903,11 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
                 and _f1_record(declared.get(source.name), analyzer))
     if isinstance(source, TpyCall):
         return _record_rvalue_source_shape(source, analyzer)
+    # An Own-returning METHOD-call rvalue (`self.shared = Rc.new(Val(0))` ->
+    # `shared(Rc<Val>::new_<Val>(Val(0)))`): the same direct construct; the
+    # method-call lowering validates callee/args recursively.
+    if _method_rvalue_f1_record(source, analyzer):
+        return True
     if isinstance(source, TpyFieldAccess):
         return (isinstance(source.obj, TpyName)
                 and source.obj.name != lc.self_receiver
@@ -1929,6 +1937,16 @@ def _lower_ctor_mil_init(
         _witness("mil.callable_copy")
         return THIRMilInit(field_cpp=field_cpp,
                            value=_lower_expr(source, lc, declared))
+    if _method_rvalue_f1_record(source, analyzer):
+        # An Own-returning method-call rvalue constructs the field directly
+        # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
+        # sink, so the method's record result rides the storage escape.
+        _witness("mil.record_method_rvalue")
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_expr(
+                source, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.STORAGE)))
     return THIRMilInit(
         field_cpp=field_cpp,
         value=_lower_expr(

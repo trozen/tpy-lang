@@ -813,9 +813,9 @@ class TestOwnMoveArg:
         assert _fn(thir, "main") is not None
         assert "Box<std::string> b = Box<std::string>(\"hello\");" in thir_cpp
 
-    def test_enum_type_arg_stays_ast(self):
-        # An enum arg diverges (enum renames ride render_type, not to_cpp)
-        # and keeps the outer generic on the AST path.
+    def test_enum_type_arg_routes(self):
+        # An enum arg is spelled identically by both paths at lowering time
+        # (the F1 fence re-scope measurement), so the outer generic routes.
         src = ("from enum import Enum\n"
                "class Color(Enum):\n"
                "    RED = 1\n"
@@ -829,7 +829,7 @@ class TestOwnMoveArg:
                "main()\n")
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
 
 
 class TestDependentStaticTargs:

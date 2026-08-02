@@ -59,7 +59,7 @@ from .nodes import (
     THIRIfExpr, THIRMethodCall,
     THIRNode, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
-    THIRUnionArgLift, THIRVarDecl,
+    THIRPtrLocalDecl, THIRUnionArgLift, THIRVarDecl,
 )
 
 
@@ -299,7 +299,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         for a in node.args:
             _walk(owner, a.expr, return_type, argtemp_ok=True)
         return
-    if isinstance(node, THIRVarDecl):
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
+        # Both decl flavors are flush positions: the AST hoists a slot
+        # init's arg temps BEFORE the decl/`__slot_N` line.
         if node.init is not None:
             _walk(owner, node.init, return_type, argtemp_ok=True)
         return

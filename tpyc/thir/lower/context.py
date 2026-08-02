@@ -127,6 +127,12 @@ class _ExprUse:
     # pointer-repr tuple result, which the `auto` slot binds whole. Every other
     # consumer of such a result converts form, so they keep their own rows.
     btuple_slot: bool = False
+    # The global ptr-slot's address-of catch-all only
+    # (`p = &(get_item<Point>((*points), 0));`): admit a BORROW-returning
+    # record call, whose T& result the position takes the address of. A bare
+    # RECEIVER admission would also open field reads off such calls
+    # (`shared(a).x`) -- the REF_ALIAS place/loan frontier, design-stopped.
+    addr_call: bool = False
     # An ALWAYS_TRUE truthiness operand only: the wrap renders it inside
     # `static_cast<void>(...)`, so the result is discarded exactly as at
     # statement position -- the same widened return set applies.

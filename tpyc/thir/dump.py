@@ -228,6 +228,8 @@ def _expr(e: THIRExpr) -> str:
             how = f"deref_check.{e.method_cpp}"
         else:
             # `->member` surfaces a pointer-local receiver's arrow access.
+            # NB pre-fold display: a move_receiver+is_arrow call PRINTS
+            # "->" here but EMITS `std::move(*recv).m()` (dot).
             how = f"->{e.method_cpp}" if e.is_arrow else e.method_cpp
         return (f"method_call({_expr(e.receiver)}, {how}, "
                 f"[{', '.join(_expr(a) for a in e.args)}])")

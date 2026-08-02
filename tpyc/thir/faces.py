@@ -44,6 +44,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.ru_wrapper_literal",   # scalar/str literal into a
                                     # recursive-union wrapper slot
     "argtemp.ru_wrapper_member",    # member-typed NAME into a wrapper slot
+    "argtemp.ru_wrapper_ctor",      # member-CTOR rvalue into a wrapper slot
                                     # (`Tree __tmp_N = std::move(b);`)
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
     # Protocol-slot arg wrap: the @dynamic Adapter / RefAdapter / concrete
@@ -61,6 +62,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> inline `::tpy::deref_check(p)`
     "move.opt_own_last_use",        # record name moved bare into an
                                     # Optional[Own[T]] slot (converting ctor)
+    "field.opt_record_recv",        # narrowed owned-optional record name
+                                    # receiver derefs -- (*r).field
+    "call.storage_opt_ret",         # Own-optional call result lands bare
+                                    # in its storage optional decl slot
+    "move.opt_own_ptr_lift",        # ptr-repr Optional name lifts owning
+                                    # storage via ptr_to_optional_move
     "arg.native_protocol_value",    # scalar/Char/str value at a native
                                     # protocol slot -> bare render (__hash__)
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
@@ -305,6 +312,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.tuple_elem_subscript",  # `xs[i][j].append(v)` -- std::get<j>
                                     # over a container-element borrow, the
                                     # container-method arm over a `.` receiver
+    # Tuple-element F1-RECORD subscript receiver (`t[0].get()` -- std::get<N>
+    # yields a `T*` off a borrow-form tuple param, `->`; a value element off
+    # a storage tuple local, `.` -- the arrow keyed on
+    # `_subscript_yields_borrow_ptr`, same as a field read over the element).
+    "method.recv.tuple_record_elem",
     # Method-call method receiver (`a.b().c()` -> the user-record arm over an
     # inner-call receiver whose result is a plain non-pointer record, `.`
     # access; the inner call renders via the shared method lowering).
@@ -321,6 +333,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # cross-module, @native, and concrete-arg generic records all qualify), so
     # native / generic field receivers ride the same face as a plain one.
     "method.recv.record_field",
+    # Field-CHAIN method receiver (`h.c.item.add(x)` -- every parent link a
+    # plain-value F1-record member, innermost link an admitted binding; the
+    # chained THIRFieldAccess renders `.field` links like the value-read arm).
+    "method.recv.field_chain",
     "method.recv.free_call",        # `make(3).get()` -- a plain F1-record
                                     # free-call result receiver, `.` access
     "method.recv.binop",            # `(dt + td).isoformat()` -- a record-
@@ -346,6 +362,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ctor.native",                  # native-record (builtin exception) ctor: `::tpy::OSError(...)`
     "ctor.native_plain",            # plain @native record ctor: `::Vec2(...)` / @native_c `::Point{...}`
     "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
+    "ctor.container_empty_instantiation",  # zero-arg `Array[Int32, 8]()` etc.
+                                    # at the ctor path -> `type_cpp()`
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
@@ -500,6 +518,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare-copied from a same-typed param
     "mil.callable_copy",            # `on_event(cb)` -- std::function field
                                     # bare-copied from a same-typed param
+    "mil.record_method_rvalue",     # Own-returning method rvalue constructs
+                                    # the record field directly (Rc.new)
     # An own-field init the AST demotes to the ctor body (bare non-param name /
     # nested-def name / body-local ref) -- THIR demotes identically instead of
     # rejecting the whole ctor (lowering verdict; the body machinery renders it).
@@ -846,6 +866,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `Any is [not] None`: the D15 typeid probe against std::monostate.
     "isnone.any_typeid",
     "isnone.global_slot",            # `g == nullptr` on the raw slot pointer
+    "isnone.tuple_elem_lift",        # `h.t[0] is None` -> pre-lifted
+                                     # `optional_to_ptr(std::get<0>(h.t))
+                                     # == nullptr`
     "isnone.union_monostate",        # union-binding `is [not] None` ->
                                      # holds_alternative<std::monostate>
     # Value-tuple slots (`tuple[scalar|str, ...]`): the spelled
@@ -924,6 +947,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # with per-element moves)
     "arg.own_btuple_call",          # borrow-tuple-returning call at the same
                                     # slot -> non-move tuple_to_storage lift
+    "arg.own_btuple_call_storage",  # storage-form tuple return (Own[tuple] /
+                                    # all-Own per-element synthesis) at the
+                                    # same slot -> passes bare
     "call.btuple_pass",             # borrow-tuple call result at a MATCHING
                                     # borrow-form tuple param -> binds bare
     "method.protocol_self_storage_ret",  # Own[Self] rvalue into the `auto`
@@ -935,6 +961,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.native_property_container",  # container-returning property read
                                     # bound bare at a native slot (len)
     "method.span_ret",              # Span-view method result renders bare
+    "method.ru_wrapper_ret",        # recursive-union WRAPPER borrow method
+                                    # result binding a wrapper slot inline
+    "method.native_iter_ret",       # SpanIter-family value method result
+                                    # landing bare in its storage decl slot
     "method.value_opt_view_ret",    # value-opt owned-view method result
                                     # landing bare in a storage decl slot
     "method.ptr_template_span",     # Ptr[T].span(n) template expansion --
@@ -1059,6 +1089,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # Reassigned container-ELEMENT borrow local's first decl: `[const] T* p =
     # &(::tpy::__getitem__(ps, i));` -- the decl twin of `reseat.subscript_elem`.
     "decl.subscript_elem_addr",
+    "decl.opt_tuple_elem_lift",     # ptr-Optional tuple-field element decl:
+                                    # optional_to_ptr(std::get<N>(h.t))
     # NAME-reassigned container-LITERAL pointer-local: `std::vector<T>
     # __slot_N = {..};` + `std::vector<T>* xs = &__slot_N;` (the container
     # flavor of the same render).
@@ -1669,6 +1701,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "top_level.global_opt_passthrough",  # `g = <ptr-opt call>;`
     "call.ptr_opt_passthrough",     # free call at that write
     "method.ptr_opt_passthrough",   # method call at that write
+    "call.recv_borrow_ret",         # borrow-returning record call under a
+                                    # RECEIVER position's own `&(...)` lift
     "top_level.global_no_init",     # annotation-only global: emits nothing
     "top_level.global_slot",
     "top_level.global_slot_reuse",  # `g = &(__global_slot_N = init);`

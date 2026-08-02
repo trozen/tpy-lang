@@ -35,16 +35,19 @@ class TestCtorOwnMoveFlushless:
         assert w.get("ctor.own_arg", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_not_last_use_stays_ast(self):
-        # `a` read after the ctor: not a move source, and the flush-less
-        # position has no copy-temp -- the body must keep falling back.
+    def test_not_last_use_copy_temp_routes(self):
+        # `a` read after the ctor: not a move source, so the Own slot takes
+        # the copy temp -- and since wave 5 the decl-literal element
+        # position IS a flush point (allow_temps threads through container
+        # elements), so the hoist lands like the AST's
+        # (`auto __tmp_1 = a;` + `{BoxI(std::move(__tmp_1))}`).
         src = (_ITEM
                + "def use() -> Int32:\n"
                + "    a = Item(2)\n"
                + "    boxes: list[BoxI] = [BoxI(a)]\n"
                + "    return a.n + len(boxes)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
 
@@ -125,17 +128,19 @@ class TestCtorTupleLiteralArg:
         assert "std::tuple<Point*, int32_t>{&(p), 4}" in cpp
         assert "std::tuple<Point*, int32_t>{nullptr, 9}" in cpp
 
-    def test_narrowed_name_elem_stays_ast(self):
-        # A NARROWED Optional name element needs the extraction-alias /
-        # optional_to_ptr renders -- not mirrored; the body keeps falling
-        # back.
+    def test_narrowed_pointer_name_elem_passes_bare(self):
+        # A post-if-narrowed Optional-ptr PARAM element is already the
+        # pointer and passes bare (`{op, 4}`) -- the same-repr pointer-name
+        # row. A narrowed STORAGE-form optional (a value-opt /
+        # OPTIONAL_STORAGE binding) is still excluded: it is not an
+        # already-pointer source.
         src = (_PAIR
                + "def use(op: Optional[Point]) -> Int32:\n"
                + "    if op is None:\n        return 0\n"
                + "    h = Hold((op, 4))\n"
                + "    return h.pair[1]\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
 

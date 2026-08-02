@@ -171,7 +171,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         if it_view is not None:
             it_type = it_view
         if gen.unpack_vars is not None and not _statements._container_scalar_tuple_iter(
-                it_type, analyzer):
+                it_type, analyzer, allow_record=True):
             return None
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
@@ -222,14 +222,14 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # std::get<i>(tup);` -- the AST's is_value_type branch over the
             # tuple's OWNED element spelling), unlike the for-each unpack's
             # view binding; the owned declared type keeps the target's reads
-            # STORAGE-form (bare inserts). An F1-record target BORROWS
-            # (`const auto& p = std::get<1>(__tup_N);` -- the const view
-            # element aliased for the iteration), const sources only.
+            # STORAGE-form (bare inserts). An F1-record target BORROWS with
+            # the ref binding keyed on const_loop_var alone (`auto& r =` /
+            # `const auto& p =` -- the AST's `_emit_inline_tuple_unpack`
+            # spells ref_binding for every non-value target).
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
-                    or (gen.const_loop_var
-                        and _f1_record(
-                            unwrap_readonly(unwrap_send_sync(tt)),
-                            analyzer))):
+                    or _f1_record(
+                        unwrap_readonly(unwrap_send_sync(tt)),
+                        analyzer)):
                 return None
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
@@ -303,14 +303,17 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     return is_list(su) or is_array(su)
 
-def _unpack_target_cpps(unpack_types, lc: '_LowerCtx') -> tuple:
+def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
+                        const_loop_var: bool = True) -> tuple:
     """The per-target decl spellings of a comp unpack head: None for `_`
-    discards, `const auto&` for F1-record targets (the const view element
-    aliased for the iteration), the rendered type otherwise. Shared by the
-    begin_end and array_source arms."""
+    discards, the ref binding for F1-record targets (`const auto&` /
+    `auto&`, keyed on const_loop_var exactly like the AST's
+    `_emit_inline_tuple_unpack` ref_binding), the rendered type otherwise.
+    Shared by the begin_end and array_source arms."""
+    ref = "const auto&" if const_loop_var else "auto&"
     return tuple(
         None if tt is None
-        else ("const auto&" if _f1_record(
+        else (ref if _f1_record(
                   unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
               else lc.render_type(tt))
         for tt in unpack_types)
@@ -507,7 +510,8 @@ def _lower_array_source_comprehension(
             if name is not None:
                 body_declared[name] = tt
         unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc)
+        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc,
+                                  gen.const_loop_var)
     else:
         body_declared[gen.var] = route.et
     if isinstance(it, TpyFieldAccess):
@@ -743,7 +747,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
     if route.unpack_types is not None:
         _witness("comp.unpack")
         unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc)
+        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc,
+                                  gen.const_loop_var)
     return THIRComprehension(
         result_type=result_type,
         kind=route.kind,

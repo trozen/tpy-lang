@@ -100,12 +100,11 @@ class TestNativeIterSlot:
         assert _fn(_lower_ctx(src), "main") is None
         _assert_byte_identical(src)
 
-    def test_auto_readonly_dunder_iter_stays_ast(self):
-        # An @auto_readonly `__iter__` is a bodied multi-overload method
-        # (never native_function), so it bypasses the new free-form arm
-        # entirely and rejects at the record method gate's result/overload
-        # checks -- the case-level fence this pin holds is that the body
-        # keeps falling back.
+    def test_auto_readonly_dunder_iter_routes(self):
+        # An @auto_readonly `__iter__` is an is_clone_pair overload set (the
+        # overload check admitted it all along); the RESULT half opened in
+        # the wave-4 native-iter ret row (`method.native_iter_ret`), so the
+        # bodied dunder now routes -- the plain spelled SpanIter copy decl.
         src = ("from tpy import Int32, SpanIter\n"
                "from tplib import ArrayList\n"
                "def main() -> None:\n"
@@ -115,5 +114,5 @@ class TestNativeIterSlot:
                "    for x in it:\n"
                "        print(x)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
+        assert _fn(_lower_ctx(src), "main") is not None
         _assert_byte_identical(src)

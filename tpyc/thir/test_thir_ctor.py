@@ -331,16 +331,19 @@ class TestConstructor:
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_nonslice_arg_generic_base_is_ineligible(self):
-        # A generic base whose arg is OUTSIDE the byte-identical slice (a tuple --
-        # element qualification diverges) stays non-F1, keeping the derived ctor
-        # on the AST path. Guards the recursive `_f1_record_type_arg_ok` reject.
+        # A generic base whose arg is OUTSIDE the byte-identical slice (a
+        # plain-alias union -- the alias registers only mid-emission, after
+        # lowering) stays non-F1, keeping the derived ctor on the AST path.
+        # Guards the recursive `_f1_record_type_arg_ok` reject.
         src = (
             _PRELUDE
+            + "from tpy import StrView\n"
+            + "type Num = Int32 | StrView\n"
             + "class Box[T]:\n    v: Int32\n    def __init__(self, v: Int32):\n        self.v = v\n"
-            + "class TupBox(Box[tuple[Int32, Int32]]):\n    n: Int32\n"
+            + "class NumBox(Box[Num]):\n    n: Int32\n"
             + "    def __init__(self, v: Int32, n: Int32):\n"
             + "        super().__init__(v)\n        self.n = n\n")
-        assert _lower_ctor(src, "TupBox") is None
+        assert _lower_ctor(src, "NumBox") is None
 
     # --- base-init args beyond scalars (target-less bare renders) ---
 

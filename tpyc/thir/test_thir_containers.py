@@ -2452,8 +2452,9 @@ class TestLenFieldReceiver:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
-    def test_two_level_chain_rejects(self):
-        # `len(h.inner.xs)` -- a chained receiver stays on the AST path.
+    def test_two_level_chain_routes(self):
+        # `len(b.a.xs)` -- the field-chain arg row (every link a plain
+        # F1-record member) rides the structural protocol slot bare.
         src = (
             _PRELUDE
             + "class A:\n"
@@ -2464,8 +2465,9 @@ class TestLenFieldReceiver:
             + "    def __init__(self):\n        self.a = A()\n"
             + "def f(b: B) -> Int32:\n    return len(b.a.xs)\n"
         )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_optional_container_field_narrowed_len_routes(self):
         # RE-PINNED ROUTED (retslot track): the NARROWED Optional[list]

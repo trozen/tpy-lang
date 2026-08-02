@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_routes_byte_identical,
     _fn,
     _lower_ctx,
     _lower_ctx_witnessed,
@@ -1286,13 +1287,13 @@ class TestNativeProtocolTupleLiteralArg:
         _assert_byte_identical(self.SRC)
 
 
-class TestOwnElemSlotInsertRows:
-    """Two insert rows at an `Own[...]` element slot: an owning CALL whose
-    result IS the slot binds bare, and a record-element lvalue at a `Ptr`
-    slot takes the `&(...)` lift."""
+class TestOwnElemSlotCallBindsBare:
+    """An owning CALL whose result IS the `Own[...]` element slot binds
+    bare. Split from the Ptr-row fixture below so this half's render
+    assertions are ROUTED evidence, not AST re-emit."""
 
     SRC = _PRELUDE + (
-        "from tpy import Own, Ptr\n"
+        "from tpy import Own\n"
         "from tplib.rc import Rc\n"
         "class Node:\n"
         "    x: Int32\n"
@@ -1304,6 +1305,33 @@ class TestOwnElemSlotInsertRows:
         "    pairs: list[tuple[Int32, Rc[Node]]] = []\n"
         "    pairs.append(make_pair(1, 10))\n"
         "    print(len(pairs))\n"
+        "main()\n"
+    )
+
+    def test_routes_and_renders_bare(self):
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "pairs.push_back(make_pair(1, 10));" in cpp
+        assert "tuple_to_storage" not in cpp
+
+    def test_witnesses_the_row_once(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces["arg.own_tuple_call_rvalue"] == 1
+
+
+class TestPtrElemSlotInsertRows:
+    """A record-element lvalue at a `Ptr` slot takes the `&(...)` lift; an
+    already-pointer source passes bare. The body still falls back on an
+    unrelated blocker (`p0 = ps[0]`), so the render assertions here are
+    AST-oracle statements, not routing evidence -- the face counts are the
+    lowering-side claim."""
+
+    SRC = _PRELUDE + (
+        "from tpy import Ptr\n"
+        "class Node:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def main() -> None:\n"
         "    items = [Node(1), Node(2)]\n"
         "    ps: list[Ptr[Node]] = []\n"
         "    ps.append(items[0])\n"
@@ -1314,17 +1342,16 @@ class TestOwnElemSlotInsertRows:
         "main()\n"
     )
 
-    def test_routes_and_witnesses_each_row_once(self):
+    def test_witnesses_the_lift_row_once(self):
         _thir, faces = _lower_ctx_witnessed(self.SRC)
-        # EXACTLY once each. The counts are the boundary: `ps.append(p0)`
-        # feeds an ALREADY-pointer source to the same slot and must ride
-        # `_ptr_pass_through_arg`, whose render (`push_back(p0)`) differs
-        # from the lift only in the absence of `&` -- so a count catches an
-        # over-capture that a lax `>= 1` would not.
-        assert faces["arg.own_tuple_call_rvalue"] == 1
+        # EXACTLY once: `ps.append(p0)` feeds an ALREADY-pointer source to
+        # the same slot and must ride `_ptr_pass_through_arg`, whose render
+        # (`push_back(p0)`) differs from the lift only in the absence of
+        # `&` -- so a count catches an over-capture that a lax `>= 1`
+        # would not.
         assert faces["arg.ptr_addr_of_elem"] == 1
 
-    def test_renders_the_bare_bind_and_the_lift(self):
+    def test_renders_the_lift_and_the_pass_through(self):
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(self.SRC)
@@ -1332,9 +1359,7 @@ class TestOwnElemSlotInsertRows:
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=False,
                                    thir_codegen=True))
-        assert "pairs.push_back(make_pair(1, 10));" in cpp
         assert "ps.push_back(&::tpy::__getitem__(items, 0));" in cpp
-        # The already-pointer source keeps its bare pass-through.
         assert "ps.push_back(p0);" in cpp
 
     def test_byte_identical(self):
