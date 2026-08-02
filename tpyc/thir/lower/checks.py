@@ -1112,6 +1112,19 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _tuple_field_opt_elem_subscript(stmt.init, declared,
                                                     analyzer)):
             return LocalBinding.OPTIONAL_TO_PTR
+        # A pointer-repr Optional TERNARY source classifies OTHER
+        # (`reads_storage_form_optional` does not walk ternary arms), but
+        # the lowered ifexpr already IS the `T*` the binding binds bare
+        # (`Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));`) --
+        # re-tag for the ternary row; the arm shapes gate in the ifexpr
+        # lowering. Hoisted/move-through names returned OTHER above for a
+        # reason the re-tag must not override, so they stay excluded.
+        if (isinstance(stmt.init, TpyIfExpr)
+                and stmt.name not in prescan.reassigned
+                and stmt.name not in prescan.hoisted
+                and stmt.name not in prescan.move_through
+                and _optional_ptr_borrow(target_type, analyzer) is not None):
+            return LocalBinding.OPTIONAL_TO_PTR
         # A SAME-repr pointer-Optional NAME source classifies OTHER (it is
         # not a storage-form optional read -- both sides are already `T*`),
         # but the decl is just the bare pointer copy (`const Point* q = a;`);
@@ -7151,6 +7164,13 @@ def _container_method_arg_ok(
             # (`items.append(None)` on `list[Int32 | None]`) -> the
             # STORAGE-form `std::nullopt`, like the free-call row.
             or _none_value_opt_arg(a, ptype, analyzer) is not None
+            # A whole owned value-opt VIEW local at an Own[Optional[StrView]]
+            # element slot (`items.append(src)`): bare for the narrowed
+            # identity coerce, the `__ov` statement-expression shim for the
+            # un-narrowed one -- the render row keys the registered VIEW
+            # binding, so an unregistered name falls through there.
+            or _opt_view_own_elem_arg(a, ptype, locals_, analyzer,
+                                      param_names)
             # A scalar VALUE into that same slot (`items.append(Int32(1))`):
             # the AST passes it bare (`push_back(1)`) -- std::optional's
             # converting constructor does the wrap, no target thread.
@@ -7208,6 +7228,34 @@ def _container_method_arg_ok(
             or _own_tuple_call_rvalue_arg(a, ptype, analyzer)
             or _ptr_addr_of_elem_arg(a, ptype, analyzer)
             or note_detail("method.arg_shape"))
+
+
+def _opt_view_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           locals_: dict[str, TpyType], analyzer,
+                           param_names: 'set[str] | frozenset[str]') -> bool:
+    """A whole owned value-opt VIEW LOCAL (declared `Optional[str]`, C++
+    `std::optional<std::string>`) coerce-wrapped at an `Own[Optional[StrView]]`
+    element slot -- the two coercion faces of `items.append(src)`: the
+    NARROWED occurrence's identity `str_to_strview` (bare pass; C++'s
+    optional converting ctor absorbs it) and the un-narrowed
+    `optional_str_to_strview` (the `__ov` once-evaluated shim). Params stay
+    out: their borrow `optional<string_view>` binding renders the OTHER shim
+    family (`THIROptViewArg`) and is not witnessed at this slot."""
+    if not (isinstance(a, TpyCoerce)
+            and a.coercion.name in ("str_to_strview",
+                                    "optional_str_to_strview")
+            and isinstance(a.expected_type, OwnType)
+            and isinstance(a.expr, TpyName)
+            and a.expr.name in locals_
+            and a.expr.name not in param_names):
+        return False
+    if _value_opt_owned_view(locals_[a.expr.name], analyzer) is None:
+        return False
+    own = _plain_own_slot(ptype)
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(own)))
+            if own is not None else None)
+    return (isinstance(slot, OptionalType)
+            and is_str_view_type(unwrap_readonly(slot.inner)))
 
 
 def _ptr_addr_of_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -8996,6 +9044,16 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
         # must not fall to the raw BytesPrinter arm below. (Both narrowed and
         # un-narrowed Optional[str] reads already routed via _print_optval_opt.)
         return note_detail("print.optstr")
+    if (isinstance(a, TpyName)
+            and _optional_ptr_borrow_name(a, locals_, analyzer) is not None
+            and isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                analyzer.get_expr_type(a)))), OptionalType)):
+        # An UN-narrowed pointer-repr Optional[F1-record] NAME prints the
+        # whole pointer via `::tpy::print_optional(...)` (the record inner
+        # streams through its own operator<<, so the CTAD form -- container
+        # inners never reach here, `_optional_ptr_borrow` is record-only).
+        # A NARROWED occurrence stays deferred (witnessed at lowering).
+        return True
     at = analyzer.get_expr_type(a)
     # A raw `Any` value streams via `tpy::Any`'s operator<< (PrintForm.RAW) --
     # gen_print's per-type-str dispatch; the inner render must lower bare (a

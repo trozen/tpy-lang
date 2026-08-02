@@ -1258,7 +1258,8 @@ by theme; each is a rule the next cell should apply.
   a branch lowers over a per-branch `declared` copy, so its lc-set registrations
   must pop with it. Hand-listed restore sites accreted six parallel mechanisms
   and each eventually missed a set -- the confirmed worst case was
-  `value_opt_locals` leaking from a branch-local `x: int | None` decl into a
+  a value-opt binding registration (today the `value_opt_bindings` map)
+  leaking from a branch-local `x: int | None` decl into a
   sibling branch's plain `x`, rendering `(*x)` on an `int32_t` (uncompilable
   C++), masked only because no corpus case reused a name across sibling scopes.
   The fix is structural: `branch_scope()` restores every set in

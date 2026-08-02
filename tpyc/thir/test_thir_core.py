@@ -3802,7 +3802,7 @@ class TestGlobalReadonlySeed:
         assert witnessed.get("name.global_slot", 0) >= 1
         # A value-opt global reads like a value-opt local (bare
         # whole-optional None-test, narrowed (*GO) deref -- the value-opt
-        # read arms via lc.value_opt_locals).
+        # read arms via lc.value_opt_bindings).
         assert _fn(thir, "read_optional") is not None
 
     def test_byte_identical(self):

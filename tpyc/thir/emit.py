@@ -966,6 +966,23 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
     the enclosing statement (stmt_indent_level)."""
     stmt_ind = INDENT * state.stmt_indent_level
     ind1 = stmt_ind + INDENT
+
+    def binding_lines(ind: str) -> str:
+        # An unpack head draws its `__tup_N` off the shared per-function
+        # counter at emit, like the comp unpack; the single-var shape keeps
+        # the pre-rendered loop_var_binding line.
+        if not e.unpack_targets:
+            return f"{ind}{e.binding_cpp}\n"
+        tmp = f"__tup_{state.next_unpack()}"
+        ref = "const auto&" if e.const_loop_var else "auto&"
+        out = f"{ind}{ref} {tmp} = *__beg++;\n"
+        for i, name in enumerate(e.unpack_targets):
+            if name is None:
+                continue
+            out += (f"{ind}{e.unpack_target_cpps[i]} "
+                    f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
+        return out
+
     elem = _emit_expr(e.element, state)
     if e.moved_source:
         lambda_ind = ind1
@@ -982,7 +999,7 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
         buf.write(f"{ind2i}if (!__started) {{ __beg = __src.begin(); "
                   f"__end = __src.end(); __started = true; }}\n")
         buf.write(f"{ind2i}while (__beg != __end) {{\n")
-        buf.write(f"{ind3i}{e.binding_cpp}\n")
+        buf.write(binding_lines(ind3i))
         buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
         buf.write(f"{ind2i}}}\n")
         buf.write(f"{ind2i}return std::nullopt;\n")
@@ -1001,7 +1018,7 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
     buf.write(f"{lambda_ind}[{e.inner_captures}__beg = __src.begin(), "
               f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
     buf.write(f"{ind2i}while (__beg != __end) {{\n")
-    buf.write(f"{ind3i}{e.binding_cpp}\n")
+    buf.write(binding_lines(ind3i))
     buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
     buf.write(f"{ind2i}}}\n")
     buf.write(f"{ind2i}return std::nullopt;\n")
@@ -4045,6 +4062,8 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::print_optional_val<::tpy::print_bool, {a.opt_inner_cpp}>({inner})"
     if a.print_form is PrintForm.OPT_VAL_FLOAT:
         return f"::tpy::print_optional_val<::tpy::print_float, {a.opt_inner_cpp}>({inner})"
+    if a.print_form is PrintForm.OPT_PTR:
+        return f"::tpy::print_optional({inner})"
     return inner
 
 

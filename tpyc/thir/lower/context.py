@@ -75,6 +75,16 @@ class _RecordCtorUse(Enum):
     RECORD_TEMP = auto()
 
 
+class ValueOptKind(Enum):
+    """The value-repr `std::optional<T>` LOCAL binding families -- one
+    kind-tagged registration where three parallel sets used to live. The
+    kinds differ only in the narrowed-deref FORM verdict (see the
+    `value_opt_bindings` field comment)."""
+    SCALAR = auto()
+    VIEW = auto()
+    RECORD = auto()
+
+
 @dataclass(frozen=True, slots=True)
 class _ExprUse:
     """How the immediate consumer will use one lowered expression result.
@@ -111,11 +121,13 @@ class _ExprUse:
     # positions (decl init / arg / return) render the FULL operator expr on
     # the AST path and must keep rejecting.
     literal_fold_ok: bool = False
-    # The module-init pointer-slot-global pass-through write only
-    # (`g = find(xs, k);`): admit a BORROW-returning ptr-repr Optional
-    # result, which is already the `T*` the global slot holds. Every other
-    # consumer of such a result materializes a slot or lifts through
-    # `optional_to_ptr`, so they keep gating on their own rows.
+    # The module-init pointer-slot-global pass-through write
+    # (`g = find(xs, k);`) and the bare ptr-opt call DECL bind
+    # (`Point* r1 = get_or_none(true, p);`): admit a BORROW-returning
+    # ptr-repr Optional result, which is already the `T*` the slot or
+    # binding holds. Every other consumer of such a result materializes a
+    # slot or lifts through `optional_to_ptr`, so they keep gating on
+    # their own rows.
     ptr_opt_passthrough: bool = False
     # The pointer-repr `Optional[record]` FIELD-write sink only
     # (`h.value = find_point(pts, 1);`): admit a BORROW-returning ptr-repr
@@ -465,8 +477,7 @@ _BRANCH_SCOPED_SETS = (
     "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
     "dyn_protocol_locals",
     "optional_locals", "branch_hoisted", "iterator_object_locals",
-    "ref_alias_locals", "value_opt_locals", "value_opt_view_locals",
-    "value_opt_record_locals",
+    "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
     "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
     "frame_slots", "forbidden_reads", "forbidden_writes",
 )
@@ -529,8 +540,8 @@ class _LowerCtx:
                  "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
-                 "value_opt_locals", "value_opt_view_locals",
-                 "value_opt_record_locals", "movable_locals",
+                 "value_opt_bindings", "storage_opt_locals",
+                 "movable_locals",
                  "sema_movable_locals",
                  "params",
                  "self_receiver", "self_cpp", "self_is_pointer",
@@ -725,6 +736,15 @@ class _LowerCtx:
         # all; the for-each Optional element family rejects before one can be
         # bound.
         self.optional_locals: set[str] = set()
+        # Storage-optional comp/genexpr UNPACK targets -- the mirror of
+        # codegen's `storage_form_optional_locals` (a ptr-repr
+        # Optional[F1-record] tuple element bound `auto& p = std::get<i>(t)`:
+        # storage form, NOT pointer-accessed, so a `T*` slot lifts it via
+        # `optional_to_ptr`). Registered by the comp/genexpr heads for the
+        # body walk and discarded with it; the for-STATEMENT producer and
+        # the const twin (`const_storage_form_optional_locals`) stay
+        # unmirrored until witnessed.
+        self.storage_opt_locals: set[str] = set()
         # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
         # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
         # its slot lazily at function top (PtrSlotKind.BRANCH_RVALUE); the
@@ -751,22 +771,14 @@ class _LowerCtx:
         # and these locals, so all ride the same arms via
         # `_value_opt_scalar_binding`; the movable-seeded last-use moves stay
         # param-only through the `_is_move_source` movable guard.
-        self.value_opt_locals: set[str] = set()
-        # Value-repr `Optional[view]` LOCALS (str/bytes) -- the view twin of
-        # value_opt_locals, kept SEPARATE because a view binding's narrowed
-        # deref is an OWNED `std::string`/`vector` (STORAGE) where the scalar
-        # deref is a VALUE and a param's is a BORROW view; overloading the
-        # scalar set would misfire the scalar-keyed read/move/reassign arms.
-        # Consulted only by `_value_opt_view_binding` (None-test + narrowed
-        # read); every other view-local position defers.
-        self.value_opt_view_locals: set[str] = set()
-        # STORAGE `std::optional<T>` RECORD locals -- an owned-optional-
-        # returning call bound whole (`upgraded = w.upgrade()` ->
-        # `std::optional<Rc<T>> upgraded = ...;`). The record twin of the
-        # scalar/view sets: a NARROWED read derefs `(*upgraded)` (a record
-        # lvalue consumed as a receiver), the None-test reads has_value.
-        # Single-assignment only (the decl gate enforces it).
-        self.value_opt_record_locals: set[str] = set()
+        # One kind-tagged map (name -> ValueOptKind) covers all three
+        # value-repr `std::optional<T>` LOCAL families; the kinds differ
+        # only in the narrowed-deref FORM verdict: SCALAR derefs a VALUE,
+        # VIEW an OWNED `std::string`/`vector` (STORAGE -- a param's deref
+        # is a BORROW view instead, keyed on `param_names`), RECORD a
+        # record lvalue consumed as a receiver. The None-test/truthiness
+        # read the whole optional (`.has_value()`) for every kind.
+        self.value_opt_bindings: dict[str, ValueOptKind] = {}
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),
@@ -941,7 +953,9 @@ class _LowerCtx:
         both undo at the pop. Registration that must outlive the scope is the
         caller's job -- perform it in the enclosing frame, after (or outside)
         this context."""
-        saved = [set(getattr(self, name)) for name in _BRANCH_SCOPED_SETS]
+        # `.copy()` covers both shapes here: plain name-sets and the
+        # kind-tagged `value_opt_bindings` dict.
+        saved = [getattr(self, name).copy() for name in _BRANCH_SCOPED_SETS]
         saved_narrow = self.narrow.snapshot()
         try:
             yield

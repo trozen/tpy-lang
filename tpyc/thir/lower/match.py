@@ -88,6 +88,7 @@ from .context import (
     _ExprUse,
     _LowerCtx,
     _Prescan,
+    ValueOptKind,
 )
 from .expressions import (
     _lower_expr,
@@ -2109,7 +2110,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
     set: class-arm field captures against the deref, the whole-subject
     capture/`as` binding against the deref (`from_case_var`) or -- sema's
     binds_full_optional -- the full Optional, which registers the name in
-    `lc.value_opt_locals` so its body reads ride the value-opt param renders
+    the SCALAR-kind value-opt binding so its body reads ride the param renders
     (the AST's `ctx.var_types` registration). Optional-subject arms carry no
     `type_facts` (sema narrows via `narrowed_types`, baked into body node
     types), so any fact here is an unmirrored shape. The unguarded tier keeps
@@ -2162,7 +2163,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                     lc.storage_tuple_locals, dict(arm_declared),
                     allow_conds=True):
                 raise ThirUnsupported("stmt.match")
-            if any(nm in lc.value_opt_locals
+            if any(lc.value_opt_bindings.get(nm) is ValueOptKind.SCALAR
                    for nm in _match_pattern_captures(test)):
                 raise ThirUnsupported("stmt.match")
             field_conds, field_bindings = _lower_field_subpatterns(
@@ -2213,7 +2214,8 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
             if (bnode.name in pointers or bnode.name in lc.narrow.narrowed
                     or bnode.name in lc.storage_tuple_locals
                     or (not binds_full
-                        and bnode.name in lc.value_opt_locals)):
+                        and lc.value_opt_bindings.get(bnode.name)
+                        is ValueOptKind.SCALAR)):
                 raise ThirUnsupported("stmt.match")
             hkind = hoist_kinds.get(bnode.name)
             if hkind not in (None, "value") and not (
@@ -2245,7 +2247,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                                            from_case_var=False)
                 arm_declared[bnode.name] = subj_type
                 _witness("match.optional_full_bind")
-                lc.value_opt_locals.add(bnode.name)
+                lc.value_opt_bindings[bnode.name] = ValueOptKind.SCALAR
             else:
                 mode = _scalar_bind_mode(bnode, declared)
                 _witness(f"match.bind_{mode}")
@@ -2360,7 +2362,8 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             return None
         if (bnode.name in pointers or bnode.name in lc.narrow.narrowed
                 or bnode.name in lc.storage_tuple_locals
-                or bnode.name in lc.value_opt_locals):
+                or lc.value_opt_bindings.get(bnode.name)
+                is ValueOptKind.SCALAR):
             raise ThirUnsupported("stmt.match")
         mode = ("assign" if bnode.name in declared
                 else "copy" if bnode.bind_by_value else "ref")

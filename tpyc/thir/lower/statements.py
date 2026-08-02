@@ -332,6 +332,7 @@ from .context import (
     _LowerCtx,
     _LowerScope,
     _Prescan,
+    ValueOptKind,
 )
 from .checks import (
     _print_tuple_record_elem,
@@ -648,7 +649,8 @@ def _unpack_target_decl(tt: TpyType, analyzer, render_type
     return tt, render_type(tt)
 
 def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
-                                 allow_record: bool = False) -> bool:
+                                 allow_record: bool = False,
+                                 allow_storage_opt: bool = False) -> bool:
     """A `list[tuple[scalar-or-str, ...]]` / `Array[tuple[scalar-or-str, ...], N]`
     binding -- admitted as the tuple-unpack loop's iterable (element family gated
     by `_scalar_or_str_unpack_elem`). Element-TOUCHING read gates
@@ -673,6 +675,12 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
                     or (allow_record and _f1_record(
                         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et))),
                         analyzer))
+                    # `allow_storage_opt` (the COMP/genexpr unpack head
+                    # only): a ptr-repr Optional[F1-record] element binds
+                    # the storage_opt_locals target; the for-STATEMENT head
+                    # keeps rejecting it (unwitnessed).
+                    or (allow_storage_opt
+                        and _optional_ptr_borrow(et, analyzer) is not None)
                     for et in elem.element_types))
 
 def _range_bound_literal_value(arg: TpyExpr) -> int | None:
@@ -2392,7 +2400,8 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
             and (name in lc.pointers or name in lc.rebind_slot_locals)
             or name in lc.ref_alias_locals
             or name in lc.storage_tuple_locals
-            or name in lc.value_opt_locals
+            or lc.value_opt_bindings.get(name)
+            is ValueOptKind.SCALAR
             or name in lc.frame_slots):
         note_detail("error_return.bind_target")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -2470,7 +2479,7 @@ def _own_opt_record_call_slot(stmt: TpyVarDecl, vtype: 'TpyType | None',
     """A single-assignment STORAGE `std::optional<T>` record local from an
     owned-optional-returning call (`upgraded = w.upgrade()` on an
     `-> Own[Rc[T]] | None` accessor): the plain spelled copy decl; the name
-    registers in `value_opt_record_locals` so narrowed reads deref
+    registers the RECORD-kind binding so narrowed reads deref
     `(*upgraded)` and the None-test reads has_value. Reassigned / hoisted /
     escaping names keep their AST pointer machinery."""
     if (stmt.name in lc.prescan.reassigned
@@ -2633,6 +2642,18 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         src = _lower_expr(stmt.init, lc, declared,
                           use=_ExprUse(ptr_opt_passthrough=True))
         _witness("decl.opt_name_copy")
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=src,
+            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            is_const=is_const, cpp_local_representation=binding, loc=loc)
+    if (binding is LocalBinding.OPTIONAL_TO_PTR
+            and isinstance(stmt.init, TpyIfExpr)):
+        # A ternary source: the ifexpr lowering normalized each arm to `T*`
+        # (per-arm optional_to_ptr / addr-of / nullptr), so the binding binds
+        # the lowered ternary bare -- the AST's direct-pointer assignment
+        # (`Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));`).
+        src = _lower_expr(stmt.init, lc, declared)
+        _witness("decl.opt_ternary")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
@@ -3534,19 +3555,26 @@ def _owned_view_opt_whole_src(stmt: TpyVarDecl, vtype: 'TpyType | None',
     if _value_opt_owned_view(vtype, analyzer) is None:
         return False
     src = stmt.init
-    # NB a str/bytes LITERAL init's bare copy is exact at the DECL
-    # (`std::optional<std::string> src1 = "one";`), but the literal
-    # proves the name non-None, so every later read is a NARROWED
-    # occurrence and the None-test deref-renders `(*src1).has_value()`
-    # (probe-caught divergence) -- the whole shape stays deferred until
-    # the value-opt read arms key on the binding, not the narrow.
+    # A str/bytes LITERAL init is the bare exact copy
+    # (`std::optional<std::string> src1 = "one";`), and a None literal the
+    # nullopt init (`= std::nullopt;`). The literal proves the name
+    # non-None (all later reads are NARROWED occurrences), which is safe
+    # now that the value-opt read arms key whole-optional consumers on the
+    # BINDING, not the narrow.
+    if isinstance(src, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
+        return True
     if isinstance(src, TpyName) and _opt_view_arg_shim(
             _param_declared_type(src.name, lc), vtype, analyzer):
+        # A view-form PARAM source needs the AST's view->owned shim
+        # (`s ? make_optional(string(*s)) : nullopt`), not the bare copy.
         return False
     st = analyzer.get_expr_type(src) if src is not None else None
     if st is None or not isinstance(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st))),
             OptionalType):
+        # A NARROWED source occurrence (sema retyped the read to the inner)
+        # takes the deref path -- `optional<string> y = (*s);` does not
+        # even compile.
         return False
     return True
 
@@ -4143,7 +4171,8 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         peeled = _peel_coerce(ret.value)
         if (isinstance(peeled, TpyName)
                 and (peeled.name in lc.prescan.value_opt_params
-                     or peeled.name in lc.value_opt_locals)):
+                     or lc.value_opt_bindings.get(peeled.name)
+                     is ValueOptKind.SCALAR)):
             note_detail("return.optval_coerced_param")
             raise ThirUnsupported(stmt_reject_reason(ret))
     ret_vt = lc.prescan.ret_value_tuple
@@ -4179,8 +4208,27 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
                      and _str_field_value_read(ret.value, declared,
                                                lc.analyzer)
                      and _witness("res.return_str_field"))
+    # `return copy(x)` at an owned-record async return: the copy-construct
+    # rvalue (`C __tpy_async_ret = C(__self);`) -- the sync return sink's
+    # interception row (the special-builtin gate rejects copy() in the
+    # generic call tail, so every sink intercepts it itself). The default
+    # excluded-source set, NOT the sync sink's narrower admission_pointers
+    # override (preserved there verbatim for a filed defect).
+    if (ret.value is not None
+            and lc.prescan.ret_record_storage is not None):
+        copy_row = _lower_copy_record(ret.value, lc, declared,
+                                      loc=getattr(ret, "loc", None))
+        if copy_row is not None:
+            _witness("res.return_copy_record")
+            return copy_row
+    # The scaffolding's `<ret_cpp> __tpy_async_ret = <value>;` decl is a
+    # STORAGE sink like the sync return slot, so the value lowers with the
+    # sync return arm's result use. allow_temps stays off: the skeleton
+    # composes the render into its own line, and no oracle has verified a
+    # flush point there -- a temp-hoisting value keeps rejecting.
     value = _wrap_view_owned_return(
-        _lower_expr(ret.value, lc, declared, field_prechecked=res_str_field),
+        _lower_expr(ret.value, lc, declared, field_prechecked=res_str_field,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE)),
         lc, getattr(ret, "loc", None))
     form = async_return_form(lc.func.return_type)
     if form is AsyncReturnForm.BORROW:
@@ -4568,8 +4616,13 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
     # A value-repr optional frame field takes the WHOLE optional bare
     # (`v = __self.f;`), so the source read must not deref on narrow -- the
     # same admission the sync decl sink threads for its optional slot.
+    # allow_temps: the leaf statement IS a flush position -- emit_leaf_stmt
+    # renders through the same render-then-flush assign arm as a sync body,
+    # on the ctx-backed TempSink (shared __tmp_N numbering), exactly where
+    # the AST hoists `auto __tmp_1 = (*p);` inside the case block.
     value = _lower_expr(
         init, lc, declared,
+        use=_ExprUse(allow_temps=True),
         allow_whole_optional=_value_opt_target_binding(stmt.name, lc))
     _witness("res.decl_assign")
     return THIRAssign(
@@ -5104,6 +5157,45 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                             analyzer, lc.pointers)
             if binding is not None:
                 if binding is LocalBinding.OPT_PTR_SLOT:
+                    if (fn_top
+                            and isinstance(stmt.init, TpyCall)
+                            and stmt.name not in lc.prescan.reassigned
+                            and _optional_ptr_borrow(vtype, analyzer)
+                            is not None
+                            # The CALL itself must be Optional-typed: a ctor
+                            # / record-returning rvalue coerced into the
+                            # Optional slot is an OWNED source the slot lane
+                            # materializes (a bare bind would dangle).
+                            and _optional_ptr_borrow(
+                                analyzer.get_expr_type(stmt.init), analyzer)
+                            is not None
+                            and not _own_declared_call_ret(stmt.init)):
+                        # A BORROW-returning ptr-Optional free call: the
+                        # `T*` return is already the binding's shape, so it
+                        # binds bare (`Point* r1 = get_or_none(true, p);`)
+                        # -- no slot materializes (the OPT_RVALUE slot is
+                        # for OWNED sources; an Own-declared return keeps
+                        # it). A reassigned name keeps the slot machinery.
+                        is_const = _f1_is_const(
+                            LocalBinding.OPTIONAL_TO_PTR, vtype, stmt,
+                            lc.func, analyzer, lc.const_locals,
+                            lc.record_name)
+                        if is_const:
+                            lc.const_locals.add(stmt.name)
+                        src = _lower_expr(
+                            stmt.init, lc, declared,
+                            use=_ExprUse(ptr_opt_passthrough=True))
+                        _witness("decl.opt_call_passthrough")
+                        lc.pointers.add(stmt.name)
+                        lc.promote_movable(stmt.name)
+                        declared[stmt.name] = vtype
+                        return THIRVarDecl(
+                            name=stmt.name, resolved_type=vtype, init=src,
+                            cpp_type=lc.render_type(vtype.inner),
+                            form=Form.BORROW, is_const=is_const,
+                            cpp_local_representation=(
+                                LocalBinding.OPTIONAL_TO_PTR),
+                            loc=loc)
                     if not fn_top:
                         note_detail("decl.branch_slot_type")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -6405,7 +6497,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # value-opt param, so register it so its reads ride the binding-keyed
         # arms (deref-on-narrow `(*y)`, the whole-optional None-test/print).
         if not is_reassign and _value_opt_scalar(vtype, analyzer) is not None:
-            lc.value_opt_locals.add(stmt.name)
+            lc.value_opt_bindings[stmt.name] = ValueOptKind.SCALAR
         # The view twin: an OWNED-inner `Optional[str]`/`Optional[bytes]` LOCAL
         # binds `std::optional<std::string>`/`<vector>`, so its None-test/deref
         # reads ride the value-repr view arms via `_value_opt_view_binding`
@@ -6413,18 +6505,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # `optional<string_view>`) is excluded -- its narrowed read stays on the
         # str/bytes-name arm (no deref), matching the AST.
         elif not is_reassign and _value_opt_owned_view(vtype, analyzer) is not None:
-            lc.value_opt_view_locals.add(stmt.name)
+            lc.value_opt_bindings[stmt.name] = ValueOptKind.VIEW
         # The record twin: an owned-optional-call slot binds the whole
         # `std::optional<T>` record, so narrowed reads deref `(*name)` and
         # the None-test reads has_value off the registered binding.
         elif (not is_reassign
               and _own_opt_record_call_slot(stmt, vtype, lc, analyzer)):
-            lc.value_opt_record_locals.add(stmt.name)
+            lc.value_opt_bindings[stmt.name] = ValueOptKind.RECORD
             _witness("decl.opt_record_call")
         # The VALUE-record twin: same registered binding (narrowed `(*g)`
         # deref, has_value None-test, render_type-spelled decl).
         elif not is_reassign and _value_opt_record_slot(stmt, vtype, lc):
-            lc.value_opt_record_locals.add(stmt.name)
+            lc.value_opt_bindings[stmt.name] = ValueOptKind.RECORD
             _witness("decl.opt_value_record")
         # An enum decl type spells via render_type (codegen's type_to_cpp):
         # its enum arm routes through enum_cpp_name -- the authoritative
@@ -6447,7 +6539,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
               # The owned-optional record slot spells via render_type
               # (generic instantiation + cross-module qualification --
               # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).
-              or stmt.name in lc.value_opt_record_locals):
+              or lc.value_opt_bindings.get(stmt.name)
+              is ValueOptKind.RECORD):
             cpp_type = lc.render_type(vtype)
         else:
             cpp_type = None
@@ -7328,6 +7421,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # optional_to_ptr lift.
                 _witness("ret.opt_field_ref")
                 pvalue = _lower_field_source(stmt.value, lc, declared)
+            elif isinstance(stmt.value, TpyIfExpr):
+                # A ternary return passes bare: the ifexpr lowering already
+                # normalized each arm to the return's `T*`
+                # (`return ((flag) ? (&(p)) : (nullptr));`).
+                pvalue = _lower_expr(stmt.value, lc, declared)
+                _witness("ret.ptr_opt_ternary")
             else:
                 if (not isinstance(stmt.value, TpyName)
                         or stmt.value.name == "self"
@@ -7390,7 +7489,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             peeled = _peel_coerce(stmt.value)
             if (isinstance(peeled, TpyName)
                     and (peeled.name in lc.prescan.value_opt_params
-                         or peeled.name in lc.value_opt_locals)):
+                         or lc.value_opt_bindings.get(peeled.name)
+                     is ValueOptKind.SCALAR)):
                 note_detail("return.optval_coerced_param")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
         ret_vopt_view = lc.prescan.ret_value_opt_view
@@ -7412,6 +7512,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value=THIROptViewArg(result_type=ret_vopt_view,
                                          name=stmt.value.name, form=Form.VALUE,
                                          loc=loc), loc=loc)
+            if isinstance(stmt.value, TpyIfExpr):
+                # A value-repr Optional ternary return: the ifexpr arm
+                # wrapped both arms in the spelled optional, so the lowered
+                # ternary passes bare.
+                pvalue = _lower_expr(stmt.value, lc, declared)
+                _witness("ret.value_opt_view_ternary")
+                return THIRReturn(value=pvalue, loc=loc)
             if not isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
                 note_detail("return.opt_view_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -8276,7 +8383,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             stmt, analyzer, declared, lc.narrow.narrowed.keys(),
             blocked=(lc.pointers | lc.rebind_slot_locals
                      | lc.ref_alias_locals | lc.storage_tuple_locals
-                     | lc.value_opt_locals | lc.frame_slots))
+                     | lc.value_opt_bindings.keys() | lc.frame_slots))
         if target_binds is None:
             note_detail("tuple_unpack.target_form")
             raise ThirUnsupported("stmt.tuple_unpack")
@@ -8630,7 +8737,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 vopt_loop_var = _foreach_value_opt_elem(et) is not None
                 if vopt_loop_var:
                     _witness("foreach.value_opt_elem")
-                    lc.value_opt_locals.add(stmt.var)
+                    lc.value_opt_bindings[stmt.var] = ValueOptKind.SCALAR
                 # A loop var over a storage-form pointer-repr tuple CONTAINER is
                 # itself a storage-form source (a body `a, b = var` unpack lifts
                 # it via tuple_to_pointer) -- registered for the body scope,
@@ -9455,6 +9562,15 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         if isinstance(lowered, THIRFieldAccess) and lowered.narrowed_deref:
             lowered = replace(lowered, narrowed_deref=False)
         return THIRPrintArg(lowered, form, inner_cpp)
+    if (isinstance(a, TpyName)
+            and _optional_ptr_borrow_name(a, declared, lc.analyzer) is not None
+            and isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                lc.analyzer.get_expr_type(a)))), OptionalType)):
+        # An un-narrowed ptr-repr Optional[F1-record] NAME: the bare pointer
+        # inside `::tpy::print_optional(...)` (gen_print's pointer-repr arm,
+        # CTAD form -- the record inner streams via its own operator<<).
+        _witness("print.opt_ptr_name")
+        return THIRPrintArg(_lower_expr(a, lc, declared), PrintForm.OPT_PTR)
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
     # wrap (or the record's raw operator<<) around the bare name -- the
     # same routing fact lowering consumed (`_wrap_print_form`).

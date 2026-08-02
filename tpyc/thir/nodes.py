@@ -1102,6 +1102,14 @@ class THIRGenExpr(THIRExpr):
     moved_source: bool = False               # non-lvalue container-literal source
     cpp_iterable: str = ""                    # container type (moved_source)
     iterable_elements: tuple = ()            # brace-init elems (moved_source)
+    # Tuple-unpack head (`n for p, n in items`): the lambda body binds
+    # `auto& __tup_N = *__beg++;` (the shared __tup counter, drawn at emit)
+    # plus one line per named target (`unpack_target_cpps[i] name =
+    # std::get<i>(__tup_N);` -- None targets are `_` discards). Empty for
+    # the single-loop-var shape (binding_cpp).
+    unpack_targets: tuple = ()
+    unpack_target_cpps: tuple = ()
+    const_loop_var: bool = False
 
 
 @dataclass(frozen=True)
@@ -2798,6 +2806,9 @@ class PrintForm(Enum):
         `Optional[float]`, taking an explicit Formatter + inner-type template
         (`<::tpy::print_bool, T>` / `<::tpy::print_float, T>`); the inner C++
         type rides `THIRPrintArg.opt_inner_cpp`.
+      * `OPT_PTR` -- `::tpy::print_optional(...)` on a bare pointer-repr
+        `Optional[F1-record]` NAME (gen_print's pointer-repr arm, CTAD form:
+        a record inner streams via its own operator<<, no Formatter).
     """
     RAW = auto()
     INT8 = auto()
@@ -2818,6 +2829,7 @@ class PrintForm(Enum):
     OPT_VAL = auto()
     OPT_VAL_BOOL = auto()
     OPT_VAL_FLOAT = auto()
+    OPT_PTR = auto()
 
 
 @dataclass(frozen=True)

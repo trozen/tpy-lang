@@ -7,6 +7,7 @@ from .lower.context import (
     _BRANCH_SCOPED_SETS,
     _FUNCTION_SCOPED_STATE,
     _LowerCtx,
+    ValueOptKind,
 )
 from .testutil import _compile, _entry
 
@@ -63,7 +64,9 @@ class TestScopeRegistry:
         both = set(_BRANCH_SCOPED_SETS) & set(_FUNCTION_SCOPED_STATE)
         assert not both
         for name in _BRANCH_SCOPED_SETS:
-            assert isinstance(getattr(lc, name), set), name
+            # Plain name-sets plus the kind-tagged value_opt_bindings dict;
+            # both restore by whole-copy snapshot.
+            assert isinstance(getattr(lc, name), (set, dict)), name
         for name in _FUNCTION_SCOPED_STATE:
             assert hasattr(lc, name), name
 
@@ -73,11 +76,11 @@ class TestBranchScope:
         lc = _make_lc()
         with lc.branch_scope():
             lc.pointers.add("p")
-            lc.value_opt_locals.add("v")
+            lc.value_opt_bindings["v"] = ValueOptKind.SCALAR
             lc.movable_locals.add("m")
             lc.forbidden_writes.add("w")
         assert "p" not in lc.pointers
-        assert "v" not in lc.value_opt_locals
+        assert "v" not in lc.value_opt_bindings
         assert "m" not in lc.movable_locals
         assert "w" not in lc.forbidden_writes
 

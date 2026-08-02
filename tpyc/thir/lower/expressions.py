@@ -399,7 +399,8 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_opt_view_name,
 )
-from .context import _ExprResultUse, _ExprUse, _LowerCtx, _RecordCtorUse
+from .context import (_ExprResultUse, _ExprUse, _LowerCtx, _RecordCtorUse,
+                      ValueOptKind)
 from .generics import expand_fi_template
 
 
@@ -2551,9 +2552,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                      else "narrow.opt_field_test")
         value_repr = (is_field and not ptr_field) or (
             isinstance(operand, TpyName)
-            and (_value_opt_scalar_binding(operand.name, lc)
-                 or _value_opt_view_binding(operand.name, lc)
-                 or operand.name in lc.value_opt_record_locals
+            and (_value_opt_binding_kind(operand.name, lc) is not None
                  or (operand.name in declared
                      and _value_opt_scalar(declared[operand.name],
                                            lc.analyzer) is not None))) or (
@@ -2715,42 +2714,54 @@ def _opt_record_none_subject(e: TpyBinOp, lc: '_LowerCtx') -> bool:
         return False
     operand = e.right if left_none else e.left
     return (isinstance(operand, TpyName)
-            and operand.name in lc.value_opt_record_locals)
+            and lc.value_opt_bindings.get(operand.name)
+            is ValueOptKind.RECORD)
+
+
+def _value_opt_binding_kind(name: str, lc: '_LowerCtx') -> 'ValueOptKind | None':
+    """The value-repr `std::optional<T>` binding kind of `name`, or None:
+    a registered LOCAL (`lc.value_opt_bindings` -- for-each loop vars,
+    chain-optional match captures, owned-view/record decls) or a PARAM of
+    the function being lowered (scalar/view; a param is never RECORD).
+    Kind-blind consumers (the None-test / truthiness renders, identical
+    for every kind) test `is not None`; the read/move/reassign arms key on
+    the kind, whose only difference is the narrowed-deref FORM verdict.
+    The movable-seeded last-use moves stay param-only through
+    `_is_move_source`'s movable guard (codegen never seeds a loop var or
+    capture movable)."""
+    k = lc.value_opt_bindings.get(name)
+    if k is not None:
+        return k
+    t = _param_declared_type(name, lc)
+    if t is not None:
+        if _value_opt_scalar(t, lc.analyzer) is not None:
+            return ValueOptKind.SCALAR
+        if _value_opt_view(t, lc.analyzer) is not None:
+            return ValueOptKind.VIEW
+    return None
 
 
 def _value_opt_scalar_binding(name: str, lc: '_LowerCtx') -> bool:
     """A value-repr `Optional[cheap scalar]` BINDING (`std::optional<T>`):
-    a param of the function being lowered, or a registered local -- a
-    for-each loop var over `list[T | None]`, or a chain-optional match
-    capture binding the full subject (the AST registers the latter in
-    `ctx.var_types` exactly like a param). Reads render bare (un-narrowed) /
-    `(*p)` (narrowed); the None-test and truthiness carry the value-repr
-    renders -- identical for every binding kind. The movable-seeded
-    last-use moves stay param-only through `_is_move_source`'s movable
-    guard (codegen never seeds a loop var or capture movable)."""
-    if name in lc.value_opt_locals:
-        return True
-    for n, t in lc.params:
-        if n == name:
-            return _value_opt_scalar(t, lc.analyzer) is not None
-    return False
+    the SCALAR kind of `_value_opt_binding_kind` (narrowed reads deref a
+    VALUE)."""
+    return _value_opt_binding_kind(name, lc) is ValueOptKind.SCALAR
 
 def _value_opt_view_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is a value-repr `Optional[view]` param -- str OR bytes
     (`std::optional<std::string_view>` / `std::optional<std::span<const
-    uint8_t>>`) -- of the function being lowered, the view twin of
-    `_value_opt_scalar_binding`. A narrowed read unwraps `(*x)` (a borrow view),
-    the None-test/truthiness carry the same value-repr renders, and a pass into
-    another same-family `Optional[view]` slot takes the arg-split shim."""
+    uint8_t>>`) -- of the function being lowered. A narrowed read unwraps
+    `(*x)` (a borrow view), and a pass into another same-family
+    `Optional[view]` slot takes the arg-split shim; a registered view LOCAL's
+    deref is already OWNED, which is what the param/local split keys on."""
     return _value_opt_view(_param_declared_type(name, lc), lc.analyzer) is not None
 
 def _value_opt_view_binding(name: str, lc: '_LowerCtx') -> bool:
-    """A value-repr `Optional[view]` BINDING -- a param OR a registered LOCAL
-    (`lc.value_opt_view_locals`), the view twin of `_value_opt_scalar_binding`.
-    The two differ only in the narrowed-deref form: a param's `(*s)` is a BORROW
-    view (an owned sink adds the family copy), a local's `(*s)` is already OWNED
-    (STORAGE, no copy) -- the read arm branches on `param_names` for that."""
-    return name in lc.value_opt_view_locals or _value_opt_view_param(name, lc)
+    """A value-repr `Optional[view]` BINDING -- the VIEW kind of
+    `_value_opt_binding_kind` (a param's narrowed deref is a BORROW view an
+    owned sink copies; a registered local's is already OWNED storage -- the
+    read arm branches on `param_names` for that)."""
+    return _value_opt_binding_kind(name, lc) is ValueOptKind.VIEW
 
 def _narrow_subject_is_ptr(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
     """Whether a narrowing SUBJECT's `std::get` reads the POINTER variant.
@@ -2975,14 +2986,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         unrouted = _unrouted_binding_read(binding_type, analyzer)
         if (unrouted is not None and not allow_unrouted_name
                 # A REGISTERED owned-optional record local has a routed read
-                # arm (the value_opt_record_locals branch below); the
-                # unrouted-binding verdict covers params and unregistered
-                # bindings only.
-                and e.name not in lc.value_opt_record_locals):
+                # arm (the RECORD-kind branch below), and a storage-optional
+                # unpack target its own STORAGE row; the unrouted-binding
+                # verdict covers params and unregistered bindings only.
+                and lc.value_opt_bindings.get(e.name)
+                is not ValueOptKind.RECORD
+                and e.name not in lc.storage_opt_locals):
             raise ThirUnsupported(unrouted, detail=True)
         # A view-INNER value-opt LOCAL (`StrView`/`BytesView | None` ->
         # `optional<string_view>`) is not routed: unlike its owned-inner twin
-        # (`str`/`bytes | None`, routed via `value_opt_view_locals`), the AST's
+        # (`str`/`bytes | None`, routed via the VIEW-kind binding), the AST's
         # narrowed read is a whole-optional-wrap quirk we don't mirror and its
         # None-test would key value-repr off the param-only predicate, so defer
         # the whole body. A value-opt-view PARAM keeps its existing routing.
@@ -3085,7 +3098,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 result_type=rtype, name=alias,
                 form=Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE,
                 loc=loc)
-        if e.name in lc.value_opt_record_locals:
+        if e.name in lc.storage_opt_locals:
+            # A storage-optional comp/genexpr unpack target (`auto& p =
+            # std::get<0>(t);` -- the storage_form_optional_locals mirror):
+            # an UN-narrowed read is the bare storage optional its `T*`-slot
+            # consumers lift via optional_to_ptr; a NARROWED occurrence is a
+            # later rung -- reject rather than deref-render.
+            if not isinstance(unwrap_readonly(rtype), OptionalType):
+                raise ThirUnsupported("name.storage_opt_narrow", detail=True)
+            _witness("name.storage_opt_whole")
+            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                            form=Form.STORAGE, loc=loc)
+        if lc.value_opt_bindings.get(e.name) is ValueOptKind.RECORD:
             # An owned-optional RECORD local (`std::optional<Rc<T>>`,
             # registered at its call-init decl). A NARROWED read (sema
             # retyped it to the record) unwraps `(*upgraded)` -- a record
@@ -3130,7 +3154,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # truthiness / arg-shim wrappers (the bare value position is
             # unsupported). This must precede the str-name arm below, which keys
             # on the narrowed view rtype and would drop the deref.
-            narrowed = not isinstance(unwrap_readonly(rtype), OptionalType)
+            # A whole-optional consumer strips the deref off a NARROWED
+            # occurrence exactly like the scalar/record rows: the None-test
+            # keys on the C++ BINDING (`src1.has_value()`), so a
+            # literal-init-narrowed local must not deref-render
+            # `(*src1).has_value()` there.
+            narrowed = (not isinstance(unwrap_readonly(rtype), OptionalType)
+                        and not allow_whole_optional)
             if not narrowed:
                 form = Form.VALUE
             elif e.name in lc.prescan.param_names:
@@ -3346,7 +3376,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         # local): the name read derefs (`(*r)`), the field
                         # appends `.v` -- `(*r).v`, the AST's narrowed read.
                         or (isinstance(e.obj, TpyName)
-                            and e.obj.name in lc.value_opt_record_locals
+                            and lc.value_opt_bindings.get(e.obj.name)
+                            is ValueOptKind.RECORD
                             and _witness("field.opt_record_recv"))):
                     raise ThirUnsupported("field.receiver_shape", detail=True)
         if _unbound_self_field_ok(e):
@@ -4503,7 +4534,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                                             target_type=vtu,
                                             allow_whole_optional=True)
             declared[e.target] = vtu
-            lc.value_opt_locals.add(e.target)
+            lc.value_opt_bindings[e.target] = ValueOptKind.SCALAR
             _witness("expr.walrus_value_opt")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -4565,7 +4596,21 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # A container ternary renders bare too (`((c) ? (a) : (b))`
                 # -- an lvalue when both arms are lvalues, the REF_ALIAS
                 # decl's init); arm shapes gate in their own lowering.
-                or _ifexpr_container(rtype, analyzer) is not None):
+                or _ifexpr_container(rtype, analyzer) is not None
+                # A pointer-repr Optional[F1-record] ternary: each arm
+                # normalizes to the `T*` the result renders as (the
+                # _ptr_optional_branch mirror in _lower_if_expr).
+                or _optional_ptr_borrow(rtype, analyzer) is not None
+                # A VALUE-repr Optional ternary: both arms wrap in the
+                # spelled optional (`std::optional<std::string>("hello")`)
+                # for C++ ternary deduction -- the value-repr sibling; arm
+                # shapes gate in _lower_if_expr.
+                or _value_opt_ternary_result(rtype, analyzer) is not None
+                # A plain F1-record ternary of lvalue arms renders bare (an
+                # lvalue when both arms are lvalues -- the Own-slot copy /
+                # REF_ALIAS sources); arm shapes gate in _lower_if_expr.
+                or _f1_record(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(rtype))), analyzer)):
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc,
@@ -8899,6 +8944,38 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return replace(
             _lower_expr(a, lc, declared, allow_whole_optional=True),
             deref=False)
+    if (isinstance(a, TpyCoerce)
+            and a.coercion.name in ("str_to_strview",
+                                    "optional_str_to_strview")
+            and isinstance(a.expected_type, OwnType)
+            and isinstance(a.expr, TpyName)
+            and lc.value_opt_bindings.get(a.expr.name) is ValueOptKind.VIEW):
+        # A whole owned value-opt VIEW LOCAL at an `Own[Optional[StrView]]`
+        # element slot (`items.append(src)`), read whole off the BINDING
+        # regardless of sema's narrow. A NARROWED occurrence arrives as the
+        # identity `str_to_strview` coerce and passes bare
+        # (`push_back(src1)` -- optional<string> converts into
+        # optional<string_view> implicitly); an UN-narrowed one carries
+        # `optional_str_to_strview`, whose Own-slot ARG face is the
+        # once-evaluated statement-expression shim (the coercion lambda's
+        # non-identity branch).
+        inner = replace(
+            _lower_expr(a.expr, lc, declared, allow_whole_optional=True),
+            deref=False)
+        if a.coercion.name == "str_to_strview":
+            _witness("arg.opt_view_own_bare")
+            return inner
+        _witness("arg.opt_view_own_shim")
+        # VALUE form: the statement expression produces a prvalue
+        # `std::optional<std::string_view>` (a value type -- view inner),
+        # exactly the whole-optional VALUE the bare inner read carries.
+        return THIRCoerce(
+            result_type=a.expected_type, expr=inner,
+            coercion_name=a.coercion.name,
+            wrap=("({{ auto __ov = ({0}); __ov ? "
+                  "std::make_optional(std::string_view(*__ov)) : "
+                  "std::nullopt; }})"),
+            form=Form.VALUE, loc=getattr(a, "loc", None))
     if (isinstance(a, TpyName) and method_arg and not method_arg_stub
             and a.name not in lc.narrow.narrowed
             and _value_opt_view_whole_arg(
@@ -9632,6 +9709,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # A narrowed subject is NOT skipped: its read renames to the extraction
     # alias inside _lower_expr and the 'name' face's `&(...)` wrap mirrors
     # the AST's `&(__u)` render (see _optional_ptr_arg).
+    if (isinstance(a, TpyName) and a.name in lc.storage_opt_locals
+            and _optional_ptr_arg_slot(ptype, lc.analyzer) is not None):
+        # A storage-optional unpack target at a `T*` slot lifts the bare
+        # storage read (`borrow(::tpy::optional_to_ptr(p))`) -- the NAME
+        # sibling of the field 'lift' face below.
+        _witness("optptr.storage_name_lift")
+        return THIROptionalPtrArg(
+            result_type=_optional_ptr_arg_slot(ptype, lc.analyzer),
+            form=Form.BORROW,
+            value=_lower_expr(a, lc, declared),
+            lift=True, loc=getattr(a, "loc", None))
     opt_face = _optional_ptr_arg_face(a, ptype, declared, lc.analyzer)
     if opt_face is not None:
         ot = _optional_ptr_arg_slot(ptype, lc.analyzer)
@@ -10084,11 +10172,20 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         if (isinstance(du, OptionalType) and not isinstance(eu, OptionalType)
                 and not du.uses_pointer_repr()):
             # A value-repr narrowed Optional name renders through
-            # ::tpy::is_truthy on the whole optional in the AST; THIR has no
-            # matching arm. Pointer-repr narrowed record optionals now dispatch
-            # the narrowed inner's __bool__/__len__ in the AST, which
-            # _truthiness_mode(et) mirrors from the same narrowed occurrence
-            # type, so they route through the record-mode arms below.
+            # ::tpy::is_truthy on the WHOLE optional in the AST -- keyed on
+            # the C++ BINDING, not the narrow, so a registered/param
+            # value-opt binding takes the deref-stripped whole read.
+            # Pointer-repr narrowed record optionals dispatch the narrowed
+            # inner's __bool__/__len__ instead (the record-mode arms below).
+            if _value_opt_binding_kind(e.name, lc) is not None:
+                operand = replace(
+                    _lower_expr(e, lc, declared, allow_whole_optional=True),
+                    deref=False)
+                _witness("truthy.value_opt_whole")
+                return THIRTruthy(
+                    result_type=BOOL, mode=TruthinessMode.IS_TRUTHY,
+                    operand=operand, deref=False,
+                    loc=getattr(e, "loc", None))
             raise ThirUnsupported("truthy.optional_name_narrow")
     if wrap is None:
         ptr_optional = (
@@ -10311,6 +10408,88 @@ def _ifexpr_container(rtype: 'TpyType | None', analyzer) -> 'TpyType | None':
     return tu if (is_list(tu) or is_dict(tu) or is_set(tu)) else None
 
 
+def _value_opt_ternary_result(rtype: 'TpyType | None',
+                              analyzer) -> 'OptionalType | None':
+    """A value-repr Optional ternary RESULT -- the scalar or owned-view
+    family (`std::optional<T>` / `<std::string>`), whose C++ ?: needs both
+    arms wrapped in the spelled optional (mismatched arm types otherwise:
+    nullopt vs T). The AST wraps unconditionally for every value-repr
+    Optional result (_gen_if_expr's value-repr arm)."""
+    if rtype is None:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+    if not (isinstance(u, OptionalType) and not u.uses_pointer_repr()):
+        return None
+    if (_value_opt_scalar(u, analyzer) is not None
+            or _value_opt_owned_view(u, analyzer) is not None):
+        return u
+    return None
+
+
+def _lower_value_opt_ternary_arm(arm: TpyExpr, vopt: 'OptionalType',
+                                 cpp: str, lc: '_LowerCtx',
+                                 declared: dict[str, TpyType],
+                                 loc) -> THIRExpr:
+    """One value-repr Optional ternary arm, wrapped in the spelled optional
+    (`std::optional<std::string>(std::nullopt)` / `(...)("hello")`) so the
+    C++ ternary deduces -- the AST wraps EVERY arm, so the wrap composes
+    over whatever the arm renders. Only the witnessed literal arms are in
+    the slice; other shapes keep the named reject."""
+    if isinstance(arm, TpyNoneLiteral):
+        inner: THIRExpr = THIRLiteral(result_type=vopt, value=None,
+                                      form=Form.STORAGE, loc=loc)
+    elif isinstance(arm, (TpyStrLiteral, TpyBytesLiteral)):
+        inner = _lower_expr(arm, lc, declared, target_type=vopt)
+    else:
+        note_detail("ifexpr.value_opt_arm")
+        raise ThirUnsupported("expr.ifexpr")
+    return THIRCoerce(result_type=vopt, expr=inner,
+                      coercion_name="value_opt_ternary_wrap",
+                      wrap=f"{cpp}({{0}})", form=inner.form, loc=loc)
+
+
+def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
+                               lc: '_LowerCtx', declared: dict[str, TpyType],
+                               loc) -> THIRExpr:
+    """One ternary arm normalized to the `T*` a pointer-repr Optional result
+    renders as -- _gen_if_expr's `_ptr_optional_branch`: `None` -> `nullptr`,
+    an already-pointer Optional binding passes bare, a storage-form Optional
+    field lifts via `optional_to_ptr`, and a plain F1-record name takes the
+    address-of (the return ladder's position-independent addr_of node). The
+    Optional arms key on the ANALYZED type, so a narrowed occurrence
+    (retyped to the record) falls to the record-name arm's DECLARED-type
+    check and rejects -- the AST's narrowed-arm render is not mirrored."""
+    analyzer = lc.analyzer
+    if isinstance(arm, TpyNoneLiteral):
+        return THIRLiteral(result_type=popt, value=None, form=Form.BORROW,
+                           loc=loc)
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(arm))))
+    if isinstance(at, OptionalType):
+        if (isinstance(arm, TpyName)
+                and _optional_ptr_borrow_name(arm, declared, analyzer)
+                is not None):
+            return _lower_expr(arm, lc, declared)
+        if (isinstance(arm, TpyFieldAccess)
+                and _field_receiver_ok(arm, declared, analyzer)
+                and reads_storage_form_optional(analyzer, arm)):
+            return THIRFormConvert(
+                result_type=popt,
+                value=_lower_field_source(arm, lc, declared),
+                form=Form.BORROW, loc=loc)
+    elif isinstance(arm, TpyName) and arm.name not in lc.narrow.narrowed:
+        dt = declared.get(arm.name)
+        dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+              if dt is not None else None)
+        if (arm.name != "self" and not isinstance(dt, OwnType)
+                and _f1_record(dt, analyzer)):
+            return THIROptionalPtrArg(
+                result_type=popt, form=Form.BORROW,
+                value=_lower_expr(arm, lc, declared), addr_of=True, loc=loc)
+    note_detail("ifexpr.optptr_arm")
+    raise ThirUnsupported("expr.ifexpr")
+
+
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                    declared: dict[str, TpyType], loc, *,
                    cond_temps_ok: bool = False) -> THIRIfExpr:
@@ -10336,6 +10515,53 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # enclosing flush right extends into it (the AST hoists its arg temps
     # before the statement); the ARMS evaluate lazily and never get it.
     cond = _lower_truthy(e.condition, lc, declared, temps_ok=cond_temps_ok)
+    result_t = slot if slot is not None else rtype
+    popt = _optional_ptr_borrow(result_t, analyzer)
+    if popt is not None:
+        # Pointer-repr Optional result: each arm normalizes to `T*` so the
+        # C++ ?: operands match (_gen_if_expr's _ptr_optional_branch); the
+        # whole ternary is a BORROW pointer its sinks bind bare.
+        then = _lower_ptr_opt_ternary_arm(e.then_expr, popt, lc, declared, loc)
+        orelse = _lower_ptr_opt_ternary_arm(e.else_expr, popt, lc, declared,
+                                            loc)
+        _witness("ifexpr.ptr_opt")
+        return THIRIfExpr(result_type=result_t, cond=cond, then=then,
+                          orelse=orelse, form=Form.BORROW, loc=loc)
+    vopt = _value_opt_ternary_result(result_t, analyzer)
+    if vopt is not None:
+        # A VALUE-repr Optional result: both arms wrap in the spelled
+        # optional for C++ ternary deduction (mismatched arm types
+        # otherwise -- nullopt vs T); the whole ternary is a VALUE optional
+        # its sinks take bare.
+        cpp = lc.render_type(vopt)
+        then = _lower_value_opt_ternary_arm(e.then_expr, vopt, cpp, lc,
+                                            declared, loc)
+        orelse = _lower_value_opt_ternary_arm(e.else_expr, vopt, cpp, lc,
+                                              declared, loc)
+        _witness("ifexpr.value_opt")
+        return THIRIfExpr(result_type=vopt, cond=cond, then=then,
+                          orelse=orelse, form=Form.VALUE, loc=loc)
+    rec_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t)))
+    if _f1_record(rec_t, analyzer):
+        # A plain F1-record ternary: a same-type lvalue ternary is itself an
+        # lvalue, so bare NAME arms render with no per-arm conversion (the
+        # AST's gen_expr_deref arms) and the result is a BORROW lvalue its
+        # consumer copies or aliases. Only name arms are in the slice: a
+        # call/ctor arm makes the C++ ternary a prvalue whose consumers
+        # (REF_ALIAS binds, the Own copy temp) have per-shape renders.
+        for arm in (e.then_expr, e.else_expr):
+            if not isinstance(arm, TpyName):
+                note_detail("ifexpr.record_arm")
+                raise ThirUnsupported("expr.ifexpr")
+        then = _lower_expr(e.then_expr, lc, declared,
+                           use=_ExprUse(indirect_read=True),
+                           target_type=rec_t)
+        orelse = _lower_expr(e.else_expr, lc, declared,
+                             use=_ExprUse(indirect_read=True),
+                             target_type=rec_t)
+        _witness("ifexpr.record")
+        return THIRIfExpr(result_type=result_t, cond=cond, then=then,
+                          orelse=orelse, form=Form.BORROW, loc=loc)
     then = _slot_literal_retype(
         _lower_char_targeted(e.then_expr, slot, lc, declared), slot, lc)
     orelse = _slot_literal_retype(

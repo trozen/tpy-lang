@@ -150,6 +150,7 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
+    ValueOptKind,
 )
 from .checks import (
     _container_literal_shape_ok,
@@ -711,7 +712,7 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
             if _value_opt_scalar(gt, analyzer) is not None:
                 # Value-opt globals read/write like value-opt locals
                 # (`= std::nullopt`, `.has_value()`, narrowed `(*g)`).
-                lc.value_opt_locals.add(n)
+                lc.value_opt_bindings[n] = ValueOptKind.SCALAR
             if n in native_globals:
                 # A native-linkage global writes through its BARE C name
                 # (`g_counter = val;` -- the AST's native_global_names.get
@@ -744,7 +745,7 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
             # Read-only value-opt globals ride the value-opt local read
             # arms (bare whole-optional, narrowed `(*g)`, unproven
             # deref_optional_check).
-            lc.value_opt_locals.add(n)
+            lc.value_opt_bindings[n] = ValueOptKind.SCALAR
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is
@@ -2180,7 +2181,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             # value-opt LOCAL arms (bare whole-optional pass, narrowed `(*g)`,
             # `= std::nullopt`) -- the same seeding a function body gives the
             # same global.
-            lc.value_opt_locals.add(name)
+            lc.value_opt_bindings[name] = ValueOptKind.SCALAR
         if not gt.is_value_type() and not gt.needs_wrapper():
             # `std::vector<T>* g{}` at namespace scope: reads deref through
             # the pointer-local arms, writes take the static-slot render.

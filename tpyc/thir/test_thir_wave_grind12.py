@@ -62,11 +62,13 @@ class TestAwaitBoundMoveIntoOwnParam:
         assert compiler._thir_face_witnesses.get("move.own_last_use", 0) >= 1
 
 
-class TestAwaitBoundCopyStillDefers:
-    # The COPY half at the same flushless position needs the leaf temp
-    # drain (`auto __tmp_1 = (*p); ... size_of(std::move(__tmp_1));`) --
-    # a structural addition to the leaf emitters, deliberately deferred.
-    # The move rescue must not capture a NON-last-use name.
+class TestAwaitBoundCopyRoutes:
+    # The COPY half at the leaf assign: the temp-drain wave opened
+    # allow_temps at the frame-field assign init, so the copy hoists its
+    # `auto __tmp_1 = (*p);` through the leaf renderer's shared TempSink
+    # (the same render-then-flush arm a sync body uses). The move rescue
+    # still must not capture the NON-last-use name -- the copy, not a
+    # move, is what keeps `p.items`/`p.n` readable afterwards.
     SRC = (
         _PRE +
         "def size_of(p: Own[Payload]) -> Int32:\n"
@@ -80,11 +82,12 @@ class TestAwaitBoundCopyStillDefers:
         "main()\n"
     )
 
-    def test_copy_shape_falls_back(self):
+    def test_copy_shape_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fell = dict(compiler._thir_fallback)
-        assert any(k.startswith("resumable:") for k in fell), fell
+        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        assert "auto __tmp_1 = (*p);" in thir[1]
+        assert "size_of(std::move(__tmp_1));" in thir[1]
 
 
 class TestSyncFlushlessMove:

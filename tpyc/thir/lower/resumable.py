@@ -102,7 +102,7 @@ from .checks import (
     _narrow_cond_info,
     _record_rvalue_source_shape,
 )
-from .context import _ExprResultUse, _ExprUse, _LowerCtx
+from .context import _ExprResultUse, _ExprUse, _LowerCtx, ValueOptKind
 from .expressions import (
     _lower_borrow_tuple_literal,
     _lower_call_arg,
@@ -1260,7 +1260,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # reads as a reassign and never registers it. Register here
                 # so its reads take the binding-keyed value-opt arms.
                 if _value_opt_scalar(declared[stmt.name], analyzer) is not None:
-                    lc.value_opt_locals.add(stmt.name)
+                    lc.value_opt_bindings[stmt.name] = ValueOptKind.SCALAR
             elif (isinstance(stmt, TpyTupleUnpack)
                     and id(stmt) in top_level_ids):
                 # TOP-LEVEL frame-target unpack: register the targets from

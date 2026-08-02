@@ -470,7 +470,7 @@ def _for_each_elem_binding_ok(et: TpyType | None) -> bool:
     scalar / Char] family (`std::optional<T> item = *__beg_N;`): a body that
     NARROWS one (`if x is None: continue`) then reads it needs the value-repr
     deref (`(*x)`) that the value-opt param arms render -- the for-each
-    lowering registers the loop var in `lc.value_opt_locals` so those arms
+    lowering registers the loop var's SCALAR value-opt binding so those arms
     fire for it (the same declared-binding-keyed renders the AST applies).
     Other Optional inners keep the blanket reject; a narrowable UNION loop var
     is NOT excluded -- its isinstance extraction reads the shared `declared`
@@ -489,7 +489,7 @@ def _foreach_value_opt_elem(et: TpyType | None) -> 'OptionalType | None':
     (the same inner slice `_value_opt_scalar` admits for params, spelled
     locally so this gate does not move if that helper's slice widens). The
     loop var binds as a typed `std::optional<T>` copy and its body reads ride
-    the value-opt binding arms via `lc.value_opt_locals`."""
+    the value-opt binding arms via `lc.value_opt_bindings`."""
     if not isinstance(et, TpyType):
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
@@ -1465,7 +1465,7 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # `deref_optional_check(g)` unproven -- the AST's narrowed-global deref
     # family renders through the same local-shaped sites since the
     # _declared_type_incl_globals fix. Callers register the name in
-    # lc.value_opt_locals so the reads ride _value_opt_scalar_binding.
+    # lc.value_opt_bindings so the reads ride _value_opt_scalar_binding.
     if _value_opt_scalar(gt, analyzer) is not None:
         return gt
     return None
@@ -3215,7 +3215,7 @@ def _value_opt_owned_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None
     / `<std::vector<uint8_t>>` (owned inner), so its narrowed deref `(*acc)` is
     already OWNED (STORAGE). A view-INNER optional (`optional<string_view>`) is
     excluded: its LOCAL narrowed read stays on the str/bytes-name arm (no deref,
-    matching the AST), so it must not enter `value_opt_view_locals`."""
+    matching the AST), so it must not enter the VIEW-kind binding set."""
     ov = _value_opt_view(t, analyzer)
     if ov is None:
         return None
@@ -4838,7 +4838,12 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
                     or _param_is_const(stmt.init.name, func, analyzer,
                                        record_name)):
                 return True
-        else:
+        elif isinstance(stmt.init, (TpyFieldAccess, TpySubscript)):
+            # The storage-optional const bump reads the field/subscript
+            # receiver; other init shapes (a ternary) have no receiver and
+            # get const only via the shared raw-sema branches above --
+            # exactly the AST's reach (`is_const_union_source` returns False
+            # for them).
             recv = stmt.init.obj
             if isinstance(recv, TpyName):
                 if (recv.name in const_locals

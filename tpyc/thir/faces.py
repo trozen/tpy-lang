@@ -1189,6 +1189,37 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
     "ifexpr.tuple",                 # tuple result: arms' form propagates
     "ifexpr.cond_pos",              # bool ternary as an if/while condition
+    "ifexpr.ptr_opt",               # ptr-Optional result: per-arm `T*`
+                                    # normalization (nullptr / bare / lift /
+                                    # addr-of), whole ternary BORROW
+    "ifexpr.record",                # F1-record lvalue ternary: bare name
+                                    # arms, a BORROW lvalue
+    "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
+                                    # binds the lowered `T*` ternary bare
+    "decl.opt_call_passthrough",    # borrow-returning ptr-opt free call
+                                    # bound bare at its decl (no slot)
+    "print.opt_ptr_name",           # whole ptr-opt name arg:
+                                    # ::tpy::print_optional(name)
+    "res.return_copy_record",       # `return copy(x)` at an owned-record
+                                    # async return: `C __tpy_async_ret =
+                                    # C(x);` (the sync sink's copy row)
+    "arg.opt_view_own_bare",        # narrowed owned value-opt VIEW local
+                                    # at an Own[Optional[StrView]] slot:
+                                    # bare whole-optional pass
+    "arg.opt_view_own_shim",        # un-narrowed twin: the once-evaluated
+                                    # `__ov` statement-expression shim
+    "truthy.value_opt_whole",       # narrowed value-opt name truthiness:
+                                    # ::tpy::is_truthy on the WHOLE optional
+    "ifexpr.value_opt",             # value-repr Optional ternary: both
+                                    # arms wrapped in the spelled optional
+    "ret.value_opt_view_ternary",   # that ternary at the opt-view return
+    "name.storage_opt_whole",       # storage-optional unpack target read
+                                    # whole (bare std::optional lvalue)
+    "optptr.storage_name_lift",     # that name at a T* slot:
+                                    # ::tpy::optional_to_ptr(p)
+    "genexpr.unpack",               # genexpr tuple-unpack head (per-target
+                                    # __tup_N binds in the lambda)
+    "ret.ptr_opt_ternary",          # ptr-Optional return of a ternary
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`

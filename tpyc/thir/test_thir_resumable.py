@@ -526,12 +526,14 @@ class TestAwaitModes:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "&(::tpy::__getitem__((*items), 0))" in cpp
 
-    def test_erased_operand_reject_composes(self):
-        # An ERASED operand whose expression lowering rejects (a ternary of
-        # task handles -- no ifexpr arm for erased frame borrows) falls back
-        # with the positional tag (res.await_operand_shape), never routes a
-        # partial body. (The former walrus-arg witness routes byte-identically
-        # now that the resolved-scalar arg row admits literal-typed walruses.)
+    def test_erased_ternary_operand_routes(self):
+        # A ternary of task handles as the ERASED await operand: the record
+        # ifexpr arm (Form-threading wave) lowers the both-name ternary to a
+        # BORROW lvalue the erased operand consumes -- byte-identical,
+        # converted from the former reject-composition fence per the
+        # un-defer rule. (The former walrus-arg witness routes
+        # byte-identically now that the resolved-scalar arg row admits
+        # literal-typed walruses.)
         src = ("import asyncio\n"
                + _PRE
                + "async def tick() -> Int32:\n"
@@ -543,7 +545,8 @@ class TestAwaitModes:
                + "    v: Int32 = await (t if c else u)\n"
                + "    print(v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.await_operand_shape") == 1
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
 
 
 class TestSlicedOutShapes:

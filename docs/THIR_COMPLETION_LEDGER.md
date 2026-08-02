@@ -6616,3 +6616,164 @@ adapter into the asyncio library surface (avoid-listed, S1/S2);
 `async_bind_generic` + `gen_resumable_delegate_generic_call` are
 generics-lane (parked). Pins in `test_thir_wave_grind12.py`: the
 deref-move routing pin and the copy-shape boundary (still defers).
+
+### The ifexpr Form-threading wave: per-arm ternary normalization
+### (2026-08-02)
+
++3 flips (`control_flow/ternary_optional_mixed_form`,
+`control_flow/ternary_optional_record`,
+`auto_move/ternary_lvalues_into_own`; dial 2971/3696) -- the first
+design item off the parked queue, approved as three cells against the
+`expr.ifexpr` result gate. (A) The gate admits pointer-repr
+Optional[F1-record] results; `_lower_if_expr` normalizes each arm to
+the `T*` the result renders as, mirroring `_gen_if_expr`'s
+`_ptr_optional_branch`: `None` -> a BORROW None literal (`nullptr`),
+an already-pointer Optional binding -> bare, a storage-form Optional
+field -> the F2 `optional_to_ptr` FormConvert, a plain F1-record name
+-> the return ladder's position-independent `THIROptionalPtrArg`
+addr-of. The whole ternary carries Form.BORROW -- the Form fact the
+item's name promised, consumed by every sink. Narrowed-occurrence arms
+key on the ANALYZED vs DECLARED type split and reject (sema refuses
+the record narrowed-arm join outright, so no witness can exist). (B)
+Sinks: the OPTIONAL_TO_PTR classifier re-tag row for ternary inits
+(the classifier's `reads_storage_form_optional` does not walk arms) +
+the bare-bind decl arm, and the ptr-opt return-ladder ternary row.
+(C) A plain F1-record ternary of lvalue NAME arms admits as a bare
+BORROW lvalue (the AST's gen_expr_deref arms); the Own-slot COPY half
+captures it into its `auto __tmp_N` -- `ternary_lvalues_into_own`
+flipped with zero consumer work. Two rider rows fell out of grinding
+`ternary_optional_record` to zero: the BORROW-returning ptr-opt free
+call binding bare at its decl (`Point* r1 = get_or_none(true, p);`,
+`ptr_opt_passthrough`'s second consumer -- the guard requires the
+CALL's analyzed type be the borrow Optional, after the ctor-call
+rvalue `Inner(7)` slipped the first cut and broke four unit files),
+and the whole ptr-opt name print (`::tpy::print_optional(r2)`, new
+PrintForm.OPT_PTR). `_f1_is_const`'s OPTIONAL_TO_PTR receiver bump is
+now explicitly field/subscript-shaped (a ternary init would have
+crashed on `.obj`; the AST's `is_const_union_source` returns False for
+non-lvalue-chain shapes, so skipping the bump is the mirror). THREE
+former fences un-deferred, each byte-verified then converted per the
+rule: the binding-facts "optional call-return local is an owned slot"
+fence (the oracle renders the bare bind -- the claim was stale), the
+Own-slot ternary arg-gate reject, and the resumable erased-ternary
+await operand (`await (t if c else u)` routes -- the record arm's
+BORROW lvalue is exactly what the erased operand consumes).
+Boundaries pinned in `test_thir_wave_ifexpr.py`: a record ternary
+with a CALL arm defers (a C++ prvalue mixed with an lvalue), an
+Optional METHOD-CALL arm defers, a container-literal ternary ELEMENT
+stays out (the AST's in_container_element carve-out renders storage
+there; the element gate keeps the body fenced), and an Own-declared
+`Own[T | None]` callee keeps the slot lane (a bare bind would
+dangle). Suite green (10722 passed), move-verdicts 0/746.
+`returns/return_mixed_safe_sources_ternary` peeled its ifexpr blocker
+but stays multi-blocked (call-arm ternary + `call.ret_type.record_borrow`).
+
+### The resumable-leaf temp-drain wave (2026-08-02)
+
++2 flips (`async/await_bind_no_move`, `async/async_own_copy_escape`;
+dial 2973/3696). The queue's second design item -- and the
+investigation REPRICED it: the drain already existed at the emit
+layer. `emit_leaf_stmt` renders through the same render-then-flush
+statement arms as a sync body (`_emit_stmt` renders the value, flushes
+`state.temps`, then writes the line), on the ctx-backed TempSink
+(`temps=CtxTempSink(ctx)` in the seam constructor -- shared `__tmp_N`
+numbering with the AST counter). What blocked the witnesses was
+lowering-side gating, and the two had DIFFERENT root causes. (1)
+`await_bind_no_move` was the real drain case: the leaf frame-field
+assign (`_lower_frame_field_assign`) lowered its init without
+allow_temps, so the Own-slot COPY half (`auto __tmp_1 = (*p);
+first = size_of(std::move(__tmp_1));`) rejected -- opening
+allow_temps there is the whole fix, zero emit changes. (2)
+`async_own_copy_escape` needed no temp at all: its oracle is the
+inline `C __tpy_async_ret = C(__self);` -- the resumable return tail
+lowered its value at the default VALUE use, so the record-returning
+`copy(self)` failed `_call_use_supported`. The tail now lowers with
+the sync return arm's STORAGE result use (the scaffolding IS a
+storage decl sink) plus the sync sink's `_lower_copy_record`
+interception row (copy() is rejected by the special-builtin gate in
+the generic call tail, so every sink intercepts it; the resumable row
+uses the DEFAULT excluded-source set, not the sync sink's
+admission_pointers override -- that knob is preserved verbatim for a
+filed defect and must not propagate). Boundaries pinned in
+`test_thir_wave_leafdrain.py`: a copy-temp INSIDE a return value
+still defers (the skeleton composes the value render into its own
+scaffolding line; no oracle has verified a flush point there), and a
+frame_slot emplace write with a temp-needing init still defers (the
+emplace arg composes inside the skeleton's line -- its own rung).
+The function-top HOIST-line family (rebind slots, RECORD_HOISTED,
+dyn-protocol slots; `hoist_drainable=False` loud rejects) is
+explicitly NOT this item -- in a resumable those need frame-field
+homes, a separate design (`decl.record_slot_resumable` stays).
+The wave-12 copy-defers pin byte-verified and converted to the
+routing pin (`TestAwaitBoundCopyRoutes`). Suite green (10731 passed,
+exec 3695 built+run), move-verdicts 0/747.
+
+### The value-opt rekeying wave: binding-keyed reads on the kind map
+### (2026-08-02)
+
++2 flips (`list/list_append_optional_strview_from_str`,
+`control_flow/ternary_optional`; dial 2975/3696). The queue's third
+design item, four cells. (1) CONSOLIDATION, its own byte-neutral
+commit: the three parallel value-opt sets (`value_opt_locals` /
+`_view_` / `_record_`) became one kind-tagged map
+(`value_opt_bindings: name -> ValueOptKind SCALAR|VIEW|RECORD`) with
+the `_value_opt_binding_kind` resolver folding the param lookup;
+kind-blind consumers (the None-test cascade) test membership alone;
+`branch_scope` snapshots by whole-copy. (2) The READ-ARM REKEYING:
+the VIEW name row now honors `allow_whole_optional` exactly like its
+scalar/record siblings, so a whole-optional consumer reads the
+BINDING regardless of sema's narrow -- the fence's probe-caught
+divergence class (`(*src1).has_value()` where the AST renders
+`src1.has_value()`) is dead, and the narrowed value-opt name
+truthiness routes as `::tpy::is_truthy(<whole>)` (the
+`truthy.optional_name_narrow` fence's binding-keyed half). (3) The
+LITERAL/None-init owned-view decl opened
+(`std::optional<std::string> src1 = "one";` / `= std::nullopt;` --
+`_owned_view_opt_whole_src`'s NB note resolved), plus the
+`Own[Optional[StrView]]` element-slot coercion rows: the NARROWED
+occurrence arrives as the identity `str_to_strview` coerce and passes
+the whole optional BARE (C++'s optional converting ctor absorbs it);
+the un-narrowed `optional_str_to_strview` renders the once-evaluated
+`({ auto __ov = ...; })` statement-expression shim (VALUE form -- the
+stmt-expr is a prvalue optional-of-view). The narrow fact is
+load-bearing at exactly this site while reads key on the binding --
+the reason this was an audit, not a toggle. (4) The VALUE-repr
+Optional ternary: both arms wrap in the spelled optional
+(`std::optional<std::string>(std::nullopt)` /  `(..)("hello")`) for
+C++ ternary deduction, witnessed at the opt-view return row --
+literal arms only, a NAME arm keeps the named reject (pinned).
+Boundaries pinned in `test_thir_wave_valueopt.py`: the name-arm
+ternary defers, and a value-opt view PARAM at the Own element slot
+stays out (the borrow `optional<string_view>` binding is a different
+shim family, unwitnessed). Suite green (10736 passed, exec 3695
+built+run), move-verdicts 0/747.
+
+### The storage-optional comp/genexpr unpack mirror (2026-08-02)
+
++1 flip (`tuple/comp_tuple_unpack_optional`; dial 2976/3696) -- the
+queue's last design item, opening the track the wave-9 lesson
+predicted. `lc.storage_opt_locals` now mirrors codegen's
+`storage_form_optional_locals` for COMP/GENEXPR unpack targets
+binding a ptr-repr Optional[F1-record] tuple element: the comp
+route's per-target family gate and `_unpack_target_cpps` gained the
+optional row (the same `auto&` ref binding as F1-records --
+`auto& p = std::get<0>(__tup_1);`), the shared
+`_container_scalar_tuple_iter` iterable gate widened behind a
+comp-only `allow_storage_opt` flag (the for-STATEMENT head keeps its
+own reject), and registration scopes itself with the body walk like
+the loop-var storage-form registration. Reads of the registered name
+render the bare STORAGE optional (`name.storage_opt_whole`; a
+NARROWED occurrence is a named later rung), and a `T*` arg slot lifts
+via `::tpy::optional_to_ptr(p)` -- the NAME sibling of the field
+'lift' face, riding THIROptionalPtrArg. The GENEXPR grew unpack heads
+(`THIRGenExpr.unpack_targets`/`unpack_target_cpps`; the lambda body
+binds `auto& __tup_N = *__beg++;` + per-target lines, the `__tup_N`
+drawn off the shared per-function counter at emit exactly like the
+comp) -- scalar and storage-optional elements only, a moved
+container-literal source stays out. Boundaries pinned in
+`test_thir_wave_stgopt.py`: the for-statement head
+(`tuple.ref_target`), the narrowed target read, and filtered
+genexprs all keep deferring. Future rows this track opens: the
+for-head producer, narrowed reads, the None-test, the const twin --
+ordinary cells once witnessed. Suite green (10740 passed), move-verdicts
+0/747.

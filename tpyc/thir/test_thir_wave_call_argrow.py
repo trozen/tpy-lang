@@ -584,14 +584,14 @@ class TestTernaryIntoOwnSlot:
         "    print(r.val)\n"
     )
 
-    def test_the_arg_gate_no_longer_rejects(self):
-        # As with the module-var row: the reject moves from the arg gate to
-        # the ternary's own lowering, which is not ported. The body still
-        # falls back, so a render assertion here would be checking AST
-        # output. `_own_move_source_slice` requires a TpyName, so the
-        # ternary can only ever reach the copy-temp half, never the
-        # temp-free move -- that exclusion is what the widening relies on.
-        assert _fallback_reasons(self.SRC) == {"expr.ifexpr"}
+    def test_routes_via_record_ifexpr_arm(self):
+        # The ifexpr record arm (Form-threading wave) now lowers the
+        # both-lvalue ternary, so the body routes whole. The Own-slot COPY
+        # half captures the lvalue into its `auto __tmp_N`;
+        # `_own_move_source_slice` requires a TpyName, so the ternary can
+        # only ever reach the copy-temp half, never the temp-free move --
+        # that exclusion is what the arg-gate widening relies on.
+        assert _fallback_reasons(self.SRC) == set()
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)

@@ -55,6 +55,7 @@ from .predicates import (
     _field_receiver_ok,
     _for_each_elem_binding_ok,
     _is_range_call,
+    _optional_ptr_borrow,
     _owned_str_slot,
     _range_counter_type,
     _resolved_bytes_value,
@@ -171,7 +172,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         if it_view is not None:
             it_type = it_view
         if gen.unpack_vars is not None and not _statements._container_scalar_tuple_iter(
-                it_type, analyzer, allow_record=True):
+                it_type, analyzer, allow_record=True,
+                allow_storage_opt=True):
             return None
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
@@ -229,7 +231,12 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
                     or _f1_record(
                         unwrap_readonly(unwrap_send_sync(tt)),
-                        analyzer)):
+                        analyzer)
+                    # A ptr-repr Optional[F1-record] element binds the
+                    # STORAGE optional by reference (`auto& p =
+                    # std::get<0>(t);` -- the storage_opt_locals family);
+                    # its `T*`-slot consumers lift via optional_to_ptr.
+                    or _optional_ptr_borrow(tt, analyzer) is not None):
                 return None
             types.append(tt)
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
@@ -313,8 +320,11 @@ def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
     ref = "const auto&" if const_loop_var else "auto&"
     return tuple(
         None if tt is None
-        else (ref if _f1_record(
-                  unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
+        else (ref if (_f1_record(
+                          unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
+                      # A storage-optional element binds the same reference
+                      # (`auto& p = std::get<0>(t);`).
+                      or _optional_ptr_borrow(tt, lc.analyzer) is not None)
               else lc.render_type(tt))
         for tt in unpack_types)
 
@@ -663,6 +673,18 @@ def _lower_comprehension(
             and gen.var not in lc.storage_tuple_locals):
         comp_storage_var = gen.var
         lc.storage_tuple_locals.add(gen.var)
+    # A storage-optional unpack TARGET registers for the body walk (the
+    # storage_form_optional_locals mirror -- its reads render the bare
+    # storage optional, `T*` slots lift via optional_to_ptr), and pops
+    # with it exactly like the loop-var storage-form registration above.
+    comp_opt_vars: list[str] = []
+    if route.unpack_types is not None:
+        for uname, utt in zip(gen.unpack_vars, route.unpack_types):
+            if (uname is not None
+                    and _optional_ptr_borrow(utt, analyzer) is not None
+                    and uname not in lc.storage_opt_locals):
+                comp_opt_vars.append(uname)
+                lc.storage_opt_locals.add(uname)
     try:
         return _build_comprehension_body(
             init, result_type, route, lc, declared, body_declared, gen,
@@ -670,6 +692,8 @@ def _lower_comprehension(
     finally:
         if comp_storage_var is not None:
             lc.storage_tuple_locals.discard(comp_storage_var)
+        for uname in comp_opt_vars:
+            lc.storage_opt_locals.discard(uname)
 
 
 def _build_comprehension_body(init, result_type, route, lc, declared,
@@ -814,8 +838,6 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     analyzer = lc.analyzer
     gen = expr.generator
     loc = getattr(expr, "loc", None)
-    if gen.unpack_vars is not None:
-        raise ThirUnsupported("genexpr.unpack")
     if gen.conditions:
         raise ThirUnsupported("genexpr.filter")
     it = gen.iterable
@@ -845,18 +867,59 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         raise ThirUnsupported("genexpr.elem_type")
     sema_elem = resolve_int_literals(unwrap_ref_type(et),
                                      analyzer.ctx.default_int_for_literal)
-    if not (_eligible_scalar(sema_elem) or _eligible_char(sema_elem)):
-        raise ThirUnsupported("genexpr.binding_shape")
+    unpack_targets: tuple = ()
+    unpack_cpps: tuple = ()
+    genexpr_opt_vars: list[str] = []
+    body_declared = dict(declared)
+    if gen.unpack_vars is not None:
+        # Tuple-unpack head (`n for p, n in items`): per-target binds off
+        # `auto& __tup_N = *__beg++;`, mirroring the comp unpack. Witnessed
+        # element families only: scalar targets and the storage-optional
+        # binding (registered for the body walk below); a moved
+        # container-literal source of tuples is unwitnessed and stays out.
+        elem_tup = unwrap_readonly(sema_elem)
+        if (moved or not isinstance(elem_tup, TupleType)
+                or len(elem_tup.element_types) != len(gen.unpack_vars)):
+            raise ThirUnsupported("genexpr.unpack")
+        types: list = []
+        for uname, ett in zip(gen.unpack_vars, elem_tup.element_types):
+            tt = unwrap_ref_type(ett)
+            if uname is None:
+                types.append(None)
+                continue
+            if not (_eligible_scalar(tt)
+                    or _optional_ptr_borrow(tt, analyzer) is not None):
+                raise ThirUnsupported("genexpr.unpack")
+            types.append(tt)
+            body_declared[uname] = tt
+        unpack_targets = tuple(gen.unpack_vars)
+        unpack_cpps = _unpack_target_cpps(tuple(types), lc,
+                                          gen.const_loop_var)
+        for uname, tt in zip(gen.unpack_vars, types):
+            if (uname is not None and tt is not None
+                    and _optional_ptr_borrow(tt, analyzer) is not None
+                    and uname not in lc.storage_opt_locals):
+                genexpr_opt_vars.append(uname)
+                lc.storage_opt_locals.add(uname)
+        binding_cpp = ""
+        comp_vars = {n for n in gen.unpack_vars if n is not None}
+        _witness("genexpr.unpack")
+    else:
+        if not (_eligible_scalar(sema_elem) or _eligible_char(sema_elem)):
+            raise ThirUnsupported("genexpr.binding_shape")
+        binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
+                                       "*__beg++", gen.const_loop_var)
+        body_declared[gen.var] = sema_elem
+        comp_vars = {gen.var}
     elem_type = _comp_result_type(expr.result_elem_type, analyzer)
     if yield_uses_borrow_slot(elem_type):
         raise ThirUnsupported("genexpr.borrow_slot")
     slot_cpp = lc.render_type(elem_type)
-    binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
-                                   "*__beg++", gen.const_loop_var)
-    body_declared = dict(declared)
-    body_declared[gen.var] = sema_elem
-    element = _lower_expr(expr.element_expr, lc, body_declared)
-    comp_vars = {gen.var}
+    try:
+        element = _lower_expr(expr.element_expr, lc, body_declared)
+    finally:
+        for uname in genexpr_opt_vars:
+            lc.storage_opt_locals.discard(uname)
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver)
@@ -886,5 +949,8 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         binding_cpp=binding_cpp,
         iife_captures=iife_captures,
         inner_captures=inner_captures,
+        unpack_targets=unpack_targets,
+        unpack_target_cpps=unpack_cpps,
+        const_loop_var=gen.const_loop_var,
         loc=loc,
     )

@@ -131,9 +131,14 @@ class TestUnmirroredLocalBindings:
                "    return k\n")
         _assert_body_fenced(src, "f")
 
-    def test_optional_call_return_local_fenced(self):
-        # `y = find(...)` on an `A | None` return: the local is an owned
-        # optional SLOT, not the `T*` borrow its declared type suggests.
+    def test_optional_call_return_local_routes_bare_bind(self):
+        # `y = find(...)` on an `A | None` return: the callee's `A*` borrow
+        # return IS the binding's shape, so the decl binds it bare
+        # (`A* y = find(xs);` -- the decl.opt_call_passthrough row). The
+        # former fence claimed an owned optional slot; the oracle renders
+        # the bare bind (byte-verified at conversion), so the fence
+        # converted per the un-defer rule. An OWN-declared callee keeps the
+        # slot lane (the row's `_own_declared_call_ret` guard).
         src = (_RECORD
                + "def find(xs: list[A]) -> A | None:\n"
                + "    for x in xs:\n"
@@ -143,7 +148,11 @@ class TestUnmirroredLocalBindings:
                + "    y = find(xs)\n"
                + "    if y is not None:\n        return y.v\n"
                + "    return -1\n")
-        _assert_body_fenced(src, "f")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        fallback = _assert_identical(src)
+        assert not fallback, fallback
 
 
 class TestResumableFrameBindings:
