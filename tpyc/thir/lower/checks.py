@@ -7877,6 +7877,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  ptr_opt_passthrough: bool = False,
                                  owned_tuple_ret_ok: bool = False,
                                  btuple_ret_ok: bool = False,
+                                 union_subject_ret_ok: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -8110,6 +8111,19 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # alias-decl arm gated the slot).
             or (btuple_ret_ok and _f1_tuple(ret, analyzer) is not None
                 and _witness("method.btuple_slot"))
+            # The union-switch CALL-subject sink (`match p.choose(d):`): a
+            # non-wrapper ptr-variant UNION return is consumed whole by the
+            # by-value dispatch local (`auto __match_subject_N = <call>;`);
+            # every other consumer of a union result keeps rejecting.
+            or (union_subject_ret_ok
+                and isinstance(ret, TpyType)
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ret))), UnionType)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    ret))).uses_pointer_repr()
+                and not unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    ret))).needs_wrapper()
+                and _witness("method.union_subject_ret"))
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
                      or _span_value(ret)
@@ -8331,6 +8345,7 @@ def _record_method_arg_ok(
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer)
+            or _span_coerce_arg(a, ptype, locals_, analyzer)
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             # A source already typed as the WHOLE value-repr Optional passes

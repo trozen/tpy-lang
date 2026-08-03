@@ -72,3 +72,75 @@ class TestBaseInitArgBoundaries:
                "    def __init__(self) -> None:\n"
                "        super().__init__({})\n")
         assert _lower_ctor(src, "Child") is None
+
+
+def _hpp(src: str) -> str:
+    from ..codegen_cpp.context import CodeGenOptions
+    from .testutil import _compile, _entry
+    compiler, modules = _compile(src)
+    hpp, _cpp = compiler.generate_code_to_strings(
+        _entry(modules),
+        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+    return hpp
+
+
+class TestNoneSlotSpelling:
+    """A `None` base-init arg spelled from its SLOT via the shared
+    `default_to_cpp` renderer: `{}` for a variant slot, `std::nullopt` for
+    a value optional (both dualgen-probed when the row landed; the variant
+    slot's corpus witness is defaults/baseinit_union_none)."""
+
+    def test_variant_slot_spells_braces(self):
+        src = ("from tpy import Int64\n"
+               "class Cat:\n"
+               "    def __init__(self) -> None:\n        pass\n"
+               "class Dog:\n"
+               "    def __init__(self) -> None:\n        pass\n"
+               "class Base:\n"
+               "    has_pet: bool\n"
+               "    def __init__(self, tag: Int64,"
+               " pet: Cat | Dog | None = None) -> None:\n"
+               "        self.has_pet = pet is not None\n"
+               "class Sub(Base):\n"
+               "    def __init__(self, tag: Int64) -> None:\n"
+               "        super().__init__(tag, None)\n")
+        assert _lower_ctor(src, "Sub") is not None
+        hpp = _hpp(src)
+        assert "Base(tag, {})" in hpp
+        _assert_byte_identical(src)
+
+    def test_pointer_repr_optional_slot_spells_nullptr(self):
+        src = ("from tpy import Int32\n"
+               "class Pet:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "class Base:\n"
+               "    has_pet: bool\n"
+               "    def __init__(self, tag: Int32,"
+               " pet: Pet | None = None) -> None:\n"
+               "        self.has_pet = pet is not None\n"
+               "class Sub(Base):\n"
+               "    def __init__(self, tag: Int32) -> None:\n"
+               "        super().__init__(tag, None)\n")
+        assert _lower_ctor(src, "Sub") is not None
+        hpp = _hpp(src)
+        assert "Base(tag, nullptr)" in hpp
+        _assert_byte_identical(src)
+
+    def test_value_optional_slot_spells_nullopt(self):
+        src = ("from tpy import Int32\n"
+               "class Base:\n"
+               "    tag: Int32\n"
+               "    n: Int32 | None\n"
+               "    def __init__(self, tag: Int32,"
+               " n: Int32 | None = None) -> None:\n"
+               "        self.tag = tag\n"
+               "        self.n = n\n"
+               "class Sub(Base):\n"
+               "    def __init__(self, tag: Int32) -> None:\n"
+               "        super().__init__(tag, None)\n")
+        assert _lower_ctor(src, "Sub") is not None
+        hpp = _hpp(src)
+        assert "Base(tag, std::nullopt)" in hpp
+        _assert_byte_identical(src)

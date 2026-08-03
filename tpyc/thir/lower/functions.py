@@ -1749,15 +1749,19 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     return _f1_record(vt, analyzer)
 
 def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
-                         declared: dict[str, TpyType]) -> THIRExpr:
+                         declared: dict[str, TpyType],
+                         none_cpp: 'str | None' = None) -> THIRExpr:
     """Lower one admitted base-init arg. A bare `None` has no generic
     `_lower_expr` arm (its render is always slot-derived elsewhere), so it
-    lowers here to the VALUE-form None literal (`nullptr` -- the AST's
-    target-less `gen_expr(None)`); everything else takes `_lower_expr`'s
+    lowers here to the None literal carrying the SLOT's spelling
+    (`none_default_cpp_spelling` -- `{}` for a variant slot, `std::nullopt`
+    for a value optional, the bare `nullptr` default otherwise, matching the
+    AST's slot-aware default render); everything else takes `_lower_expr`'s
     name/literal arms."""
     if isinstance(a, TpyNoneLiteral):
         return THIRLiteral(result_type=lc.analyzer.get_expr_type(a),
-                           value=None, loc=getattr(a, "loc", None))
+                           value=None, loc=getattr(a, "loc", None),
+                           none_cpp=none_cpp)
     return _lower_expr(a, lc, declared)
 
 def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
@@ -1786,16 +1790,18 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
     for i, a in enumerate(expr.args):
         if not _base_init_arg_ok(a, declared, lc):
             return None
-        # Only a slot that spells `None` as the bare `nullptr` can be reproduced
-        # by the target-less render here; `std::nullopt` / `{}` slots need the
-        # target type. Asking the emitter's own spelling keeps every arm (Own,
-        # value-form optional, either-repr union) on one answer.
-        if (isinstance(a, TpyNoneLiteral) and i < len(base_params)
-                and none_default_cpp_spelling(base_params[i][1]) != "nullptr"):
-            return None
+        # A `None` arg needs its SLOT's spelling (`{}` for a variant slot,
+        # `std::nullopt` for a value optional, bare `nullptr` otherwise) --
+        # rendered by the same `default_to_cpp` the AST arm calls, so the
+        # two cannot drift.
+        none_cpp = None
+        if isinstance(a, TpyNoneLiteral) and i < len(base_params):
+            none_cpp = default_to_cpp_from_analyzer(analyzer, a,
+                                                    base_params[i][1])
+            _witness("baseinit.none_slot_spelling")
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")
-        args.append(_lower_base_init_arg(a, lc, declared))
+        args.append(_lower_base_init_arg(a, lc, declared, none_cpp=none_cpp))
     return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
                          args=tuple(args)),
             parent_type)

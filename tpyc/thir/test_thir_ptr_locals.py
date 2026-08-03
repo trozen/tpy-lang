@@ -1032,3 +1032,138 @@ class TestOptReassignedFieldDecl:
         assert _fn(thir, "test") is None
         assert not faces.get("reseat.opt_field_lift")
         _assert_byte_identical(src)
+
+
+class TestCopyReseatRows:
+    """`copy(x)` as a reseat rvalue -- the copy-construct rides the rebind
+    machinery (`saved = &*(__slot_N = Point(p));` / the engaging optional
+    assign), the sinks intercepting the row like the decl sink (the
+    special-builtin gate rejects copy() in the generic call tail). Corpus
+    witnesses: pointers/escape_{explicit_storage,local_safe}."""
+
+    _P = ("from tpy import Int32, copy\n"
+          "class Point:\n"
+          "    x: Int32\n"
+          "    def __init__(self, x: Int32) -> None:\n"
+          "        self.x = x\n")
+
+    def test_branch_hoisted_copy_reseat(self):
+        src = (self._P
+               + "def f(flag: bool) -> Int32:\n"
+               + "    saved = Point(-1)\n"
+               + "    for i in range(3):\n"
+               + "        p = Point(i)\n"
+               + "        if flag:\n"
+               + "            saved = copy(p)\n"
+               + "            p.x = 99\n"
+               + "    return saved.x\n"
+               + "def main() -> None:\n"
+               + "    print(f(True))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "= Point(p));" in cpp
+        _assert_byte_identical(src)
+
+    def test_opt_slot_copy_reseat(self):
+        src = (self._P
+               + "def f(flag: bool) -> Int32:\n"
+               + "    saved: Point | None = None\n"
+               + "    for i in range(3):\n"
+               + "        p = Point(i)\n"
+               + "        if saved is None and flag:\n"
+               + "            saved = copy(p)\n"
+               + "    if saved is not None:\n"
+               + "        return saved.x\n"
+               + "    return -1\n"
+               + "def main() -> None:\n"
+               + "    print(f(True))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("reseat.opt_rvalue")
+        _assert_byte_identical(src)
+
+    def test_branch_rvalue_copy_reseat(self):
+        # The genuinely BRANCH-HOISTED flavor (first decl inside one
+        # if-branch, rvalue-only): the lazy-slot reseat
+        # (`p = &*(__slot_N = Point(base));`) with the copy row.
+        src = (self._P
+               + "def f(c: bool, base: Point) -> Int32:\n"
+               + "    if c:\n"
+               + "        p = copy(base)\n"
+               + "    else:\n"
+               + "        p = base\n"
+               + "    return p.x\n"
+               + "def main() -> None:\n"
+               + "    print(f(True, Point(3)))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("reseat.branch_rvalue")
+        _assert_byte_identical(src)
+
+    def test_opt_storage_copy_reseat(self):
+        # The OPTIONAL_STORAGE single-bind flavor: the engaging assign
+        # (`saved = Point(p);`) with the copy row.
+        src = (self._P
+               + "def f(c: bool, p: Point) -> Int32:\n"
+               + "    if c:\n"
+               + "        saved = copy(p)\n"
+               + "    else:\n"
+               + "        return -1\n"
+               + "    return saved.x\n"
+               + "def main() -> None:\n"
+               + "    print(f(True, Point(4)))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("reseat.opt_storage")
+        _assert_byte_identical(src)
+
+    def test_subscript_bound_source_copy_reseat_routes(self):
+        # A subscript-bound (non-reassigned) record source is NOT a pointer
+        # local -- the copy renders bare (`Point(best)`) inside the lazy
+        # slot reseat. (The genuine pointer-source boundary is pinned on
+        # the free-call side, where the source IS reassigned:
+        # TestCopyOwnArgFreeCall.test_pointer_source_copy_arg_defers.)
+        src = (self._P
+               + "def f(items: list[Point], flag: bool) -> Int32:\n"
+               + "    best = items[0]\n"
+               + "    saved = Point(-1)\n"
+               + "    for it in items:\n"
+               + "        if flag:\n"
+               + "            saved = copy(best)\n"
+               + "    return saved.x\n"
+               + "def main() -> None:\n"
+               + "    print(f([Point(1)], True))\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert "= Point(best));" in cpp
+        _assert_byte_identical(src)
+
+    def test_subtype_copy_at_opt_slot_defers(self):
+        # BOUNDARY (dualgen-probed): copy() of a SUBTYPE at the optional
+        # slot fails the exact-type check and falls back byte-identically.
+        src = (self._P
+               + "class Sub(Point):\n"
+               + "    def __init__(self, x: Int32) -> None:\n"
+               + "        super().__init__(x)\n"
+               + "def f(flag: bool) -> Int32:\n"
+               + "    saved: Point | None = None\n"
+               + "    for i in range(2):\n"
+               + "        b = Sub(i)\n"
+               + "        if flag:\n"
+               + "            saved = copy(b)\n"
+               + "    if saved is not None:\n"
+               + "        return saved.x\n"
+               + "    return -1\n"
+               + "def main() -> None:\n"
+               + "    print(f(True))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+

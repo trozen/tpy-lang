@@ -514,6 +514,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # IntLiteralType digits, record / Optional-ptr / Own param names --
     # all the target-less bare renders of _extract_base_inits.
     "baseinit.nonscalar_arg",
+    "baseinit.none_slot_spelling",  # None arg spelled from the base slot ({} / nullopt / nullptr)
     # Ctor member-init-list cells (lowering; the small value families beyond
     # the scalar / record / Optional[record] arms).
     "mil.optional_none",            # `f(std::nullopt)` -- any Optional field,
@@ -1018,6 +1019,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # make_optional / bare-field composition
     "binop.typed_dict_in",          # TypedDict membership -> the
                                     # .field.has_value() presence check
+    "binop.typed_dict_in_total",    # total=True fold: (static_cast<void>(r), true)
     "arg.protocol_union_plain",     # ... the lowering arm that renders it
     "call.view_instantiation",       # Span/Array ctor over a bare source
     "call.array_literal_instantiation",  # `Array[T, N]([..])` -> the spelled
@@ -1292,7 +1294,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "fstr.union_arg",               # union arg -> runtime __str__ visitor
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`
+    "with.manager_borrowed_field",  # field-access lvalue manager: `auto& __ctx_N = <obj>.f;`
     "with.manager_owned",           # rvalue manager: `auto __ctx_N = ...`
+    "with.manager_hoist",           # kept owned manager: `__slot_N.emplace(...)` + `auto& __ctx_N = (*__slot_N);`
     "with.manager_deref",           # pointer-local manager: `*(...)` deref
     "with.as_value",                # `auto <name> = __enter__();`
     "with.as_ref",                  # `auto& <name> = __enter__();`
@@ -1305,6 +1309,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.multi",                   # multiple managers in one statement
     "with.hoist_decl",              # sema-hoisted plain-value predecls
     "with.hoist_optional_storage",  # single-bind non-value -> optional<T> name;
+    "with.hoist_ptr_local",         # borrow-only non-value (hoisted with target) -> T* name;
+    "with.manager_frame_ctx",       # leaf owned manager frame home: `__with_ctx_K.emplace(...)`
+    "with.frame_slot_target",       # leaf frame_slot target: `<name>.emplace(__enter__());`
+    "with.frame_field_target",      # leaf plain frame-field target: `<name> = __enter__();`
     "with.opt_slot_target",         # hoist-predeclared target -> name = __enter__();
     # Sync `try` faces (lowering, per statement).
     "try.finally_only",             # the unified try/catch(...)/finally shape
@@ -1388,6 +1396,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # A borrow-tuple method result at the `auto` btuple decl slot
     # (`auto p = m.pair(c);`) -- the record-method twin of call.btuple_slot.
     "method.btuple_slot",
+    "method.union_subject_ret",     # ptr-variant union return at the match dispatch-local sink
+    "call.union_subject_ret",       # the free-call twin
     # A MIXED owned+borrow tuple call result aliased whole at the `auto`
     # decl (`auto x = m.mixed(c);`): owned elements by value, ref elements
     # as pointers; reads pick `.` vs `->` per element.
@@ -1798,6 +1808,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # global, whose definition lives at namespace scope.
     "top_level.native_global_skip", # `native_global(..)` decl: emits nothing
     "ret.record_ptr_opt_local",     # `return std::move((*p));`
+    "ret.record_ptr_local",         # plain F1 pointer-local: `return (*best);` (+ move at last use)
     "ret.tparam_ptr_local",         # open-T `T*` local -> `return (*p);`
     "top_level.global_opt_passthrough",  # `g = <ptr-opt call>;`
     "call.ptr_opt_passthrough",     # free call at that write

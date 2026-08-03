@@ -1552,9 +1552,23 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 t.match_stmt, analyzer, declared, frozenset(lc.pointers),
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
                 lc.prescan, lc, in_branch=False, in_loop=False)
-            match_dispatches[id(t.match_stmt)] = _match._lower_match(
+            m_node = _match._lower_match(
                 t.match_stmt, m_route, lc, declared, frozenset(lc.pointers),
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
+            match_dispatches[id(t.match_stmt)] = m_node
+            # Hook-mode captures bind frame fields BEFORE the arm's BB walk,
+            # so the walk's flat `declared` must carry them (the AST's
+            # var_types registration); the frame slot type is authoritative.
+            # A capture with no frame entry stays unregistered -- its arm
+            # reads keep rejecting fail-closed.
+            for m_arm in m_node.arms:
+                for m_entry in m_arm.entries:
+                    for mb in (*m_entry.field_bindings,
+                               *((m_entry.binding,)
+                                 if m_entry.binding is not None else ())):
+                        ft = lc.frame_local_types.get(mb.name)
+                        if ft is not None and mb.name not in declared:
+                            declared[mb.name] = ft
             _witness("res.match_dispatch")
         elif isinstance(t, rcfg.Branch):
             # A narrowing isinstance condition takes the sync narrow-cond

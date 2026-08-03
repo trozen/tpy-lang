@@ -1,4 +1,0 @@
-The nested match rebinds its outer arm's capture, which THIR's arm-body gate
-(forbidden_writes) rejects; the hoist into a resumable frame is outside its
-match hoist admission besides (it bails on generator/async bodies).
-Auto-managed by --thir-classify; --thir-check-flip lists it once clean.

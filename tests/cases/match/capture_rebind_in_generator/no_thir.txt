@@ -1,4 +1,0 @@
-The resumable (generator) match arm is outside the THIR match tier
-(stmt.match); the rebound-capture hoist itself routes -- see
-capture_rebind_declare_forms (unmarked, ratchet-clean).
-Auto-managed by --thir-classify; --thir-check-flip lists it once clean.

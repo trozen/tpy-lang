@@ -1753,9 +1753,10 @@ class TestMatchDispatch:
         assert sum(fallback.values()) == 0
         _assert_identical(src)
 
-    def test_binding_arm_defers(self):
-        # `case _ as y:` binds the subject -- a frame-field write in a
-        # resumable, not gen_match's local decl; sliced out.
+    def test_binding_arm_routes_frame_assign(self):
+        # `case _ as y:` binds the subject into `y`'s frame field -- the
+        # copy mode re-keys to the plain frame-field assign
+        # (_hook_mode_binding) and the dispatch routes.
         src = (self._ENUM
                + "def emit(c: Color) -> Iterator[Int32]:\n"
                + "    match c:\n"
@@ -1765,9 +1766,11 @@ class TestMatchDispatch:
                + "        case _ as y:\n"
                + "            yield 9\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "y = __match_subject_1;" in cpp
 
 
 class TestNarrowedResume:
@@ -2083,9 +2086,10 @@ class TestNarrowedResume:
         assert fallback.get("res.match_strategy", 0) >= 1
         _assert_identical(src)
 
-    def test_union_binding_arm_defers(self):
-        # `case Dog() as d:` binds against the alias -- a case-block local
-        # the BB walk can't see; kept on res.match_binding.
+    def test_union_binding_arm_routes_frame_emplace(self):
+        # `case Dog() as d:` binds the extracted member into `d`'s
+        # frame_slot -- the copy mode re-keys to the slot emplace
+        # (_hook_mode_binding) and the dispatch routes.
         src = (self._UNION
                + "def voices(a: Dog | Cat) -> Iterator[str]:\n"
                + "    match a:\n"
@@ -2095,9 +2099,10 @@ class TestNarrowedResume:
                + "        case Cat():\n"
                + "            yield a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.match_binding", 0) >= 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "d.emplace(" in cpp
 
 
 class TestTryRegions:
@@ -3946,17 +3951,21 @@ class TestBranchFrameDecls:
 
     def test_leaf_match_unmirrored_arm_body_defers(self):
         # BOUNDARY: the fall-through does not blanket-admit match -- an arm
-        # body carrying a shape the sync tiers reject still falls back.
+        # body carrying a shape the sync tiers reject (here the
+        # Optional-enter with target, with.frame_target_family) still
+        # falls back.
         src = (_PRE
                + "class Guard:\n"
-               + "    def __enter__(self) -> Int32:\n        return 1\n"
+               + "    def __enter__(self) -> Int32 | None:\n        return 1\n"
                + "    def __exit__(self, exc_type, exc_val, exc_tb)"
                + " -> None:\n        pass\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
+               + "    r = 0\n"
                + "    match n:\n"
                + "        case 0:\n"
-               + "            with Guard() as g:\n                r = g\n"
+               + "            with Guard() as g:\n"
+               + "                if g is not None:\n                    r = g\n"
                + "        case _:\n            r = n + 1\n"
                + "    n = await step(n)\n"
                + "    return r + n\n\n"
@@ -4330,6 +4339,149 @@ class TestWithRegions:
         assert _res_fallback(src).get("res.with_manager") == 1
 
 
+_SELF_CM = ("class SCM:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+            '    def __enter__(self) -> "SCM":\n        return self\n'
+            "    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n"
+            "        pass\n\n")
+
+
+class TestLeafWith:
+    """A LEAF `with` (suspension-free body) in a resumable frame lowers
+    through the sync with arm: frame-resident targets take the FRAME_SLOT
+    emplace / FRAME_FIELD assign binds, an owned manager whose target field
+    points into it takes the skeleton-declared `__with_ctx_<K>` frame home
+    (`with_owned_ctx_map`), and a borrowed frame-slot manager binds through
+    the leaf's `(*name)` render."""
+
+    def test_frame_slot_target_routes(self):
+        # Self-returning manager, target read across a later suspension:
+        # `guard.emplace(__ctx_N.__enter__())` off the borrowed `(*c)` bind.
+        src = (_PRE + _SELF_CM
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    c = SCM(5)\n"
+               + "    with c as guard:\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    yield guard.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("with.frame_slot_target", 0) >= 1
+        assert witnesses.get("with.manager_borrowed", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto& __ctx_1 = (*c);" in cpp
+        assert "guard.emplace(__ctx_1.__enter__());" in cpp
+
+    def test_frame_field_value_target_routes(self):
+        # A VALUE enter target is a plain frame field: `x = __enter__();`,
+        # plus the no-target item alongside.
+        src = (_PRE + _CM
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    with CM(5) as x:\n"
+               + "        pass\n"
+               + "    with CM(6):\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    yield x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("with.frame_field_target", 0) >= 1
+        assert witnesses.get("with.no_target", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "x = __ctx_1.__enter__();" in cpp
+
+    def test_owned_manager_frame_home_routes(self):
+        # An OWNED rvalue manager whose target frame field aliases
+        # `__enter__()`'s result: the `__with_ctx_<K>` frame home replaces
+        # the sync function-scope slot.
+        src = (_PRE + _SELF_CM
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    with SCM(7) as view:\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    yield view.n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("with.manager_frame_ctx", 0) >= 1
+        assert witnesses.get("with.frame_slot_target", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__with_ctx_0.emplace(SCM(7));" in cpp
+        assert "auto& __ctx_1 = (*__with_ctx_0);" in cpp
+
+    def test_frame_field_str_target_routes(self):
+        # The FRAME_FIELD family's str member (`__enter__() -> str`, the
+        # owned `std::string` frame field): same plain assign bind, reads
+        # after the suspension render bare. The corpus witness is
+        # control_flow/with_target_view_enter_owns; this pins the arm at
+        # unit level across the admitted family, not just scalars.
+        src = (_PRE
+               + "class SM:\n"
+               + "    def __enter__(self) -> str:\n"
+               + '        return "tag"\n'
+               + "    def __exit__(self, exc_type, exc_val, exc_tb)"
+               + " -> None:\n        pass\n\n"
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    with SM() as s:\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    yield len(s)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("with.frame_field_target", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "s = __ctx_1.__enter__();" in cpp
+
+    def test_leaf_return_defers(self):
+        # A return nested in a leaf with renders its __exit__ chain through
+        # the ctx hook's finally_stack, which the THIR with emit does not
+        # populate -- the body falls back byte-identically.
+        src = (_PRE + _CM
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    n = await step(n)\n"
+               + "    if n > 0:\n"
+               + "        with CM(n) as base:\n"
+               + "            return base + 1\n"
+               + "    return n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        assert _res_fallback(src).get("stmt.with:with.leaf_return") == 1
+
+    def test_frame_target_family_defers(self):
+        # A leaf with-as target outside the frame_slot / plain-field pair
+        # (here the enter type is Optional -- an optional frame family)
+        # keeps rejecting with the named reason, byte-identically.
+        src = (_PRE
+               + "class OCM:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n"
+               + "    def __enter__(self) -> Int32 | None:\n"
+               + "        return self.n\n"
+               + "    def __exit__(self, exc_type, exc_val, exc_tb) -> None:\n"
+               + "        pass\n\n"
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    with OCM(5) as x:\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    if x is not None:\n"
+               + "        yield x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        assert _res_fallback(src).get(
+            "stmt.with:with.frame_target_family") == 1
+
+
 class TestLeafReturns:
     """Returns nested in non-suspending leaf compounds: the scaffolding
     (done state, `__tpy_async_ret` bind, Poll wrap / StopIteration,
@@ -4619,9 +4771,10 @@ class TestResMatchValueHoists:
         assert witnesses.get("match.hoist_value_frame", 0) >= 1
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_single_arm_capture_still_defers(self):
-        # BOUNDARY: a single-arm capture is not sema-hoisted, so its bind
-        # mode is copy/ref (an arm-block local) -- unmirrored in hook mode.
+    def test_single_arm_capture_routes_frame_assign(self):
+        # A single-arm capture is not sema-hoisted (copy/ref mode), but the
+        # name is a frame field -- the mode re-keys to the plain assign
+        # (_hook_mode_binding) and the dispatch routes.
         src = ("from typing import Iterator\n\n"
                "def gen(items: list[int]) -> Iterator[int]:\n"
                "    for it in items:\n"
@@ -4632,7 +4785,148 @@ class TestResMatchValueHoists:
                "                yield v\n\n"
                "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
-        assert fallback.get("resumable:res.match_binding")
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "v = __match_subject_1;" in cpp
+
+
+class TestMatchDispatchTierBoundaries:
+    """Edges of the record / union-capture / optional hook-mode admissions
+    (each dualgen-probed when the rows landed): the or-bind arm, guarded
+    tiers, and the pointer-repr optional partition keep rejecting; the
+    record chain and the O2 value dispatch (incl. its multi-arm literal
+    inner chain) route with frame-keyed captures."""
+
+    def test_record_capture_dispatch_routes(self):
+        # The if_elif_record dispatch: a field capture assigns its frame
+        # field before the arm hook (`v = __match_subject_N.lives;`).
+        src = ("from typing import Iterator\n\n"
+               "class Cat:\n"
+               "    lives: int\n"
+               "    def __init__(self, lives: int) -> None:\n"
+               "        self.lives = lives\n\n"
+               "def counts(a: Cat) -> Iterator[int]:\n"
+               "    match a:\n"
+               "        case Cat(lives=v):\n"
+               "            yield v\n"
+               "            yield v + 1\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("match.if_elif_record", 0) >= 1
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "v = __match_subject_1.lives;" in cpp
+
+    def test_optional_value_multi_arm_inner_routes(self):
+        # The O2 value dispatch under hooks: None arm + literal inner arm +
+        # capture arm, the inner `==` chain against `__match_inner_N`.
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32\n\n"
+               "def gen(x: Optional[Int32]) -> Iterator[Int32]:\n"
+               "    match x:\n"
+               "        case None:\n"
+               "            yield -1\n"
+               "        case 0:\n"
+               "            yield 100\n"
+               "        case v:\n"
+               "            yield v\n"
+               "            yield v * 2\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("match.optional_value_dispatch", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "v = __match_inner_1;" in cpp
+
+    def test_reused_slot_capture_emplaces_both(self):
+        # REGRESSION (review round): a frame_slot capture name reused
+        # across TWO dispatches -- the second dispatch computes "assign"
+        # (the name entered `declared` at the first dispatch's site), but
+        # frame_slot has no operator=, so the frame_slots re-key must win
+        # for EVERY incoming mode and both binds emplace.
+        src = ("from typing import Iterator\n\n"
+               "class Dog:\n"
+               "    def sound(self) -> str:\n"
+               '        return "woof"\n\n'
+               "class Cat:\n"
+               "    def sound(self) -> str:\n"
+               '        return "meow"\n\n'
+               "def gen(a: Dog | Cat, b: Dog | Cat) -> Iterator[str]:\n"
+               "    match a:\n"
+               "        case Cat() as c:\n"
+               "            yield c.sound()\n"
+               "        case Dog():\n"
+               '            yield "dog-a"\n'
+               "    match b:\n"
+               "        case Cat() as c:\n"
+               "            yield c.sound()\n"
+               "        case Dog():\n"
+               '            yield "dog-b"\n\n'
+               "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert cpp.count("c.emplace(") == 2
+        assert "c = std::get" not in cpp
+
+    def test_or_bind_arm_defers(self):
+        # The or-bind arm re-walks one body per alternative; re-walking an
+        # arm's BB chain would re-split its resume cases -- rejected.
+        src = ("from typing import Iterator\n\n"
+               "class A:\n"
+               "    x: int\n"
+               "    def __init__(self, x: int) -> None:\n"
+               "        self.x = x\n\n"
+               "class B:\n"
+               "    x: int\n"
+               "    def __init__(self, x: int) -> None:\n"
+               "        self.x = x\n\n"
+               "def gen(u: A | B) -> Iterator[int]:\n"
+               "    match u:\n"
+               "        case A(x=n) | B(x=n):\n"
+               "            yield 1\n"
+               "            yield n\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        assert _res_fallback(src).get("res.match_strategy") == 1
+
+    def test_guarded_record_dispatch_defers(self):
+        # guarded_record stays outside the hook-admitted kinds.
+        src = ("from typing import Iterator\n\n"
+               "class Cat:\n"
+               "    lives: int\n"
+               "    def __init__(self, lives: int) -> None:\n"
+               "        self.lives = lives\n\n"
+               "def gen(a: Cat) -> Iterator[int]:\n"
+               "    match a:\n"
+               "        case Cat(lives=v) if v > 3:\n"
+               "            yield v\n"
+               "            yield v + 1\n"
+               "        case _:\n"
+               "            yield 0\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        assert _res_fallback(src).get("res.match_strategy") == 1
+
+    def test_pointer_repr_optional_dispatch_defers(self):
+        # Only the value-repr optional dispatch is hook-admitted; the
+        # pointer-repr partition rejects upstream, byte-identically.
+        src = ("from typing import Iterator, Optional\n\n"
+               "class Rec:\n"
+               "    n: int\n"
+               "    def __init__(self, n: int) -> None:\n"
+               "        self.n = n\n\n"
+               "def gen(x: Optional[Rec]) -> Iterator[int]:\n"
+               "    match x:\n"
+               "        case None:\n"
+               "            yield -1\n"
+               "        case r:\n"
+               "            yield 1\n"
+               "            yield r.n\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        assert sum(_res_fallback(src).values()) >= 1
 
 
 class TestMemberCoroFactoryArg:

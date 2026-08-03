@@ -2851,3 +2851,50 @@ class TestGenericVarargPack:
         _assert_byte_identical(
             src + "def main() -> None:\n"
             "    print(scalars())\n    print(empty())\nmain()\n")
+
+
+class TestCopyOwnArgFreeCall:
+    """`copy(name)` into a same-nominal Own slot at a FREE call
+    (`consume(Box(b))` -- the copy-construct rvalue, no temp, no move).
+    Corpus witnesses: the auto_move/warn_unnecessary_copy* trio."""
+
+    _B = ("from tpy import Int32, Own, copy\n"
+          "class Box:\n"
+          "    value: Int32\n"
+          "    def __init__(self) -> None:\n"
+          "        self.value = 0\n"
+          "def consume(b: Own[Box]) -> Int32:\n"
+          "    return b.value\n")
+
+    def test_copy_arg_routes_copy_construct(self):
+        src = (self._B
+               + "def main() -> None:\n"
+               + "    b = Box()\n"
+               + "    b.value = 42\n"
+               + "    print(consume(copy(b)))\n"
+               + "    print(b.value)\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("own.record_copy", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "consume(Box(b))" in cpp
+
+    def test_pointer_source_copy_arg_defers(self):
+        # BOUNDARY: a pointer-local source's copy would deref (`Box((*p))`)
+        # -- the render intercept re-runs the source check with the live
+        # pointer set and the body falls back byte-identically.
+        src = (self._B
+               + "def pick(items: list[Box]) -> Int32:\n"
+               + "    best = items[0]\n"
+               + "    for it in items:\n"
+               + "        if it.value > best.value:\n"
+               + "            best = it\n"
+               + "    return consume(copy(best))\n"
+               + "def main() -> None:\n"
+               + "    xs = [Box()]\n"
+               + "    print(pick(xs))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "pick") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

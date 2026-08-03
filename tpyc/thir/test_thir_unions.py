@@ -1913,3 +1913,138 @@ class TestAssignNarrowedUnionFieldRead:
                + "    c.radius = 6.0\n"
                + "    print(c.radius)\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestUnionCallSubjectMatch:
+    """`match p.choose(d):` -- a Call/MethodCall rvalue returning a
+    non-wrapper ptr-variant union materializes into the by-value dispatch
+    local (`auto __match_subject_N = p.choose(d);`), the arms `*std::get`
+    off it. The union return admits ONLY at this position (the scoped
+    match_union_subject flag); a decl consumer keeps rejecting."""
+
+    _SRC = (
+        "class Dog:\n"
+        "    name: str\n"
+        "    def __init__(self, n: str) -> None:\n"
+        "        self.name = n\n"
+        "class Cat:\n"
+        "    name: str\n"
+        "    def __init__(self, n: str) -> None:\n"
+        "        self.name = n\n"
+        "class Picker:\n"
+        "    def choose(self, d: Dog) -> Dog | Cat:\n"
+        "        return d\n"
+        "def main() -> None:\n"
+        "    p = Picker()\n"
+        '    d = Dog("rex")\n'
+        "    match p.choose(d):\n"
+        "        case Dog() as x:\n"
+        "            print(x.name)\n"
+        "        case Cat() as y:\n"
+        "            print(y.name)\n"
+        "main()\n"
+    )
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_call_subject_routes_by_value(self):
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "main") is not None
+        assert w.get("match.subject_rvalue", 0) >= 1
+        assert w.get("method.union_subject_ret", 0) >= 1
+        cpp = self._cpp(self._SRC, thir=True)
+        assert cpp == self._cpp(self._SRC, thir=False)
+        assert "auto __match_subject_1 = p.choose(d);" in cpp
+        assert "auto& x = *std::get<1>(__match_subject_1);" in cpp
+
+    def test_free_call_subject_routes(self):
+        # The FREE-call twin (dualgen-probed): the free-call result gate's
+        # call.union_subject_ret row admits the same non-wrapper
+        # ptr-variant return at the dispatch-local sink.
+        src = (
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self, n: str) -> None:\n"
+            "        self.name = n\n"
+            "class Cat:\n"
+            "    name: str\n"
+            "    def __init__(self, n: str) -> None:\n"
+            "        self.name = n\n"
+            "def choose(d: Dog) -> Dog | Cat:\n"
+            "    return d\n"
+            "def main() -> None:\n"
+            '    d = Dog("rex")\n'
+            "    match choose(d):\n"
+            "        case Dog() as x:\n"
+            "            print(x.name)\n"
+            "        case Cat() as y:\n"
+            "            print(y.name)\n"
+            "main()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert w.get("call.union_subject_ret", 0) >= 1
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_guarded_call_subject_defers(self):
+        # BOUNDARY (dualgen-probed): a GUARDED union match with a call
+        # subject falls back byte-identically -- the guarded lowerer keeps
+        # its lvalue-only subject path.
+        src = (
+            "class Dog:\n"
+            "    n: int\n"
+            "    def __init__(self, n: int) -> None:\n"
+            "        self.n = n\n"
+            "class Cat:\n"
+            "    n: int\n"
+            "    def __init__(self, n: int) -> None:\n"
+            "        self.n = n\n"
+            "class Picker:\n"
+            "    def choose(self, d: Dog) -> Dog | Cat:\n"
+            "        return d\n"
+            "def main() -> None:\n"
+            "    p = Picker()\n"
+            "    d = Dog(5)\n"
+            "    match p.choose(d):\n"
+            "        case Dog() as x if x.n > 3:\n"
+            '            print("big dog")\n'
+            "        case Dog():\n"
+            '            print("small dog")\n'
+            "        case Cat():\n"
+            '            print("cat")\n'
+            "main()\n"
+        )
+        assert _fn(_lower_ctx(src), "main") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+    def test_union_return_at_decl_still_rejects(self):
+        # BOUNDARY (dualgen-probed): the same return at a DECL consumer
+        # keeps rejecting -- the flag is position-scoped.
+        src = (
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self, n: str) -> None:\n"
+            "        self.name = n\n"
+            "class Cat:\n"
+            "    name: str\n"
+            "    def __init__(self, n: str) -> None:\n"
+            "        self.name = n\n"
+            "class Picker:\n"
+            "    def choose(self, d: Dog) -> Dog | Cat:\n"
+            "        return d\n"
+            "def main() -> None:\n"
+            "    p = Picker()\n"
+            '    d = Dog("rex")\n'
+            "    u = p.choose(d)\n"
+            "    if isinstance(u, Dog):\n"
+            "        print(u.name)\n"
+            "main()\n"
+        )
+        assert _fn(_lower_ctx(src), "main") is None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

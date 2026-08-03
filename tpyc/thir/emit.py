@@ -581,6 +581,8 @@ def _emit_literal(lit: THIRLiteral) -> str:
         # return) is the monostate member; into a storage-form Optional slot
         # (field write / storage-Optional return) `std::nullopt`; a borrow/
         # value-form None (pointer-repr slot) `nullptr`. Set by lowering.
+        if lit.none_cpp is not None:
+            return lit.none_cpp
         if isinstance(lit.result_type, UnionType):
             return "std::monostate{}"
         if isinstance(lit.result_type, NoneType):
@@ -2294,7 +2296,32 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         if item.deref_manager:
             ctx_cpp = f"*({ctx_cpp})"
         ctx_bind = "auto&" if item.manager_borrowed else "auto"
-        out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_cpp};\n")
+        if item.frame_ctx is not None:
+            # Resumable leaf owned manager with a frame home: the target's
+            # frame field aliases `__enter__()`'s result, so the manager
+            # lives in the skeleton-declared `__with_ctx_<K>` field and
+            # `__ctx_N` binds through it (`_gen_with`'s frame_ctx branch).
+            out.write(f"{indent}__with_ctx_{item.frame_ctx}"
+                      f".emplace({ctx_cpp});\n")
+            out.write(f"{indent}auto& __ctx_{n} = "
+                      f"(*__with_ctx_{item.frame_ctx});\n")
+        elif item.manager_hoist_cpp is not None:
+            # Kept owned manager (the _with_manager_needs_hoist mirror): the
+            # target's slot aliases `__enter__()`'s result past the block, so
+            # the manager lives in a function-scope optional and `__ctx_N`
+            # binds through it. Slot allocated AFTER the manager expr renders,
+            # matching the AST's gen_expr-then-next_slot order.
+            assert state.hoist_drainable, (
+                "a with manager-hoist slot in a leaf emitter with no "
+                "function-top drain (lowering should have rejected this body)")
+            state.assert_local_slot()
+            slot = f"__slot_{state.next_slot()}"
+            state.hoist_lines.append(
+                f"std::optional<{item.manager_hoist_cpp}> {slot};")
+            out.write(f"{indent}{slot}.emplace({ctx_cpp});\n")
+            out.write(f"{indent}auto& __ctx_{n} = (*{slot});\n")
+        else:
+            out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_cpp};\n")
         # The as-target spells the RAW source name (the AST arm does not
         # escape it), while later reads escape -- mirrored, not fixed.
         if item.target_arm is WithTargetArm.VALUE:
@@ -2307,6 +2334,11 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         elif item.target_arm is WithTargetArm.ASSIGN_PTR:
             out.write(f"{indent}{item.target} = &(__ctx_{n}.__enter__());\n")
         elif item.target_arm is WithTargetArm.ASSIGN_OPT:
+            out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
+        elif item.target_arm is WithTargetArm.FRAME_SLOT:
+            out.write(f"{indent}{item.target}"
+                      f".emplace(__ctx_{n}.__enter__());\n")
+        elif item.target_arm is WithTargetArm.FRAME_FIELD:
             out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
         else:
             out.write(f"{indent}__ctx_{n}.__enter__();\n")
@@ -2650,6 +2682,10 @@ def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
         out.write(f"{inner}{name} = &({rhs});\n")
     elif binding.mode == "assign_move":
         out.write(f"{inner}{name} = std::move({rhs});\n")
+    elif binding.mode == "frame_emplace":
+        # Resumable dispatch-hook capture into a frame_slot local: the
+        # slot's emplace copy, the AST's frame-resident bind.
+        out.write(f"{inner}{name}.emplace({rhs});\n")
     elif binding.mode == "copy":
         out.write(f"{inner}auto {name} = {rhs};\n")
     else:
@@ -2982,7 +3018,7 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     if stmt.none_entry is not None:
         state.comments.stmt(out, stmt.none_entry.loc, indent)
         out.write(f"{indent}if ({null_cond}) {{\n")
-        _emit_stmts(out, stmt.none_entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, stmt.none_entry, indent_level + 1, state)
         out.write(f"{indent}}} else {{\n")
     else:
         out.write(f"{indent}if ({has_value_cond}) {{\n")
@@ -3261,7 +3297,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
             else:
                 out.write(f"{indent}{{\n" if i == 0
                           else f"{indent}}} else {{\n")
-            _emit_stmts(out, entry.body, indent_level + 1, state)
+            _emit_match_arm_body(out, entry, indent_level + 1, state)
             continue
         conds = [f"{pre}{subject}{suf}" for pre, suf in entry.field_conds]
         if conds:
@@ -3273,7 +3309,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
         for fb in entry.field_bindings:
             _emit_match_binding(out, fb, subject, inner, bases)
         _emit_match_binding(out, entry.binding, subject, inner)
-        _emit_stmts(out, entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, entry, indent_level + 1, state)
     out.write(f"{indent}}}\n")
 
 

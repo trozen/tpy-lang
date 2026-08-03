@@ -848,6 +848,93 @@ class TestPtrOptionalRecordReturn:
         assert _fn(_lower_ctx(src), "pick") is None
 
 
+class TestPlainPtrLocalRecordReturn:
+    """`return best;` where `best` is a PLAIN F1 pointer-local (a `T*`
+    alias) at a record BORROW return slot: the same indirect-name arm as
+    the ptr-Optional sibling, `return (*best);` -- no move (an alias local
+    is never promoted movable; the render mirrors _maybe_move's verdict)."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    a: Int32\n"
+        "    def __init__(self, a: Int32) -> None:\n"
+        "        self.a = a\n"
+        "def find_max(points: list[P]) -> P:\n"
+        "    best = points[0]\n"
+        "    for p in points:\n"
+        "        if p.a > best.a:\n"
+        "            best = p\n"
+        "    return best\n"
+        "def main() -> None:\n"
+        "    pts = [P(1), P(9), P(4)]\n"
+        "    m = find_max(pts)\n"
+        "    m.a += 1\n"
+        "    print(pts[1].a)\n"
+        "main()\n"
+    )
+
+    def test_routes_and_witnesses(self):
+        assert _fn(_lower_ctx(self.SRC), "find_max") is not None
+        w = _emit_witnesses(self.SRC)
+        assert w.get("ret.record_ptr_local", 0) >= 1
+
+    def test_byte_identical_and_shape(self):
+        cpp = _cpp(self.SRC, thir=True)
+        assert cpp == _cpp(self.SRC, thir=False)
+        assert "return (*best);" in cpp
+        assert "std::move((*best))" not in cpp
+
+    def test_own_return_rebind_slot_local_moves(self):
+        # The STORAGE flavor: a reassigned (F2d rebind-slot) pointer local
+        # at an Own return moves at its last use -- the arm covers both
+        # slot kinds and both pointer-local classifications.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class P:\n"
+            "    a: Int32\n"
+            "    def __init__(self, a: Int32) -> None:\n"
+            "        self.a = a\n"
+            "def pick(flag: bool) -> Own[P]:\n"
+            "    best = P(1)\n"
+            "    if flag:\n"
+            "        best = P(9)\n"
+            "    return best\n"
+            "print(pick(True).a)\n"
+        )
+        assert _fn(_lower_ctx(src), "pick") is not None
+        w = _emit_witnesses(src)
+        assert w.get("ret.record_ptr_local", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "return std::move((*best));" in cpp
+
+    def test_narrowed_ptr_name_still_rejects(self):
+        # A NARROWED pointer name keeps its alias-rename render -- out of
+        # this arm (the ladder excludes narrowed names).
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    a: Int32\n"
+            "    def __init__(self, a: Int32) -> None:\n"
+            "        self.a = a\n"
+            "def pick(hit: P | None, fallback: P) -> P:\n"
+            "    if hit is not None:\n"
+            "        return hit\n"
+            "    return fallback\n"
+            "def main() -> None:\n"
+            "    f = P(2)\n"
+            "    r = pick(None, f)\n"
+            "    r.a += 1\n"
+            "    print(f.a)\n"
+            "main()\n"
+        )
+        # The narrowed-param return either routes via its own narrowed arm
+        # or falls back -- but never through ret.record_ptr_local.
+        w = _emit_witnesses(src)
+        assert w.get("ret.record_ptr_local", 0) == 0
+
+
 class TestErrorReturnNestedDef:
     # A nested def is never @error_return (gated at lowering), so the
     # enclosing @error_return function's emit state must not leak into the

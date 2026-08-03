@@ -4,7 +4,7 @@ switch/chain, record, optional-partition, union, and guarded-union.
 
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyAsPattern,
     TpyCall,
@@ -891,11 +891,24 @@ def _match_route(
             # dispatch-local (`auto __match_subject_N = <call>;`), captures
             # move out of it. Optional-typed rvalues stay out (an
             # `optional_to_ptr` lift on a temporary would dangle).
-            if not (kind == "if_elif_record"
-                    and isinstance(subj, TpyCall)
-                    and is_rvalue_source(analyzer, subj)
-                    and not isinstance(unwrap_readonly(stmt.subject_type),
-                                       OptionalType)):
+            # The union-switch analog: a Call/MethodCall rvalue returning a
+            # non-wrapper ptr-variant union materializes the same way, the
+            # arms `std::get` off the by-value dispatch local (the scoped
+            # `match_union_subject` result flag admits the call's union
+            # return at exactly this position).
+            union_call_subject = (
+                kind == "switch_union"
+                and isinstance(subj, (TpyCall, TpyMethodCall))
+                and is_rvalue_source(analyzer, subj)
+                and isinstance(unwrap_readonly(stmt.subject_type), UnionType)
+                and unwrap_readonly(stmt.subject_type).uses_pointer_repr()
+                and not unwrap_readonly(stmt.subject_type).needs_wrapper())
+            if not (union_call_subject
+                    or (kind == "if_elif_record"
+                        and isinstance(subj, TpyCall)
+                        and is_rvalue_source(analyzer, subj)
+                        and not isinstance(unwrap_readonly(stmt.subject_type),
+                                           OptionalType))):
                 return None
             subject_rvalue = True
         if (kind in ("optional_partition", "if_elif_optional")
@@ -922,7 +935,8 @@ def _match_route(
                     or union_route != "switch_union"):
                 return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
-                          union_route=union_route)
+                          union_route=union_route,
+                          subject_rvalue=subject_rvalue)
     if kind in ("if_elif_record", "guarded_record"):
         if not _f1_record(unwrap_readonly(stmt.subject_type), analyzer):
             return None
@@ -1014,17 +1028,17 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     kind = route.kind
     if arm_body_hooks and (kind not in (
             "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded",
-            "switch_union")
+            "switch_union", "if_elif_record", "optional_partition")
             or (kind == "switch_union"
                 and route.union_route == "guarded_union")
             or any(hk != "value" for _n, _t, hk in route.hoist_types)):
-        # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers
-        # and the unguarded union switch carry the skeleton hook at their
-        # arm-body points; the guarded-union / record / optional tiers and
-        # pointer/optional hoist kinds (frame-field pointer mechanics
-        # unverified) stay their own rungs. VALUE-kind hoists are no-op
-        # decls in a resumable -- every local is already a frame field --
-        # so they admit with the decl suppressed below.
+        # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers,
+        # the unguarded union switch, and the unguarded record chain carry
+        # the skeleton hook at their arm-body points; the guarded tiers /
+        # optional tiers and pointer/optional hoist kinds (frame-field
+        # pointer mechanics unverified) stay their own rungs. VALUE-kind
+        # hoists are no-op decls in a resumable -- every local is already a
+        # frame field -- so they admit with the decl suppressed below.
         raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
@@ -1090,7 +1104,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         return _lower_match_union(stmt, lc, declared, loc, pointers,
                                   hoist_decls,
                                   loop_depth=loop_depth,
-                                  arm_body_hooks=arm_body_hooks)
+                                  arm_body_hooks=arm_body_hooks,
+                                  subject_rvalue=route.subject_rvalue)
     if kind in ("poly_if_elif", "poly_guarded"):
         return _lower_match_poly(stmt, lc, declared, loc, pointers,
                                  hoist_decls, kind, loop_depth=loop_depth)
@@ -1099,11 +1114,13 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                                    hoist_decls, kind, loop_depth=loop_depth,
                                    hoist_kinds=hoist_kinds,
                                    hoist_slots=tuple(hoist_slots),
-                                   subject_rvalue=route.subject_rvalue)
+                                   subject_rvalue=route.subject_rvalue,
+                                   arm_body_hooks=arm_body_hooks)
     if kind == "optional_partition":
         return _lower_match_optional(stmt, lc, declared, loc, pointers,
                                      predeclared, hoist_decls,
-                                     loop_depth=loop_depth)
+                                     loop_depth=loop_depth,
+                                     arm_body_hooks=arm_body_hooks)
     if kind in ("if_elif_optional", "if_elif_optional_guarded"):
         return _lower_match_optional_chain(stmt, lc, declared, loc, pointers,
                                            hoist_decls, kind,
@@ -1222,16 +1239,15 @@ def _lower_scalar_arms(
             guard = _lower_match_guard(case.guard, lc, arm_declared)
         if arm_body_hooks:
             # Dispatch-hook mode: the arm body is a BB chain the skeleton
-            # walks (already seam-routed leaves). An ASSIGN-mode binding is
-            # the frame-field write (`v = __match_subject_N;`) both paths
-            # emit before the body point -- admitted; the copy/ref modes
-            # declare arm-block LOCALS, whose frame duality is unmirrored.
+            # walks (already seam-routed leaves). Bindings must be frame
+            # writes both paths emit before the body point -- the ASSIGN
+            # mode (`v = __match_subject_N;`) directly, the copy/ref modes
+            # re-keyed on the frame facts or rejected (_hook_mode_binding).
             # Literal facts stay rejected here: the skeleton's BB walk
             # would need the fact scoping the hooks do not carry.
             if lit_facts:
                 raise ThirUnsupported("res.match_strategy")
-            if binding is not None and binding.mode != "assign":
-                raise ThirUnsupported("res.match_binding")
+            binding = _hook_mode_binding(binding, lc)
             entry = THIRMatchArmEntry(
                 body=(), loc=case.loc, binding=binding, guard=guard,
                 body_key=id(case.body))
@@ -1446,6 +1462,34 @@ def _lower_or_field_conds(test: TpyOrPattern, lc: _LowerCtx,
             groups.append(tuple(alt_conds))
     return tuple(groups)
 
+def _hook_mode_binding(b: 'THIRMatchBinding | None', lc: _LowerCtx
+                       ) -> 'THIRMatchBinding | None':
+    """Dispatch-hook capture: re-key the bind mode on the FRAME facts. The
+    lowering `declared` dict has not seen non-hoisted generator locals at
+    the dispatch terminator, so a frame-resident capture computes the
+    block-local copy/ref mode -- the AST render is decided by frame
+    residency instead: a plain frame field assigns
+    (`v = __case_i.f;`), a frame_slot local emplaces
+    (`c.emplace(...)`). The frame_slots check applies to EVERY incoming
+    mode -- an "assign"-mode capture (its name in `declared`, e.g. bound
+    by an EARLIER dispatch in the same body and registered at that
+    dispatch's site) can still be a frame_slot local, and the plain
+    assign would not even compile (`frame_slot<T>` has no `operator=`).
+    Every other flavor (a genuine block local, alias temps, pointer
+    binds) has no mirrored frame render -- reject."""
+    if b is None:
+        return None
+    if b.name in lc.frame_slots:
+        if b.mode in ("assign", "copy", "ref"):
+            return replace(b, mode="frame_emplace")
+        raise ThirUnsupported("res.match_binding")
+    if b.mode == "assign":
+        return b
+    if b.mode in ("copy", "ref") and b.name in lc.plain_frame_fields:
+        return replace(b, mode="assign")
+    raise ThirUnsupported("res.match_binding")
+
+
 def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc,
                         pointers: AbstractSet[str],
@@ -1453,7 +1497,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         kind: str, *, loop_depth: int = 0,
                         hoist_kinds: 'dict[str, str] | None' = None,
                         hoist_slots: 'tuple[tuple[str, str], ...]' = (),
-                        subject_rvalue: bool = False) -> THIRMatch:
+                        subject_rvalue: bool = False,
+                        arm_body_hooks: bool = False) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
     source-order single-entry arms; per class arm the pre-rendered literal
     field conditions (`&&`-joined at emit around `__match_subject_N`) and
@@ -1530,13 +1575,27 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         if case.guard is not None:
             _witness("match.guard_arm")
             guard = _lower_match_guard(case.guard, lc, arm_declared)
-        arms.append(THIRMatchArm(labels=(), entries=(THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(
-                case.body, lc, arm_declared,
-                branch_decls_ok=True, loop_depth=loop_depth),
-            loc=case.loc, binding=binding, guard=guard,
-            field_conds=field_conds, field_bindings=field_bindings,
-            or_conds=or_conds),)))
+        if arm_body_hooks:
+            # Dispatch-hook mode: the arm body is a BB chain the skeleton
+            # walks; captures re-key on the frame facts (assign / emplace)
+            # or reject (`_hook_mode_binding` -- the field_alias extraction
+            # temp is a block local, its addr/move flavors likewise).
+            field_bindings = tuple(_hook_mode_binding(fb, lc)
+                                   for fb in field_bindings)
+            binding = _hook_mode_binding(binding, lc)
+            entry = THIRMatchArmEntry(
+                body=(), loc=case.loc, binding=binding, guard=guard,
+                field_conds=field_conds, field_bindings=field_bindings,
+                or_conds=or_conds, body_key=id(case.body))
+        else:
+            entry = THIRMatchArmEntry(
+                body=_statements._lower_scoped_stmts(
+                    case.body, lc, arm_declared,
+                    branch_decls_ok=True, loop_depth=loop_depth),
+                loc=case.loc, binding=binding, guard=guard,
+                field_conds=field_conds, field_bindings=field_bindings,
+                or_conds=or_conds)
+        arms.append(THIRMatchArm(labels=(), entries=(entry,)))
     emit_unreachable = (stmt.is_exhaustive and bool(stmt.cases)
                         and all(stmts_terminate(c.body) for c in stmt.cases))
     if emit_unreachable:
@@ -1774,7 +1833,8 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                           pointers: AbstractSet[str],
                           predeclared: AbstractSet[str],
                           hoist_decls: 'list[tuple[str, str]]', *,
-                          loop_depth: int = 0) -> THIRMatch:
+                          loop_depth: int = 0,
+                          arm_body_hooks: bool = False) -> THIRMatch:
     """Lower an optional_partition `match` (O1) -- see THIRMatch's
     `none_entry` block comment for the emit shape. The None arm's body/loc
     become `none_entry` (its comment renders at the OUTER indent, the AST's
@@ -1792,7 +1852,14 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
     if not unwrap_readonly(stmt.subject_type).uses_pointer_repr():
         return _lower_optional_value_dispatch(
             stmt, lc, declared, loc, pointers, predeclared, hoist_decls,
-            none_cases, inner_cases, loop_depth=loop_depth)
+            none_cases, inner_cases, loop_depth=loop_depth,
+            arm_body_hooks=arm_body_hooks)
+    if arm_body_hooks:
+        # Hook mode covers only the value-repr dispatch above; the
+        # pointer-repr O1 paths (record-inner chain, the single-inner
+        # partition) draw block-scoped inner aliases the BB walk cannot
+        # see -- their own rungs.
+        raise ThirUnsupported("res.match_strategy")
     inner_type = unwrap_readonly(stmt.subject_type).inner
     # The AST's record-inner dispatch keys on the RAW inner (a readonly-
     # wrapped record inner takes the if/elif chain there) -- mirrored.
@@ -1990,7 +2057,8 @@ def _lower_optional_value_dispatch(
         stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType], loc,
         pointers: AbstractSet[str], predeclared: AbstractSet[str],
         hoist_decls: 'list[tuple[str, str]]', none_cases, inner_cases, *,
-        loop_depth: int = 0) -> THIRMatch:
+        loop_depth: int = 0,
+        arm_body_hooks: bool = False) -> THIRMatch:
     """_gen_match_optimized_optional's value-repr form (O2): the has_value
     split, then the multi-arm inner dispatch over the `__match_inner_N`
     deref alias -- the enum/primitive switch (`_emit_switch_groups` with
@@ -2028,17 +2096,21 @@ def _lower_optional_value_dispatch(
         if nbnode is not None or not isinstance(ntest, TpyLiteralPattern):
             raise ThirUnsupported("stmt.match")
         _witness("match.optional_none_arm")
-        none_entry = THIRMatchArmEntry(
-            body=_statements._lower_scoped_stmts(
-                ncase.body, lc, dict(declared),
-                branch_decls_ok=True, loop_depth=loop_depth),
-            loc=ncase.loc)
+        if arm_body_hooks:
+            none_entry = THIRMatchArmEntry(
+                body=(), loc=ncase.loc, body_key=id(ncase.body))
+        else:
+            none_entry = THIRMatchArmEntry(
+                body=_statements._lower_scoped_stmts(
+                    ncase.body, lc, dict(declared),
+                    branch_decls_ok=True, loop_depth=loop_depth),
+                loc=ncase.loc)
     else:
         _witness("match.optional_value_only")
     arms, default_goto, has_defaults = _lower_scalar_arms(
         inner_cases, kind, lc, declared, pointers, inner_type,
         allow_facts=True, chain_guards_ok=False, bind_from_case_var=True,
-        loop_depth=loop_depth)
+        loop_depth=loop_depth, arm_body_hooks=arm_body_hooks)
     # The AST's inner _emit_switch_groups call never passes is_exhaustive,
     # so the synthetic default keys only on a user default's absence.
     synthetic_default = kind != "if_elif" and not has_defaults
@@ -2486,7 +2558,8 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        pointers: AbstractSet[str],
                        hoist_decls: 'list[tuple[str, str]]', *,
                        loop_depth: int = 0,
-                       arm_body_hooks: bool = False) -> THIRMatch:
+                       arm_body_hooks: bool = False,
+                       subject_rvalue: bool = False) -> THIRMatch:
     """Lower a switch_union `match` (M4a): arms in SOURCE order (no default
     regrouping -- `_gen_match_switch_union` emits `default:` in place),
     labels are numeric variant indices (`_variant_index` over the full
@@ -2523,17 +2596,15 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
             # Hook mode: the arm body lowers as skeleton-walked BB leaves
             # under the arm's stamped entry_narrowings (the `__case_{i}`
             # alias env in `_resume_narrow_envs` mirrors the extraction
-            # this tier draws below). Field sub-patterns and or-bind blocks
-            # declare case-block locals the BB walk can't see; whole-subject
-            # bindings are their own rung, like the scalar tiers.
-            if isinstance(test, TpyClassPattern) and test.keywords:
-                raise ThirUnsupported("res.match_strategy")
+            # this tier draws below). Captures are admitted when they are
+            # frame-field ASSIGNS (checked below, once computed); the
+            # or-bind arm stays rejected -- it re-walks one body per
+            # alternative, and re-walking an arm's BB chain would re-split
+            # its resume cases.
             if (isinstance(test, TpyOrPattern)
                     and any(isinstance(alt, TpyClassPattern) and alt.keywords
                             for alt in test.patterns)):
                 raise ThirUnsupported("res.match_strategy")
-            if bnode is not None:
-                raise ThirUnsupported("res.match_binding")
         if (isinstance(test, TpyOrPattern)
                 and any(isinstance(alt, TpyClassPattern) and alt.keywords
                         for alt in test.patterns)):
@@ -2610,6 +2681,12 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                                            from_case_var=member is not None)
                 arm_declared[bnode.name] = (member if member is not None
                                             else subj_type)
+            if arm_body_hooks:
+                # Hook-mode captures re-key on the frame facts (assign /
+                # emplace) or reject -- see _hook_mode_binding.
+                field_bindings = tuple(_hook_mode_binding(fb, lc)
+                                       for fb in field_bindings)
+                binding = _hook_mode_binding(binding, lc)
             body = (() if arm_body_hooks else _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 branch_decls_ok=True, loop_depth=loop_depth))
@@ -2622,10 +2699,15 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                         and all(stmts_terminate(c.body) for c in stmt.cases))
     if emit_unreachable:
         _witness("match.unreachable_tail")
+    if subject_rvalue:
+        _witness("match.subject_rvalue")
     return THIRMatch(
         strategy="switch_union",
-        subject=_lower_subject_expr(stmt.subject, lc, declared),
-        subject_ref=True,
+        subject=(_lower_expr(stmt.subject, lc, declared,
+                             use=_ExprUse(match_union_subject=True))
+                 if subject_rvalue
+                 else _lower_subject_expr(stmt.subject, lc, declared)),
+        subject_ref=not subject_rvalue,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -2634,9 +2716,11 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
         # A field/subscript subject stores VALUE-variant regardless of the
         # type's primary repr (`is_ptr_variant_source`'s field/subscript
         # arms). A NAME's verdict is its BINDING's, not its type's -- the
-        # gate above rejected the bindings THIR cannot classify.
+        # gate above rejected the bindings THIR cannot classify. An RVALUE
+        # call subject materializes the return form, which for the admitted
+        # slice IS the pointer variant (the route keyed uses_pointer_repr).
         is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
-                        if subj_name is not None else False),
+                        if subj_name is not None else subject_rvalue),
         wrapper_value=u.needs_wrapper(),
         loc=loc,
     )

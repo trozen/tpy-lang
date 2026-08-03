@@ -1224,14 +1224,15 @@ class TestRecordBorrowReturn:
         assert not ret.value.receiver.deref
         assert faces.get("ret.record_field", 0) == 1
 
-    def test_pointer_local_return_is_ineligible(self):
+    def test_pointer_local_return_routes_deref(self):
         # A reassigned record local is an F2 pointer-local (`Inner* x`); its
-        # return derefs (`return (*x);`) -- a render this cell does not mirror.
-        thir = _lower_ctx(
+        # return derefs (`return (*x);`) -- the ret.record_ptr_local arm.
+        thir, faces = _lower_ctx_witnessed(
             _F1_RECORDS
             + "def f(b: Box, c: Box, flag: bool) -> Inner:\n"
             + "    x = b.inner\n    if flag:\n        x = c.inner\n    return x\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        assert faces.get("ret.record_ptr_local", 0) == 1
 
     def test_self_return_routes(self):
         # `return self` (builder pattern) renders the AST's indirect-name

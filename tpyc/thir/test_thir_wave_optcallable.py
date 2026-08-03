@@ -681,9 +681,10 @@ class TestTypedDictGetAndMembership:
         assert w.get("binop.typed_dict_in", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_always_true_fold_still_defers(self):
-        # A total=True field folds the membership to a constant with an
-        # operand-effect wrapper -- not mirrored.
+    def test_always_true_fold_routes_operand_effect(self):
+        # A total=True field folds the membership to a constant with the
+        # operand-effect comma wrapper (`(static_cast<void>(kwargs), true)`),
+        # keeping the receiver evaluated.
         src = (
             "from typing import TypedDict, Unpack\n"
             "class Fixed(TypedDict):\n"
@@ -691,8 +692,30 @@ class TestTypedDictGetAndMembership:
             "def folded(**kwargs: Unpack[Fixed]) -> None:\n"
             "    if \"name\" in kwargs:\n"
             "        print(kwargs.get(\"name\", \"x\"))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "folded") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "folded") is not None
+        assert w.get("binop.typed_dict_in_total", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_always_true_not_in_folds_false(self):
+        # The `not in` flavor renders the operand-effect FALSE constant.
+        src = (
+            "from typing import TypedDict, Unpack\n"
+            "class Fixed(TypedDict):\n"
+            "    name: str\n"
+            "def folded(**kwargs: Unpack[Fixed]) -> None:\n"
+            "    print(\"name\" not in kwargs)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "folded") is not None
+        assert w.get("binop.typed_dict_in_total", 0) >= 1
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "(static_cast<void>(kwargs), false)" in cpp
         _assert_byte_identical(src)
 
 

@@ -96,6 +96,11 @@ class THIRLiteral(THIRExpr):
     # Synthetic small integers (tuple indices and direct unit-test nodes) may
     # omit this because their decimal spelling is position-independent.
     int_cpp: str | None = None
+    # A None literal's pre-spelled render for slots whose spelling the
+    # form/type split cannot derive (the base-init target-typed row:
+    # `none_default_cpp_spelling` decides `{}` vs `std::nullopt` vs
+    # `nullptr` from the base param slot). None keeps the positional arms.
+    none_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -2339,6 +2344,11 @@ class WithTargetArm(Enum):
       * `ASSIGN_OPT` -- hoist-predeclared optional-storage target:
                         `<name> = __ctx_N.__enter__();` (plain engaging
                         assign; reads stay on the deref model)
+      * `FRAME_SLOT` -- resumable frame_slot target (leaf `with`):
+                        `<name>.emplace(__ctx_N.__enter__());`
+      * `FRAME_FIELD` -- resumable plain frame-field target (leaf `with`):
+                        `<name> = __ctx_N.__enter__();` (the name's storage
+                        IS the frame member -- no local decl)
     """
     NONE = auto()
     VALUE = auto()
@@ -2346,6 +2356,8 @@ class WithTargetArm(Enum):
     PTR_DECL = auto()
     ASSIGN_PTR = auto()
     ASSIGN_OPT = auto()
+    FRAME_SLOT = auto()
+    FRAME_FIELD = auto()
 
 
 @dataclass(frozen=True)
@@ -2360,7 +2372,16 @@ class THIRWithItem:
     `__exit__` facts (bool return / an `exc_val: Optional[BaseException]`
     second param); they pick the catch arms and the exc argument spellings.
     `target_cpp` is the PTR_DECL arm's pointee type, pre-rendered at lowering
-    (`lc.render_type`, the same source as an F2 borrow local's cpp_type)."""
+    (`lc.render_type`, the same source as an F2 borrow local's cpp_type).
+    `manager_hoist_cpp` is the KEPT owned manager's type (the
+    `_with_manager_needs_hoist` mirror: an already-declared target aliases
+    `__enter__()`'s result past the block, so the manager hoists to a
+    function-scope `std::optional<CM> __slot_N` and `__ctx_N` binds through
+    it); None keeps the plain `auto __ctx_N = ...` bind. `frame_ctx` is the
+    resumable leaf twin: the owned manager's `__with_ctx_<K>` frame-field
+    number (`resumable_state(func).with_owned_ctx_map`, declared by the
+    skeleton), rendering `__with_ctx_K.emplace(...)` + the `auto& __ctx_N`
+    bind through it; None keeps the plain bind."""
     ctx_expr: THIRExpr
     manager_borrowed: bool
     deref_manager: bool
@@ -2369,6 +2390,8 @@ class THIRWithItem:
     can_suppress: bool
     takes_exc_val: bool
     target_cpp: 'str | None' = None
+    manager_hoist_cpp: 'str | None' = None
+    frame_ctx: 'int | None' = None
 
 
 @dataclass(frozen=True)
@@ -2581,8 +2604,10 @@ class THIRMatchBinding:
     -- `name = &(subject);`), 'assign_move' (a hoisted owned-optional slot
     moving from a materialized rvalue subject -- `name =
     std::move(subject);`), 'copy' (sema's `bind_by_value` free-copy scalar
-    -- `auto name = subject;`), 'ref' (`auto& name = subject;`). The name
-    is raw; emit escapes. `from_case_var` (union tier) binds against the
+    -- `auto name = subject;`), 'ref' (`auto& name = subject;`),
+    'frame_emplace' (a resumable dispatch-hook capture into a frame_slot
+    local -- `name.emplace(subject);`, re-keyed from the frame facts by
+    `_hook_mode_binding`). The name is raw; emit escapes. `from_case_var` (union tier) binds against the
     arm's `__case_{i}` extraction alias (or the composed `std::get` when
     no alias was drawn) instead of the subject. A FIELD capture
     (`case C(f=name)`) carries `subject_suffix=".f"`: the emit composes
@@ -2598,7 +2623,8 @@ class THIRMatchBinding:
     a row's base from the subject to a previously-bound name (a field
     alias, or an `as` name whose nested keywords bind through it)."""
     name: str
-    # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref' | 'field_alias'
+    # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref'
+    # | 'frame_emplace' | 'field_alias'
     mode: str
     from_case_var: bool = False
     subject_suffix: str = ""

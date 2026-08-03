@@ -570,10 +570,10 @@ class TestPtrTargetReuse:
         assert "g->n" in out
 
     def test_reuse_read_after_hoists_manager(self):
-        # The same reuse chain plus a trailing read: `g` then points at the second
-        # manager past its block, so that OWNED manager is hoisted to a
-        # function-scope optional. THIR has no row for that bind, so the body
-        # falls back byte-identically.
+        # The same reuse chain plus a trailing read: `g` then points at the
+        # second manager past its block, so that OWNED manager hoists to a
+        # function-scope optional and `__ctx_2` binds through it (the
+        # _with_manager_needs_hoist mirror).
         src = (
             self._G
             + "def f() -> None:\n"
@@ -584,11 +584,18 @@ class TestPtrTargetReuse:
             + "    print(g.n)\n"
             + "f()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.manager_hoist", 0) > 0
         out = _cpp(src, thir=True)
         assert out == _cpp(src, thir=False)
-        assert "std::optional<G> __slot_" in out
+        assert "std::optional<G> __slot_1;" in out
+        assert "__slot_1.emplace(G(" in out
+        assert "auto& __ctx_2 = (*__slot_1);" in out
         assert "g = &(__ctx_2.__enter__());" in out
+        # The FIRST manager (a fresh PTR_DECL target is not yet declared, so
+        # the hoist gate cannot fire) stays block-scoped.
+        assert "auto __ctx_1 = G(" in out
 
     def test_mixed_arms_and_chained_reuse_route(self):
         # PTR_DECL and VALUE arms in ONE multi-item statement, then two
@@ -638,9 +645,11 @@ class TestPtrTargetReuse:
         )
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_rebind_slot_target_stays_ast(self):
+    def test_rebind_slot_target_routes_plain_assign(self):
         # A plain rvalue decl first makes the name an F2d rebind slot; the
-        # with-reuse arm must not reseat through it.
+        # with bind still renders the plain `g = &(...)` assign (the AST's
+        # already-declared arm does not consult rebind slots -- the with
+        # aliases the manager, never the slot).
         src = (
             self._G
             + "def f() -> None:\n"
@@ -650,8 +659,10 @@ class TestPtrTargetReuse:
             + "        print(g.n)\n"
             + "f()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "f") is not None
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "g = &(__ctx_1.__enter__());" in out
 
     def test_with_then_rvalue_reassign_stays_ast(self):
         # The mixed family is kept out at the reassign site (a pointer-local
@@ -668,7 +679,10 @@ class TestPtrTargetReuse:
         assert _fn(_lower_ctx(src), "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_reuse_inside_branch_stays_ast(self):
+    def test_reuse_inside_branch_routes(self):
+        # The already-declared `g = &(...)` assign is position-neutral, so an
+        # in-branch reuse routes; the branch manager is read past its block
+        # (the trailing print) and hoists.
         src = (
             self._G
             + "def f(b: bool) -> None:\n"
@@ -680,8 +694,12 @@ class TestPtrTargetReuse:
             + "    print(g.n)\n"
             + "f(True)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.manager_hoist", 0) > 0
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "__slot_1.emplace(G(" in out
 
 
 class TestStrArgManager:
@@ -848,14 +866,13 @@ _SELFG = (
 
 
 class TestAssignOptTarget:
-    def test_nested_with_hoisted_target_stays_ast(self):
+    def test_nested_with_hoisted_target_routes_pointer(self):
         # The inner with-as target is hoist-predeclared by the outer's
-        # branch-decl pass. It now hoists in POINTER form and the bind aliases
-        # the manager -- owning `std::optional<G>` storage copied it, so a
-        # mutation through the target never reached the object __exit__ runs
-        # against. THIR has no row for the pointer bind yet, so the body falls
-        # back and must stay byte-identical; un-rejecting it is the follow-up
-        # that retires the now-unwitnessed ASSIGN_OPT arm.
+        # branch-decl pass, in POINTER form (`G* inner;` -- sema's
+        # stmt-borrow fact makes a with target borrow-only), and the bind
+        # aliases the manager: owning `std::optional<G>` storage copied it,
+        # so a mutation through the target never reached the object __exit__
+        # runs against.
         src = (
             _SELFG
             + "def f() -> None:\n"
@@ -865,9 +882,13 @@ class TestAssignOptTarget:
             + "            print(outer.n)\n"
             + "f()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.hoist_ptr_local", 0) > 0
+        assert w.get("with.ptr_target_reuse", 0) > 0
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
+        assert "G* inner;" in cpp
         assert "inner = &(__ctx_" in cpp
 
     def test_assign_opt_requires_matching_record(self):
@@ -896,10 +917,152 @@ class TestAssignOptTarget:
         with activate_compiler(compiler):
             mismatch = _with_target_arm(
                 item, {"t": h_t}, prescan, entry.analyzer,
-                {"t"}, set(), {"t"})
+                {"t"}, {"t"})
             matching = _with_target_arm(
                 item, {"t": g_t}, prescan, entry.analyzer,
-                {"t"}, set(), {"t"})
+                {"t"}, {"t"})
         assert mismatch is None
         assert matching is not None
         assert matching[0] is WithTargetArm.ASSIGN_OPT
+
+
+class TestManagerHoistBoundary:
+    """The kept-owned-manager arm's edges (each shape dualgen-probed when the
+    arm landed): the hoist keys on manager_owns_enter_result AND
+    target_read_after AND an already-declared non-optional target -- every
+    neighbor missing one fact binds plain, and the two shapes the emit has
+    no drain/slot spelling for keep rejecting."""
+
+    def test_delegating_manager_binds_plain(self):
+        # `__enter__` hands back a GLOBAL -- not the manager's own storage
+        # (a field read would be: an inline field IS inside the manager and
+        # hoists) -- so manager_owns_enter_result is False and both branch
+        # managers stay block-scoped.
+        src = (
+            "from tpy import Int32\n"
+            "class Item:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "SHARED: Item = Item(7)\n"
+            "class Delegate:\n"
+            "    def __enter__(self) -> Item:\n"
+            "        return SHARED\n"
+            "    def __exit__(self, et: None, ev: None, tb: None) -> None:\n"
+            "        pass\n"
+            "def probe(flag: bool) -> Int32:\n"
+            "    if flag:\n"
+            "        with Delegate() as v:\n"
+            "            pass\n"
+            "    else:\n"
+            "        with Delegate() as v:\n"
+            "            pass\n"
+            "    return v.n\n"
+            "probe(True)\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert w.get("with.manager_hoist", 0) == 0
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "auto __ctx_1 = Delegate();" in out
+        assert "__slot_" not in out
+
+    def test_field_manager_local_receiver_routes(self):
+        # The borrowed-field manager row off a plain LOCAL receiver (not
+        # self): `auto& __ctx_N = o.mgr;`.
+        src = (
+            "from tpy import Int32\n"
+            "class Mgr:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 0\n"
+            '    def __enter__(self) -> "Mgr":\n'
+            "        self.n += 1\n"
+            "        return self\n"
+            "    def __exit__(self, et: None, ev: None, tb: None) -> None:\n"
+            "        self.n += 100\n"
+            "class Owner:\n"
+            "    mgr: Mgr\n"
+            "    def __init__(self) -> None:\n"
+            "        self.mgr = Mgr()\n"
+            "def f() -> None:\n"
+            "    o = Owner()\n"
+            "    with o.mgr as b:\n"
+            "        b.n += 1000\n"
+            "        print(o.mgr.n)\n"
+            "    print(o.mgr.n)\n"
+            "f()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.manager_borrowed_field", 0) > 0
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "auto& __ctx_1 = o.mgr;" in out
+
+    def test_top_level_hoist_defers(self):
+        # A TOP-LEVEL reuse chain with a trailing read needs the hoist slot
+        # at module scope (`static __global_slot_N` spelling the arm does
+        # not produce) -- the module-init walk falls back byte-identically.
+        src = (
+            _SELFG
+            + "with G(1) as g:\n"
+            + "    print(g.n)\n"
+            + "with G(2) as g:\n"
+            + "    print(g.n)\n"
+            + "print(g.n)\n"
+        )
+        thir = _lower_ctx(src)
+        assert thir.top_level is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_rvalue_reassigned_with_hoist_defers(self):
+        # A with-owned hoist name that is ALSO rvalue-reassigned needs the
+        # if-head rebind slot THIRWith has no field for -- the body falls
+        # back byte-identically.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class G:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            '    def __enter__(self) -> "G":\n'
+            "        return self\n"
+            "    def __exit__(self, et: None, ev: None, tb: None) -> None:\n"
+            "        pass\n"
+            '    def next(self) -> Own["G"]:\n'
+            "        return G(self.n + 1)\n"
+            "def run() -> Int32:\n"
+            "    with G(1) as outer:\n"
+            "        with G(10) as inner:\n"
+            "            print(inner.n)\n"
+            "        inner = inner.next()\n"
+            "        print(outer.n)\n"
+            "    return inner.n\n"
+            "run()\n"
+        )
+        assert _fn(_lower_ctx(src), "run") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_multi_item_second_hoists(self):
+        # One statement, two managers: only the item whose (branch-hoisted,
+        # read-after) target aliases its OWN manager hoists; slot numbering
+        # and __ctx numbering stay interleaved like the AST's.
+        src = (
+            _SELFG
+            + "def run(flag: bool) -> Int32:\n"
+            + "    if flag:\n"
+            + "        with G(1) as a, G(10) as b:\n"
+            + "            pass\n"
+            + "    else:\n"
+            + "        with G(2) as a, G(20) as b:\n"
+            + "            pass\n"
+            + "    return a.n + b.n\n"
+            + "run(True)\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "run") is not None
+        assert w.get("with.manager_hoist", 0) >= 4
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)

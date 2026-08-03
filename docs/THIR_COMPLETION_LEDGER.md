@@ -7467,3 +7467,218 @@ family. Boundary pins added: literal-stub arity, decided-compare
 fence, literal-mode incompatible return (the AST's dead-code suppress
 stays unmirrored), union-return view source, cross-module mangled
 spelling, bare literal at a Literal slot.
+
+### With-family waves: stmt.with + res.leaf_with drained (2026-08-03)
+
+Fresh census after the with-target storage rework (7b6e556cd2) put
+`body:stmt.with` on top (10 sole cases, all its new fail-closed
+markers) with `resumable:res.leaf_with` second (6). Both drained in
+two cells on `thir-r16-resumable`; +19 flips (the 16 with-family
+sole/multi cases incl. `with_statement`, plus `coro_with_as_ref`,
+`with_target_hoisted_aliases`, `with_target_reuse_read_after`).
+
+Cell 1 (sync): the kept-owned-manager hoist
+(`_with_manager_needs_hoist` mirror -- `std::optional<CM> __slot_N`
+via hoist_lines, slot drawn AFTER the manager expr renders);
+`_with_target_arm` drops its rebind-slot conjunct (the AST's
+already-declared arm binds `name = &(...)` regardless -- the with
+aliases the manager, never the slot); the in-branch fence narrows to
+PTR_DECL; with-owned hoists gain the pointer flavor (`T* name;`,
+borrow-only names -- the hoisted with-as target); borrowed
+FIELD-ACCESS managers admit with a ctx_manager row in the field
+result ladder. Four stays-AST pins converted (their stated reasons
+were exactly the removed rejects); boundary pins: delegating manager
+(a GLOBAL-returning `__enter__` binds plain -- note a FIELD read IS
+the manager's own storage and hoists, which refuted the first pin
+fixture), top-level + rvalue-reassigned rejects, multi-item hoist.
+
+Cell 2 (resumable leaf): the 5202 blanket reject replaced by real
+classification in `_lower_with` -- FRAME_SLOT emplace / FRAME_FIELD
+assign target arms (frame-resident check FIRST, mirroring
+`_gen_with`'s dispatch order), the `__with_ctx_<K>` owned-manager
+frame home read from `resumable_state(func).with_owned_ctx_map` (the
+same source the AST ctx copies -- no drift, no emit-time hook).
+FRAME_FIELD admits only bare-read value families
+(scalar/Char/enum/str/bytes): the Optional-enter target is a plain
+field for WRITES but its narrowed reads deref -- dualgen caught the
+bare-read divergence before any pin would have. A return nested in a
+leaf with rejects (`with.leaf_return`): the ctx return hook walks the
+AST finally_stack, which the THIR with emit does not populate. One
+collateral pin re-fixtured (the leaf-match boundary's example shape
+now routes; swapped to the still-rejected Optional-enter form).
+
+Lesson repeated: both probe-caught defects (optional-enter bare read,
+the "delegating" fixture that actually owned its storage) were
+boundary-shape errors invisible to the routed-case corpus -- the
+dualgen-then-pin discipline caught each within the wave.
+
+`with.opt_slot_target` is now zero-witness corpus-wide (the pointer
+flavor took its last witness); TODO's ## Next entry on deleting or
+re-witnessing the ASSIGN_OPT arm stands.
+
+### Match-dispatch hook wave: res.match_strategy drained (2026-08-03)
+
+The resumable MatchDispatch hook mode admitted three more tiers,
+draining the queue's res.match_strategy item (5 sole cases flipped:
+gen_match_{optional,union,nonlvalue_value_bind},
+capture_rebind_in_generator, nested_capture_reuse_generator; commit
+a49484259e + the flip commit).
+
+- if_elif_record joined the hook-admitted kinds (arm bodies as
+  body_key hooks; the record chain emit routed through the hook-aware
+  _emit_match_arm_body).
+- The load-bearing piece is capture re-keying (_hook_mode_binding):
+  at the dispatch terminator the BB walk's `declared` has not seen
+  non-hoisted generator locals, so captures compute block-local
+  copy/ref modes -- the frame facts decide the real render instead
+  (plain frame field -> assign, frame_slot -> the new frame_emplace
+  mode `c.emplace(...)`), everything else rejects. The dispatch site
+  then registers hook-admitted capture names into `declared` from
+  frame_local_types (the AST's var_types registration) so arm-body
+  reads lower -- the missing half that surfaced as name.global_read
+  after the binding admission.
+- optional_partition admits the VALUE-repr O2 dispatch only (None arm
+  hooked, inner arms via the shared scalar walk -- which now uses the
+  same re-keying); pointer-repr O1 keeps rejecting.
+- The or-bind arm stays rejected: it re-walks one body per
+  alternative, and re-walking an arm's BB chain would re-split its
+  resume cases.
+
+Three stays-AST pins converted to routing pins (their fixtures were
+exactly the admitted shapes); TestMatchDispatchTierBoundaries pins the
+record/O2 routings + or-bind/guarded-record/pointer-repr rejects (all
+dualgen-probed first).
+
+Scouted for the next cell (recorded in the task list): the
+expr.method_call trio (frame_local_last_use_move x2 +
+coro_for_tuple_unpack_ref) rejects at the arg gate on a
+TpyCoerce(bytearray->bytes) wrapping a movable local at an Own[bytes]
+slot -- the AST peels the render-identical coerce and applies the
+last-use move (`std::move((*buf))`); mirroring touches the
+move-verdict join. The two reactor_* cases at the method SHAPE gate
+are the PARKED socket/native-method family -- skipped per the park
+registry.
+
+### Coerced-move arg wave: the bytearray/bytes identity pair (2026-08-03)
+
+The expr.method_call frontier's mechanical residue (commit 8d7189b57f
++ 3 flips: the frame_local_last_use_move pair and stdlib/base64 as
+coerce collateral). `_coerce_disposition` learned the
+bytearray<->bytes coercions (identity in every position -- both spell
+vector<uint8_t>, no codegen lambda); `_own_move_source_slice` peels
+the coerce for its name checks with a MOVE-ONLY bytes slot verdict
+(`_own_bytes_identity_move_slot` -- the non-move halves must not see
+bytes: the AST passes a non-moved bytes lvalue BARE to an
+inline_template callee, so widening the shared `_own_lvalue_temp_slot`
+would have made the copy row diverge); the method-arg gate admits the
+move slice up front, mirroring _maybe_move's move-first ordering, and
+the render's coerce-over-frame-slot fence yields to the move check.
+One prior reject pin converted (bytearray at a plain bytes param now
+rides the identity passthrough, dualgen'd IDENTICAL); boundary pins
+for the sync/resumable non-last-use fallbacks.
+
+The two reactor_* cases sharing the tag are the PARKED socket/native
+family (method SHAPE gate) -- untouched per the park registry.
+coro_for_tuple_unpack_ref advanced to its real blocker: the
+tuple-literal arg row (`pairs.append((Item(1), Item(2)))`), a separate
+future cell.
+
+### Plain pointer-local record return + base-init None spelling (2026-08-03)
+
+Two small cells off the fresh census (commits f9d193c335 + 1400e3451c
++ the review round), +10 flips total (dial 3095 -> 3102 after the
+suite): the census also handed 2 FREE match-dispatch collateral flips
+(async_match_binding, match_capture_across_yield -- zero code change).
+
+- `return best;` where `best` is a plain F1 `T*` alias local at a
+  record return slot takes the same is_indirect_name arm as its
+  ptr-Optional sibling (`ret.record_ptr_local`): deref + the move at a
+  movable last use via the shared `_is_move_source` audit -- a borrow
+  return's alias local never promotes (renders bare `(*best)`), an Own
+  return's reassigned rebind-slot local moves
+  (`return std::move((*best));`, review-round pinned). +7 flips:
+  returns/return_{param,global}_ref, interop/
+  warn_export_class_return_self, the with-family riders
+  with_target_{delegating_manager,multi_item_mixed} (both had been
+  blocked on the bare-global `return SHARED;` inside `__enter__`).
+  One forms pin converted (its stated reason was the removed reject).
+- A base-init `None` arg carries its SLOT's spelling on
+  `THIRLiteral.none_cpp` (`{}` variant / `std::nullopt` value-optional
+  / bare `nullptr` pointer-repr -- all three pinned after the review
+  round), rendered by the same `default_to_cpp_from_analyzer` the AST
+  arm calls. Flips defaults/baseinit_union_none (the deliberate
+  reject-witness case); the os_error pair stays on the parked
+  cross-module-record family.
+
+Also scouted and registered (TODO.md, missing machinery): the
+comprehension-var SHADOW priority mirror (`comp_local_names`) -- the
+remaining list_comp singles are one shadow cell + three unrelated rows.
+
+### copy() reseat + Own-arg rows (2026-08-03)
+
+The call.builtin_special decl/discard residue, two cells (+5 flips,
+commits e2f4601311 + 03f145efba):
+
+- `copy(x)` of a plain F1-record name as a RESEAT rvalue rides the
+  rebind machinery: the OPTIONAL_STORAGE engaging assign, the
+  BRANCH_RVALUE lazy slot, the F2d rebind-slot reseat
+  (`saved = &*(__slot_N = Point(p));` -- the corpus escape cases hit
+  THIS arm, not BRANCH_RVALUE; the review round pinned the genuinely
+  branch-hoisted and single-bind-optional flavors separately), and the
+  OPT_PTR_SLOT exact-type reseat all intercept `_lower_copy_record`
+  before the generic call tail (the special-builtin gate rejects
+  copy() there); the opt-slot arm keys the copy on the slot's own
+  record -- a SUBTYPE copy keeps rejecting (dualgen'd). Flips
+  pointers/escape_{explicit_storage,local_safe}.
+- `copy(name)` into a same-nominal Own slot at a FREE call
+  (`consume(Box(b))`): the inline free-call arg gate gains the
+  `_copy_record_own_arg` row -- the `_lower_call_arg` render intercept
+  already existed, only the gate row was missing. A pointer-local
+  source keeps rejecting at the intercept's live-set re-run (boundary
+  pinned). Flips the auto_move discard trio.
+
+Named residue at the same tag: the ptr-variant union copy (a two-line
+`to_value_variant` slot + `to_ptr_variant` alias fan-out --
+union/union_copy_ptr_variant), a one-source-to-two-statements shape
+adjacent to the registry's del-fan-out machinery note.
+
+### TypedDict membership fold + the union CALL subject redo (2026-08-03)
+
+Two cells (+2 flips, commits 5691673548 + cf9a37dcc6):
+
+- The total=True TypedDict membership fold renders the operand-effect
+  comma form (`(static_cast<void>(r), true)` / `false` for `not in`),
+  closing the typed_dict_in arm's last half; the old boundary pin
+  converted. Flips typed_dict/typed_dict_get_in. Named residue at the
+  in.record tag: the no-__contains__ iterator-probe IIFE
+  (list/arraylist_membership) and the field-of-call __contains__
+  receiver (tplib/requests_cookies_expiry).
+- The REGISTERED redo of the union-switch CALL subject landed clean:
+  a Call/MethodCall rvalue returning a non-wrapper ptr-variant union
+  materializes into the by-value dispatch local (subject_ref=False,
+  is_ptr_variant folds the `*std::get` deref); the method's union
+  return admits through the SCOPED match_union_subject _ExprUse flag
+  (nothing storage-wide -- the revert's complaint), decl consumers
+  keep rejecting (dualgen'd + pinned). Flips
+  union/match_ptr_variant_call; the registry entry is marked DONE.
+
+Scouted alongside: the setitem.recv.field_parent trio is the
+module-global container receiver family (os.environ -- the
+`(*qualified_global)` deref across setitem/reads/membership), a
+coherent future cell.
+
+### Tuple-return call sources + the span-coerce method arg (2026-08-03)
+
+Two small cells closing the iteration (+2 flips, commits 99114b2da5 +
+7190806206): the value-tuple return source gate admits TpyMethodCall
+(module-qualified stub calls -- `return math.frexp(2.0)`; the generic
+tail's call gates own the result rows; the user-method flavor pinned
+as a bonus witness), and the method-arg ladder gains the free-call
+ladder's `_span_coerce_arg` row (an Array local at a by-value Span
+method slot renders the as_mut_span wrap). A PRE-EXISTING
+whole-compile crash was probe-found and filed in BUGS.md: a ctor-arg
+call at the tuple-unpack source builds a THIRArgTemp under a
+non-flushable position and the validator raises OUT of the fallback
+boundary. Named residue: the two Own[tuple]-return name sources (the
+parked F3 family), the record-rvalue-on-call-receiver and
+datetime-optional method-arg singles.

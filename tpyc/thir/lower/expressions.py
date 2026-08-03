@@ -324,6 +324,7 @@ from .predicates import (
     _optional_checked_field_over_field_ok,
     _field_over_record_getitem_ok,
     _record_getitem_idx_recv_ok,
+    _own_bytes_identity_move_slot,
     _own_lvalue_temp_slot,
     _operand_type,
     _peel_coerce,
@@ -699,6 +700,19 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _witness("call.ptr_opt_lift"))
               or (result is _ExprResultUse.DISCARD
                   and is_void_like_type(ret))
+              # The union-switch CALL-subject sink (`match choose(d):`):
+              # the non-wrapper ptr-variant union return is consumed whole
+              # by the by-value dispatch local -- the free-call twin of the
+              # method gate's union_subject_ret_ok row.
+              or (use.match_union_subject
+                  and isinstance(ret, TpyType)
+                  and isinstance(unwrap_readonly(unwrap_ref_type(
+                      unwrap_send_sync(ret))), UnionType)
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      ret))).uses_pointer_repr()
+                  and not unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      ret))).needs_wrapper()
+                  and _witness("call.union_subject_ret"))
               # A DISCARDED @native record-rvalue call (`open(missing)` for
               # its raise, result unused): the bare call statement -- the
               # record temporary dies at the semicolon on both paths.
@@ -919,12 +933,17 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     slice; the flushable copy half stays DIRECT-only) and `_lower_call_arg`'s
     Own-slot arm (which picks THIRMove on the same facts), so the two cannot
     drift."""
-    if _own_lvalue_temp_slot(a, ptype, lc.analyzer) is None:
+    if (_own_lvalue_temp_slot(a, ptype, lc.analyzer) is None
+            and _own_bytes_identity_move_slot(a, ptype, lc.analyzer) is None):
         return False
-    if not isinstance(a, TpyName) or a.name == "self":
+    # The AST's `_maybe_move` peels coerces before the last-use check, so an
+    # all-identity chain over a movable name moves the same way the bare
+    # name does (`push_back(std::move((*buf)))` under bytearray->bytes).
+    bare = _peel_coerce(a)
+    if not isinstance(bare, TpyName) or bare.name == "self":
         return False
-    if (a.name in lc.narrow.narrowed or a.name in lc.inline_narrowed
-            or a.name not in declared):
+    if (bare.name in lc.narrow.narrowed or bare.name in lc.inline_narrowed
+            or bare.name not in declared):
         return False
     # No value-type filter: movability alone decides, because the working set
     # only ever holds names an arm actually promoted. A sync scalar is never
@@ -1261,6 +1280,14 @@ def _require_method_call_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
         temp_args: bool, error_return_ok: bool = False) -> None:
+    # The temp-free last-use MOVE at an Own slot fires before every other
+    # arg consideration on the AST path (`_maybe_move` precedes the whole
+    # gen_call_arg cascade), so the gate admits the slice up front -- the
+    # render arm picks THIRMove on the same shared verdict. Covers the
+    # coerce-wrapped movable name (`out.append(buf)` under
+    # bytearray->bytes) the per-family ladders' bare-name rows cannot.
+    if _own_move_source_slice(a, ptype, lc, declared):
+        return
     if not _method_call_arg_ok(
             e, a, ptype, index, declared, lc.analyzer,
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
@@ -2158,24 +2185,30 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         raise ThirUnsupported("match.literal_fold")
 
     if (e.op in _MEMBERSHIP_OPS and e.typed_dict_in_field is not None
-            and not e.typed_dict_in_always_true
             and isinstance(e.right, TpyName) and e.right.name in declared
             and e.right.name not in lc.pointers
             and e.right.name not in lc.narrow.narrowed):
         # TypedDict membership (`"verbose" in kwargs` ->
         # `kwargs.verbose.has_value()`, negated `(!...)`): the compile-time
-        # field presence check over the bare receiver. The always-true FOLD
-        # (total=True fields) keeps rejecting below -- its operand-effect
-        # form is not mirrored.
-        td_fld = escape_cpp_name(e.typed_dict_in_field)
-        td_hv = f"{{0}}.{td_fld}.has_value()"
-        _witness("binop.typed_dict_in")
+        # field presence check over the bare receiver. A total=True field is
+        # the always-true FOLD: the operand-effect comma form keeps the
+        # receiver evaluated (`(static_cast<void>(r), true)` / `false` for
+        # `not in`).
+        if e.typed_dict_in_always_true:
+            td_const = "false" if e.op == "not in" else "true"
+            td_tpl = f"(static_cast<void>({{0}}), {td_const})"
+            _witness("binop.typed_dict_in_total")
+        else:
+            td_fld = escape_cpp_name(e.typed_dict_in_field)
+            td_hv = f"{{0}}.{td_fld}.has_value()"
+            td_tpl = f"(!{td_hv})" if e.op == "not in" else td_hv
+            _witness("binop.typed_dict_in")
         return THIRCall(
             result_type=rtype, callee="in",
             args=(_lower_expr(
                 e.right, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.RECEIVER)),),
-            cpp_template=(f"(!{td_hv})" if e.op == "not in" else td_hv),
+            cpp_template=td_tpl,
             loc=loc)
     # A `__contains__`-unresolved native-set membership routes via the AST's
     # `std::ranges::contains` fallback (set by the membership gate below).
@@ -3430,6 +3463,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     or (use.result in (_ExprResultUse.ITERABLE,
                                        _ExprResultUse.BORROW_BIND)
                         and _f1_record(rtype, analyzer))
+                    # A field-access lvalue manager (`with self.mgr:`): the
+                    # bare member read is the lvalue the `auto& __ctx_N`
+                    # bind borrows (with.manager_borrowed_field's expr half).
+                    or (use.ctx_manager and _f1_record(rtype, analyzer))
                     # The record FIELD-WRITE copy sink consumes the F1 field
                     # read whole (`h.p = h2.p;` -- the bare member read, the
                     # assign copies).
@@ -6607,6 +6644,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         result_use is _ExprResultUse.STORAGE
                         and use.tuple_source),
                     btuple_ret_ok=use.btuple_slot,
+                    union_subject_ret_ok=use.match_union_subject,
                     narrowed=frozenset(lc.narrow.narrowed))
             if not shape_ok:
                 raise ThirUnsupported("expr.method_call")
@@ -8736,6 +8774,11 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             # resumable return alike); the COPY half stays temps_ok-gated
             # inside the kind branches (it hoists a temp).
             ok = True  # witnessed at the arm (move.own_last_use)
+        if not ok and _copy_record_own_arg(a, ptype, analyzer):
+            # `copy(name)` into a same-nominal Own slot: the copy-construct
+            # rvalue (`consume(Box(b))`), rendered by _lower_call_arg's
+            # copy intercept -- no temp, no move.
+            ok = True  # witnessed at the row (own.record_copy)
         if not ok:
             raise ThirUnsupported("expr.call")
     pin_slot = _strlit_overload_pin_arg(e, _callee_fi, a, ptype, analyzer)
@@ -9908,6 +9951,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # so it runs outside `temp_args` too -- the `heap_take(value)` ctor-MIL
     # shape; the copy half still needs the flush (gate-enforced).
     ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
+    if ow is None:
+        # The MOVE-ONLY bytes-identity coerce slot (bytearray->bytes over a
+        # name): serves the last-use move arm below exclusively -- the
+        # non-move halves must not see it (the AST passes a non-moved bytes
+        # lvalue BARE to an inline_template callee).
+        ow_bytes = _own_bytes_identity_move_slot(a, ptype, lc.analyzer)
+        if (ow_bytes is not None
+                and _own_move_source_slice(a, ptype, lc, declared)):
+            ow = ow_bytes
     ow_bare = _peel_coerce(a)
     if (ow is not None and inline_template
             and isinstance(a, TpyName)
@@ -9928,7 +9980,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (ow is not None and isinstance(a, TpyCoerce)
             and isinstance(ow_bare, TpyName)
             and (ow_bare.name in lc.pointers
-                 or ow_bare.name in lc.frame_slots)):
+                 or ow_bare.name in lc.frame_slots)
+            # The MOVE fires before the AST's rendered-string test
+            # (`_maybe_move` precedes the needs_copy cascade), so a moving
+            # last use takes the move arm below regardless of the inner's
+            # `(*name)` render.
+            and not _own_move_source_slice(a, ptype, lc, declared)):
         # The coerce face's needs_copy verdict assumed the name renders
         # plain; a pointer-local / frame-slot inner renders `(*name)`, where
         # the AST's rendered-string test flips to needs_copy=False (bare, no

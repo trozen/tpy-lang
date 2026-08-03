@@ -85,12 +85,12 @@ class TestBytearrayNamePassThrough:
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
 
-    def test_bytearray_into_a_bytes_slot_is_the_coerce_not_this_row(self):
+    def test_bytearray_into_a_bytes_slot_rides_the_identity_coerce(self):
         # The boundary: this row pairs bytearray WITH bytearray. Feeding a
-        # `bytes` slot is the BytesView coerce, which arrives as its own node
-        # -- so the shape does not fall back AT the container row, it rejects
-        # one layer out at the coerce. Asserting the reason (not merely
-        # "stays AST") is what makes this non-vacuous.
+        # `bytes` slot arrives as the bytearray->bytes coerce, an IDENTITY
+        # in every position (both spell vector<uint8_t>) -- the vector
+        # lvalue binds the span param bare, so the shape routes through
+        # the coerce passthrough rather than this row.
         src = _PRELUDE + (
             "def take_bytes(b: bytes) -> Int32:\n"
             "    return Int32(len(b))\n"
@@ -98,7 +98,8 @@ class TestBytearrayNamePassThrough:
             "    ba = bytearray(4)\n"
             "    print(take_bytes(ba))\n"
         )
-        assert _fallback_reasons(src) == {"expr.coerce"}
+        assert _fallback_reasons(src) == set()
+        _assert_byte_identical(src)
 
     def test_both_slots_render_the_bare_name(self):
         from ..codegen_cpp.context import CodeGenOptions

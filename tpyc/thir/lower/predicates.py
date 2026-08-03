@@ -379,6 +379,10 @@ def _coerce_disposition(e: TpyCoerce, *,
         # view-typed sink's retag flips its form to the static
         # `bytes_literal` span (`bv: BytesView = b"hello"`).
         return "identity"
+    if name in ("bytearray_to_bytes", "bytes_to_bytearray"):
+        # Both spell std::vector<uint8_t>; the coercion has no codegen
+        # lambda -- passthrough in every position.
+        return "identity"
     if isinstance(e.expected_type, OwnType):
         if own_slot_arg and name == "strview_to_str":
             return "materialize"
@@ -6032,6 +6036,28 @@ def _plain_own_slot(ptype: TpyType | None) -> TpyType | None:
     if not isinstance(pt, OwnType):
         return None
     return unwrap_readonly(pt.wrapped)
+
+def _own_bytes_identity_move_slot(a: TpyExpr, ptype: TpyType | None,
+                                  analyzer) -> 'TpyType | None':
+    """The MOVE-ONLY bytes sibling of `_own_lvalue_temp_slot`'s identity-
+    chain name branch: an all-identity coerce chain (bytearray->bytes) over
+    a NAME into a plain `Own[bytes]` slot. Serves ONLY the temp-free
+    last-use move (`push_back(std::move((*buf)))`); the non-move halves
+    stay unshared deliberately -- the AST passes a non-moved bytes lvalue
+    BARE to an inline_template callee, a render the copy-temp row would
+    diverge from, so the shared slot verdict must not see bytes."""
+    w = _plain_own_slot(ptype)
+    if w is None or not is_bytes_type(unwrap_readonly(w)):
+        return None
+    if not isinstance(a, TpyCoerce):
+        return None
+    c = a
+    while isinstance(c, TpyCoerce):
+        if _coerce_disposition(c, own_slot_arg=True) != "identity":
+            return None
+        c = c.expr
+    return w if isinstance(c, TpyName) else None
+
 
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer) -> TpyType | None:

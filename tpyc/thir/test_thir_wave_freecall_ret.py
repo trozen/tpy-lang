@@ -1054,3 +1054,80 @@ class TestMarkerCallMacroExpansion:
         assert _fn(thir, "main") is None
         assert faces.get("expr.value_tuple_self_typed", 0) == 0
         _assert_byte_identical(src)
+
+
+class TestTupleReturnCallSources:
+    """Call sources at a value-tuple return slot pass through bare -- the
+    module-qualified stub (`return math.frexp(2.0)`) and the user-method
+    flavor alike; the generic tail's call gates own the result rows."""
+
+    def test_module_stub_tuple_return_routes(self):
+        src = ("import math\n"
+               "def wrap() -> tuple[float, int]:\n"
+               "    return math.frexp(2.0)\n"
+               "def main() -> None:\n"
+               "    m, e = wrap()\n"
+               "    print(e)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "wrap") is not None
+        assert w.get("ret.tuple_call", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_user_method_tuple_return_routes(self):
+        src = ("from tpy import Int32\n"
+               "class M:\n"
+               "    def pair(self) -> tuple[Int32, Int32]:\n"
+               "        return (1, 2)\n"
+               "def f(m: M) -> tuple[Int32, Int32]:\n"
+               "    return m.pair()\n"
+               "def main() -> None:\n"
+               "    m = M()\n"
+               "    a, b = f(m)\n"
+               "    print(a + b)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("ret.tuple_call", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_ternary_tuple_source_defers(self):
+        # BOUNDARY: the source gate admits literal/name/call shapes only --
+        # a TERNARY tuple source stays out and the body falls back
+        # byte-identically.
+        src = ("from tpy import Int32\n"
+               "def f(c: bool) -> tuple[Int32, Int32]:\n"
+               "    a = (1, 2)\n"
+               "    b = (3, 4)\n"
+               "    return a if c else b\n"
+               "def main() -> None:\n"
+               "    x, y = f(True)\n"
+               "    print(x + y)\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestUnpackCtorArgTempCrash:
+    def test_bugs_repro_validator_escapes_fallback(self):
+        # BUGS.md repro (the tuple-unpack ctor-arg crash): the gate admits
+        # a temp-needing ctor arg at the non-flushable unpack source, and
+        # the validator raises OUT of the per-body fallback boundary. This
+        # pin documents the CURRENT broken behavior -- the fix flips it to
+        # a clean fallback (delete the raises-assert then).
+        import pytest
+        from .validate import THIRValidationError
+        src = ("from tpy import Int32\n"
+               "class M:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def pair(self) -> tuple[Int32, Int32]:\n"
+               "        return (1, 2)\n"
+               "def f(m: M) -> tuple[Int32, Int32]:\n"
+               "    return m.pair()\n"
+               "def main() -> None:\n"
+               "    a, b = f(M())\n"
+               "    print(a + b)\n"
+               "main()\n")
+        with pytest.raises(THIRValidationError):
+            _lower_ctx(src)

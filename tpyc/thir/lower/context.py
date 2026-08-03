@@ -156,6 +156,12 @@ class _ExprUse:
     # only the always-indirect bindings. Consumed by `_name_read_deref` --
     # the single resolution point for a name read's indirection.
     indirect_read: bool = False
+    # The union-switch CALL-subject position only (`match p.choose(d):`):
+    # admit a non-wrapper ptr-variant UNION call result, consumed whole by
+    # the by-value dispatch local (`auto __match_subject_N = <call>;`).
+    # Every other consumer of a union result converts or narrows, so they
+    # keep their own rows.
+    match_union_subject: bool = False
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
