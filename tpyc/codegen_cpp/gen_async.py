@@ -2228,6 +2228,16 @@ class AsyncCoroCodegen:
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         state.cfg_builder = builder
+        # Inline awaits resolve their callee in the payload factory during the
+        # build, so their edges ride the payload; the `async with` / `async for`
+        # and `iter_next` embeddings are recorded by the prescans above. Between
+        # them the frame's by-value embeddings are covered without re-walking
+        # the AST, which cannot see the `async with`/`async for` sub-futures at
+        # all -- they carry no TpyAwait node.
+        for _y in cfg.yield_sites:
+            _dep = getattr(_y.payload, "dep_unit", None)
+            if _dep is not None:
+                state.frame_dep_units.append(_dep)
         state.cfg = cfg
         return cfg
 
@@ -2269,6 +2279,10 @@ class AsyncCoroCodegen:
         uid_map: dict[int, int] = {}
         fields_out: list[tuple[str, str]] = []
         struct_names_out: dict[int, str] = {}
+        # Same-module frame structs this loop machinery embeds by value; like
+        # local_hoists below, committed to the state only after the walk
+        # completes so a mid-walk `_CFGNotYetSupported` leaves nothing behind.
+        dep_units_out: list[tuple[str, str | None]] = []
         # {id(TpyForEach) -> GeneratorForInfo}: carries pointer_form_loop_var
         # so `setup_resumable_frame_locals` + the struct field emit render a
         # non-value loop var as an aliasing `T*` rather than a `frame_slot<T>`
@@ -2312,6 +2326,11 @@ class AsyncCoroCodegen:
                                 "stmt.async_aiter_type)", loc=s.loc)
                         struct_names_out[cur_uid] = self._sub_struct_qualname(
                             s.async_aiter_type, "__anext__", loc=s.loc)
+                        _anext_dep = rcfg.same_module_dep_unit(
+                            s.async_aiter_type, "__anext__",
+                            self.ctx.analyzer.ctx.module_name)
+                        if _anext_dep is not None:
+                            dep_units_out.append(_anext_dep)
                         info = GeneratorForInfo(
                             uid=cur_uid, strategy="async_for", fields=[])
                     else:
@@ -2329,6 +2348,7 @@ class AsyncCoroCodegen:
                                 "yield inside this for-loop shape is not yet "
                                 "supported on the resumable path.", loc=s.loc)
                         fields_out.extend(info.fields)
+                        dep_units_out.extend(info.dep_units)
                     for_loop_info[id(s)] = info
                     info_by_uid[cur_uid] = info
                     elem_t = (unwrap_ref_type(s.elem_type)
@@ -2352,6 +2372,7 @@ class AsyncCoroCodegen:
                 if name not in existing:
                     func.generator_locals.append((name, elem_t))
                     existing.add(name)
+        state.frame_dep_units.extend(dep_units_out)
         state.for_uid_map = uid_map
         state.for_fields = fields_out
         state.async_for_struct_names = struct_names_out
@@ -2629,9 +2650,9 @@ class AsyncCoroCodegen:
         Skipped when the enter type answers the question by itself, leaving the
         plain field its sibling value locals use: a value type has no aliasing
         question; `Own[T]` (which `is_value_type` reports as a value) returns by
-        value, so the target owns; and a view-family (`str` / `bytes`) target's
-        owning-ness is settled in sema, which resolves a frame local owned unless
-        its source is static-lifetime.
+        value, so the target owns; and a view-family (`str` / `bytes`) target is
+        given owning storage by the `OWNED_STR` arm instead, which a source-form
+        payload would override (it is tested first).
 
         Sync `with` only: an `async with` target is bound from `__aenter__`'s Poll
         payload, not from `__enter__` (which such a manager need not even
@@ -2647,10 +2668,10 @@ class AsyncCoroCodegen:
             if (resolved_enter.is_value_type()
                     or is_str_category(resolved_enter)
                     or is_bytes_category(resolved_enter)):
-                # A view-family target's owning-ness is sema's call: a frame
-                # local whose source is not static-lifetime resolves OWNED, so
-                # the field is already the owning form rather than a view over a
-                # dead buffer. Nothing to defer to C++ here.
+                # `with_owning_str_targets` already claims the whole view family
+                # for owning storage, keyed on the str/bytes CATEGORY rather than
+                # on what `__enter__` actually lends -- so a `-> StrView` target
+                # owns as much as a `-> str` one, and nothing is left to defer.
                 continue
             if (isinstance(resolved_enter, OptionalType)
                     and resolved_enter.uses_pointer_repr()):
@@ -2853,6 +2874,8 @@ class AsyncCoroCodegen:
         # the per-ctx frame field. Emit uses this to size __sub_<i>
         # slots and to write the inline factory call.
         struct_names_out: dict[int, tuple[str, str]] = {}
+        # The `__aenter__`/`__aexit__` units whose structs those slots embed.
+        dep_units_out: list[tuple[str, str | None]] = []
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
@@ -2932,6 +2955,13 @@ class AsyncCoroCodegen:
                                 self._sub_struct_qualname(
                                     aexit_owner, "__aexit__", loc=s.loc),
                             )
+                            for _dunder, _owner in (("__aenter__", aenter_owner),
+                                                    ("__aexit__", aexit_owner)):
+                                _dep = rcfg.same_module_dep_unit(
+                                    _owner, _dunder,
+                                    self.ctx.analyzer.ctx.module_name)
+                                if _dep is not None:
+                                    dep_units_out.append(_dep)
                         if item.target is not None:
                             enter_t = (unwrap_ref_type(item.enter_type)
                                        if item.enter_type else None)
@@ -2967,6 +2997,7 @@ class AsyncCoroCodegen:
                         walk(b)
 
         walk(body)
+        state.frame_dep_units.extend(dep_units_out)
         state.with_uid_map = uid_map
         state.with_fields = fields_out
         state.with_ctx_counter = counter[0]
@@ -3064,6 +3095,7 @@ class AsyncCoroCodegen:
                 await_node=await_node,
                 prebuilt_slot=await_node.awaited_prebuilt_slot,
             )
+        dep_unit: 'tuple[str, str | None] | None' = None
         if await_node.awaited_async_func_name is not None:
             mode = rcfg.AwaitMode.INLINE
             inferred_type_args = getattr(
@@ -3097,6 +3129,19 @@ class AsyncCoroCodegen:
                 module_qual=module_qual,
                 extra_template_args=extra_template_args,
                 loc=await_node.loc)
+            # Same-module callee only -- a cross-module struct is already
+            # complete via its header, and the bare-name unit key would match a
+            # same-named local unit. The two forms carry that fact differently:
+            # a method's owner type names its defining module, while for a free
+            # function `module_qual` is the signal (it is only computed when
+            # there is no owner type).
+            _owner = await_node.awaited_method_owner_type
+            if _owner is not None:
+                dep_unit = rcfg.same_module_dep_unit(
+                    _owner, await_node.awaited_async_func_name,
+                    self.ctx.analyzer.ctx.module_name)
+            elif module_qual is None:
+                dep_unit = (await_node.awaited_async_func_name, None)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.ctx.get_expr_type(await_node.value)
             if operand_type is None:
@@ -3124,6 +3169,7 @@ class AsyncCoroCodegen:
             return_stmt=return_stmt,
             host_stmt=host_stmt,
             await_node=await_node,
+            dep_unit=dep_unit,
         )
 
     def _compute_case_entries(self, cfg: 'rcfg.CFG') -> dict[int, _StateLabel]:

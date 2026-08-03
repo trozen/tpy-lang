@@ -49,7 +49,7 @@ from ..parse.nodes import (
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyFunction
-    from ..typesys import TpyType
+    from ..typesys import NominalType, TpyType
     from .gen_generators import GeneratorForInfo
 
 
@@ -71,6 +71,16 @@ class ResumableFuncState:
     # CFG build (_build_resumable_cfg)
     cfg: 'CFG | None' = None
     cfg_builder: 'CFGBuilder | None' = None
+    # `(name, owner_record | None)` of every SAME-MODULE resumable unit whose
+    # struct this frame embeds by value -- an inline await's sub-future, an
+    # `async with`/`async for` dunder's sub-coro, and the `__iter__` generator
+    # backing an `iter_next` for-source. Recorded where the embedding is
+    # decided (the prescans + the CFG builder's await handling), because only
+    # there is the callee resolved; `_emit_resumable_structs` reads it to order
+    # each callee's definition before its consumer. Cross-module callees are
+    # omitted -- their header already supplies a complete type, and recording
+    # one would collide with a same-named local unit.
+    frame_dep_units: 'list[tuple[str, str | None]]' = field(default_factory=list)
     # await-arg lifting (_effective_body / _lift_nested_awaits)
     lifted_body: 'list[TpyStmt] | None' = None
     next_lift_id: int = 0
@@ -163,6 +173,33 @@ def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
         state = ResumableFuncState()
         func._resumable_state = state
     return state
+
+
+def same_module_dep_unit(owner: 'NominalType | None', method: str,
+                         current_module: 'str | None',
+                         ) -> 'tuple[str, str | None] | None':
+    """The `frame_dep_units` entry for embedding `owner.method`'s frame, or
+    None when it is not an ordering edge.
+
+    Only a callee defined in the module being emitted is one. A cross-module
+    struct is already complete via its included header, and the unit index is
+    keyed on the BARE `(method, record)` pair -- so recording a cross-module
+    callee matches a same-named LOCAL unit instead and fabricates a cycle out
+    of valid code. Membership in a same-module map cannot stand in for this
+    check for the same reason: those maps are bare-name keyed too.
+
+    An owner whose module qname is unstamped is not matched. Every
+    user-declared record carries one, so an unknown owner is not a local unit,
+    and guessing would risk the false edge this exists to prevent.
+    """
+    if owner is None or current_module is None:
+        return None
+    qname = owner.qualified_name()
+    if not qname or "." not in qname:
+        return None
+    if qname.rsplit(".", 1)[0] != current_module:
+        return None
+    return (method, owner.name)
 
 
 # -- Frame-local placement plan.
@@ -328,6 +365,13 @@ class AwaitPayload:
     # struct name via `func._async_for_struct_names`. None for
     # ordinary user awaits.
     async_for_uid: int | None = None
+    # `(name, owner_record | None)` of the SAME-MODULE coro this suspension
+    # embeds as a by-value sub-future -- the emit-ordering edge, recorded
+    # beside `sub_field_cpp_type` because the same resolution produces both.
+    # None when there is nothing to order: a cross-module callee (already
+    # complete via its header), or an erased/bound-handle await with no
+    # statically-named callee.
+    dep_unit: 'tuple[str, str | None] | None' = None
 
 
 @dataclass(frozen=True)

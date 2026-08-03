@@ -17,7 +17,7 @@ from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
-from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith, TpyAwait
+from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from .resumable_cfg import (
     ResumableShape, resumable_state,
 )
@@ -885,43 +885,6 @@ class CodeGenerator:
         self.gen_async._build_resumable_cfg(func)
         return True
 
-    def _inline_await_targets(
-            self, func: TpyFunction) -> list[tuple[str, str | None]]:
-        """`(awaited_name, owner_record_name | None)` for every statically-known
-        async-def inline `await` in `func`'s body -- the coros it embeds as
-        `std::optional<__coro_X>` sub-future fields. Does not descend into
-        nested callables (a suspension there belongs to the inner callable).
-
-        Captures *direct* `await` deps only. `async with` / `async for` also
-        embed by-value sub-future fields (their `__aenter__`/`__aexit__` /
-        `__anext__` coro structs) but produce no `TpyAwait` node, so their
-        ordering edges are not collected here -- a known incompleteness of the
-        topological emit (see BUGS.md). The robust fix sources deps from the
-        CFG's sub-future set rather than this AST walk."""
-        targets: list[tuple[str, str | None]] = []
-
-        def walk_expr(e: object) -> None:
-            if e is None:
-                return
-            if isinstance(e, TpyAwait) and e.awaited_async_func_name is not None:
-                owner = e.awaited_method_owner_type
-                targets.append((e.awaited_async_func_name,
-                                owner.name if owner is not None else None))
-            for c in (e.children() if hasattr(e, "children") else ()):
-                walk_expr(c)
-
-        def walk_stmts(stmts: list) -> None:
-            for s in stmts:
-                if hasattr(s, "exprs"):
-                    for e in s.exprs():
-                        walk_expr(e)
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk_stmts(b)
-
-        walk_stmts(func.body)
-        return targets
-
     @staticmethod
     def _bound_coro_frame_targets(
             func: TpyFunction) -> list[tuple[str, str | None]]:
@@ -1000,13 +963,21 @@ class CodeGenerator:
     def _emit_resumable_structs(self, hpp: TextIO, module: TpyModule) -> None:
         """Emit every resumable-frame struct definition -- async coros AND
         non-simple generators, free functions + methods -- topologically
-        ordered so each by-value-embedded callee precedes its consumer: an
-        inline-awaited coro is stored as `std::optional<__coro_callee>` and
-        a delegated generator source as `frame_slot<__gen_callee>`
-        (`__for_src`), and both need the callee complete. A genuine cycle
-        (mutually recursive inline await, generator self-delegation) can't
-        be ordered (cyclic by-value embedding is infinite-size) and is
-        rejected with a clean diagnostic."""
+        ordered so each by-value-embedded callee precedes its consumer.
+        Five embedding shapes: an inline-awaited coro
+        (`std::optional<__coro_callee>`), an `async with` manager's
+        `__aenter__`/`__aexit__`, an `async for` source's `__anext__`, a
+        delegated generator source (`frame_slot<__gen_callee>`, `__for_src`),
+        and an `iter_next` for-source's `__iter__` -- whose iterator field is
+        spelled `iter_type_t<S>`, so it needs `S::__iter__`'s RETURN TYPE
+        complete. The first three plus `iter_next` come from `frame_dep_units`,
+        recorded where the callee is resolved rather than re-derived here. Two
+        collectors stay AST-side on purpose: the delegated `__for_src` target,
+        because the force-resumable pre-pass needs it before any CFG exists,
+        and the bound-coro frame local, which is a sema type fact rather than a
+        prescan output. A genuine cycle (mutually recursive inline await,
+        generator self-delegation) can't be ordered (cyclic by-value embedding
+        is infinite-size) and is rejected with a clean diagnostic."""
         # Seed order -- async methods, async free, generator free, generator
         # methods (each in record/method or source order) -- fed to a STABLE
         # topological sort (Kahn's, ready node of smallest seed index first).
@@ -1040,11 +1011,15 @@ class CodeGenerator:
         # included header.
         deps: list[set[int]] = [set() for _ in range(n)]
         dependents: list[list[int]] = [[] for _ in range(n)]
-        for i, (f, _rn, is_async) in enumerate(units):
-            edges = list(self.gen_generators._for_src_generator_targets(f))
+        for i, (f, rn, is_async) in enumerate(units):
+            # The frame's own record of what it embeds by value, populated at
+            # the sites that resolve each callee (prescans + the await payload
+            # factory). Build is memoized and self-seeds its scope, so forcing
+            # it here only moves work the emit loop below would do anyway.
+            self.gen_async._build_resumable_cfg(f, rn if is_async else None)
+            edges = list(resumable_state(f).frame_dep_units)
+            edges.extend(self.gen_generators._for_src_generator_targets(f))
             edges.extend(self._bound_coro_frame_targets(f))
-            if is_async:
-                edges.extend(self._inline_await_targets(f))
             for name, owner in edges:
                 j = index.get((name, owner))
                 # A self-edge (a coro that inline-awaits itself, a generator

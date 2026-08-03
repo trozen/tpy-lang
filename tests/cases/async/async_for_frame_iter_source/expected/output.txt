@@ -1,0 +1,2 @@
+66
+mutations reached the bag: 21 22

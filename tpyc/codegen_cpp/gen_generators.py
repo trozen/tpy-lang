@@ -12,12 +12,12 @@ from ..parse.nodes import (
     TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
     TpyBreak, TpyContinue,
 )
-from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
+from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame, view_owned_copy_init)
 from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
-from .resumable_cfg import _stmts_have_any_suspension
+from .resumable_cfg import _stmts_have_any_suspension, same_module_dep_unit
 from .protocols import protocol_param_template_name
 
 
@@ -67,6 +67,14 @@ class GeneratorForInfo:
     # refs point into stable node storage, so aliasing across yield/resume
     # still holds. None for non-proxy iterators.
     borrow_tuple_loop_var: str | None = None
+    # `(name, owner_record)` of the same-module generator method backing this
+    # loop's iteration source, when the frame embeds its struct by value.
+    # `iter_next` spells its iterator / result / loop-var fields as
+    # `iter_type_t<S>` & friends, which need `S::__iter__`'s RETURN TYPE
+    # complete -- another frame struct when that `__iter__` is itself a
+    # non-simple generator. Recorded here because this is where the source
+    # type is resolved; consumed as an emit-ordering edge.
+    dep_units: tuple[tuple[str, str | None], ...] = ()
 
 
 def owned_view_frame_params(
@@ -1097,7 +1105,37 @@ class GeneratorCodegen:
             None if (stmt.is_tuple_unpack or elem_is_known_value(elem_type))
             else (stmt.var, f"::tpy::for_elem_next_t<{src_cpp}>"))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields,
-                                loop_var_field=loop_var_field)
+                                loop_var_field=loop_var_field,
+                                dep_units=self._iter_source_dep_units(
+                                    iterable_type))
+
+    def _iter_source_dep_units(
+            self, iterable_type: 'TpyType | None',
+    ) -> tuple[tuple[str, str | None], ...]:
+        """The `("__iter__", record)` emit-ordering dep for an `iter_next`
+        source, or empty when the source has no same-module generator
+        `__iter__`.
+
+        Recorded whether or not that `__iter__` is currently a non-simple
+        generator: a SIMPLE one has no struct to order (its body is inline
+        `auto __iter__()`, complete where the field is spelled), so the
+        consumer's unit lookup drops the edge on its own -- and if the
+        force-resumable pre-pass later promotes it, the edge is already here.
+        A protocol-typed source resolves to no record and yields nothing; its
+        field renders against a deduced template arg, so completeness is
+        settled at instantiation rather than at the field declaration.
+
+        The same-module test is the OWNER'S module, not membership in
+        `same_module_generators`: that map is keyed on the bare
+        `(method, record)` pair, so a cross-module type whose name collides
+        with a local record matches the local entry and fabricates a cycle.
+        """
+        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
+        dep = same_module_dep_unit(inner, "__iter__",
+                                   self.ctx.analyzer.ctx.module_name)
+        if dep is None or dep not in self.same_module_generators:
+            return ()
+        return (dep,)
 
     def _resolve_same_module_generator_call(
             self, expr: TpyExpr,
