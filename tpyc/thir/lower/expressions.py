@@ -222,6 +222,7 @@ from .predicates import (
     _LOGICAL_OPS,
     _MEMBERSHIP_OPS,
     _arg_ptr_union_slot,
+    _union_bytes_literal_temp_arg,
     _bare_module_recv,
     _bigint_index_disposition,
     _binop_operand_casts,
@@ -541,6 +542,7 @@ from .checks import (
     _native_ctx_manager_ok,
     _shared_pass_through_arg,
     _str_owned_slot_arg,
+    _bytes_owned_slot_arg,
     _own_str_literal_arg,
     _str_pass_through_arg,
     _strlit_method_pin_arg,
@@ -834,6 +836,30 @@ def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
     return _ctor_instantiation_ok(e, lc.analyzer)
 
 
+def _nullable_protocol_slot(ptype: 'TpyType | None') -> 'list | None':
+    """The NULLABLE all-protocols slot's member list -- an
+    Optional[protocol] normalization or a union with a None member whose
+    other members are all protocols -- or None. `_gen_protocol_arg` splits
+    on has_none, NOT on the call kind: a REQUIRED protocol union
+    monomorphizes to one template param and takes the plain
+    `gen_expr_deref` render; only the nullable form lifts."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if isinstance(slot, OptionalType):
+        members = [unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            slot.inner)))]
+    elif isinstance(slot, UnionType):
+        members = [m for m in slot.members if not is_void_like_type(m)]
+        if len(members) == len(slot.members):
+            return None
+    else:
+        return None
+    if not members or not all(
+            isinstance(m, NominalType) and m.is_protocol for m in members):
+        return None
+    return members
+
+
 def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
                              locals_: dict[str, TpyType],
                              analyzer) -> 'str | None':
@@ -846,25 +872,7 @@ def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
     or None."""
     if not isinstance(arg, TpyName) or arg.name not in locals_:
         return None
-    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-            if ptype is not None else None)
-    if isinstance(slot, OptionalType):
-        # `Iterable[str] | None` normalizes to Optional[protocol]: the same
-        # protocol-overload pointer bind, so the same addr lift.
-        members = [unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            slot.inner)))]
-    elif isinstance(slot, UnionType):
-        members = [m for m in slot.members if not is_void_like_type(m)]
-        if len(members) == len(slot.members):
-            # `_gen_protocol_arg` splits on has_none, NOT on the call kind: a
-            # REQUIRED protocol union monomorphizes to one template param and
-            # takes the plain `gen_expr_deref` render. Only the nullable form
-            # (a None member, or the Optional normalization above) lifts.
-            return None
-    else:
-        return None
-    if not members or not all(
-            isinstance(m, NominalType) and m.is_protocol for m in members):
+    if _nullable_protocol_slot(ptype) is None:
         return None
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         locals_[arg.name])))
@@ -872,6 +880,27 @@ def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
             or is_list(at) or is_dict(at) or is_set(at)):
         return "addr"
     return None
+
+
+def _protocol_union_literal_temp_arg(arg: TpyExpr, ptype: 'TpyType | None',
+                                     analyzer) -> 'TpyType | None':
+    """The LITERAL sibling of the 'addr' face: a container literal into the
+    same nullable all-protocols ctor slot (`Counter(["a", "x", "x"])` at
+    `Iterable[T] | None`). `_gen_protocol_arg`'s temporary tail hoists a
+    temp typed as the literal's OWN sema type (the fixed-list Array
+    demotion: `std::array<std::string, 3> __tmp_N = {..};`) and lifts its
+    address. Returns the temp's type or None."""
+    if not isinstance(arg, TpyArrayLiteral):
+        return None
+    if _nullable_protocol_slot(ptype) is None:
+        return None
+    at = analyzer.get_expr_type(arg)
+    at = resolve_pending_container(at, analyzer) or at
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    if not (isinstance(at, NominalType) and is_array(at)):
+        return None
+    return at
 
 
 def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
@@ -1030,6 +1059,14 @@ def _record_ctor_arg_supported(
                 or (_opt_own_ptr_opt_name_arg(arg, param_type, declared,
                                               analyzer) is not None
                     and _is_move_source(arg, lc))
+                # A record NAME moved into an `Optional[Own[T]]` ctor slot
+                # (`Wrapper(p, tag)` at `Own[Point] | None` -- the by-value
+                # `std::optional<Point>` param absorbs the bare
+                # `std::move(p)`): the free/marker ladders' row; the shared
+                # lowering arm enforces the move verdict and rejects the
+                # copy shape.
+                or _opt_own_record_name_arg(arg, param_type, declared,
+                                            analyzer) is not None
                 # `copy(name)` of a plain record into a same-nominal
                 # `Own[record]` ctor slot (`Holder(copy(b))` ->
                 # `Holder(Box(b))`): the copy-construct rvalue binds the
@@ -1088,6 +1125,12 @@ def _record_ctor_arg_supported(
                 or (_protocol_union_ctor_arg(arg, param_type, declared,
                                              analyzer) is not None
                     and _witness("ctor.protocol_union_arg"))
+                # ... and its literal sibling: a container literal at the
+                # same nullable-protocol slot hoists the typed temp + addr
+                # lift (`Counter(["a", "x", "x"])`), so it needs the flush.
+                or (temps_ok
+                    and _protocol_union_literal_temp_arg(
+                        arg, param_type, analyzer) is not None)
                 # A record RVALUE into an `Own[record | None]` slot binds bare
                 # (`Outer("a", Inner(42))` -- prvalue -> optional<Inner>), the
                 # @dataclass Optional-record-field row.
@@ -4012,6 +4055,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     _field_receiver_ok(recv, declared, analyzer)
                     and _resolved_bytes_value(
                         analyzer.get_expr_type(recv), analyzer) is not None)
+            elif isinstance(recv, TpySubscript):
+                # `app[0][0]` -- a byte read off a container-ELEMENT bytes
+                # receiver: the inner checked read (`::tpy::__getitem__(app,
+                # 0)`) interpolates into the bytes_getitem render. One nested
+                # step, mirroring the container-in-container nested_ok row;
+                # plain reads only.
+                bytes_recv_ok = (
+                    not recv.needs_optional_runtime_check
+                    and recv.slice_function_info is None
+                    and not isinstance(recv.index, TpySlice)
+                    and _subscript_container_recv_type(
+                        recv.obj, declared, analyzer) is not None
+                    and _resolved_bytes_value(
+                        analyzer.get_expr_type(recv), analyzer) is not None)
             bytes_ok = (
                 bytes_recv_ok and _eligible_scalar(rtype) and index_ok)
             # `m[i][j]`: the receiver `m[i]` is a nested-container borrow lvalue
@@ -4872,6 +4929,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     f"{lc.render_type(tp_fi.return_type.inner)}"
                     ">::try_parse({0})"),
                 loc=loc)
+        # The static type-param isinstance family at a VALUE position
+        # (`return isinstance(x, (Dog, Cat))` on a bounded-T subject): the
+        # same spelled trait disjunction the truthy-condition arm renders --
+        # no extraction alias, position-independent. Non-tparam isinstance
+        # stays with the narrowing machinery and keeps rejecting here.
+        si_val = _lower_static_isinstance(e, lc, rtype)
+        if si_val is not None:
+            _witness("call.isinstance_static_value")
+            return si_val
         if (isinstance(e.func, TpyName) and e.func_name in declared
                 and analyzer.registry.get_function(e.func_name)):
             # A callable BINDING (param / local) invoked under a name that
@@ -5158,7 +5224,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         # The optional-ptr 'ctor' face's ArgTemp (`T __tmp_N =
                         # <rvalue>; ...&__tmp_N`), gate-admitted under temps_ok.
                         or _optional_ptr_arg_face(
-                            a, p.type, declared, lc.analyzer) == 'ctor')
+                            a, p.type, declared, lc.analyzer) == 'ctor'
+                        # The nullable-protocol literal temp
+                        # (`std::array<..> __tmp_N = {..};` + `&(__tmp_N)`).
+                        or _protocol_union_literal_temp_arg(
+                            a, p.type, lc.analyzer) is not None)
                     # `nested_temps` rides the statement flush into a
                     # call-shaped arg's OWN args (`Holder(wrap(Int32(42)))`
                     # -- the inner generic call's scalar ref-slot temp lands
@@ -6613,7 +6683,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                               # exactly like the ctor loop's flush_slot.
                               or (not stub_recv
                                   and _union_ctor_temp_arg(a, ptype,
-                                                           lc.analyzer))))
+                                                           lc.analyzer))
+                              # ... and the bytes-literal sibling
+                              # (`s.post(url, b"payload")`).
+                              or (not stub_recv
+                                  and _union_bytes_literal_temp_arg(
+                                      a, ptype, lc.analyzer) is not None)))
             # The deep-const verdict rides into the union const-wrap arm
             # (`z.names(other)` -> `ptr_variant_to_const<...>(other)`), like
             # the free-call loop. Read it off the RAW method fi: the
@@ -8444,6 +8519,36 @@ def _container_call_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
     return slot
 
 
+def _lower_static_isinstance(e: TpyCall, lc: '_LowerCtx',
+                             rtype: 'TpyType | None') -> 'THIRCall | None':
+    """The STATIC type-param isinstance family (`isinstance(x, Animal)` /
+    `isinstance(x, (Dog, Cat))` on a bounded-T subject): a
+    per-instantiation compile-time trait -- a disjunction of
+    `::tpy::isinstance_static<M, decltype(x)>()` over the (tuple-normalized
+    union's) members -- with NO extraction alias, so the same spelled
+    expression renders at every position. Shared by the truthy-condition
+    arm and the value-position call arm; each witnesses its own face."""
+    if not (e.isinstance_var is not None and e.isinstance_type_param
+            and e.isinstance_type is not None
+            and not e.isinstance_deref_depth):
+        return None
+    if isinstance(e.isinstance_type, UnionType):
+        members = list(e.isinstance_type.members)
+    else:
+        members = [e.isinstance_type]
+    var = escape_cpp_name(e.isinstance_var)
+    checks = [
+        f"::tpy::isinstance_static<{lc.render_type(m)}, "
+        f"decltype({var})>()"
+        for m in members
+    ]
+    spelled = (checks[0] if len(checks) == 1
+               else "(" + " || ".join(checks) + ")")
+    return THIRCall(
+        result_type=rtype, callee="isinstance", args=(),
+        cpp_template=spelled, loc=getattr(e, "loc", None))
+
+
 def _lower_literal_arg(a: TpyExpr, target: 'TpyType | None', lc: '_LowerCtx',
                        declared: dict[str, TpyType], reject: str, *,
                        array_retype: bool = True) -> THIRExpr:
@@ -9280,6 +9385,23 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return THIROptionalPtrArg(
             result_type=ptype, value=_lower_expr(a, lc, declared),
             addr_of=True, form=Form.BORROW, loc=getattr(a, "loc", None))
+    if (isinstance(a, TpyArrayLiteral) and not method_arg
+            and (_pul := _protocol_union_literal_temp_arg(
+                a, ptype, lc.analyzer)) is not None):
+        # The literal sibling: hoist the literal into a temp typed as its
+        # own (demoted) sema type and lift the address
+        # (`std::array<std::string, 3> __tmp_N = {..};` + `&(__tmp_N)`) --
+        # `_gen_protocol_arg`'s temporary tail.
+        if not temp_args:
+            raise ThirUnsupported(
+                "protocol literal temp outside a flush position")
+        init = _lower_literal_arg(
+            a, _pul, lc, declared,
+            "container literal at a nullable protocol ctor slot")
+        _witness("argtemp.protocol_union_literal")
+        return THIRArgTemp(result_type=_pul, cpp_type=_pul.to_cpp(),
+                           init=init, addr_of=True, form=Form.BORROW,
+                           loc=getattr(a, "loc", None))
     if _required_protocol_union_slot(ptype):
         # Everywhere ELSE that same slot renders the plain value:
         # `_gen_protocol_arg` claims a required multi-protocol union ahead of
@@ -9659,6 +9781,27 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRFormConvert(result_type=ow_str, value=lowered,
                                    form=Form.STORAGE, loc=getattr(a, "loc", None))
         return lowered
+    # The bytes twin: a VIEW-form source (a bytes param / narrowed deref /
+    # view slice) at an `Own[bytes]` element slot materializes
+    # `::tpy::bytes_copy(x)` via the S6 view->owned THIRFormConvert. The
+    # sema `bytesview_to_bytes` coerce IS that copy, so it peels and the
+    # convert wraps the bare view render underneath.
+    ow_bytes = _plain_own_slot(ptype)
+    if (ow_bytes is not None
+            and is_bytes_type(unwrap_readonly(ow_bytes))
+            and _bytes_owned_slot_arg(a, ptype, declared,
+                                      lc.prescan.param_names, lc.analyzer)):
+        _witness("arg.own_bytes_slot")
+        src_b = a
+        if (isinstance(src_b, TpyCoerce)
+                and src_b.coercion.name == "bytesview_to_bytes"):
+            src_b = src_b.expr
+        lowered = _lower_expr(src_b, lc, declared, use=_NESTED_ARG_USE)
+        if lowered.form is Form.BORROW:
+            return THIRFormConvert(result_type=unwrap_readonly(ow_bytes),
+                                   value=lowered, form=Form.STORAGE,
+                                   loc=getattr(a, "loc", None))
+        return lowered
     # `copy(name)` of a plain F1-record into a SAME-nominal `Own[record]`
     # slot: the copy-construct rvalue (`push_back(Point(p))`) binds the
     # `T&&` slot directly -- no temp, no move. Re-runs the source check with
@@ -9987,6 +10130,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW,
                                       value=_lower_field_source(a, lc, declared),
                                       lift=True, loc=loc)
+        if opt_face == 'call_pass':
+            # The borrow-returning call IS the `T*` the slot binds -- bare,
+            # exactly the AST's OptionalType-arg pass-through.
+            _witness("optptr.call_pass")
+            return _lower_expr(
+                a, lc, declared,
+                use=_ExprUse(ptr_opt_passthrough=True,
+                             record_ctor=_RecordCtorUse.NESTED_ARG))
         elif opt_face == 'pass' or (isinstance(a, TpyName)
                                     and a.name in lc.pointers):
             _witness("optptr.pass")
@@ -10144,6 +10295,21 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     extraction alias, the `is_narrowed` wrap skip -- which the plain
     `_lower_expr` read reproduces; a same-union name into a MUTABLE slot
     renders bare the same way."""
+    bl = _union_bytes_literal_temp_arg(a, ptype, lc.analyzer)
+    if bl is not None and not readonly_target:
+        # The bytes-literal rvalue at a beyond-the-slice union slot: its own
+        # slot check (see the predicate), the same hoist+addr render as the
+        # ctor-temp row.
+        if not temp_args:
+            raise ThirUnsupported(
+                "union ctor arg-temp outside a flush position")
+        blt = unwrap_ref_type(lc.analyzer.get_expr_type(a))
+        _witness("unionlift.bytes_literal_temp")
+        return THIRUnionArgLift(
+            result_type=bl, variant_cpp=bl.to_cpp_ptr_variant(),
+            value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_USE),
+            temp_cpp=blt.to_cpp(),
+            form=Form.BORROW, loc=getattr(a, "loc", None))
     slot = _arg_ptr_union_slot(ptype, lc.analyzer, readonly_target=readonly_target)
     if slot is None:
         return None
@@ -10473,25 +10639,10 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             # (`::tpy::isinstance_static<M, decltype(x)>()`) with NO
             # extraction alias -- reads of the subject render the bare
             # name whatever sema narrowed, so the branch facts are inert.
-            if (e.isinstance_var is not None and e.isinstance_type_param
-                    and e.isinstance_type is not None
-                    and not e.isinstance_deref_depth):
-                if isinstance(e.isinstance_type, UnionType):
-                    members = list(e.isinstance_type.members)
-                else:
-                    members = [e.isinstance_type]
-                var = escape_cpp_name(e.isinstance_var)
-                checks = [
-                    f"::tpy::isinstance_static<{lc.render_type(m)}, "
-                    f"decltype({var})>()"
-                    for m in members
-                ]
-                spelled = (checks[0] if len(checks) == 1
-                           else "(" + " || ".join(checks) + ")")
+            si = _lower_static_isinstance(e, lc, et)
+            if si is not None:
                 _witness("cond.isinstance_static")
-                return THIRCall(
-                    result_type=et, callee="isinstance", args=(),
-                    cpp_template=spelled, loc=getattr(e, "loc", None))
+                return si
             if (e.isinstance_var is not None
                     or e.isinstance_type is not None):
                 raise ThirUnsupported("truthy.call_nonbool")

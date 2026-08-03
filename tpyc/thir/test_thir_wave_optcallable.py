@@ -299,21 +299,35 @@ class TestOwnedElementLiteralAppends:
         assert w.get("arg.own_value_tuple_literal", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_names_at_own_element_slots_still_defer(self):
-        # A bytes NAME needs the S6 view->owned convert and a tuple NAME the
-        # move cascade -- the literal-only rows must not capture either.
+    def test_view_form_bytes_name_takes_s6_convert(self):
+        # The S6 witness arrived: a VIEW-resolved bytes local (a
+        # literal-seeded span binding) at the Own[bytes] element slot takes
+        # the `::tpy::bytes_copy(v)` materialize convert.
         src = (
-            "from tpy import Int32\n"
             "def use() -> None:\n"
             "    bs: list[bytes] = []\n"
             "    v = b\"name\"\n"
             "    bs.append(v)\n"
+            "    print(len(bs))\n"
+            "def main() -> None:\n"
+            "    use()\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("arg.own_bytes_slot", 0) == 1
+        cpp = _assert_byte_identical(src)
+        assert "bs.push_back(::tpy::bytes_copy(v));" in cpp[1]
+
+    def test_tuple_name_at_own_element_slot_still_defers(self):
+        # A tuple NAME still needs the move cascade -- the literal-only row
+        # must not capture it.
+        src = (
+            "from tpy import Int32\n"
             "def use2() -> None:\n"
             "    ps: list[tuple[str, Int32]] = []\n"
             "    t = (\"m\", 3)\n"
             "    ps.append(t)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
         assert _fn(thir, "use2") is None
         _assert_byte_identical(src)
 

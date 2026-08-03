@@ -144,6 +144,7 @@ from .predicates import (
     _ptr_opt_borrow_call_ret,
     _f1_tuple,
     _arg_ptr_union_slot,
+    _union_bytes_literal_temp_arg,
     _bigint_index_disposition,
     _bytes_concat_operand,
     _coerce_disposition,
@@ -5259,6 +5260,11 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
         # `&(<lvalue record subscript>)` -- temp-free, so no flush position
         # needed; the face verdict already pinned the lvalue-borrow shape.
         return True
+    if face == 'call_pass':
+        # A borrow-returning call passed bare -- temp-free; the call's own
+        # recursive lowering validates callee kind and args (the result
+        # family is admitted under ptr_opt_passthrough).
+        return True
     if face == 'ctor':
         if isinstance(a, TpyMethodCall):
             # Marker-call rvalue: the call's own lowering validates the
@@ -5544,8 +5550,16 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
     # Omitted trailing defaults render on the C++ ctor signature exactly as
     # for the raw-name face (`ArrayList[Int32, 8]()` with a defaulted `items`
     # param calls the spelled zero-arg `ArrayList<int32_t, 8>()`).
+    inherited_arity = False
     if not _ctor_arity_ok(e, fi):
-        return False
+        # A record with NO own `__init__` but a param-ful INHERITED one
+        # (`TypedM[Int32](7)`): the synthetic ctor fi carries EMPTY params,
+        # so positional args fail the fi-arity gate -- the raw-name face's
+        # inherited-init situation on the instantiation spelling. Defer the
+        # arity verdict to the registry triples below.
+        if fi.params or not e.args:
+            return False
+        inherited_arity = True
     if not _f1_record(ct, analyzer):
         # A zero-arg builtin-CONTAINER instantiation reaching the ctor path
         # with a constructor fi (`Array[Int32, 8]()` -- e.g. the pascal
@@ -5558,6 +5572,20 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
     ri = analyzer.registry.get_record_for_type(ct)
     if ri is None:
         return False
+    if inherited_arity:
+        # Mirror _ctor_shape_ok's inherited-init face: own overloads beside a
+        # param-less synthetic fi is a shape mismatch this gate does not
+        # model; otherwise arity checks the init_params triples (exact, or
+        # omitted trailing params that carry a default). The arg loop reads
+        # the same triples via _ctor_effective_params.
+        if ri.get_method_overloads("__init__"):
+            return False
+        ip = ri.init_params
+        if not ip or len(e.args) > len(ip):
+            return False
+        if not all(d is not None for _, _, d in ip[len(e.args):]):
+            return False
+        _witness("ctor.inherited_instantiation")
     # A NATIVE record's zero-arg instantiation (`UninitStorage[T]()`) renders
     # the same `type_to_cpp(call_type)()` (native_cpp_names spelling) with no
     # arg arms to diverge. An arg-ful native ctor is admitted only when its
@@ -5705,6 +5733,38 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     # keep riding the AST's copy+move-temp cascade.
     return (not isinstance(a, TpyFieldAccess)
             and is_rvalue_source(analyzer, a))
+
+def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
+                          locals_: dict[str, TpyType],
+                          param_names: 'set[str] | frozenset[str]',
+                          analyzer) -> bool:
+    """The bytes twin of `_str_owned_slot_arg`, VIEW-form sources only (the
+    literal face is its own row): a span-form source at an `Own[bytes]`
+    container element slot materializes `::tpy::bytes_copy(x)` via the S6
+    view->owned THIRFormConvert. Three faces: a bytes PARAM name (the
+    signature spells `std::span<const uint8_t>`, so its read is BORROW --
+    including a narrowed `bytes | None` param whose deref reads `(*b)`), a
+    `BytesView`-resolved local, and a SLICE rvalue arriving under the sema
+    `bytesview_to_bytes` coerce (the coerce IS that copy; the render arm
+    peels it and wraps the view slice). An owned bytes LOCAL is STORAGE and
+    keeps riding the AST's copy+move-temp cascade."""
+    w = _plain_own_slot(ptype)
+    if w is None or not is_bytes_type(unwrap_readonly(w)):
+        return False
+    src = a
+    if isinstance(src, TpyCoerce):
+        if src.coercion.name != "bytesview_to_bytes":
+            return False
+        src = src.expr
+    if isinstance(src, TpyName):
+        at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
+        if at is None:
+            return False
+        return is_bytes_view_type(at) or src.name in param_names
+    if isinstance(src, TpySubscript) and isinstance(src.index, TpySlice):
+        return _resolved_bytes_value(analyzer.get_expr_type(src),
+                                     analyzer) is not None
+    return False
 
 def _bytes_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
@@ -6638,6 +6698,16 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # marker twin of free-call lowering's storage_ret_ok escape.
             or (storage_ret_ok
                 and _storage_call_ret(ret, analyzer) is not None)
+            # An owned-optional record return (`Container.wrap_optional(v)
+            # -> Own[Container[T]] | None`) at a STORAGE sink lands bare in
+            # its by-value `std::optional<T>` decl slot -- the record-method
+            # ladder's twin row, STORAGE-gated for the same aliasing reason.
+            or (storage_ret_ok
+                and _storage_optional_return_type(
+                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+                        if isinstance(ret, TpyType) else None,
+                        analyzer) is not None
+                and _witness("method.qualcall.storage_opt_ret"))
             # A value-repr Optional return at a WHOLE-optional sink
             # (`os.getenv("X") is None` -- the has_value render takes the
             # bare call), the record-method row's marker twin.
@@ -6788,6 +6858,12 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # render -- position-blind, and `_lower_call_arg`'s own tail
             # mirrors it. The free-call ladder's row.
             or _value_opt_member_arg(a, ptype, locals_, analyzer)
+            # A bare `None` into a value-repr Optional slot renders
+            # `std::nullopt` whatever the inner -- the sema-filled default at
+            # a kwargs call site arrives exactly this way (`os.walk(root,
+            # followlinks=f)` fills `onerror=None` at the
+            # `Optional[Callable]` slot). The ctor/record-method ladders' row.
+            or _none_value_opt_arg(a, ptype, analyzer) is not None
             # A list/dict LITERAL into a recursive-union wrapper slot
             # (`json.dumps([1, 2, 3])`): `_gen_union_arg`'s value branch
             # hoists `JsonValue __tmp_N = <literal>;` -- flush-gated like
@@ -7313,6 +7389,11 @@ def _container_method_arg_ok(
                 and (_own_bytes := _plain_own_slot(ptype)) is not None
                 and is_bytes_type(unwrap_readonly(_own_bytes))
                 and _witness("arg.bytes_owned_literal"))
+            # ... and its VIEW-form sibling (the S6 witness arrived):
+            # a bytes param / narrowed deref / view slice at the same slot
+            # takes the `::tpy::bytes_copy(x)` materialize convert.
+            or _bytes_owned_slot_arg(a, ptype, locals_, param_names,
+                                     analyzer)
             or _bytes_pass_through_arg(a, ptype, locals_, analyzer)
             or _char_pass_through_arg(a, ptype, locals_, analyzer)
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
@@ -8257,6 +8338,13 @@ def _record_method_arg_ok(
             # scoped temp_args into `_lower_call_arg`'s copy+move arm.
             or (temps_ok and _own_lvalue_arg(a, ptype, locals_, narrowed,
                                              analyzer))
+            # A record NAME moved into an `Optional[Own[T]]` method slot
+            # (`c.take(p)` at `Own[Point] | None` -- bare `std::move(p)`
+            # into the by-value `std::optional<Point>` param): the
+            # free/marker ladders' row; the shared lowering arm enforces
+            # the move verdict and rejects the copy shape.
+            or _opt_own_record_name_arg(a, ptype, locals_, analyzer)
+            is not None
             or _optional_ptr_arg(a, ptype, locals_, analyzer, temps_ok=False)
             or _container_pass_through_arg(a, ptype, locals_, analyzer)
             or _record_pass_through_arg(a, ptype, locals_, analyzer)
@@ -8285,6 +8373,11 @@ def _record_method_arg_ok(
             # `_lower_union_arg_lift`. Temp-hoisting, so the method loop
             # threads its flush for this slot too.
             or (temps_ok and _union_ctor_temp_arg(a, ptype, analyzer))
+            # ... and the bytes-literal rvalue at a beyond-the-slice union
+            # slot (`s.post(url, b"payload")` at `bytes | dict | None`),
+            # same hoist+addr render, own slot check.
+            or (temps_ok and _union_bytes_literal_temp_arg(
+                a, ptype, analyzer) is not None)
             # A same-union NAME into a POINTER-variant method slot passes
             # bare when the callee's param carries no deep-const verdict
             # (`p.set_pet(new_pet)`); a dcbp slot takes the
@@ -8992,6 +9085,18 @@ def _print_optval_opt(a: TpyExpr, analyzer,
         opt = _value_opt_str(t, analyzer)
     if opt is not None:
         return opt
+    if isinstance(a, TpyName):
+        # A storage-form Optional[Own[record]] binding (`c3 =
+        # Container.wrap_optional(99)` -> `std::optional<Container<T>>`):
+        # the same member-blind print_optional_val wrap over the bare name
+        # (the record streams via its own operator<<). Keyed on the
+        # RESOLVED type, so a narrowed read (member-typed) self-excludes.
+        tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+              if t is not None else None)
+        if (isinstance(tb, OptionalType) and not tb.uses_pointer_repr()
+                and _f1_record(_unwrap_own(unwrap_readonly(tb.inner)),
+                               analyzer)):
+            return tb
     if isinstance(a, TpyName) and a.name in locals_:
         # A NARROWED value-opt scalar OR str name keeps the whole-optional wrap
         # keyed on the DECLARED binding (gen_print ignores narrowing in print

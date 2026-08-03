@@ -3194,8 +3194,13 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             # A subclass rvalue retypes the slot (the polymorphic arm).
             note_detail("top_level.global_slot_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        # allow_temps: the module-init body is an ordinary AST flush
+        # position (`__tpy_init` hoists `__tmp_N` decls ahead of the
+        # `static __global_slot_N` init like any statement), so the
+        # generic ref-slot literal temps land as plain locals here.
         init = _lower_expr(stmt.init, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=True),
                            target_type=slot_t)
     else:
         note_detail("top_level.global_slot_shape")

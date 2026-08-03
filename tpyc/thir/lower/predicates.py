@@ -6243,6 +6243,16 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyCall):
         fi = a.resolved_function_info
         if fi is None or not fi.is_constructor:
+            # A BORROW-returning call already typed as the same ptr-repr
+            # Optional (`Edge(find(pts, 3))` at a `Point | None` slot): the
+            # result IS the `T*` the slot binds, so both paths render the
+            # call bare (the AST's OptionalType-arg arm returns `arg_gen`
+            # unwrapped). An Own-returning call is storage-form and takes
+            # the optional_to_ptr lift instead -- excluded here.
+            at = analyzer.get_expr_type(a)
+            at_u = unwrap_readonly(at) if at is not None else None
+            if at_u == ot and _ptr_opt_borrow_call_ret(a, at_u):
+                return 'call_pass'
             return None
         at = analyzer.get_expr_type(a)
         if at == inner:
@@ -6285,6 +6295,32 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     if isinstance(at, OwnType):
         at = unwrap_readonly(at.wrapped)
     return 'name' if at == inner else None
+
+def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
+                                  analyzer) -> 'UnionType | None':
+    """A bytes LITERAL at a pointer-variant union slot with a matching
+    `bytes` member (`s.post(url, b"payload")` at `bytes | dict | None`).
+    The union sits OUTSIDE the F4 U2 record/scalar slice
+    (`_eligible_ptr_union` -- widening that would open every narrowing /
+    extraction consumer), so this one rvalue shape carries its own slot
+    check: `_gen_union_arg`'s member-shape-blind rvalue branch hoists the
+    owned-bytes temp and lifts its address
+    (`std::vector<uint8_t> __tmp_N = ::tpy::bytes_literal_owned(..);` +
+    `pv{&__tmp_N}`). Readonly/Own slots stay out (their spellings are
+    unwitnessed). Returns the union or None."""
+    if not isinstance(a, TpyBytesLiteral):
+        return None
+    pt = unwrap_send_sync(ptype) if isinstance(ptype, TpyType) else None
+    if pt is None or isinstance(pt, ReadonlyType):
+        return None
+    ut = unwrap_ref_type(pt)
+    if not (isinstance(ut, UnionType) and is_ptr_variant_union(ut)):
+        return None
+    at = analyzer.get_expr_type(a)
+    if not any(at == m for m in ut.members if not is_void_like_type(m)):
+        return None
+    return ut
+
 
 def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
                         *, readonly_target: bool = False,
@@ -6435,8 +6471,14 @@ def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
     if not isinstance(u, OptionalType) or u.uses_pointer_repr():
         return False
-    if isinstance(unwrap_readonly(unwrap_send_sync(u.inner)), OwnType):
-        return False
+    _vom_inner = unwrap_readonly(unwrap_send_sync(u.inner))
+    if isinstance(_vom_inner, OwnType):
+        # Own on a VALUE payload is a no-op spelling (`Own[Int32] | None`
+        # is the same by-value `std::optional<int32_t>` slot), so the bare
+        # member render stands (`Container.wrap_optional(99)`); a non-value
+        # payload keeps gen_call_arg's Own cascade.
+        if not _vom_inner.wrapped.is_value_type():
+            return False
     # Shape checks run on the peeled expr: a slot-coerced arg is stamped with
     # the OPTIONAL itself (`5` / `b"a" + b"b"` -> `T | None`) but still
     # renders as the bare member through the coerce arm.

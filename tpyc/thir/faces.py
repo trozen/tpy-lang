@@ -157,6 +157,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.pass",                  # already-`T*` binding passes bare
     "optptr.name",                  # `&(name)`
     "optptr.subscript",             # `&(<lvalue record subscript>)`
+    "optptr.call_pass",             # borrow-returning call passes bare
+    "argtemp.protocol_union_literal",  # container literal at a nullable
+                                    # protocol ctor slot: typed temp + addr
     # Value-repr Optional slot None arg (lowering): the value-optional twin
     # of `optptr.none` -- `f(std::nullopt)`.
     "call.none_value_opt",
@@ -193,6 +196,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
     "unionlift.member",             # `pv{&(name)}`
     "unionlift.ctor_temp",          # ctor rvalue temp + `pv{&__tmp_N}`
+    "unionlift.bytes_literal_temp", # owned-bytes literal temp + `pv{&__tmp_N}`
+    "arg.own_bytes_slot",           # view-form bytes at Own[bytes] elem slot
+                                    # -> `::tpy::bytes_copy(x)`
+    "call.isinstance_static_value", # tparam isinstance trait disjunction at
+                                    # a value position
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
@@ -208,6 +216,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                        # (asyncio.create_task(...);): the bare call
     "method.qualcall.record_storage",  # record-family qualcall rvalue at a
                                        # storage sink: bare call into the slot
+    "method.qualcall.storage_opt_ret",  # Own[record]|None qualcall result at a
+                                       # storage sink: bare into optional<T>
     "method.container_iterable",    # container method result as a for-head iterable
     "method.qualcall.container_iterable",  # marker-call container as a for-head iterable
     "method.qualcall.container_discard",  # discarded marker-call container result
@@ -367,6 +377,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
     "ctor.container_empty_instantiation",  # zero-arg `Array[Int32, 8]()` etc.
                                     # at the ctor path -> `type_cpp()`
+    "ctor.inherited_instantiation", # instantiation spelling over an
+                                    # inherited param-ful __init__
+                                    # (`TypedM[Int32](7)`)
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot

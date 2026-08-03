@@ -7284,3 +7284,127 @@ restored); two new pins (the in-loop VALUE hoist routes identical;
 a nested match's CONTAINER capture keeps the in-branch reject); the
 garbled face-registry comments repaired. Dial unchanged (3044/3696);
 THIR units 4381, full comp suite green, move-verdicts 0/761.
+
+### Design round 14, Tier 1: four call-lane gate widenings (2026-08-03)
+
+The round-14 measurement (fresh probe_corpus off 2c6948bae3) found the
+call-lane sole-blockers collapsed (body:expr.call 76 -> 4,
+body:expr.method_call 84 -> 6; units unchanged, the weight is
+multi-blocked now) and priced the residue by forced-open byte-diff.
+Tier 1 = the four cells whose render arms already existed -- gate
+admissions only. +5 flips, 5 user (dial 3049/3696):
+`auto_move/auto_move_own_optional_{ctor,method}`, `stdlib/os_walk`,
+`inheritance/generic_base_inherited_ctor`,
+`records/optional_field_ctor_param_optional`. Rows
+(`test_thir_wave_t1gates.py`):
+
+- `_opt_own_record_name_arg` added to the CTOR chain and the
+  record-METHOD ladder (one root, two sites): a record NAME moved into
+  an `Optional[Own[T]]` slot renders bare `std::move(p)`; the shared
+  `_lower_call_arg` arm already enforced the move verdict, so the copy
+  shape keeps falling back (pinned).
+- `_none_value_opt_arg` added to `_marker_call_arg_ok`: the os_walk
+  "kwargs" tag was LOSSY -- sema had already normalized the kwargs; the
+  real reject was the sema-FILLED `onerror=None` default at its
+  `Optional[Callable]` slot (`std::nullopt`). Boundary: a None at a
+  ptr-repr Optional[record] marker slot keeps the `optptr.none` face.
+- `_ctor_instantiation_ok` grew the inherited-init arity fallback
+  `_ctor_shape_ok` already had (param-less synthetic fi + registry
+  triples): `TypedM[Int32](7)` -- the instantiation spelling over an
+  inherited param-ful `__init__` (`ctor.inherited_instantiation`).
+- New `call_pass` face in `_optional_ptr_arg_face`: a BORROW-returning
+  call already typed as the slot's ptr-repr Optional passes bare
+  (`Edge(find(pts, 3))` -- the AST's OptionalType-arg arm returns
+  `arg_gen` unwrapped), lowered under `ptr_opt_passthrough`; an
+  Own-declared optional return is storage-form and stays out (pinned,
+  the optional_to_ptr lift is unmirrored).
+
+### Design round 14, Tier 2: three call-lane render arms (2026-08-03)
+
+The forced-open DIVERGENT cells: each needed one render arm beside its
+admission. +3 flips, 3 user (dial 3052/3696): `stdlib/counter`,
+`tplib/requests_session`, `view_lifetime/view_elem_into_owned_container`.
+Rows (`test_thir_wave_t2renders.py`):
+
+- `_protocol_union_literal_temp_arg` (the 'addr' face's literal
+  sibling; the nullable-protocol slot classification extracted into the
+  shared `_nullable_protocol_slot`): a container literal at an
+  `Iterable[T] | None` ctor slot hoists a temp typed as the literal's
+  own Array demotion and lifts its address
+  (`std::array<std::string, 3> __tmp_1 = {..};` + `&(__tmp_1)` --
+  `_gen_protocol_arg`'s temporary tail). Ctor positions only, like
+  'addr'. Closes the parked `stdlib/counter` registry entry.
+- `_union_bytes_literal_temp_arg`: a member-typed bytes LITERAL at a
+  pointer-variant union slot OUTSIDE the F4 U2 record/scalar slice
+  (`bytes | dict | None` -- widening `_eligible_ptr_union` would open
+  every narrowing/extraction consumer, so the one rvalue shape carries
+  its own slot check): the owned-bytes temp + `pv{&__tmp_N}` lift
+  through the existing THIRUnionArgLift machinery. A bytes NAME at the
+  same slot stays out (pinned).
+- `_bytes_owned_slot_arg` (the S6 twin of `_str_owned_slot_arg`; the
+  deferred "view-form NAMES pending a witness" note cashed in): a
+  bytes param name, a narrowed `bytes | None` deref, and a
+  `bytesview_to_bytes`-coerced slice at an `Own[bytes]` element slot
+  materialize `::tpy::bytes_copy(x)` via the shared S6 FormConvert
+  (the coerce peels -- it IS the copy). The forced-open probe DROPPED
+  the copy (the dangling-view aliasing class), confirming the old gate
+  was fail-safe. An owned bytes LOCAL keeps the AST cascade (pinned).
+- Rider: the chained bytes element read the chokepoint unmasked
+  (`app[0][0]` -> `bytes_getitem(::tpy::__getitem__(app, 0), 0)`):
+  `bytes_recv_ok` grew the one-level nested-subscript face mirroring
+  the container-in-container nested_ok row.
+
+### Design round 14, Tier 3: the three chained cells (2026-08-03)
+
+The approved 10 -> 9 -> 8 order. +3 flips, 3 user (dial 3055/3696):
+`generics/isinstance_typeparam_tuple`, `generics/generic_func_multi`,
+`generics/generic_static_method`. Rows (`test_thir_wave_t3cells.py`):
+
+- (10) `_lower_static_isinstance` extracted from the truthy-condition
+  arm and re-consumed at a VALUE position (`return isinstance(x, (Dog,
+  Cat))` on a bounded-T subject): the same spelled
+  `isinstance_static<M, decltype(x)>()` disjunction, no extraction
+  alias, position-independent. Non-tparam isinstance keeps rejecting in
+  value position (pinned).
+- (9) the time-boxed top_level TempSink look came back SMALL: the
+  module-init body is an ordinary AST flush position, so the
+  NominalType global-slot init now threads `allow_temps=True` and the
+  generic ref-slot literal temps land as plain locals ahead of the
+  `static __global_slot_N` init (`int32_t __tmp_1 = 10; ... static
+  Pair<...> __global_slot_1 = create_pair<...>(__tmp_1, __tmp_2);`).
+  One-line use change; emit-side CtxTempSink already flushed per leaf.
+- (8) the 3-row chain, landed in reject order: the marker gate grew
+  the record-method ladder's `_storage_optional_return_type` escape
+  (STORAGE-gated -- `method.qualcall.storage_opt_ret`);
+  `_value_opt_member_arg`'s Own exclusion narrowed to NON-value
+  payloads (Own on a value scalar is a no-op spelling, so `99` lands
+  bare at the `Own[T] | None` slot; an `Own[record] | None` slot keeps
+  the cascade, pinned); `_print_optval_opt`'s NAME arm grew the
+  storage-form `Optional[Own[record]]` row (`print_optional_val(c3)`
+  member-blind over the bare name; keyed on the RESOLVED type so a
+  narrowed read self-excludes). As predicted by the round-14
+  measurement, `print.arg.optional_name` co-unlocked nothing beyond
+  the case itself.
+
+### Review round (design round 14) + readiness retrospective (2026-08-03)
+
+Five specialists; cpython-parity + architecture-fit clean. Applied:
+a VACUOUS boundary pin (asserted a face name that does not exist in the
+registry, so it always passed) rewritten against the marker-ladder
+shape it actually guards; four missing boundary pins added (chained
+bytes slice-index / two-level receivers, the storage-opt escape at a
+non-storage sink, the narrowed Optional[Own[record]] print read, the
+top-level subclass-rvalue shape guard); phase markers stripped from pin
+docstrings; inferable Int32() spellings simplified; a second stale
+TODO bullet fixed. LESSON, generalized by the readiness second opinion:
+a face-count assert in a test proves NOTHING on its own -- the registry
+assert fires only on WITNESS, so a nonexistent name in `.get()` reads
+as zero forever, and a real face can be witnessed by a body that later
+falls back. Every face assert needs a routing assert beside it
+(`_assert_routes_byte_identical` / routed-set `_fn` checks); the pin
+discipline already says this for ROUTING pins -- it applies equally to
+boundary pins' zero-count asserts, whose honest form is face==0 PLUS
+the fallback/identity claim. Three fallback-safe gate/render
+asymmetries carried to TODO's parked registry (opt-own move-verdict
+placement, inherited-arity kwargs mix, bytes-literal union arm under
+readonly_target).
