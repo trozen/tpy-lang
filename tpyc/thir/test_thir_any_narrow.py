@@ -71,9 +71,9 @@ class TestAnyNarrowLowering:
         assert _fn(thir, "pick") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_global_subject_falls_back(self):
-        # A module-global Any subject reads through a global slot -- not in
-        # the routed slice; the body falls back whole.
+    def test_global_subject_routes(self):
+        # A module-global Any subject: the value-typed global reads bare,
+        # so the typeid machinery renders it like a local's.
         src = (
             _PRELUDE
             + "g: Any = 5\n"
@@ -82,7 +82,8 @@ class TestAnyNarrowLowering:
             + "    return False\n"
         )
         thir = _lower(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_while_head_falls_back(self):
         # The while-isinstance-Any position is an excluded rung: the while

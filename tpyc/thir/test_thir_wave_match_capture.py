@@ -125,9 +125,9 @@ class TestMatchValueTupleHoist:
         assert "std::tuple<int32_t, int32_t> t;" in body
         _assert_byte_identical(src)
 
-    def test_container_branch_decl_still_defers(self):
-        # The list hoist takes the optional-storage / rebind-slot forms,
-        # neither of which this row builds.
+    def test_container_branch_decl_takes_ptr_slot(self):
+        # The rvalue-reassigned list hoist takes the pointer + rebind-slot
+        # form (`std::vector<T>* xs;` + the match-head slot).
         src = _HOLDER + ("def f(h: Holder) -> Int32:\n"
                          "    match h:\n"
                          "        case Holder(kind=0):\n"
@@ -135,4 +135,6 @@ class TestMatchValueTupleHoist:
                          "        case _:\n"
                          "            xs = [3]\n"
                          "    return len(xs)\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)

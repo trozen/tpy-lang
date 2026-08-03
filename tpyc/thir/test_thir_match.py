@@ -2693,11 +2693,10 @@ class TestMatchWholeSubjectCapture:
         assert _fn(thir, "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_leaked_container_arm_decl_still_defers(self):
-        # A leaked arm-body container decl is outside the F1-record slice
-        # of the non-value hoist forms; lowering-level assert (the AST
-        # path handles the shape -- cases/match/branch_decl_pending_list_leak
-        # covers it end-to-end).
+    def test_leaked_container_arm_decl_routes(self):
+        # A leaked arm-body container decl takes the OPTIONAL_STORAGE
+        # hoist (`std::optional<std::vector<T>> xs;`) -- the container
+        # widening of the non-value hoist forms.
         src = RECORD_PREAMBLE + (
             "def f(p: Point) -> Int32:\n"
             "    match p:\n"
@@ -2709,7 +2708,8 @@ class TestMatchWholeSubjectCapture:
             "print(f(Point(0, 1)))\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_field_subject_full_capture_routes(self):
         # Chain-optional tier, storage-form Optional FIELD subject: the

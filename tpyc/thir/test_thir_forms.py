@@ -964,16 +964,17 @@ class TestF2dRebindSlot:
         assert decl.kind is PtrSlotKind.RECORD_RVALUE
         assert not decl.needs_rebind_slot
 
-    def test_param_lvalue_reseat_of_record_slot_falls_back(self):
-        # A same-type non-readonly record PARAM reseat source would build the
-        # same-form same-type convert the validator hard-rejects -- the guard
-        # must fall back cleanly, never crash comp.
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def f(a: Inner, x: Int32) -> Int32:\n"
-            + "    p = Inner(1)\n    if x < 0:\n        p = a\n"
-            + "    return p.value\n")
-        assert _fn(thir, "f") is None
+    def test_param_lvalue_reseat_of_record_slot_routes_addr(self):
+        # A same-type non-readonly record PARAM reseat source takes the
+        # PTR_ADDR address-of over the param's `T&` lvalue (`p = &(a);`) --
+        # no convert node, so the validator trap never arises.
+        src = (_F1_RECORDS
+               + "def f(a: Inner, x: Int32) -> Int32:\n"
+               + "    p = Inner(1)\n    if x < 0:\n        p = a\n"
+               + "    return p.value\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_param_lvalue_reseat_of_opt_slot_falls_back(self):
         # The OPT-pointee twin of the guard above (same validator trap).

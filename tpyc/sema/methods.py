@@ -1643,6 +1643,12 @@ class MethodAnalyzer:
             is_async=method.is_async,
             is_generator=method.is_generator,
             async_inner_return=method.async_inner_return,
+            # Method-kind bits ride along too: call-site consumers classify
+            # the callee off this fi, and losing them here misfiles a plain
+            # instance method as a free function.
+            is_method=method.is_method,
+            is_staticmethod=method.is_staticmethod,
+            is_classmethod=method.is_classmethod,
             canonical_fi=method.root,
         )
         return return_type

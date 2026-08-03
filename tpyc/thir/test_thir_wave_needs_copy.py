@@ -141,11 +141,10 @@ class TestOwnStrTemp:
 
 
 class TestOwnCoerceFieldBoundary:
-    def test_wrapping_coerce_field_at_scalar_slot_stays_ast(self):
-        # The coerce-wrapped FIELD face is payload-sliced to str: a widening
-        # coerce over an Int8 field at an Own[Int32] slot must keep
-        # rejecting (the temp's init would carry the static_cast wrap --
-        # unwitnessed).
+    def test_wrapping_coerce_field_at_scalar_slot_routes(self):
+        # A widening coerce over an Int8 field at an Own[Int32] slot: the
+        # cast rvalue binds the slot natively (the Own[value-scalar]
+        # template disposition) -- inline, no temp, dualgen-verified.
         src = (
             "from tpy import Int8, Int32\n"
             "class R:\n"
@@ -156,7 +155,7 @@ class TestOwnCoerceFieldBoundary:
             "    xs.append(r.n)\n"
             "    print(xs)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
 

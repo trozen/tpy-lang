@@ -424,16 +424,16 @@ class TestCompReturnPosition:
         assert out == _cpp(src, thir=False)
         assert "return ({" in out
 
-    def test_return_comp_out_of_slice_falls_back(self):
-        # A call iterable is outside the comp route -> the raise inside the
-        # return arm falls the body back (byte-identical via AST).
+    def test_return_comp_call_iterable_routes(self):
+        # A container-returning CALL iterable now rides the comp route
+        # (the free-call arm), so the return-position comp routes whole.
         src = (_PRELUDE + "from tpy import Own\n"
                "def make() -> Own[list[Int32]]:\n    return [1, 2]\n"
                "def f() -> Own[set[Int32]]:\n"
                "    return {x for x in make()}\n"
                "print(len(f()))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 

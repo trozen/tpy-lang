@@ -408,8 +408,10 @@ class THIROptViewArg(THIRExpr):
     view family. Fires for the WHOLE optional (narrowed or not -- gen_expr
     threads the slot type, not the narrowed read). `result_type` is the Optional
     slot, whose inner drives the owned-copy spelling (`view_to_owned_conv`);
-    VALUE form."""
+    VALUE form. `moved` wraps the rebuilt optional in `std::move(...)` --
+    the consuming STORAGE positions' spelling (the setitem value)."""
     name: str = ""
+    moved: bool = False
 
 
 @dataclass(frozen=True)
@@ -1882,6 +1884,19 @@ class THIRMatchFoldBind(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIROverloadDefault(THIRStmt):
+    """A short @overload stub's omitted impl param, emitted as a local
+    initialized to the impl's default at the top of the body
+    (`{cpp_type} {name} = {cpp_default};`, comment-free like the param
+    copies). `cpp_default` is pre-rendered by the shared
+    `default_to_cpp_from_analyzer` (with the AST's `{}`
+    value-initialization fallback applied by lowering)."""
+    name: str
+    cpp_type: str
+    cpp_default: str
+
+
+@dataclass(frozen=True)
 class THIRParamCopy(THIRStmt):
     """The mutable owned copy of a reassigned const-ref param --
     `{cpp_type} {name} = __param_{name};` at the top of the body, before any
@@ -2708,6 +2723,10 @@ class THIRMatch(THIRStmt):
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
     arms: tuple[THIRMatchArm, ...] = ()
     hoist_decls: tuple[tuple[str, str], ...] = ()
+    # The rvalue-reassigned subset of hoist_decls: emit allocates that
+    # name's rebind slot (`std::optional<T> __slot_N;`) immediately before
+    # its predecl line, mirroring THIRIf.hoist_slots.
+    hoist_slots: tuple[tuple[str, str], ...] = ()
     is_exhaustive: bool = False
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
     synthetic_default: bool = False   # no wildcard AND not exhaustive

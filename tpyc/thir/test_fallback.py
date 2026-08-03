@@ -163,11 +163,15 @@ def test_arm_residual_noop_without_active_compiler(monkeypatch):
 
 
 _SRC = (
+    "from typing import Iterator\n"
     "from tpy import Array, Int32\n"
     "async def af() -> None:\n"
     "    pass\n"
+    "def gen() -> Iterator[Int32]:\n"
+    "    yield 1\n"
     "def comp(src: Array[Int32, 3]) -> Int32:\n"
-    "    xs = [v for v in sorted(src)]\n"  # comp over a call iterable: still AST
+    # comp over an ITERATOR-protocol call (no container return): still AST
+    "    xs = [v for v in gen()]\n"
     "    return len(xs)\n"
     "def ok(n: Int32) -> Int32:\n"
     "    return n + 1\n"

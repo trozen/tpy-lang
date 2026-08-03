@@ -13,7 +13,8 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
-    _lower_ctx_witnessed, _assert_byte_identical, _PRELUDE,
+    _lower_ctx_witnessed, _assert_byte_identical,
+    _assert_routes_byte_identical, _PRELUDE,
 )
 from ..codegen_cpp.forms import is_ptr_variant_union
 from ..typesys import TupleType, unwrap_readonly, unwrap_ref_type
@@ -2300,11 +2301,10 @@ class TestBorrowTupleAliasDecl:
         assert w.get("decl.btuple_alias", 0) == 0
         _assert_byte_identical(src)
 
-    def test_per_element_own_call_result_still_defers(self):
-        # `tuple[Own[A], B]` returns the BORROW form too, but binds its owned
-        # element by value. The AST now reads that per element correctly, so
-        # this is an unported shape rather than a fenced-off broken oracle --
-        # un-rejecting it is tracked migration work (TODO.md).
+    def test_per_element_own_call_result_routes_mixed_alias(self):
+        # `tuple[Own[A], B]` returns the BORROW form too, binding its owned
+        # element by value; the single-binding alias decl now admits it
+        # (`decl.mixed_own_alias`) and reads pick `.` vs `->` per element.
         src = (
             "from tpy import Int32, Own\n"
             "class Box:\n"
@@ -2318,8 +2318,11 @@ class TestBorrowTupleAliasDecl:
             "def main() -> None:\n    print(use(Box(7)))\nmain()\n"
         )
         thir, w = _lower_ctx_witnessed(src)
-        assert w.get("decl.btuple_alias", 0) == 0
-        _assert_byte_identical(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("decl.mixed_own_alias", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert "auto p = make_mixed(b);" in cpp[1]
+        assert "std::get<1>(p)->val" in cpp[1]
 
 
 class TestStorageTupleAliasSourceShapes:

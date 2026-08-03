@@ -217,6 +217,13 @@ def factory_default_to_cpp(field_type: TpyType) -> str:
 
 def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
     """Convert a constant default expression to its C++ representation."""
+    return default_to_cpp_from_analyzer(ctx.analyzer, expr, ptype)
+
+
+def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
+                                 ptype: TpyType) -> str:
+    """`default_to_cpp` keyed on the analyzer directly -- the slice of ctx
+    it reads -- so the THIR per-stub prologue can share the renderer."""
     if isinstance(expr, TpyTypeParamConstruct):
         return f"{expr.param_name}{{}}"
     lit = literal_value_from_expr(expr)
@@ -228,7 +235,7 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         # value (not a `-` prefixed onto the positive token's width).
         return render_int_literal_value(
             lit.value, ptype,
-            default_int_type=ctx.analyzer.ctx.default_int_type,
+            default_int_type=analyzer.ctx.default_int_type,
             type_to_cpp=lambda t: t.to_cpp())
     if isinstance(expr, TpyFloatLiteral):
         v = repr(expr.value)
@@ -267,12 +274,12 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         # the bare name -- `lookup_qualified` would resolve them to
         # `current_module` which is `__main__` for the entry module,
         # mismatching the actual C++ namespace `tpyapp::main`.
-        table = ctx.analyzer.ctx.module_attributes
+        table = analyzer.ctx.module_attributes
         cell = table.get(expr.name) if table else None
         bd = cell.binding if cell is not None else None
         if bd is not None and bd.defining_module is not None:
             return qualified_cpp_name(bd.defining_module, bd.canonical_name)
-        imp = ctx.analyzer.imported_names.get(expr.name)
+        imp = analyzer.imported_names.get(expr.name)
         if imp is not None:
             source_module, original_name = imp
             return qualified_cpp_name(source_module, original_name)
@@ -282,18 +289,18 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         # get_enum resolves both local and imported enums (parser accepts the
         # Name.attr shape without type info, so a non-enum reaching here is a
         # user error, not an internal one).
-        enum_type = ctx.analyzer.registry.get_enum(expr.obj.name)
+        enum_type = analyzer.registry.get_enum(expr.obj.name)
         if enum_type is not None:
-            return enum_member_cpp(enum_type, ctx.analyzer.ctx.module_name, expr.field)
+            return enum_member_cpp(enum_type, analyzer.ctx.module_name, expr.field)
         raise CodeGenError(
             f"default value '{expr.obj.name}.{expr.field}' is not a resolvable "
             f"enum member", expr.loc)
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
-        return f"-{default_to_cpp(ctx, expr.operand, ptype)}"
+        return f"-{default_to_cpp_from_analyzer(analyzer, expr.operand, ptype)}"
     if isinstance(expr, TpyCall):
         # Int32(5) -> just the literal value
         if expr.args:
-            return default_to_cpp(ctx, expr.args[0], ptype)
+            return default_to_cpp_from_analyzer(analyzer, expr.args[0], ptype)
         # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
         if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
             return "0"

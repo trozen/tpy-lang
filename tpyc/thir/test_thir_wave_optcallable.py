@@ -795,17 +795,19 @@ class TestViewFamilyReceiverWidenings:
 
 
 class TestValueOptCallableBoundaries:
-    def test_narrowed_invocation_still_defers(self):
-        # The narrowed read derefs `(*cb)` on the AST path -- unmirrored, so
-        # the body must keep falling back (today the None-test itself
-        # rejects first; the name-arm guard backstops any future cond arm).
+    def test_narrowed_invocation_routes_value_unwrap(self):
+        # The invocation unwraps the declared Optional[Callable] binding
+        # (`cb.value()(1)` -- call.opt_callable_unwrap), and the None-test
+        # reads has_value.
         src = _PRELUDE + (
             "def invoke(cb: Callable[[Int32], None] | None) -> None:\n"
             "    if cb is not None:\n"
             "        cb(1)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "invoke") is None
-        _assert_byte_identical(src)
+        assert _fn(thir, "invoke") is not None
+        cpp = _assert_byte_identical(src)
+        assert "cb.value()(1);" in cpp[1]
+        assert "if ((cb.has_value()))" in cpp[1]
 
     def test_mismatched_signature_slot_still_defers(self):
         # Exact-slot pin: a differing inner signature is a different

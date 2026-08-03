@@ -67,16 +67,15 @@ class TestBytesValues:
         g_ret = _fn(thir, "g").body[0]
         assert isinstance(g_ret.value, THIRBytesLiteral) and g_ret.value.form is Form.STORAGE
 
-    def test_cross_type_coercion_ineligible(self):
-        # A literal or bytes value at a BytesView return arrives wrapped in
-        # the cross-type view coercion (position-dependent) -> AST path,
-        # mirroring the str cross-type deferral.
+    def test_cross_type_coercion_routes_identity(self):
+        # The bytes->BytesView coerce is identity (a bytes value IS the
+        # span); a literal source flips to the static bytes_literal span.
         thir = _lower(
             "from tpy import BytesView\n"
             'def g() -> BytesView:\n    return b"ab"\n'
             "def h(a: bytes) -> BytesView:\n    return a\n")
-        assert _fn(thir, "g") is None
-        assert _fn(thir, "h") is None
+        assert _fn(thir, "g") is not None
+        assert _fn(thir, "h") is not None
 
     def test_compare_and_len_route(self):
         # bytes __eq__ is a @native free-function dunder (no cpp_template) --

@@ -317,13 +317,15 @@ class TestOptionalLocalFaces:
 
 
 class TestGateRejects:
-    def test_own_optional_param_rejects(self):
-        # `Own[A] | None` is storage-repr (`std::optional<A>&&`,
-        # OPTIONAL_STORAGE) -- outside the borrow-name slice.
-        thir = _lower_ctx(
-            _PRELUDE
-            + "def use(p: Own[A] | None) -> bool:\n    return p is None\n")
-        assert _fn(thir, "use") is None
+    def test_own_optional_param_routes_record_kind(self):
+        # `Own[A] | None` is storage-repr (a by-value `std::optional<A>`):
+        # the RECORD-kind param seed admits the has_value None-test.
+        src = (_PRELUDE
+               + "def use(p: Own[A] | None) -> bool:\n    return p is None\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        cpp = _assert_byte_identical(src)
+        assert "return (!p.has_value());" in cpp[1]
 
     def test_optional_container_param_rejects(self):
         thir = _lower_ctx(

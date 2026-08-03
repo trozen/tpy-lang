@@ -240,9 +240,9 @@ class TestEnumTruthiness:
         assert isinstance(_fn(thir, "f").body[0].condition, THIREnumWrap)
         _assert_byte_identical(src)
 
-    def test_int_enum_operand_still_validates_itself(self):
-        # Admitting every SHAPE does not bypass the operand's own lowering: a
-        # walrus operand still rejects, so the body falls back.
+    def test_int_enum_walrus_operand_routes(self):
+        # An enum walrus condition now routes (the scalar walrus row's enum
+        # family + the enum-truthy mode over the inline assign).
         src = (
             _ENUM_PRELUDE
             + "def make(v: Prio) -> Prio:\n    return v\n"
@@ -252,7 +252,7 @@ class TestEnumTruthiness:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "make") is not None
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
     def test_member_operand_still_evaluates(self):

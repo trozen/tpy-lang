@@ -14,6 +14,7 @@ from ...parse.nodes import (
     TpyFieldAccess,
     TpyLiteralPattern,
     TpyMatch,
+    TpyMethodCall,
     TpyName,
     TpyOrPattern,
     TpySubscript,
@@ -71,6 +72,7 @@ from ..nodes import (
     THIRMatchBinding,
 )
 from .predicates import (
+    _container_scalar_read,
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
@@ -727,6 +729,7 @@ def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
 def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                   prescan: _Prescan, lc: '_LowerCtx', *, in_branch: bool,
                   in_loop: bool, nonvalue_ok: bool = False,
+                  ptr_slot_ok: bool = False,
                   ) -> 'tuple[tuple[str, TpyType, str], ...] | None':
     """The arm-declared hoist admission shared by every routed tier (the
     try arm's discipline): already-declared names skip, fresh plain-value
@@ -744,12 +747,16 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             continue
         if name in prescan.native_globals:
             return None
-        if in_branch or in_loop:
-            return None
         vtype = unwrap_ref_type(raw)
+        # A plain-VALUE hoist decl (`T t;`) is position-neutral: the AST's
+        # _emit_branch_decls renders it at the match site wherever the
+        # match sits (a nested match's leaked capture hoists inside the
+        # outer arm), so only the non-value flavors are function-top-only.
         if _statements._try_hoist_type_ok(vtype, analyzer):
             hoist_declared.append((name, vtype, "value"))
             continue
+        if in_branch or in_loop:
+            return None
         if _value_tuple(vtype, analyzer) is not None:
             # A VALUE tuple predecls through the same plain tail arm
             # (`std::tuple<...> t;`) and its branch writes are plain assigns.
@@ -776,7 +783,13 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
                 return None
             hoist_declared.append((name, vtype, "opt_ptr"))
             continue
-        if not (is_plain_nonvalue(vtype) and _f1_record(vtype, analyzer)):
+        if not (is_plain_nonvalue(vtype)
+                and (_f1_record(vtype, analyzer)
+                     # A scalar-read CONTAINER hoist takes the same two
+                     # non-value flavors (`std::optional<vector<T>> xs;` /
+                     # `vector<T>* xs;`) -- the if cascade's arms are
+                     # type-generic.
+                     or _container_scalar_read(vtype, analyzer))):
             return None
         if lc.func.is_generator or lc.func.is_async:
             # Both non-value flavors hoist storage to function top; resumable
@@ -801,6 +814,12 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             continue
         if _statements._opt_storage_hoist_flavor(name, vtype, lc) is None:
             hoist_declared.append((name, vtype, "opt_storage"))
+            continue
+        if ptr_slot_ok and name in prescan.rvalue_reassigned:
+            # The reassigned-with-rvalues flavor: `T* name;` plus the
+            # match-head rebind slot (the if cascade's hoist_slots arm) --
+            # record tiers only (the slot pre-decl emit is threaded there).
+            hoist_declared.append((name, vtype, "ptr_slot"))
             continue
         return None
     return tuple(hoist_declared)
@@ -887,7 +906,8 @@ def _match_route(
         in_branch=in_branch, in_loop=in_loop,
         nonvalue_ok=kind in ("if_elif_record", "guarded_record",
                              "if_elif_optional",
-                             "if_elif_optional_guarded"))
+                             "if_elif_optional_guarded"),
+        ptr_slot_ok=kind in ("if_elif_record", "guarded_record"))
     if hoist_types is None:
         return None
     if kind == "switch_union":
@@ -1010,6 +1030,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         _witness(f"match.{kind}")
     predeclared = set(declared)
     hoist_decls: list[tuple[str, str]] = []
+    hoist_slots: list[tuple[str, str]] = []
     hoist_kinds: dict[str, str] = {}
     for name, vtype, hkind in route.hoist_types:
         hoist_kinds[name] = hkind
@@ -1021,6 +1042,16 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             lc.branch_hoisted.add(name)
             declared[name] = vtype
             _witness("match.hoist_ptr_local")
+            continue
+        if hkind == "ptr_slot":
+            # Route-gated to the record tiers (ptr_slot_ok).
+            hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
+            hoist_slots.append((name, lc.render_type(vtype)))
+            lc.pointers.add(name)
+            lc.promote_movable(name)
+            lc.rebind_slot_locals.add(name)
+            declared[name] = vtype
+            _witness("match.hoist_ptr_slot")
             continue
         if hkind == "opt_storage":
             hoist_decls.append(_statements._optional_storage_hoist_entry(
@@ -1067,6 +1098,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         return _lower_match_record(stmt, lc, declared, loc, pointers,
                                    hoist_decls, kind, loop_depth=loop_depth,
                                    hoist_kinds=hoist_kinds,
+                                   hoist_slots=tuple(hoist_slots),
                                    subject_rvalue=route.subject_rvalue)
     if kind == "optional_partition":
         return _lower_match_optional(stmt, lc, declared, loc, pointers,
@@ -1420,6 +1452,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         hoist_decls: 'list[tuple[str, str]]',
                         kind: str, *, loop_depth: int = 0,
                         hoist_kinds: 'dict[str, str] | None' = None,
+                        hoist_slots: 'tuple[tuple[str, str], ...]' = (),
                         subject_rvalue: bool = False) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
     source-order single-entry arms; per class arm the pre-rendered literal
@@ -1516,6 +1549,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         subject_ref=not subject_rvalue,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
+        hoist_slots=hoist_slots,
         is_exhaustive=stmt.is_exhaustive,
         emit_unreachable=emit_unreachable,
         synthetic_default=False,

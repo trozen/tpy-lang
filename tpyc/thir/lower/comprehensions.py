@@ -20,6 +20,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
+    OwnType,
     TpyType,
     TupleType,
     resolve_int_literals,
@@ -46,6 +47,7 @@ from ..faces import witness as _witness
 from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
 from .predicates import (
+    _call_iterable_lvalue,
     _dict_view_iterable_ok,
     _eligible_char,
     _eligible_enum,
@@ -55,6 +57,7 @@ from .predicates import (
     _field_receiver_ok,
     _for_each_elem_binding_ok,
     _is_range_call,
+    _nonvalue_container_ret,
     _optional_ptr_borrow,
     _owned_str_slot,
     _range_counter_type,
@@ -146,10 +149,25 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if isinstance(it, TpyMethodCall):
         methods = (("items",) if gen.unpack_vars is not None
                    else ("values", "keys"))
-        if not _dict_view_iterable_ok(it, declared, analyzer, methods=methods):
+        if _dict_view_iterable_ok(it, declared, analyzer, methods=methods):
+            it_type = analyzer.get_expr_type(it)
+            lvalue = False  # a view call result is an rvalue (owning capture)
+        elif gen.unpack_vars is None and not owns:
+            # A container-returning METHOD call iterable (`[n for n in
+            # os.listdir(tmp) if ..]` -- module-qualified calls parse as
+            # method calls): the for-each TpyMethodCall fallback's comp
+            # twin. The call renders inside the `__obj_N` capture and its
+            # own lowering re-validates callee/args; a borrow return is a
+            # C++ lvalue (`auto&` capture), an Own return an owning rvalue.
+            ret = analyzer.get_expr_type(it)
+            if not _nonvalue_container_ret(ret):
+                return None
+            mfi = it.resolved_function_info
+            it_type = unwrap_readonly(unwrap_send_sync(ret))
+            lvalue = not (mfi is not None
+                          and isinstance(mfi.return_type, OwnType))
+        else:
             return None
-        it_type = analyzer.get_expr_type(it)
-        lvalue = False  # a view call result is an rvalue (owning capture)
     elif isinstance(it, (TpyName, TpyFieldAccess)):
         if isinstance(it, TpyName):
             if it.name not in declared or it.name in narrowed:
@@ -178,6 +196,21 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
         lvalue = True
+    elif isinstance(it, TpyCall) and not owns:
+        # A plain container-returning CALL iterable (`[n for n in
+        # os.listdir(tmp) if ..]`): the for-each TpyCall arm's comp twin.
+        # The call renders inside the `__obj_N` capture (owning for an
+        # rvalue return, `auto&` for a borrow) and its own lowering
+        # re-validates callee/args -- a shape outside the slice falls the
+        # body back. Str/bytes/view returns stay on their own arms
+        # (`_nonvalue_container_ret` excludes them).
+        ret = analyzer.get_expr_type(it)
+        if gen.unpack_vars is not None:
+            return None
+        if not _nonvalue_container_ret(ret):
+            return None
+        it_type = unwrap_readonly(unwrap_send_sync(ret))
+        lvalue = _call_iterable_lvalue(it, analyzer)
     elif isinstance(it, TpyCall) and owns:
         # An Own[T]-yielding generator source (`widgets(3)`), the owned-move
         # comprehension. The generator is iterated via begin/end (the AST's

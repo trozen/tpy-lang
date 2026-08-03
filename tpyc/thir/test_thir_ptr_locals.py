@@ -538,11 +538,10 @@ class TestBranchHoistDecls:
         thir = _lower_ctx(src)
         assert _fn(thir, "g") is None
 
-    def test_record_name_alias_decl_rejects(self):
-        # `x = a; ...; x = b` (both plain record locals): the POINTER decl's
-        # bare-name init is the same-type BORROW read whose convert is the
-        # no-op node the validator hard-rejects, so the decl itself rejects
-        # (decl.ptr_alias_borrow). Whole body stays AST, byte-identical.
+    def test_record_name_alias_decl_routes_addr(self):
+        # `x = a; ...; x = b` (both plain record locals): the POINTER decl
+        # takes the PTR_ADDR address-of over the bare lvalue
+        # (`Inner* x = &(a);`) -- no convert node, no validator trap.
         src = (_F1_RECORDS
                + "def f() -> Int32:\n"
                + "    a: Inner = Inner(1)\n"
@@ -551,7 +550,7 @@ class TestBranchHoistDecls:
                + "    x = b\n"
                + "    return x.value\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_nested_branch_nonvalue_hoist_rejects(self):

@@ -1023,8 +1023,10 @@ class TestForEachContainer:
         assert isinstance(fn.body[1], THIRForEach)
 
     def test_optional_record_element_ineligible(self):
-        # Only the value-repr Optional[cheap scalar/Char] element family is
-        # admitted; a pointer-repr Optional[record] loop var stays AST.
+        # A ptr-repr Optional[record] loop var off a CONST source (the
+        # const-ref list param) stays AST -- the const twin of the
+        # storage-opt registration is unmirrored (foreach.storage_opt_const);
+        # non-const sources route via the storage-opt loop-var seed.
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(items: list[Box | None]) -> Int32:\n    total = 0\n"

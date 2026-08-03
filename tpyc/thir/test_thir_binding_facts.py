@@ -58,14 +58,56 @@ class TestUnmirroredParamSeeds:
     optional / ptr-variant / storage-tuple membership. `_LowerCtx` mirrors the
     pointer-repr `Optional[F1-record]` and ptr-variant-union arms only."""
 
+    def test_optional_own_param_routes_record_kind(self):
+        # `Own[A] | None` (sema's Optional[Own[A]], a VALUE-repr
+        # `std::optional<A>` by-value param) -> the lc param seed registers
+        # the RECORD-kind value-opt binding: the None-test reads has_value
+        # and a narrowed read derefs `(*a)` -- position-blind (the AST
+        # unwrap keys on `not uses_pointer_repr()`), so the fallthrough
+        # read routes too.
+        src = (_RECORD
+               + "def f(a: Own[A] | None) -> Int32:\n"
+               + "    if a is None:\n        return -1\n"
+               + "    return a.v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "if ((!a.has_value()))" in thir_out
+        assert "return (*a).v;" in thir_out
+
     def test_own_optional_param_fenced(self):
-        # `Own[A | None]` -> codegen registers pointer_locals + optional_locals
-        # and rebinds var_types to the bare Optional; `_optional_ptr_borrow`
-        # excludes the Own inner, so lc has neither. Fence: the None-test arm.
+        # `Own[A | None]` (Own[Optional[A]], `std::optional<A>&&` +
+        # codegen's pointer_locals seed) -> reads spell `a->v`
+        # (operator->), a render the RECORD-kind deref does not mirror --
+        # the seed excludes this spelling and the body keeps falling back.
         src = (_RECORD
                + "def f(a: Own[A | None]) -> Int32:\n"
                + "    if a is None:\n        return -1\n"
                + "    return a.v\n")
+        _assert_body_fenced(src, "f")
+
+    def test_own_optional_scalar_param_still_fenced(self):
+        # The VALUE-payload twin (`Own[Int32] | None`) is outside the
+        # record-kind seed (Own on a value type is a no-op spelling) and
+        # outside `_value_opt_scalar`'s inner family -- keeps falling back.
+        src = ("from tpy import Int32, Own\n"
+               "def f(v: Own[Int32] | None) -> Int32:\n"
+               "    if v is not None:\n        return v\n"
+               "    return -1\n")
+        _assert_body_fenced(src, "f")
+
+    def test_own_optional_param_field_write_fenced(self):
+        # A WRITE through the narrowed binding stays on the AST path (the
+        # field-write arm has no `(*a)` receiver row yet).
+        src = (_RECORD
+               + "def f(a: Own[A | None]) -> Int32:\n"
+               + "    if a is not None:\n"
+               + "        a.v = 5\n"
+               + "        return a.v\n"
+               + "    return -1\n")
         _assert_body_fenced(src, "f")
 
     def test_nullable_protocol_param_fenced(self):

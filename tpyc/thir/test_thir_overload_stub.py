@@ -192,11 +192,11 @@ class TestPerStubBoundaries:
         assert results and all(fn is None for fn, _ in results)
         assert all(r == "sig.overload_set.generic_stub" for _, r in results)
 
-    def test_arity_live_default_local_keeps_rejecting(self):
-        # A missing param with a LIVE default (`loud: bool = False`) needs
-        # the AST's prologue local (`bool loud = false;`) -- unmirrored, so
-        # the SHORT stub keeps the arity reject. The full-length stub has no
-        # missing param and routes on the isinstance fold.
+    def test_arity_bool_default_keeps_rejecting(self):
+        # A missing param with a LIVE BOOL default injects a Literal[False]
+        # fact whose truthiness fold (`if loud:`) is unmirrored -- the
+        # SHORT stub stays fenced (db_literal_fold). The full-length stub
+        # has no missing param and routes on the isinstance fold.
         src = _PRELUDE + (
             "@overload\n"
             "def greet(a: Dog) -> str: ...\n"
@@ -209,8 +209,8 @@ class TestPerStubBoundaries:
         )
         results = _per_stub_results(src, "greet")
         assert len(results) == 2
-        assert results[0] == (None, "sig.overload_set.arity") or (
-            results[0][0] is None and results[0][1] == "sig.overload_set.arity")
+        assert results[0][0] is None
+        assert results[0][1] == "sig.overload_set.db_literal_fold"
         assert results[1][0] is not None
 
     def test_literal_stubs_keep_db_compare_reject(self):

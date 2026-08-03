@@ -50,6 +50,7 @@ from ...typesys import (
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
+    LiteralTag,
     NominalType,
     NoneType,
     OptionalType,
@@ -78,6 +79,7 @@ from ...codegen_cpp.context import (
 )
 from ...codegen_cpp.functions import (
     build_overload_narrowing,
+    default_to_cpp_from_analyzer,
     overload_stubs_are_literal_only,
 )
 from ...codegen_cpp.forms import LocalBinding
@@ -115,6 +117,7 @@ from ..nodes import (
     THIRPtrLocalRebind,
     THIRVarDecl,
     PtrSlotKind,
+    THIROverloadDefault,
     THIRParamCopy,
     THIRRecordCopy,
     THIRTupleLiteral,
@@ -169,11 +172,13 @@ from .expressions import (
 )
 from .statements import (
     _lower_stmts,
+    _overload_literal_facts,
 )
 
 def _overload_reject_detail(func: TpyFunction, stubs, *,
                             allow_arity: bool = False,
-                            allow_narrow_params: frozenset = frozenset()
+                            allow_narrow_params: frozenset = frozenset(),
+                            literal_eq_params: frozenset = frozenset()
                             ) -> str:
     """Sub-classify an overload-set reject by WHICH per-stub emission fact
     the impl body is sensitive to -- the slice-1 routing frontier. First
@@ -187,8 +192,11 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
       arm strips/validates per-stub coercions);
     - `db_isinstance`: isinstance/match anywhere in the body (the if-chain
       dead-branch elimination can rewrite it per stub);
-    - `db_compare`: an equality compare on a bare param name (literal-stub
-      equality elimination) -- conservative: any param, literal or not;
+    - `db_literal_fold`: an unmirrored literal fold could fire (membership
+      over a fact-carrying param; the BOOL-fact fence lives in
+      `_admit_overload_stub`). Param EQUALITY needs no row: fact-carrying
+      compares fold through `_overload_resolve_static`'s mirrored eq half,
+      fact-less ones are plain runtime compares on both paths;
     - `narrow_param`: a union/Optional impl param (the narrowing extraction
       skips differently under overload_param_types);
     - `plain`: none of the above.
@@ -213,11 +221,18 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
                     isinstance(node, TpyCall)
                     and getattr(node, "isinstance_var", None) is not None):
                 return "sig.overload_set.db_isinstance"
-            if (detail is None and isinstance(node, TpyBinOp)
-                    and node.op in ("==", "!=")
-                    and any(isinstance(s, TpyName) and s.name in param_names
+            # Param equality needs no row any more: a fact-carrying param
+            # folds through the mirrored `_overload_resolve_static`
+            # literal-eq half, a fact-less one is a plain runtime compare
+            # on both paths, and literal-only groups rejected upstream.
+            if (isinstance(node, TpyBinOp)
+                    and node.op in ("in", "not in")
+                    and any(isinstance(s, TpyName)
+                            and s.name in literal_eq_params
                             for s in (node.left, node.right))):
-                detail = "sig.overload_set.db_compare"
+                # The membership fold (`_resolve_literal_in_statically`)
+                # is not mirrored -- fence a fact-carrying param there.
+                return "sig.overload_set.db_literal_fold"
     if detail is not None:
         return detail
     for _n, pt in func.params:
@@ -272,9 +287,55 @@ def _short_stub_missing_ok(func: TpyFunction, stub: TpyFunction) -> bool:
     reassigned = scan_reassigned_vars(
         list(func.body),
         pre_declared={n for n, _t in func.params}).reassigned
-    return all(isinstance(narrowing.get(pname), NoneType)
-               and pname not in reassigned
-               for pname, _pt in missing)
+    return all((isinstance(narrowing.get(pname), NoneType)
+                and pname not in reassigned)
+               # A live missing param takes the default-local prologue;
+               # only plain value-scalar locals are mirrored (a non-value
+               # local would need the pointer/binding registrations the
+               # prologue node does not carry).
+               or _default_local_ok(pt)
+               for pname, pt in missing)
+
+
+def _default_local_ok(pt) -> bool:
+    if not isinstance(pt, TpyType):
+        return False
+    b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    return bool(_eligible_scalar(b) or _eligible_char(b))
+
+
+def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
+                         narrowing) -> 'tuple[THIROverloadDefault, ...]':
+    """The short stub's omitted-impl-param prologue -- the mirror of
+    gen_body's `overload_missing_param_locals` emit: one comment-free
+    `{to_cpp} {name} = <default>;` local per LIVE missing param
+    (NoneType-narrowed unreassigned params are skipped; dead-branch elim
+    strips their every use)."""
+    missing = _overload_missing_params(func, stub)
+    if not missing:
+        return ()
+    defaults = func.defaults or []
+    reassigned = scan_reassigned_vars(
+        list(func.body),
+        pre_declared={n for n, _t in func.params}).reassigned
+    start = len(stub.params)
+    out: list[THIROverloadDefault] = []
+    for off, (pname, ptype) in enumerate(missing):
+        if (isinstance(narrowing.get(pname), NoneType)
+                and pname not in reassigned):
+            continue
+        default_expr = defaults[start + off]
+        cpp_default = default_to_cpp_from_analyzer(analyzer, default_expr,
+                                                   ptype)
+        if (cpp_default == "0"
+                and not isinstance(default_expr, (TpyIntLiteral, TpyCall))):
+            # The AST's value-initialization fallback for unrecognized
+            # default exprs.
+            cpp_default = "{}"
+        out.append(THIROverloadDefault(name=escape_cpp_name(pname),
+                                       cpp_type=ptype.to_cpp(),
+                                       cpp_default=cpp_default))
+    return tuple(out)
 
 
 def _admit_overload_stub(func: TpyFunction, group, analyzer,
@@ -303,8 +364,17 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
         if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
                       if isinstance(pt, TpyType) else None, OptionalType)
     ) if stub is not None else frozenset()
+    lit_facts = (_overload_literal_facts(build_overload_narrowing(
+        func, stub, _overload_missing_params(func, stub),
+        func.defaults or [])) if stub is not None else {})
+    if any(v.tag is LiteralTag.BOOL for t in lit_facts.values()
+           for v in t.values):
+        # The bool-truthiness fold (`if x:` on a Literal[True/False] fact)
+        # is not mirrored -- fence the whole stub.
+        raise ThirUnsupported("sig.overload_set.db_literal_fold")
     detail = _overload_reject_detail(
-        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok)
+        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok,
+        literal_eq_params=frozenset(lit_facts))
     if detail not in ("sig.overload_set.db_isinstance",
                       "sig.overload_set.ret_mismatch",
                       "sig.overload_set.plain"):
@@ -828,6 +898,12 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         lc.overload_narrowing = build_overload_narrowing(
             func, stub, _overload_missing_params(func, stub),
             func.defaults or [])
+        # LIVE missing params become prologue locals; seed their bindings
+        # so body reads/reassignments resolve like the AST's registration.
+        default_locals = _stub_default_locals(func, stub, analyzer,
+                                              lc.overload_narrowing)
+        for dl_name, dl_type in _overload_missing_params(func, stub):
+            params_set[dl_name] = dl_type
         lc.overload_stub_return = (stub.return_type
                                    if isinstance(stub.return_type, TpyType)
                                    else None)
@@ -848,6 +924,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     declared: dict[str, TpyType] = dict(params_set)
     try:
         param_copies = _param_reassign_copies(func, analyzer, params=src_params)
+        if stub is not None and default_locals:
+            param_copies = param_copies + default_locals
         body = _lower_stmts(func.body, lc, declared, top_level=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")

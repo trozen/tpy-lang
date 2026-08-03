@@ -48,16 +48,19 @@ class TestOwnOptRecordSlot:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
 
-    def test_own_optional_param_stays_ast(self):
-        # An `Own[Rc[T]] | None` PARAM has no registered binding -- its read
-        # keeps the unrouted-binding reject (the registration is decl-only).
+    def test_own_optional_param_routes_record_kind(self):
+        # An `Own[Rc[T]] | None` PARAM rides the RECORD-kind param seed:
+        # the has_value None-test and the `(*u)` narrowed receiver deref.
         src = (_CELL
                + "from tpy import Own\n"
                + "def use(u: Own[Rc[Cell]] | None) -> None:\n"
                + "    if u is not None:\n"
                + "        print(u.get().val)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        cpp = _assert_byte_identical(src)
+        assert "if ((u.has_value()))" in cpp[1]
+        assert "(*u).get().val" in cpp[1]
 
 
 class TestAccessorReceiverOptFieldWrite:

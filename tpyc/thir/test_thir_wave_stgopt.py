@@ -73,10 +73,10 @@ class TestCompAndGenexprUnpackOptional:
         assert w.get("genexpr.unpack", 0) >= 1
 
 
-class TestForStatementHeadStaysOut:
-    # BOUNDARY: the for-STATEMENT loop head over Optional-element tuples
-    # keeps its own reject -- the mirror registers comp/genexpr targets
-    # only (the for-head producer is unwitnessed).
+class TestForStatementHeadRoutesOptPtr:
+    # The for-STATEMENT head over Optional-element tuples now routes: the
+    # opt_ptr target binds `T* p = std::get<0>(__tup_N);` off the lifted
+    # head (the standalone unpack's bind at the for head).
     SRC = (
         _PRE +
         "def main() -> None:\n"
@@ -88,11 +88,13 @@ class TestForStatementHeadStaysOut:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
+    def test_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
         fb = dict(compiler._thir_fallback)
-        assert "body:stmt.for_each:tuple.ref_target" in fb, fb
+        assert not any(k.startswith("body:") for k in fb), fb
+        w = compiler._thir_face_witnesses
+        assert w.get("stmt.tuple_unpack.opt_ptr_target", 0) >= 1
 
 
 class TestNarrowedTargetReadDefers:

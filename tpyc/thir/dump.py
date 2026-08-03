@@ -101,6 +101,7 @@ from .nodes import (
     THIRFrameNestedDef,
     THIRImportInit,
     THIRNoOpStmt,
+    THIROverloadDefault,
     THIRParamCopy,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
@@ -590,6 +591,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 f"{_expr(stmt.value)})"]
     if isinstance(stmt, THIRParamCopy):
         return [f"{pad}param_copy %{stmt.name}: {stmt.cpp_type}"]
+    if isinstance(stmt, THIROverloadDefault):
+        return [f"{pad}overload_default %{stmt.name}: {stmt.cpp_type} = "
+                f"{stmt.cpp_default}"]
     if isinstance(stmt, THIRPtrLocalDecl):
         init = "" if stmt.init is None else f" = {_expr(stmt.init)}"
         return [f"{pad}ptr_decl[{stmt.kind.name.lower()}] %{stmt.name}: "

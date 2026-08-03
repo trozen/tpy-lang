@@ -2714,16 +2714,19 @@ class TestBytesElementRead:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
 
-    def test_bytes_element_write_rejects(self):
-        # Writes keep _container_scalar_read's families; a bytes VALUE write
-        # has its own AST wraps -> the body stays on the AST path.
+    def test_bytes_element_write_routes(self):
+        # The owned-bytes value slot: a bytes LITERAL stores the owned
+        # render (`bytes_literal_owned`) through the checked setitem.
         src = (
             _PRELUDE
             + "def f(parts: list[bytes]) -> None:\n"
             + "    parts[0] = b'zz'\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("::tpy::__setitem__(parts, 0, "
+                "::tpy::bytes_literal_owned(\"zz\", 2));" in cpp[1])
 
 
 class TestRecordElementSubscript:
@@ -2806,8 +2809,9 @@ class TestRecordElementSubscript:
         assert isinstance(fa.receiver, THIRSubscript)
         assert fa.receiver.form is Form.BORROW
 
-    def test_optional_element_rejects(self):
-        # `list[P | None]` elements take the AST's Optional wraps.
+    def test_optional_element_decl_routes_opt_to_ptr(self):
+        # `q = ps[0]` on `list[P | None]`: the OPTIONAL_TO_PTR lift over
+        # the bare `__getitem__` read; the None-test compares the pointer.
         src = (
             _PRELUDE
             + "class P:\n"
@@ -2820,7 +2824,11 @@ class TestRecordElementSubscript:
             + "    return 0\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("P* q = ::tpy::optional_to_ptr(::tpy::__getitem__(ps, 0));"
+                in cpp[1])
+        assert "if ((q != nullptr))" in cpp[1]
 
     def test_reassigned_alias_routes_as_pointer(self):
         # A reassigned element alias is a POINTER (reseat) local: the decl
@@ -4180,7 +4188,10 @@ class TestArrayMoveThroughDecl:
         assert faces.get("decl.move_through_array")
         _assert_byte_identical(src)
 
-    def test_live_source_alias_stays_out(self):
+    def test_live_source_alias_binds_reference(self):
+        # A LIVE-source alias never takes the move-through arm; it now
+        # binds the demoted-array reference (`std::array<...>& b = a;`)
+        # via the alias-container row.
         src = ("def main() -> None:\n"
                "    a = [1, 2, 3]\n"
                "    b = a\n"
@@ -4188,9 +4199,10 @@ class TestArrayMoveThroughDecl:
                "    print(len(a))\n"
                "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
         assert not faces.get("decl.move_through_array")
-        _assert_byte_identical(src)
+        cpp = _assert_byte_identical(src)
+        assert "std::array<int32_t, 3>& b = a;" in cpp[1]
 
 
 class TestDelItemElementBlindReceiver:

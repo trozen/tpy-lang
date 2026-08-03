@@ -36,6 +36,7 @@ from .predicates import (
     _is_type_param_slot,
     _native_iter_value_slot,
     _optional_ptr_borrow,
+    _own_opt_storage_binding,
     _protocol_auto_slot,
     _own_storage_union_return,
     _own_storage_viewfam_return,
@@ -779,6 +780,15 @@ class _LowerCtx:
         # record lvalue consumed as a receiver. The None-test/truthiness
         # read the whole optional (`.has_value()`) for every kind.
         self.value_opt_bindings: dict[str, ValueOptKind] = {}
+        # The `Optional[Own[T_ref]]` PARAM seed (`Own[Point] | None` -- a
+        # by-value `std::optional<Point>`; the reverse `Own[Optional[T]]`
+        # nesting keeps its pointer_locals fence): the binding IS the
+        # RECORD kind -- has_value None-test, `(*p)` narrowed deref -- so
+        # it rides the same kind-tagged registration as the
+        # owned-optional-call decls.
+        for pname, ptype in self.params:
+            if _own_opt_storage_binding(ptype):
+                self.value_opt_bindings[pname] = ValueOptKind.RECORD
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),

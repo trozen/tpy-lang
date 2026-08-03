@@ -104,6 +104,7 @@ from .nodes import (
     THIRFoldedBlock,
     THIRMatchFoldBind,
     THIROptionalPtrArg,
+    THIROverloadDefault,
     THIRParamCopy,
     THIRPrint,
     THIRPrintChain,
@@ -1617,7 +1618,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         n = escape_cpp_name(e.name)
         fam = view_family_for_type(e.result_type.inner)
         conv = view_to_owned_conv(fam.owned_type)
-        return f"{n} ? std::make_optional({conv}(*{n})) : std::nullopt"
+        split = f"{n} ? std::make_optional({conv}(*{n})) : std::nullopt"
+        return f"std::move({split})" if e.moved else split
     if isinstance(e, THIROwnOptRebuild):
         n = escape_cpp_name(e.name)
         return (f"{n} ? std::optional<{e.inner_cpp}>(std::move(*{n}))"
@@ -2567,7 +2569,13 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     # the inner name is an Optional-tier concern); the guarded tiers' second
     # draw is gate-rejected.
     indent = INDENT * indent_level
+    # A hoist_slots entry allocates that name's rebind slot immediately
+    # before its predecl line (THIRIf's rvalue-reassigned arm).
+    slot_types = dict(stmt.hoist_slots)
     for name, cpp_type in stmt.hoist_decls:
+        if name in slot_types:
+            slot = (state.assert_local_slot() or state.next_slot())
+            _declare_rebind_slot(state, name, slot, slot_types[name])
         out.write(f"{indent}{cpp_type} {name};\n")
     state.match_counter += 1
     subject = f"__match_subject_{state.match_counter}"
@@ -3972,6 +3980,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # (AST-emitted) renamed the param to `__param_{name}`.
         out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
                   f"__param_{stmt.name};\n")
+    elif isinstance(stmt, THIROverloadDefault):
+        # Short-stub omitted impl param as a default-initialized local.
+        out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
+                  f"{stmt.cpp_default};\n")
     elif isinstance(stmt, THIRDelVar):
         # `{ auto __del_sink = std::move(name); }` per sunk name -- the value
         # moves into a block-scoped temp destroyed immediately (early release).

@@ -156,9 +156,11 @@ class TestCallableFieldContainerArg:
         assert "h.s = std::move(xs);" in body
         _assert_byte_identical(src)
 
-    def test_varargs_optional_elem_stays_ast(self):
-        # A varargs of Optional records rejects at _f1_record -- the span
-        # widening admits plain F1 record elements only.
+    def test_varargs_optional_elem_routes_opt_to_ptr(self):
+        # A varargs of Optional records: `c = args[0]` lifts the
+        # storage-form span element via optional_to_ptr (the
+        # container-subscript decl row); the pointer None-test and the
+        # write through the lifted pointer follow.
         src = (
             "from tpy import Int32\n"
             "class Counter:\n"
@@ -170,12 +172,18 @@ class TestCallableFieldContainerArg:
             "    if c is not None:\n"
             "        c.value = 10\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("Counter* c = ::tpy::optional_to_ptr(::tpy::__getitem__("
+                "args, 0));" in cpp[1] or
+                "Counter* c = ::tpy::optional_to_ptr(::tpy::__getitem__("
+                "args, 0));" in cpp[0])
 
-    def test_optional_elem_chain_stays_ast(self):
-        # An Optional-element link in the receiver chain rejects at
-        # _f1_record (the AST wraps those reads differently).
+    def test_optional_elem_chain_decl_routes_opt_to_ptr(self):
+        # `b = a.bs[0]` off a field-receiver container with Optional
+        # elements: the storage-form subscript lifts via optional_to_ptr
+        # into the pointer-local decl; the None-test and the write through
+        # the lifted pointer follow.
         src = (
             "from __future__ import annotations\n"
             "from tpy import Int32\n"
@@ -192,8 +200,10 @@ class TestCallableFieldContainerArg:
             "    if b is not None:\n"
             "        b.val = 30\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("B* b = ::tpy::optional_to_ptr(::tpy::__getitem__(a.bs, 0));"
+                in cpp[1])
 
     def test_optional_container_field_copy_write_routes(self):
         # The non-move sibling: the source name stays live after the

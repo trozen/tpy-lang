@@ -4419,10 +4419,13 @@ class TestFrameFieldShadowingTupleUnpack:
            "            s += k + v\n"
            "        return s\n")
 
-    def test_tuple_unpack_leaf_falls_back_cleanly(self):
+    def test_tuple_unpack_leaf_routes(self):
+        # The field-iterable unpack head landed (the long-tail ref-target
+        # cell), so the resumable body now routes -- the flip this pin's
+        # docstring predicted.
         witnesses, fallback = _assert_identical(self.SRC)
-        assert "res.body" not in witnesses
-        assert fallback.get("resumable:stmt.for_each:tuple.iter_shape") == 1
+        assert "res.body" in witnesses
+        assert not fallback
 
 
 class TestQualcallRecordDiscardStorage:
