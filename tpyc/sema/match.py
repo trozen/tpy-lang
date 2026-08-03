@@ -363,7 +363,7 @@ class MatchAnalyzer:
                         record_stmt_borrow_binding(
                             self.ctx, node.name,
                             pattern_bindings.get(node.name), stmt.subject)
-                        self.ctx.func.match_borrow_captures.add(node.name)
+                        self.ctx.func.nonstmt_borrow_bindings.add(node.name)
             if (aliasing_bindings
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)

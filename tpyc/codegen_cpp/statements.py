@@ -3588,6 +3588,36 @@ class StatementGenerator:
                     out.write(f"{indent}{cpp_name} = "
                               f"{get_expr};\n")
 
+    def _with_manager_needs_hoist(self, item: 'TpyWithItem') -> bool:
+        """Does this OWNED manager have to outlive its block because the target's
+        storage aliases `__enter__()`'s result?
+
+        The non-frame counterpart of `_prescan_with_manager_homes`, but NOT the
+        same question: the frame side promotes whenever the target's field
+        points into the manager, while this side also demands that the target
+        itself be live afterwards. That extra demand is what lets a borrow
+        carried out of the target by some OTHER name escape the gate -- see the
+        alias entry in BUGS.md, which is the cost of the narrower question.
+
+        Four questions, each answered by a fact rather than by inspecting the
+        target's shape: does `__enter__` lend the manager's OWN storage
+        (`manager_owns_enter_result`); is the target live past the statement
+        (`target_read_after` -- without a later read nothing can dangle, which
+        is what keeps an ordinary `with open(...) as f:` block-scoped); does the
+        target's storage outlive the statement (any declaration PREDATING this
+        `with` does, since the manager is emitted inside the statement's own
+        scope); and does that storage point INTO the manager (for an
+        already-declared target the emit below has exactly two shapes -- owning
+        `optional` storage takes the value by assignment and is self-contained,
+        everything else takes `&(__enter__())`).
+        """
+        if item.target is None or item.manager_borrowed:
+            return False
+        return (item.manager_owns_enter_result
+                and item.target_read_after
+                and item.target in self.ctx.declared_vars
+                and item.target not in self.ctx.optional_locals)
+
     def _gen_with(self, out: TextIO, stmt: 'TpyWith', indent: str) -> None:
         """Generate a with statement using the unified try-with-finally shape.
 
@@ -3613,7 +3643,8 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
 
         ctx_ids: list[int] = []
-        for item in stmt.items:
+        owned_ctx = self.ctx.generator_with_owned_ctx.get(id(stmt))
+        for item_idx, item in enumerate(stmt.items):
             self.ctx.with_counter += 1
             n = self.ctx.with_counter
             ctx_ids.append(n)
@@ -3627,7 +3658,37 @@ class StatementGenerator:
             # Borrow an lvalue manager (`auto&`) so __enter__/__exit__ act on
             # the original; own an rvalue manager (`auto`).
             ctx_bind = "auto&" if item.manager_borrowed else "auto"
-            out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_expr};\n")
+            frame_ctx = (owned_ctx[item_idx]
+                         if owned_ctx is not None
+                         and item_idx < len(owned_ctx) else None)
+            if frame_ctx is not None:
+                # The target's frame field aliases `__enter__()`'s result, so an
+                # owned manager must live in the frame too -- a local would die
+                # with this resumption and leave that alias dangling. Bound to
+                # the same name so every __enter__ / __exit__ site below is
+                # unchanged; it is now a reference into frame-owned storage.
+                out.write(f"{indent}__with_ctx_{frame_ctx}.emplace({ctx_expr});\n")
+                out.write(f"{indent}auto& __ctx_{n} = "
+                          f"(*__with_ctx_{frame_ctx});\n")
+            elif self._with_manager_needs_hoist(item):
+                # Same rule off the frame: the target's slot was hoisted to
+                # function scope and aliases `__enter__()`'s result, so an owned
+                # manager cannot stay block-scoped. Hoist it to a function-scope
+                # `std::optional` and bind the usual name into it, so every
+                # __enter__ / __exit__ site below is unchanged. CPython's own drop
+                # point for the manager is refcount timing rather than a
+                # guarantee, so outliving the block is not observable there.
+                slot = self.ctx.slots.next_slot()
+                mgr_cpp = self.types.type_to_cpp(
+                    unwrap_ref_type(self.types.get_resolved_type(
+                        item.context_expr)))
+                static_kw = "static " if self.ctx.slots.global_scope else ""
+                self.ctx.pending_hoist_decls.append(
+                    f"{static_kw}std::optional<{mgr_cpp}> {slot};\n")
+                out.write(f"{indent}{slot}.emplace({ctx_expr});\n")
+                out.write(f"{indent}auto& __ctx_{n} = (*{slot});\n")
+            else:
+                out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_expr};\n")
 
             if item.target is not None:
                 assert item.enter_type is not None
@@ -3635,7 +3696,21 @@ class StatementGenerator:
                 is_reassigned = name in self.ctx.reassigned_vars
                 already_declared = name in self.ctx.declared_vars
 
-                if already_declared:
+                frame_resident = (self.ctx.in_generator_body
+                                  and name in self.ctx.generator_field_names)
+
+                if frame_resident:
+                    # The name's storage IS the frame field, so bind through it.
+                    # Declaring a local here instead would give one name two
+                    # locations: the body would write the local while a read
+                    # after any suspension -- where the local is out of scope --
+                    # reads the never-assigned field.
+                    enter_call = f"__ctx_{n}.__enter__()"
+                    if name in self.ctx.generator_frame_slot_locals:
+                        out.write(f"{indent}{name}.emplace({enter_call});\n")
+                    else:
+                        out.write(f"{indent}{name} = {enter_call};\n")
+                elif already_declared:
                     if name in self.ctx.optional_locals:
                         out.write(f"{indent}{name} = __ctx_{n}.__enter__();\n")
                     else:
@@ -3654,8 +3729,12 @@ class StatementGenerator:
                         self.ctx.register_frame_field_shadow(name)
 
                 if not already_declared:
-                    self.ctx.declared_vars.add(name)
-                    self.ctx.local_scope_names.add(name)
+                    # A frame-resident target has no C++ local to track; reads
+                    # resolve through the frame field, so registering it as a
+                    # declared local would re-introduce the second location.
+                    if not frame_resident:
+                        self.ctx.declared_vars.add(name)
+                        self.ctx.local_scope_names.add(name)
                     self.ctx.var_types[name] = item.enter_type
             else:
                 out.write(f"{indent}__ctx_{n}.__enter__();\n")
@@ -5789,10 +5868,12 @@ class StatementGenerator:
                 # borrows (never a fresh rvalue) must alias, not own: the
                 # optional-storage form would copy and sever the alias.
                 # Sema materializes the fact (sema_stmt_borrow_decls excludes
-                # with-as / unpack-loop / match-capture names -- their binding
-                # machinery owns the storage form; single-target for-loop
-                # vars are not excluded, but a loop-var-only name has no
-                # statement-level binding and so never enters the fact).
+                # unpack-loop / match-capture names -- their binding machinery
+                # owns the storage form; single-target for-loop vars are not
+                # excluded, but a loop-var-only name has no statement-level
+                # binding and so never enters the fact). A with-as target IS
+                # included: it borrows `__enter__()`'s result, and an owning
+                # hoist would copy the manager out from under `__exit__`.
                 borrow_only = (self._is_plain_nonvalue(var_type)
                                and name not in self.ctx.sema_ever_owned_locals
                                and name in self.ctx.sema_stmt_borrow_decls)

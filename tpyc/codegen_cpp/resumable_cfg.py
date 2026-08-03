@@ -112,6 +112,22 @@ class ResumableFuncState:
     # `frame_slot<T>` copy. See TpyWithItem.manager_borrowed.
     with_borrowed_fields: 'set[str]' = field(default_factory=set)
     with_owning_str_targets: 'set[str]' = field(default_factory=set)
+    # `with ... as NAME` target -> the C++ payload its frame field is spelled
+    # from (`::tpy::with_enter_t<CM>`), so alias-vs-own is decided at
+    # instantiation rather than guessed from the TPy enter type. Recorded for
+    # EVERY with in the body, not only the decomposed ones: a target outlives
+    # its statement, so it can be read across a suspension that the `with`
+    # itself does not contain.
+    with_target_payloads: 'dict[str, str]' = field(default_factory=dict)
+    # id(TpyWith) -> per-item `__with_ctx_<n>` number (None where not promoted),
+    # for a NON-decomposed region whose OWNED manager backs an aliasing target.
+    # The target's frame field points into `__enter__()`'s result, so the manager
+    # must outlive the frame rather than the statement.
+    with_owned_ctx_map: 'dict[int, list[int | None]]' = field(default_factory=dict)
+    # `__with_ctx_<n>` numbering shared by the region prescan and the later
+    # manager-home pass, which appends fields after the frame layout is built.
+    with_ctx_counter: int = 0
+    with_manager_homes_prescanned: bool = False
     async_with_struct_names: 'dict[int, tuple[str, str]]' = field(default_factory=dict)
     # borrow-alias prescan (_classify_pointer_alias_locals): non-value
     # statement-level locals -- single-assign aliases (`a = items[0]`) and

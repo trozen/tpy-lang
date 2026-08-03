@@ -1596,6 +1596,9 @@ class CodeGenContext:
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
+    # id(TpyWith) -> per-item `__with_ctx_<n>` number for a non-decomposed region
+    # whose owned manager was promoted to the frame to back an aliasing target.
+    generator_with_owned_ctx: dict[int, object] = field(default_factory=dict)
     # Statement-level borrow-alias frame locals (single-assign / tuple-unpack
     # targets aliasing existing storage). Seeded into pointer_locals by
     # setup_resumable_frame_locals so the frame field is a `T*` alias, not an

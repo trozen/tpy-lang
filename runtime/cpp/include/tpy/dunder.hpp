@@ -812,6 +812,17 @@ template<typename S>
 using for_elem_next_t =
     typename detail::next_elem_form<typename iter_result_t<S>::value_type>::type;
 
+// `with CM() as t` targets: the element form of `__enter__()`'s result. A
+// manager that lends (`return self`) yields `T&`, so the frame slot aliases it
+// and a mutation through the target reaches the object __exit__ runs against; a
+// manager that builds a fresh value yields `T`, so the slot owns. Same
+// undecidable-in-the-compiler question as a for-loop element, so it takes the
+// same answer: spell the field from the source and let C++ pick at
+// instantiation.
+template<typename CM>
+using with_enter_t =
+    typename detail::elem_form<decltype(std::declval<CM&>().__enter__())>::type;
+
 } // namespace tpy
 
 // std::hash specialization for bytes (needed by std::unordered_map/set)

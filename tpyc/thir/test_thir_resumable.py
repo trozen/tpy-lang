@@ -2178,6 +2178,36 @@ class TestTryRegions:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.handler_binding") == 1
 
+    def test_own_with_target_takes_frame_slot(self):
+        # An `Own[T]` frame local over a REFERENCE type is the object T, built at
+        # the binding rather than at frame creation, so the plan gives it a
+        # frame_slot whose placement-new runs the real constructor there. A bare
+        # field would default-construct with the frame -- deleted outright once T
+        # has a non-default-constructible member -- and it disagreed with the
+        # spelling an ordinary `a = make()` of the same value already got.
+        src = (_PRE
+               + "from typing import Iterator\n"
+               + "from tpy import Own\n\n"
+               + "class Item:\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "class Fresh:\n"
+               + "    def __enter__(self) -> Own[Item]:\n"
+               + "        return Item(5)\n"
+               + "    def __exit__(self, et: None, ev: None,\n"
+               + "                 tb: None) -> None:\n"
+               + "        pass\n\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    with Fresh() as a:\n"
+               + "        yield a.v\n"
+               + "        yield a.v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert "res.local_storage" not in fallback
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "::tpy::frame_slot<Item> a;" in hpp
+        assert "\n    Item a;\n" not in hpp
+
 
 class TestSyncLoops:
     """R3: a sync for-loop whose body suspends decomposes into

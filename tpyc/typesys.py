@@ -5471,6 +5471,10 @@ class FunctionInfo:
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
     native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
     copy_returns_warn: bool = False  # Own[V] accessor copies where CPython aliases -> warn at call sites
+    # `__enter__` only (computed at registration): can what this returns root
+    # at `self`? False means it lends storage that is NOT the receiver's, so a
+    # `with` target aliasing it does not force the manager to stay alive.
+    returns_self_borrow: bool = True
     # @native(cpp_return_type=T): C++ side returns a wider/different type
     # than the declared TPy return. Codegen wraps the call in
     # static_cast<DECLARED_TPY_RETURN>(...) so -Wsign-conversion /

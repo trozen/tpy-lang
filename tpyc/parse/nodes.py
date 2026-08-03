@@ -1059,6 +1059,20 @@ class TpyWithItem:
     # Set by sema: True iff the manager is an lvalue, so the with-region must
     # borrow it -- a by-value ctx slot would mutate a throwaway copy.
     manager_borrowed: bool = False
+    # Set by sema: False iff `__enter__` demonstrably lends storage that is NOT
+    # the manager's own (a global, a parameter) -- then a target aliasing it does
+    # not force the manager to outlive the statement, and forcing that anyway
+    # would delay the manager's destruction past where CPython drops it.
+    manager_owns_enter_result: bool = True
+    # Set by the liveness pass: is the `as`-target live once this statement
+    # finishes? Decides whether storage the target aliases -- an OWNED manager
+    # -- has to outlive the statement; without a later read there is nothing to
+    # dangle, so the manager keeps its cheap block scope. The default covers a
+    # body the pass never walks, and nothing else: where the walk does run, a
+    # False here is its verdict, and this is NAME liveness, which is weaker
+    # than the borrow-escape question the manager's lifetime actually needs
+    # (BUGS.md).
+    target_read_after: bool = True
     # Set by sema for `async with`: the DEFINING record of __aenter__ /
     # __aexit__ (an ancestor of the manager type when inherited). Codegen
     # names the sub-coro struct from these, not the manager's subclass type
@@ -2020,6 +2034,100 @@ def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
     for e in stmt.exprs():
         collect_walrus(e)
     return out
+
+
+def borrow_chain_root(expr: TpyExpr) -> str | None:
+    """The name a borrow expression roots at -- peel field / element / coerce
+    wrappers until a name is left. None when it bottoms out at something that
+    is not a name (a literal, a constructor, a free call), i.e. provenance the
+    caller cannot read off the expression alone.
+
+    A method call peels to its RECEIVER, which over-approximates: what the
+    callee hands back need not come from the receiver's storage. Callers must
+    treat the result as "could root here", never as a provenance trace.
+    """
+    cur: TpyExpr | None = expr
+    while cur is not None and not isinstance(cur, TpyName):
+        cur = getattr(cur, "obj", None) or getattr(cur, "expr", None)
+    return cur.name if isinstance(cur, TpyName) else None
+
+
+def returns_borrow_rooted_at_self(func: 'TpyFunction') -> bool:
+    """Whether a method's returned borrow can root at `self`.
+
+    Answers "is what this hands back part of the receiver, or something that
+    merely passes through it" -- a `with` manager's `__enter__` returning `self`
+    or `self.field` lends out its own storage, while one returning a global
+    lends someone else's. Only the second is free to outlive the receiver.
+
+    A return root is followed through the body's local bindings, so
+    `tmp = self.item; return tmp` reads the same as `return self.item`.
+
+    False needs PROOF, on every return: a root that is external storage (a
+    global -- never a local of this body) or a local every one of whose
+    bindings is itself external. Everything else keeps the answer True --
+    no returns at all, a root that is not a name, a name bound by a form this
+    does not model (`written_names` is the chokepoint, so a new binding form
+    lands here as unknown rather than as "external"), or a nested def, which
+    can rebind an enclosing local out of this walk's sight.
+    """
+    # name -> the roots its bindings come from; None = unreadable provenance.
+    binding_roots: dict[str, list[str | None]] = {}
+    return_roots: list[str | None] = []
+    saw_return = False
+    saw_nested_def = False
+
+    def bind(name: str, source: TpyExpr | None) -> None:
+        binding_roots.setdefault(name, []).append(
+            borrow_chain_root(source) if source is not None else None)
+
+    def on_stmt(stmt: TpyStmt) -> None:
+        nonlocal saw_return, saw_nested_def
+        modeled: set[str] = set()
+        if isinstance(stmt, TpyVarDecl):
+            bind(stmt.name, stmt.init)
+            modeled.add(stmt.name)
+        elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+            bind(stmt.target.name, stmt.value)
+            modeled.add(stmt.target.name)
+        elif isinstance(stmt, TpyForEach):
+            bind(stmt.var, stmt.iterable)
+            modeled.add(stmt.var)
+        elif isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    bind(item.target, item.context_expr)
+                    modeled.add(item.target)
+        elif isinstance(stmt, TpyNestedDef):
+            saw_nested_def = True
+        elif isinstance(stmt, TpyReturn):
+            saw_return = True
+            return_roots.append(
+                borrow_chain_root(stmt.value) if stmt.value is not None
+                else None)
+        for name in written_names(stmt) - modeled:
+            bind(name, None)
+
+    walk_body_stmts(func.body, lambda e: None, on_stmt)
+    if not saw_return or saw_nested_def:
+        return True
+
+    def is_external(root: str | None, external: set[str]) -> bool:
+        return (root is not None and root != "self"
+                and (root not in binding_roots or root in external))
+
+    external: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for name, sources in binding_roots.items():
+            if name in external:
+                continue
+            if all(is_external(src, external) for src in sources):
+                external.add(name)
+                changed = True
+
+    return not all(is_external(root, external) for root in return_roots)
 
 
 def body_writes_name(body: list[TpyStmt], var: str,

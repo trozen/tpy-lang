@@ -68,8 +68,8 @@ struct __coro_value {
 struct __coro_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::BigInt x;
     std::string label;
+    ::tpy::BigInt x;
     ::tpy::frame_slot<Resource> __with_ctx_0;
     std::optional<__coro_value> __sub_0;
 

@@ -64,7 +64,9 @@ from ..value_category import async_return_form, AsyncReturnForm
 from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
                              owned_view_frame_params)
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
-                                  is_owned_in_coro_frame, view_owned_copy_init)
+                                  is_bytes_category, is_owned_in_coro_frame,
+                                  is_str_view_type, is_bytes_view_type,
+                                  is_free_copy_scalar, view_owned_copy_init)
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
@@ -1214,6 +1216,10 @@ class AsyncCoroCodegen:
                 source_form_fields[name] = payload
             if info.borrow_tuple_loop_var is not None:
                 borrow_tuple_names.add(info.borrow_tuple_loop_var)
+        # A `with ... as t` target joins the same family for the same reason: its
+        # payload is spelled from `__enter__()` (`with_enter_t<CM>`) because
+        # alias-vs-own is not decidable here either.
+        source_form_fields.update(state.with_target_payloads)
         # Statement-level borrow aliases (single-assign / tuple-unpack)
         # also get a `T*` field rather than an owning frame_slot<T>. The
         # alias model belongs to the resumable FRAME (a `T*` field kept
@@ -1287,6 +1293,23 @@ class AsyncCoroCodegen:
                 # silent-copy divergence). Pointers default-construct to
                 # null, so no frame_slot wrapper is needed.
                 kind = rcfg.FrameLocalKind.BORROW_TUPLE
+            elif (isinstance(ltype_inner, OwnType)
+                    and not unwrap_own(ltype_inner).is_value_type()
+                    and not is_dyn_protocol(
+                        unwrap_readonly(ltype_inner.wrapped))):
+                # `Own[T]` over a REFERENCE type reports as a value here, but the
+                # object it names is built at the BINDING, later than the frame.
+                # A bare field would default-construct at frame creation and then
+                # assign -- which is not the object's real constructor, and is
+                # deleted outright once T holds a non-default-constructible
+                # member (a `Box`, `Rc`, `Mutex`). The slot's placement-new runs
+                # the actual constructor at the actual construction point.
+                #
+                # A coroutine/adapter handle is the exception: `Own[@dynamic P]`
+                # renders as a `std::optional<coro>` / `unique_ptr` that already
+                # default-constructs empty and takes the value by assignment, so
+                # a slot around it would just double-wrap.
+                kind = rcfg.FrameLocalKind.FRAME_SLOT
             elif ltype_inner.is_value_type():
                 kind = rcfg.FrameLocalKind.VALUE
             elif (isinstance(ltype_inner, OptionalType)
@@ -1574,6 +1597,7 @@ class AsyncCoroCodegen:
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_borrow_form_loop_vars = self.ctx.generator_borrow_form_loop_vars
         old_for_info = self.ctx.generator_for_loop_info
+        old_with_owned_ctx = self.ctx.generator_with_owned_ctx
         old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
         old_const_pointer_alias_locals = self.ctx.generator_const_pointer_alias_locals
         old_self_ref = self.ctx.generator_self_ref
@@ -1604,6 +1628,8 @@ class AsyncCoroCodegen:
         # inside `setup_body_scope` below) seeds non-value loop vars into
         # `pointer_locals`. Empty for bodies with no CFG-decomposed for-loop.
         self.ctx.generator_for_loop_info = rcfg.resumable_state(func).for_loop_info
+        self.ctx.generator_with_owned_ctx = (
+            rcfg.resumable_state(func).with_owned_ctx_map)
         # Seeds pointer_locals inside setup_resumable_frame_locals (called by
         # setup_body_scope below) so borrow-alias frame locals get a `T*` slot.
         self.ctx.generator_pointer_alias_locals = (
@@ -1684,6 +1710,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_borrow_form_loop_vars = old_borrow_form_loop_vars
             self.ctx.generator_for_loop_info = old_for_info
+            self.ctx.generator_with_owned_ctx = old_with_owned_ctx
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.generator_const_pointer_alias_locals = old_const_pointer_alias_locals
             self.ctx.resumable_ptr_slot_map = old_ptr_slot_map
@@ -2168,8 +2195,11 @@ class AsyncCoroCodegen:
         try:
             for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
-            # After the for/with prescans: the frame layout it builds reads
-            # their outputs (for_loop_info, with_owning_str_targets).
+            # Both of these build the frame layout, so they must follow the
+            # for/with prescans whose outputs it reads (for_loop_info,
+            # with_owning_str_targets, with_target_payloads). Neither's own
+            # output feeds the layout, so building it here is not circular.
+            self._prescan_with_manager_homes(func, body)
             self._prescan_resumable_ptr_slots(func, body)
             try_finally_uid_map = self._prescan_resumable_try_finally(func, body)
             builder = rcfg.CFGBuilder(
@@ -2587,6 +2617,157 @@ class AsyncCoroCodegen:
         return out
 
 
+    def _record_with_target_payloads(self, stmt: TpyWith,
+                                     state: 'rcfg.ResumableState') -> None:
+        """Record the C++ payload each `as`-target's frame field is spelled
+        from: `::tpy::with_enter_t<CM>`, the element form of `CM::__enter__()`.
+
+        Whether the target aliases the manager or owns a fresh value is not
+        decidable here -- a generic or inherited manager instantiates either way
+        -- so the choice goes to C++, exactly as a for-loop element's does.
+
+        Skipped when the enter type answers the question by itself, leaving the
+        plain field its sibling value locals use: a value type has no aliasing
+        question; `Own[T]` (which `is_value_type` reports as a value) returns by
+        value, so the target owns; and a view-family (`str` / `bytes`) target's
+        owning-ness is settled in sema, which resolves a frame local owned unless
+        its source is static-lifetime.
+
+        Sync `with` only: an `async with` target is bound from `__aenter__`'s Poll
+        payload, not from `__enter__` (which such a manager need not even
+        define), and its field already takes the aliasing pointer form.
+        """
+        if stmt.is_async:
+            return
+        for item in stmt.items:
+            if item.target is None or item.enter_type is None:
+                continue
+            enter_t = unwrap_ref_type(item.enter_type)
+            resolved_enter = self.types.resolve_type(enter_t)
+            if (resolved_enter.is_value_type()
+                    or is_str_category(resolved_enter)
+                    or is_bytes_category(resolved_enter)):
+                # A view-family target's owning-ness is sema's call: a frame
+                # local whose source is not static-lifetime resolves OWNED, so
+                # the field is already the owning form rather than a view over a
+                # dead buffer. Nothing to defer to C++ here.
+                continue
+            if (isinstance(resolved_enter, OptionalType)
+                    and resolved_enter.uses_pointer_repr()):
+                # A pointer-repr Optional answers alias-vs-own by itself (the
+                # null pointer doubles as None) and has its own field kind; a
+                # source-form payload would win the earlier arm and render
+                # `frame_slot<T*>`, whose reads deref one level short.
+                continue
+            ctx_t = self.types.get_resolved_type(item.context_expr)
+            if ctx_t is None:
+                continue
+            ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
+            state.with_target_payloads[item.target] = (
+                f"::tpy::with_enter_t<{ctx_cpp}>")
+
+    def _prescan_with_manager_homes(self, func: TpyFunction,
+                                    body: list[TpyStmt]) -> None:
+        """Give an OWNED manager a frame field when its `as`-target's field points
+        INTO it.
+
+        Such a field holds a pointer or view into whatever `__enter__()` returned,
+        so the manager has to outlive the FRAME, not the statement. A borrowed
+        manager already does -- it aliases a frame-resident local -- but an owned
+        one is a per-invocation local, so a read of the target after any later
+        suspension would dangle. Only for a non-decomposed region: a decomposed
+        one allocates the field regardless.
+
+        Runs after `_prescan_with_stmts` so it can ask the frame-layout PLAN what
+        each target's field actually is, rather than re-deriving it from the enter
+        type's spelling -- an enumeration of spellings cannot close that set (a
+        borrow-form tuple and a `Span` are value types holding pointers), and
+        every miss is a use-after-free. The plan never reads this pass's output,
+        so building it here is not circular.
+        """
+        state = rcfg.resumable_state(func)
+        if state.with_manager_homes_prescanned:
+            return
+        state.with_manager_homes_prescanned = True
+        layout = self._frame_layout(func)
+        local_types = dict(func.generator_locals or [])
+        counter = [state.with_ctx_counter]
+        fields_out: list[tuple[str, str]] = []
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if (isinstance(s, TpyWith) and not s.is_async
+                        and not rcfg._stmts_have_any_suspension(s.body)):
+                    per_item: list[int | None] = []
+                    for item in s.items:
+                        ctx_t = (self.types.get_resolved_type(item.context_expr)
+                                 if item.target is not None
+                                 and not item.manager_borrowed
+                                 and item.manager_owns_enter_result
+                                 and self._with_field_points_into_manager(
+                                     item.target, layout, local_types)
+                                 else None)
+                        if ctx_t is None:
+                            per_item.append(None)
+                            continue
+                        cur_n = counter[0]
+                        counter[0] += 1
+                        fields_out.append(
+                            (f"__with_ctx_{cur_n}",
+                             self.types.type_to_cpp(unwrap_ref_type(ctx_t))))
+                        per_item.append(cur_n)
+                    if any(n is not None for n in per_item):
+                        state.with_owned_ctx_map[id(s)] = per_item
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        state.with_fields = list(state.with_fields) + fields_out
+        state.with_ctx_counter = counter[0]
+
+    # Frame-field kinds whose storage is entirely its own: nothing in the field
+    # points at the manager, so an owned manager may stay a case-block local.
+    _SELF_CONTAINED_FRAME_KINDS = frozenset({
+        rcfg.FrameLocalKind.OWNED_STR,
+        rcfg.FrameLocalKind.OWNING_TUPLE_SLOT,
+        rcfg.FrameLocalKind.FRAME_SLOT,
+    })
+
+    def _with_field_points_into_manager(
+            self, target: str, layout: 'rcfg.FrameLayoutPlan',
+            local_types: 'dict[str, TpyType]') -> bool:
+        """Does the target's frame field hold a pointer or view INTO the manager?
+
+        Defaults to YES for any kind not provably self-contained: a miss in this
+        direction is a use-after-free, while a false positive only keeps the
+        manager alive longer than strictly needed.
+        """
+        verdict = layout.bindings.get(target)
+        if verdict is None:
+            return False  # not frame-resident: no field to point with
+        if verdict.kind in self._SELF_CONTAINED_FRAME_KINDS:
+            return False
+        if verdict.kind is not rcfg.FrameLocalKind.VALUE:
+            # PTR_ALIAS / OPT_PTR (pointer), BORROW_TUPLE / MIXED_TUPLE_SLOT
+            # (pointer elements), SOURCE_FORM_SLOT (alias when the trait picks
+            # the borrow form).
+            return True
+        # A bare VALUE field is self-contained only for the owning value
+        # families; the rest (views, `Span`, `Ptr`, a user ValueType holding
+        # either) carry a pointer inside a value type.
+        ltype = local_types.get(target)
+        if ltype is None:
+            return True
+        t = self.types.resolve_type(unwrap_ref_type(ltype))
+        if is_free_copy_scalar(t) or is_big_int_type(t) or isinstance(t, OwnType):
+            return False
+        if is_str_category(t) and not is_str_view_type(t):
+            return False
+        if is_bytes_category(t) and not is_bytes_view_type(t):
+            return False
+        return True
+
     def _prescan_resumable_ptr_slots(
             self, func: TpyFunction, body: list[TpyStmt]) -> None:
         """Reserve one `std::optional<T>` frame field per rvalue write into
@@ -2675,11 +2856,24 @@ class AsyncCoroCodegen:
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
-                # Sync `with` only needs the frame slot when its body
-                # contains an await (M3.2). `async with` always needs
-                # one because `__aenter__` / `__aexit__` are themselves
-                # the suspensions, regardless of whether the body has
-                # any other await.
+                if isinstance(s, TpyWith):
+                    # A TARGET's frame field is NOT gated on the region being
+                    # decomposed: the target outlives its statement (Python
+                    # scoping), so it can be read across a later suspension the
+                    # `with` itself does not contain. Record the payload its
+                    # field is spelled from for every `with`; the manager field
+                    # and state numbering below stay gated.
+                    self._record_with_target_payloads(s, state)
+                    # A DECOMPOSED region needs the manager in the frame anyway
+                    # (its states are disjoint). Whether a NON-decomposed one
+                    # needs it depends on the target's field kind, which the frame
+                    # layout has not decided yet -- see
+                    # `_prescan_with_manager_homes`, which runs once this pass has
+                    # fed it the payloads it reads.
+                # The MANAGER needs a frame field only when the region is
+                # decomposed into states: a sync `with` whose body contains an
+                # await (M3.2), or any `async with` (its `__aenter__` /
+                # `__aexit__` are themselves the suspensions).
                 if (isinstance(s, TpyWith)
                         and (s.is_async
                              or rcfg._stmts_have_any_suspension(s.body))):
@@ -2775,6 +2969,7 @@ class AsyncCoroCodegen:
         walk(body)
         state.with_uid_map = uid_map
         state.with_fields = fields_out
+        state.with_ctx_counter = counter[0]
         state.async_with_struct_names = struct_names_out
         state.with_prescanned = True
         return uid_map

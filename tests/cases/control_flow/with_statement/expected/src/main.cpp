@@ -165,14 +165,14 @@ void test_early_return() {
 // def nested_with_all_return(flag: bool) -> str:
 std::string nested_with_all_return(bool flag) {
     // with Logger("OUT") as nw_outer:
-    std::optional<Logger> nw_inner;
+    Logger* nw_inner;
     auto __ctx_8 = Logger("OUT");
     auto& nw_outer = __ctx_8.__enter__();
     bool __fin_ran_8 = false;
     try {
         // with Logger("IN") as nw_inner:
         auto __ctx_9 = Logger("IN");
-        nw_inner = __ctx_9.__enter__();
+        nw_inner = &(__ctx_9.__enter__());
         bool __fin_ran_9 = false;
         try {
             // nw_outer.log("outer ctx")
@@ -279,6 +279,7 @@ void test_body_record_var_survives_scope() {
 
 // def test_reuse_with_var_name() -> None:
 void test_reuse_with_var_name() {
+    std::optional<Logger> __slot_1;
     // with Logger("V1") as v:
     auto __ctx_12 = Logger("V1");
     Logger* v = &(__ctx_12.__enter__());
@@ -296,7 +297,8 @@ void test_reuse_with_var_name() {
     __with_exit_12:
     __ctx_12.__exit__({}, nullptr, {});
     // with Logger("V2") as v:
-    auto __ctx_13 = Logger("V2");
+    __slot_1.emplace(Logger("V2"));
+    auto& __ctx_13 = (*__slot_1);
     v = &(__ctx_13.__enter__());
     try {
         // v.log("second")

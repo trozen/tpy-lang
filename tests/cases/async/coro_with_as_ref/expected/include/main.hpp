@@ -64,6 +64,8 @@ struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
     int32_t s;
+    ::tpy::frame_slot<::tpy::with_enter_t<CM>> it;
+    ::tpy::frame_slot<CM> __with_ctx_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

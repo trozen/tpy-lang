@@ -56,6 +56,7 @@ from ..parse import (
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
 )
+from ..parse.nodes import returns_borrow_rooted_at_self
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -1529,6 +1530,10 @@ class TypeRegistrar:
                 native_function=method.native_function,
                 native_preserves_refs=method.native_preserves_refs,
                 copy_returns_warn=method.copy_returns_warn,
+                # Only `__enter__` needs it, and only it pays the body walk.
+                returns_self_borrow=(
+                    returns_borrow_rooted_at_self(method)
+                    if method.name == '__enter__' else True),
                 native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
                              if not method.native_function else None),

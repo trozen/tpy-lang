@@ -21,11 +21,12 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // with CM(42) as it:
-        auto __ctx_1 = CM(42);
-        auto& it = __ctx_1.__enter__();
+        __with_ctx_0.emplace(CM(42));
+        auto& __ctx_1 = (*__with_ctx_0);
+        it.emplace(__ctx_1.__enter__());
         try {
             // s += it.n
-            s = ::tpy::add_check<int32_t>(s, it.n);
+            s = ::tpy::add_check<int32_t>(s, (*it).n);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});

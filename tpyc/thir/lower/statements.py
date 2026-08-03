@@ -9773,6 +9773,23 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                     and is_rvalue_source(lc.analyzer, ctx)))
         if not manager_ok:
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        # An OWNED manager whose target is READ after the statement is hoisted
+        # into a function-scope `std::optional`, because the pointer slot aliases
+        # `__enter__()`'s result and would outlive a block-scoped manager. That
+        # bind is not mirrored here yet -- reject rather than emit the
+        # dying-manager form the skeleton no longer produces.
+        #
+        # Tracks the AST gate's facts but is STRICTLY NARROWER: the extra
+        # `ASSIGN_PTR` conjunct means only the pointer-reuse arm can reach it,
+        # so it never rejects a body the AST would emit unhoisted. Witnessed by
+        # the reuse bodies in `control_flow/with_statement` and
+        # `control_flow/with_target_reuse_read_after`, which reach it and fall
+        # back; `scripts/thir_migration/thir_scan.py` reports the tag.
+        if (not item.manager_borrowed and item.target is not None
+                and arm is WithTargetArm.ASSIGN_PTR
+                and item.manager_owns_enter_result
+                and item.target_read_after):
+            raise ThirUnsupported("with.hoisted_owned_manager")
         deref = (item.manager_borrowed and isinstance(ctx, TpyName)
                  and ctx.name in lc.pointers)
         _witness("with.manager_borrowed" if item.manager_borrowed

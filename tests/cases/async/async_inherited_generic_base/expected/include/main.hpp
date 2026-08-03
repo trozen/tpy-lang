@@ -394,11 +394,11 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<IntBox> b;
     ::tpy::frame_slot<IntGuard> g;
+    int32_t v;
     int32_t total;
     int32_t x;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
-    int32_t v;
     ::tpy::frame_slot<::tpy::aiter_type_t<IntCounter>> __for_itr_0;
     IntGuard* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;

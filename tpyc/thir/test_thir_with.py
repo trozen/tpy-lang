@@ -546,6 +546,9 @@ class TestPtrTargetReuse:
     )
 
     def test_two_withs_route_byte_identical(self):
+        # No read after the LAST with, so no manager outlives its block and both
+        # arms stay routed. (Add a trailing read and the second manager has to be
+        # hoisted -- see test_reuse_read_after_hoists_manager.)
         src = (
             self._G
             + "def f() -> None:\n"
@@ -553,7 +556,6 @@ class TestPtrTargetReuse:
             + "        print(g.n)\n"
             + "    with G(2) as g:\n"
             + "        print(g.n)\n"
-            + "    print(g.n)\n"
             + "f()\n"
         )
         thir, w = _lower_ctx_witnessed(src)
@@ -564,8 +566,29 @@ class TestPtrTargetReuse:
         assert out == _cpp(src, thir=False)
         assert "G* g = &(__ctx_1.__enter__());" in out
         assert "g = &(__ctx_2.__enter__());" in out
-        # Body and post-with reads go through the pointer-local.
+        # Body reads go through the pointer-local.
         assert "g->n" in out
+
+    def test_reuse_read_after_hoists_manager(self):
+        # The same reuse chain plus a trailing read: `g` then points at the second
+        # manager past its block, so that OWNED manager is hoisted to a
+        # function-scope optional. THIR has no row for that bind, so the body
+        # falls back byte-identically.
+        src = (
+            self._G
+            + "def f() -> None:\n"
+            + "    with G(1) as g:\n"
+            + "        print(g.n)\n"
+            + "    with G(2) as g:\n"
+            + "        print(g.n)\n"
+            + "    print(g.n)\n"
+            + "f()\n"
+        )
+        assert _fn(_lower_ctx(src), "f") is None
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "std::optional<G> __slot_" in out
+        assert "g = &(__ctx_2.__enter__());" in out
 
     def test_mixed_arms_and_chained_reuse_route(self):
         # PTR_DECL and VALUE arms in ONE multi-item statement, then two
@@ -808,8 +831,8 @@ class TestNativeCtxManager:
 
 
 # Self-returning record manager: the enter type is the manager record, so
-# an as-target binds a record (REF at function top, ASSIGN_OPT when the
-# name was hoist-predeclared into optional storage).
+# an as-target binds a record (REF at function top, pointer-form assign when
+# the name was hoist-predeclared by an enclosing branch-decl pass).
 _SELFG = (
     "from typing import Self\n"
     "from tpy import Int32\n"
@@ -825,10 +848,14 @@ _SELFG = (
 
 
 class TestAssignOptTarget:
-    def test_nested_with_optional_slot_assign(self):
+    def test_nested_with_hoisted_target_stays_ast(self):
         # The inner with-as target is hoist-predeclared by the outer's
-        # branch-decl pass (std::optional<G> inner;) and the inner item
-        # takes the plain slot assign -- the ASSIGN_OPT arm.
+        # branch-decl pass. It now hoists in POINTER form and the bind aliases
+        # the manager -- owning `std::optional<G>` storage copied it, so a
+        # mutation through the target never reached the object __exit__ runs
+        # against. THIR has no row for the pointer bind yet, so the body falls
+        # back and must stay byte-identical; un-rejecting it is the follow-up
+        # that retires the now-unwitnessed ASSIGN_OPT arm.
         src = (
             _SELFG
             + "def f() -> None:\n"
@@ -838,14 +865,10 @@ class TestAssignOptTarget:
             + "            print(outer.n)\n"
             + "f()\n"
         )
-        fn = _fn(_lower_ctx(src), "f")
-        assert fn is not None
-        outer_w = next(s for s in fn.body if isinstance(s, THIRWith))
-        inner_w = next(s for s in outer_w.body if isinstance(s, THIRWith))
-        assert inner_w.items[0].target_arm is WithTargetArm.ASSIGN_OPT
+        assert _fn(_lower_ctx(src), "f") is None
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
-        assert "inner = __ctx_" in cpp
+        assert "inner = &(__ctx_" in cpp
 
     def test_assign_opt_requires_matching_record(self):
         # A hoist-predeclared optional-slot name reused over a DIFFERENT

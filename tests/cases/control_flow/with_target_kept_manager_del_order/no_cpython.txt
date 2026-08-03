@@ -1,0 +1,6 @@
+Documented divergence: a `with` manager whose `__enter__` lends its own storage
+is kept alive for as long as the `as`-target, so its `__del__` runs at the end of
+the enclosing scope. CPython drops it at the end of the `with` block, because the
+target there holds an independent reference to the returned object; under TPy the
+lent object lives inside the manager, so dropping it would invalidate the target.
+See docs/LANGUAGE_FEATURES.md, `with` Statement -- `as`-target binding.

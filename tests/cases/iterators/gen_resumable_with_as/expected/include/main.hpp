@@ -59,8 +59,8 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
+    ::tpy::frame_slot<::tpy::with_enter_t<Resource>> v;
     int32_t i;
-    ::tpy::frame_slot<Item> v;
     ::tpy::frame_slot<Resource> __with_ctx_0;
 
     enum : int32_t {

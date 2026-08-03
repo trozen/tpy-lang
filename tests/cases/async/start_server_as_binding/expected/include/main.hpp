@@ -90,9 +90,9 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Server> server;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> sf;
+    ::tpystd::asyncio::Server* srv = nullptr;
     int32_t port;
     std::string __await_lift_0;
-    ::tpystd::asyncio::Server* srv = nullptr;
     ::tpystd::asyncio::Server* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;
     std::optional<::tpystd::asyncio::__coro_start_server> __sub_0;

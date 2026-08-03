@@ -43,6 +43,10 @@ def analyze_last_uses(
 
     The analysis is conservative: if unsure, a node is NOT marked as last use.
     A missed optimization is just a copy (same as current behavior).
+
+    Also stamps `TpyWithItem.target_read_after` on the way through (see
+    _analyze_with) -- the same live sets answer it, and a body this never
+    walks keeps the field's conservative default.
     """
     source_aliases = _build_source_aliases(alias_sources) if alias_sources else {}
     # Per-alias detachment: aliases created before their source's reassignment
@@ -66,6 +70,17 @@ def analyze_last_uses(
         detached_aliases, first_reassign_pos,
     )
     return last_uses
+
+
+def _nested_def_captures(stmt: TpyNestedDef) -> set[str]:
+    """What a nested def reads from the enclosing scope.
+
+    Always the syntactic approximation: this pass runs as a prescan, so sema
+    has not filled `captured_names` yet. Keying on that field being empty
+    would silently swap mechanisms the day capture analysis moves earlier, so
+    the choice is spelled out instead.
+    """
+    return _free_names_approx(stmt.func)
 
 
 def _collect_nested_def_captures(stmts: list[TpyStmt]) -> set[str]:
@@ -359,14 +374,16 @@ def _analyze_stmt(
             _process_reads(stmt.init, live, last_uses, source_aliases, detached_aliases)
             if hide_alias:
                 live.add(stmt.name)
-        # Kill: variable is (re)defined here
-        live.discard(stmt.name)
+        # Kill: variable is (re)defined here -- unless this statement's own
+        # init reads it (`g = g.next()`), where the transfer is
+        # (live_after - {g}) | {g} and g stays live entering the statement.
+        _kill_unless_read(stmt.name, [stmt.init] if stmt.init else [], live)
 
     elif isinstance(stmt, TpyTupleUnpack):
         _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
         for name in stmt.targets:
             if name is not None:
-                live.discard(name)
+                _kill_unless_read(name, [stmt.value], live)
 
     elif isinstance(stmt, TpyAssign):
         # Value and target sub-expression reads form one C++ full-expression;
@@ -378,9 +395,10 @@ def _analyze_stmt(
         elif isinstance(stmt.target, TpyFieldAccess):
             exprs.append(stmt.target.obj)
         _process_reads_multi(exprs, live, last_uses, source_aliases, detached_aliases)
-        # Kill: if target is a plain name, it's redefined
+        # Kill: if target is a plain name, it's redefined -- unless the
+        # statement reads it too (see _kill_unless_read).
         if isinstance(stmt.target, TpyName):
-            live.discard(stmt.target.name)
+            _kill_unless_read(stmt.target.name, exprs, live)
 
     elif isinstance(stmt, TpyAugAssign):
         # AugAssign (e.g. x += 1) reads the target AND the value
@@ -428,9 +446,7 @@ def _analyze_stmt(
         # Captured vars are referenced by the closure (by-ref or by-value).
         # They must stay live so earlier uses aren't incorrectly marked as
         # last-use (which would cause std::move before the capture).
-        if stmt.captured_names:
-            for name in stmt.captured_names:
-                live.add(name)
+        live |= _nested_def_captures(stmt)
         live.discard(stmt.func.name)
 
     else:
@@ -712,7 +728,17 @@ def _analyze_with(
     moved-from object). The body is otherwise a plain sequential block:
     recurse it, kill the `as` targets (bound at entry), then process the
     context-manager expressions (evaluated at entry).
+
+    `live` on entry is liveness AFTER the statement, which is exactly the
+    question `TpyWithItem.target_read_after` asks, so stamp it here rather
+    than re-deriving it from source order: this walk already knows that a
+    closure capture keeps a name live everywhere, that a loop body runs
+    again, that an exception can leave the try mid-body, and that a rebind
+    only kills from its own position.
     """
+    for item in stmt.items:
+        if item.target is not None:
+            item.target_read_after = item.target in live
     mgr_roots: set[str] = set()
     for item in stmt.items:
         for node in _collect_reads_expr(item.context_expr):
@@ -749,6 +775,12 @@ def _analyze_try(
     the exception path still reads. We compute the handler/finally/else live
     sets, mark the try body normally, then drop the last-use marks the body
     walk gave to any name read on an exception path.
+
+    That same reachability makes the exception path's names live ENTERING the
+    statement, so they are restored afterwards: a terminator in the try body
+    clears the live set (nothing follows it on the normal path), which would
+    otherwise drop the handler/finally seed and report a name read only on the
+    exception path as dead before the try.
     """
     finally_live = live.copy()
     if stmt.finally_body:
@@ -776,6 +808,7 @@ def _analyze_try(
         for node in _all_read_names(stmt.try_body):
             if node.name in exception_path_live:
                 last_uses.discard(id(node))
+    live |= exception_path_live
 
 
 def _compute_live_only(stmts: list[TpyStmt], live: set[str]) -> None:
@@ -845,14 +878,14 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         if stmt.init:
             for node in _collect_reads_expr(stmt.init):
                 live.add(node.name)
-        live.discard(stmt.name)
+        _kill_unless_read(stmt.name, [stmt.init] if stmt.init else [], live)
 
     elif isinstance(stmt, TpyTupleUnpack):
         for node in _collect_reads_expr(stmt.value):
             live.add(node.name)
         for name in stmt.targets:
             if name is not None:
-                live.discard(name)
+                _kill_unless_read(name, [stmt.value], live)
 
     elif isinstance(stmt, TpyAssign):
         for node in _collect_reads_expr(stmt.value):
@@ -866,7 +899,7 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             for node in _collect_reads_expr(stmt.target.obj):
                 live.add(node.name)
         elif isinstance(stmt.target, TpyName):
-            live.discard(stmt.target.name)
+            _kill_unless_read(stmt.target.name, [stmt.value], live)
 
     elif isinstance(stmt, TpyAugAssign):
         for node in _collect_reads_expr(stmt.value):
@@ -923,16 +956,19 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             live.update(h_live)
         if stmt.else_body:
             _compute_live_only(stmt.else_body, live)
+        # Restored after the body walk for the same reason as in _analyze_try:
+        # a terminator in the try body clears the set, which would drop the
+        # handler/finally reads that stay live entering the statement.
+        exception_path_live = live.copy()
         _compute_live_only(stmt.try_body, live)
+        live |= exception_path_live
 
     elif isinstance(stmt, TpyDelVar):
         for name in stmt.names:
             live.discard(name)
 
     elif isinstance(stmt, TpyNestedDef):
-        if stmt.captured_names:
-            for name in stmt.captured_names:
-                live.add(name)
+        live |= _nested_def_captures(stmt)
         live.discard(stmt.func.name)
 
     else:
@@ -943,6 +979,24 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
 
 
 # -- Read collection ----------------------------------------------------------
+
+def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
+                      live: set[str]) -> None:
+    """Apply a definition's kill of `name`, honouring the reads in the same
+    statement: the backward transfer is (live_after - kills) | reads, so a
+    self-referential definition (`g = g.next()`, `a, b = b, a`) leaves the
+    name live entering the statement.
+
+    Marking still happens against live_after (the reads are processed before
+    this call), so which sites auto-move is unchanged -- only what the
+    statements above see.
+    """
+    if any(n.name == name
+           for expr in read_exprs
+           for n in _collect_reads_expr(expr)):
+        return
+    live.discard(name)
+
 
 def _process_reads(
     expr: TpyExpr,

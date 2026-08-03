@@ -54,7 +54,9 @@ from ..prescan import (
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate)
 from ..parse.nodes import VarLinkage
-from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding, tuple_borrow_escape_roots
+from .context import (addr_taken_roots, expr_yields_non_null_ptr,
+                      record_borrow_binding, record_stmt_borrow_binding,
+                      tuple_borrow_escape_roots)
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
@@ -2937,6 +2939,11 @@ class StatementAnalyzer:
                         unwrap_ref_type(enter_info.async_inner_return),
                         ReadonlyType))
 
+            # Does `__enter__` lend the manager's own storage, or something that
+            # merely passes through it? Only the first makes the manager's
+            # lifetime the target's problem.
+            item.manager_owns_enter_result = enter_info.returns_self_borrow
+
             # Register the as-variable if present
             if item.target is not None:
                 resolved = self._infer_new_local_type(
@@ -2948,8 +2955,41 @@ class StatementAnalyzer:
                 self.ctx.func.nonstmt_bound_names.add(item.target)
                 self.init.mark_assigned(item.target)
                 if self.ctx.func.current_ns:
+                    # NOT frame-exempt: a with target is an ordinary function
+                    # local in Python and outlives its statement, so its frame
+                    # residency follows the same unconditional rule as any other
+                    # local. Exempting it made residency depend on whether the
+                    # `with` body itself suspends, which a read after the
+                    # statement does not.
                     self.ctx.func.current_ns.bind_capture(
-                        item.target, resolved, frame_exempt=True)
+                        item.target, resolved, frame_exempt=False)
+                if not stmt.is_async and not resolved.is_value_type():
+                    # A plain non-value `__enter__` LENDS -- returning a fresh
+                    # value requires `Own[T]` (which reads as a value type here),
+                    # so the target borrows. Recording it lets a branch pre-decl
+                    # hoist the name in pointer form; owning `std::optional<T>`
+                    # storage would copy the manager and sever the alias, so a
+                    # mutation through the target would never reach the object
+                    # `__exit__` runs against.
+                    #
+                    # Sync only: an `async with` target's const-ness is
+                    # `item.aenter_result_is_const` above, computed from the
+                    # coroutine's inner return -- `enter_info.return_type` is
+                    # still `Awaitable[T]` / `Cancellable[T]` here, which is never
+                    # ReadonlyType, so recording it would file a wrong fact in a
+                    # table shared with every other borrow consumer.
+                    #
+                    # A `@readonly __enter__` returns `const T&` without the
+                    # declared type being wrapped, so ask the method too -- the
+                    # same pair `record_stmt_borrow_binding` uses.
+                    const = isinstance(
+                        unwrap_ref_type(enter_info.return_type), ReadonlyType)
+                    if not const:
+                        const = bool(enter_info.is_readonly
+                                     and call_returns_cpp_ref(
+                                         self.ctx, enter_info))
+                    record_borrow_binding(self.ctx, item.target, const=const)
+                    self.ctx.func.nonstmt_borrow_bindings.add(item.target)
 
             if stmt.is_async:
                 # This item's `__aenter__` awaits before the next item's

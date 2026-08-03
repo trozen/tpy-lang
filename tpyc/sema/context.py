@@ -527,6 +527,18 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     if not const and isinstance(inner, TpyUnaryOp) and inner.resolved_unaryop is not None:
         fi = inner.resolved_unaryop.method
         const = bool(fi.is_readonly and call_returns_cpp_ref(ctx, fi))
+    record_borrow_binding(ctx, name, const=const)
+
+
+def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
+                          const: bool) -> None:
+    """Record a borrow binding of a non-value local whose const verdict the
+    caller already knows.
+
+    For bindings that have no statement-level init expression to inspect -- a
+    `with` target borrows `__enter__()`'s result, which is a property of the
+    method, not of an expression in the body.
+    """
     prev = ctx.func.stmt_borrow_decls.get(name, False)
     ctx.func.stmt_borrow_decls[name] = prev or const
 
@@ -721,10 +733,12 @@ class FunctionTrackingState:
     # match capture): their binding machinery owns the storage form, so
     # they are never pointer-form-eligible at branch pre-decls.
     nonstmt_bound_names: set[str] = field(default_factory=set)
-    # Match captures that alias an lvalue subject (recorded as a stmt-borrow):
-    # an explicit exception to nonstmt_bound_names so the borrow snapshot keeps
-    # them pointer-form-eligible regardless of prescan/full-pass ordering.
-    match_borrow_captures: set[str] = field(default_factory=set)
+    # Names bound by a construct rather than a statement that are nonetheless
+    # borrow bindings: an explicit exception to nonstmt_bound_names so the borrow
+    # snapshot keeps them pointer-form-eligible regardless of prescan/full-pass
+    # ordering. Two members -- a match capture aliasing an lvalue subject, and a
+    # `with` target (which borrows `__enter__()`'s result).
+    nonstmt_borrow_bindings: set[str] = field(default_factory=set)
     # Accumulator (survives FlowFacts like ever_owned_locals): locals
     # reassigned from a borrow-producing source, so no longer safely movable
     # even if they were owned earlier. Subtracted from the movable set.

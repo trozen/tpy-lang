@@ -43,7 +43,7 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     ::tpy::frame_state __state;
     int32_t limit;
     ::tpy::frame_slot<Counter> c;
-    ::tpy::frame_slot<Counter> guard;
+    ::tpy::frame_slot<::tpy::with_enter_t<Counter>> guard;
     Counter* __with_ctx_0 = nullptr;
 
     enum : int32_t {

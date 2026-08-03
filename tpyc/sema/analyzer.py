@@ -1684,7 +1684,7 @@ class SemanticAnalyzer:
             name: const
             for name, const in self.ctx.func.stmt_borrow_decls.items()
             if name not in self.ctx.func.nonstmt_bound_names
-            or name in self.ctx.func.match_borrow_captures
+            or name in self.ctx.func.nonstmt_borrow_bindings
         }
         if borrow_decls:
             self.function_stmt_borrow_decls[id(func)] = borrow_decls
