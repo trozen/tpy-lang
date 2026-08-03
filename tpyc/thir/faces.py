@@ -235,6 +235,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.self_method",             # `self.helper()` -> `this->helper()`
     "call.imported",                # cross-module callee -> pre-rendered
                                     # `::tpyapp::mod::f` (callee_cpp)
+    "call.literal_mangled",         # local literal-specialized callee -> the
+                                    # bare mangled spelling (`f__lit_r__w`)
+    "fold.overload_live_chain",     # partially-folded per-stub if-chain ->
+                                    # trimmed live `if / else if` render
+    "method.literal_mangled",       # literal-overloaded member call -> the
+                                    # mangled member spelling (`get__lit_age`)
+    "ret.union_owned_str_field",    # owned-str FIELD read at a union return
+                                    # -> bare render (`return this->name;`)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
     "call.native_own_scalar_lvalue",  # value-scalar NAME into an Own[..] slot
                                       # of a native/template callee: the bare

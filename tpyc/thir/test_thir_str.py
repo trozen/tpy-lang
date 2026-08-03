@@ -363,10 +363,11 @@ class TestStrValuesEmit:
         assert isinstance(decl.init, THIRFormConvert)
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_overload_impl_ineligible(self):
-        # An overload IMPL is emitted once per stub with per-stub dead-branch
-        # facts; routing the shared body would hijack every specialization
-        # (caught by the byte-diff: calls/overload_literal_bool `describe`).
+    def test_overload_impl_bool_truthiness_folds(self):
+        # A bool-literal-only group lowers per stub; `if x:` folds through
+        # the mirrored truthiness arm (Literal[True] splices the then-body,
+        # Literal[False] falls through) -- calls/overload_literal_bool's
+        # `describe` shape.
         src = (
             "from typing import Literal, overload\n"
             "@overload\n"
@@ -376,13 +377,13 @@ class TestStrValuesEmit:
             "def describe(x: bool) -> str:\n"
             '    if x:\n        return "yes"\n    return "no"\n')
         thir = _lower(src)
-        assert _fn(thir, "describe") is None
+        assert _fn(thir, "describe") is not None
 
-    def test_overload_impl_method_ineligible(self):
-        # The method arm of the overload-impl rejection: a literal-overloaded
-        # METHOD impl is per-stub specialized just like a free function
-        # (_gen_literal_specialized_method); the gate reads the owning record's
-        # method overload count. No corpus case load-bears this arm.
+    def test_overload_impl_method_lowers_per_stub(self):
+        # The method arm: a literal-overloaded METHOD impl is per-stub
+        # specialized just like a free function
+        # (_gen_literal_specialized_method keys the same interception seam),
+        # with the same truthiness fold over the injected facts.
         src = (
             "from typing import Literal, overload\n"
             "from tpy import Int32\n"
@@ -396,14 +397,14 @@ class TestStrValuesEmit:
             "    def pick(self, x: bool) -> Int32:\n"
             "        if x:\n            return self.n\n        return 0\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "pick") is None
+        assert _fn(thir, "pick") is not None
+        _assert_byte_identical(src)
 
-    def test_multi_overload_str_literal_arg_ineligible(self):
-        # A str-LITERAL arg to a multi-overload callee is pinned to its param's
-        # view form (`std::string_view("...")`, _wants_str_literal_pin) -- the
-        # bare-literal THIR emit would diverge, so the CALLER stays AST. No
-        # corpus case load-bears this reject (overload_str_literal_arg's main
-        # is ineligible for other reasons).
+    def test_multi_overload_str_literal_at_literal_slot_bare(self):
+        # A str LITERAL into a `Literal[...]` slot of a multi-overload callee
+        # renders BARE (`mode__lit_r("r")`): the AST's overloaded-call view
+        # pin fires only when the slot renders str/StrView, and a LiteralType
+        # slot is neither -- so the mangled call routes with the bare arg.
         src = (
             "from typing import Literal, overload\n"
             "from tpy import Int32\n"
@@ -416,7 +417,11 @@ class TestStrValuesEmit:
             "def caller() -> Int32:\n"
             '    return mode("r")\n')
         thir = _lower(src)
-        assert _fn(thir, "caller") is None
+        caller = _fn(thir, "caller")
+        assert caller is not None
+        call = caller.body[-1].value
+        assert call.callee_cpp == "mode__lit_r"
+        _assert_byte_identical(src)
 
 
 

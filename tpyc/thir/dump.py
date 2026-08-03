@@ -97,6 +97,7 @@ from .nodes import (
     THIRMembership,
     THIRNestedDef,
     THIRFoldedBlock,
+    THIRFoldedIfChain,
     THIRMatchFoldBind,
     THIRFrameNestedDef,
     THIRImportInit,
@@ -542,6 +543,17 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         lines = [f"{pad}overload-fold{burn}:"]
         for s in stmt.stmts:
             lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRFoldedIfChain):
+        lines = [f"{pad}overload-live-chain:"]
+        for cond, body in stmt.branches:
+            lines.append(f"{pad}  branch {_expr(cond)}:")
+            for s in body:
+                lines.extend(_stmt_lines(s, depth + 2))
+        if stmt.else_body:
+            lines.append(f"{pad}  else:")
+            for s in stmt.else_body:
+                lines.extend(_stmt_lines(s, depth + 2))
         return lines
     if isinstance(stmt, THIRMatchFoldBind):
         binder = "auto" if stmt.by_value else "auto&"

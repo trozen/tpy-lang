@@ -7408,3 +7408,62 @@ the fallback/identity claim. Three fallback-safe gate/render
 asymmetries carried to TODO's parked registry (opt-own move-verdict
 placement, inherited-arity kwargs mix, bytes-literal union arm under
 readonly_target).
+
+### Design round 15: the overload literal/mangled path (2026-08-03)
+
+The round-14 queue ruling's next design item, built as four approved
+cells on branch `thir-design-r15` after a fresh probe_corpus (641
+marked / 330 sole / 1 clean -- `pointers/optional_unsafe_access`, a
+free flip committed first). +10 flips total, dial 3055 -> 3065/3696.
+The family measured 8 sole cases with exactly {db_compare,
+call.literal_overload} plus `overload_literal_flatten` one tag away --
+all nine flipped, plus the free one.
+
+- Cell A+B (admission + emit seam + free-call spelling): literal-only
+  groups lower per stub against the IMPL signature (stub return +
+  injected literal facts; `_literal_stub_facts` zip),
+  `_gen_literal_specialized_function`/`_method` set `thir_overload_key`,
+  and `_free_callee_kind` threads `literal_mangled_name` through the
+  plain (bare escaped) and imported (qualified) spellings on
+  `callee_cpp`. THIRFoldedBlock grew `trivia_loc`: the AST emits the
+  chain head's preceding `#` comments before the fold dispatch even
+  for an all-dead chain -- a LATENT gap in the pre-existing fold arm,
+  first witnessed by `literal_multivalue_fold`'s and-contradiction
+  comments (the UPDATE-5 lesson again: comment divergences are
+  invisible to every pin whose `comments` echo is off).
+- Cell C (fold extensions): `_overload_resolve_static` gained bool
+  truthiness, membership, and the or-coverage/and-contradiction chain
+  fallthrough by IMPORTING the AST's own `_check_literal_in` /
+  `_check_literal_chain` -- one source of truth, no verdict drift.
+  Every db_literal_fold fence dropped (admission walks, short-stub
+  BOOL fence, `_overload_reject_detail`'s membership row).
+- Cell D (partial folds): THIRFoldedIfChain renders the AST live path
+  (clean `if / else if`, NO condition source comments, else from the
+  last original node). The binop compare fence refined from name-based
+  to VERDICT-based: undecidable compares over lc.literal_facts lower
+  plain (the live branches); decided verdicts (bare "true"/"false"
+  renders) and untracked flow-sensitive facts keep rejecting. Declined
+  shapes, pinned: branch decls, concrete extractions, temps past the
+  first branch, True-after-dynamic (an AST DEFECT -- the fold drops
+  the dynamic prefix; filed in BUGS.md, reproduced by the judge
+  fixture).
+- Cell E (method half): `method_literal_mangled_cpp` mirrors the AST
+  member resolution (@native rename > mangled > escaped; mangled
+  spelled RAW, unlike the free call's escaped form);
+  `_plain_method_fi_ok` gained `literal_mangled_ok` opened only by the
+  record arm, builtin families re-fenced. Rider: the union-return
+  view-insert fence over-rejected OWNED sources -- an owned-str FIELD
+  read (`return self.data_name` into `Int32 | str`) renders bare and
+  now rides the return arm's field_prechecked rails; view sources
+  pinned fenced.
+
+Two AST defects filed in BUGS.md while re-pinning: bodied literal
+stubs emit duplicate unmangled definitions against a mangled call
+site (the C++ never compiles), and the fold's True-after-dynamic
+branch drop. Measurement corrections: the family paid 9 (not ~6);
+`flatten`'s "second tag" was NOT the method call alone -- behind it
+sat the union-return owned-str fence, a one-row rider rather than a
+family. Boundary pins added: literal-stub arity, decided-compare
+fence, literal-mode incompatible return (the AST's dead-code suppress
+stays unmirrored), union-return view source, cross-module mangled
+spelling, bare literal at a Literal slot.

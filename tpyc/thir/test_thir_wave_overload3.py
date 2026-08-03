@@ -66,9 +66,11 @@ class TestOverloadDefaultLocals:
         # the runtime compare
         assert "if ((count == 0))" in cpp[1]
 
-    def test_membership_on_fact_param_stays_fenced(self):
-        # `count in (0, 1)` would fold via the unmirrored
-        # `_resolve_literal_in_statically` -- the short stub must reject.
+    def test_membership_on_fact_param_folds(self):
+        # `count in (0, 1)` folds through the mirrored `_check_literal_in`
+        # for the SHORT stub (default 0 injects Literal[0], a subset of the
+        # tuple -> True splices the then-body); the long stub keeps the
+        # runtime membership compare.
         src = ("from typing import overload\n"
                "@overload\n"
                "def pick(s: str) -> str: ...\n"
@@ -83,5 +85,5 @@ class TestOverloadDefaultLocals:
                "    print(pick(\"ab\", 5))\n"
                "main()\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "pick") is None
+        assert _fn(thir, "pick") is not None
         _assert_byte_identical(src)

@@ -11,10 +11,12 @@ from .testutil import (
     _compile,
     _entry,
     _fn,
+    _lower,
     _lower_ctx,
 )
 from .lower import lower_function
 from .lower.functions import iter_module_callables, module_native_globals
+from .nodes import THIRFoldedBlock
 
 _PRELUDE = (
     "from typing import overload\n"
@@ -192,11 +194,10 @@ class TestPerStubBoundaries:
         assert results and all(fn is None for fn, _ in results)
         assert all(r == "sig.overload_set.generic_stub" for _, r in results)
 
-    def test_arity_bool_default_keeps_rejecting(self):
+    def test_arity_bool_default_routes(self):
         # A missing param with a LIVE BOOL default injects a Literal[False]
-        # fact whose truthiness fold (`if loud:`) is unmirrored -- the
-        # SHORT stub stays fenced (db_literal_fold). The full-length stub
-        # has no missing param and routes on the isinstance fold.
+        # fact; with the truthiness fold mirrored the blanket BOOL fence is
+        # gone, so the SHORT stub routes alongside the full-length one.
         src = _PRELUDE + (
             "@overload\n"
             "def greet(a: Dog) -> str: ...\n"
@@ -209,14 +210,221 @@ class TestPerStubBoundaries:
         )
         results = _per_stub_results(src, "greet")
         assert len(results) == 2
-        assert results[0][0] is None
-        assert results[0][1] == "sig.overload_set.db_literal_fold"
-        assert results[1][0] is not None
+        assert all(fn is not None for fn, _ in results)
+        _assert_byte_identical(src)
 
-    def test_literal_stubs_keep_db_compare_reject(self):
-        # Literal-only groups emit via the AST's mangled-name path (the
-        # per-stub key is never set there); seeding them would count bodies
-        # migrated with AST emission.
+    def test_literal_stub_arity_mismatch_rejects(self):
+        # BOUNDARY: a SHORT stub in a literal-only group has no mirrored
+        # missing-param prologue on the mangled path -- it keeps the arity
+        # reject while the full-length sibling routes.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def h(a: Literal["x"]) -> Int32: ...\n'
+            "@overload\n"
+            "def h(a: str, b: Int32) -> Int32: ...\n"
+            "def h(a: str, b: Int32 = 0) -> Int32:\n"
+            "    return b\n"
+        )
+        results = _per_stub_results(src, "h")
+        assert len(results) == 2
+        assert results[0][0] is None
+        assert results[0][1] == "sig.overload_set.arity"
+        assert results[1][0] is not None
+        _assert_byte_identical(src)
+
+    def test_literal_decided_compare_outside_fold_rejects(self):
+        # BOUNDARY: a compare the AST's EXPRESSION-level fold decides
+        # (`m == "z"` under Literal["r","w"] facts renders bare `false`) is
+        # an unmirrored render -- the body keeps falling back; only
+        # undecidable compares (the live-chain branches) lower plain.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def gmode(m: Literal["r", "w"]) -> Int32: ...\n'
+            "@overload\n"
+            'def gmode(m: Literal["x", "y"]) -> Int32: ...\n'
+            "def gmode(m: str) -> Int32:\n"
+            '    flag = m == "z"\n'
+            "    if flag:\n"
+            "        return 0\n"
+            "    return 1\n"
+        )
+        results = _per_stub_results(src, "gmode")
+        assert results and all(fn is None for fn, _ in results)
+        assert all("literal_fold" in (r or "") for _, r in results)
+        _assert_byte_identical(src)
+
+    def test_literal_incompatible_return_rejects(self):
+        # BOUNDARY: in literal mode an incompatible per-stub return is DEAD
+        # CODE on the AST path (suppressed, statements.py's literal-facts
+        # return arm) -- the suppress render is unmirrored, so the stub
+        # keeps rejecting (return.overload_mismatch) and falls back whole.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def pick2(x: Literal["a"]) -> Int32: ...\n'
+            "@overload\n"
+            "def pick2(x: str) -> Int32 | str: ...\n"
+            "def pick2(x: str) -> Int32 | str:\n"
+            "    if len(x) > 0:\n"
+            "        return 42\n"
+            '    return "hello"\n'
+        )
+        results = _per_stub_results(src, "pick2")
+        assert len(results) == 2
+        assert results[0][0] is None
+        _assert_byte_identical(src)
+
+    def test_union_return_view_source_keeps_fence(self):
+        # BOUNDARY of the owned-str-field widening: a VIEW-shaped source at
+        # a union return (`return s` -- a str param is a string_view) keeps
+        # the return.union_view_insert fence; only the owned std::string
+        # FIELD read renders bare.
+        src = (
+            "from tpy import Int32\n"
+            "def h2(s: str) -> Int32 | str:\n"
+            "    if len(s) == 0:\n"
+            "        return 0\n"
+            "    return s\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "h2") is None
+        _assert_byte_identical(src)
+
+    def test_live_chain_branch_decls_reject(self):
+        # BOUNDARY: a live branch that first-declares a var read after the
+        # chain (`k`) carries if_branch_decls -- the AST live path emits the
+        # hoisted predecls, a render this mirror does not reproduce.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def pick(m: Literal["r", "w"]) -> Int32: ...\n'
+            "@overload\n"
+            'def pick(m: Literal["x", "y"]) -> Int32: ...\n'
+            "def pick(m: str) -> Int32:\n"
+            '    if m == "z":\n'
+            "        return 0\n"
+            '    elif m == "r":\n'
+            "        k = 1\n"
+            "    else:\n"
+            "        k = 2\n"
+            "    return k\n"
+        )
+        # The {r,w} stub keeps a live branch and rejects; the {x,y} stub
+        # folds fully static (both conditions decide False -> the else
+        # splice) and routes.
+        results = _per_stub_results(src, "pick")
+        assert len(results) == 2
+        assert results[0][0] is None
+        assert "overload_live_branch_decls" in (results[0][1] or "")
+        assert results[1][0] is not None
+        _assert_byte_identical(src)
+
+    def test_live_chain_extraction_facts_reject(self):
+        # BOUNDARY: a live isinstance branch whose then_type_facts carry a
+        # concrete extraction -- the AST live path emits the cast alias
+        # (_emit_isinstance_extractions), unmirrored here.
+        src = _PRELUDE + (
+            "from typing import Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def tag(m: Literal["r"], a: Dog | Cat) -> Int32: ...\n'
+            "@overload\n"
+            'def tag(m: Literal["w"], a: Dog | Cat) -> Int32: ...\n'
+            "def tag(m: str, a: Dog | Cat) -> Int32:\n"
+            '    if m == "z":\n'
+            "        return 0\n"
+            "    elif isinstance(a, Dog):\n"
+            "        return 1\n"
+            "    return 2\n"
+        )
+        results = _per_stub_results(src, "tag")
+        assert results and all(fn is None for fn, _ in results)
+        _assert_byte_identical(src)
+
+    def test_live_chain_temp_condition_rejects(self):
+        # BOUNDARY: a live-chain condition needing an arg temp (`check(m)`,
+        # a str name into a union slot) rejects -- today on the union-arg
+        # shape's own row before the live-chain temps_ok gate can fire, so
+        # the `if.overload_live_cond` guard itself is defense-in-depth; the
+        # observable contract (reject + byte-identity) is what this pins.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "def check(u: Int32 | str) -> bool:\n"
+            "    return isinstance(u, str)\n"
+            "@overload\n"
+            'def pick(m: Literal["r", "w"]) -> Int32: ...\n'
+            "@overload\n"
+            'def pick(m: Literal["x", "y"]) -> Int32: ...\n'
+            "def pick(m: str) -> Int32:\n"
+            '    if m == "z":\n'
+            "        return 0\n"
+            '    elif m == "r":\n'
+            "        return 1\n"
+            "    elif check(m):\n"
+            "        return 2\n"
+            "    return 3\n"
+        )
+        results = _per_stub_results(src, "pick")
+        assert results and all(fn is None for fn, _ in results)
+        _assert_byte_identical(src)
+
+    def test_expression_position_chain_fold_rejects(self):
+        # BOUNDARY: an &&/|| chain at EXPRESSION position whose combiner
+        # decides (coverage under {r,w}) even though each leaf is
+        # undecidable -- the AST renders bare `true`
+        # (_try_fold_literal_chain); the chain fence keeps the body AST.
+        # The {x,y} stub's leaves each decide False and reject at the leaf
+        # fence instead.
+        src = (
+            "from typing import overload, Literal\n"
+            "@overload\n"
+            'def isrw(m: Literal["r", "w"]) -> bool: ...\n'
+            "@overload\n"
+            'def isrw(m: Literal["x", "y"]) -> bool: ...\n'
+            "def isrw(m: str) -> bool:\n"
+            '    return m == "r" or m == "w"\n'
+        )
+        results = _per_stub_results(src, "isrw")
+        assert results and all(fn is None for fn, _ in results)
+        _assert_byte_identical(src)
+
+    def test_literal_fact_param_write_rejects(self):
+        # BOUNDARY: a literal-mode body that REASSIGNS the fact-carrying
+        # param -- the AST pops the fact at the write (no fold on the later
+        # compare), while the injected map is frozen; admission rejects the
+        # whole stub rather than fold past the write.
+        src = (
+            "from typing import overload, Literal\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            'def norm(m: Literal["r", "w"]) -> Int32: ...\n'
+            "@overload\n"
+            'def norm(m: Literal["x", "y"]) -> Int32: ...\n'
+            "def norm(m: str) -> Int32:\n"
+            '    m = "z"\n'
+            '    if m == "z":\n'
+            "        return 1\n"
+            "    return 2\n"
+        )
+        results = _per_stub_results(src, "norm")
+        assert results and all(fn is None for fn, _ in results)
+        assert all(r == "sig.overload_set.literal_fact_write"
+                   for _, r in results)
+        _assert_byte_identical(src)
+
+    def test_literal_stubs_lower_per_stub_with_fold(self):
+        # A literal-only group lowers once per stub against the IMPL's
+        # signature; each stub's injected literal facts drive the if-chain
+        # dead-branch fold (Literal[0] splices the then-body, Literal[1]
+        # takes the fall-through), and the emit seam keys the entries via
+        # thir_overload_key in _gen_literal_specialized_function.
         src = (
             "from typing import overload, Literal\n"
             "@overload\n"
@@ -229,8 +437,11 @@ class TestPerStubBoundaries:
             "    return 'one'\n"
         )
         results = _per_stub_results(src, "mode")
-        assert results and all(fn is None for fn, _ in results)
-        assert all(r == "sig.overload_set.db_compare" for _, r in results)
+        assert len(results) == 2
+        assert all(fn is not None for fn, _ in results)
+        folded = [s for fn, _ in results for s in fn.body
+                  if isinstance(s, THIRFoldedBlock)]
+        assert len(folded) == 2
 
     def test_optional_narrow_param_routes(self):
         # An OPTIONAL impl param shadowed by a stub's concrete type narrows
@@ -267,10 +478,14 @@ class TestPerStubBoundaries:
         assert all(r == "sig.overload_set.narrow_param" for _, r in results)
         _assert_byte_identical(src)
 
-    def test_partial_fold_rejects(self):
+    def test_partial_fold_live_chain_and_true_after_dynamic(self):
         # One chain condition stays dynamic (a plain value test) alongside
-        # the foldable isinstance: the AST emits a trimmed live chain, an
-        # unmirrored render -- partial folds must keep falling back.
+        # the foldable isinstance. The Cat stub (isinstance False) routes
+        # as the trimmed live chain (`if (n > 3)` + the original else); the
+        # Dog stub (isinstance True BEHIND the dynamic branch) is the AST
+        # live-path defect shape -- the fold drops the dynamic branch (see
+        # BUGS.md) -- so the mirror declines it and the fallback reproduces
+        # the AST output unchanged.
         src = _PRELUDE + (
             "@overload\n"
             "def judge(a: Dog, n: int) -> str: ...\n"
@@ -285,7 +500,10 @@ class TestPerStubBoundaries:
             "        return str(a.lives)\n"
         )
         results = _per_stub_results(src, "judge")
-        assert results and all(fn is None for fn, _ in results)
+        assert len(results) == 2
+        assert results[0][0] is None
+        assert results[0][1] == "stmt.if:if.overload_true_after_dynamic"
+        assert results[1][0] is not None
         _assert_byte_identical(src)
 
     def test_match_guard_keeps_rejecting(self):

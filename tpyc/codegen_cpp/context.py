@@ -348,8 +348,8 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
     table (local definitions spell bare). The ONE qualification decision
     shared by the AST call emit and the THIR gate/lowering mirror.
     `mangled` overrides the canonical name for literal-specialized
-    overload stubs (the AST's `is_literal_mangled` arm; THIR-admitted
-    calls never pass it -- the gate rejects literal-param overloads)."""
+    overload stubs (the AST's `is_literal_mangled` arm; THIR's
+    `_free_callee_kind` threads the same mangled spelling here)."""
     qual = lookup_imported(module_attributes, func_name, SymbolKind.FUNCTION)
     if qual is None:
         return None

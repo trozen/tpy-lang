@@ -6979,7 +6979,8 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         coro_factory_ok: bool = False,
                         consuming_ok: bool = False,
                         error_return_ok: bool = False,
-                        ret_cast_ok: bool = False) -> bool:
+                        ret_cast_ok: bool = False,
+                        literal_mangled_ok: bool = False) -> bool:
     """Shared fi rejects. A consuming method moves the receiver
     (`std::move(xs)`) -- `consuming_ok` admits it (set only by the record
     method arm for a bare non-pointer, non-narrowed name receiver, whose
@@ -7007,7 +7008,11 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                 # `static_cast<declared>(...)` wrap (the AST post-process).
                 or (fi.native_cpp_return_type is not None
                     and not ret_cast_ok)
-                or any(isinstance(p.type, LiteralType) for p in fi.params)
+                # A LiteralType param mangles the member name; only the
+                # record method arm carries that spelling
+                # (`literal_mangled_ok`, method_literal_mangled_cpp).
+                or (any(isinstance(p.type, LiteralType) for p in fi.params)
+                    and not literal_mangled_ok)
                 or (fi.is_async and not coro_factory_ok)
                 or (fi.is_async and fi.type_params)
                 or (fi.is_generator and not generator_ok)

@@ -3666,12 +3666,12 @@ class TestImportedCallee:
                                           thir_codegen=True))
         assert thir_out == ast_out
 
-    def test_imported_literal_overload_stays_ast(self, tmp_path):
-        # A cross-module call resolving to a literal-specialized overload:
-        # the mangled-name reject (`call.literal_overload`) must fire BEFORE
-        # the imported arm -- routing it through the plain qualified
-        # spelling would drop the `__lit_N` mangling. AST keeps the shape;
-        # both paths stay byte-identical.
+    def test_imported_literal_overload_mangled_spelling(self, tmp_path):
+        # A cross-module call resolving to a literal-specialized overload
+        # routes with the QUALIFIED mangled spelling (the AST's
+        # `imported_free_callee_cpp(..., mangled)` arm) -- a plain qualified
+        # spelling would drop the `__lit_N` mangling and link against the
+        # wrong (base-name) definition.
         (tmp_path / "helper.py").write_text(
             "from typing import Literal, overload\n"
             "from tpy import Int32\n"
@@ -3699,7 +3699,12 @@ class TestImportedCallee:
         entry = _entry(modules)
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
-        assert _fn(thir, "use") is None
+        use = _fn(thir, "use")
+        assert use is not None
+        call = use.body[-1].value
+        assert isinstance(call, THIRCall)
+        assert call.callee_cpp is not None
+        assert "get_field__lit_age" in call.callee_cpp
         ast_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(

@@ -50,7 +50,7 @@ from ...typesys import (
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
-    LiteralTag,
+    LiteralType,
     NominalType,
     NoneType,
     OptionalType,
@@ -172,13 +172,11 @@ from .expressions import (
 )
 from .statements import (
     _lower_stmts,
-    _overload_literal_facts,
 )
 
 def _overload_reject_detail(func: TpyFunction, stubs, *,
                             allow_arity: bool = False,
-                            allow_narrow_params: frozenset = frozenset(),
-                            literal_eq_params: frozenset = frozenset()
+                            allow_narrow_params: frozenset = frozenset()
                             ) -> str:
     """Sub-classify an overload-set reject by WHICH per-stub emission fact
     the impl body is sensitive to -- the slice-1 routing frontier. First
@@ -192,14 +190,13 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
       arm strips/validates per-stub coercions);
     - `db_isinstance`: isinstance/match anywhere in the body (the if-chain
       dead-branch elimination can rewrite it per stub);
-    - `db_literal_fold`: an unmirrored literal fold could fire (membership
-      over a fact-carrying param; the BOOL-fact fence lives in
-      `_admit_overload_stub`). Param EQUALITY needs no row: fact-carrying
-      compares fold through `_overload_resolve_static`'s mirrored eq half,
-      fact-less ones are plain runtime compares on both paths;
     - `narrow_param`: a union/Optional impl param (the narrowing extraction
       skips differently under overload_param_types);
     - `plain`: none of the above.
+
+    Literal folds (equality, truthiness, membership, chain coverage) need
+    no fence rows any more: `_overload_resolve_static` mirrors all four
+    through the AST's own helpers.
 
     Tags extend the dot-hierarchical drilldown convention (like
     `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
@@ -213,28 +210,12 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     for fi in stubs:
         if fi.return_type != rt:
             return "sig.overload_set.ret_mismatch"
-    param_names = {n for n, _t in func.params}
-    detail = None
     for stmt in func.body:
         for node in _fallback_walk(stmt):
             if isinstance(node, TpyMatch) or (
                     isinstance(node, TpyCall)
                     and getattr(node, "isinstance_var", None) is not None):
                 return "sig.overload_set.db_isinstance"
-            # Param equality needs no row any more: a fact-carrying param
-            # folds through the mirrored `_overload_resolve_static`
-            # literal-eq half, a fact-less one is a plain runtime compare
-            # on both paths, and literal-only groups rejected upstream.
-            if (isinstance(node, TpyBinOp)
-                    and node.op in ("in", "not in")
-                    and any(isinstance(s, TpyName)
-                            and s.name in literal_eq_params
-                            for s in (node.left, node.right))):
-                # The membership fold (`_resolve_literal_in_statically`)
-                # is not mirrored -- fence a fact-carrying param there.
-                return "sig.overload_set.db_literal_fold"
-    if detail is not None:
-        return detail
     for _n, pt in func.params:
         if _n in allow_narrow_params:
             continue
@@ -338,22 +319,54 @@ def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
     return tuple(out)
 
 
+def _literal_stub_facts(func: TpyFunction, stub: TpyFunction) -> dict:
+    """The literal-fact map a literal-only stub injects -- the mirror of
+    `_gen_literal_specialized_function`'s param zip (impl param names,
+    stub Literal types)."""
+    return {pname: stub_pt
+            for (pname, _), (_, stub_pt) in zip(func.params, stub.params)
+            if isinstance(stub_pt, LiteralType)}
+
+
+def _admit_literal_only_stub(func: TpyFunction, analyzer,
+                             stub: TpyFunction) -> None:
+    """Admission for a literal-only @overload group (the AST's mangled-name
+    path): per-stub emission binds the IMPL's params + the STUB's return
+    type and folds if-chains via the injected literal facts (equality,
+    truthiness, membership, chain coverage -- `_overload_resolve_static`).
+
+    A body that WRITES a fact-carrying param rejects: the AST pops the
+    fact at the reassign (its literal_facts map is flow-sensitive), while
+    the injected map here is frozen -- folding past the write would decide
+    compares the AST leaves as runtime code."""
+    if len(stub.params) != len(func.params):
+        raise ThirUnsupported("sig.overload_set.arity")
+    facts = _literal_stub_facts(func, stub)
+    if facts:
+        reassigned = scan_reassigned_vars(
+            list(func.body),
+            pre_declared={n for n, _t in func.params}).reassigned
+        if any(n in reassigned for n in facts):
+            raise ThirUnsupported("sig.overload_set.literal_fact_write")
+
+
 def _admit_overload_stub(func: TpyFunction, group, analyzer,
                          stub: 'TpyFunction | None' = None) -> None:
     """Per-stub lowering admission for a multi-entry @overload set.
 
     The db_isinstance and ret_mismatch families route (the per-stub fold /
     return-coercion increments); every other sub-reason keeps rejecting
-    with its tag. Literal-only groups emit through the AST's mangled-name
-    path -- which never sets the per-stub interception key -- so seeding
-    them would count bodies migrated while emission stays AST; they keep
-    the db_compare reject."""
+    with its tag. Literal-only groups take their own reduced admission
+    (impl-signature emission, so the arity/narrow/ret classifiers here
+    don't apply)."""
     stubs = analyzer.overload_groups.get(id(func)) or []
     if any(_stub_signature_is_template(fi) for fi in stubs) \
             or _stub_signature_is_template(func):
         raise ThirUnsupported("sig.overload_set.generic_stub")
     if overload_stubs_are_literal_only(stubs, func):
-        raise ThirUnsupported("sig.overload_set.db_compare")
+        if stub is not None:
+            _admit_literal_only_stub(func, analyzer, stub)
+        return
     short_ok = stub is not None and _short_stub_missing_ok(func, stub)
     # An Optional impl param SHADOWED by a stub's concrete type (or omitted
     # by a short stub) narrows through `build_overload_narrowing`, which both
@@ -364,17 +377,8 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
         if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
                       if isinstance(pt, TpyType) else None, OptionalType)
     ) if stub is not None else frozenset()
-    lit_facts = (_overload_literal_facts(build_overload_narrowing(
-        func, stub, _overload_missing_params(func, stub),
-        func.defaults or [])) if stub is not None else {})
-    if any(v.tag is LiteralTag.BOOL for t in lit_facts.values()
-           for v in t.values):
-        # The bool-truthiness fold (`if x:` on a Literal[True/False] fact)
-        # is not mirrored -- fence the whole stub.
-        raise ThirUnsupported("sig.overload_set.db_literal_fold")
     detail = _overload_reject_detail(
-        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok,
-        literal_eq_params=frozenset(lit_facts))
+        func, group, allow_arity=short_ok, allow_narrow_params=narrow_ok)
     if detail not in ("sig.overload_set.db_isinstance",
                       "sig.overload_set.ret_mismatch",
                       "sig.overload_set.plain"):
@@ -871,12 +875,20 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     record_name = (self_type.name
                    if is_record_method and isinstance(self_type, NominalType)
                    else None)
+    # A literal-only group's per-stub emission binds the IMPL's signature
+    # (_gen_literal_specialized_function): only the return type and the
+    # injected literal facts are per-stub, so no params override applies.
+    literal_group = (stub is not None
+                     and overload_stubs_are_literal_only(
+                         analyzer.overload_groups.get(id(func)) or [], func))
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve,
                    render_concept=render_concept,
-                   params_override=(stub.params if stub is not None else None),
+                   params_override=(stub.params
+                                    if stub is not None and not literal_group
+                                    else None),
                    return_type_override=(
                        stub.return_type
                        if stub is not None
@@ -885,7 +897,20 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         lc.error_return_cpp = error_return_to_cpp(
             func.error_return, analyzer.ctx.module_name, analyzer.registry)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
-    if stub is not None:
+    default_locals: 'tuple[THIROverloadDefault, ...]' = ()
+    if stub is not None and literal_group:
+        # Literal-only specialization: impl params bind as-is; the stub
+        # contributes its return type + the literal facts driving the
+        # if-chain dead-branch fold (the AST's literal_overload_facts).
+        # The facts also seed the live literal_facts map -- the mirror of
+        # gen_body's entry merge -- so expression-level consumers (the
+        # compare-fold fence) see them like AST body emission does.
+        lc.overload_literal_facts = _literal_stub_facts(func, stub)
+        lc.literal_facts.update(lc.overload_literal_facts)
+        lc.overload_stub_return = (stub.return_type
+                                   if isinstance(stub.return_type, TpyType)
+                                   else None)
+    elif stub is not None:
         # Per-stub specialization: the AST binds the STUB's param types
         # (gen_body receives stub.params), so every binding class, borrow
         # form, and narrowing decision keys on them -- a union impl param
@@ -916,7 +941,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             # receiver being in const_locals -- see _f1_is_const).
             lc.const_locals.add("self")
     _seed_global_scope(func, analyzer, lc, params_set, native_globals)
-    src_params = func.params if stub is None else stub.params
+    src_params = (func.params if stub is None or literal_group
+                  else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
     params = tuple(THIRParam(name=n, type=t) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()

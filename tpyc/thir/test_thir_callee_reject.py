@@ -71,10 +71,14 @@ class TestStrLitOverloadPinRoutes:
         assert routed is True
 
 
-class TestLiteralOverloadMangleRejects:
+class TestLiteralOverloadMangleRoutes:
     # A literal-specialized overload mangles its callee to `f__lit_N`
-    # (literal_mangled_name) when there are multiple overloads -- a spelling the
-    # plain/imported/generic return kinds don't thread.
+    # (literal_mangled_name) when there are multiple overloads; the mangled
+    # spelling rides callee_cpp through the plain/imported kinds. These
+    # BODIED stubs pin only the CALL spelling: their definition emission is
+    # a pre-existing AST defect (duplicate unmangled definitions, see
+    # BUGS.md's bodied-literal-stub entry) that both paths mirror
+    # byte-identically.
     SRC = (
         "from typing import Literal, overload\n"
         "from tpy import Int32\n"
@@ -85,11 +89,10 @@ class TestLiteralOverloadMangleRejects:
         "def f() -> Int32:\n    return k(1, \"fast\")\n"
     )
 
-    def test_rejects_with_literal_overload_detail(self):
-        routed, reason, detail = _reject_detail(self.SRC, "f")
-        assert routed is False
-        assert reason == "expr.call"
-        assert detail == "call.literal_overload"
+    def test_routes_with_mangled_spelling(self):
+        routed, _reason, _detail = _reject_detail(self.SRC, "f")
+        assert routed is True
+        _assert_byte_identical(self.SRC)
 
 
 class TestExprCalleeRoutes:

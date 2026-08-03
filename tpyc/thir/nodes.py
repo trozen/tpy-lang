@@ -1864,9 +1864,30 @@ class THIRFoldedBlock(THIRStmt):
     `burns_match_counter` marks a folded MATCH: the AST's `gen_match` bumps
     `ctx.match_counter` before the fold dispatch, so a later match in the
     same body numbers its `__match_subject_N` past the folded one -- the
-    emit arm must consume one counter slot without emitting a subject."""
+    emit arm must consume one counter slot without emitting a subject.
+
+    `trivia_loc` (an if-chain fold): the chain head's line, whose PRECEDING
+    `#` comments the AST emits before the fold dispatch (gen_stmt's
+    emit_preceding_comments runs before _gen_if) -- even when every branch
+    folds dead and the block emits nothing else."""
     stmts: tuple[THIRStmt, ...] = ()
     burns_match_counter: bool = False
+    trivia_loc: 'SourceLocation | None' = None
+
+
+@dataclass(frozen=True)
+class THIRFoldedIfChain(THIRStmt):
+    """A PARTIALLY-folded per-@overload-stub if-chain: the surviving dynamic
+    branches emit as a clean `if / else if` chain with NO condition source
+    comments (the AST's `_gen_if_overload_specialized` live path), the else
+    body coming from the last ORIGINAL chain node. `trivia_loc` carries the
+    chain head's preceding `#` comments, like THIRFoldedBlock. The lowering
+    admits only temp-free conditions past the first branch and no
+    branch-decl / concrete-extraction carriers -- shapes the AST live path
+    renders with machinery this mirror does not reproduce reject."""
+    branches: tuple[tuple[THIRExpr, tuple[THIRStmt, ...]], ...] = ()
+    else_body: tuple[THIRStmt, ...] = ()
+    trivia_loc: 'SourceLocation | None' = None
 
 
 @dataclass(frozen=True)

@@ -139,7 +139,11 @@ from ...compilation_context import get_current_compiler
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
-from ...codegen_cpp.expressions import ExpressionGenerator, _is_simple_lvalue
+from ...codegen_cpp.expressions import (ExpressionGenerator,
+                                        _check_literal_chain,
+                                        _check_literal_in,
+                                        _is_simple_lvalue)
+from ...sema.literal_utils import literal_value_from_expr
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
     Form,
@@ -552,6 +556,7 @@ from .checks import (
     _subscript_recv_reject,
     _str_aug_append_ok,
     _str_list_method_iterable_ok,
+    method_literal_mangled_cpp,
     _record_method_call_supported,
     _recv_shape_reject,
     _value_tuple_pass_through_arg,
@@ -2102,15 +2107,54 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
             LiteralType)
 
+    def _literal_compare_undecidable() -> bool:
+        # True when every fact-carrying operand name is tracked in
+        # lc.literal_facts AND the AST's expression-level fold cannot
+        # decide the compare -- the plain render is then shared by both
+        # paths (the live branches of a partially-folded per-stub chain).
+        if e.op in ("==", "!="):
+            for var_side, lit_side in ((e.left, e.right),
+                                       (e.right, e.left)):
+                if (not isinstance(var_side, TpyName)
+                        or not _literal_fold_name(var_side)):
+                    continue
+                lit_type = lc.literal_facts.get(var_side.name)
+                if not isinstance(lit_type, LiteralType):
+                    # Fact-y via a declared LiteralType binding whose
+                    # flow-sensitive value lowering does not track.
+                    return False
+                lit_val = literal_value_from_expr(lit_side)
+                if lit_val is None:
+                    continue
+                if len(lit_type.values) == 1 or lit_val not in lit_type.values:
+                    return False  # decided -> bare "true"/"false" render
+            return True
+        lit_type = (lc.literal_facts.get(e.left.name)
+                    if isinstance(e.left, TpyName) else None)
+        if not isinstance(lit_type, LiteralType):
+            return False
+        return _check_literal_in(e, lc.literal_facts) is None
+
     if ((e.op in ("==", "!=") and any(
             _literal_fold_name(s) for s in (e.left, e.right)))
             or (e.op in _MEMBERSHIP_OPS
                 and _literal_fold_name(e.left))):
-        # A compare / membership on a Literal-fact name: the AST folds
-        # these (dead-branch elimination -- `_fold_literal_compare` /
-        # `_try_fold_literal_in` / the &&-|| chain fold, whose leaves are
-        # exactly these compares). The folds are not mirrored yet, so the
-        # body falls back rather than diverge.
+        # A compare / membership on a Literal-fact name: the AST's
+        # expression-level fold (`_try_fold_literal_comparison` /
+        # `_try_fold_literal_in`) renders a DECIDED verdict as a bare
+        # "true"/"false" -- an unmirrored row. An UNDECIDABLE compare over
+        # facts lowering knows exactly renders plain on both paths.
+        if not _literal_compare_undecidable():
+            raise ThirUnsupported("match.literal_fold")
+
+    if (e.op in ("&&", "||") and lc.literal_facts
+            and _check_literal_chain(e, lc.literal_facts) is not None):
+        # The AST folds &&/|| chains at EXPRESSION position too
+        # (`_try_fold_literal_chain`'s coverage/contradiction combiner,
+        # the SAME _check_literal_chain) -- a chain can decide even when
+        # every leaf is individually undecidable, rendering bare
+        # "true"/"false". Unmirrored row; the leaf fence above cannot see
+        # it, so the combiner fences here.
         raise ThirUnsupported("match.literal_fold")
 
     if (e.op in _MEMBERSHIP_OPS and e.typed_dict_in_field is not None
@@ -5806,6 +5850,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 return _er_wrap(_lower_generic_plain_call(
                     e, k[1] or None, lc, declared, temp_args=temp_args,
                     form=form, loc=loc))
+        if native_name is None and k is not None and k[0] == "plain" and k[1]:
+            # A local literal-specialized callee: the bare mangled spelling
+            # (the AST's is_literal_mangled arm, `pick__lit_r__w(m)`).
+            callee_cpp = k[1]
+            _witness("call.literal_mangled")
         if (callee_cpp is None and cpp_template is None
                 and native_name is None
                 and _value_opt_callable(declared.get(e.func_name),
@@ -6411,6 +6460,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # literal renders (set below by the family dispatch); the
         # iterable-override path keeps the user-method default.
         stub_recv = False
+        # The literal-mangled member spelling (`r.get__lit_age("age")`);
+        # computed ahead of the branch so the member tail can read it on
+        # every path (the iterable-override gates reject literal fis, so it
+        # stays None there).
+        lit_member = method_literal_mangled_cpp(e, analyzer)
         if not iterable_override:
             if isinstance(e.obj, TpyName):
                 if e.obj.name not in declared:
@@ -6448,7 +6502,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     error_return_ok=error_return_raw,
                     # The plain-method tail composes the cpp_return_type
                     # static_cast wrap, so the annotation is admitted here.
-                    ret_cast_ok=True):
+                    ret_cast_ok=True,
+                    # A literal-overloaded member spells the mangled name;
+                    # only the RECORD arm below renders it, so the builtin
+                    # receiver families re-fence before their arms.
+                    literal_mangled_ok=lit_member is not None):
                 note_detail("method.fi_kind")
                 raise ThirUnsupported("expr.method_call")
             if not _call_arity_ok(e, fi):
@@ -6490,6 +6548,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # target_type=None (target-less literals). The flag picks the
             # literal render in _lower_call_arg.
             fam = _method_recv_family(recv_type, analyzer, lc.tparam_bounds)
+            if fam is not None and lit_member is not None:
+                # A literal-overloaded member on a builtin-family receiver:
+                # only the record arm carries the mangled spelling.
+                # Defense-in-depth -- no builtin stub carries a literal
+                # overload group reachable through a family receiver today,
+                # so the shape has no constructible witness.
+                note_detail("method.fi_kind")
+                raise ThirUnsupported("expr.method_call")
             if fam is not None:
                 shape_ok = fam.shape_ok(
                     e, fi, declared, analyzer,
@@ -6547,10 +6613,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if fi is None:
             raise ThirUnsupported("expr.method_call")
         # The member name mirrors _gen_method_call's resolution: @native rename
-        # over the escaped source name (the LiteralType-mangled overload form is
-        # gated out). A void method call carries no resolved expr type (None);
+        # over the literal-mangled overload spelling over the escaped source
+        # name. A void method call carries no resolved expr type (None);
         # normalize so the node keeps a non-None result_type.
-        member = _method_member_cpp(fi, e.method)
+        if lit_member is not None:
+            # The AST assigns the mangled name raw (no escape_cpp_name) --
+            # mirror that spelling exactly.
+            _witness("method.literal_mangled")
+            member = lit_member
+        else:
+            member = _method_member_cpp(fi, e.method)
         # A str-slice result carries its C++ shape like a THIRCall's (S5): an
         # owned-str method result (`xs.pop()`, std::string by value) is STORAGE
         # and lands bare in owned sinks. A bytes-family result rides the same

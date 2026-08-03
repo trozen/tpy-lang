@@ -102,6 +102,7 @@ from .nodes import (
     THIRImportInit,
     THIRNoOpStmt,
     THIRFoldedBlock,
+    THIRFoldedIfChain,
     THIRMatchFoldBind,
     THIROptionalPtrArg,
     THIROverloadDefault,
@@ -4022,11 +4023,36 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
     elif isinstance(stmt, THIRFoldedBlock):
         # Per-@overload-stub fold splice: the surviving statements emit flat
-        # at the enclosing indent (the AST's direct gen_stmt calls).
+        # at the enclosing indent (the AST's direct gen_stmt calls). The
+        # chain head's preceding `#` comments emit even for an all-dead
+        # chain (gen_stmt flushes them before the fold dispatch).
         _witness("fold.overload_block")
+        if stmt.trivia_loc is not None:
+            state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
         if stmt.burns_match_counter:
             state.match_counter += 1
         _emit_stmts(out, stmt.stmts, indent_level, state)
+    elif isinstance(stmt, THIRFoldedIfChain):
+        # The partially-folded live chain: clean `if / else if` over the
+        # surviving branches, NO condition source comments (the AST's
+        # _gen_if_overload_specialized live path), else from the last
+        # original node. Temps flush before each branch line; lowering
+        # admits them only on the first branch.
+        _witness("fold.overload_live_chain")
+        if stmt.trivia_loc is not None:
+            state.comments.inline(out, stmt.trivia_loc, indent)
+        for i, (cond_node, body) in enumerate(stmt.branches):
+            cond = _emit_expr(cond_node, state)
+            state.temps.flush(out, indent)
+            if i == 0:
+                out.write(f"{indent}if ({cond}) {{\n")
+            else:
+                out.write(f"{indent}}} else if ({cond}) {{\n")
+            _emit_stmts(out, body, indent_level + 1, state)
+        if stmt.else_body:
+            out.write(f"{indent}}} else {{\n")
+            _emit_stmts(out, stmt.else_body, indent_level + 1, state)
+        out.write(f"{indent}}}\n")
     elif isinstance(stmt, THIRMatchFoldBind):
         _witness("fold.overload_bind")
         binder = "auto" if stmt.by_value else "auto&"

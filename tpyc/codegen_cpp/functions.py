@@ -1229,6 +1229,7 @@ class FunctionGenerator:
         crp, dcbp = self._build_param_const_sets(
             impl.params, mp, rp, use_const_params=impl.is_readonly,
             use_readonly_params=impl.is_readonly)
+        self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
             self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
                                      impl, local_ns,
@@ -1237,6 +1238,7 @@ class FunctionGenerator:
                                      return_cpp=ret_type)
         finally:
             self.ctx.literal_overload_facts = {}
+            self.ctx.thir_overload_key = None
 
         out.write("}\n")
 
@@ -1490,12 +1492,14 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
+        self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
                                 mode=mode)
         finally:
             self.ctx.literal_overload_facts = {}
+            self.ctx.thir_overload_key = None
 
     def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
         """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.

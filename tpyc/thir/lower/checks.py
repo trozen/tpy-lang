@@ -104,6 +104,7 @@ from ...type_def_registry import (
     is_string_type,
 )
 from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
+from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
                                   reads_storage_form_optional)
@@ -2723,19 +2724,19 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         note_detail("call.error_return")
         return None
     # A literal-specialized overload mangles its DEFAULT-linkage callee to
-    # `f__lit_N` (literal_mangled_name) -- a spelling the plain/imported/
-    # generic return kinds don't yet thread, so reject it. The AST mangles
-    # only when there are MULTIPLE overloads (a single Literal-param stub is
-    # a plain call) AND the callee is not a @native import (a native literal
-    # overload's name is its resolved native symbol, picked by sema's
-    # overload resolution -- no `__lit_` mangling), so those two shapes fall
-    # through to the native/plain arm below and route.
+    # `f__lit_N` (literal_mangled_name). The AST mangles only when there are
+    # MULTIPLE overloads (a single Literal-param stub is a plain call) AND
+    # the callee is not a @native import (a native literal overload's name
+    # is its resolved native symbol, picked by sema's overload resolution --
+    # no `__lit_` mangling): those two shapes keep the native/plain
+    # spelling below. The mangled name threads into the plain (bare) and
+    # imported (qualified) spellings; the generic pairing keeps its reject.
+    lit_mangled = None
     if any(isinstance(p.type, LiteralType) for p in fi.params):
         overloads = analyzer.registry.get_function(e.func_name)
         if (overloads is not None and len(overloads) > 1
                 and not (fi.native_function or fi.native_name)):
-            note_detail("call.literal_overload")
-            return None
+            lit_mangled = literal_mangled_name(e.func_name, fi)
     if fi.frame_captures is not None:
         # A closure local (nested def): the bare lambda-variable call --
         # spelled exactly like the plain arm, decided BEFORE the registry /
@@ -2830,7 +2831,8 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # Any future linkage is rejected rather than silently mis-emitted.
         note_detail("call.linkage")
         return None
-    icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name)
+    icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name,
+                                   lit_mangled)
     if fi.type_params or has_targs:
         # A plain TPy generic callee spells explicit template args
         # (`f<int32_t>(args)`, type_to_cpp_stored per arg) over the plain /
@@ -2871,6 +2873,10 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # pure-TPy builtins) -> AST path.
         note_detail("call.imported_symbol")
         return None
+    # A local literal-specialized callee spells the bare mangled name
+    # (the AST's `escape_cpp_name(mangled)`); the payload rides callee_cpp.
+    if lit_mangled is not None:
+        return ("plain", escape_cpp_name(lit_mangled))
     return ("plain", "")
 
 
@@ -7838,6 +7844,27 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     return (_shared_pass_through_arg(a, ptype, locals_, analyzer)
             or note_detail("method.protocol.arg_shape"))
 
+def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
+    """The method-call member resolution's literal-mangled arm -- the AST's
+    `_is_overloaded_method` + a Literal param on the resolved fi
+    (`r.get("age")` -> `r.get__lit_age("age")`). Returns the mangled member
+    spelling, or None when the plain resolution applies. The @native rename
+    outranks it (gen_method_call's order), so a renamed fi returns None and
+    the caller falls to `_method_member_cpp`."""
+    fi = e.resolved_function_info
+    if fi is None or (fi.native_name and not fi.native_function):
+        return None
+    if not any(isinstance(p.type, LiteralType) for p in fi.params):
+        return None
+    obj_type = analyzer.get_expr_type(e.obj)
+    if not isinstance(obj_type, NominalType):
+        return None
+    record = analyzer.registry.get_record_for_type(obj_type)
+    if record is None or len(record.get_method_overloads(e.method)) <= 1:
+        return None
+    return literal_mangled_name(e.method, fi)
+
+
 def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                  analyzer, *, stmt_position: bool,
                                  temps_ok: bool = False,
@@ -7986,20 +8013,25 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                 and (fi.is_property_getter or fi.is_property_setter)))
         # A genuine stub set whose members differ by C++ param TYPES renders
         # the plain `recv.method(args)` -- C++ overload resolution picks the
-        # specialization the AST emitted per stub. LITERAL-typed params are
-        # the exception: those call sites spell a MANGLED callee, a name
-        # divergence no byte-diff of a single side would catch. Template
-        # stubs (own type params, or protocol/Fn params synthesizing them)
-        # emit through the template-header path -- unmirrored.
+        # specialization the AST emitted per stub. LITERAL-typed params
+        # spell a MANGLED member instead (`r.get__lit_age("age")` -- the
+        # record arm's method_literal_mangled_cpp spelling). Template stubs
+        # (own type params, or protocol/Fn params synthesizing them) emit
+        # through the template-header path -- unmirrored either way.
+        template_stub = any(getattr(fi2, "type_params", None)
+                            or any(_stub_template_param(p.type)
+                                   for p in fi2.params)
+                            for fi2 in overloads)
         is_plain_stub_set = (
             not any(isinstance(p.type, LiteralType) for p in fi.params)
-            and not any(getattr(fi2, "type_params", None)
-                        or any(_stub_template_param(p.type)
-                               for p in fi2.params)
-                        for fi2 in overloads))
+            and not template_stub)
+        literal_stub_set = (
+            not template_stub
+            and method_literal_mangled_cpp(e, analyzer) is not None)
         if not (is_clone_pair or is_property_pair
                 or (is_plain_stub_set
-                    and _witness("method.overload_set_call"))):
+                    and _witness("method.overload_set_call"))
+                or literal_stub_set):
             return note_detail("method.overload_set")
     ret = analyzer.get_expr_type(e)
     # A TypeParamRef result (`self.get() -> T` in a generic body) emits the

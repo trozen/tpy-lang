@@ -115,6 +115,8 @@ from ...type_def_registry import (
     is_str_type,
 )
 from ...modules.type_resolution import is_native_iterable
+from ...codegen_cpp.expressions import (_check_literal_chain,
+                                        _check_literal_in)
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
 from ...codegen_cpp.forms import (
@@ -188,6 +190,7 @@ from ..nodes import (
     THIRNestedDef,
     THIRConceptTest,
     THIRFoldedBlock,
+    THIRFoldedIfChain,
     THIRFrameNestedDef,
     THIRFrameSlotWrite,
     THIRImportInit,
@@ -4881,20 +4884,36 @@ def _overload_literal_facts(narrowing) -> dict:
     return facts
 
 
-def _overload_resolve_static(cond: TpyExpr, narrowing) -> 'bool | None':
+def _overload_fold_facts(lc: '_LowerCtx') -> dict:
+    """The literal-fact map the per-stub fold reads: the facts derived
+    from the stub narrowing (`_inject_literal_overload_facts`) plus a
+    literal-only group's injected map. A FROZEN snapshot of the AST's
+    flow-sensitive `ctx.literal_facts` -- sound because the literal-only
+    admission rejects writes to fact-carrying names; flow-refined facts
+    (==-narrowing branch seeds) stay a fenced gap (TODO's parked
+    registry)."""
+    facts = _overload_literal_facts(lc.overload_narrowing)
+    facts.update(lc.overload_literal_facts)
+    return facts
+
+
+def _overload_resolve_static(cond: TpyExpr, narrowing,
+                             lit_facts: 'dict | None' = None) -> 'bool | None':
     """Mirror of _resolve_isinstance_statically for the per-stub fold, plus
-    the literal-equality half (`_resolve_literal_eq_statically`) for the
-    facts a short stub's LIVE literal default injects. The unmirrored
-    literal folds (membership, bool truthiness) are fenced at admission
-    (`db_literal_fold`)."""
-    if narrowing:
+    its literal half over `lit_facts` (the stub-narrowing-derived facts,
+    plus a literal-only group's injected map): equality, bool truthiness,
+    membership (`_check_literal_in`), and the or-coverage/and-contradiction
+    chain fold (`_check_literal_chain`) -- the last two through the SAME
+    helpers the AST fold calls."""
+    if lit_facts is None:
+        lit_facts = _overload_literal_facts(narrowing)
+    if lit_facts:
         if isinstance(cond, TpyBinOp) and cond.op in ("==", "!="):
-            facts = _overload_literal_facts(narrowing)
             for var_side, lit_side in ((cond.left, cond.right),
                                        (cond.right, cond.left)):
                 if not isinstance(var_side, TpyName):
                     continue
-                lit_type = facts.get(var_side.name)
+                lit_type = lit_facts.get(var_side.name)
                 if not isinstance(lit_type, LiteralType):
                     continue
                 lit_val = literal_value_from_expr(lit_side)
@@ -4905,6 +4924,13 @@ def _overload_resolve_static(cond: TpyExpr, narrowing) -> 'bool | None':
                     return in_set if cond.op == "==" else not in_set
                 if not in_set:
                     return False if cond.op == "==" else True
+        if isinstance(cond, TpyName):
+            # Bool truthiness: `if x:` on a Literal[True]/Literal[False] fact.
+            lit_type = lit_facts.get(cond.name)
+            if (isinstance(lit_type, LiteralType)
+                    and len(lit_type.values) == 1
+                    and lit_type.values[0].tag is LiteralTag.BOOL):
+                return bool(lit_type.values[0].value)
     if narrowing:
         if isinstance(cond, TpyCall) and cond.isinstance_var is not None:
             concrete = narrowing.get(cond.isinstance_var)
@@ -4926,8 +4952,8 @@ def _overload_resolve_static(cond: TpyExpr, narrowing) -> 'bool | None':
                     is_none = isinstance(concrete, NoneType)
                     return is_none if cond.op == "is" else not is_none
     if isinstance(cond, TpyBinOp) and cond.op in ("&&", "||"):
-        left = _overload_resolve_static(cond.left, narrowing)
-        right = _overload_resolve_static(cond.right, narrowing)
+        left = _overload_resolve_static(cond.left, narrowing, lit_facts)
+        right = _overload_resolve_static(cond.right, narrowing, lit_facts)
         if cond.op == "||":
             if left is True or right is True:
                 return True
@@ -4938,27 +4964,39 @@ def _overload_resolve_static(cond: TpyExpr, narrowing) -> 'bool | None':
                 return False
             if left is True and right is True:
                 return True
+        # Coverage / contradiction on unresolved operands (the AST's
+        # `_resolve_literal_chain_statically` fallthrough).
+        if lit_facts and left is None and right is None:
+            return _check_literal_chain(cond, lit_facts)
         return None
+    if (isinstance(cond, TpyBinOp) and cond.op in ("in", "not in")
+            and lit_facts):
+        result = _check_literal_in(cond, lit_facts)
+        if result is not None:
+            return result
     if isinstance(cond, TpyUnaryOp) and cond.op == "!":
-        inner = _overload_resolve_static(cond.operand, narrowing)
+        inner = _overload_resolve_static(cond.operand, narrowing, lit_facts)
         if inner is not None:
             return not inner
     return None
 
 
-def _lower_overload_folded_if(stmt: TpyIf, lc: _LowerCtx,
-                              declared: dict[str, TpyType], *,
-                              in_branch: bool,
-                              loop_depth: int) -> 'THIRFoldedBlock | None':
-    """Mirror of _gen_if_overload_specialized's fully-static paths: the
-    surviving branch's statements splice flat (direct gen_stmt calls, no
-    `// if` comment, no brace scope), and a terminating True branch sets
-    the body-global truncation flag. Returns None when no chain condition
-    resolves -- the AST falls through to regular emission there, so the
-    ordinary narrowing arms take over. A partially-resolved chain (a
-    dynamic branch among folded ones) rejects: the AST's trimmed live
-    chain (branch decls + extraction aliases) is an unmirrored render --
-    only fully-static folds are in the mirrored slice."""
+def _lower_overload_folded_if(
+        stmt: TpyIf, lc: _LowerCtx,
+        declared: dict[str, TpyType], *,
+        in_branch: bool,
+        loop_depth: int) -> 'THIRFoldedBlock | THIRFoldedIfChain | None':
+    """Mirror of _gen_if_overload_specialized: the fully-static paths splice
+    flat (direct gen_stmt calls, no `// if` comment, no brace scope; a
+    terminating True branch sets the body-global truncation flag), and a
+    PARTIALLY-resolved chain emits the surviving branches as the trimmed
+    live `if / else if` chain (THIRFoldedIfChain). Returns None when no
+    chain condition resolves -- the AST falls through to regular emission
+    there, so the ordinary narrowing arms take over. Unmirrored live-chain
+    machinery rejects: branch decls, concrete extraction facts, a
+    temp-carrying condition past the first branch, and a True branch AFTER
+    a dynamic one (the AST drops the dynamic branches there -- see the
+    BUGS.md live-chain entry -- so the mirror declines the shape)."""
     chain: list[TpyIf] = [stmt]
     current = stmt
     while (len(current.else_body) == 1
@@ -4967,28 +5005,60 @@ def _lower_overload_folded_if(stmt: TpyIf, lc: _LowerCtx,
            and not _overload_concrete_facts(current.else_type_facts)):
         current = current.else_body[0]
         chain.append(current)
-    res = [_overload_resolve_static(n.condition, lc.overload_narrowing)
+    fold_facts = _overload_fold_facts(lc)
+    res = [_overload_resolve_static(n.condition, lc.overload_narrowing,
+                                    fold_facts)
            for n in chain]
     if all(r is None for r in res):
         return None
+    live: list[TpyIf] = []
     for node, resolved in zip(chain, res):
         if resolved is True:
+            if live:
+                note_detail("if.overload_true_after_dynamic")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
             body = _lower_stmts(node.then_body, lc, declared,
                                 in_branch=in_branch, loop_depth=loop_depth)
             if node.then_body and isinstance(node.then_body[-1],
                                              (TpyReturn, TpyRaise)):
                 lc.overload_terminated = True
-            return THIRFoldedBlock(stmts=body, no_source_comment=True)
+            return THIRFoldedBlock(stmts=body, no_source_comment=True,
+                                   trivia_loc=stmt.loc)
         if resolved is False:
             continue
-        note_detail("if.overload_partial_fold")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        live.append(node)
     last = chain[-1]
+    if not live:
+        if last.else_body:
+            body = _lower_stmts(last.else_body, lc, declared,
+                                in_branch=in_branch, loop_depth=loop_depth)
+            return THIRFoldedBlock(stmts=body, no_source_comment=True,
+                                   trivia_loc=stmt.loc)
+        return THIRFoldedBlock(stmts=(), no_source_comment=True,
+                               trivia_loc=stmt.loc)
+    branches: list[tuple] = []
+    for i, node in enumerate(live):
+        if lc.analyzer.if_branch_decls.get(id(node)):
+            note_detail("if.overload_live_branch_decls")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if _overload_concrete_facts(node.then_type_facts):
+            note_detail("if.overload_live_extraction")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        try:
+            cond = _lower_truthy(node.condition, lc, declared,
+                                 temps_ok=(i == 0))
+        except ThirUnsupported:
+            note_detail("if.overload_live_cond")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        body = _lower_stmts(node.then_body, lc, declared,
+                            in_branch=True, loop_depth=loop_depth)
+        branches.append((cond, body))
+    else_body: tuple = ()
     if last.else_body:
-        body = _lower_stmts(last.else_body, lc, declared,
-                            in_branch=in_branch, loop_depth=loop_depth)
-        return THIRFoldedBlock(stmts=body, no_source_comment=True)
-    return THIRFoldedBlock(stmts=(), no_source_comment=True)
+        else_body = _lower_stmts(last.else_body, lc, declared,
+                                 in_branch=True, loop_depth=loop_depth)
+    return THIRFoldedIfChain(branches=tuple(branches), else_body=else_body,
+                             no_source_comment=True, trivia_loc=stmt.loc)
 
 
 def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
@@ -8105,11 +8175,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         for i in range(len(source.elements))),
                     loc=loc),
                 loc=loc)
+        owned_str_field = False
         if stmt.value is not None and lc.prescan.ret_union is not None:
             source = stmt.value
             while isinstance(source, TpyCoerce):
                 source = source.expr
+            # An owned-str FIELD read (`return self.data_name` into
+            # `Int32 | str`) renders bare -- the variant constructs from the
+            # std::string lvalue directly, so the AST emits no
+            # materialization. Sema types the read `str` exactly when the
+            # field's storage is owned; StrView fields (and every other
+            # view-shaped source: params, view locals, slices) type as
+            # views and keep the fence.
+            owned_str_field = (
+                isinstance(source, TpyFieldAccess)
+                and _field_receiver_ok(source, declared, analyzer)
+                and is_str_type(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(analyzer.get_expr_type(source)))))
+                and _witness("ret.union_owned_str_field"))
             if (not isinstance(source, TpyStrLiteral)
+                    and not owned_str_field
                     and _resolved_str_value(
                         analyzer.get_expr_type(source), analyzer) is not None):
                 note_detail("return.union_view_insert")
@@ -8199,9 +8284,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                   use=_ExprUse(indirect_read=True)),
                 loc=loc)
         field_prechecked = (
-            isinstance(stmt.value, TpyFieldAccess)
-            and lc.prescan.ret_str is not None
-            and _str_field_value_read(stmt.value, declared, analyzer))
+            (isinstance(stmt.value, TpyFieldAccess)
+             and lc.prescan.ret_str is not None
+             and _str_field_value_read(stmt.value, declared, analyzer))
+            # The union-return owned-str field read admitted above rides
+            # the same bare-member render.
+            or owned_str_field)
         value = (_flush_witness(
                     "flush.return",
                     _lower_expr(
@@ -8247,7 +8335,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRReturn(value=value, loc=loc)
     if isinstance(stmt, TpyIf):
         begin_stmt()
-        if lc.overload_narrowing:
+        if lc.overload_narrowing or lc.overload_literal_facts:
             folded = _lower_overload_folded_if(
                 stmt, lc, declared, in_branch=scope.in_branch,
                 loop_depth=scope.loop_depth)

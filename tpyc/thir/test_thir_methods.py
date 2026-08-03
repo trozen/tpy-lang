@@ -2986,9 +2986,10 @@ class TestGenuineMethodOverloadCallSite:
         assert faces.get("method.overload_set_call")
         _assert_byte_identical(src)
 
-    def test_literal_stub_set_call_still_defers(self):
-        # BOUNDARY: a LITERAL-typed stub set mangles the callee name at the
-        # call site -- a name divergence no byte-diff of one side catches.
+    def test_literal_stub_set_call_mangles_member(self):
+        # A LITERAL-typed stub set mangles the member at the call site
+        # (`w.m__lit_a("a")` -- method_literal_mangled_cpp); the plain
+        # overload-set face must NOT fire for it (distinct spelling row).
         src = ("from tpy import Int32\n"
                "from typing import Literal, overload\n"
                "class W:\n"
@@ -3003,7 +3004,11 @@ class TestGenuineMethodOverloadCallSite:
                "def f(w: W) -> Int32:\n    return w.m(\"a\")\n"
                "print(f(W()))\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
+        f = _fn(thir, "f")
+        assert f is not None
+        call = f.body[-1].value
+        assert call.method_cpp == "m__lit_a"
+        assert faces.get("method.literal_mangled")
         assert not faces.get("method.overload_set_call")
         _assert_byte_identical(src)
 

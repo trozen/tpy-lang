@@ -507,6 +507,9 @@ _FUNCTION_SCOPED_STATE = (
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
     "walrus_slot_locals",
     "frame_local_types",
+    # Per-@overload-stub literal facts: seeded once at lower_function setup
+    # for a literal-only group's stub, immutable across the walk.
+    "overload_literal_facts",
     # Module-init facts: seeded once from the module's globals / import list
     # and never branch-scoped -- a global's slot identity and an import's
     # chain do not change inside a branch. `global_slot_assigned` is the one
@@ -559,6 +562,7 @@ class _LowerCtx:
                  "nested_def_locals", "error_return_cpp",
                  "walrus_predeclared", "walrus_slot_locals",
                  "overload_narrowing", "overload_stub_return",
+                 "overload_literal_facts",
                  "overload_terminated", "render_concept",
                  "top_level_scope", "global_ptr_slots", "global_slot_assigned",
                  "import_calls", "pre_decl_import_cpp", "top_level_line")
@@ -672,6 +676,10 @@ class _LowerCtx:
         # statement list and suppresses the trailing-comment scan.
         self.overload_narrowing: 'dict[str, TpyType] | None' = None
         self.overload_stub_return: 'TpyType | None' = None
+        # A literal-only group's per-stub fact map (the AST's
+        # literal_overload_facts): enables the if-chain dead-branch fold
+        # exactly like overload_narrowing does for the isinstance families.
+        self.overload_literal_facts: dict[str, TpyType] = {}
         self.overload_terminated: bool = False
         self.const_locals: set[str] = set()
         # Names whose C++ binding is a bare `T*` -- F2 pointer-locals
