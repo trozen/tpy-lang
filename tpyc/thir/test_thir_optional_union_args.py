@@ -119,13 +119,13 @@ class TestOptionalPtrContainerArgs:
         assert faces.get("optptr.name", 0) >= 1
         assert faces.get("optptr.none", 0) >= 1
 
-    def test_optional_declared_name_rejects(self):
+    def test_optional_declared_name_routes(self):
         # Forwarding a `list | None` BINDING is the pass face (already `T*`)
         # -- not lowered for containers; keep the precise reject.
         thir = _lower_ctx(_PRELUDE + (
             "def take(xs: list[Int32] | None) -> None:\n    pass\n"
             "def f(xs: list[Int32] | None) -> None:\n    take(xs)\n"))
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None  # the wide-pointee pass face
 
 
 class TestUnionCtorTempArg:

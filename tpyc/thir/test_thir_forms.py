@@ -1894,9 +1894,10 @@ class TestRecordBorrowCallAlias:
         thir = _lower_ctx(src)
         assert _fn(thir, "go") is None
 
-    def test_optional_return_call_ineligible(self):
-        # An Optional-returning call decl needs the `__slot_N` +
-        # optional_to_ptr hoist -- out of the slice.
+    def test_optional_return_call_slot_lift(self):
+        # An Own-declared Optional-returning call decl materializes the
+        # `std::optional<T> __slot_N` + optional_to_ptr lift (the
+        # OPT_STORAGE_CALL row) -- routes now.
         src = (
             _F1_RECORDS
             + "def find(b: Box, n: Int32) -> Own[Inner | None]:\n"
@@ -1908,7 +1909,8 @@ class TestRecordBorrowCallAlias:
             + "    return 0\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "go") is None
+        assert _fn(thir, "go") is not None
+        _assert_byte_identical(src)
 
 
 class TestRecordStorageConvertEmit:

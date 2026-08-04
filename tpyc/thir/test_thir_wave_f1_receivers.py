@@ -192,9 +192,13 @@ class TestWrapperUnionMethodReturn:
         assert "Expr __tmp_1 = Lit(::tpy::BigInt(42));" in cpp
         assert "ev(__tmp_1)" in cpp
 
-    def test_borrow_call_arg_keeps_rejecting(self):
-        # A BORROW-returning free call at the wrapper slot is not an
-        # rvalue source -- the ctor-rvalue row must not claim it.
+    def test_borrow_call_arg_composes_bare(self):
+        # A BORROW-returning free call at the wrapper slot composes bare
+        # (`show(pick(n))` -- the union-returns wave's
+        # _ru_wrapper_borrow_call_arg widening; never the ctor-rvalue
+        # temp). The CALLEE's own return still gates: a borrow-returning
+        # METHOD-call source is outside the wrapper-borrow return slice
+        # (name sources only), so `pick` keeps falling back.
         src = _VALUE + (
             "def pick(n: Neg) -> Value:\n"
             "    return n.inner.get()\n"
@@ -202,4 +206,5 @@ class TestWrapperUnionMethodReturn:
             "    return show(pick(n))\n"
         )
         fell = _thir_fallbacks(src)
-        assert "body:expr.call" in fell, fell
+        assert any("return.wrapper_borrow_source" in k for k in fell), fell
+        assert not any(k.startswith("body:expr.call") for k in fell), fell

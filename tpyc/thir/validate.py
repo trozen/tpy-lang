@@ -48,6 +48,7 @@ from ..type_def_registry import (
 )
 from ..typesys import (
     AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
+    UnionType,
     TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
@@ -141,9 +142,7 @@ def _borrow_legal_return(rt) -> bool:
     # `Box`, `Own[list[T]]` -> `std::vector<T>`; containers are plain
     # NominalTypes): C++ materializes the storage from the borrow source
     # (NRVO / implicit move / copy-construct) with no spelled convert -- the
-    # borrow value is legal. An Own[union] return (a non-Nominal wrapped
-    # type) would need its own conversion arm, and this check must keep
-    # catching a missing one.
+    # borrow value is legal.
     if (isinstance(t, OwnType)
             and isinstance(unwrap_readonly(t.wrapped), NominalType)
             and not t.wrapped.is_value_type()):
@@ -152,10 +151,17 @@ def _borrow_legal_return(rt) -> bool:
     # at every instantiation (`val_or_cref_t<T>` -> `T` is the same NRVO /
     # implicit-move materialization), but a TypeParamRef is not a
     # NominalType, so the row above misses it and the walk FAILS instead of
-    # falling back. Deliberately narrow: a non-Own open-T return and an
-    # Own[union] (non-Nominal wrapped) must keep failing here.
+    # falling back.
     if (isinstance(t, OwnType)
             and isinstance(unwrap_readonly(t.wrapped), TypeParamRef)):
+        return True
+    # `return name;` / a slice rvalue into a by-value `Own[A | B]` variant
+    # return (`std::variant<...>`): the variant's converting ctor
+    # materializes from the borrow source (implicit move for a returned
+    # local under P1825), no spelled convert -- the return arm gates the
+    # admitted source shapes.
+    if (isinstance(t, OwnType)
+            and isinstance(unwrap_readonly(t.wrapped), UnionType)):
         return True
     if not t.is_value_type():
         return True

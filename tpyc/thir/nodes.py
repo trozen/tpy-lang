@@ -1530,11 +1530,23 @@ class PtrSlotKind(Enum):
     #     the second hoisted slot for rvalue reseats.
     RECORD_RVALUE = auto()
     RECORD_HOISTED = auto()
+    # `p: Optional[P] = Conformer(...)` for a @dynamic P: the slot types at
+    # the rvalue's class (`val_cpp` -- inheriting conformer, implicit
+    # upcast) or `auto` (structural conformer, monomorphized: the pointer
+    # deduces the concrete class and calls dispatch statically); the
+    # pointer line is `auto* p = &__slot_N;` either way.
+    OPT_PROTO_RVALUE = auto()
     # `p2: P = p1` / `p2 = p1` where p1 is already an erased protocol pointer:
     # copy the alias, no slot -- `Base* p2 = &(*p1);` (decl) / `p2 = &(*p1);`
     # (reseat). `base_cpp` carries the protocol base; `init`/`value` is the
     # deref'd source.
     DYN_PROTOCOL_ERASED = auto()
+    # `s = make_some()` where the callee returns an Own-declared storage
+    # optional: materialize the whole `std::optional<T>` in a slot and lift
+    # the pointer binding (`std::optional<T> __slot_N = make_some();`
+    # `T* s = ::tpy::optional_to_ptr(__slot_N);` -- the AST's is_opt_field
+    # slot machinery). `cpp_type` carries the pointee spelling.
+    OPT_STORAGE_CALL = auto()
     # Rvalue reseat of a branch-hoisted pointer-local that carries NO if-head
     # rebind slot (the name is reassigned but not rvalue-reassigned -- the
     # mixed rvalue/lvalue flavor): the first such reseat allocates the
@@ -1870,8 +1882,9 @@ class THIRFrameNestedDef(THIRStmt):
     gen_async scaffolding, callable from every resume case), so the
     statement renders only the `// def {name}: frame member` marker line
     under its ordinary source comment. `loc` drives the source comment;
-    the name is pre-escaped at lowering."""
-    name_cpp: str = ""
+    the marker spells the PYTHON name (the AST comment is unescaped -- a
+    keyword-colliding def like `double` stays `double` there)."""
+    name: str = ""
 
 
 @dataclass(frozen=True)
@@ -2249,7 +2262,8 @@ class THIRTupleUnpack(THIRStmt):
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
         "value", "cref", "move", "assign", "ref", "opt_ptr",
-        "frame_assign", "frame_emplace", "frame_ptr_addr", "frame_ptr_elem",
+        "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
+        "frame_ptr_elem",
     })
 
     def __post_init__(self) -> None:

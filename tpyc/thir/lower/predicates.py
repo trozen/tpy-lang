@@ -777,15 +777,48 @@ def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
     return any(m == it for m in members)
 
 
+def _ptr_union_member_wide(m: TpyType, analyzer) -> bool:
+    """The WIDENED variant-member class: the U2 record/scalar slice plus
+    str, containers, value tuples and Span. Consumed ONLY by the
+    member-shape-BLIND machinery -- the Own[union] return slot, the
+    whole-union call-ret admission and the UNION_RVALUE decl twin (all
+    spell members via render_type / to_cpp_ptr_variant, never per-member
+    renders). `_eligible_ptr_union` keeps the narrow set on purpose:
+    widening IT would open every narrowing / extraction consumer."""
+    if (_f1_record(m, analyzer) or _eligible_scalar(m)
+            or is_void_like_type(m)):
+        return True
+    mu = unwrap_readonly(m)
+    return (is_str_type(mu) or is_list(mu) or is_dict(mu) or is_set(mu)
+            or _span_value(mu)
+            or _value_tuple(mu, analyzer) is not None)
+
+
+def _eligible_ptr_union_wide(t: TpyType | None,
+                             analyzer) -> 'UnionType | None':
+    """`_eligible_ptr_union` over the WIDENED member class -- see
+    `_ptr_union_member_wide` for the scoping contract."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (isinstance(t, UnionType) and is_ptr_variant_union(t)):
+        return None
+    if not all(_ptr_union_member_wide(m, analyzer) for m in t.members):
+        return None
+    return t
+
+
 def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None':
-    """An `Own[A | B]` return slot over F1-RECORD and value-scalar members:
-    a by-value `std::variant<...>` (the storage form -- ownership makes the
+    """An `Own[A | B]` return slot over the widened member class (F1
+    records, value scalars, str, containers, value tuples, Span): a
+    by-value `std::variant<...>` (the storage form -- ownership makes the
     union a value at the return boundary, never the pointer variant). The
-    routed sources are a member-record ctor rvalue and a scalar-typed value
-    (`Own[Bag | int]` <- `return 0`), both returned bare (the variant's
-    converting ctor absorbs them). A None member keeps the slot out (the
-    monostate/None renders are the Optional families'); all-value-member
-    unions ride `_eligible_value_union` at the plain-union return arm."""
+    routed sources gate at the return arm (member-record ctor rvalues,
+    scalar values, container/span names, slice rvalues), all returned bare
+    (the variant's converting ctor absorbs them). A None member keeps the
+    slot out (the monostate/None renders are the Optional families');
+    all-value-member unions ride `_eligible_value_union` at the
+    plain-union return arm."""
     if t is None:
         return None
     u = unwrap_readonly(unwrap_send_sync(t))
@@ -794,11 +827,45 @@ def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None'
     inner = unwrap_readonly(u.wrapped)
     if not isinstance(inner, UnionType) or inner.has_none_member():
         return None
-    if not all(_f1_record(m, analyzer)
-               or _eligible_scalar(unwrap_readonly(m))
+    if inner.needs_wrapper():
+        # A recursive-alias WRAPPER union is `ret_own_wrapper`'s slot --
+        # the two facts are mutually exclusive so the return arm's gates
+        # cannot double-fire on one slot.
+        return None
+    if not all(_ptr_union_member_wide(unwrap_readonly(m), analyzer)
                for m in inner.members):
         return None
     return inner
+
+def _own_wrapper_return(t: TpyType | None, analyzer) -> 'UnionType | None':
+    """An `Own[V]` return slot over a recursive-alias WRAPPER union
+    (`needs_wrapper()` -- `struct V { std::variant<...> value; }` by
+    value): source rows gate at the return arm (None -> monostate, scalar
+    literals bare, container literals via the ru render, wrapper-member
+    container names bare). The generic-instance flavor
+    (RecursiveAliasInstanceType) keeps its own `_own_genrec_return`
+    fact."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if not isinstance(u, OwnType):
+        return None
+    w = _wrapper_union_like(u.wrapped, analyzer)
+    return w if isinstance(w, UnionType) else None
+
+
+def _wrapper_borrow_return(t: TpyType | None, analyzer) -> 'UnionType | None':
+    """A bare wrapper-union return slot (`-> Expr` -> `Expr&` /
+    `const Expr&`): the wrapper twin of `_record_borrow_return`. NAME
+    sources gate at the return arm (a borrow param returns bare)."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if isinstance(u, OwnType):
+        return None
+    w = _wrapper_union_like(u, analyzer)
+    return w if isinstance(w, UnionType) else None
+
 
 def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
     """An `Own[Tree[Int32]]` return slot -- the generic-instance sibling of
@@ -815,6 +882,36 @@ def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
         return None
     inner = unwrap_readonly(u.wrapped)
     return inner if isinstance(inner, RecursiveAliasInstanceType) else None
+
+
+def _dyn_borrow_return(t: TpyType | None) -> 'NominalType | None':
+    """The @dynamic protocol of a BORROW-form protocol return slot
+    (`-> P` -> `P&`, `-> readonly[P]` -> `const P&`): the abstract base
+    returns by reference, so the routed sources are NAME reads (a borrow
+    param bare, a pointer-local/global deref) -- the return arm gates them.
+    None for structural protocols (`_protocol_auto_slot`'s family) and
+    every non-protocol slot."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    return u if (isinstance(u, NominalType) and is_dyn_protocol(u)) else None
+
+
+def _own_dyn_return(t: TpyType | None) -> 'NominalType | None':
+    """The @dynamic protocol under an `Own[P]` return slot
+    (`std::unique_ptr<P>`): sources dispatch on the shared
+    `classify_dyn_own_arg` verdict at the return arm ('forward' names /
+    calls bare -- C++ implicit-moves on a by-value return -- conformer
+    ctor rvalues take the make_unique/make_adapter wrap). RAW wrapped,
+    matching the AST key (`_is_dyn_own_wrap_needed`): an
+    `Own[readonly[P]]` slot never takes these renders."""
+    if t is None:
+        return None
+    u = unwrap_send_sync(t)
+    if not isinstance(u, OwnType):
+        return None
+    w = u.wrapped
+    return w if (isinstance(w, NominalType) and is_dyn_protocol(w)) else None
 
 
 def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
@@ -842,6 +939,17 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
         return None
     return t
 
+def _resolve_plain_alias(t: 'TpyType | None', analyzer) -> 'TpyType | None':
+    """Resolve a bare (no-args) `AliasRef` placeholder to its registry body;
+    every other type passes through unchanged. THE single accessor for the
+    AliasRef-vs-resolved-union duality -- sema carries the placeholder at
+    some positions (bindings, element slots) and the resolved UnionType at
+    others, and per-site re-derivation drifts the moment one is widened."""
+    if isinstance(t, AliasRef) and not t.args and analyzer is not None:
+        return analyzer.registry.resolve_alias_ref(t)
+    return t
+
+
 def _wrapper_union_like(t: TpyType | None, analyzer=None) -> 'TpyType | None':
     """The genrec-track classifier accessor: the shared duck view of a
     wrapper-union-LIKE subject -- a recursive-alias WRAPPER union
@@ -855,9 +963,8 @@ def _wrapper_union_like(t: TpyType | None, analyzer=None) -> 'TpyType | None':
     exists to prevent. Returns the unwrapped type, or None otherwise."""
     if t is None:
         return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, AliasRef) and not t.args and analyzer is not None:
-        t = analyzer.registry.resolve_alias_ref(t)
+    t = _resolve_plain_alias(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))), analyzer)
     if isinstance(t, UnionType) and t.needs_wrapper():
         return t
     if isinstance(t, RecursiveAliasInstanceType):
@@ -880,9 +987,8 @@ def _eligible_wrapper_union(t: TpyType | None,
     to its union body first."""
     if t is None:
         return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, AliasRef) and not t.args and analyzer is not None:
-        t = analyzer.registry.resolve_alias_ref(t)
+    t = _resolve_plain_alias(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))), analyzer)
     if not (isinstance(t, UnionType) and t.needs_wrapper()):
         return None
     return t
@@ -968,8 +1074,20 @@ def _isinstance_narrow_info(
                           ReadonlyType):
             return None
         dt = db
-    u = (_eligible_value_union(dt) or _eligible_ptr_union(dt, analyzer)
+    u = (_eligible_value_union(dt) or _eligible_ptr_union_wide(dt, analyzer)
          or _eligible_wrapper_union(dt, analyzer))
+    if u is None:
+        # A None-narrowed `Optional[wrapper]` POINTER subject
+        # (`isinstance(t, int)` after the None test on `t: Tree | None`):
+        # the wrapper test reads through the pointer deref
+        # (`holds_alternative<M>((*t).value)` -- the name arm's deref
+        # composes with the F6 `.value` access), so the WRAPPER is the
+        # subject union.
+        opt = _optional_ptr_borrow_wide(dt, analyzer)
+        if opt is not None:
+            w = _wrapper_union_like(unwrap_readonly(opt.inner), analyzer)
+            if isinstance(w, UnionType):
+                u = w
     if u is None:
         return None
     ct = cond.isinstance_type
@@ -1664,7 +1782,15 @@ def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
     if gt.is_value_type() or gt.needs_wrapper():
         return None
     if (_f1_record(gt, analyzer)
-            or is_list(gt) or is_dict(gt) or is_set(gt)):
+            or is_list(gt) or is_dict(gt) or is_set(gt)
+            # An Array global is the same `std::array<T, N>* g{};` slot
+            # with the same deref reads.
+            or is_array(gt)
+            # A @dynamic-protocol global is the same `T* g{};` slot; its
+            # reads ride the pointer-local arms exactly like the erased
+            # dyn LOCAL's (`(*g)` deref, `g->` receiver). Structural
+            # protocols keep rejecting (auto-slot machinery, unmirrored).
+            or (isinstance(gt, NominalType) and is_dyn_protocol(gt))):
         return gt
     return None
 
@@ -2354,6 +2480,115 @@ def _protocol_subscript_recv(recv: TpyExpr, declared: dict[str, TpyType],
     return bool(get_dunder_cpp_template("__getitem__"))
 
 
+def _nullable_protocol_slot(ptype: 'TpyType | None') -> 'list | None':
+    """The NULLABLE all-protocols slot's member list -- an
+    Optional[protocol] normalization or a union with a None member whose
+    other members are all protocols -- or None. `_gen_protocol_arg` splits
+    on has_none, NOT on the call kind: a REQUIRED protocol union
+    monomorphizes to one template param and takes the plain
+    `gen_expr_deref` render; only the nullable form lifts."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if ptype is not None else None)
+    if isinstance(slot, OptionalType):
+        members = [unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            slot.inner)))]
+    elif isinstance(slot, UnionType):
+        members = [m for m in slot.members if not is_void_like_type(m)]
+        if len(members) == len(slot.members):
+            return None
+    else:
+        return None
+    if not members or not all(
+            isinstance(m, NominalType) and m.is_protocol for m in members):
+        return None
+    return members
+
+
+def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
+                             locals_: dict[str, TpyType],
+                             analyzer) -> 'str | None':
+    """A NAME into a ctor slot whose non-None members are all PROTOCOLS:
+    an F1-record name, a Span name, and a builtin-container name all take
+    the address-of lift (`&(a)` / `&(s)` / `&(words)` -- the C++ ctor's
+    protocol overload binds the pointer; a bare record render was
+    probe-caught divergent, the corpus's seeming bare witness was
+    `copy(a)`'s copy-construct, a different construct; the verdict now
+    serves free-call and method slots too -- nullability is what keys it,
+    and only nullable slots reach the lifts). A None LITERAL
+    takes the typed-null spelling (`static_cast<std::nullptr_t*>(nullptr)`
+    -- the 'nullproto' verdict; a STATIC-protocols-only slot, matching
+    `_gen_protocol_arg`'s has_none row on the shapes it can reach).
+    Returns 'addr' / 'nullproto' or None."""
+    if isinstance(arg, TpyNoneLiteral):
+        members = _nullable_protocol_slot(ptype) or []
+        if members and all(isinstance(m, NominalType)
+                           and not is_dyn_protocol(m) for m in members):
+            return "nullproto"
+        return None
+    if not isinstance(arg, TpyName) or arg.name not in locals_:
+        return None
+    if _nullable_protocol_slot(ptype) is None:
+        return None
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        locals_[arg.name])))
+    # A STRUCTURAL conformer of a @dynamic member is NOT Base-derived in
+    # C++, so `&(name)` cannot bind the base pointer -- that name takes
+    # the RefAdapter temp face (`_optional_ptr_arg_face`'s adapter_name).
+    members = _nullable_protocol_slot(ptype) or []
+    if any(isinstance(m, NominalType) and is_dyn_protocol(m)
+           and not (isinstance(at, NominalType) and at.is_user_record
+                    and record_inherits_dynamic(at, m, analyzer.registry))
+           for m in members):
+        return None
+    if (_f1_record(at, analyzer) or is_span(at)
+            or is_list(at) or is_dict(at) or is_set(at)):
+        return "addr"
+    return None
+
+
+def _nullable_static_protocol_param(t: 'TpyType | None') -> 'NominalType | None':
+    """The STRUCTURAL protocol of a nullable static-protocol param
+    (`items: Sized | None`), or None. The C++ binding is the monomorphized
+    `const T_x*` (default `std::nullptr_t`), so the param joins the
+    pointer set: narrowed reads deref `(*x)` and the None test swaps to
+    the `std::same_as<T_x, std::nullptr_t>` constexpr guard. @dynamic
+    inners stay with the wide accessor's dyn class (nullable `Base*`).
+    Covers both the Optional spelling and the nullable all-static
+    protocol UNION (2+ protocols + None, mirroring is_protocol_union's
+    arity; a 1-protocol union normalizes to Optional upstream)."""
+    if not isinstance(t, TpyType):
+        return None
+    u = _unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
+    if isinstance(u, OptionalType):
+        inner = unwrap_readonly(u.inner)
+        if (isinstance(inner, NominalType) and is_protocol_type(inner)
+                and not is_dyn_protocol(inner)):
+            return inner
+        return None
+    # The nullable protocol-UNION flavor (`Sized | Sequence[T] | None`):
+    # the same monomorphized `const T_x*` binding, one template param
+    # bounded by the disjunction.
+    if isinstance(u, UnionType):
+        others = [unwrap_readonly(m) for m in u.members
+                  if not is_void_like_type(m)]
+        if (len(others) >= 2 and len(others) < len(u.members)
+                and all(isinstance(m, NominalType) and is_protocol_type(m)
+                        and not is_dyn_protocol(m) for m in others)):
+            return others[0]
+    return None
+
+
+def _static_protocol_union_binding(t: 'TpyType | None') -> bool:
+    """A guard-retyped protocols-only union binding (the None member
+    narrowed away): every member a STRUCTURAL protocol. The shared verdict
+    behind the name-read deref and the required-union pass-onward."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if isinstance(t, TpyType) else None)
+    return (isinstance(u, UnionType) and bool(u.members)
+            and all(is_protocol_type(unwrap_readonly(m))
+                    for m in u.members))
+
+
 def _protocol_binding(t: 'TpyType | None') -> 'NominalType | None':
     """The protocol a bare protocol-typed binding names, or None.
 
@@ -2851,7 +3086,8 @@ def _container_storage_return(t: TpyType | None, analyzer) -> 'TpyType | None':
 
 def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
     """The BORROW-form container return slot (`-> list[T]` / `-> readonly[
-    list[T]]` -- C++ `std::vector<T>&` / `const std::vector<T>&`), or None.
+    list[T]]` -- C++ `std::vector<T>&` / `const std::vector<T>&`; an
+    `Array[T, N]` slot returns `std::array<T, N>&` the same way), or None.
     A bare container NAME (`return cells;`) and a plain FIELD read
     (`return self._items;`) return bare on both paths -- element-blind (no
     per-element conversion happens at a whole-container borrow return).
@@ -2862,7 +3098,7 @@ def _container_borrow_return(t: TpyType | None) -> 'TpyType | None':
     if isinstance(u, OwnType):
         return None
     return u if (is_list(u) or is_dict(u) or is_set(u)
-                 or is_bytearray_type(u)) else None
+                 or is_bytearray_type(u) or is_array(u)) else None
 
 def _plain_container_read(t: TpyType | None) -> bool:
     """A plain (non-`Own`) list/dict/set read at a position where the bare
@@ -2910,7 +3146,91 @@ def _call_ret_union_ok(ret: 'TpyType | None', analyzer) -> bool:
     if not isinstance(t, UnionType):
         return False
     return (_eligible_value_union(t) is not None
-            or _eligible_ptr_union(t, analyzer) is not None)
+            or _eligible_ptr_union_wide(t, analyzer) is not None)
+
+
+def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
+    """The WIDENED Optional-pointee class for the RETURN/DECL/COND-scoped
+    rows: F1 records (the base slice), wrapper-union-likes, open type
+    params (the force_pointer_repr `T | None` slots), @dynamic protocols,
+    and containers. Every consumer render is member-shape-blind (`T*`
+    spellings via render_type, `nullptr` compares, `optional_to_ptr`
+    lifts, the bare pointer pass): the return facts, the decl/reseat
+    rows, the None-test rows, the print OPT_PTR row (container pointees
+    excluded there -- their print_optional spells kind-keyed template
+    args), the param pointer seed and the deref-name arg row. The narrow
+    `_optional_ptr_borrow` keeps the F1 slice for the arg faces whose
+    renders ARE pointee-shaped (the ctor temp's spelled type)."""
+    if inner is None:
+        return False
+    iu = unwrap_readonly(inner)
+    return bool(
+        _f1_record(iu, analyzer)
+        or _wrapper_union_like(iu, analyzer) is not None
+        or isinstance(iu, TypeParamRef)
+        or (isinstance(iu, NominalType) and is_dyn_protocol(iu))
+        or is_list(iu) or is_dict(iu) or is_set(iu))
+
+
+def _optional_ptr_borrow_wide(t: TpyType | None,
+                              analyzer) -> 'OptionalType | None':
+    """`_optional_ptr_borrow` over `_opt_pointee_wide` -- see the scoping
+    contract there. The narrow F1 accessor keeps every binding-level
+    consumer."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_send_sync(t))
+    if not (isinstance(t, OptionalType) and t.uses_pointer_repr()):
+        return None
+    inner = unwrap_readonly(t.inner)
+    if isinstance(inner, OwnType):
+        return None
+    # A VALUE-scalar pointee is reachable only through force_pointer_repr
+    # (`T | None` instantiated at Int32) -- the uses_pointer_repr guard
+    # above keeps a normal value-repr `Int32 | None` out, so the scalar
+    # class is safe HERE and only here (the storage flavor must leave
+    # scalars to the value-opt facts).
+    return t if (_opt_pointee_wide(inner, analyzer)
+                 or _eligible_scalar(inner)) else None
+
+
+def _optional_ptr_borrow_wide_name(e: TpyExpr,
+                                   locals_: dict[str, TpyType],
+                                   analyzer) -> 'OptionalType | None':
+    """`e` is a bare NAME whose DECLARED type is a wide-class ptr-repr
+    Optional -- the `_optional_ptr_borrow_name` sibling over the wide
+    accessor, shared by the None-test gate and the print rows."""
+    if not (isinstance(e, TpyName) and e.name in locals_):
+        return None
+    return _optional_ptr_borrow_wide(locals_[e.name], analyzer)
+
+
+def _storage_optional_return_wide(t: TpyType | None,
+                                  analyzer) -> 'OptionalType | None':
+    """The storage-form Optional return slot over the F1|wrapper pointee
+    pair: the classic `Own[T] | None` nesting (value optional of the Own
+    payload) and the REVERSE `Own[Optional[W]]` spelling wrapper returns
+    use (`-> Own[Optional[Tree[Int32]]]` -> `std::optional<Tree<int32_t>>`
+    -- ownership makes the whole optional a value at the boundary even
+    though bare `Optional[W]` is ptr-repr). Scalar inners stay with the
+    value-opt facts; tparam/dyn/container inners have no storage-opt
+    witness and stay out."""
+    def _sp(inner) -> bool:
+        iu = unwrap_readonly(inner)
+        return bool(_f1_record(iu, analyzer)
+                    or _wrapper_union_like(iu, analyzer) is not None)
+
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if isinstance(u, OwnType):
+        ow = unwrap_readonly(u.wrapped)
+        if isinstance(ow, OptionalType) and _sp(_unwrap_own(ow.inner)):
+            return ow
+        return None
+    if not isinstance(u, OptionalType) or u.uses_pointer_repr():
+        return None
+    return u if _sp(_unwrap_own(u.inner)) else None
 
 
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
@@ -3164,7 +3484,13 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
         inner = unwrap_readonly(inner)
         if (isinstance(inner, TypeParamRef)
                 or _f1_record(inner, analyzer)
-                or _eligible_ptr_union(inner, analyzer) is not None):
+                or _eligible_ptr_union(inner, analyzer) is not None
+                # An `Own[@dynamic P]` param (`std::unique_ptr<P>`): the
+                # routed reads are the bare forward return and the arrow
+                # receiver; an unmirrored Own-slot arg still rejects at its
+                # own ladder (no row admits the protocol-typed name).
+                or (isinstance(inner, NominalType)
+                    and is_dyn_protocol(inner))):
             return None
         return "name.own_read"
     if isinstance(u, OptionalType) and not u.uses_pointer_repr():
@@ -3186,7 +3512,11 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer) -> 'str | None':
             return None
         return "name.optval_read"
     if (isinstance(u, OptionalType) and u.uses_pointer_repr()
-            and _optional_ptr_borrow(u, analyzer) is None):
+            and _optional_ptr_borrow_wide(u, analyzer) is None):
+        # A nullable static-protocol param reads through the pointer set
+        # (narrowed `(*x)` derefs; the None test is the constexpr swap).
+        if _nullable_static_protocol_param(u) is not None:
+            return None
         return "name.optional_ptr_read"
     return None
 
@@ -3958,7 +4288,8 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(sub.obj))))
     ri = analyzer.registry.get_record_for_type(t)
-    fi = ri.get_method("__getitem__") if ri is not None else None
+    fi = (_record_method_with_parents(ri, "__getitem__", analyzer)
+          if ri is not None else None)
     if fi is None or not call_returns_cpp_ref(analyzer, fi):
         return False
     if not _f1_record(analyzer.get_expr_type(sub), analyzer):
@@ -4722,6 +5053,19 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
         return _field_decl_type(recv, locals_, analyzer)
     return None
 
+def _record_method_with_parents(ri, name: str, analyzer):
+    """`ri.get_method(name)` with the parent-traversing fallback: an
+    INHERITED dunder (incl. through a GENERIC parent, which `get_method`
+    misses on the subclass record) resolves through the registry's
+    overload traversal. The four record-dunder predicates share it so
+    their claimed same-slice parity actually holds."""
+    m = ri.get_method(name)
+    if m is None:
+        ovl = analyzer.registry.get_method_overloads_with_parents(ri, name)
+        m = ovl[0] if ovl else None
+    return m
+
+
 def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
     """The key param type of a user-record subscript receiver's `__getitem__`
     (so `recv[index]` spells the record's generated bare `operator[]`), or
@@ -4736,7 +5080,7 @@ def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
         return None
-    m = ri.get_method("__getitem__")
+    m = _record_method_with_parents(ri, "__getitem__", analyzer)
     if m is not None and len(m.params) >= 1:
         # Method params exclude the implicit self, so params[0] is the key.
         return m.params[0].type
@@ -4755,7 +5099,7 @@ def _record_setitem_value(obj_type: 'TpyType | None', analyzer) -> 'TpyType | No
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
         return None
-    m = ri.get_method("__setitem__")
+    m = _record_method_with_parents(ri, "__setitem__", analyzer)
     if m is not None and len(m.params) >= 2:
         # (key, value) after the implicit self -- the value is the last param.
         return m.params[-1].type
@@ -4775,7 +5119,8 @@ def _record_has_delitem(obj_type: 'TpyType | None', analyzer) -> bool:
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
         return False
-    return ri.get_method("__delitem__") is not None
+    return _record_method_with_parents(ri, "__delitem__",
+                                       analyzer) is not None
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """A pointer-local reseat value: an lvalue field read off an F1-record receiver
@@ -5500,6 +5845,10 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             return operand
         return None
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
+            # The WIDE ptr-repr pointee class (a T/wrapper/dyn-protocol
+            # pointee binding): the same pointee-blind `!= nullptr` compare.
+            and _optional_ptr_borrow_wide_name(operand, locals_,
+                                               analyzer) is None
             and _value_opt_scalar_name(operand, locals_, analyzer) is None
             and _value_opt_view_name(operand, locals_, analyzer) is None
             # An `Own[Optional[T_ref]]` param binding (`std::optional<T> p`
@@ -6010,17 +6359,23 @@ def _wrapper_like_members(t: 'TpyType') -> tuple:
 
 def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                          locals_: dict[str, TpyType],
-                         narrowed: 'AbstractSet[str]') -> bool:
+                         narrowed: 'AbstractSet[str]',
+                         analyzer=None) -> bool:
     """A wrapper-union NAME at a same-wrapper arg slot (`json.dumps(v)` on
     `v: JsonValue`): the binding is already the wrapper struct, so both
-    paths render the bare name (no lift, no temp). An F6-NARROWED name
-    passes only when its branch fact is a MEMBER of the slot's union: the
-    extraction alias renders bare and the wrapper's converting ctor absorbs
-    it (`dumps(__d, ...)`); any other narrowed shape keeps rejecting."""
+    paths render the bare name (no lift, no temp). A binding that carries
+    the unresolved `AliasRef` placeholder (a for-each element over a
+    wrapper union) resolves through the registry first. An F6-NARROWED
+    name passes only when its branch fact is a MEMBER of the slot's union:
+    the extraction alias renders bare and the wrapper's converting ctor
+    absorbs it (`dumps(__d, ...)`); any other narrowed shape keeps
+    rejecting."""
     ut = _ru_wrapper_arg_slot(ptype)
     if ut is None or not isinstance(a, TpyName) or a.name not in locals_:
         return False
-    dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    dt = _resolve_plain_alias(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name]))),
+        analyzer)
     if a.name in narrowed:
         return (any(dt == m for m in _wrapper_like_members(ut)
                     if not is_void_like_type(m))
@@ -6038,7 +6393,13 @@ def _ru_wrapper_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     if ut is None or not isinstance(a, (TpyCall, TpyMethodCall)):
         return False
     fi = getattr(a, "resolved_function_info", None)
-    if fi is None or not call_returns_cpp_ref(analyzer, fi):
+    if fi is None:
+        return False
+    # Two spellings of "returns a C++ reference": the record-keyed helper
+    # (a genrec method's `Tree<T>&`) and the bare wrapper-union return
+    # slot (`-> Expr` -> `Expr&` on a free function).
+    if not (call_returns_cpp_ref(analyzer, fi)
+            or _wrapper_borrow_return(fi.return_type, analyzer) is not None):
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(a))))
@@ -6080,6 +6441,11 @@ def _ru_wrapper_member_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     if a.name in narrowed:
         return None
     dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if isinstance(dt, OptionalType):
+        # A None-narrowed `Optional[wrapper]` POINTER binding reads its
+        # deref (`depth((*t))`), never this typed-temp row -- the wide
+        # ptr-opt deref-name row owns it.
+        return None
     # The AST's value branch has NO membership check (sema already typed
     # the arg against the union) -- only already_union routes it elsewhere:
     # a union binding (bare pass-through), a same-alias AliasRef
@@ -6181,30 +6547,47 @@ def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
     at = analyzer.get_expr_type(a)
     at = resolve_pending_container(at, analyzer) or at
     if isinstance(a, TpyArrayLiteral):
-        if not is_list(at):
+        # An OUTER literal at a wrapper-annotated slot types AS the wrapper
+        # itself (`tree: Expr = [1, [2, 3], 4]` -> `Expr`), a nested (or
+        # element-position) literal as `list[Expr]` -- both spell the same
+        # container of wrapper members (the generic-instance arm's split).
+        if is_list(at):
+            et = at.type_args[0] if getattr(at, "type_args", None) else None
+        elif (isinstance(at, (UnionType, AliasRef))
+              and _wrapper_union_like(at, analyzer) is not None):
+            et = at
+        else:
             return False
-        et = at.type_args[0] if getattr(at, "type_args", None) else None
-        if not (isinstance(et, AliasRef) and not et.args
-                and _ru_alias_copyable(et, analyzer)):
+        if not _ru_wrapper_elem_copyable(et, analyzer):
             return False
         return all(_ru_elem_ok(x, analyzer) for x in a.elements)
     if isinstance(a, TpyDictLiteral):
-        if not is_dict(at):
+        if is_dict(at):
+            kt, vt = at.type_args[0], at.type_args[1]
+        elif (isinstance(at, (UnionType, AliasRef))
+              and _wrapper_union_like(at, analyzer) is not None):
+            kt, vt = None, at
+        else:
             return False
-        kt, vt = at.type_args[0], at.type_args[1]
-        if not (isinstance(vt, AliasRef) and not vt.args
-                and is_str_type(kt)
-                and _ru_alias_copyable(vt, analyzer)):
+        if not ((kt is None or is_str_type(kt))
+                and _ru_wrapper_elem_copyable(vt, analyzer)):
             return False
         return (all(isinstance(k, TpyStrLiteral) for k in a.keys)
                 and all(_ru_elem_ok(v, analyzer) for v in a.values))
     return False
 
-def _ru_alias_copyable(et: 'AliasRef', analyzer) -> bool:
-    """No noncopyable member in the alias's union body: a nocopy member
-    would flip the AST render to make_vector / make_ordered_map
+def _ru_wrapper_elem_copyable(et: 'TpyType | None', analyzer) -> bool:
+    """A literal's wrapper element slot with no noncopyable member: sema
+    carries either the non-generic `AliasRef` placeholder or (at some
+    positions -- a return literal) the resolved wrapper UnionType itself;
+    both spell the same member type. A nocopy member would flip the AST
+    render to make_vector / make_ordered_map
     (`_is_nocopy_container_element`'s AliasRef arm) -- unmirrored."""
-    alias = analyzer.registry.resolve_alias_ref(et)
+    # The raw-UnionType flavor must itself be wrapper-repr; an AliasRef
+    # resolves to whatever its body is (the pre-resolution admission).
+    if (isinstance(et, UnionType) and not et.needs_wrapper()):
+        return False
+    alias = _resolve_plain_alias(et, analyzer)
     if not isinstance(alias, UnionType):
         return False
     return not any(_cpp_noncopyable_type(m, analyzer)
@@ -6256,7 +6639,16 @@ def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
     """One recursive-union container element (see `_ru_container_literal_ok`).
     Int literals stay inside int32 so the render is the bare token on both
     paths (a wider literal takes the width-pinned ctor spelling); floats stay
-    finite (inf/nan take their own spellings)."""
+    finite (inf/nan take their own spellings). A WRAPPER-typed NAME element
+    copies in bare (`{branch, leaf}`), with the movable-last-use move
+    mirrored at the element lowering."""
+    if isinstance(x, TpyName):
+        at = analyzer.get_expr_type(x)
+        atr = (_resolve_plain_alias(
+                   unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))),
+                   analyzer)
+               if at is not None else None)
+        return isinstance(atr, UnionType) and atr.needs_wrapper()
     if isinstance(x, (TpyArrayLiteral, TpyDictLiteral)):
         # A nested literal types either way depending on whether the alias is
         # generic -- `list[AliasRef]` for the plain form, the alias INSTANCE
@@ -6537,7 +6929,11 @@ def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | N
     pt = unwrap_readonly(pt)
     if not (isinstance(pt, OptionalType) and pt.uses_pointer_repr()):
         return None
-    if not _f1_record(unwrap_readonly(pt.inner), analyzer):
+    # WIDE pointee class: every face render is pointee-blind (`nullptr`,
+    # the bare pointer pass, `&(name)`, the optional_to_ptr lift); the
+    # F1-specific ctor-temp face self-excludes (a wrapper/T pointee has
+    # no admitted ctor shape).
+    if not _opt_pointee_wide(unwrap_readonly(pt.inner), analyzer):
         return None
     return pt
 
@@ -6608,6 +7004,17 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         at = analyzer.get_expr_type(a)
         if at == inner:
             return 'ctor'
+        # A STRUCTURAL-conformer ctor rvalue at an Optional[@dynamic P]
+        # slot: not Base-derived in C++, so the vtable rides an owning
+        # Adapter temp (`::tpy::Adapter<P, C> __tmp{C(..)};` + `&(__tmp)`).
+        # Checked BEFORE the subclass-fact branch: a dyn-protocol inner
+        # passes polymorphic_source_inner for ANY distinct record, but the
+        # bare child temp upcast is only valid for an INHERITING conformer.
+        if (isinstance(at, NominalType) and at.is_user_record
+                and isinstance(inner, NominalType) and is_dyn_protocol(inner)
+                and not record_inherits_dynamic(at, inner,
+                                                analyzer.registry)):
+            return 'adapter_rvalue'
         # A SUBCLASS ctor rvalue: the CHILD-typed temp's address binds the
         # base pointer implicitly (`ClickEvent __tmp_2 = ClickEvent(..);
         # describe(&(__tmp_2))` -- the AST's upcast temp).
@@ -6638,14 +7045,34 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
+    # Normalize the AliasRef-vs-resolved-union duality on BOTH sides (a
+    # wrapper local's expr type arrives resolved while the slot's pointee
+    # carries the placeholder, or vice versa).
+    inner_r = _resolve_plain_alias(inner, analyzer)
     if isinstance(at, OptionalType):
         # An unnarrowed pointer-repr Optional binding (a `T | None` param /
         # OPTIONAL_TO_PTR local) is already `T*` -- the bare pass face.
         return 'pass' if (at.uses_pointer_repr()
-                          and unwrap_readonly(at.inner) == inner) else None
+                          and _resolve_plain_alias(
+                              unwrap_readonly(at.inner), analyzer)
+                          == inner_r) else None
     if isinstance(at, OwnType):
         at = unwrap_readonly(at.wrapped)
-    return 'name' if at == inner else None
+    if _resolve_plain_alias(at, analyzer) == inner_r:
+        return 'name'
+    # A STRUCTURAL-conformer NAME lvalue at an Optional[@dynamic P] slot:
+    # the non-owning RefAdapter temp (`::tpy::RefAdapter<P, C> __tmp{x};`
+    # + `&(__tmp)`) -- the lvalue sibling of the adapter_rvalue face. The
+    # RAW expr type must be the bare record: the AST twin keys the
+    # unstripped get_expr_type, so a readonly-wrapped conformer takes its
+    # generic tail there, not the RefAdapter (whose ctor wants `impl&`).
+    if (isinstance(a, TpyName)
+            and isinstance(analyzer.get_expr_type(a), NominalType)
+            and isinstance(at, NominalType) and at.is_user_record
+            and isinstance(inner, NominalType) and is_dyn_protocol(inner)
+            and not record_inherits_dynamic(at, inner, analyzer.registry)):
+        return 'adapter_name'
+    return None
 
 def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
                                   analyzer) -> 'UnionType | None':

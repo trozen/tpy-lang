@@ -327,11 +327,16 @@ class TestGateRejects:
         cpp = _assert_byte_identical(src)
         assert "return (!p.has_value());" in cpp[1]
 
-    def test_optional_container_param_rejects(self):
-        thir = _lower_ctx(
-            _PRELUDE
-            + "def use(xs: list[Int32] | None) -> bool:\n    return xs is None\n")
-        assert _fn(thir, "use") is None
+    def test_optional_container_param_routes(self):
+        # The WIDE pointee class admits Optional[container] params: the
+        # `T*` binding's None test is the same pointee-blind compare.
+        src = (_PRELUDE
+               + "def use(xs: list[Int32] | None) -> bool:\n"
+               + "    return xs is None\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        cpp = _assert_byte_identical(src)
+        assert "return (xs == nullptr);" in cpp[1]
 
     def test_borrow_local_off_optional_receiver_routes(self):
         # Borrow locals off a narrowed Optional receiver route: the const

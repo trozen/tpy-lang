@@ -214,10 +214,13 @@ class TestUnionAndPtrParams:
         assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_mixed_value_union_print_stays_ast(self):
+    def test_mixed_value_union_print_routes_str_visitor(self):
+        # A union-typed NAME print arg streams via the `::tpy::__str__`
+        # visitor (the union-returns wave's PrintForm.STR row), so the
+        # ctor routes now.
         src = _ctor_src("str | Int32", "        print(p)\n")
         ctor, _ = _lower_ctor_reason(src, "C")
-        assert ctor is None
+        assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_unused_nonvalue_ptr_param_routes(self):

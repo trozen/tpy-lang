@@ -548,7 +548,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRImportInit):
         return [f"{pad}import-init [{', '.join(stmt.calls)}]"]
     if isinstance(stmt, THIRFrameNestedDef):
-        return [f"{pad}frame-nested-def {stmt.name_cpp}"]
+        return [f"{pad}frame-nested-def {stmt.name}"]
     if isinstance(stmt, THIRFoldedBlock):
         burn = " [burns_match_counter]" if stmt.burns_match_counter else ""
         lines = [f"{pad}overload-fold{burn}:"]

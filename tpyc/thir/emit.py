@@ -3485,6 +3485,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&__slot_{init_slot};\n")
+        elif stmt.kind is PtrSlotKind.OPT_PROTO_RVALUE:
+            # Optional[@dynamic P] local from a conformer rvalue: the slot
+            # spells the rvalue's class (val_cpp; `auto` for a structural
+            # conformer) and the pointer line deduces.
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            init_slot = (state.assert_local_slot() or state.next_slot())
+            out.write(f"{indent}{stmt.val_cpp} __slot_{init_slot} = "
+                      f"{init_cpp};\n")
+            out.write(f"{indent}{cpfx}auto* {name} = &__slot_{init_slot};\n")
         elif stmt.kind is PtrSlotKind.GLOBAL_RVALUE:
             # Module-init global init: the name is pre-declared at namespace
             # scope, so only the `static` slot carries a type.
@@ -3554,6 +3564,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # source already renders its own `(*p1)` parens (AST: `&{expr}`).
             out.write(f"{indent}{stmt.base_cpp}* {name} = "
                       f"&{_emit_expr(stmt.init, state)};\n")
+        elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
+            # Own-declared optional-returning call init: the storage
+            # optional materializes in a slot, the binding lifts the
+            # pointer (`std::optional<T> __slot_N = make_some();`
+            # `T* s = ::tpy::optional_to_ptr(__slot_N);`).
+            init_slot = (state.assert_local_slot() or state.next_slot())
+            init_cpp = _emit_expr(stmt.init, state)
+            out.write(f"{indent}std::optional<{stmt.cpp_type}> "
+                      f"__slot_{init_slot} = {init_cpp};\n")
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
+                      f"::tpy::optional_to_ptr(__slot_{init_slot});\n")
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
             # Address-of an existing lvalue -- the decl itself takes no slot
             # (the decl twin of the PTR_ADDR reseat). A rebind slot is drawn
@@ -3581,17 +3602,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # AST's _gen_dynamic_protocol_rebind -- a distinct concrete/adapter
             # type per target). Slot drawn before the value (oracle order); its
             # decl hoists to the function top, the emplace + `p = &*slot` reseat
-            # stay inline. `val_cpp` carries the slot (concrete/adapter) spelling.
-            slot = (state.assert_local_slot() or state.next_slot())
+            # stay inline. `val_cpp` carries the slot (concrete/adapter)
+            # spelling. At module-init scope the slot spells
+            # `static std::optional<T> __global_slot_N;` (slot_static /
+            # slot_prefix), so protocol GLOBALS share this arm -- the one
+            # rebind slot draw that is scope-safe by construction (no
+            # assert_local_slot).
+            slot = state.next_slot()
             val_cpp = _emit_expr(stmt.value, state)
             # Backstop: this hoist has no drain point in a leaf emitter; lowering
             # defers generator/async bodies, so reaching here undrainable is a bug.
             assert state.hoist_drainable, (
                 "DYN_PROTOCOL rebind hoist reached a non-draining leaf emitter")
             state.hoist_lines.append(
-                f"std::optional<{stmt.val_cpp}> __slot_{slot};")
-            out.write(f"{indent}__slot_{slot}.emplace({val_cpp});\n")
-            out.write(f"{indent}{name} = &*__slot_{slot};\n")
+                f"{state.slot_static}std::optional<{stmt.val_cpp}> "
+                f"{state.slot_prefix}_{slot};")
+            out.write(f"{indent}{state.slot_prefix}_{slot}"
+                      f".emplace({val_cpp});\n")
+            out.write(f"{indent}{name} = &*{state.slot_prefix}_{slot};\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL_ERASED:
             # `p2 = p1` where p1 is already erased: re-alias, no slot (the deref'd
             # source renders its own parens).
@@ -3920,6 +3948,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{escape_cpp_name(name)} = "
                           f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
                           f"({get})));\n")
+            elif bind == "frame_opt_ptr":
+                # Ptr-repr Optional frame target off a STORAGE optional
+                # element: nullptr doubles as None.
+                out.write(f"{indent}{escape_cpp_name(name)} = "
+                          f"::tpy::optional_to_ptr({get});\n")
             elif bind in ("frame_assign", "frame_emplace"):
                 # Resumable frame targets: assigned, never re-declared. The
                 # wrap mirrors the AST's per-element is_owned move (ref
@@ -4091,7 +4124,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRFrameNestedDef):
         # The member itself is scaffolding-emitted; the statement position
         # keeps only the marker line under its source comment.
-        out.write(f"{indent}// def {stmt.name_cpp}: frame member\n")
+        out.write(f"{indent}// def {stmt.name}: frame member\n")
     elif isinstance(stmt, THIRImportInit):
         _witness("top_level.import_init")
         for call in stmt.calls:

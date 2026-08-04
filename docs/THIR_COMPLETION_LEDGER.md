@@ -25,6 +25,13 @@ Companion docs, different jobs:
 - **This ledger** -- the completion/deletion tracker (what is *left* and what gates
   each deletion). **Sequence against this, not against routing %.**
 
+> **Compaction convention (ratified 2026-08-04):** at wave close, fold that
+> wave's per-batch review-round entries into the wave's own entry -- keep
+> DECISIONS, PROBED INVARIANTS, and LESSONS; drop the pass/fail bookkeeping
+> prose ("suite green, N passed"). Those three categories are never deleted.
+> Compaction applies to the just-closed wave only; older entries are not
+> rewritten retroactively.
+
 ## Why this exists
 
 We have been sequencing by **routing ROI** (highest-value cells first). That is
@@ -4723,6 +4730,14 @@ none of it moves the dial, and body-lowering waves cannot invalidate it):
 7. Teardown per the D4 inventory. Post-cutover, `ThirUnsupported` is an
    internal compiler error: new language features land sema + THIR lowering
    together -- there is no fallback to hide behind.
+8. Adversarial dualgen sweep over the POSITION-ENUMERATION matrices before
+   the AST path goes: the wide pointee accessor's consumer positions and
+   `_name_read_deref`'s admission classes have only ever had their
+   completeness demonstrated by the corpus byte-diff (three waves each
+   caught a missed position reactively) -- at cutover that detector is
+   deleted, so the sweep is the last chance to prove the matrices closed
+   (2026-08-04 retro; moot for `_name_read_deref` if the inversion filed
+   in TODO.md lands first).
 
 What changed NOW rather than at the checklist: `--thir-codegen` implies
 `--thir-stdlib` (the stdlib oracle rides every measurement run instead of
@@ -8177,3 +8192,191 @@ unit for the binding-audit ACK-suppression arithmetic, and the
 fourth-copy note on the arg-ladder debt entry. Dropped visibly:
 commit-subject lengths (no-amend + squash-merge), two low-confidence
 pin suggestions (corpus-guarded).
+
+### The @dynamic protocol RETURNs bundle -- queue item 1 (2026-08-04)
+
+All six designed pieces, 9 flips (protocol_dynamic_{return,
+return_readonly,global,cross_module,own_param}, own_polymorphic_param,
+self_referential_protocol, dyn_proto_self_return_{method,generic}):
+ret_dyn_borrow (`P&`/`const P&`, name sources) + ret_dyn_own
+(unique_ptr<P>, classify_dyn_own_arg-keyed -- 'forward' bare,
+conformers through the shared _lower_dyn_own_conformer wrap); the
+erased-decl borrow-call rung (`Pet* r = &echo(d);`); Own[P] binding
+reads admitted (unmirrored Own-slot args still reject per ladder);
+protocol globals via the DYN_PROTOCOL rebind (static
+`__global_slot_N` spelling via slot_static/slot_prefix; joins the
+_rejects_global_slot allowlist; branch/loop writes included); the
+_own_dyn_method_recv family + _recv_own_dyn arrow mirror; protocol
+chain results at RECEIVER positions and Own[P] method results bare.
+Converted stale fences: Own[P] param, protocol return, dyn global.
+Boundary pins: mixed ternary arm, erased-source global write.
+sema pre-rejects returning a dyn-protocol LOCAL (dangling check), so
+the borrow name row's local flavor is param/global-only by
+construction.
+
+### Own[union]/wrapper-union returns -- queue item 2 cells A-C (2026-08-04)
+
+8 flips (union/narrow_{list,dict,tuple}_subscript, repr_fstring_union,
+union_own_mixed_value, union_recursive_int_float, own_union_consume,
+wrapper_param_const). The widened variant-member class lives in
+_ptr_union_member_wide, consumed ONLY by member-shape-blind machinery
+(the Own[union] return slot, _call_ret_union_ok, the UNION_RVALUE decl
+twin, the isinstance info gate); _eligible_ptr_union keeps the narrow
+set -- the documented widening hazard stands. New return facts:
+ret_own_wrapper (None -> monostate, scalar literals, ru container
+literals incl. the outer literal typed AS the wrapper, member-container
+names) and ret_wrapper_borrow (name sources). Union NAME prints route
+via the __str__ visitor (PrintForm.STR) -- FENCED out of resumable
+bodies: the flat-CFG persistent assert-narrow alias leaks past its
+branch on the AST side (`__str__(__a)` in the else arm), so the
+un-narrowed read would diverge; the BB-scope leak pin keeps its
+fallback detector through that fence. AliasRef-vs-resolved-union
+duality closed at three sites (_ru_wrapper_name_arg bindings, the
+ru-literal element slot, the container-method element slot). 2D (the
+Optional-of-wrapper pointee rekey) is NOT in this wave -- it rides the
+scoped pointee accessor shared with 3-G1/5-P-A.
+
+### Union-returns wave addendum: the ratchet catch + review round (2026-08-04)
+
+The full-suite ratchet caught union_mutual_basic DE-ROUTING after the
+wave landed: `return Lit(v)` at Own[Expr] had ridden the plain
+Own[union] arm incidentally (wrapper unions passed its member check),
+and the new ret_own_wrapper arm intercepted without a record-ctor
+source row. Fixed by making the two facts mutually exclusive
+(_own_storage_union_return now rejects needs_wrapper) and adding the
+ctor-rvalue row to the wrapper arm -- the running lesson holds: the
+ratchet proves no WRONG flip, and a NEW fact must enumerate every
+source its slot previously reached through sibling arms. The
+check-flip harvest then yielded 2 collateral flips
+(recursive_union_empty_list, union_recursive_protocol_method).
+/tpy-review round (7 specialists + meta-review): codegen-correctness,
+safety-model, convention-compliance clean. Applied as one commit: the
+resumable assert-narrow alias-leak defect filed in BUGS.md (the STR
+fence's reason -- pre-existing AST, compile-verified by two
+specialists); the STR fence rekeyed from is_generator to
+resumable_leaf_mode (simple peephole generators keep normal scoping
+and may route); the AliasRef-vs-resolved-union duality folded into
+the single _resolve_plain_alias accessor (5 sites); the erased-decl
+METHOD-call routing pin, the dyn-own forward method-call boundary
+pin, and the int32-edge wrapper-insert boundary pin;
+wrapper_param_const's read-only-aliasing test-adequacy gap filed in
+TODO.md (pre-existing, needs a deliberate mutate-and-observe redesign
++ snapshot consultation).
+
+### The scoped pointee-accessor waves -- queue items 2D/3-G1/G2/G3 (2026-08-04)
+
+The ONE accessor build the queue's dependency note called for:
+_opt_pointee_wide (F1 records | wrapper-union-likes | open type params |
+@dynamic protocols | containers) behind _optional_ptr_borrow_wide (the
+ptr-repr flavor; + the force_pointer_repr VALUE-scalar class, safe only
+under its uses_pointer_repr guard) and _storage_optional_return_wide
+(the F1|wrapper pair, incl. the REVERSE `Own[Optional[W]]` spelling).
+Landed across three slices + the harvest round (commits 4f21d44aed,
+ea98cf3939, 514c49f91c, 9048080578): the return facts and their source
+rows (pointee-name/field addr lifts, the container-element subscript
+lift, the narrowed value-local deref+move), OPT_STORAGE_CALL (a new
+PtrSlotKind: `std::optional<T> __slot_N` + optional_to_ptr lift),
+lazily-slotted branch-hoisted ptr-opt locals (bare-copy/None reseats;
+the AST allocates no if-head slot there), the ifexpr call arm, the wide
+param seeds/None-tests/print_optional row, the deref-name arg row, the
+None-narrowed Optional[wrapper] isinstance subject, wrapper NAME
+elements in container literals (with the element move mirror), G2's
+sync generic-tuple return literal (the resumable to_val_or_ptr builder
+reused) and G3's Array borrow returns + Array pointer-slot globals.
+
+LESSON (the wave's catch): the remote byte-diff -- not the local units
+-- caught three consumer-position leaks of the widened class, one per
+consumer kind: the PRINT row (container pointees spell kind-keyed
+print_optional template args), a FIELD row (a None-narrowed Optional
+field retypes its expr but stores std::optional -- key the DECLARED
+type), and a DECL row (OPT_STORAGE_CALL over-captured plain
+`Own[Box]`-returning calls -- require the storage-optional callee).
+All three are boundary-pinned in test_thir_wave_pointee.py now.
+
+Two sibling-lookup fixes rode along: substitute_method_type_params now
+propagates is_property_getter/setter (the fact-drop class the
+deep_const audit named; an inherited GENERIC property's resolved fi was
+unrecognizable as an accessor), and the four record-dunder predicates
+share _record_method_with_parents (get_method misses inherited dunders
+through generic parents; getitem routed while setitem/delitem silently
+rejected -- consolidated after review).
+
+12 flips: generic_recursive_own_optional_return,
+generic_optional_{record,mutate,none_join}, getitem_optional_ref,
+union_recursive_optional, coro_pointer_local_no_leak{,_reverse},
+reassign_none_use_before_anchor, const_borrow_local_dict,
+inferred_readonly_borrow_const, implicit_return_none. PARKED:
+inherited_accessor_subst (write-through-property, REF_ALIAS-adjacent).
+Partials (one call-composition blocker each): ref_generic_tuple_return,
+tuple_generic, generic_int_param_array_subst.
+
+### Queue item 4 -- async coro-param drill + erased adapter handle (2026-08-04)
+
+Four rows, each clearing its witness: the Own[@dynamic P] frame-PARAM
+family (bare unique_ptr<P> field; the forward-move read rides the
+existing arg rows) + the Own[T] return slot (STORAGE Poll<T>, the
+position-blind tail); the owned-erased handle's dedicated decl arm
+(_lower_erased_handle_write -- member-assign of the own-arg render,
+slot keyed on the FRAME type since sema's declared map carries the bare
+structural wrap, movability promoted, subtracted from
+plain_frame_fields so a branch bind can never silently drop the
+make_adapter wrap; CFG-split branch binds are BB leaves and route
+through the arm anyway); the resumable protocol-param loop
+(protocol_param_ok threads per-name in leaf mode -- a suspension-free
+loop over a bare-rendering param NAME emits the sync universal
+::tpy::__iter__ shape inside the case block); and the frame_opt_ptr
+unpack bind (a __for_tup_* VALUE holder with STORAGE-optional elements
+admits via opt_tuple_holders, the head unpack mutable-ref-binds it and
+lifts each Optional target via optional_to_ptr).
+
+LESSON (the wave's catch): the collateral flip
+(nested_def/in_generic_async) exposed a latent COMMENT divergence -- the
+frame nested-def marker line spelled the ESCAPED member name
+(`// def double_: frame member`) where the AST keeps the PYTHON name.
+A marker that only shows on keyword-colliding names is invisible until
+a case that routes one flips; the byte-diff caught it at harvest, not
+any unit. Source comments are part of the byte contract.
+
+5 flips: async_method_static_protocol_param, async_bind_cross_module,
+async_bind_template_fallback, gen_resumable_tuple_unpack_optional,
+nested_def/in_generic_async. PARKED: the start_server trio
+(async-def-NAME-into-Callable lambda-bridge synthesis -- item 7's
+render family, confirmed by re-probe).
+
+### Queue item 5 -- Optional[dyn P] family (P-A) + nullproto constexpr (P-B) (2026-08-04)
+
+P-A, over the pointee accessor's dyn class: the None-narrowed
+Optional[dyn P] method receiver joins the protocol family
+(method.opt_dyn_recv; `->` via the pointer set); the
+structural-conformer Adapter/RefAdapter arg temps (brace init +
+`&(__tmp_N)`), with the adapter face checked BEFORE the
+polymorphic-subclass ctor face -- polymorphic_source_inner passes for
+ANY distinct record under a dyn-protocol inner, so the old order was a
+LATENT wrong 'ctor' admission (`Cat __tmp` instead of the Adapter),
+masked only by whole-body fallback; _protocol_union_ctor_arg's 'addr'
+verdict got the same structural-conformer exclusion. The
+OPT_PROTO_RVALUE local decl types the slot at the conformer's class
+(inheriting) or `auto` (structural, monomorphized) with the deduced
+`auto* p = &__slot_N;` pointer line.
+
+P-B, the nullable STATIC-protocol param machinery:
+_nullable_static_protocol_param (Optional[proto] | nullable
+all-protocols union -> the monomorphized `const T_x*`) seeds the param
+into lc.pointers -- closing the seed_param_locals partial the context
+docstring had documented -- and keys the guard swap
+(_lower_nullproto_guard_if: `if x is not None:` -> `if constexpr
+(!std::same_as<T_x, std::nullptr_t>)`, _lower_constexpr_if's branch
+model). Name reads deref at every value position ((*items) at len
+args, loop captures, subscript receivers, required-union pass-onward,
+including the guard-retyped protocols-only union spelling); None args
+spell the typed null static_cast<std::nullptr_t*>(nullptr); the 'addr'
+lift runs at free/ctor/METHOD positions alike (the required union has
+no None member, so ArrayList.extend's bare method bind is inert to the
+verdict -- the old blanket method exclusion protected nothing).
+_protocol_union_ctor_arg + _nullable_protocol_slot moved to
+predicates.py as the shared gate/lowering verdict.
+
+9 flips: opt_dyn_{readonly,structural,generic_protocol}_param,
+opt_dyn_protocol_{local,param} (P-A);
+isinstance_optional_protocol, protocol_optional_param,
+protocol_union_optional, protocol_narrowed_to_union (P-B).

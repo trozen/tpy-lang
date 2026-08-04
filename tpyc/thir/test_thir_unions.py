@@ -114,12 +114,13 @@ class TestValueUnionEligibility:
         assert isinstance(arg, THIRArgTemp)
         assert isinstance(arg.init, THIRLiteral) and arg.init.value == 2.5
 
-    def test_union_print_rejected(self):
-        # union __str__ is an S2-deferred row; print(v) stays AST.
+    def test_union_print_routes_str_visitor(self):
+        # A union-typed NAME print arg streams via the `::tpy::__str__`
+        # visitor (the union-returns wave's PrintForm.STR row).
         thir = _lower(_PRELUDE + (
             "def p(v: Int32 | Float64) -> None:\n"
             "    print(v)\n"))
-        assert _fn(thir, "p") is None
+        assert _fn(thir, "p") is not None
 
     def test_str_member_union_whole_variant_routes(self):
         # A str member is owned `std::string` in the value variant (no

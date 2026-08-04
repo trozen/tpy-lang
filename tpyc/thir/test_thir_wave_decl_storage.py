@@ -425,9 +425,9 @@ class TestUnionNarrowBindingVerdict:
         assert "std::holds_alternative<Dog*>(u)" in out
         _assert_byte_identical(src)
 
-    def test_optional_returning_call_field_receiver_stays_ast(self):
-        # `_indirect_field_receiver_ok` admits F1-record inner results only:
-        # an Optional-returning call reads through the AST's own unwrap.
+    def test_optional_returning_call_field_receiver_routes(self):
+        # The wide-pointee rows carry the Optional-returning method call
+        # decl + the narrowed field chain byte-identically now.
         src = (
             "from tpy import Int32\n"
             "class Holder:\n"
@@ -449,7 +449,7 @@ class TestUnionNarrowBindingVerdict:
             "main()\n"
         )
         _out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        assert not fallback
         _assert_byte_identical(src)
 
     def test_for_each_element_union_match_extracts_by_value(self):

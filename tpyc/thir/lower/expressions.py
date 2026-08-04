@@ -51,6 +51,7 @@ from ...parse.nodes import (
 )
 from ...binding_audit import acknowledge_binding_partial
 from ...typesys import (
+    AliasRef,
     RecursiveAliasInstanceType,
     AnyType,
     RefType,
@@ -129,7 +130,10 @@ from ...codegen_cpp.context import (
     view_key_target,
 )
 from ...codegen_cpp.protocols import (dynamic_adapter_type,
-                                      dynamic_base_name, narrow_cast_rhs)
+                                      dynamic_base_name,
+                                      dynamic_ref_adapter_type,
+                                      narrow_cast_rhs,
+                                      record_inherits_dynamic)
 from ...typesys import (
     polymorphic_source_inner,
     polymorphic_source_is_pointer,
@@ -311,13 +315,20 @@ from .predicates import (
     _nonvalue_container_ret,
     _narrow_bigint_index,
     _optional_ptr_arg_face,
+    _nullable_static_protocol_param,
+    _nullable_protocol_slot,
+    _protocol_union_ctor_arg,
+    _static_protocol_union_binding,
     _already_pointer_source,
     _const_borrow_name,
     _poly_isinstance_value_info,
     _poly_subject_decl,
     _poly_subject_readonly,
     _optional_ptr_arg_slot,
+    _opt_pointee_wide,
     _optional_ptr_borrow,
+    _optional_ptr_borrow_wide,
+    _storage_optional_return_wide,
     _optional_ptr_borrow_name,
     _optional_checked_field,
     _optional_checked_field_over_call_ok,
@@ -398,7 +409,11 @@ from .predicates import (
     _value_tuple_global,
     _value_tuple_return,
     _ru_container_literal_ok,
+    _dyn_borrow_return,
+    _own_dyn_return,
     _own_genrec_return,
+    _wrapper_borrow_return,
+    _wrapper_union_like,
     _ru_wrapper_own_call_arg,
     _ru_instance_literal_ok,
     _ru_wrapper_member_name_arg,
@@ -568,6 +583,7 @@ from .checks import (
     _str_list_method_iterable_ok,
     method_literal_mangled_cpp,
     _record_method_call_supported,
+    _recv_own_dyn,
     _recv_shape_reject,
     _value_tuple_pass_through_arg,
     _value_union_temp_arg,
@@ -741,13 +757,19 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _storage_call_ret(ret, analyzer) is not None)
               # An Own-optional-returning call lands bare in its storage
               # `std::optional<T>` decl slot (`r = move_out(True);`) -- the
-              # method gate's _storage_optional_return_type escape, the
-              # free-call twin.
+              # method gate's escape, the free-call twin. WIDE pointee
+              # class: the OPT_STORAGE_CALL slot consumes the whole
+              # optional, member-shape-blind. `fi.return_type` covers the
+              # `Own[Optional[W]]` spelling get_expr_type strips.
               or (result is _ExprResultUse.STORAGE
-                  and _storage_optional_return_type(
-                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
-                      if isinstance(ret, TpyType) else None,
-                      analyzer) is not None
+                  and (_storage_optional_return_wide(
+                          unwrap_readonly(unwrap_ref_type(
+                              unwrap_send_sync(ret)))
+                          if isinstance(ret, TpyType) else None,
+                          analyzer) is not None
+                       or _storage_optional_return_wide(
+                          fi.return_type if fi is not None else None,
+                          analyzer) is not None)
                   and _witness("call.storage_opt_ret"))
               # An Own[genrec]-returning call at a STORAGE sink (the
               # argtemp.ru_wrapper_call temp): the by-value wrapper return
@@ -756,6 +778,37 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _own_genrec_return(
                       fi.return_type if fi is not None else None) is not None
                   and _witness("call.genrec_own_ret"))
+              # An `Own[@dynamic P]`-returning call (`std::unique_ptr<P>` by
+              # value) at a STORAGE/VALUE/DISCARD sink: the handle is
+              # consumed whole (a forward return / ternary arm / forward
+              # arg) or dropped at the semicolon; renders bare either way.
+              or (result in (_ExprResultUse.STORAGE, _ExprResultUse.VALUE,
+                             _ExprResultUse.DISCARD)
+                  and _own_dyn_return(
+                      fi.return_type if fi is not None else None) is not None
+                  and _witness("call.dyn_own_ret"))
+              # A @dynamic-protocol call result composing as a method
+              # RECEIVER / borrow bind: an Own[P] handle arrows
+              # (`make_parrot()->name()`), a borrow `P&` result dots
+              # (`echo_readonly(dog).name()`) -- both bare. The erased-decl
+              # `&`-lift consumes the same borrow result under addr_call.
+              or (result in (_ExprResultUse.RECEIVER,
+                             _ExprResultUse.BORROW_BIND)
+                  and fi is not None
+                  and (_own_dyn_return(fi.return_type) is not None
+                       or _dyn_borrow_return(fi.return_type) is not None)
+                  and _witness("call.dyn_recv_ret"))
+              # A wrapper-union BORROW-returning call composing in place
+              # (`count(passthru(tree))` -- the `Expr&` result binds the
+              # const-ref arg slot directly): renders bare, no temp or
+              # lift. Keyed on the bare (non-Own) wrapper return slot --
+              # the same fact that renders the signature `Expr&`.
+              or (result in (_ExprResultUse.VALUE,
+                             _ExprResultUse.BORROW_BIND)
+                  and fi is not None
+                  and _wrapper_borrow_return(fi.return_type, analyzer)
+                  is not None
+                  and _witness("call.wrapper_borrow_ret"))
               # A container-returning call at the STORAGE return sink lands
               # bare regardless of element family -- the whole container is
               # returned by value, no per-element conversion happens (unlike
@@ -869,52 +922,6 @@ def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
     # gate per position (a temp-needing arg without the ridden flush right
     # rejects in the arg rows, not here).
     return _ctor_instantiation_ok(e, lc.analyzer)
-
-
-def _nullable_protocol_slot(ptype: 'TpyType | None') -> 'list | None':
-    """The NULLABLE all-protocols slot's member list -- an
-    Optional[protocol] normalization or a union with a None member whose
-    other members are all protocols -- or None. `_gen_protocol_arg` splits
-    on has_none, NOT on the call kind: a REQUIRED protocol union
-    monomorphizes to one template param and takes the plain
-    `gen_expr_deref` render; only the nullable form lifts."""
-    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-            if ptype is not None else None)
-    if isinstance(slot, OptionalType):
-        members = [unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            slot.inner)))]
-    elif isinstance(slot, UnionType):
-        members = [m for m in slot.members if not is_void_like_type(m)]
-        if len(members) == len(slot.members):
-            return None
-    else:
-        return None
-    if not members or not all(
-            isinstance(m, NominalType) and m.is_protocol for m in members):
-        return None
-    return members
-
-
-def _protocol_union_ctor_arg(arg: TpyExpr, ptype: 'TpyType | None',
-                             locals_: dict[str, TpyType],
-                             analyzer) -> 'str | None':
-    """A NAME into a ctor slot whose non-None members are all PROTOCOLS:
-    an F1-record name, a Span name, and a builtin-container name all take
-    the address-of lift (`&(a)` / `&(s)` / `&(words)` -- the C++ ctor's
-    protocol overload binds the pointer; a bare record render was
-    probe-caught divergent, the corpus's seeming bare witness was
-    `copy(a)`'s copy-construct, a different construct). Returns 'addr'
-    or None."""
-    if not isinstance(arg, TpyName) or arg.name not in locals_:
-        return None
-    if _nullable_protocol_slot(ptype) is None:
-        return None
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        locals_[arg.name])))
-    if (_f1_record(at, analyzer) or is_span(at)
-            or is_list(at) or is_dict(at) or is_set(at)):
-        return "addr"
-    return None
 
 
 def _protocol_union_literal_temp_arg(arg: TpyExpr, ptype: 'TpyType | None',
@@ -1426,7 +1433,6 @@ def _lower_marker_method_arg(
         error_return_ok=error_return_ok)
     return _lower_call_arg(
         a, ptype, lc, declared, temp_args=temp_args, marker_arg=True)
-
 
 
 def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
@@ -3089,7 +3095,18 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
         if name in lc.prescan.global_slots:
             return True
         bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(binding_type)))
-        return bool(is_list(bt) or is_dict(bt) or is_set(bt) or is_array(bt))
+        # A nullable-protocol param's pointer binding derefs at every value
+        # position -- the loop's source capture (`auto& __obj_N =
+        # (*items);`), the direct-subscript receiver (`(*extra)[i]`) --
+        # exactly the AST's gen_expr over a pointer-local; RECEIVER /
+        # BORROW_BIND positions are already excluded above (arrow access
+        # spells itself).
+        return bool(is_list(bt) or is_dict(bt) or is_set(bt) or is_array(bt)
+                    or is_protocol_type(bt)
+                    or _nullable_static_protocol_param(bt) is not None
+                    # ... and the narrowed all-protocols UNION binding of
+                    # the same param (`total((*items))` inside the guard).
+                    or _static_protocol_union_binding(bt))
     return False
 
 
@@ -4080,12 +4097,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # either path), mirroring _gen_subscript's fallback; a
                 # runtime-BigInt index against a FIXED-int key param takes the
                 # `.to_fixed_check` narrow -- excluded.
+                # A ptr-repr Optional result (`b[1]` -> the getitem's bare
+                # `T*`, wide pointee class) rides the passthrough decl
+                # sink; the raw operator[] render is the same, only the
+                # form tag differs (a borrow pointer, not a value).
+                opt_ptr_ret = (use.ptr_opt_passthrough
+                               and _optional_ptr_borrow_wide(rtype, analyzer)
+                               is not None)
                 ret_ok = (_resolved_scalar(rtype, analyzer)
                           or _eligible_char(rtype)
                           or _eligible_enum(rtype, analyzer) is not None
                           or _resolved_str_value(rtype, analyzer) is not None
                           or _resolved_bytes_value(rtype, analyzer) is not None
                           or _eligible_ptr_value(rtype, analyzer)
+                          or opt_ptr_ret
                           # A BY-VALUE F1-record result bound at a
                           # BORROW_BIND sink (the protocol arg-temp init
                           # `auto __tmp_N = container[1];`): the raw
@@ -4111,7 +4136,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         _lower_expr(e.index, lc, declared), e.index,
                         analyzer.get_expr_type(e.obj), analyzer, loc),
                     record_getitem=True,
-                    form=Form.VALUE,
+                    form=Form.BORROW if opt_ptr_ret else Form.VALUE,
                     loc=loc)
             recv_t = _subscript_container_recv_type(
                 e.obj, declared, analyzer)
@@ -4921,10 +4946,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # -- an lvalue when both arms are lvalues, the REF_ALIAS
                 # decl's init); arm shapes gate in their own lowering.
                 or _ifexpr_container(rtype, analyzer) is not None
-                # A pointer-repr Optional[F1-record] ternary: each arm
-                # normalizes to the `T*` the result renders as (the
-                # _ptr_optional_branch mirror in _lower_if_expr).
-                or _optional_ptr_borrow(rtype, analyzer) is not None
+                # A pointer-repr Optional ternary (WIDE pointee class):
+                # each arm normalizes to the `T*` the result renders as
+                # (the _ptr_optional_branch mirror in _lower_if_expr).
+                or _optional_ptr_borrow_wide(rtype, analyzer) is not None
                 # A VALUE-repr Optional ternary: both arms wrap in the
                 # spelled optional (`std::optional<std::string>("hello")`)
                 # for C++ ternary deduction -- the value-repr sibling; arm
@@ -4934,7 +4959,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # lvalue when both arms are lvalues -- the Own-slot copy /
                 # REF_ALIAS sources); arm shapes gate in _lower_if_expr.
                 or _f1_record(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(rtype))), analyzer)):
+                    unwrap_send_sync(rtype))), analyzer)
+                # A ternary of `Own[@dynamic P]`-returning calls (sema
+                # strips the Own from the ternary's own type): renders
+                # bare, each arm a unique_ptr rvalue the ?: moves through.
+                or _dyn_own_call_ternary(e, rtype, analyzer)):
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc,
@@ -6994,7 +7023,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # `std::get<0>(t)->get()`); a storage/owned element is a
                 # value (`.`) -- the field-access arrow's shared rule.
                 or (isinstance(e.obj, TpySubscript)
-                    and _subscript_yields_borrow_ptr(e.obj, lc))),
+                    and _subscript_yields_borrow_ptr(e.obj, lc))
+                # An `Own[@dynamic P]` receiver -- name or call rvalue --
+                # is a unique_ptr, so the member access arrows
+                # (`_receiver_is_own_dyn`'s mirror).
+                or _recv_own_dyn(e.obj, declared, analyzer)),
             deref_check=deref_check,
             move_receiver=(bool(fi.is_consuming)
                            and isinstance(e.obj, TpyName)
@@ -7179,12 +7212,18 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         return _lower_lambda(e, lc, declared)
     if isinstance(e, TpyTupleLiteral):
         # A value-tuple literal with no slot threaded from the position
-        # (`t = astuple(p)`, an unpack source): the AST spells the tuple's
-        # own type (`std::tuple<int32_t, int32_t>{p.x, p.y}`), so the slot
-        # IS the expression type -- take it from sema rather than leaving
-        # the literal armless. Every other tuple literal reaches
-        # `_lower_tuple_literal` with its position's slot already.
-        vt = _value_tuple(lc.analyzer.get_expr_type(e), lc.analyzer)
+        # (`t = astuple(p)`, an unpack source, an Own[union] return): the
+        # AST spells the tuple's own RESOLVED type (get_resolved_type --
+        # int-literal elements resolve to the default int, so
+        # `("hi", 7)` spells `std::tuple<std::string, int32_t>{...}`), so
+        # the slot IS the resolved expression type. Every other tuple
+        # literal reaches `_lower_tuple_literal` with its position's slot.
+        vt_t = lc.analyzer.get_expr_type(e)
+        if vt_t is not None:
+            vt_t = resolve_int_literals(
+                unwrap_readonly(vt_t),
+                lc.analyzer.ctx.default_int_for_literal)
+        vt = _value_tuple(vt_t, lc.analyzer)
         if vt is None:
             raise ThirUnsupported("expr.tuple_literal")
         _witness("expr.value_tuple_self_typed")
@@ -7688,9 +7727,14 @@ def _lower_ru_literal(e: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
     loc = getattr(e, "loc", None)
     # A GENERIC alias instance types the literal as the WRAPPER itself
     # (`Tree[int]`), not as `list[Tree[int]]` the way the non-generic
-    # `AliasRef` form does -- but the AST spells the same container around
-    # it, so synthesise that container for the spelling and the result type.
-    instance = isinstance(at, RecursiveAliasInstanceType)
+    # `AliasRef` form usually does -- but the AST spells the same container
+    # around it, so synthesise that container for the spelling and the
+    # result type. An OUTER non-generic literal at a wrapper-annotated
+    # slot (`tree: Expr = [...]` / `return {...}` at Own[V]) types AS the
+    # wrapper too and takes the same synthesis.
+    instance = (isinstance(at, RecursiveAliasInstanceType)
+                or (isinstance(at, (UnionType, AliasRef))
+                    and _wrapper_union_like(at, lc.analyzer) is not None))
     if isinstance(e, TpyArrayLiteral):
         elems = tuple(_lower_ru_elem(x, ut, lc, declared)
                       for x in e.elements)
@@ -7719,7 +7763,13 @@ def _lower_ru_elem(x: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
         # None-literal emit).
         return THIRLiteral(result_type=ut, value=None, form=Form.VALUE,
                            loc=getattr(x, "loc", None))
-    return _lower_expr(x, lc, declared, use=_NESTED_ARG_USE)
+    lowered = _lower_expr(x, lc, declared, use=_NESTED_ARG_USE)
+    if isinstance(x, TpyName) and _is_move_source(x, lc):
+        # The AST's element `_maybe_move` wraps ANY movable name at its
+        # last use -- a wrapper NAME element mirrors it.
+        lowered = THIRMove(result_type=lowered.result_type, value=lowered,
+                           form=lowered.form, loc=getattr(x, "loc", None))
+    return lowered
 
 
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
@@ -9323,6 +9373,46 @@ def _consuming_iter_wrap(a: TpyExpr, ptype: 'TpyType | None',
         loc=getattr(a, "loc", None))
 
 
+def _lower_dyn_own_conformer(a: TpyExpr, ptype: 'TpyType | None',
+                             conf: 'tuple[NominalType, str]',
+                             lc: '_LowerCtx', declared: dict[str, TpyType],
+                             *, temp_args: bool) -> THIRExpr:
+    """The concrete-conformer faces of _gen_dynamic_protocol_own_arg,
+    verdict-keyed via the shared classifier: an inheritance conformer
+    takes `std::make_unique<U>(x)` (unique_ptr<U> converts to
+    unique_ptr<P>), a structural one the owning
+    `::tpy::make_adapter<Base>(x)` Adapter wrap. A movable NAME source
+    moves in (`_maybe_move` -> _is_move_source); a ctor rvalue lands
+    bare. Shared by the `Own[P]` call-arg row and the `Own[P]` return
+    arm (the AST return path renders through the same helper)."""
+    conf_proto, verdict = conf
+    inner = _lower_expr(a, lc, declared,
+                        use=replace(_NESTED_ARG_USE,
+                                    result=_ExprResultUse.BORROW_BIND,
+                                    allow_temps=temp_args,
+                                    indirect_read=True),
+                        allow_unrouted_name=True)
+    if isinstance(a, TpyName) and _is_move_source(a, lc):
+        inner = THIRMove(result_type=inner.result_type, value=inner,
+                         form=inner.form,
+                         loc=getattr(a, "loc", None))
+    at = lc.analyzer.get_expr_type(a)
+    at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    if isinstance(at_u, OwnType):
+        at_u = unwrap_readonly(at_u.wrapped)
+    if verdict == "inherit":
+        _witness("dynown.make_unique")
+        wrap = f"std::make_unique<{lc.render_type(at_u)}>({{0}})"
+    else:
+        _witness("dynown.adapter_conformer")
+        base = dynamic_base_name(conf_proto, lc.analyzer)
+        wrap = f"::tpy::make_adapter<{base}>({{0}})"
+    return THIRCoerce(
+        result_type=unwrap_send_sync(ptype), expr=inner,
+        coercion_name="dyn_own_adapter",
+        wrap=wrap, form=inner.form, loc=getattr(a, "loc", None))
+
+
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
                     nested_temps: bool = False,
@@ -9585,15 +9675,26 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # the copy-vs-alias fence on the generic field VALUE position does
         # not apply here.
         return _lower_expr(a, lc, declared, field_prechecked=True)
+    if (isinstance(a, TpyNoneLiteral)
+            and _protocol_union_ctor_arg(a, ptype, declared, lc.analyzer)
+            == "nullproto"):
+        # None at a nullable STATIC-protocol slot: the typed null
+        # (`static_cast<std::nullptr_t*>(nullptr)` -- selects the
+        # T_x = std::nullptr_t default instantiation).
+        _witness("arg.nullproto_none")
+        return THIRModuleVar(cpp="static_cast<std::nullptr_t*>(nullptr)",
+                             result_type=unwrap_send_sync(ptype),
+                             form=Form.BORROW,
+                             loc=getattr(a, "loc", None))
     if (isinstance(a, TpyName)
-            and not method_arg
             and _protocol_union_ctor_arg(a, ptype, declared, lc.analyzer)
             == "addr"):
-        # A Span name into an all-protocols union ctor slot: the address-of
-        # lift (`&(s)` -- the Spannable overload binds the pointer). CTOR
-        # positions only: a user METHOD over the same union slot is a C++
-        # template whose concept picks the branch, so its arg renders bare
-        # (`a.extend(b)`) -- the address-of would bind the wrong overload.
+        # A Span/container name into a NULLABLE all-protocols slot: the
+        # address-of lift (`&(s)` / `c2.update(nums, &(more))` -- the
+        # nullable slot binds `const T_x*` on free, ctor, and method
+        # positions alike). The REQUIRED union stays bare everywhere: it
+        # has no None member, so the verdict is inert for it
+        # (`a.extend(b)` keeps its bare template bind).
         return THIROptionalPtrArg(
             result_type=ptype, value=_lower_expr(a, lc, declared),
             addr_of=True, form=Form.BORROW, loc=getattr(a, "loc", None))
@@ -9721,39 +9822,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             form=inner.form, loc=getattr(a, "loc", None))
     conf = _dyn_own_conformer_arg(a, ptype, declared, lc.analyzer)
     if conf is not None:
-        # The concrete-conformer faces of _gen_dynamic_protocol_own_arg,
-        # verdict-keyed via the shared classifier: an inheritance conformer
-        # takes `std::make_unique<U>(x)` (unique_ptr<U> converts to
-        # unique_ptr<P>), a structural one the owning
-        # `::tpy::make_adapter<Base>(x)` Adapter wrap. A movable NAME source
-        # moves in (`_maybe_move` -> _is_move_source); a ctor rvalue lands
-        # bare.
-        conf_proto, verdict = conf
-        inner = _lower_expr(a, lc, declared,
-                            use=replace(_NESTED_ARG_USE,
-                                        result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=temp_args,
-                                        indirect_read=True),
-                            allow_unrouted_name=True)
-        if isinstance(a, TpyName) and _is_move_source(a, lc):
-            inner = THIRMove(result_type=inner.result_type, value=inner,
-                             form=inner.form,
-                             loc=getattr(a, "loc", None))
-        at = lc.analyzer.get_expr_type(a)
-        at_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-        if isinstance(at_u, OwnType):
-            at_u = unwrap_readonly(at_u.wrapped)
-        if verdict == "inherit":
-            _witness("dynown.make_unique")
-            wrap = f"std::make_unique<{lc.render_type(at_u)}>({{0}})"
-        else:
-            _witness("dynown.adapter_conformer")
-            base = dynamic_base_name(conf_proto, lc.analyzer)
-            wrap = f"::tpy::make_adapter<{base}>({{0}})"
-        return THIRCoerce(
-            result_type=unwrap_send_sync(ptype), expr=inner,
-            coercion_name="dyn_own_adapter",
-            wrap=wrap, form=inner.form, loc=getattr(a, "loc", None))
+        return _lower_dyn_own_conformer(a, ptype, conf, lc, declared,
+                                        temp_args=temp_args)
     # The two arg-temp rows, admitted only when the enclosing
     # statement position flushes (`temp_args`; see _lower_expr). The record
     # row mirrors the ref-param cascade arm: the temp declares the SLOT's
@@ -10379,6 +10449,33 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                init=_lower_expr(a, lc, declared, use=init_use),
                                addr_of=True,
                                form=Form.BORROW, loc=loc)
+        if opt_face in ('adapter_rvalue', 'adapter_name'):
+            # Structural conformer at an Optional[@dynamic P] slot: the
+            # vtable rides an adapter temp -- Adapter<P, C> (owning, ctor
+            # rvalue) / RefAdapter<P, C> (non-owning, name lvalue), brace
+            # init, then `&(__tmp_N)` binds the nullable base pointer.
+            if not temp_args:
+                raise ThirUnsupported(
+                    "optional-ptr adapter face outside a flush position")
+            if isinstance(a, TpyName) and a.name in lc.pointers:
+                raise ThirUnsupported("optional-ptr adapter pointer source")
+            inner = unwrap_readonly(ot.inner)
+            at_c = lc.analyzer.get_expr_type(a)
+            at_c = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at_c)))
+                    if at_c is not None else None)
+            if not isinstance(at_c, NominalType):
+                raise ThirUnsupported("optional-ptr adapter source type")
+            concrete_cpp = lc.render_type(at_c)
+            adapter_cpp = (
+                dynamic_adapter_type(inner, concrete_cpp, lc.analyzer)
+                if opt_face == 'adapter_rvalue'
+                else dynamic_ref_adapter_type(inner, concrete_cpp,
+                                              lc.analyzer))
+            _witness("optptr.adapter_temp")
+            return THIRArgTemp(
+                result_type=inner, cpp_type=adapter_cpp, brace_init=True,
+                init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
+                addr_of=True, form=Form.BORROW, loc=loc)
         if opt_face == 'lift':
             _witness("optptr.lift")
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW,
@@ -10386,12 +10483,16 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                       lift=True, loc=loc)
         if opt_face == 'call_pass':
             # The borrow-returning call IS the `T*` the slot binds -- bare,
-            # exactly the AST's OptionalType-arg pass-through.
+            # exactly the AST's OptionalType-arg pass-through. The
+            # statement flush rides into the passed call's OWN args (its
+            # container-literal temp lands at the AST's pre-statement
+            # flush point like any nested call arg's).
             _witness("optptr.call_pass")
             return _lower_expr(
                 a, lc, declared,
                 use=_ExprUse(ptr_opt_passthrough=True,
-                             record_ctor=_RecordCtorUse.NESTED_ARG))
+                             record_ctor=_RecordCtorUse.NESTED_ARG,
+                             allow_temps=temp_args or nested_temps))
         elif opt_face == 'pass' or (isinstance(a, TpyName)
                                     and a.name in lc.pointers):
             _witness("optptr.pass")
@@ -11063,6 +11164,25 @@ def _ifexpr_container(rtype: 'TpyType | None', analyzer) -> 'TpyType | None':
     return tu if (is_list(tu) or is_dict(tu) or is_set(tu)) else None
 
 
+def _dyn_own_call_ternary(e: 'TpyIfExpr', rtype: 'TpyType | None',
+                          analyzer) -> bool:
+    """A ternary of `Own[@dynamic P]`-returning calls (`return a() if c
+    else b()`): sema strips the Own from the ternary's own type, so key on
+    the ARMS' callee return slots. Renders bare (`((c) ? (a()) : (b()))`),
+    each arm a unique_ptr rvalue the C++ ?: moves through."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+         if rtype is not None else None)
+    if not (isinstance(u, NominalType) and is_dyn_protocol(u)):
+        return False
+    for arm in (e.then_expr, e.else_expr):
+        if not isinstance(arm, TpyCall):
+            return False
+        fi = arm.resolved_function_info
+        if fi is None or _own_dyn_return(fi.return_type) is None:
+            return False
+    return True
+
+
 def _value_opt_ternary_result(rtype: 'TpyType | None',
                               analyzer) -> 'OptionalType | None':
     """A value-repr Optional ternary RESULT -- the scalar or owned-view
@@ -11120,6 +11240,15 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
                            loc=loc)
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(arm))))
+    if (isinstance(arm, (TpyCall, TpyMethodCall))
+            and _ptr_opt_borrow_call_ret(arm, at)):
+        # A BORROW-returning ptr-Optional call arm (`first(xs) if c else
+        # None`): the `T*` result IS the ternary's own shape, bare.
+        _witness("ifexpr.optptr_call_arm")
+        return _lower_expr(arm, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        ptr_opt_passthrough=True),
+                           allow_whole_optional=True)
     if isinstance(at, OptionalType):
         if (isinstance(arm, TpyName)
                 and _optional_ptr_borrow_name(arm, declared, analyzer)
@@ -11171,7 +11300,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # before the statement); the ARMS evaluate lazily and never get it.
     cond = _lower_truthy(e.condition, lc, declared, temps_ok=cond_temps_ok)
     result_t = slot if slot is not None else rtype
-    popt = _optional_ptr_borrow(result_t, analyzer)
+    popt = _optional_ptr_borrow_wide(result_t, analyzer)
     if popt is not None:
         # Pointer-repr Optional result: each arm normalizes to `T*` so the
         # C++ ?: operands match (_gen_if_expr's _ptr_optional_branch); the

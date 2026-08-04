@@ -250,13 +250,16 @@ class TestProtocolMethodCallRejects:
 
 
 class TestProtocolParamRejects:
-    def test_own_protocol_param_stays_ast(self):
-        # `Own[P]` is a `T_p&&` / unique_ptr slot: its reads move and its
-        # method calls render `->`. Not a protocol binding.
-        thir = _lower_ctx(_src(
+    def test_own_protocol_param_routes_arrow(self):
+        # `Own[P]` is a unique_ptr slot: not a protocol binding, but the
+        # own-dyn receiver family routes it and the member access arrows
+        # (`pet->make_noise()`; the dynret wave -- renders pinned in
+        # test_thir_wave_dynret).
+        src = _src(
             "from tpy import Own\n"
-            "def adopt(pet: Own[Pet]) -> None:\n    print(pet.make_noise())\n"))
-        assert _fn(thir, "adopt") is None
+            "def adopt(pet: Own[Pet]) -> None:\n    print(pet.make_noise())\n")
+        assert _fn(_lower_ctx(src), "adopt") is not None
+        _assert_byte_identical(src)
 
     def test_optional_protocol_param_stays_ast(self):
         thir = _lower_ctx(_src(
@@ -264,10 +267,12 @@ class TestProtocolParamRejects:
             "    if pet is not None:\n        print(pet.make_noise())\n"))
         assert _fn(thir, "maybe") is None
 
-    def test_protocol_return_stays_ast(self):
-        thir = _lower_ctx(_src(
-            "def pick(pet: Pet) -> Pet:\n    return pet\n"))
-        assert _fn(thir, "pick") is None
+    def test_protocol_return_routes_bare_param(self):
+        # `-> P` is the borrow `P&` slot; a borrow param returns bare
+        # (the dynret wave's ret_dyn_borrow row).
+        src = _src("def pick(pet: Pet) -> Pet:\n    return pet\n")
+        assert _fn(_lower_ctx(src), "pick") is not None
+        _assert_byte_identical(src)
 
 
 class TestDynProtocolDecl:

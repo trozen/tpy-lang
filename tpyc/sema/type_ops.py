@@ -1961,6 +1961,11 @@ class TypeOperations:
             is_noalloc=method.is_noalloc,
             is_readonly=method.is_readonly,
             is_consuming=method.is_consuming,
+            # Accessor identity is invariant under substitution; dropping
+            # it left an inherited generic property's resolved fi
+            # unrecognizable as a getter/setter.
+            is_property_getter=method.is_property_getter,
+            is_property_setter=method.is_property_setter,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
             is_classmethod=method.is_classmethod,

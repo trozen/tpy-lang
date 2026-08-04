@@ -725,9 +725,12 @@ class TestSlotAllocatingShapesReject:
     the `__global_slot` prefix at this scope; only GLOBAL_RVALUE is wired,
     so the rest reject the whole body rather than emit a block-scoped slot."""
 
-    def test_dyn_protocol_global_rejects(self):
-        # A @dynamic protocol global takes the adapter-slot `.emplace` rebind
-        # (`_gen_dynamic_protocol_rebind`), a different render.
+    def test_dyn_protocol_global_routes_static_rebind(self):
+        # A @dynamic protocol global takes the adapter-slot `.emplace`
+        # rebind (`_gen_dynamic_protocol_rebind`); its DYN_PROTOCOL slot
+        # hoist spells `static std::optional<T> __global_slot_N;` at this
+        # scope, so the shape ROUTES (the one rebind-slot kind wired for
+        # module scope; full render pinned in test_thir_wave_dynret).
         src = PRELUDE + (
             "from typing import Protocol\n"
             "from tpy import dynamic\n"
@@ -741,9 +744,9 @@ class TestSlotAllocatingShapesReject:
             "pet: Pet = Dog()\n"
             "print(pet.speak())\n"
         )
-        top, _w, fallback = _top_level(src)
-        assert top is None
-        assert [k for k in fallback if k.startswith("top_level:")], fallback
+        top, wit, fallback = _top_level(src)
+        assert top is not None, fallback
+        assert wit.get("top_level.global_dyn_rebind", 0) >= 1
 
 
 class TestEmptyContainerInstantiation:

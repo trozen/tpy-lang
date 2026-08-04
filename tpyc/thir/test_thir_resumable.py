@@ -635,12 +635,12 @@ class TestSlicedOutShapes:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "std::get<0>(t)" in cpp
 
-    def test_protocol_param_admits_iteration_still_defers(self):
+    def test_protocol_param_iteration_routes(self):
         # A static-protocol param passes the param gate (the monomorphized
-        # template frame is skeleton); this body still falls back --
-        # honestly, at the protocol-iterable for-each arm (un-ported sync
-        # territory), no longer at res.param_type. Byte-identity holds via
-        # the fallback.
+        # template frame is skeleton) and a suspension-free loop over it is
+        # one leaf statement: the same universal `::tpy::__iter__` shape a
+        # sync body renders, inside the case block (`auto& __src_0 = it;`
+        # -- the param frame field reads bare).
         src = (_PRE
                + "from typing import Iterable\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -650,9 +650,11 @@ class TestSlicedOutShapes:
                + "        total = total + x\n"
                + "    return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert "res.param_type" not in fallback
-        assert fallback.get("stmt.for_each:iter.user_iterator.name") == 1
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        # The template frame emits inline in the header.
+        assert "auto& __src_0 = it;" in hpp
 
     def test_generic_param_routes(self):
         # A generic async def's frame is a template, but its capture form
@@ -1251,12 +1253,12 @@ class TestBoundCoroAwaits:
         fallback = _res_fallback(src)
         assert fallback.get("res.coro_handle_source") == 1
 
-    def test_erased_handle_local_defers(self):
-        # An ERASED handle local (a helper returning Own[Cancellable[T]]
-        # erases the concrete frame via make_adapter): its AST write is
-        # `=` through the adapter wrap, not the frame_slot emplace --
-        # classification must reject the body whole, never route it
-        # through the emplace-shaped arm.
+    def test_erased_handle_local_routes(self):
+        # An ERASED handle local (a helper returning Own[Cancellable[T]]):
+        # the dedicated decl arm member-assigns the own-arg render -- here
+        # the FORWARD verdict, so the already-erased call result binds bare
+        # (`c = spawn();`, never the frame_slot emplace); the await polls
+        # the unique_ptr in place (skeleton).
         src = (self._PRELUDE
                + "from tpy import Own\n"
                + "from tpy.coro import Cancellable\n\n"
@@ -1266,8 +1268,12 @@ class TestBoundCoroAwaits:
                + "    c = spawn()\n"
                + "    print(await c)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.local_storage") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.erased_handle_write", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "c = spawn();" in cpp
+        assert ".emplace(spawn()" not in cpp
 
     def test_generic_method_factory_defers(self):
         # A generic async METHOD factory (`c.echo(5)` with echo[T]) stays
@@ -1614,10 +1620,12 @@ class TestOwnCancellableArgs:
         assert sum(fallback.values()) >= 1
         _assert_identical(src)
 
-    def test_erased_param_forward_defers(self):
-        # An already-ERASED Own[Cancellable] PARAM forwarded into the slot
-        # renders WITHOUT the re-wrap (a different face) -- must fall back,
-        # never take the handle wrap.
+    def test_erased_param_forward_routes(self):
+        # An already-ERASED Own[Cancellable] PARAM: the frame captures it
+        # as a bare `unique_ptr<P>` field (the Own[dyn P] param family) and
+        # the forward into the create_task slot moves it WITHOUT a re-wrap
+        # (`std::move(coro)` -- the forward verdict, never the handle
+        # wrap's `std::move(*(coro))`).
         src = ("import asyncio\n"
                + "from tpy import Int32, Own\n"
                + "from tpy.coro import Cancellable\n\n"
@@ -1627,9 +1635,11 @@ class TestOwnCancellableArgs:
                + "    t = asyncio.create_task(coro)\n"
                + "    return await t\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::move(coro)" in cpp
+        assert "std::move(*(coro))" not in cpp
 
 
 class TestMatchDispatch:
@@ -4663,17 +4673,22 @@ class TestQualcallRecordDiscardStorage:
                 "std::vector<uint8_t>>>(::tpystd::asyncio::wait_for<"
                 in cpp)
 
-    def test_unawaited_async_factory_decl_still_defers(self):
-        # BOUNDARY: an async factory bound at a plain decl slot is NOT the
-        # adapter position -- the coro_factory lift must not admit it.
+    def test_unawaited_async_factory_decl_routes_erased(self):
+        # An async factory bound at a decl slot IS the erased-handle
+        # position: the dedicated decl arm renders the own-arg wrap
+        # (`c = ::tpy::make_adapter<...>(wait_for(...));`), never a bare
+        # position-blind assign (which would silently drop the erasure).
         src = (self._PRE
                + "async def main_coro() -> None:\n"
                + "    c = asyncio.wait_for(sub(), 5.0)\n"
                + "    r = await c\n"
                + "    print(len(r))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert any(k.startswith("resumable:") for k in fallback)
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.erased_handle_write", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "c = ::tpy::make_adapter<" in cpp
 
     def test_set_result_none_unit_arg_routes(self):
         # `fut.set_result(None)` on Future[None]: the substituted T=None
@@ -5508,11 +5523,16 @@ class TestFlatAssertNarrowScoping:
     # `if env:`, and the asserting BB's entry env is empty by construction).
     def test_narrowing_does_not_leak_past_its_bb(self):
         # `a` is narrowed only inside the if-arm; the else-arm reads it
-        # UN-narrowed, which the print sink cannot route -- so the body must
-        # FALL BACK at the union-name print. MUTATION-CHECKED: with the
-        # snapshot removed this same body ROUTES (fallback {}) because the
-        # leaked narrowing makes the else-arm read look narrowed. Asserting
-        # the reason, not merely "identical", is what makes this fail.
+        # UN-narrowed, which the print sink cannot route IN A RESUMABLE --
+        # the union-returns wave's STR print row is fenced out of
+        # resumable bodies precisely because the AST's persistent
+        # assert-narrow alias leaks past its branch in the flat CFG
+        # (`__str__(__a)` in the else arm) while THIR's BB snapshot
+        # restores. So the body must FALL BACK at the union-name print.
+        # MUTATION-CHECKED: with the snapshot removed this same body
+        # ROUTES (fallback {}) because the leaked narrowing makes the
+        # else-arm read look narrowed. Asserting the reason, not merely
+        # "identical", is what makes this fail.
         src = (self._PRE
                + "def gen(a: int | str, flag: bool) -> Iterator[str]:\n"
                + "    if flag:\n"
@@ -5645,3 +5665,160 @@ class TestFrameLayoutPrecedence:
         verdict = plan.bindings["p"]
         assert verdict.kind is rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
         assert verdict.payload is not None and verdict.payload.endswith("Box*>")
+
+
+class TestOwnDynParamFamily:
+    """The Own[@dynamic P] frame-PARAM family + the Own[T] return slot
+    (the async coro-param drill): a `unique_ptr<P>` param field with
+    forwarded-move reads, and the generic ownership-transfer Poll<T>
+    payload."""
+
+    def test_method_own_protocol_param_routes(self):
+        # The witness shape: an async METHOD with an `Own[Cancellable[T]]`
+        # param and an `Own[T]` return. The param captures as the bare
+        # unique_ptr field (skeleton) and its only leaf read is the
+        # forwarded move into the wait_for emplace.
+        src = ("import asyncio\n"
+               "from tpy import Own\n"
+               "from tpy.coro import Cancellable\n\n\n"
+               "class Runner:\n"
+               "    async def run[T](self, coro: Own[Cancellable[T]],\n"
+               "                     timeout: float) -> Own[T]:\n"
+               "        return await asyncio.wait_for(coro, timeout)\n\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        _, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "__sub_0.emplace(std::move(coro), timeout);" in hpp
+
+    def test_own_bare_t_param_still_defers(self):
+        # BOUNDARY: an `Own[T]` PARAM (bare type param under Own) is not in
+        # the param families -- only the RETURN slot admits Own[T]. The
+        # capture form for an owned open-T param is unverified; it must
+        # keep res.param_type.
+        src = ("import asyncio\nfrom tpy import Own\n\n\n"
+               "async def ident[T](x: Own[T]) -> Own[T]:\n"
+               "    await asyncio.sleep(0.001)\n"
+               "    return x\n\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.param_type") == 1
+        _assert_identical(src)
+
+
+class TestErasedHandleWrites:
+    """The owned-erased @dynamic frame local's dedicated decl arm
+    (`_lower_erased_handle_write`): member-assign of the own-arg render."""
+
+    _PRE = ("import asyncio\n\n\n"
+            "async def add_one(n: int) -> int:\n"
+            "    await asyncio.sleep(0.001)\n"
+            "    return n + 1\n\n\n")
+
+    def test_erased_handle_rebind_routes(self):
+        # Two factory binds to one erased frame local: both render the
+        # member assign through the make_adapter wrap (the decl arm serves
+        # first bind and rebind alike -- every frame decl is an assign).
+        src = (self._PRE
+               + "async def main_coro() -> None:\n"
+               + "    d = asyncio.wait_for(add_one(1), 5.0)\n"
+               + "    t = asyncio.create_task(d)\n"
+               + "    print(await t)\n"
+               + "    d = asyncio.wait_for(add_one(8), 5.0)\n"
+               + "    t2 = asyncio.create_task(d)\n"
+               + "    print(await t2)\n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.erased_handle_write", 0) >= 2
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert cpp.count("d = ::tpy::make_adapter<") == 2
+        # The forward move-out at the create_task slot, both times.
+        assert cpp.count("(std::move(d))") == 2
+
+    def test_erased_handle_branch_bind_routes(self):
+        # A branch-nested erased bind that survives a suspension: the
+        # branch is CFG-split, so the decl is a BB leaf and the erased arm
+        # serves it (never the position-blind branch-decl assign, which
+        # would silently drop the erasure wrap).
+        src = (self._PRE
+               + "async def main_coro(flag: bool) -> None:\n"
+               + "    if flag:\n"
+               + "        d = asyncio.wait_for(add_one(1), 5.0)\n"
+               + "        await asyncio.sleep(0.001)\n"
+               + "        t = asyncio.create_task(d)\n"
+               + "        print(await t)\n"
+               + "    else:\n"
+               + "        print(0)\n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.erased_handle_write", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "d = ::tpy::make_adapter<" in cpp
+
+
+class TestOptTupleUnpackHolder:
+    """The `__for_tup_*` VALUE holder with STORAGE-optional elements: the
+    head unpack mutable-ref-binds the holder and lifts each ptr-repr
+    Optional target via optional_to_ptr."""
+
+    _PRE = ("from typing import Iterator, Optional\n"
+            "from tpy import Int32\n\n\n"
+            "class P:\n"
+            "    x: Int32\n\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n\n\n")
+
+    def test_optional_pair_unpack_routes(self):
+        src = (self._PRE
+               + "def gen(pairs: list[tuple[Optional[P], Optional[P]]]"
+               + ") -> Iterator[Int32]:\n"
+               + "    for a, b in pairs:\n"
+               + "        if a is not None:\n"
+               + "            yield a.x\n"
+               + "        if b is not None:\n"
+               + "            yield b.x\n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.unpack_opt_ptr", 0) >= 2
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto& __tup_1 = __for_tup_0;" in cpp
+        assert "a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));" in cpp
+
+    def test_mixed_optional_value_unpack_routes(self):
+        # A MIXED holder (optional + value elements): the optional target
+        # lifts, the value target takes the plain frame assign.
+        src = (self._PRE
+               + "def gen(pairs: list[tuple[Optional[P], Int32]]"
+               + ") -> Iterator[Int32]:\n"
+               + "    for a, n in pairs:\n"
+               + "        if a is not None:\n"
+               + "            yield a.x\n"
+               + "        yield n\n\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.unpack_opt_ptr", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));" in cpp
+        assert "n = std::get<1>(__tup_1);" in cpp
+
+    def test_container_optional_elem_still_defers(self):
+        # BOUNDARY: a CONTAINER-optional element (`Optional[list[Int32]]`)
+        # is outside the narrow `_optional_ptr_borrow` accessor, so the
+        # holder stays unadmitted and the body keeps res.local_storage.
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32\n\n\n"
+               "def gen(pairs: list[tuple[Optional[list[Int32]], Int32]]"
+               ") -> Iterator[Int32]:\n"
+               "    for xs, n in pairs:\n"
+               "        if xs is not None:\n"
+               "            yield len(xs)\n"
+               "        yield n\n\n\n"
+               "def main() -> None:\n    pass\nmain()\n")
+        fallback = _res_fallback(src)
+        assert fallback.get("res.local_storage") == 1
+        _assert_identical(src)
+

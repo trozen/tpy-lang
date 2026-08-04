@@ -176,9 +176,9 @@ class TestRecordTernaryCallArmDefers:
         assert fb.get("body:expr.ifexpr") == 1, fb
 
 
-class TestPtrOptTernaryCallArmDefers:
-    # BOUNDARY: an Optional METHOD-CALL arm is outside the per-arm slice
-    # (name / storage-field / None / plain-record-name only).
+class TestPtrOptTernaryCallArmRoutes:
+    # An Optional METHOD-CALL arm passes its `T*` result bare (the
+    # pointee-accessor wave's ifexpr.optptr_call_arm row).
     SRC = (
         _PRE.replace(
             "    def __init__(self, b: Box | None) -> None:\n"
@@ -196,11 +196,10 @@ class TestPtrOptTernaryCallArmDefers:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
+    def test_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert fb.get("body:expr.ifexpr") == 1, fb
+        assert not dict(compiler._thir_fallback)
 
 
 class TestContainerElemTernaryStaysOut:
@@ -227,11 +226,11 @@ class TestContainerElemTernaryStaysOut:
         assert fb.get("body:expr.container_literal") == 1, fb
 
 
-class TestOwnDeclaredOptCallKeepsSlot:
-    # BOUNDARY: an Own-declared `Own[Box | None]` callee OWNS its returned
-    # storage -- the bare-bind passthrough row must not capture it (a bare
-    # `T*` bind would point into a dying temp); the slot lane keeps
-    # rejecting it for now.
+class TestOwnDeclaredOptCallSlotLift:
+    # An Own-declared `Own[Box | None]` callee OWNS its returned storage:
+    # the bare-bind passthrough row must not capture it (a bare `T*` bind
+    # would point into a dying temp) -- the OPT_STORAGE_CALL slot
+    # materializes the optional and lifts the pointer instead.
     SRC = (
         "from tpy import Own\n" +
         _PRE +
@@ -246,8 +245,8 @@ class TestOwnDeclaredOptCallKeepsSlot:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
+    def test_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert "body:stmt.var_decl:decl.opt_slot_source" in fb, fb
+        assert not dict(compiler._thir_fallback)
+        assert "::tpy::optional_to_ptr(__slot_" in thir[1]

@@ -78,8 +78,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # storage via ptr_to_optional_move
     "arg.native_protocol_value",    # scalar/Char/str value at a native
                                     # protocol slot -> bare render (__hash__)
+    "arg.native_union_name",        # union-typed name at a native protocol
+                                    # slot -> bare (repr(a) over a variant)
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
                                     # -> inline typed rvalue (const-ref bind)
+    "arg.ru_wrapper_elem_literal",  # scalar literal at a wrapper-union
+                                    # element slot (`__arr.push_back(4)`)
     "arg.ru_wrapper_borrow_call",   # borrow-returning wrapper call binds the
                                     # same-wrapper slot bare
     "arg.ru_wrapper_field",         # same-wrapper field read binds the slot bare
@@ -164,6 +168,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Pointer-repr Optional[record] slot faces (lowering).
     "optptr.none",                  # `nullptr`
     "optptr.ctor_rvalue",           # `&(__tmp_N)` addr-of arg temp
+    "optptr.adapter_temp",          # structural conformer Adapter/RefAdapter temp
     "optptr.lift",                  # `::tpy::optional_to_ptr(...)`
     "optptr.pass",                  # already-`T*` binding passes bare
     "optptr.name",                  # `&(name)`
@@ -223,6 +228,18 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.record_discard",        # discarded F1-record method result at
                                     # stmt position: the bare call
     "method.container_discard",     # discarded container method result: same bare call
+    "method.union_discard",         # discarded Own[union] method result:
+                                    # same bare call
+    "ret.own_wrapper_none",         # `return None` at Own[wrapper-union] ->
+                                    # `std::monostate{}`
+    "ret.own_wrapper_literal",      # container literal at Own[wrapper-union]
+                                    # -> the ru spelled render
+    "ret.own_wrapper_member",       # scalar literal / member-container name
+                                    # at Own[wrapper-union] -> bare
+    "ret.wrapper_borrow",           # wrapper borrow return (`Expr&`): bare
+                                    # param name / pointer deref source
+    "call.wrapper_borrow_ret",      # wrapper-borrow-returning call composes
+                                    # bare (`count(passthru(tree))`)
     "method.qualcall.record_discard",  # discarded record-family qualcall result
                                        # (asyncio.create_task(...);): the bare call
     "method.qualcall.record_storage",  # record-family qualcall rvalue at a
@@ -518,6 +535,27 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.any_wrap",                 # non-Any value at an Any return slot ->
                                     # `return ::tpy::make_any(..);`
                                     # (value type, returns bare, no move)
+    "ret.dyn_borrow",               # @dynamic protocol borrow return slot:
+                                    # bare param name / pointer deref source
+    "ret.dyn_own_forward",          # Own[P] return: 'forward' name/call/
+                                    # ternary passes the unique_ptr bare
+    "ret.dyn_own_wrap",             # Own[P] return: conformer ctor rvalue /
+                                    # movable name takes the make_unique /
+                                    # make_adapter wrap
+    "call.dyn_own_ret",             # an Own[@dynamic P]-returning call lands
+                                    # bare at a STORAGE sink (unique_ptr)
+    "call.dyn_recv_ret",            # a dyn-protocol call result composing as
+                                    # a method receiver / borrow bind
+    "method.recv.dyn_call",         # free-call receiver with a dyn-protocol
+                                    # result (own arrows, borrow dots)
+    "method.protocol_chain_ret",    # protocol-typed method result feeding
+                                    # the composing call's receiver slot
+    "method.protocol_own_dyn_ret",  # Own[@dynamic P] method result renders
+                                    # the bare unique_ptr rvalue
+    "decl.dyn_erased_call",         # borrow-returning call as the erased
+                                    # dyn decl source (`p = &echo(dog);`)
+    "top_level.global_dyn_rebind",  # module-init write of a @dynamic
+                                    # protocol global (static adapter slot)
     "expr_stmt.macro_discard",      # void stmt-position macro expansion
                                     # (setattr/delattr builtins) dispatched
                                     # with the DISCARD use
@@ -1151,6 +1189,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
     # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
     "decl.opt_slot_rvalue",
+    "decl.opt_slot_proto_rvalue",   # Optional[dyn P] conformer rvalue slot
     # Owned-optional record slot from a storage-optional-returning call
     # (`std::optional<Rc<T>> upgraded = w.upgrade();`); the name registers
     # for the narrowed `(*name)` deref + has_value None-test reads.
@@ -1185,6 +1224,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # (*p);` (the name lowering's deref render at the alias init).
     "decl.alias_ptr_deref_src",
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
+    "reseat.opt_call_pass",         # borrow-returning ptr-opt call reseat:
+                                    # the bare pointer copy, no slot write
     "reseat.opt_none",
     "reseat.opt_inline_rvalue",  # slotless local: in-place plain block slot + later reuse
     "reseat.opt_ptr_copy",       # same-Optional borrow-name source: bare pointer copy
@@ -1278,6 +1319,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
     "ifexpr.tuple",                 # tuple result: arms' form propagates
     "ifexpr.cond_pos",              # bool ternary as an if/while condition
+    "ifexpr.optptr_call_arm",       # borrow-returning ptr-Optional call arm
+                                    # passes its `T*` result bare
     "ifexpr.ptr_opt",               # ptr-Optional result: per-arm `T*`
                                     # normalization (nullptr / bare / lift /
                                     # addr-of), whole ternary BORROW
@@ -1285,6 +1328,25 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # arms, a BORROW lvalue
     "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
                                     # binds the lowered `T*` ternary bare
+    "decl.opt_storage_call",        # Own-declared optional call decl: the
+                                    # storage slot + optional_to_ptr lift
+    "ret.value_ptr_opt_local",      # narrowed wide ptr-opt local at a value
+                                    # return: deref + last-use move
+    "arg.wide_opt_deref_name",      # narrowed wide ptr-opt name at its
+                                    # pointee's borrow slot: deref pass
+    "arg.nullable_proto_addr",      # container/record name at nullable
+                                    # proto slot: address-of lift
+    "arg.nullproto_none",           # typed-null None at nullable proto slot
+    "ret.ptr_opt_field_addr",       # pointee-typed field at the ptr-opt
+                                    # return: `&(this->_value)` lift
+    "ret.generic_tuple_literal",    # sync generic-tuple return literal:
+                                    # to_val_or_ptr element wraps
+    "ret.container_borrow_global",  # pointer-slot container global derefs
+                                    # into the borrow return
+    "ret.ptr_opt_subscript",        # container-element subscript at the
+                                    # ptr-opt return: `&(__getitem__(..))`
+    "method.container_opt_ptr_ret", # dict.get's bare `T*` result (wide
+                                    # pointee): consumers own the binding
     "decl.opt_call_passthrough",    # borrow-returning ptr-opt free call
                                     # bound bare at its decl (no slot)
     "print.opt_ptr_name",           # whole ptr-opt name arg:
@@ -1430,6 +1492,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`it.__next__()` on `Iterator[T]`): the shared template expansion
     # over the same receiver render on both paths.
     "method.protocol_template",
+    "method.opt_dyn_recv",          # narrowed Optional[dyn P] pointer receiver
     # A scalar value into a bare `T` method slot (a pending deferred
     # generic's raw params): bare render, `val_or_ref_t<T>` binds by value.
     "method.tparam_scalar_arg",
@@ -1550,6 +1613,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # instantiation (list(x for ...))
     "if.constexpr_concept",         # protocol-isinstance -> if constexpr
                                     # over the concept test
+    "if.nullproto_guard",           # is-not-None constexpr swap on
+                                    # nullable proto param
     "fold.overload_block",          # per-@overload-stub dead-branch fold splice
                                     # (if-chain flatten / folded match arm)
     "fold.overload_bind",           # folded match arm's capture binding
@@ -1714,6 +1779,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
     "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
+    "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>)
@@ -1730,6 +1796,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.coro_handle_write",        # concrete-coro handle factory-call bind
+    "res.erased_handle_write",      # owned-erased dyn handle own-arg bind
     "res.await_prebuilt",           # bound-handle await routed (poll-in-place)
     "res.match_dispatch",           # MatchDispatch routed through the tiers
     "res.narrow_scope",             # BB leaves lowered under a narrowed scope

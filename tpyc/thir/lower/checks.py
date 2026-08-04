@@ -109,7 +109,8 @@ from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
                                   reads_storage_form_optional)
-from ...codegen_cpp.protocols import classify_dyn_own_arg
+from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
+                                      resolve_own_source_type)
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -137,6 +138,9 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _protocol_union_ctor_arg,
+    _nullable_static_protocol_param,
+    _static_protocol_union_binding,
     _bare_module_recv,
     _module_var_read_cpp,
     _record_getitem_key,
@@ -148,6 +152,7 @@ from .predicates import (
     _arg_ptr_union_slot,
     _union_bytes_literal_temp_arg,
     _bigint_index_disposition,
+    _call_ret_union_ok,
     _bytes_concat_operand,
     _coerce_disposition,
     _SPANLIKE_COERCIONS,
@@ -175,6 +180,7 @@ from .predicates import (
     _eligible_wrapper_union,
     _eligible_ptr_value,
     _eligible_scalar,
+    _eligible_ptr_union_wide,
     _eligible_value_union,
     _union_member_ctor_slot,
     _wrapper_member_ctor_slot,
@@ -220,6 +226,7 @@ from .predicates import (
     _optional_ptr_borrow,
     _optional_ptr_borrow_name,
     _own_cascade_fires,
+    _own_dyn_return,
     _own_lvalue_temp_slot,
     _owned_str_append_target,
     _owned_str_slot,
@@ -236,7 +243,11 @@ from .predicates import (
     _record_rvalue_temp_slot,
     _record_setitem_value,
     _resolve_literal_seeded,
+    _opt_pointee_wide,
+    _optional_ptr_borrow_wide,
+    _resolve_plain_alias,
     _ru_container_literal_ok,
+    _ru_elem_ok,
     _ru_wrapper_arg_slot,
     _ru_wrapper_borrow_call_arg,
     _ru_wrapper_field_arg,
@@ -683,6 +694,20 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
                                    TpyBoolLiteral, TpyStrLiteral))):
             return True
+        # A SAME-WRAPPER NAME element (`[branch, leaf]` at `list[Tree]`):
+        # the bare copy -- moved at a movable last use by the element
+        # lowering's shared `_maybe_move` mirror -- the name twin of the
+        # wrapper literal rows. Pointer-locals stay out.
+        if (isinstance(e, TpyName) and e.name not in pointers
+                and (_wl_su := _eligible_wrapper_union(su, analyzer))
+                is not None):
+            bt = declared.get(e.name)
+            bu = (_resolve_plain_alias(
+                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt))),
+                      analyzer)
+                  if bt is not None else None)
+            if isinstance(bu, UnionType) and bu == _wl_su:
+                return True
         # The plain-union twin: a member-record ctor rvalue into an
         # all-record value-variant element slot (`{Dog("Rex"), Cat("W")}`).
         if _union_member_ctor_slot(e, su, analyzer):
@@ -3326,6 +3351,9 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # protocol slot (`hash("hello")` -> `::tpy::__hash__("hello")`):
             # the native loop renders the value bare, position-independent.
             or _native_protocol_value_arg(a, ptype, analyzer)
+            # A union-typed NAME at the same slot (`repr(a)` over a
+            # variant binding): bare, the runtime variant overload visits.
+            or _native_union_name_arg(a, ptype, locals_, analyzer)
             or _native_protocol_tuple_literal_arg(
                 a, ptype, analyzer) is not None
             or _native_protocol_field_arg(a, ptype, analyzer)
@@ -3421,6 +3449,30 @@ def _native_protocol_value_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and (_eligible_scalar(atu) or _eligible_char(atu)
                      or _resolved_str_value(atu, analyzer) is not None)
                 and _witness("arg.native_protocol_value"))
+
+
+def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           locals_: dict[str, TpyType], analyzer) -> bool:
+    """A union-typed NAME at a native/template callee's SAME-union slot
+    (`repr(a)` -> `::tpy::repr_of(a)` -- the generic Representable slot
+    substitutes to the arg's own union): renders bare, the runtime
+    variant overloads visit the active alternative whatever the flavor
+    (value or pointer variant; wide member class). A narrowed occurrence
+    reads its member alias identically on both paths (the name arm's
+    rename), so no narrow exclusion is needed."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    if not isinstance(pt, UnionType) or not isinstance(a, TpyName):
+        return False
+    dt = locals_.get(a.name)
+    if dt is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    if u != pt:
+        return False
+    return bool((_eligible_value_union(u) is not None
+                 or _eligible_ptr_union_wide(u, analyzer) is not None)
+                and _witness("arg.native_union_name"))
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
                      self_this: bool = False) -> bool:
@@ -3568,7 +3620,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # M4c wrapper-slot rows (the free-call twins of the qualcall
             # ladder's): a same-wrapper NAME passes bare; a member-typed
             # NAME hoists the typed temp (flush-gated).
-            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed, analyzer)
             or _ru_wrapper_borrow_call_arg(a, ptype, analyzer)
             or _ru_wrapper_field_arg(a, ptype, locals_, analyzer)
             or (temps_ok and _ru_wrapper_member_name_arg(
@@ -3589,6 +3641,8 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _dyn_own_coro_factory_arg(a, ptype, analyzer) is not None
             or _dyn_own_handle_arg(a, ptype, locals_, analyzer) is not None
             or _dyn_own_conformer_arg(a, ptype, locals_, analyzer) is not None
+            or _dyn_own_forward_call_arg(a, ptype, analyzer) is not None
+            or _wide_opt_deref_name_arg(a, ptype, locals_, analyzer)
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             or _value_opt_pass_through_arg(a, ptype, locals_,
                                            narrowed, analyzer)
@@ -3598,6 +3652,15 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                                             analyzer)
             or _protocol_slot_arg(a, ptype, locals_, analyzer,
                                   temps_ok=temps_ok)
+            # A container/Span/record NAME at a NULLABLE static-protocol
+            # slot (`count_if_sized(nums)` at `Sized | None`): the
+            # address-of lift binds the monomorphized `const T_x*`
+            # (`&(nums)` -- the shared 'addr' verdict, rendered by
+            # _lower_call_arg's nullable-protocol arm).
+            or (isinstance(a, (TpyName, TpyNoneLiteral))
+                and _protocol_union_ctor_arg(a, ptype, locals_, analyzer)
+                in ("addr", "nullproto")
+                and _witness("arg.nullable_proto_addr"))
             # A tuple LITERAL at a tuple param slot: the borrow/value tuple
             # builders own the per-element admission (a bad element shape
             # raises inside lowering and falls the body back whole) -- the
@@ -3815,7 +3878,17 @@ def _required_protocol_union_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     if not _required_protocol_union_slot(ptype):
         return False
+    # A narrowed nullable-protocol param passed onward (`total(items)`
+    # inside the guard): the pointer binding derefs at the value position
+    # (`total((*items))` -- the name-read deref), then binds the required
+    # slot's `const T&` like any plain value. The binding arrives either
+    # as the RAW nullable type or GUARD-retyped to the protocols-only
+    # union -- admit both spellings of the same param.
+    if _nullable_static_protocol_param(locals_[a.name]) is not None:
+        return bool(_witness("arg.required_protocol_union"))
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
+    if _static_protocol_union_binding(at):
+        return bool(_witness("arg.required_protocol_union"))
     return bool((_f1_record(at, analyzer) or is_span(at) or is_list(at)
                  or is_dict(at) or is_set(at))
                 and _witness("arg.required_protocol_union"))
@@ -4154,7 +4227,7 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
             # member-ctor rvalue hoists the typed temp -- the same rows the
             # concrete ladders run, slot-keyed through `_ru_wrapper_arg_slot`
             # (the `_wrapper_union_like` accessor).
-            or _ru_wrapper_name_arg(a, resolved, locals_, narrowed)
+            or _ru_wrapper_name_arg(a, resolved, locals_, narrowed, analyzer)
             or _ru_wrapper_borrow_call_arg(a, resolved, analyzer)
             or _ru_wrapper_field_arg(a, resolved, locals_, analyzer)
             or (temps_ok and _ru_wrapper_member_name_arg(
@@ -5336,6 +5409,13 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
             # kind/args when the ArgTemp init lowers recursively.
             return temps_ok
         return temps_ok and _ctor_shape_ok(a, analyzer)
+    if face == 'adapter_rvalue':
+        # The structural-conformer Adapter temp -- flush positions only.
+        return temps_ok and _ctor_shape_ok(a, analyzer)
+    if face == 'adapter_name':
+        # The RefAdapter lvalue temp -- flush positions only; pointer-local
+        # sources keep rejecting at the lowering arm (deref unwitnessed).
+        return temps_ok and a.name in locals_
     if face == 'lift':
         return _field_receiver_ok(a, locals_, analyzer)
     # 'name' / 'pass'
@@ -6238,6 +6318,11 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         if isinstance(rt, OwnType):
             rt = unwrap_readonly(rt.wrapped)
         if not (isinstance(rt, NominalType) and _f1_record(rt, analyzer)):
+            # A @dynamic-protocol call result: an `Own[P]` handle composes
+            # `f()->m()` (the own-dyn arrow at the emit node), a borrow
+            # `P&` result `f().m()` -- both off the bare inner render.
+            if isinstance(rt, NominalType) and is_dyn_protocol(rt):
+                return _witness("method.recv.dyn_call")
             return False
         return _witness("method.recv.free_call")
     return _method_field_receiver_ok(recv, locals_, analyzer)
@@ -6938,7 +7023,7 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # A wrapper-union NAME at a same-wrapper slot (`json.dumps(v)`
             # on `v: JsonValue`): the binding is already the wrapper struct
             # -- passes bare like a same-union name.
-            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed, analyzer)
             or (own_ok and _own_union_ctor_arg(
                 a, ptype, locals_, analyzer))
             or (own_ok and _dyn_own_coro_factory_arg(a, ptype, analyzer)
@@ -7123,6 +7208,67 @@ def _dyn_own_conformer_arg(a: TpyExpr, ptype: 'TpyType | None',
         # make_unique spells the concrete type -- F1 pins to_cpp().
         return None
     return (proto, verdict)
+
+
+def _recv_own_dyn(recv: TpyExpr, locals_: dict[str, TpyType],
+                  analyzer) -> bool:
+    """The AST's `_receiver_is_own_dyn` mirror for name/call receivers:
+    True when the receiver renders as `std::unique_ptr<P>` (abstract
+    @dynamic P), so the member access spells `->`. The subscript-element
+    case (an `Own[P]` container element) is not mirrored -- such
+    receivers keep rejecting at their own shape gates."""
+    declared_t = (locals_.get(recv.name)
+                  if isinstance(recv, TpyName) else None)
+    src = resolve_own_source_type(recv, declared_t, analyzer)
+    return src is not None and is_dyn_protocol(src.wrapped)
+
+
+def _wide_opt_deref_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                             locals_: dict[str, TpyType], analyzer) -> bool:
+    """A WIDE ptr-opt NAME at its POINTEE's borrow slot (`depth(t)` on a
+    None-narrowed `t: Tree | None` param at a `const Tree&` slot): the
+    pointer binding derefs (`depth((*t))`), binding the slot inline.
+    Sema's narrowing proved non-None -- an un-narrowed Optional at the
+    bare-pointee slot is a sema error, so reaching here implies the
+    proof. The F1-record flavor rides its own family rows; this row
+    covers the widened pointee classes (wrapper/T/dyn/container)."""
+    if not isinstance(a, TpyName) or a.name not in locals_:
+        return False
+    opt = _optional_ptr_borrow_wide(locals_[a.name], analyzer)
+    if opt is None:
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    if slot is None or _resolve_plain_alias(
+            unwrap_readonly(opt.inner), analyzer) != _resolve_plain_alias(
+            slot, analyzer):
+        return False
+    return _witness("arg.wide_opt_deref_name")
+
+
+def _dyn_own_forward_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                              analyzer) -> 'NominalType | None':
+    """An `Own[P]`-returning CALL rvalue at an `Own[@dynamic P]` slot
+    (`speak_and_forward(make_parrot())`): the 'forward' verdict -- the
+    result is already unique_ptr<P>-shaped (same or inheriting protocol),
+    so it renders bare: no wrap and no move (the result is an rvalue).
+    Returns the slot protocol, or None."""
+    if not isinstance(ptype, TpyType) or not isinstance(a, TpyCall):
+        return None
+    u = unwrap_send_sync(ptype)
+    if not isinstance(u, OwnType):
+        return None
+    # RAW wrapped, like the sibling rows: `Own[readonly[P]]` stays out.
+    proto = u.wrapped
+    if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
+        return None
+    fi = a.resolved_function_info
+    if fi is None or fi.is_constructor:
+        return None
+    src = _own_dyn_return(fi.return_type)
+    if src is None or not dyn_forward_ok(src, proto, analyzer):
+        return None
+    return proto
 
 
 def _covariant_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -7430,13 +7576,27 @@ def _container_method_arg_ok(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         analyzer, *, param_names: 'set[str] | frozenset[str]',
         narrowed: 'set[str] | frozenset[str]') -> bool:
-    if isinstance(_elem_slot_type(ptype), UnionType):
-        # A UNION element slot takes exactly one mirrored row: the member
-        # ctor rvalue the variant absorbs. Every other source carries a
-        # storage lift the bare insert does not render (a same-union NAME
-        # is `::tpy::to_value_variant<...>(p)` -- the pointer-variant param
-        # converted into the value-variant element), so the general rows
-        # below must not see a union slot at all.
+    # A wrapper element slot may carry the unresolved alias placeholder
+    # (`Own[Json]` on list[Json].append) -- resolve to its union body.
+    _es = _resolve_plain_alias(_elem_slot_type(ptype), analyzer)
+    if isinstance(_es, UnionType):
+        if _es.needs_wrapper():
+            # A WRAPPER-union element slot absorbs a scalar-literal insert
+            # via the wrapper's converting ctor (`__arr.push_back(4);` at
+            # `list[Json]`) -- the bare token render, same bounds as the
+            # ru-literal elements. Other sources keep the named reject.
+            _lit = _peel_coerce(a)
+            if (isinstance(_lit, (TpyIntLiteral, TpyFloatLiteral,
+                                  TpyBoolLiteral))
+                    and _ru_elem_ok(_lit, analyzer)):
+                return _witness("arg.ru_wrapper_elem_literal")
+            return note_detail("method.arg_shape")
+        # A plain UNION element slot takes exactly one mirrored row: the
+        # member ctor rvalue the variant absorbs. Every other source
+        # carries a storage lift the bare insert does not render (a
+        # same-union NAME is `::tpy::to_value_variant<...>(p)` -- the
+        # pointer-variant param converted into the value-variant element),
+        # so the general rows below must not see a union slot at all.
         return (_union_member_ctor_slot_arg(a, ptype, analyzer)
                 or note_detail("method.arg_shape"))
     return ((_scalar_pass_through_slot(ptype, analyzer)
@@ -7720,6 +7880,14 @@ def _container_method_call_supported(
                 and is_rvalue_source(analyzer, e)
                 and (_f1_record(ret, analyzer)
                      or _container_method_recv(ret, analyzer, None)))
+            # A BORROW-returning ptr-repr Optional result (`d.get("a")` ->
+            # the bare `T*` from dict_get; WIDE pointee class): the render
+            # is the bare stub call everywhere -- the consuming position
+            # (passthrough decl / None test) owns the binding shape.
+            or (_ptr_opt_borrow_call_ret(e, ret)
+                and isinstance(ret, OptionalType)
+                and _opt_pointee_wide(unwrap_readonly(ret.inner), analyzer)
+                and _witness("method.container_opt_ptr_ret"))
             or note_detail("method.ret_type"))
 
 
@@ -7812,9 +7980,10 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
 
     Receiver: a bare in-scope name (a protocol param or a routed protocol
     local), never indirect -- `is_arrow` keys on the lowering pointer set,
-    which a protocol binding never joins. An `Own[P]` receiver renders `->`
-    (`_receiver_is_own_dyn`) and is not a protocol binding, so it never lands
-    here.
+    which a protocol binding never joins. An `Own[P]` receiver ALSO lands
+    here (the `_own_dyn_method_recv` family row shares this shape gate);
+    its `->` access comes from the emit node's own-dyn mirror
+    (`_recv_own_dyn`), not from anything decided here.
 
     Method: a plain instance method. The member name is always
     `escape_cpp_name(e.method)` -- `_plain_method_fi_ok` already rejected the
@@ -7839,7 +8008,14 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
                  and _method_call_receiver_ok(e.obj, locals_, analyzer))
                 or (isinstance(e.obj, TpyFieldAccess)
                     and _field_receiver_ok(e.obj, locals_, analyzer)
-                    and _witness("method.protocol_field_recv"))):
+                    and _witness("method.protocol_field_recv"))
+                # A FREE-call receiver with a @dynamic-protocol result
+                # (`make_parrot().name()`, `echo_readonly(dog).name()`):
+                # the same verdict the nonname gate reached -- Own[P]
+                # arrows, borrow `P&` dots, off the bare inner render.
+                or (isinstance(e.obj, TpyCall)
+                    and _method_nonname_receiver_ok(e.obj, locals_,
+                                                    analyzer))):
             return note_detail("method.protocol.recv_shape")
     # A ZERO-ARG @cpp_template dunder stub on the protocol value
     # (`it.__next__()` on `Iterator[T]` -- template `{self}.__next__()`):
@@ -7894,6 +8070,18 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
                         unwrap_send_sync(ret))))))
                 and _witness("method.protocol_self_storage_ret"))
             or (stmt_position and (ret is None or is_void_like_type(ret)))
+            # A protocol-typed result at a RECEIVER/BORROW_BIND position
+            # (`c.half().value()`, `a.to_b().tag()`): the rvalue feeds the
+            # composing call's receiver slot bare; that call gates its own
+            # family.
+            or (borrow_ret_ok and _protocol_binding(ret) is not None
+                and _witness("method.protocol_chain_ret"))
+            # An `Own[@dynamic P]` result (`d.replicate()` -> unique_ptr):
+            # the handle renders bare wherever it lands -- rvalue, no wrap,
+            # no move; the consuming position (ctor arg / receiver / decl)
+            # gates its own shape.
+            or (_own_dyn_return(fi.return_type) is not None
+                and _witness("method.protocol_own_dyn_ret"))
             # A DISCARDED result in statement position: nothing consumes it,
             # so the call renders bare whatever its type -- the same reason
             # the record-receiver ladder admits `method.record_discard` /
@@ -7912,7 +8100,7 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # A same-wrapper NAME at the protocol method's genrec slot
             # (`s.absorb(t)`): the bare-name pass-through, exactly the
             # record ladder's wrapper row.
-            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed, analyzer)
             or note_detail("method.protocol.arg_shape"))
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
@@ -8239,6 +8427,11 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             or (stmt_position
                 and _storage_call_ret(ret, analyzer) is not None
                 and _witness("method.container_discard"))
+            # A DISCARDED union result (`b.get_span();` -- the Own[union]
+            # variant dropped at statement position): same bare call, the
+            # union sibling.
+            or (stmt_position and _call_ret_union_ok(ret, analyzer)
+                and _witness("method.union_discard"))
             # A container return at the for-head ITERABLE sink (`for v in
             # g.get():`): a borrow return captures `auto& __obj_N =`, an
             # Own return the owning capture -- the route pinned the
@@ -8416,6 +8609,15 @@ def _record_method_arg_ok(
             or _enum_pass_through_arg(a, ptype, locals_, analyzer)
             or _ptr_pass_through_arg(a, ptype, locals_, analyzer)
             or _value_tuple_pass_through_arg(a, ptype, locals_, analyzer)
+            # A container/record NAME or None at a NULLABLE static-protocol
+            # method slot (`c2.update(nums, more)` -> `&(more)` /
+            # `update(nums, static_cast<std::nullptr_t*>(nullptr))`): the
+            # same lift as the free/ctor positions (the required union has
+            # no None member and stays bare).
+            or (isinstance(a, (TpyName, TpyNoneLiteral))
+                and _protocol_union_ctor_arg(a, ptype, locals_, analyzer)
+                in ("addr", "nullproto")
+                and _witness("arg.nullable_proto_addr"))
             or _span_coerce_arg(a, ptype, locals_, analyzer)
             or _slice_ctor_pass_through_arg(a, ptype, locals_, analyzer)
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
@@ -8548,7 +8750,7 @@ def _record_method_arg_ok(
             # free-call ladder's: a same-wrapper NAME binds bare
             # (`h.matches(probe)`); a member-typed NAME / literal /
             # member-ctor rvalue hoists the typed temp (flush-gated).
-            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed)
+            or _ru_wrapper_name_arg(a, ptype, locals_, narrowed, analyzer)
             or (temps_ok and _ru_wrapper_member_name_arg(
                 a, ptype, locals_, narrowed) is not None)
             or (temps_ok and _ru_wrapper_scalar_literal_arg(
@@ -8719,8 +8921,38 @@ def _container_method_recv(recv_type: 'TpyType | None', analyzer,
 
 def _protocol_method_recv(recv_type: 'TpyType | None', analyzer,
                           tparam_bounds: 'dict | None') -> bool:
-    return (_protocol_binding(recv_type) is not None
-            or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None)
+    if (_protocol_binding(recv_type) is not None
+            or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None):
+        return True
+    # A None-NARROWED Optional[@dynamic P] pointer binding (`p.name()` on
+    # `p: Pet | None` proven non-None): the binding is the nullable `Pet*`
+    # / `const Pet*`, the member access spells `->` via the lowering
+    # pointer set (is_arrow), and shape/args share the protocol family's
+    # gates. Sema forbids the un-narrowed call, so reaching lowering
+    # implies the proof. Structural-protocol Optionals stay out (their
+    # monomorphized spelling is unwitnessed).
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
+         if isinstance(recv_type, TpyType) else None)
+    if isinstance(u, OptionalType) and u.uses_pointer_repr():
+        inner = unwrap_readonly(u.inner)
+        return (isinstance(inner, NominalType) and is_dyn_protocol(inner)
+                and _witness("method.opt_dyn_recv"))
+    return False
+
+
+def _own_dyn_method_recv(recv_type: 'TpyType | None', analyzer,
+                         tparam_bounds: 'dict | None') -> bool:
+    """An `Own[@dynamic P]` receiver (`std::unique_ptr<P>`): the member
+    access spells `->` (the emit node's `_recv_own_dyn` mirror); shape and
+    args share the protocol family's gates -- the AST's user-record guard
+    skips a protocol type the same way, so args take the free-call
+    `_args()` fallback renders."""
+    if not isinstance(recv_type, TpyType):
+        return False
+    u = unwrap_send_sync(recv_type)
+    return (isinstance(u, OwnType)
+            and isinstance(u.wrapped, NominalType)
+            and is_dyn_protocol(u.wrapped))
 
 
 def _bytearray_method_recv(recv_type: 'TpyType | None', analyzer,
@@ -8774,6 +9006,11 @@ _METHOD_RECV_FAMILY_TABLE: tuple = (
      _MethodRecvFamily(shape_ok=_container_method_call_supported,
                        arg_ok=_container_method_arg_ok, stub_recv=True)),
     (_protocol_method_recv,
+     _MethodRecvFamily(shape_ok=_protocol_method_call_supported,
+                       arg_ok=_protocol_method_arg_ok, stub_recv=False)),
+    # The Own[@dynamic P] handle receiver shares the protocol family's
+    # gates; only the `->` access differs (the emit node's own-dyn mirror).
+    (_own_dyn_method_recv,
      _MethodRecvFamily(shape_ok=_protocol_method_call_supported,
                        arg_ok=_protocol_method_arg_ok, stub_recv=False)),
     # Bytearray shapes admit MEMBER natives the view gate rejects; its args
@@ -9416,6 +9653,14 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     if _range_object_value(u):
         # A range() object streams raw via its own operator<< (no ListPrinter).
         return PrintForm.RAW
+    if (isinstance(u, UnionType)
+            and (_eligible_value_union(u) is not None
+                 or _eligible_ptr_union_wide(u, analyzer) is not None
+                 or _eligible_wrapper_union(u, analyzer) is not None)):
+        # A union-typed NAME streams via the `::tpy::__str__` visitor
+        # (gen_print's UnionType arm, union-kind-blind) -- the same STR
+        # form a narrowed alias takes.
+        return PrintForm.STR
     return None
 
 def _print_kwarg_token(

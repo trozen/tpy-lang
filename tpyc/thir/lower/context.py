@@ -44,10 +44,17 @@ from .predicates import (
     _is_type_param_slot,
     _native_iter_value_slot,
     _optional_ptr_borrow,
+    _optional_ptr_borrow_wide,
+    _nullable_static_protocol_param,
+    _storage_optional_return_wide,
     _own_opt_storage_binding,
     _param_is_const,
     _protocol_auto_slot,
+    _dyn_borrow_return,
+    _own_dyn_return,
     _own_genrec_return,
+    _own_wrapper_return,
+    _wrapper_borrow_return,
     _own_storage_union_return,
     _own_storage_viewfam_return,
     _own_type_param_slot,
@@ -55,7 +62,6 @@ from .predicates import (
     _record_storage_return,
     _resolved_bytes_value,
     _resolved_str_value,
-    _storage_optional_return_type,
     _span_return,
     _value_opt_scalar,
     _value_opt_view,
@@ -189,7 +195,8 @@ class _Prescan:
                  "ret_own_storage_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
-                 "ret_genrec",
+                 "ret_genrec", "ret_own_wrapper", "ret_wrapper_borrow",
+                 "ret_dyn_borrow", "ret_dyn_own",
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
@@ -281,12 +288,13 @@ class _Prescan:
               if return_type_override is not None
               else (func.return_type
                     if isinstance(func.return_type, TpyType) else None))
-        self.ret_storage_opt = _storage_optional_return_type(rt, analyzer)
-        # The pointer-repr Optional[F1-record] return slot, if any
-        # (`A | None` -> a borrow `A*` returned by value): `None` ->
-        # `nullptr`, an already-pointer name -> bare, an F1-record name ->
-        # `&(name)` (_optional_pointer_form_value's admitted subset).
-        self.ret_ptr_opt = _optional_ptr_borrow(rt, analyzer)
+        self.ret_storage_opt = _storage_optional_return_wide(rt, analyzer)
+        # The pointer-repr Optional return slot over the WIDE pointee class
+        # (`A | None` / `T | None` / `W | None` -> a borrow `A*` returned by
+        # value): `None` -> `nullptr`, an already-pointer name -> bare, a
+        # pointee-typed name -> `&(name)` (_optional_pointer_form_value's
+        # admitted subset; every render is pointee-shape-blind).
+        self.ret_ptr_opt = _optional_ptr_borrow_wide(rt, analyzer)
         # The value-repr Optional[cheap scalar] return slot (`-> Int32 | None`
         # -> `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
         # param name passes the whole optional bare, every other scalar source
@@ -348,10 +356,10 @@ class _Prescan:
         # scalar] elements). A bare value-tuple name return stays on the narrow
         # arm (no bare-copy read arm for a widened-element receiver).
         self.ret_value_tuple = _value_tuple_return(rt, analyzer)
-        # The GENERIC tuple return slot (>=1 TypeParamRef element): consumed
-        # only by the RESUMABLE return arm (the async `val_or_ptr_t` bridge);
-        # the sync return arm does not read it, so sync generic-tuple returns
-        # stay on the AST path (not in ret_supported).
+        # The GENERIC tuple return slot (>=1 TypeParamRef element): the
+        # RESUMABLE return arm's `val_or_ptr_t` bridge AND the sync return
+        # arm's literal row (`return (tag, val)` -> the spelled brace-init
+        # with per-element `to_val_or_ptr` wraps) both consume it.
         self.ret_generic_tuple = _generic_value_tuple_return(rt, analyzer)
         # The Own[tuple] STORAGE return slot with a non-value member
         # (`-> Own[tuple[str, Resource]]`): a tuple LITERAL of storage-direct
@@ -391,6 +399,21 @@ class _Prescan:
         # The generic-instance sibling: an `Own[Tree[Int32]]` slot returns
         # the wrapper struct by value; source rows gate at the return arm.
         self.ret_genrec = _own_genrec_return(rt)
+        # The non-generic wrapper-union sibling (`-> Own[V]` -> `V` by
+        # value): None -> monostate, scalar literals bare, container
+        # literals via the ru render, member container names bare.
+        self.ret_own_wrapper = _own_wrapper_return(rt, analyzer)
+        # The wrapper BORROW return slot (`-> Expr` -> `Expr&`): NAME
+        # sources only, gated at the return arm.
+        self.ret_wrapper_borrow = _wrapper_borrow_return(rt, analyzer)
+        # The @dynamic-protocol BORROW return slot (`-> P` -> `P&`,
+        # `-> readonly[P]` -> `const P&`): NAME sources only (a borrow
+        # param bare, a pointer-local/global deref) -- the return arm gates.
+        self.ret_dyn_borrow = _dyn_borrow_return(rt)
+        # The `Own[@dynamic P]` return slot (`std::unique_ptr<P>`):
+        # verdict-keyed source rows at the return arm ('forward' names and
+        # Own[P]-returning calls bare, conformer ctor rvalues wrapped).
+        self.ret_dyn_own = _own_dyn_return(rt)
         # A value-bearing return must select one of the representations the
         # return arm consumes. Signatures remain AST-emitted; this fact is
         # checked only when lowering reaches an actual return value.
@@ -437,11 +460,16 @@ class _Prescan:
             or self.ret_container_storage is not None
             or self.ret_container_borrow is not None
             or self.ret_value_tuple is not None
+            or self.ret_generic_tuple is not None
             or self.ret_own_storage_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
             or self.ret_union is not None or self.ret_ptr_union is not None
             or self.ret_own_union is not None
-            or self.ret_genrec is not None)
+            or self.ret_genrec is not None
+            or self.ret_own_wrapper is not None
+            or self.ret_wrapper_borrow is not None
+            or self.ret_dyn_borrow is not None
+            or self.ret_dyn_own is not None)
 
 @dataclass
 class _NarrowScope:
@@ -592,6 +620,7 @@ class _LowerCtx:
                  "plain_frame_fields", "borrow_tuple_frame_locals",
                  "coro_handle_slots", "frame_local_types",
                  "value_tuple_frame_locals",
+                 "opt_tuple_holders", "opt_ptr_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
                  "unpack_ptr_targets",
                  "unhandled_hoists", "narrow", "literal_facts",
@@ -746,7 +775,16 @@ class _LowerCtx:
         # (test_thir_binding_facts).
         self.pointers: set[str] = set()
         for pname, ptype in self.params:
-            if _optional_ptr_borrow(ptype, analyzer) is not None:
+            # WIDE pointee class: an Optional[wrapper] / `T | None` /
+            # Optional[dyn-protocol] param binds the same `T*` shape as the
+            # F1 slice, and every read/test render is pointee-blind.
+            if _optional_ptr_borrow_wide(ptype, analyzer) is not None:
+                self.pointers.add(pname)
+            elif _nullable_static_protocol_param(ptype) is not None:
+                # seed_param_locals' nullable-static-protocol arm: the param
+                # is the monomorphized `const T_x*` (always const-indirect),
+                # narrowed reads deref `(*x)`, and the None test is the
+                # nullproto constexpr swap.
                 self.pointers.add(pname)
             elif is_own_pointer_repr_optional(
                     unwrap_readonly(unwrap_send_sync(ptype))):
@@ -896,6 +934,8 @@ class _LowerCtx:
         # (`const auto& __tup_N = <name>;`). Populated only by
         # `lower_resumable`, empty for every sync body.
         self.value_tuple_frame_locals: frozenset = frozenset()
+        self.opt_tuple_holders: frozenset = frozenset()
+        self.opt_ptr_frame_locals: frozenset = frozenset()
         # One-shot `__await_lift_*` frame temps (the skeleton's
         # `one_shot_lift_names`): the unpack arm rvalue-ref-binds one as a
         # consumable source (`auto&& __tup_N = (*<name>);`) and moves its

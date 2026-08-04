@@ -148,6 +148,7 @@ from .statements import (
     _handler_binding_type,
     _lower_alias_bind,
     _lower_borrow_tuple_frame_write,
+    _lower_erased_handle_write,
     _lower_frame_field_assign,
     _lower_frame_slot_write,
     _lower_narrow_cond,
@@ -275,6 +276,14 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     # @dynamic protocols (Adapter machinery) stay their own rung.
     if (unwrapped is not None and is_protocol_type(unwrapped)
             and not is_dyn_protocol(unwrapped)):
+        return True
+    # An `Own[@dynamic P]` param captures as a bare `unique_ptr<P>` frame
+    # field (the ctor's `p(std::move(p_))` is skeleton), and its leaf reads
+    # are the forward arg renders (`std::move(p)` at a same-protocol Own
+    # slot) -- gated per-shape at the arg rows. RAW wrapped, matching the
+    # await-slot key: `Own[readonly[P]]` never takes the adapter renders.
+    if (isinstance(unwrapped, OwnType)
+            and is_dyn_protocol(unwrapped.wrapped)):
         return True
     # A pointer-repr union param's frame field is the SAME pointer-variant
     # shape as the sync param (`std::variant<A*, B*>`), so reads, isinstance
@@ -857,6 +866,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # bare reference-type returns stay on return.borrow_form.
                 or (isinstance(rt_inner, OwnType)
                     and _f1_record(_unwrap_own(rt_inner), analyzer))
+                # Own[T] slot (generic ownership transfer, `Poll<T>` value
+                # payload): STORAGE form like the bare-T return, so the
+                # position-blind tail serves the sources; the return-await
+                # forward (`__ret0`) is skeleton.
+                or (isinstance(rt_inner, OwnType)
+                    and isinstance(unwrap_readonly(rt_inner.wrapped),
+                                   TypeParamRef))
                 # Bare F1-record slot (Poll<T*> pointer payload): the value
                 # tail admits only the SELF lift rung (`&(__self)`); every
                 # other source keeps the return.borrow_form fence.
@@ -888,6 +904,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     opt_ptr_locals: set[str] = set()
     alias_ptr_locals: set[str] = set()
     value_tuple_locals: set[str] = set()
+    opt_tuple_holders: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
     unpack_ptr_targets: set[str] = set()
     for f_info in rstate.for_info_by_uid.values():
@@ -901,6 +918,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         unpack_ptr_targets.update(f_info.pointer_form_unpack_targets)
     frame_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
+    erased_handle_locals: set[str] = set()
     borrow_tuple_locals: set[str] = set()
     _K = rcfg.FrameLocalKind
     for lname, ltype in (func.generator_locals or []):
@@ -922,23 +940,40 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # <name>;`).
                 value_tuple_locals.add(lname)
                 continue
+            # A `__for_tup_*` VALUE holder with STORAGE-optional elements
+            # (`for a, b in pairs:` over `list[tuple[P | None, ...]]`): the
+            # advance binds the storage tuple bare (skeleton) and the head
+            # unpack mutable-ref-binds it, lifting each ptr-repr Optional
+            # target via optional_to_ptr. Value elements ride the plain
+            # frame-assign binds.
+            lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
+                  if isinstance(ltype, TpyType) else None)
+            if (lname.startswith("__for_tup_")
+                    and isinstance(lt, TupleType)
+                    and lt.has_pointer_repr_element()
+                    and all(
+                        _optional_ptr_borrow(unwrap_ref_type(et),
+                                             analyzer) is not None
+                        or _res_local_ok(unwrap_ref_type(et), analyzer)
+                        for et in lt.element_types)):
+                opt_tuple_holders.add(lname)
+                continue
             # A CONCRETE coro handle (`h = step(1)`) sits inside the
             # skeleton's VALUE arm -- its `type_to_cpp` renders the
             # `std::optional<__coro_...>` field directly -- but its writes
             # are the handle family (`h.emplace(<factory call>)`, gated by
             # a factory-call-only init arm) and its awaits the adapter
             # rows, so it needs the coro_handle_slots membership. The
-            # ERASED handle (`unique_ptr<P>` field, `=` through the
-            # make_adapter wrap) is a render family the seam does not
-            # mirror -- reject.
-            lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
-                  if isinstance(ltype, TpyType) else None)
+            # ERASED handle (`unique_ptr<P>` bare field) writes `=` through
+            # the own-arg wrap and reads move-at-last-use -- its own decl
+            # arm (`_lower_erased_handle_write`), source shapes gated there.
             if (isinstance(lt, OwnType)
-                    and is_dyn_protocol(unwrap_readonly(lt.wrapped))
-                    and isinstance(unwrap_readonly(lt.wrapped),
-                                   ConcreteCoroType)):
-                frame_slots.add(lname)
-                coro_handle_slots.add(lname)
+                    and is_dyn_protocol(unwrap_readonly(lt.wrapped))):
+                if isinstance(unwrap_readonly(lt.wrapped), ConcreteCoroType):
+                    frame_slots.add(lname)
+                    coro_handle_slots.add(lname)
+                else:
+                    erased_handle_locals.add(lname)
                 continue
             return _reject("res.local_storage")
         if kind is _K.PTR_ALIAS:
@@ -1108,7 +1143,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             reason = _for_advance_reject(
                 t, analyzer, ptr_frame_locals,
                 frame_slots - coro_handle_slots, borrow_tuple_loop_vars,
-                value_tuple_locals)
+                value_tuple_locals | opt_tuple_holders)
             if reason is not None:
                 return _reject(reason)
             saw_sync_loop = True
@@ -1196,6 +1231,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.pointers.update(unpack_ptr_targets)
     lc.unpack_ptr_targets = frozenset(unpack_ptr_targets)
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
+    lc.opt_tuple_holders = frozenset(opt_tuple_holders)
+    lc.opt_ptr_frame_locals = frozenset(opt_ptr_locals)
     lc.oneshot_lift_locals = frozenset(rstate.one_shot_lift_names)
     # value_tuple_locals stay IN plain_frame_fields deliberately: they are
     # bare member fields whose reassign is the same plain `name = expr;`
@@ -1203,8 +1240,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # differs must subtract itself here.
     lc.plain_frame_fields = frozenset(
         frame_fields - frame_slots - borrow_tuple_locals - coro_handle_slots
-        - ptr_frame_locals - opt_ptr_locals - alias_ptr_locals
-        - unpack_ptr_targets)
+        - erased_handle_locals - ptr_frame_locals - opt_ptr_locals
+        - alias_ptr_locals - unpack_ptr_targets)
     lc.borrow_tuple_frame_locals = frozenset(borrow_tuple_locals)
     lc.coro_handle_slots = frozenset(coro_handle_slots)
     lc.frame_local_types = dict(gen_local_types)
@@ -1360,6 +1397,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     name=stmt.name, value=value, cpp_type=None, loc=stmt.loc,
                     no_source_comment=getattr(stmt, "no_source_comment",
                                               False))
+            if stmt.name in erased_handle_locals:
+                return _lower_erased_handle_write(stmt, init, lc, declared)
             if stmt.name in frame_slots:
                 return _lower_frame_slot_write(stmt, lc, declared)
             # An Optional-ptr frame local writes through the SYNC ladder's

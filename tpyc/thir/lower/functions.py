@@ -2281,7 +2281,13 @@ def _rejects_global_slot(node) -> bool:
                                  # `g = &(<borrow call>);` points AT
                                  # callee-owned storage -- no slot at all,
                                  # so nothing can outlive `__tpy_init`.
-                                 PtrSlotKind.PTR_ADDR)
+                                 PtrSlotKind.PTR_ADDR,
+                                 # The @dynamic rebind's slot spells
+                                 # `static std::optional<T> __global_slot_N`
+                                 # at module scope (slot_static/slot_prefix
+                                 # in the emit arm), so it survives
+                                 # `__tpy_init` like GLOBAL_RVALUE's.
+                                 PtrSlotKind.DYN_PROTOCOL)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):

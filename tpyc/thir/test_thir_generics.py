@@ -1541,15 +1541,13 @@ class TestOpenTOwnReturnValidation:
         assert _borrow_legal_return(t) is True
         assert OwnType(wrapped=t).is_value_type() is True
 
-    def test_own_union_return_still_illegal(self):
-        # BOUNDARY, pre-existing and explicitly documented: an Own[union]
-        # (non-Nominal wrapped) needs its own conversion arm, and this check
-        # must keep catching a missing one. It is a real boundary precisely
-        # because OwnType(union).is_value_type() is True, so it too skips the
-        # not-a-value-type row and depends on the Nominal/TypeParamRef rows
-        # NOT admitting it.
+    def test_own_union_return_borrow_legal(self):
+        # The union-returns wave added the Own[union] row: a borrow source
+        # at the by-value `std::variant<...>` slot is legal C++ (the
+        # converting ctor materializes, implicit move under P1825); the
+        # RETURN ARM now owns the source gating instead of this validator.
         from ..typesys import NominalType, OwnType, UnionType
         from .validate import _borrow_legal_return
         u = UnionType(members=(NominalType("A", ()), NominalType("B", ())))
         assert OwnType(wrapped=u).is_value_type() is True
-        assert _borrow_legal_return(OwnType(wrapped=u)) is False
+        assert _borrow_legal_return(OwnType(wrapped=u)) is True
