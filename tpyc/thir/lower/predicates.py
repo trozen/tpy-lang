@@ -33,6 +33,7 @@ from ...parse.nodes import (
     TpyName,
     TpyNamedExpr,
     TpyNoneLiteral,
+    TpyRaise,
     TpyReturn,
     TpySlice,
     TpyStrLiteral,
@@ -723,14 +724,33 @@ def _wrapper_member_ctor_slot(init, t: 'TpyType | None',
     if t is None or not isinstance(init, TpyCall):
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not isinstance(t, UnionType) or not t.needs_wrapper():
+    t = _wrapper_union_like(t)
+    if t is None:
         return False
     it = unwrap_readonly(analyzer.get_expr_type(init))
     if not (isinstance(it, NominalType) and it.is_user_record):
         return False
-    wrapper = t.wrapper_info()
-    members = wrapper.full_members if wrapper is not None else t.members
-    return any(m == it for m in members)
+    return any(m == it for m in _wrapper_like_members(t))
+
+
+def _wrapper_member_literal_slot(init, t: 'TpyType | None',
+                                 analyzer) -> bool:
+    """The literal sibling of `_wrapper_member_ctor_slot`: an annotated
+    wrapper-like decl initialized with a scalar/str/bool/bytes LITERAL
+    (`leaf: Tree[int] = 9` -> `Tree<::tpy::BigInt> leaf = 9;`). The
+    wrapper's converting ctor absorbs the target-less literal render, the
+    plain spelled copy on both paths -- the decl twin of
+    `_ru_wrapper_scalar_literal_arg`."""
+    if t is None:
+        return False
+    lit = init
+    while isinstance(lit, TpyCoerce):
+        lit = lit.expr
+    if not isinstance(lit, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                            TpyStrLiteral, TpyBytesLiteral)):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return _wrapper_union_like(t) is not None
 
 
 def _union_member_ctor_slot(init, t: 'TpyType | None', analyzer) -> bool:
@@ -780,6 +800,23 @@ def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None'
         return None
     return inner
 
+def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
+    """An `Own[Tree[Int32]]` return slot -- the generic-instance sibling of
+    `_own_storage_union_return`: the wrapper struct returns by value
+    (`Tree<int32_t>`), and the routed sources are the ones whose render the
+    wrapper's converting ctor absorbs (a scalar member value returns bare,
+    a container literal takes the ru-instance spelled render). No member
+    restriction: the wrapper is one C++ value type whatever its variant
+    holds -- the SOURCE rows gate instead."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if not isinstance(u, OwnType):
+        return None
+    inner = unwrap_readonly(u.wrapped)
+    return inner if isinstance(inner, RecursiveAliasInstanceType) else None
+
+
 def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     """The F4 U2 slice: a pointer-repr union of record members (`A | B
     [| None]` -> borrow `std::variant<[std::monostate, ]A*, B*>` / storage
@@ -804,6 +841,29 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
                or is_void_like_type(m) for m in t.members):
         return None
     return t
+
+def _wrapper_union_like(t: TpyType | None, analyzer=None) -> 'TpyType | None':
+    """The genrec-track classifier accessor: the shared duck view of a
+    wrapper-union-LIKE subject -- a recursive-alias WRAPPER union
+    (`UnionType.needs_wrapper()`) OR a generic instance
+    (`RecursiveAliasInstanceType`, always wrapper-repr). Both classes carry
+    the same duck API (`needs_wrapper()` / `wrapper_info()` /
+    `alternatives()` / `substituted_body()`), so every row keyed on THIS
+    accessor treats them uniformly and reads members via the type's own API
+    -- never re-derived per site: two sites re-deriving the pair drift the
+    moment one is widened, which is exactly the failure a single accessor
+    exists to prevent. Returns the unwrapped type, or None otherwise."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, AliasRef) and not t.args and analyzer is not None:
+        t = analyzer.registry.resolve_alias_ref(t)
+    if isinstance(t, UnionType) and t.needs_wrapper():
+        return t
+    if isinstance(t, RecursiveAliasInstanceType):
+        return t
+    return None
+
 
 def _eligible_wrapper_union(t: TpyType | None,
                             analyzer=None) -> 'UnionType | None':
@@ -1026,11 +1086,15 @@ def _poly_narrow_multi_info(
 
 
 def _poly_subject_decl(dt: 'TpyType | None') -> 'TpyType | None':
-    """The poly-subject declared type after the admitted wrappers: bare, or
-    READONLY-qualified (`readonly[Optional[Base]]` -- the const-pointee
-    spelling rides `_poly_subject_readonly`). Any other wrapper declines."""
+    """The poly-subject declared type after the admitted wrappers: bare, the
+    param-borrow Ref (a polymorphic-CLASS record param is seeded `Ref[Pet]`;
+    dyn-protocol params are never Ref-wrapped), or READONLY-qualified
+    (`readonly[Optional[Base]]` -- the const-pointee spelling rides
+    `_poly_subject_readonly`). Any other wrapper declines."""
     if dt is None:
         return None
+    if isinstance(dt, RefType):
+        dt = dt.wrapped
     db = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
     if db is not dt and not isinstance(
             unwrap_ref_type(unwrap_send_sync(dt)), ReadonlyType):
@@ -1052,7 +1116,12 @@ def _poly_isinstance_value_info(
     """A VALUE-position polymorphic isinstance (`return isinstance(e, VE)`):
     the bare null-check chain -- no branch, no alias, so members may be
     strict subclasses or the root, single or tuple. Returns
-    `(var, members, var_decl)` or None."""
+    `(var, members, var_decl)` or None. A Ref-wrapped (borrowed-param) CLASS
+    subject stays out: a `&&` RHS read of the subject may be sema-narrowed,
+    which the AST renders as the inline `(*static_cast<const Sub*>(&p))`
+    read -- no value-position machinery mirrors that (the short_circuit
+    divergence), so the `_poly_subject_decl` Ref peel must not widen THIS
+    arm."""
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
@@ -1060,6 +1129,8 @@ def _poly_isinstance_value_info(
             or cond.macro_expansion is not None):
         return None
     var = cond.isinstance_var
+    if isinstance(declared.get(var), RefType):
+        return None
     dt = _poly_subject_decl(declared.get(var))
     if dt is None:
         return None
@@ -1205,6 +1276,57 @@ def _chain_post_if_fact(
     if post is None:
         return None
     return info[0], info[1], post
+
+def _poly_anchor_declared(
+        cond: TpyExpr, declared: dict[str, TpyType],
+        poly_source: dict[str, TpyType]) -> dict[str, TpyType]:
+    """`declared` with the condition's subject re-anchored to its ORIGINAL
+    declared type after a prior poly narrow retyped it (the AST's
+    `lookup_var_type` semantics -- narrowing never retypes it). Shared by
+    every poly re-narrowing detector so the subclass-fact and cast-input
+    verdicts key on the source decl, not the live member."""
+    var = getattr(cond, "isinstance_var", None)
+    if var is None or var not in poly_source:
+        return declared
+    anchored = dict(declared)
+    anchored[var] = poly_source[var]
+    return anchored
+
+def _poly_post_if_fact(
+        stmt: TpyIf, declared: dict[str, TpyType],
+        poly_source: dict[str, TpyType], analyzer,
+) -> 'tuple[str, NominalType] | None':
+    """The POLYMORPHIC early-return implicit-else fact: `if not
+    isinstance(v, Sub): return/raise` on a poly-dispatch subject leaves code
+    after the `if` narrowed to Sub, and the AST emits the persistent
+    cast-and-cache alias at the enclosing scope (`_gen_if`'s post-narrowing
+    arm, the `is_polymorphic_subclass_fact` filter). The chain walk and the
+    `not`-peel mirror `_chain_post_if_fact`; unlike the union arm, an
+    already-narrowed subject RE-narrows (the alias suffix-bumps, anchored to
+    the original decl via `poly_source`). Returns `(var, member)` or None;
+    a facts map beyond the single `{var: member}` entry stays out of the
+    slice (the caller's arm gate rejected the compound shapes already)."""
+    last = stmt
+    while ((nxt := _elif_link(last)) is not None
+           and not _facts_have_concrete(last.else_type_facts)):
+        last = nxt
+    if last.else_body or not last.else_type_facts:
+        return None
+    if not (last.then_body
+            and isinstance(last.then_body[-1], (TpyReturn, TpyRaise))):
+        return None
+    cond = last.condition
+    if isinstance(cond, TpyUnaryOp) and cond.op == "!":
+        cond = cond.operand
+    info = _poly_narrow_info(
+        cond, _poly_anchor_declared(cond, declared, poly_source), analyzer)
+    if info is None:
+        return None
+    var, member, _dt = info
+    facts = last.else_type_facts
+    if list(facts) != [var] or facts[var] != member:
+        return None
+    return var, member
 
 def _reassert_bump_info(
         stmt: TpyAssert, declared: dict[str, TpyType],
@@ -2384,7 +2506,14 @@ def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType) or not isinstance(t, NominalType):
+    if isinstance(t, OwnType):
+        return None
+    if isinstance(t, RecursiveAliasInstanceType):
+        # A bare generic-instance slot (`-> Tree[Int32]`) is the same
+        # borrow direction: `Tree<int32_t>&` off owned storage, the field
+        # read rendering `return this->t;` like any record member.
+        return t
+    if not isinstance(t, NominalType):
         return None
     return t if _f1_record(t, analyzer) else None
 
@@ -3318,7 +3447,12 @@ def _value_tuple_return_element_ok(e: TpyType, analyzer) -> bool:
     if isinstance(inner, TupleType):
         return _value_tuple_return(inner, analyzer) is not None
     if isinstance(inner, OwnType):
-        return _f1_record(inner.wrapped, analyzer)
+        # An Own[genrec] element is the same by-value slot as Own[record]
+        # (`std::tuple<Tree<int32_t>, ...>`); its literal source takes the
+        # ru-instance spelled render.
+        return (_f1_record(inner.wrapped, analyzer)
+                or isinstance(unwrap_readonly(inner.wrapped),
+                              RecursiveAliasInstanceType))
     return (_value_opt_scalar(e, analyzer) is not None
             or _value_opt_str(e, analyzer) is not None)
 
@@ -4092,6 +4226,30 @@ def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
         return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     return _container_elem_family(t, analyzer, container_elem)
 
+def _container_genrec_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element/value is a generic-recursive-alias
+    instance (`dict[K, DictTree[K, V]]` -- open or concrete): the
+    view/iteration renders are element-family-blind (`auto&& v = *__beg;`),
+    and the loop var's reads ride the wrapper rows. The genrec sibling of
+    `_container_record_elem`."""
+    def genrec_elem(a: 'TpyType | int') -> bool:
+        if not isinstance(a, TpyType):
+            return False
+        a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+        if isinstance(a, OwnType):
+            a = unwrap_readonly(a.wrapped)
+        return isinstance(a, RecursiveAliasInstanceType)
+
+    def genrec_dict_key(k: 'TpyType | int') -> bool:
+        # An OPEN generic key (`dict[K, DictTree[K, V]]` in a generic
+        # body) admits alongside the shared slice: the values()-view
+        # iteration this predicate gates is key-blind.
+        return (isinstance(k, TypeParamRef)
+                or _dict_key_shape_ok(k, analyzer))
+
+    return _container_elem_family(t, analyzer, genrec_elem,
+                                  dict_key_ok=genrec_dict_key)
+
 def _container_tparam_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a bare type-param (`list[T]` inside
     a generic record body): the element subscript yields the per-instantiation
@@ -4411,6 +4569,40 @@ def _optional_checked_field(e: TpyExpr, declared: dict[str, TpyType],
     if not _field_markers_clean(e, allow_optional_check=True):
         return False
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is not None
+
+def _optional_checked_recv_call(recv: TpyExpr, analyzer) -> bool:
+    """The checked-receiver core shared by the field and method flavors:
+    a BORROW-returning ptr-repr Optional[F1-record] CALL whose raw `T*`
+    result feeds `::tpy::deref_check(...)` directly. An Own-declared
+    return (a materialized storage optional) stays out."""
+    if not isinstance(recv, (TpyCall, TpyMethodCall)):
+        return False
+    fi = recv.resolved_function_info
+    if fi is None:
+        return False
+    frt = (unwrap_readonly(unwrap_send_sync(fi.return_type))
+           if fi.return_type is not None else None)
+    if isinstance(frt, OwnType):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(recv))))
+    if not (isinstance(rt, OptionalType) and rt.uses_pointer_repr()):
+        return False
+    return _f1_record(_unwrap_own(rt.inner), analyzer)
+
+def _optional_checked_field_over_call_ok(e: TpyExpr, analyzer) -> bool:
+    """An UNPROVEN field access whose receiver is a BORROW-returning
+    ptr-repr Optional CALL (`find(points, 5).x` -- sema could not prove
+    the result non-None): the AST wraps the raw `T*` result --
+    `::tpy::deref_check(find(...)).x` -- the call sibling of the
+    Optional-ptr NAME receiver."""
+    if not isinstance(e, TpyFieldAccess):
+        return False
+    if not e.needs_optional_runtime_check:
+        return False
+    if not _field_markers_clean(e, allow_optional_check=True):
+        return False
+    return _optional_checked_recv_call(e.obj, analyzer)
 
 def _optional_checked_field_over_field_ok(e: TpyExpr,
                                           declared: dict[str, TpyType],
@@ -5097,7 +5289,34 @@ def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     path (invalid C++, the union-operand BUGS.md class) -> AST path; the
     equal-union requirement rejects it."""
     u = _eligible_value_union(lt)
-    return u is not None and u == _eligible_value_union(rt)
+    if u is not None and u == _eligible_value_union(rt):
+        return True
+    # The generic-instance wrapper pair (`a == b` on two `Tree[int]`
+    # locals): the wrapper struct's own comparison operator, bare on both
+    # paths. Same-instance only; the NON-generic wrapper pair stays out
+    # (no corpus witness -- keep the boundary measurable).
+    lb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
+          if lt is not None else None)
+    rb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+          if rt is not None else None)
+    return isinstance(lb, RecursiveAliasInstanceType) and lb == rb
+
+def _container_compare_pair(op: str, lt: TpyType | None,
+                            rt: TpyType | None, analyzer) -> bool:
+    """Two SAME-TYPE container equality operands (`self.tags == other.tags`
+    on `list[str]` fields -- the @dataclass __eq__ chain): the container's
+    own `operator==`, the rb=None bare-operator arm -- `(a == b)` on both
+    paths. Equality only (ordering has no witnessed corpus shape); the
+    same-type requirement mirrors the union pair's slice guard."""
+    if op not in ("==", "!="):
+        return False
+    lb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
+          if lt is not None else None)
+    rb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+          if rt is not None else None)
+    if lb is None or lb != rb:
+        return False
+    return bool(is_list(lb) or is_dict(lb) or is_set(lb) or is_array(lb))
 
 def _any_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     """Two `Any` compare operands (`a == b` / `a != b`): `tpy::Any`'s own
@@ -5526,7 +5745,11 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
         return None
     for e in t.element_types:
         if isinstance(e, OwnType):
-            if not _f1_record(e.wrapped, analyzer):
+            # The Own[genrec] element moves out of the capture exactly like
+            # an Own[record] one (`Tree<T> t = std::move(std::get<i>(..));`).
+            if not (_f1_record(e.wrapped, analyzer)
+                    or isinstance(unwrap_readonly(e.wrapped),
+                                  RecursiveAliasInstanceType)):
                 return None
         elif not (_eligible_scalar(e)
                   or _resolved_str_value(unwrap_ref_type(e), analyzer)
@@ -5619,12 +5842,16 @@ def _member_valued_union_slot(a: TpyExpr, ptype: TpyType | None,
     position flushes, AST otherwise. An
     already-union arg (a same-union name, the union-coerced literal) is NOT
     member-valued and rides its own pass-through arm. Guards the bare-scalar
-    arg disjunct, which is slot-blind by construction."""
+    arg disjunct, which is slot-blind by construction. A generic recursive
+    instance slot (`Tree[int]`) guards the same way through the
+    `_wrapper_union_like` accessor: the AST hoists `Tree<T> __tmp_N = v;`
+    there too, so a bare pass drops the wrapper temp."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return False
-    if not isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt))),
-                      UnionType):
+    pt_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+    if not (isinstance(pt_u, UnionType)
+            or _wrapper_union_like(pt_u) is not None):
         return False
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -5743,24 +5970,43 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     return ut
 
-def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'UnionType | None':
+def _ru_wrapper_arg_slot(ptype: TpyType | None) -> 'TpyType | None':
     """A recursive-union WRAPPER arg slot (`v: JsonValue` -- the expanded
-    non-generic UnionType whose C++ form is the alias's wrapper struct), or
-    None. `_gen_union_arg`'s value branch hoists `JsonValue __tmp_N =
-    <arg>;` (create_typed, `= init` form) and passes the bare temp name.
-    Mirrors that branch's unwrap exactly (readonly only -- a Ref/SendSync
-    wrapper leaves the AST branch inert, so both paths take the default
-    render). A generic alias instance is a `RecursiveAliasInstanceType`,
-    never a UnionType, so the key naturally excludes it."""
+    non-generic UnionType whose C++ form is the alias's wrapper struct --
+    OR a generic instance `Tree[int]`, admitted through the
+    `_wrapper_union_like` accessor: same wrapper-struct C++ form, spelled
+    by the qname-keyed printer), or None. `_gen_union_arg`'s value branch
+    hoists `JsonValue __tmp_N = <arg>;` (create_typed, `= init` form) and
+    passes the bare temp name. Mirrors that branch's unwrap exactly
+    (readonly only -- a Ref/SendSync wrapper leaves the AST branch inert,
+    so both paths take the default render). Members of the returned type
+    read via `_wrapper_like_members` -- never `.members` directly (the
+    generic instance carries them as `alternatives()`)."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
     pt = unwrap_readonly(pt)
-    if not isinstance(pt, UnionType) or not pt.needs_wrapper():
-        return None
-    if is_ptr_variant_union(pt):
-        return None
-    return pt
+    if isinstance(pt, UnionType):
+        if not pt.needs_wrapper() or is_ptr_variant_union(pt):
+            return None
+        return pt
+    # The generic instance is NOT a value type (its substituted body carries
+    # a container member), so its param slot arrives Ref-wrapped where the
+    # non-generic wrapper's does not -- peel Ref for this arm only, keeping
+    # the UnionType path's unwrap byte-frozen.
+    pt = unwrap_readonly(unwrap_ref_type(pt))
+    if isinstance(pt, RecursiveAliasInstanceType):
+        return pt
+    return None
+
+
+def _wrapper_like_members(t: 'TpyType') -> tuple:
+    """The variant member tuple of a `_wrapper_union_like` type, in the
+    wrapper struct's template ordering -- `wrapper_info().full_members`,
+    which both classes carry (the generic instance substitutes each
+    original body member positionally)."""
+    wi = t.wrapper_info()
+    return wi.full_members if wi is not None else ()
 
 def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                          locals_: dict[str, TpyType],
@@ -5776,9 +6022,45 @@ def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
     if a.name in narrowed:
-        return (any(dt == m for m in ut.members if not is_void_like_type(m))
+        return (any(dt == m for m in _wrapper_like_members(ut)
+                    if not is_void_like_type(m))
                 and _witness("arg.ru_wrapper_narrowed"))
     return dt == ut
+
+def _ru_wrapper_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                analyzer) -> bool:
+    """A BORROW-returning wrapper-like call at a same-wrapper slot
+    (`leaf_count(h.get())` -- the `Tree<int32_t>&` return binds the
+    `const Tree<int32_t>&` param directly): the call renders bare, no temp
+    and no lift on either path. OWN-returning calls stay out (they need
+    the argtemp materialization the AST hoists)."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None or not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    fi = getattr(a, "resolved_function_info", None)
+    if fi is None or not call_returns_cpp_ref(analyzer, fi):
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(a))))
+    return at == ut and bool(_witness("arg.ru_wrapper_borrow_call"))
+
+
+def _ru_wrapper_field_arg(a: TpyExpr, ptype: 'TpyType | None',
+                          locals_: dict[str, TpyType], analyzer) -> bool:
+    """A same-wrapper FIELD read at a wrapper slot (`leaf_count(self.t)` /
+    `leaf_count(h.t)` -- the member read binds the `const Tree<T>&` param
+    bare, no lift and no temp on either path). Plain-name receivers only,
+    like the sibling field rows."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if ut is None or not isinstance(a, TpyFieldAccess):
+        return False
+    if not (isinstance(a.obj, TpyName)
+            and (a.obj.name in locals_ or a.obj.name == "self")):
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(a))))
+    return at == ut and bool(_witness("arg.ru_wrapper_field"))
+
 
 def _ru_wrapper_member_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 locals_: dict[str, TpyType],
@@ -5800,9 +6082,10 @@ def _ru_wrapper_member_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
     # The AST's value branch has NO membership check (sema already typed
     # the arg against the union) -- only already_union routes it elsewhere:
-    # a union binding (bare pass-through) or a same-alias AliasRef
-    # self-reference (also bare). Everything else hoists the typed temp.
-    if isinstance(dt, (UnionType, AliasRef)):
+    # a union binding (bare pass-through), a same-alias AliasRef
+    # self-reference, or a generic-instance binding (all bare). Everything
+    # else hoists the typed temp.
+    if isinstance(dt, (UnionType, AliasRef, RecursiveAliasInstanceType)):
         return None
     return ut
 
@@ -5824,9 +6107,11 @@ def _ru_wrapper_scalar_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                           TpyStrLiteral, TpyBytesLiteral)):
         return None
     at = analyzer.get_expr_type(a)
-    # `already_union` routes a union-typed / same-alias source elsewhere (bare,
-    # no temp); a literal can only be one of those through a sema coerce.
-    if at is None or isinstance(at, (UnionType, AliasRef)):
+    # `already_union` routes a union-typed / same-alias / generic-instance
+    # source elsewhere (bare, no temp); a literal can only be one of those
+    # through a sema coerce.
+    if at is None or isinstance(at, (UnionType, AliasRef,
+                                     RecursiveAliasInstanceType)):
         return None
     return ut
 
@@ -5846,10 +6131,38 @@ def _ru_wrapper_member_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     if not isinstance(a, TpyCall) or not is_rvalue_source(analyzer, a):
         return None
     at = analyzer.get_expr_type(a)
-    if at is None or isinstance(at, (UnionType, AliasRef)):
+    if at is None or isinstance(at, (UnionType, AliasRef,
+                                     RecursiveAliasInstanceType)):
         return None
     atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-    if not any(atu == m for m in ut.members if not is_void_like_type(m)):
+    if not any(atu == m for m in _wrapper_like_members(ut)
+               if not is_void_like_type(m)):
+        return None
+    return ut
+
+
+def _ru_wrapper_own_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                             analyzer) -> 'TpyType | None':
+    """An `Own[genrec]`-RETURNING call into the same-wrapper borrow slot
+    (`leaf_count(make_leaf())` / `leaf_count(s.sprout())` ->
+    `Tree<int32_t> __tmp_N = <call>;` + the bare temp name) -- the call
+    sibling of the ctor-rvalue row. The Own-declared return is already the
+    by-value storage shape, so the temp binds the prvalue directly (no
+    move). Method-call sources ride the same hoist; their receiver/result
+    admission is the method machinery's own (the temp's STORAGE init use
+    asks its result gate)."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if not isinstance(ut, RecursiveAliasInstanceType):
+        return None
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return None
+    if isinstance(a, TpyCall) and a.isinstance_var is not None:
+        return None
+    fi = a.resolved_function_info
+    if fi is None:
+        return None
+    ret = _own_genrec_return(fi.return_type)
+    if ret is None or ret != ut:
         return None
     return ut
 
@@ -5956,6 +6269,12 @@ def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
         return -(2 ** 31) < x.value < 2 ** 31
     if isinstance(x, TpyFloatLiteral):
         return math.isfinite(x.value)
+    if isinstance(x, TpyCall):
+        # A fixed-int ctor element (`Int32(1)`) folds to its bare token on
+        # the AST path (the scalar-ctor literal fold), same bounds as the
+        # raw literal.
+        v = fixed_int_literal_value_from_expr(x)
+        return v is not None and -(2 ** 31) < v < 2 ** 31
     return isinstance(x, (TpyBoolLiteral, TpyStrLiteral))
 
 def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
@@ -6169,6 +6488,12 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if _f1_record(w, analyzer):
         # Same-nominal is a slice guard: sema rejects an upcast into an Own
         # slot outright, so no other pairing reaches codegen.
+        return w if at == w else None
+    if isinstance(w, RecursiveAliasInstanceType):
+        # A generic-instance wrapper payload (`Holder(seed)` at
+        # `Own[Tree[Int32]]`): the same copy+move cascade as the record
+        # payload -- a movable name's last use renders the temp-free
+        # `std::move(seed)`, everything else hoists the copy temp.
         return w if at == w else None
     if isinstance(w, UnionType) and (
             _eligible_value_union(w) is not None
@@ -7072,7 +7397,10 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     return (_container_scalar_read(locals_[e.obj.name], analyzer)
             or _container_record_elem(locals_[e.obj.name], analyzer)
             or _container_opt_record_elem(locals_[e.obj.name], analyzer)
-            or _container_ref_alias_elem(locals_[e.obj.name], analyzer))
+            or _container_ref_alias_elem(locals_[e.obj.name], analyzer)
+            # A genrec-element dict (`dict[K, DictTree[K, V]]`): the view
+            # render is element-family-blind; the loop var binds `auto&&`.
+            or _container_genrec_elem(locals_[e.obj.name], analyzer))
 
 def _plain_scalar_slot(ptype: TpyType | None, analyzer) -> bool:
     """A NON-Own value-scalar param slot. The user-record sibling of

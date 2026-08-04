@@ -56,6 +56,7 @@ from .nodes import (
     THIRListRepeat,
     THIRContinue,
     THIRDelVar,
+    THIRDelItem,
     THIRCtorCall,
     THIRConceptTest,
     THIREnumMember,
@@ -94,6 +95,7 @@ from .nodes import (
     THIRModuleVar,
     THIRMove,
     THIRName,
+    THIRDynNarrowAlias,
     THIRNarrowAlias,
     THIRAnyNarrowAlias,
     THIRNestedDef,
@@ -115,6 +117,7 @@ from .nodes import (
     THIRRaise,
     THIRResumableReturn,
     THIRReturn,
+    THIRFinallyDeferredReturn,
     THIRStmtSeq,
     THIRSetItem,
     THIRSelf,
@@ -950,7 +953,15 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
     else:
         insert = f"__result.push_back({_emit_expr(e.element, state)})"
     if e.conditions:
+        # Condition temps land at loop-body indent BEFORE the `if` -- the
+        # loop var they consume is only in scope here (the AST's per-clause
+        # cond-temp placement). checkpoint/flush_since drains ONLY the
+        # conditions' own temps: an outer pending decl (a walrus predecl
+        # enqueued before this comp rendered) must stay for the statement
+        # flush, not fall inside the loop.
+        cp = state.temps.checkpoint()
         cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
+        state.temps.flush_since(buf, cp, ind2)
         buf.write(f"{ind2}if ({cond_str}) {{\n")
         buf.write(f"{ind3}{insert};\n")
         buf.write(f"{ind2}}}\n")
@@ -3754,6 +3765,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         deref = "*" if stmt.is_ptr_variant else ""
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
+    elif isinstance(stmt, THIRDynNarrowAlias):
+        # The polymorphic cast-and-cache extraction -- mirrors
+        # _emit_isinstance_extractions' poly arm (explicit type + `*` deref
+        # of the pre-composed cast RHS).
+        const_pfx = "const " if stmt.is_const else ""
+        out.write(f"{indent}{const_pfx}{stmt.member_cpp}& {stmt.alias} = "
+                  f"*{stmt.cast_rhs_cpp};\n")
     elif isinstance(stmt, THIRAnyNarrowAlias):
         # The Any-narrowing extraction (D15) -- mirrors
         # _emit_isinstance_extractions' Any arm (explicit type, not auto&).
@@ -3804,6 +3822,26 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}return;\n")
         else:
             out.write(f"{indent}return {value_cpp};\n")
+    elif isinstance(stmt, THIRFinallyDeferredReturn):
+        # Mirrors _gen_finally_deferred_return: the pointer capture binds
+        # BEFORE the chain (bumping the shared iter counter first, like the
+        # AST's recipe), the materialize move runs after it, and a
+        # terminating finally keeps the [[maybe_unused]] capture -- Python
+        # still evaluates the return expression it then overrides.
+        _witness_chain("return", state, 0)
+        ptr = f"__tpy_retp_{state.iter_counter}"
+        state.iter_counter += 1
+        chain = io.StringIO()
+        terminated = _emit_finally_chain(chain, indent, state)
+        maybe_unused = "[[maybe_unused]] " if terminated else ""
+        out.write(f"{indent}{maybe_unused}auto* {ptr} = {stmt.capture_cpp};\n")
+        out.write(chain.getvalue())
+        if terminated:
+            _witness("try.chain_terminated")
+        else:
+            materialize = (f"::tpy::ptr_to_optional_move({ptr})"
+                           if stmt.optional_move else f"std::move(*{ptr})")
+            out.write(f"{indent}return {materialize};\n")
     elif isinstance(stmt, THIRIf):
         _emit_if(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWhile):
@@ -4028,6 +4066,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             sigil = "*" if deref else ""
             out.write(f"{indent}{{ auto __del_sink = "
                       f"std::move({sigil}{name}); }}\n")
+    elif isinstance(stmt, THIRDelItem):
+        # One `::tpy::__delitem__(recv, key);` line per target, source order
+        # (_gen_del_item_code's loop).
+        for call in stmt.calls:
+            call_cpp = _emit_expr(call, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{call_cpp};\n")
     elif isinstance(stmt, THIRStmtSeq):
         _emit_stmts(out, stmt.stmts, indent_level, state)
     elif isinstance(stmt, THIRResumableReturn):

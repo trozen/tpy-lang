@@ -1788,6 +1788,22 @@ class THIRReturn(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRFinallyDeferredReturn(THIRStmt):
+    """A sema-stamped finally-deferred return of a named local (the AST's
+    `_gen_finally_deferred_return`): bind a pointer to the local's storage
+    BEFORE the inline finally chain, materialize the value out of it AFTER,
+    so finally mutations of the local stay visible in the returned object
+    (CPython's pending return is an alias). `capture_cpp` is the pointer RHS
+    (`&(name)` / `&((*name))` for the Own[T] shape, the bare pointer local
+    for the storage-Optional shape); `optional_move` picks the materialize
+    arm (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). The
+    `__tpy_retp_N` name draws from the emit-side iter counter so the two
+    paths' counter draws stay in step."""
+    capture_cpp: str = ""
+    optional_move: bool = False
+
+
+@dataclass(frozen=True)
 class THIRNarrowAlias(THIRStmt):
     """The isinstance-narrowing extraction alias (F4 U3): declared at branch
     entry, or -- for the early-return implicit else -- at statement level
@@ -1807,6 +1823,27 @@ class THIRNarrowAlias(THIRStmt):
     member_cpp: str
     is_ptr_variant: bool
     const_ref: bool
+
+
+@dataclass(frozen=True)
+class THIRDynNarrowAlias(THIRStmt):
+    """The polymorphic cast-and-cache extraction alias, the poly sibling of
+    `THIRNarrowAlias`:
+
+        [const ]Sub& __v = *dynamic_cast<[const ]Sub*>(&v);
+
+    emitted at STATEMENT level after an early-return guard (`if not
+    isinstance(v, Sub): return/raise`) or a narrowing assert -- mirrors
+    `_emit_isinstance_extractions`' poly arm with persistent=True. The cast
+    RHS is pre-composed at lowering via the shared `narrow_cast_rhs` /
+    `_poly_cast_context` chokepoints (dynamic_cast, or `dyn_adapter_cast`
+    for a structural conformer of a @dynamic protocol), anchored to the
+    subject's ORIGINAL declared type so a re-narrowing chain keeps the same
+    cast input. Never carries a source comment."""
+    alias: str
+    member_cpp: str
+    cast_rhs_cpp: str
+    is_const: bool
 
 
 @dataclass(frozen=True)
@@ -1950,6 +1987,16 @@ class THIRDelVar(THIRStmt):
     alias-born pointer-locals) emit nothing; a del whose EVERY name skips
     lowers to THIRNoOpStmt instead."""
     sinks: tuple[tuple[str, bool], ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRDelItem(THIRStmt):
+    """Multi-target `del d[a], e[b]` -- `_gen_del_item_code`'s per-target
+    loop: one `::tpy::__delitem__(recv, key);` statement line per target, in
+    source order. A single-target del keeps the plain THIRExprStmt render
+    (identical bytes); this node exists because one source statement emits N
+    lines."""
+    calls: tuple[THIRCall, ...] = ()
 
 
 @dataclass(frozen=True)

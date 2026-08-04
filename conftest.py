@@ -49,6 +49,10 @@ class _TestCompilerContext:
     _move_verdict_thir: dict[int, tuple[Any, bool, str | None]] = field(
         default_factory=dict)
     _move_verdict_journal: set[int] | None = None
+    _binding_facts_ast: dict[int, tuple] = field(default_factory=dict)
+    _binding_facts_thir: dict[int, tuple] = field(default_factory=dict)
+    _binding_ast_open: tuple | None = None
+    _binding_journal: set[int] | None = None
 
 
 @pytest.fixture(autouse=True)

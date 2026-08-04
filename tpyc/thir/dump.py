@@ -48,6 +48,8 @@ from .nodes import (
     THIRContinue,
     THIRDefaultConstruct,
     THIRDelVar,
+    THIRDelItem,
+    THIRFinallyDeferredReturn,
     THIRLiteral,
     THIRMatch,
     THIRMethodCall,
@@ -58,6 +60,7 @@ from .nodes import (
     THIRMove,
     THIRName,
     THIRNarrowAlias,
+    THIRDynNarrowAlias,
     THIRAnyNarrowAlias,
     THIRNarrowedRead,
     THIROptionalPtrArg,
@@ -415,6 +418,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         cst = "const " if stmt.const_ref else ""
         return [f"{pad}%{stmt.alias} = {cst}&{deref}get<{stmt.member_cpp}>"
                 f"(%{stmt.variant_cpp})"]
+    if isinstance(stmt, THIRDynNarrowAlias):
+        cst = "const " if stmt.is_const else ""
+        return [f"{pad}%{stmt.alias} = {cst}&*{stmt.cast_rhs_cpp}"]
     if isinstance(stmt, THIRAnyNarrowAlias):
         return [f"{pad}%{stmt.alias} = const &any_cast<{stmt.member_cpp}>"
                 f"(%{stmt.subject_cpp})"]
@@ -428,6 +434,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]
+    if isinstance(stmt, THIRFinallyDeferredReturn):
+        kind = "opt-move" if stmt.optional_move else "move"
+        return [f"{pad}return [finally-deferred {kind}] {stmt.capture_cpp}"]
     if isinstance(stmt, THIRIf):
         lines = [f"{pad}if {_expr(stmt.condition)}:"]
         for s in stmt.then_body:
@@ -527,6 +536,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         sinks = ", ".join(f"{'*' if deref else ''}{name}"
                           for name, deref in stmt.sinks)
         return [f"{pad}del [{sinks}]"]
+    if isinstance(stmt, THIRDelItem):
+        return [f"{pad}del [{', '.join(_expr(c) for c in stmt.calls)}]"]
     if isinstance(stmt, THIRPrint):
         args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]" for a in stmt.args)
         return [f"{pad}print({args})"]

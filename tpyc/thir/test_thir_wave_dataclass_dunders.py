@@ -126,8 +126,10 @@ class TestBareFieldEqPairs:
         assert _fn(thir, "__eq__") is not None
         _assert_byte_identical(src)
 
-    def test_dict_field_pair_stays_ast(self):
-        # dict members are outside the value-element container pair.
+    def test_dict_field_pair_routes(self):
+        # CONVERTED FENCE (the container compare-pair row): dict members
+        # now ride `_container_compare_pair` -- the container's own
+        # operator, bare renders.
         src = _DC + (
             "from dataclasses import field\n"
             "@dataclass\n"
@@ -136,7 +138,7 @@ class TestBareFieldEqPairs:
             "def main() -> None:\n"
             "    print(Env({'a': 1}) == Env({'a': 1}))\n"
         )
-        assert _fn(_lower_ctx(src), "__eq__") is None
+        assert _fn(_lower_ctx(src), "__eq__") is not None
         _assert_byte_identical(src)
 
     def test_record_element_list_pair_routes_preexisting(self):
@@ -180,3 +182,50 @@ class TestReprFieldBoundaries:
         assert _fn(thir, "show") is None
         assert not faces.get("arg.native_protocol_field")
         _assert_byte_identical(src)
+
+
+class TestDictFieldRepr:
+    # The dict flavor of the native-protocol field-arg row
+    # (`repr(self.lookup)` -> `::tpy::dict_to_str(this->lookup)`): the
+    # whole-member read passes bare; `_value_elem_container` gains dict.
+    def test_dict_field_repr_routes(self):
+        src = _DC + (
+            "from dataclasses import field\n"
+            "@dataclass\n"
+            "class Env:\n"
+            "    vars: dict[str, Int32] = field(default_factory=dict)\n"
+            "def main() -> None:\n"
+            "    print(repr(Env({'a': 1})))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "__repr__") is not None
+        assert faces["arg.native_protocol_field"] >= 1
+        _assert_byte_identical(src)
+
+
+class TestRecordFieldReprAndPrint:
+    # The last two dataclass_field rows: a concrete F1-record field at a
+    # still-PROTOCOL template slot (`repr(self.origin)` -- the repr fi's
+    # param stays Representable, so the exact-match rows never fire), and
+    # the F1-record FIELD print arg (RAW stream over the bare member).
+    SRC = _DC + (
+        "@dataclass\n"
+        "class Point:\n"
+        "    x: Int32 = 0\n"
+        "@dataclass\n"
+        "class Canvas:\n"
+        "    name: str\n"
+        "    origin: Point\n"
+        "def main() -> None:\n"
+        "    cv = Canvas('m', Point(3))\n"
+        "    print(cv.origin)\n"
+        "    print(repr(cv))\n"
+    )
+
+    def test_routes_byte_identical(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert _fn(thir, "__repr__") is not None
+        assert faces["arg.protocol_record_field"] >= 1
+        assert faces["print.record_field"] >= 1
+        _assert_byte_identical(self.SRC)

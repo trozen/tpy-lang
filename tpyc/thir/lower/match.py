@@ -74,6 +74,7 @@ from ..nodes import (
 from .predicates import (
     _container_scalar_read,
     _eligible_char,
+    _wrapper_union_like,
     _eligible_enum,
     _eligible_scalar,
     _enum_member_cpp,
@@ -152,12 +153,14 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
                 return "if_elif_guarded"
             return "if_elif"
         return None
-    if isinstance(t, UnionType):
-        # A recursive-alias wrapper (bare `Tree` alias) dispatches on its
-        # `.value` variant member -- the M4c slice admits NAME subjects on
-        # the unguarded tier only (_route_match narrows); a generic
-        # instance (`Tree[Int32]`) is a RecursiveAliasInstanceType, which
-        # never reaches this branch and keeps rejecting.
+    if isinstance(t, UnionType) or _wrapper_union_like(t) is not None:
+        # A union subject dispatches on its variant; a recursive-alias
+        # wrapper (bare `Tree` alias) and a generic instance (`Tree[Int32]`,
+        # a RecursiveAliasInstanceType admitted through the genrec-track
+        # accessor) both reach the variant via `.value` -- the whole flow is
+        # duck-keyed (`needs_wrapper()` / `wrapper_info()`), and the M4c
+        # wrapper slice admits NAME subjects on the unguarded tier only
+        # (_route_match narrows).
         return "switch_union"
     if _eligible_enum(t, analyzer) is not None:
         return "switch_enum"
@@ -1776,9 +1779,16 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
                         and all(stmts_terminate(c.body) for c in stmt.cases))
     if emit_unreachable:
         _witness("match.unreachable_tail")
+    # A FIELD subject (`match o.pet:`) binds the lvalue borrow
+    # (`auto& __match_subject_N = o.pet;`), so the read lowers under
+    # BORROW_BIND -- the F1-record field row admits the bare member read.
+    # Name subjects keep the default use (their render is use-blind and
+    # every routed poly match bound them that way).
+    subj_use = (_ExprUse(result=_ExprResultUse.BORROW_BIND)
+                if not isinstance(subj, TpyName) else _ExprUse())
     return THIRMatch(
         strategy=kind,
-        subject=_lower_expr(subj, lc, declared),
+        subject=_lower_expr(subj, lc, declared, use=subj_use),
         subject_ref=_match_subject_is_lvalue(subj),
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),

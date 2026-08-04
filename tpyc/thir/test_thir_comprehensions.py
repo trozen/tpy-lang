@@ -535,3 +535,65 @@ class TestDictCompContainerValue:
         assert _fn(thir, "f") is not None
         assert _fn(thir, "lits") is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestBranchPositionCompDecl:
+    # The branch-first comp decl admission (the fn_top gate removed): the
+    # render is a position-independent stmt-expr, so a branch-local comp
+    # decl lowers in place; hoisted (read-after-branch) and
+    # shadow-of-classified shapes keep rejecting.
+
+    def test_if_branch_local_routes(self):
+        src = (_PRELUDE
+               + "def f(k: Int32) -> Int32:\n"
+               + "    if k > 0:\n"
+               + "        xs = [i * 2 for i in range(3)]\n"
+               + "        return len(xs)\n"
+               + "    return -1\n"
+               + "print(f(1))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_loop_body_redecl_routes(self):
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    total = 0\n"
+               + "    for j in range(n):\n"
+               + "        zs = [i * j for i in range(3)]\n"
+               + "        total = total + len(zs)\n"
+               + "    return total\n"
+               + "print(f(3))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_read_after_if_hoisted_stays_ast(self):
+        # A branch comp decl READ AFTER the if is sema-hoisted; the AST
+        # pre-declares and assigns in-branch -- unmirrored, falls back.
+        src = (_PRELUDE
+               + "def f(k: Int32) -> Int32:\n"
+               + "    if k > 0:\n"
+               + "        ys = [i + 1 for i in range(4)]\n"
+               + "    else:\n"
+               + "        ys = [i + 2 for i in range(4)]\n"
+               + "    return len(ys)\n"
+               + "print(f(1))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_comp_var_shadowing_narrowed_stays_ast(self):
+        # A comp loop var shadowing the live NARROWED union subject: the
+        # outer post-comp read renames to the extraction alias, which the
+        # comp scope would clobber -- the route's shadow check rejects.
+        src = (_PRELUDE
+               + "def f(v: Int32 | str) -> Int32:\n"
+               + "    if isinstance(v, Int32):\n"
+               + "        ws = [v for v in range(3)]\n"
+               + "        return len(ws) + v\n"
+               + "    return -1\n"
+               + "print(f(7))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

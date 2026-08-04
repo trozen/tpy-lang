@@ -41,6 +41,7 @@ from dataclasses import fields as dc_fields
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
+from .. import binding_audit
 from ..sema.literal_utils import (
     fixed_int_literal_value_from_expr,
     literal_value_from_expr,
@@ -306,6 +307,7 @@ class StatementGenerator:
         # ptr_variant_locals, optional_locals, movable_locals, ...) that access
         # dispatch consults so `->` vs `.` / move / variant-form are correct.
         self.seed_param_locals(params, local_ns, self.ctx.deep_const_borrow_params)
+        binding_audit.begin_ast_body(func)
         # Generator-promoted locals are struct fields; pre-seed var_types
         # so codegen sites that consult it (e.g. address-of for tuple
         # slots) see the original TPy type rather than the synthetic

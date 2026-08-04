@@ -2593,13 +2593,14 @@ class TestDelStmt:
         assert _fn(thir, "f") is not None
         assert _fn(thir, "g") is not None
 
-    def test_del_item_multi_target_is_ineligible(self):
-        # Multi-target del shares one source comment across N emitted lines --
-        # a shape one THIR statement cannot carry.
+    def test_del_item_multi_target_routes(self):
+        # Converted reject-pin: THIRDelItem carries the N-line emit (one
+        # __delitem__ statement per target), so the multi-target shape
+        # routes -- see test_thir_wave_del_multi.py for the byte pins.
         thir = _lower(_PRELUDE
                       + "def f(d: dict[Int32, Int32]) -> Int32:\n"
                       + "    del d[1], d[2]\n    return len(d)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     SRC = (
         _PRELUDE
@@ -2966,13 +2967,16 @@ class TestLoopElseEmit:
 
     def test_unlowerable_else_body_falls_back(self):
         # The else block lowers on the body's fallback boundary: an
-        # unroutable statement inside it (multi-target del-item) rejects the
-        # whole function, never a hybrid loop-without-else.
+        # unroutable statement inside it (a nested def with a param default)
+        # rejects the whole function, never a hybrid loop-without-else.
         thir = _lower(
             _PRELUDE
             + "def f(d: dict[Int32, Int32], n: Int32) -> Int32:\n"
             + "    for i in range(n):\n        pass\n"
-            + "    else:\n        del d[1], d[2]\n"
+            + "    else:\n"
+            + "        def g(a: Int32 = 1) -> Int32:\n"
+            + "            return a\n"
+            + "        d[0] = g(2)\n"
             + "    return len(d)\n")
         assert _fn(thir, "f") is None
 

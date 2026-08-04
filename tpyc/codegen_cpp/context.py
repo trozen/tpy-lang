@@ -35,6 +35,8 @@ from ..type_def_registry import (
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
+from ..binding_audit import (capture_ast as _binding_capture,
+                             end_ast_body as _binding_end_body)
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
@@ -1777,6 +1779,9 @@ class CodeGenContext:
 
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""
+        # The previous body's binding-audit window closes against its still-
+        # live sets; must run before the wipe below.
+        _binding_end_body(self)
         self.declared_vars = set()
         self.var_types = {}
         self.local_scope_names = set()
@@ -1938,6 +1943,9 @@ class CodeGenContext:
 
     def restore_local_scope(self, snap: LocalScopeSnap) -> None:
         """Restore local-variable declaration state from a snapshot."""
+        # Branch-scoped binding adds are still live here -- the audit's one
+        # chance to see them before the overwrite discards them.
+        _binding_capture(self)
         self.declared_vars = snap.declared_vars.copy()
         self.var_types = dict(snap.var_types)
         self.local_scope_names = snap.local_scope_names.copy()

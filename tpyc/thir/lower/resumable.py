@@ -40,6 +40,7 @@ from dataclasses import replace
 
 from ..fallback import ThirUnsupported, begin_stmt, note, stmt_reject_reason
 from ..faces import witness as _witness
+from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import (
     THIRAssign,
     THIRExpr,
@@ -1835,6 +1836,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if saw_async_with:
         _witness("res.async_with")
     _witness("res.body")
+    publish_binding_facts(lc)
     return THIRResumableBody(
         leaves=leaves, conds=conds, await_args=await_args,
         return_values=return_values, yield_values=yield_values,

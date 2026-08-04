@@ -49,6 +49,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
+from ...binding_audit import acknowledge_binding_partial
 from ...typesys import (
     RecursiveAliasInstanceType,
     AnyType,
@@ -319,6 +320,8 @@ from .predicates import (
     _optional_ptr_borrow,
     _optional_ptr_borrow_name,
     _optional_checked_field,
+    _optional_checked_field_over_call_ok,
+    _optional_checked_recv_call,
     _optional_field_over_container_subscript_ok,
     _optional_field_over_subscript_ok,
     _optional_checked_field_over_field_ok,
@@ -395,7 +398,12 @@ from .predicates import (
     _value_tuple_global,
     _value_tuple_return,
     _ru_container_literal_ok,
+    _own_genrec_return,
+    _ru_wrapper_own_call_arg,
+    _ru_instance_literal_ok,
     _ru_wrapper_member_name_arg,
+    _ru_wrapper_field_arg,
+    _ru_wrapper_name_arg,
     _ru_wrapper_member_rvalue_arg,
     _ru_wrapper_scalar_literal_arg,
     _ru_wrapper_arg_slot,
@@ -404,6 +412,7 @@ from .predicates import (
     _any_compare_pair,
     _any_none_subject,
     _union_none_name,
+    _container_compare_pair,
     _union_compare_pair,
     _record_compare_pair,
     _unrouted_binding_read,
@@ -740,6 +749,13 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                       if isinstance(ret, TpyType) else None,
                       analyzer) is not None
                   and _witness("call.storage_opt_ret"))
+              # An Own[genrec]-returning call at a STORAGE sink (the
+              # argtemp.ru_wrapper_call temp): the by-value wrapper return
+              # lands bare in the typed temp slot.
+              or (result is _ExprResultUse.STORAGE
+                  and _own_genrec_return(
+                      fi.return_type if fi is not None else None) is not None
+                  and _witness("call.genrec_own_ret"))
               # A container-returning call at the STORAGE return sink lands
               # bare regardless of element family -- the whole container is
               # returned by value, no per-element conversion happens (unlike
@@ -1122,6 +1138,17 @@ def _record_ctor_arg_supported(
                 # the spelled default ctor (`Foo(std::vector<int32_t>(), 1)`).
                 or _own_container_instantiation_arg(arg, param_type,
                                                     analyzer)
+                # The M4c wrapper-slot NAME row, mirrored from the free-call
+                # ladder: a same-wrapper NAME (non-generic alias or generic
+                # instance) binds the borrow ctor slot bare
+                # (`Summary(seed)` -> `Summary(seed)`).
+                or _ru_wrapper_name_arg(arg, param_type, declared,
+                                        frozenset(lc.narrow.narrowed))
+                # A container literal into an `Own[genrec]` ctor slot: the
+                # ru-instance spelled render, inline (no temp).
+                or (_own_genrec_return(param_type) is not None
+                    and isinstance(arg, (TpyArrayLiteral, TpyDictLiteral))
+                    and _ru_instance_literal_ok(arg, analyzer))
                 # The pointer-variant union rows, mirrored from the plain
                 # arg loop: a member-typed record NAME / None lifts bare
                 # (`pv{&(name)}` -- temp-free); a member ctor RVALUE hoists a
@@ -1762,11 +1789,13 @@ def _opt_f1_record(t: 'TpyType | None', analyzer) -> 'TpyType | None':
 
 
 def _value_elem_container(t: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """A list/set whose elements are scalar/str values, or None -- the
-    container `==` renders member-wise via the std container operator."""
+    """A list/set/dict whose elements are scalar/str values, or None -- the
+    container `==` renders member-wise via the std container operator, and
+    the whole-member field read (`repr(self.lookup)`) passes it bare the
+    same way."""
     u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
          if t is not None else None)
-    if u is None or not (is_list(u) or is_set(u)):
+    if u is None or not (is_list(u) or is_set(u) or is_dict(u)):
         return None
     args = getattr(u, "type_args", ())
     if not args:
@@ -2394,6 +2423,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _char_compare_operand(e.right, rt, analyzer))
                 or (_tparam_value(lt) and _tparam_value(rt))
                 or _union_compare_pair(lt, rt)
+                or (_container_compare_pair(e.op, lt, rt, analyzer)
+                    and _witness("binop.container_eq"))
                 or (e.op in ("==", "!=") and _any_compare_pair(lt, rt))
                 or _record_compare_pair(lt, rt)
                 or _enum_compare_pair(e, lt, rt, analyzer)
@@ -2813,10 +2844,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                 allow_temps=temps_ok)
             # An F1-record FIELD operand (`r.headers == other`) renders the
             # bare member read into the compare parens, like a record name.
+            # A CONTAINER field operand (`self.tags == other.tags` -- the
+            # @dataclass __eq__ chain) reads bare the same way.
             if isinstance(side, TpyFieldAccess):
                 st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(side))))
-                if _f1_record(st, analyzer):
+                if (_f1_record(st, analyzer)
+                        or is_list(st) or is_dict(st) or is_set(st)
+                        or is_array(st)):
                     return _ExprUse(result=_ExprResultUse.BORROW_BIND)
             # Compare operands are target-less on the AST path, so a
             # both-literal sub-binop folds there.
@@ -2987,8 +3022,10 @@ def _poly_cast_context(var: str, lc: '_LowerCtx',
     OR-chain, the value-position chain), so the spellings cannot drift.
     Const pointees come from the param verdicts OR a readonly-qualified
     subject; the cast arg spells bare for pointer-shaped subjects, `&name`
-    for `T&` ones."""
-    var_raw = declared.get(var)
+    for `T&` ones. A post-if/assert-narrowed subject anchors to its ORIGINAL
+    declared type (`lc.narrow.poly_source`) -- the AST's `lookup_var_type`,
+    which narrowing never retypes."""
+    var_raw = lc.narrow.poly_source.get(var, declared.get(var))
     var_decl = _poly_subject_decl(var_raw)
     const = (_const_borrow_name(var, lc)
              or _poly_subject_readonly(var_raw))
@@ -3485,7 +3522,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     # types as a plain container on the expr, but the AST
                     # unwraps that read -- keep it out (same rule as the
                     # str-family field rows).
-                    or (use.result is _ExprResultUse.ITERABLE
+                    or (use.result in (_ExprResultUse.ITERABLE,
+                                       _ExprResultUse.BORROW_BIND)
                         and _plain_container_read(
                             _field_decl_type(e, declared, analyzer))
                         and _witness("field.container_iterable"))
@@ -3544,6 +3582,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                             e, declared, lc.narrow.narrowed, analyzer,
                             lc.pointers)
                         or _optional_checked_field(e, declared, analyzer)
+                        or _optional_checked_field_over_call_ok(e, analyzer)
                         or _optional_checked_field_over_field_ok(
                             e, declared, analyzer)
                         or _field_over_subscript_ok(e, declared, analyzer)
@@ -3645,6 +3684,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     if sub.form is Form.STORAGE else sub)
             return THIRFieldAccess(
                 result_type=rtype, receiver=recv,
+                field_cpp=_field_cpp(e), deref_check=True, loc=loc)
+        if (e.needs_optional_runtime_check
+                and isinstance(e.obj, (TpyCall, TpyMethodCall))
+                and _optional_checked_field_over_call_ok(e, analyzer)):
+            # Unproven access off a BORROW-returning ptr-Optional CALL:
+            # the raw `T*` result feeds deref_check directly
+            # (`::tpy::deref_check(find(...)).x` -- the call sibling of
+            # the Optional-ptr name receiver).
+            _witness("field.opt_check_call_recv")
+            return THIRFieldAccess(
+                result_type=rtype,
+                receiver=_lower_expr(
+                    e.obj, lc, declared,
+                    use=_ExprUse(ptr_opt_passthrough=True)),
                 field_cpp=_field_cpp(e), deref_check=True, loc=loc)
         if (e.needs_optional_runtime_check
                 and isinstance(e.obj, TpyFieldAccess)
@@ -4659,6 +4712,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     and not contains_pending_leaf(cvt)):
                 note_detail("walrus.btuple_reassign_shape")
                 raise ThirUnsupported("expr.walrus")
+            # A fixpoint-const name (a const field source at some OTHER
+            # binding) would need the const borrow spelling this arm does
+            # not render -- reject rather than spell the mutable form.
+            lc.ensure_borrow_tuple_const()
+            if e.target in lc.const_borrow_tuple_locals:
+                note_detail("walrus.btuple_const")
+                raise ThirUnsupported("expr.walrus")
             # tuple_source: the owning `__slot_N.emplace(...)` consumes the
             # call result whole, exactly like the tuple-unpack capture.
             lowered_value = _lower_expr(
@@ -4764,6 +4824,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             declared[e.target] = vtu
             lc.walrus_slot_locals.add(e.target)
             lc.walrus_predeclared.add(e.target)
+            if isinstance(vtu, TupleType):
+                # The AST also folds an owned-tuple walrus target into
+                # `storage_form_tuple_locals` (the walrus re-union at every
+                # scope restore); THIR keys the same reads on
+                # `walrus_slot_locals`' deref render instead, so the
+                # storage-tuple mirror is a KNOWN different-registry partial.
+                acknowledge_binding_partial(
+                    lc, "storage_tuple_locals", e.target)
             _witness("expr.walrus_owned_slot")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -6507,12 +6575,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 if e.obj.name not in declared:
                     note_detail("method.recv.name_absent")
                     raise ThirUnsupported("expr.method_call")
-            elif not _method_nonname_receiver_ok(e.obj, declared, analyzer):
+            elif not (_method_nonname_receiver_ok(e.obj, declared, analyzer)
+                      # An unproven ptr-Optional CALL receiver: the raw
+                      # `T*` result feeds the deref_check member render
+                      # (`::tpy::deref_check(find(...)).mag()` -- the call
+                      # sibling of the checked NAME receiver).
+                      or (e.needs_optional_runtime_check
+                          and _optional_checked_recv_call(e.obj, analyzer)
+                          and _witness("method.opt_check_call_recv"))):
                 note_detail(_recv_shape_reject(e.obj, declared, analyzer))
                 raise ThirUnsupported("expr.method_call")
             if (e.needs_optional_runtime_check
                     and _optional_ptr_borrow_name(
-                        e.obj, declared, analyzer) is None):
+                        e.obj, declared, analyzer) is None
+                    and not _optional_checked_recv_call(e.obj, analyzer)):
                 raise ThirUnsupported("expr.method_call")
             # A consuming method's receiver-move render is mirrored only for
             # a bare non-pointer, non-narrowed name (never `self`): the AST
@@ -6876,6 +6952,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # deref has to ride the name (indirect_read).
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                              allow_temps=temp_args,
+                             # The checked CALL receiver's `T*` result
+                             # lands bare into deref_check. Safe outside
+                             # the iterable_override branch only because
+                             # all three override predicates reject
+                             # needs_optional_runtime_check -- keep that
+                             # invariant if adding a fourth.
+                             ptr_opt_passthrough=(
+                                 e.needs_optional_runtime_check
+                                 and isinstance(e.obj,
+                                                (TpyCall, TpyMethodCall))),
                              indirect_read=(
                                  fi is not None
                                  and (fi.cpp_template is not None
@@ -7795,6 +7881,16 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
         return comp
     su_elem = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
         if slot is not None else None
+    if (_own_genrec_return(slot) is not None
+            and isinstance(e, (TpyArrayLiteral, TpyDictLiteral))
+            and _ru_instance_literal_ok(e, lc.analyzer)):
+        # A container LITERAL at an `Own[genrec]` element slot (the widened
+        # value-tuple RETURN element): the ru-instance spelled render, a
+        # prvalue into the by-value slot -- the element twin of the
+        # arg.genrec_own_literal row.
+        _witness("containerlit.genrec_own_elem")
+        return _lower_ru_literal(e, lc.analyzer.get_expr_type(e),
+                                 lc, declared)
     if isinstance(su_elem, TypeParamRef):
         # A `T` element slot: only the plain declared NAME renders bare
         # (`return {x};`). Narrowed / pointer-form / movable names carry
@@ -8953,7 +9049,8 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         at = analyzer.get_expr_type(a)
         tb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
               if at is not None else None)
-        if isinstance(tb, OptionalType) or is_list(tb) or is_set(tb):
+        if (isinstance(tb, OptionalType) or is_list(tb) or is_set(tb)
+                or is_dict(tb)):
             return _lower_expr(a, lc, declared, allow_whole_optional=True)
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
@@ -9756,6 +9853,21 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRArgTemp(result_type=proto, cpp_type=cpp_type,
                                init=init, brace_init=brace_init,
                                form=Form.BORROW, loc=getattr(a, "loc", None))
+    # A container LITERAL into an `Own[genrec]` slot renders the ru-instance
+    # spelling INLINE (`Holder(std::vector<Tree<int32_t>>{1, 2})` -- a
+    # prvalue into the by-value Own slot, no temp and no flush needed; the
+    # ctor-gate row admits it).
+    if (_own_genrec_return(ptype) is not None
+            and isinstance(a, (TpyArrayLiteral, TpyDictLiteral))
+            and _ru_instance_literal_ok(a, lc.analyzer)):
+        _witness("arg.genrec_own_literal")
+        return _lower_ru_literal(a, lc.analyzer.get_expr_type(a),
+                                 lc, declared)
+    # A same-wrapper FIELD read the gate admitted (`leaf_count(self.t)`):
+    # the bare member read IS the render; precheck the field arm so its
+    # result gate does not re-ask the wrapper question.
+    if _ru_wrapper_field_arg(a, ptype, declared, lc.analyzer):
+        return _lower_expr(a, lc, declared, field_prechecked=True)
     if temp_args:
         cov_slot = _covariant_temp_arg(a, ptype, declared, lc.analyzer)
         if cov_slot is not None:
@@ -9860,6 +9972,19 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRArgTemp(
                 result_type=ru_c, cpp_type=lc.render_type(ru_c),
                 init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
+                form=Form.VALUE, loc=getattr(a, "loc", None))
+        # The Own[genrec]-returning CALL sibling: `leaf_count(make_leaf())`
+        # hoists `Tree<int32_t> __tmp_N = make_leaf();` -- the by-value
+        # return binds the prvalue directly, bare temp name passed.
+        ru_call = _ru_wrapper_own_call_arg(a, ptype, lc.analyzer)
+        if ru_call is not None:
+            _witness("argtemp.ru_wrapper_call")
+            return THIRArgTemp(
+                result_type=ru_call, cpp_type=lc.render_type(ru_call),
+                init=_lower_expr(
+                    a, lc, declared,
+                    use=replace(_NESTED_ARG_USE,
+                                result=_ExprResultUse.STORAGE)),
                 form=Form.VALUE, loc=getattr(a, "loc", None))
         # M4c: a member-typed NAME into the wrapper slot hoists the typed
         # temp (`Tree __tmp_N = std::move(b);`), the init `_maybe_move`-

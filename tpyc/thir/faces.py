@@ -44,6 +44,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.ru_wrapper_literal",   # scalar/str literal into a
                                     # recursive-union wrapper slot
     "argtemp.ru_wrapper_member",    # member-typed NAME into a wrapper slot
+    "argtemp.ru_wrapper_call",      # Own[genrec]-returning free call into
+                                    # the same-wrapper slot -> prvalue temp
+    "call.genrec_own_ret",          # the Own[genrec] by-value return landing
+                                    # bare at a STORAGE sink
+    "containerlit.genrec_own_elem", # container literal at an Own[genrec]
+                                    # element slot -> the ru-instance render
+    "mil.generic_record_move",      # Own-param move into a generic-record
+                                    # field _f1_record rejects (Box[Tree[T]])
     "argtemp.ru_wrapper_ctor",      # member-CTOR rvalue into a wrapper slot
                                     # (`Tree __tmp_N = std::move(b);`)
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
@@ -72,6 +80,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot -> bare render (__hash__)
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
                                     # -> inline typed rvalue (const-ref bind)
+    "arg.ru_wrapper_borrow_call",   # borrow-returning wrapper call binds the
+                                    # same-wrapper slot bare
+    "arg.ru_wrapper_field",         # same-wrapper field read binds the slot bare
     "arg.ru_wrapper_narrowed",      # F6-narrowed member alias passed bare
                                     # into a same-wrapper arg slot
     "expr.lambda_void_print",       # void print-body lambda -> the
@@ -520,6 +531,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.optional_none",            # `f(std::nullopt)` -- any Optional field,
                                     # inner-independent (incl. value-repr)
     "mil.ptr_none",                 # `p(nullptr)` -- None into a Ptr[T] field
+    "mil.genrec_literal",           # container literal into a generic-instance
+                                    # wrapper field: the ru-instance spelled render
     "mil.union_none",               # `u(std::monostate{})` -- None into a
                                     # value-variant union field
     "mil.union_lift",               # `u(::tpy::to_value_variant<...>(v))` --
@@ -574,6 +587,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.record_dunder",
     # ...consumed as a PRINT arg (the record-call row's binop twin; gate).
     "print.record_binop",
+    "field.opt_check_call_recv",    # unproven field off a ptr-Optional
+                                    # CALL -> deref_check(<call>).field
+    "method.opt_check_call_recv",   # the method sibling ->
+                                    # deref_check(<call>).method(args)
+    "print.record_field",           # F1-record FIELD print arg -> RAW stream
+                                    # over the bare member read
     # ...consumed as a FIELD-access receiver (`(a // b).v`; gate).
     "field.binop_recv",
     # A field read off a PROPERTY-GETTER receiver returning a record
@@ -685,6 +704,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # `{ auto __del_sink = std::move([*]name); }` block per sunk name --
     # skip-only dels stay on the no-code THIRNoOpStmt face).
     "stmt.del_var_sink",
+    "stmt.del_item_multi",          # multi-target del: one __delitem__ line per target
     # Rebound container-literal local (lowering; the F2d two-slot machinery
     # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
     # ... xs = &*(__slot_2 = {...});`).
@@ -704,6 +724,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # no-init dynamic_cast OR-chain
     "narrow.poly_value",            # value-position poly isinstance -> the
                                     # bare null-check chain (no branch)
+    "narrow.dyn_neg_guard",         # `if not isinstance(v, Sub):` on a poly
+                                    # subject -> `(!(<null-check>))` condition
+    "narrow.dyn_post_if",           # the early-return implicit-else poly
+                                    # cast-and-cache alias (persistent)
+    "narrow.dyn_assert",            # `assert isinstance(v, Sub)` poly narrow
+                                    # -> null-check cond + persistent alias
     "subscript.protocol_recv",      # protocol-typed template-param receiver
                                     # -> the shared checked __getitem__
     "subscript.varargs_recv",       # *args view + range-proven index ->
@@ -948,6 +974,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
     "decl.btuple_elem_alias",       # T& alias of a borrow-tuple param's ptr element
+    "decl.btuple_reassigned",       # reassigned MIXED own-borrow tuple first decl:
+                                    # the call render binds directly (no slot/lift)
     "decl.btuple_rebind_slot",      # reassigned btuple decl off an owning call:
                                     # optional slot + emplace + tuple_to_pointer
     "decl.btuple_lift",             # reassigned btuple decl off a storage lvalue
@@ -955,8 +983,16 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
     "ret.btuple_name",              # already-borrow tuple local returned bare
     "ret.consuming_self_field",     # consuming method: `return std::move(this->f);`
+    "ret.finally_deferred",         # deferred return capture: auto* p before the
+                                    # finally chain, move/ptr_to_optional_move after
+    "ret.genrec_literal",           # Own[Tree[T]] return of a container literal:
+                                    # the ru-instance spelled render
+    "ret.genrec_member",            # Own[Tree[T]] return of a scalar member value:
+                                    # bare, the converting ctor absorbs it
     "ret.btuple_literal",           # `return (n, p)` -> std::tuple<..,T*>{n, &(p)}
     "arg.btuple_name",              # already-borrow tuple name passed bare
+    "arg.genrec_own_literal",       # container literal into an Own[genrec] slot:
+                                    # the ru-instance spelled render, inline
     "arg.required_protocol_union",  # name at a required multi-protocol
                                     # union slot -> plain value render
     "arg.value_opt_callable",       # whole Optional[Callable] name passed
@@ -994,6 +1030,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # borrow-form tuple param -> binds bare
     "method.protocol_self_storage_ret",  # Own[Self] rvalue into the `auto`
                                     # decl slot in a template body
+    "method.protocol_genrec_storage_ret",  # Own[genrec] rvalue off a protocol
+                                    # receiver at a STORAGE sink -> bare
     "method.protocol_own_storage_ret",  # Own[record] rvalue off a protocol
                                     # receiver landing bare at a storage sink
     "method.scalar_tuple_ret",      # scalar-receiver stub's value-tuple
@@ -1371,6 +1409,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # A fixed-int bitwise op (`a & b`, `a << b`, ...) admitted at the scalar
     # arm -- same resolved-binop template emit as arithmetic (lowering admission).
     "binop.bitwise",
+    "binop.container_eq",           # same-type container ==/!= -> the bare
+                                    # operator (the @dataclass __eq__ chain)
     # A both-literal int binop folded in the target-less BigInt context
     # (`2**63 - 1` -> the folded BigInt-targeted literal render).
     "binop.literal_fold",
@@ -1494,6 +1534,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot: its own storage type
     "arg.pending_str_slot",         # unresolved view-var str slot admitted
                                     # through the resolver, not the spelling
+    "arg.protocol_record_field",    # concrete F1-record field at a still-
+                                    # protocol template slot -> bare member
     "arg.native_protocol_open_field",  # open-T field at an unsubstituted
                                     # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a

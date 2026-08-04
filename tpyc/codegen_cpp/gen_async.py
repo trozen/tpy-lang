@@ -24,6 +24,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from ..binding_audit import end_ast_body as _binding_end_body
 from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
@@ -1703,6 +1704,12 @@ class AsyncCoroCodegen:
         try:
             yield
         finally:
+            # Close the binding-audit window on the frame's own state: the
+            # restores below re-install the PREVIOUS emission's sets, and a
+            # lazily-closed window would attribute that residue to this
+            # function (the exc_val misattribution the audit's first corpus
+            # run surfaced).
+            _binding_end_body(self.ctx)
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_forwarded_locals = old_forwarded_locals

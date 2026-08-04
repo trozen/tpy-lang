@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from ..fallback import ThirUnsupported, note
 from ..faces import witness as _witness
+from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import THIRSimpleGenBody
 from ...parse.nodes import (
     TpyArrayLiteral,
@@ -225,6 +226,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         _witness("sgen.while_cond")
         pre_l, yv, post_l = _lower_loop_body(last, lc, declared, loop_depth=1)
         _witness("sgen.body")
+        publish_binding_facts(lc)
         return THIRSimpleGenBody(init=init, pre_yield=pre_l,
                                  post_yield=post_l, yield_value=yv, cond=cond)
 
@@ -281,6 +283,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     pre_l, yv, post_l = _lower_loop_body(last, lc, body_declared,
                                          loop_depth=1 if is_range else 0)
     _witness("sgen.body")
+    publish_binding_facts(lc)
     return THIRSimpleGenBody(init=init, pre_yield=pre_l, post_yield=post_l,
                              yield_value=yv, iterable=iterable,
                              range_args=range_args)

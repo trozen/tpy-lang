@@ -52,6 +52,9 @@ from .faces import (begin_witness_journal, commit_witnesses,
 from ..move_audit import (begin_body as begin_move_audit,
                           commit_body as commit_move_audit,
                           rollback_body as rollback_move_audit)
+from ..binding_audit import (begin_body as begin_binding_audit,
+                             commit_body as commit_binding_audit,
+                             rollback_body as rollback_binding_audit)
 from ..parse.nodes import (
     TpyAwait,
     TpyComprehensionGenerator,
@@ -157,6 +160,7 @@ def begin_attempt() -> None:
         compiler._thir_reject_detail = None
     begin_witness_journal()
     begin_move_audit()
+    begin_binding_audit()
 
 
 def commit_attempt() -> None:
@@ -166,6 +170,7 @@ def commit_attempt() -> None:
     so the attempt window is bracketed where the routing decision is made."""
     commit_witnesses()
     commit_move_audit()
+    commit_binding_audit()
 
 
 def fold_attempt(component: str, node: object = None) -> None:
@@ -178,6 +183,7 @@ def fold_attempt(component: str, node: object = None) -> None:
     per-body attribution cannot drift apart."""
     rollback_witnesses()
     rollback_move_audit()
+    rollback_binding_audit()
     compiler = get_current_compiler()
     if compiler is None:
         return

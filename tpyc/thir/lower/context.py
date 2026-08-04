@@ -5,7 +5,10 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import Enum, auto
-from ...parse.nodes import TpyFunction, TpyGlobal
+from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
+                            TpyFunction, TpyGlobal, TpyIfExpr, TpyName,
+                            TpyNamedExpr, TpySubscript, TpyVarDecl)
+from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...typesys import (
     CallableType,
     OptionalType,
@@ -15,12 +18,17 @@ from ...typesys import (
     TupleType,
     UnionType,
     VoidType,
+    is_own_pointer_repr_optional,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_ptr_variant_union
+from ...binding_audit import (enabled as _binding_audit_on,
+                              fresh_record as _binding_fresh,
+                              capture_thir as _binding_capture,
+                              acknowledge_binding_partial as _binding_ack)
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
@@ -37,7 +45,9 @@ from .predicates import (
     _native_iter_value_slot,
     _optional_ptr_borrow,
     _own_opt_storage_binding,
+    _param_is_const,
     _protocol_auto_slot,
+    _own_genrec_return,
     _own_storage_union_return,
     _own_storage_viewfam_return,
     _own_type_param_slot,
@@ -179,6 +189,7 @@ class _Prescan:
                  "ret_own_storage_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
+                 "ret_genrec",
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
@@ -377,6 +388,9 @@ class _Prescan:
         # storage `std::variant<A, B>`): a member-record ctor rvalue
         # returns bare (the converting ctor absorbs it).
         self.ret_own_union = _own_storage_union_return(rt, analyzer)
+        # The generic-instance sibling: an `Own[Tree[Int32]]` slot returns
+        # the wrapper struct by value; source rows gate at the return arm.
+        self.ret_genrec = _own_genrec_return(rt)
         # A value-bearing return must select one of the representations the
         # return arm consumes. Signatures remain AST-emitted; this fact is
         # checked only when lowering reaches an actual return value.
@@ -426,7 +440,8 @@ class _Prescan:
             or self.ret_own_storage_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
             or self.ret_union is not None or self.ret_ptr_union is not None
-            or self.ret_own_union is not None)
+            or self.ret_own_union is not None
+            or self.ret_genrec is not None)
 
 @dataclass
 class _NarrowScope:
@@ -462,6 +477,13 @@ class _NarrowScope:
     # C++ read (`(*__p_ptr)`), rendered verbatim through THIRName.cpp. No
     # alias statement exists -- the if-init pre-binds the cast pointer.
     spelled: dict[str, str] = field(default_factory=dict)
+    # Poly post-if/assert-narrowed vars: var -> the ORIGINAL declared type
+    # (the narrow retypes `declared` to the member, but every later cast in
+    # a re-narrowing chain must anchor to the source decl -- the AST reads
+    # `lookup_var_type`, which narrowing never retypes: the pointer-vs-`&`
+    # cast-arg spelling, the adapter-vs-dynamic_cast pick, and the readonly
+    # const verdict all key on it).
+    poly_source: dict[str, TpyType] = field(default_factory=dict)
 
     def snapshot(self) -> '_NarrowScope':
         # Field-generic so a new container can't be silently shared: every
@@ -524,6 +546,15 @@ _FUNCTION_SCOPED_STATE = (
     # rejects either way).
     "global_ptr_slots", "global_slot_assigned", "import_calls",
     "pre_decl_import_cpp",
+    # The binding-audit union ledger (binding_audit.py): monotonic by design
+    # -- branch pops UNION into it rather than restoring it, since it records
+    # every name the sets ever held.
+    "binding_union",
+    # The borrow-tuple const fixpoint (ensure_borrow_tuple_const): computed
+    # once over the whole body on first demand, immutable after -- the
+    # per-function fact discipline, not walk-order state.
+    "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
+    "_btuple_const_computed",
 )
 
 
@@ -571,7 +602,10 @@ class _LowerCtx:
                  "overload_literal_facts",
                  "overload_terminated", "render_concept",
                  "top_level_scope", "global_ptr_slots", "global_slot_assigned",
-                 "import_calls", "pre_decl_import_cpp", "top_level_line")
+                 "import_calls", "pre_decl_import_cpp", "top_level_line",
+                 "binding_union",
+                 "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
+                 "_btuple_const_computed")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -589,6 +623,10 @@ class _LowerCtx:
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
+        # Per-lowering union ledger for the cross-path binding-fact check
+        # (binding_audit.py); None keeps every capture seam a no-op when the
+        # audit is off.
+        self.binding_union = _binding_fresh() if _binding_audit_on() else None
         # The SIGNATURE params this body is lowered against: a per-@overload
         # stub's when one is being specialized (the AST binds the stub's
         # types), the impl's otherwise. Every param-type lookup must read
@@ -710,6 +748,17 @@ class _LowerCtx:
         for pname, ptype in self.params:
             if _optional_ptr_borrow(ptype, analyzer) is not None:
                 self.pointers.add(pname)
+            elif is_own_pointer_repr_optional(
+                    unwrap_readonly(unwrap_send_sync(ptype))):
+                # The AST's `Own[Opt[T_ref]]` param seed registers BOTH
+                # pointer_locals and optional_locals; the mirror is the
+                # documented partial above (every arm such a param reaches
+                # rejects a binding it cannot classify, so seeding here
+                # without widening those arms is untestable). Acknowledged
+                # so the binding-fact join stays honest until the widening
+                # change seeds it for real.
+                _binding_ack(self, "pointers", pname)
+                _binding_ack(self, "optional_locals", pname)
         # Names BOUND as `std::variant<A*, B*>` -- codegen's
         # `ctx.ptr_variant_locals`, which is a BINDING set, not a type
         # verdict: a ptr-variant-typed union reaching a name through a
@@ -881,9 +930,33 @@ class _LowerCtx:
         # `_is_borrow_form_name`'s type verdict. Both stay unreachable via the
         # call/subscript arms rejecting an owned-tuple source.
         self.storage_tuple_locals: set[str] = set()
+        # The owned-tuple PARAM seeds are the documented partial above:
+        # acknowledge them so the binding-fact join stays honest until the
+        # arm-widening change seeds them for real (they mirror the AST's two
+        # seed_param_locals arms -- the owned-movable tuple param and the
+        # Own[tuple-with-borrow-element] param).
+        for pname, ptype in self.params:
+            actual = unwrap_readonly(unwrap_send_sync(ptype))
+            if (isinstance(actual, TupleType) and actual.is_owned_movable()
+                    and not isinstance(ptype, ReadonlyType)):
+                _binding_ack(self, "storage_tuple_locals", pname)
+            elif isinstance(actual, OwnType):
+                inner_t = unwrap_readonly(actual.wrapped)
+                if (isinstance(inner_t, TupleType)
+                        and inner_t.has_pointer_repr_element()):
+                    _binding_ack(self, "storage_tuple_locals", pname)
         # Subset of storage_tuple_locals iterated from a const source (a const
         # loop var): the borrow tuple wrap spells `const T*` element pointers.
         self.const_storage_tuple_locals: set[str] = set()
+        # Borrow-form tuple locals whose element pointers spell `const T*`
+        # because SOME binding source reads const storage -- the mirror of
+        # codegen's `const_borrow_form_tuple_locals` (+ the nullable sibling),
+        # populated by `ensure_borrow_tuple_const`'s whole-body fixpoint on
+        # first demand (the AST computes both in setup_body_scope; here most
+        # bodies never ask, so the walk is lazy).
+        self.const_borrow_tuple_locals: set[str] = set()
+        self.const_opt_borrow_tuple_locals: set[str] = set()
+        self._btuple_const_computed = False
         # F2e: sema's RAW owned-locals fact, the mirror of codegen's
         # `ctx.sema_movable_locals`. It means "sema proved this local owned",
         # NOT "movable" -- a name becomes movable only by joining the working
@@ -968,6 +1041,80 @@ class _LowerCtx:
         if name in self.sema_movable_locals:
             self.movable_locals.add(name)
 
+    def ensure_borrow_tuple_const(self) -> None:
+        """Lazy mirror of `_compute_borrow_tuple_const`: OR const over every
+        binding source of a reassigned/hoisted ptr-repr-tuple local, to a
+        fixpoint over name chains (a bare-name source feeding from another
+        borrow-tuple local carries that local's verdict), populating BOTH
+        const sets in one pass. The declared const must be at least as const
+        as every source (mutable->const lift compiles, const->mutable does
+        not). Nullable targets are split by their DECLARED type
+        (`tuple[..] | None`), source-blind, exactly like the AST."""
+        if self._btuple_const_computed:
+            return
+        self._btuple_const_computed = True
+        analyzer = self.analyzer
+        reassigned = self.prescan.reassigned
+        hoisted = self.prescan.hoisted
+        bindings: dict[str, list] = {}
+        opt_bindings: dict[str, list] = {}
+        optional_targets: set[str] = set()
+
+        def record(tgt: str, src) -> None:
+            if tgt not in reassigned and tgt not in hoisted:
+                return
+            st = analyzer.get_expr_type(src)
+            stb = (unwrap_readonly(unwrap_ref_type(st))
+                   if st is not None else None)
+            is_pr_tuple = (
+                (isinstance(stb, TupleType)
+                 and stb.has_pointer_repr_element())
+                or (isinstance(stb, OptionalType)
+                    and stb.wraps_pointer_repr_tuple()))
+            if not is_pr_tuple:
+                return
+            (opt_bindings if tgt in optional_targets
+             else bindings).setdefault(tgt, []).append(src)
+
+        def collect(stmts) -> None:
+            for stmt in stmts:
+                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+                    tt = resolve_stmt_binding_type(
+                        stmt, analyzer, include_global_binding=False)
+                    if tt is None:
+                        tt = analyzer.get_expr_type(stmt.init)
+                    if tt is not None:
+                        tt = unwrap_readonly(
+                            unwrap_ref_type(unwrap_send_sync(tt)))
+                    if (isinstance(tt, OptionalType)
+                            and tt.wraps_pointer_repr_tuple()):
+                        optional_targets.add(stmt.name)
+                    record(stmt.name, stmt.init)
+                elif (isinstance(stmt, TpyAssign)
+                      and isinstance(stmt.target, TpyName)):
+                    record(stmt.target.name, stmt.value)
+                for e in stmt.exprs():
+                    for tgt, src in _walrus_pairs(e):
+                        record(tgt, src)
+                for body in stmt.sub_bodies():
+                    collect(body)
+
+        collect(self.func.body)
+        if not bindings and not opt_bindings:
+            return
+        pairs = [(bindings, self.const_borrow_tuple_locals),
+                 (opt_bindings, self.const_opt_borrow_tuple_locals)]
+        changed = True
+        while changed:
+            changed = False
+            for binds, const_set in pairs:
+                for name, srcs in binds.items():
+                    if name in const_set:
+                        continue
+                    if any(_btuple_src_const(s, self) for s in srcs):
+                        const_set.add(name)
+                        changed = True
+
     @contextmanager
     def branch_scope(self):
         """One scope pop for every branch-scoped lc name-set (plus `narrow`).
@@ -984,9 +1131,71 @@ class _LowerCtx:
         try:
             yield
         finally:
+            # Branch-scoped binding adds are still live -- the audit's one
+            # chance to see them before the restore discards them.
+            _binding_capture(self)
             for name, entries in zip(_BRANCH_SCOPED_SETS, saved):
                 setattr(self, name, entries)
             self.narrow = saved_narrow
+
+
+def _walrus_pairs(expr):
+    """(target, value) for every walrus node in `expr` -- the generic
+    dataclass-field recursion of the AST's `_walrus_bindings`."""
+    if expr is None or not isinstance(expr, TpyExpr):
+        return
+    if isinstance(expr, TpyNamedExpr):
+        yield expr.target, expr.value
+    for f in fields(expr):
+        val = getattr(expr, f.name)
+        if isinstance(val, TpyExpr):
+            yield from _walrus_pairs(val)
+        elif isinstance(val, list):
+            for item in val:
+                if isinstance(item, TpyExpr):
+                    yield from _walrus_pairs(item)
+
+
+def _btuple_src_const(src, lc: _LowerCtx) -> bool:
+    """`_tuple_source_is_const` mirror over lc verdicts: a ternary is const
+    if either arm is; a const-rooted lvalue chain or const-bound name is
+    const; an explicitly `readonly[...]`-typed source is const even without
+    a const binding."""
+    if isinstance(src, TpyCoerce):
+        return _btuple_src_const(src.expr, lc)
+    if isinstance(src, TpyIfExpr):
+        return (_btuple_src_const(src.then_expr, lc)
+                or _btuple_src_const(src.else_expr, lc))
+    if _btuple_const_storage(src, lc):
+        return True
+    st = lc.analyzer.get_expr_type(src)
+    return isinstance(st, ReadonlyType)
+
+
+def _btuple_const_root(name: str, lc: _LowerCtx) -> bool:
+    # `const_ref_params` | `const_indirect_locals` mirror: the inferred
+    # const-borrow param verdict plus the const-classified locals (which
+    # carry the readonly-method receiver).
+    return (name in lc.const_locals
+            or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
+
+
+def _btuple_const_storage(expr, lc: _LowerCtx) -> bool:
+    # `is_const_storage_source` mirror (including the
+    # `is_const_union_source` lvalue-chain half).
+    if isinstance(expr, TpyCoerce):
+        return _btuple_const_storage(expr.expr, lc)
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        obj = expr.obj
+        if isinstance(obj, TpyName):
+            return _btuple_const_root(obj.name, lc)
+        return _btuple_const_storage(obj, lc)
+    if isinstance(expr, TpyName):
+        return (expr.name in lc.const_storage_tuple_locals
+                or expr.name in lc.const_borrow_tuple_locals
+                or expr.name in lc.const_opt_borrow_tuple_locals
+                or _btuple_const_root(expr.name, lc))
+    return False
 
 
 @dataclass

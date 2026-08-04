@@ -98,16 +98,20 @@ class TestPolyPtrSubjects:
         assert faces["narrow.poly_value"] >= 1
         _assert_byte_identical(src)
 
-    def test_negated_cond_stays_ast(self):
-        # `not isinstance` carries the post-if persistent alias (the AST's
-        # early-return narrowing) -- unmirrored; the body falls back.
+    def test_negated_guard_routes_post_if_alias(self):
+        # CONVERTED FENCE (the poly post-if cell): the negated guard lowers
+        # as `(!(<null-check>))` and the early-return implicit-else emits
+        # the persistent cast-and-cache alias at statement level.
         src = _POLY + (
             "def f(e: Optional[Base]) -> Int32:\n"
             "    if not isinstance(e, A):\n"
             "        return -1\n"
             "    return e.tag()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces["narrow.dyn_neg_guard"] >= 1
+        assert faces["narrow.dyn_post_if"] >= 1
         _assert_byte_identical(src)
 
     def test_compound_cond_stays_ast(self):

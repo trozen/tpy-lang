@@ -688,6 +688,14 @@ class Compiler:
         self._move_verdict_ast: 'dict[int, tuple[TpyName, bool, str | None]]' = {}
         self._move_verdict_thir: 'dict[int, tuple[TpyName, bool, str | None]]' = {}
         self._move_verdict_journal: set[int] | None = None
+        # Per-function binding-set unions for the cross-path subset check
+        # (binding_audit.py) -- id(func)-keyed like the move verdicts, same
+        # per-Compiler identity rules; `_binding_ast_open` is the one body
+        # whose AST emission window is currently recording.
+        self._binding_facts_ast: dict[int, tuple] = {}
+        self._binding_facts_thir: dict[int, tuple] = {}
+        self._binding_ast_open: 'tuple | None' = None
+        self._binding_journal: set[int] | None = None
         # Per-construct arm-residual (fallback bodies CONTAINING each construct
         # -- the deletion metric; see fallback.record_arm_residual). Populated
         # only when $THIR_ARM_RESIDUAL_JSON is set.

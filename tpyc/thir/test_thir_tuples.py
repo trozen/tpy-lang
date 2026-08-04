@@ -2655,8 +2655,10 @@ class TestBtupleRebindDecl:
     (`std::tuple<..., T*>`) across all bindings -- storage-lvalue init via
     the tuple_to_pointer lift, REF-capture literal directly, owning-call
     init via the optional slot + emplace (that row's routing pin is the
-    converted boundary above). Const bindings, borrow-call inits, owning
-    calls at RESEAT position, and the mixed own-borrow hybrid stay AST."""
+    converted boundary above). Const bindings spell `const T*` from the
+    `ensure_borrow_tuple_const` fixpoint and the mixed own-borrow hybrid
+    call binds directly (both routing pins below); borrow-call inits and
+    owning calls at RESEAT position stay AST."""
 
     _SRC = (_PRELUDE
             + "class Box:\n"
@@ -2732,10 +2734,10 @@ class TestBtupleRebindDecl:
         assert _fn(thir, "use") is None
         _assert_byte_identical(src)
 
-    def test_annotated_const_decl_stays_out(self):
-        # BOUNDARY: the annotated decl sets sema's borrow-decl bit, which
-        # the AST ORs into `const T*` element pointers -- the const row is
-        # unported, so the body stays AST.
+    def test_annotated_const_decl_routes_const(self):
+        # Converted fence: `ensure_borrow_tuple_const`'s whole-body fixpoint
+        # spells the const borrow decl (`std::tuple<Int32, const Box*>` off
+        # const-inferred receivers), so the shape routes byte-identically.
         src = (self._SRC
                + "def f(h: Holder, h2: Holder) -> Int32:\n"
                + "    t: tuple[Int32, Box] = h.pair\n"
@@ -2743,13 +2745,15 @@ class TestBtupleRebindDecl:
                + "    return t[1].val\n"
                + "print(f(Holder(Box(5)), Holder(Box(7))))\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.btuple_lift")
         _assert_byte_identical(src)
 
-    def test_mixed_own_call_init_stays_out(self):
-        # BOUNDARY: a MIXED Own+ref-element call renders the own-borrow
-        # hybrid (`std::tuple<Box, Box*>`), whose rebind partially COPIES --
-        # fenced with the storage arm's still-defers pin.
+    def test_mixed_own_call_init_routes_direct_bind(self):
+        # Converted fence: the MIXED Own+ref-element call decl binds its
+        # own-borrow hybrid render directly (decl.btuple_reassigned -- no
+        # slot, no lift; materializing would copy the borrowed half), and
+        # the reseat lifts the storage lvalue.
         src = (self._SRC
                + "from tpy import Own, copy\n"
                + "class Pair2:\n"
@@ -2764,7 +2768,8 @@ class TestBtupleRebindDecl:
                + "    p[1].val = 66\n"
                + "use(Pair2(Box(5)), Box(3))\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.btuple_reassigned")
         assert not faces.get("decl.btuple_rebind_slot")
         _assert_byte_identical(src)
 

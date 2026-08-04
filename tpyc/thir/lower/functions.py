@@ -42,10 +42,12 @@ from ...parse.nodes import (
     iter_capture_bindings,
 )
 from ...namespace import BindingKind
+from ...binding_audit import publish_thir as publish_binding_facts
 from ...prescan import scan_reassigned_vars
 from ...typesys import (
     CONST_PARAMS_METHODS,
     IntLiteralType,
+    RecursiveAliasInstanceType,
     is_any_str_type,
     is_dyn_protocol,
     is_fn_type,
@@ -124,6 +126,7 @@ from ..nodes import (
 )
 from .predicates import (
     _callable_value,
+    _ru_instance_literal_ok,
     _span_value,
     _coerce_disposition,
     _eligible_char,
@@ -167,6 +170,7 @@ from .expressions import (
     _ExprUse,
     _is_move_source,
     _lower_expr,
+    _lower_ru_literal,
     _lower_tuple_literal,
     _slot_literal_retype,
 )
@@ -967,6 +971,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_function(fn)
+        publish_binding_facts(lc)
         return fn
     except ThirUnsupported as ex:
         note(ex.reason)
@@ -1321,6 +1326,30 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             return True
         return (_record_rvalue_source_shape(source, analyzer)
                 and analyzer.get_expr_type(source) in pu.members)
+    if isinstance(ftype, RecursiveAliasInstanceType):
+        # A generic-instance wrapper field (`self.t = t` at `t:
+        # Own[Tree[Int32]]`): the own-param move rides the type-agnostic
+        # M3b-move arm verbatim (`t(std::move(t))`); a container literal
+        # takes the ru-instance spelled render (the decl row's
+        # `_lower_ru_literal` twin). Other sources ride later cells.
+        source = _unwrap_copy(stmt.value, analyzer)
+        if _is_move_source(source, lc, own_param_names):
+            return True
+        return (isinstance(source, (TpyArrayLiteral, TpyDictLiteral))
+                and _ru_instance_literal_ok(source, analyzer))
+    if (isinstance(ftype, NominalType) and ftype.is_user_record
+            and ftype.type_args and not ftype.is_value_type()):
+        # A generic-record field whose instantiation `_f1_record` rejects
+        # (a genrec / open-T type arg -- `Box[Tree[T]]`): the Own-param
+        # move rides the same type-agnostic M3b-move arm
+        # (`data(std::move(data))`). Move sources ONLY -- call/literal
+        # sources keep their parked cells (the Rc MIL family), and the
+        # arm falls through so other generic-record shapes keep their
+        # own rows.
+        source = _unwrap_copy(stmt.value, analyzer)
+        if _is_move_source(source, lc, own_param_names):
+            _witness("mil.generic_record_move")
+            return True
     vu = _eligible_value_union(ftype)
     if vu is not None:
         # F4 U1: bare renders only -- the variant converting ctor absorbs a
@@ -1621,6 +1650,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if _rejects_lambda_hoist(ctor.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_constructor(ctor)
+        publish_binding_facts(lc)
         return ctor
     except ThirUnsupported as ex:
         note(ex.reason)
@@ -1868,6 +1898,15 @@ def _lower_ctor_mil_init(
             value=_lower_expr(
                 source, lc, declared, allow_unrouted_name=True),
             move=True)
+    if (isinstance(ftype, RecursiveAliasInstanceType)
+            and isinstance(source, (TpyArrayLiteral, TpyDictLiteral))):
+        # A container literal into a generic-instance wrapper field: the
+        # ru-instance spelled render, target-threaded like the decl init.
+        _witness("mil.genrec_literal")
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_ru_literal(source, analyzer.get_expr_type(source),
+                                    lc, declared))
     if (_eligible_ptr_value(ftype, analyzer)
             and isinstance(source, TpyNoneLiteral)):
         # None into a `Ptr[T]` cell: a non-STORAGE None renders `nullptr`.

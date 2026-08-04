@@ -794,3 +794,46 @@ class TestEmptyContainerInstantiation:
         assert not [k for k in fallback if k.startswith("top_level:")]
         assert witnessed["call.instantiation_template"] >= 1
         _assert_byte_identical(src)
+
+
+class TestGlobalContainerPrint:
+    # A pointer-SLOT container global printed at top level rides the
+    # hoisted-container print row (`ListPrinter((*nums))` -- the same
+    # kind-keyed wrap over the slot deref).
+    SRC = (
+        "nums = list(range(5))\n"
+        "print(nums)\n"
+    )
+
+    def test_routes_byte_identical(self):
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC, comments=False)
+        assert "::tpy::ListPrinter((*nums))" in cpp
+
+    def test_optional_container_global_stays_ast(self):
+        # BOUNDARY: an Optional[container] global's whole-name print is a
+        # DIFFERENT render (the null-safe optional print, not the
+        # kind-keyed wrap over a bare deref -- a broken exclusion here
+        # would deref a null slot). The OptionalType exclusion must keep
+        # it out of the wrap row.
+        from ..codegen_cpp import CodeGenOptions
+        from .testutil import _assert_byte_identical, _compile, _entry
+        src = (
+            "from typing import Optional\n"
+            "from tpy import Own\n"
+            "def maybe(flag: bool) -> Own[list[int] | None]:\n"
+            "    if flag:\n"
+            "        return [1, 2]\n"
+            "    return None\n"
+            "xs = maybe(True)\n"
+            "print(xs)\n"
+        )
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=True,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        assert not compiler._thir_face_witnesses.get(
+            "print.hoisted_container_arg")

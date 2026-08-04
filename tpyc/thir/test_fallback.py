@@ -199,13 +199,15 @@ def test_end_to_end_first_reject_reasons():
 
 
 def test_function_lowering_reject_falls_back_without_scope_residue():
-    # Multi-target `del d[..], d[..]` is a durable mid-body reject (one THIR
-    # statement cannot carry the shared source comment).
+    # A nested def with a param default is a durable mid-body reject
+    # (`nesteddef.param_default` -- the lambda emit has no default-arg
+    # spelling). Multi-target del, the previous vehicle, routes now.
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(d: dict[Int32, Int32]) -> Int32:\n"
-        "    del d[1], d[2]\n"
-        "    return 1\n"
+        "    def g(a: Int32 = 1) -> Int32:\n"
+        "        return a\n"
+        "    return g(2)\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )
@@ -220,7 +222,7 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
             else:
                 routed.append(fn.name)
     assert compiler._thir_fallback.get(
-        "body:stmt.del_item:multi_target") == 1
+        "body:stmt.nested_def:nesteddef.param_default") == 1
     assert "clean" in routed
 
 
@@ -231,8 +233,9 @@ def test_constructor_lowering_reject_falls_back():
         "    n: Int32\n"
         "    def __init__(self, n: Int32):\n"
         "        self.n = n\n"
-        "        d = {1: 2, 3: 4}\n"
-        "        del d[1], d[3]\n"
+        "        def g(a: Int32 = 1) -> Int32:\n"
+        "            return a\n"
+        "        self.n = g(2)\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):
@@ -245,7 +248,7 @@ def test_constructor_lowering_reject_falls_back():
             fold_attempt("ctor")
     assert ctor is None
     assert compiler._thir_fallback.get(
-        "ctor:stmt.del_item:multi_target") == 1
+        "ctor:stmt.nested_def:nesteddef.param_default") == 1
 
 
 def test_base_init_arg_lowering_reject_falls_back():
@@ -1487,15 +1490,18 @@ def _reasons(src: str) -> dict:
 def test_native_arg_container_is_not_labelled_a_record():
     # Containers are NominalType, so without a guard they fall into the record
     # split and a whole family reads as blocked on the non-F1-record frontier.
-    # A DOUBLY nested element (`m[0][1]`) is past the one-level receiver
-    # resolver, so it stays a rejected container arg -- the single-level form
-    # now routes through the len element row.
+    # A DOUBLY nested element (`m[0][1]`) now resolves one receiver level
+    # deeper (the double-subscript receiver arm), so the reject moved to the
+    # inner subscript's own receiver frontier -- still a rejected container
+    # shape, never the record label.
     src = ("from tpy import Int32\n"
            "def f(m: list[list[list[Int32]]]) -> None:\n"
            "    print(len(m[0][1]))\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
-    assert any(k.endswith("call.native_arg.container") for k in reasons), reasons
+    assert any(k.endswith("call.native_arg.container")
+               or k.endswith("subscript.recv.subscript")
+               for k in reasons), reasons
     assert not any("record_nonf1" in k for k in reasons), reasons
 
 

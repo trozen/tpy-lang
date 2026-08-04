@@ -212,3 +212,72 @@ class TestPolyMatchExcludedRungs:
         assert out == _cpp(src, thir=False)
         assert "!= nullptr)) && flag) {" in out
         assert "if ((!(flag))) {" in out
+
+
+class TestPolyMatchFieldSubject:
+    # A FIELD subject (`match o.pet:` on a deref-dispatch Box[Animal]
+    # field): the subject lowers under BORROW_BIND, so the F1-record field
+    # row admits the bare member read the lvalue bind borrows
+    # (`auto& __match_subject_1 = o.pet;`). Name subjects keep the default
+    # use; a SUBSCRIPT subject rides the same BORROW_BIND admission (the
+    # poly_expr_subscript corpus flip); method-call subjects are
+    # sema-rejected for the deref-dispatch family.
+    SRC = (
+        "from typing import Protocol\n"
+        "from tpy import Int32, Own, dynamic\n"
+        "from tplib.box import Box\n"
+        "@dynamic\n"
+        "class Tag(Protocol):\n"
+        "    pass\n"
+        "class Animal(Tag):\n"
+        "    def __init__(self) -> None:\n"
+        "        pass\n"
+        "class Dog(Animal):\n"
+        "    def __init__(self) -> None:\n"
+        "        pass\n"
+        "class Snake(Animal):\n"
+        "    legs: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.legs = 0\n"
+        "class Owner:\n"
+        "    pet: Box[Animal]\n"
+        "    def __init__(self, pet: Own[Box[Animal]]) -> None:\n"
+        "        self.pet = pet\n"
+        "def describe(o: Owner) -> str:\n"
+        "    match o.pet:\n"
+        "        case Dog():\n"
+        "            return \"dog\"\n"
+        "        case Snake() as s:\n"
+        "            return \"snake \" + str(s.legs)\n"
+        "        case _:\n"
+        "            return \"?\"\n"
+        "def main() -> None:\n"
+        "    print(describe(Owner(Box(Dog()))))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC, comments=False)
+        assert "auto& __match_subject_1 = o.pet;" in cpp
+        assert ("dynamic_cast<const Dog*>"
+                "(&(__match_subject_1.__deref__()))") in cpp
+
+    def test_subscript_subject_routes(self):
+        # The SUBSCRIPT-subject flavor of the BORROW_BIND widening, pinned
+        # directly (the poly_expr_subscript corpus shape).
+        src = self.SRC.replace(
+            "def describe(o: Owner) -> str:\n"
+            "    match o.pet:\n",
+            "def describe_at(pets: list[Box[Animal]], i: int) -> str:\n"
+            "    match pets[i]:\n"
+        ).replace(
+            "    print(describe(Owner(Box(Dog()))))\n",
+            "    pets: list[Box[Animal]] = []\n"
+            "    pets.append(Box(Dog()))\n"
+            "    print(describe_at(pets, 0))\n"
+        )
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert ("auto& __match_subject_1 = ::tpy::__getitem__"
+                "(pets, i.to_fixed_check<int32_t>());") in cpp

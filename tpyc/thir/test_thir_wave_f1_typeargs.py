@@ -190,10 +190,10 @@ class TestUnionAliasTypeArg:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "Pair<Tree>" in hpp + cpp
 
-    def test_wrapper_union_ctor_arg_keeps_rejecting(self):
-        # Adjacent-shape pin: the SPELLING admits Pair<Tree>, but a
-        # wrapper-union value into the ctor's T slot has no arg-row yet --
-        # the body must keep falling back at the call gate.
+    def test_wrapper_union_ctor_arg_routes(self):
+        # Converted fence: the genrec-track ctor-gate row
+        # (`_ru_wrapper_name_arg`, cell E) admits a same-wrapper NAME into
+        # the ctor's T slot -- the body routes byte-identically now.
         src = (
             "from tpy import Int32\n"
             + _PAIR +
@@ -202,7 +202,8 @@ class TestUnionAliasTypeArg:
             "    p = Pair(t)\n"
             "    print(1)\n"
         )
-        assert "body:expr.call" in _thir_fallbacks(src)
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "Pair(t)" in hpp + cpp
 
     def test_local_plain_alias_arg_keeps_rejecting(self):
         # HOLE 2 pin: the module-LOCAL plain alias registers mid-emission

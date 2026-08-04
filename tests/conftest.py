@@ -56,7 +56,7 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
-from tpyc import move_audit
+from tpyc import binding_audit, move_audit
 from tpyc.thir import fallback as thir_fallback
 from tpyc.thir.fallback import arm_universe
 
@@ -1020,6 +1020,23 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 f"the other copies.\n{rows}\nA wrong verdict at a site whose "
                 f"render ignores it emits identical C++, so the byte-diff "
                 f"cannot catch this. See tpyc/move_audit.py.")
+        # The binding-fact subset join: a routed body whose THIR mirror never
+        # held a name the AST's binding set did has a missed producer, wrong-
+        # form renders waiting to happen at every arm that consults it.
+        binding_gaps = binding_audit.violations(compiler)
+        record_binding_facts(len(binding_gaps),
+                             joined=binding_audit.joined(compiler))
+        if binding_gaps:
+            rows = "\n".join(
+                f"  {label} in `{fn}`: missing {', '.join(names)}"
+                for fn, label, names in binding_gaps)
+            pytest.fail(
+                f"binding-fact gap ({len(binding_gaps)}): a routed body's "
+                f"THIR mirror set never held a name the AST classified into "
+                f"its codegen twin.\n{rows}\nA missing name renders the "
+                f"wrong form at every arm keyed on the set; until an arm "
+                f"consults it the byte-diff cannot see it. See "
+                f"tpyc/binding_audit.py.")
         if thir_active:
             fell = sum(compiler._thir_fallback.values())
             if THIR_CLASSIFY_WRITE:
@@ -1391,6 +1408,9 @@ def pytest_configure(config):
         # move-vs-copy divergence at a site whose render ignores the verdict,
         # which the byte-diff cannot see, so it must not need remembering.
         move_audit.set_enabled(True)
+        # The binding-fact subset check (tpyc/binding_audit.py) rides the
+        # same switch: it joins per-function set unions from both passes.
+        binding_audit.set_enabled(True)
     # --thir-codegen / --thir-check-flip / --thir-classify run THIR on ALL user
     # cases (ignoring no_thir.txt) -- the whole-corpus check / classification;
     # the default run respects the markers so only migrated cases assert THIR.
@@ -2379,6 +2399,14 @@ def run_interop_thir_overlay(mod_py: Path, case_dir: Path,
             f"one path moves where the other copies. A wrong verdict at a "
             f"site whose render ignores it emits identical C++, so the text "
             f"compare above cannot catch this.")
+    binding_gaps = binding_audit.violations(compiler)
+    record_binding_facts(len(binding_gaps),
+                         joined=binding_audit.joined(compiler))
+    for fn, label, names in binding_gaps:
+        divergences.append(
+            f"binding-fact gap in `{fn}`: THIR's {label} mirror never held "
+            f"{', '.join(names)} -- a missed producer renders the wrong form "
+            f"at every arm keyed on the set (tpyc/binding_audit.py).")
 
     _interop_thir["routed"] += compiler._thir_routed_bodies
     if THIR_CLASSIFY_WRITE:
@@ -2445,6 +2473,18 @@ def record_move_verdicts(case: str, diffs: list, joined: int) -> None:
     _move_joined[0] += joined
     if diffs:
         _move_verdicts[case] = diffs
+
+
+# The binding-fact subset join (tpyc/binding_audit.py): gaps FAIL their case,
+# so only the tallies travel -- the denominator for the summary line, and the
+# gap count so the line's zero is the join's zero, not a dropped record.
+_binding_tally = {"joined": 0, "gaps": 0}
+_binding_tally_agg = {"joined": 0, "gaps": 0}
+
+
+def record_binding_facts(gaps: int, joined: int) -> None:
+    _binding_tally["joined"] += joined
+    _binding_tally["gaps"] += gaps
 
 
 # Per-construct arm residual: fallback bodies CONTAINING each construct (the
@@ -2525,6 +2565,7 @@ def pytest_sessionfinish(session):
         workeroutput["thir_divergences"] = list(_thir_divergences)
         workeroutput["move_verdicts"] = dict(_move_verdicts)
         workeroutput["move_joined"] = _move_joined[0]
+        workeroutput["binding_tally"] = dict(_binding_tally)
         workeroutput["thir_cases"] = dict(_thir_cases)
         workeroutput["interop_thir"] = dict(_interop_thir)
         workeroutput["thir_flip"] = list(_thir_flip)
@@ -2555,6 +2596,10 @@ def pytest_testnodedown(node, error):
     _thir_divergences_agg.extend(wo.get("thir_divergences", []))
     _move_verdicts_agg.update(wo.get("move_verdicts", {}))
     _move_joined_agg[0] += wo.get("move_joined", 0)
+    bt = wo.get("binding_tally")
+    if bt:
+        for k in _binding_tally_agg:
+            _binding_tally_agg[k] += bt.get(k, 0)
     tc = wo.get("thir_cases")
     if tc:
         for k in _thir_cases_agg:
@@ -2846,6 +2891,14 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             terminalreporter.write_line(
                 f"{_LOG_PREFIX} thir move-verdicts: 0 divergences over "
                 f"{_move_joined[0] + _move_joined_agg[0]} joined nodes")
+        if _thir_tally["bodies"] or _thir_tally_agg["bodies"]:
+            # Same denominator rule for the binding-fact subset join; gaps
+            # fail their case, so the line is a tally, not the report.
+            _bg = _binding_tally["gaps"] + _binding_tally_agg["gaps"]
+            _bj = _binding_tally["joined"] + _binding_tally_agg["joined"]
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir binding-facts: {_bg} gap(s) over "
+                f"{_bj} joined bodies")
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:

@@ -298,9 +298,11 @@ class TestNestedGenericCallTempRide:
         assert faces["argtemp.generic_ref_slot"] >= 1
         _assert_byte_identical(src)
 
-    def test_nested_temp_in_comp_filter_stays_ast(self):
-        # A comprehension FILTER is not a flush position, so the same
-        # nested temp-needing call must keep the body on AST.
+    def test_nested_temp_in_comp_filter_routes(self):
+        # Converted fence: comp FILTERS are flush positions now (temps_ok on
+        # the condition lowering; the emit's checkpointed loop-body-indent
+        # flush -- see test_thir_wave_comp_cond_temps.py), so the nested
+        # temp-needing call routes byte-identically.
         src = (
             "from tpy import Int32, Own\n"
             "class Box[T]:\n"
@@ -315,7 +317,7 @@ class TestNestedGenericCallTempRide:
             "    ys = [x for x in xs if ok(wrap(Int32(1)))]\n"
             "    print(len(ys))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
 

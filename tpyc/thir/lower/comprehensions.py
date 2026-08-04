@@ -827,8 +827,12 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         sized_reserve=route.sized_reserve,
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
+        # temps_ok: a filter's per-iteration temps (an owned-move ctor arg)
+        # render at loop-body indent before the `if` -- the emit flushes them
+        # inside the loop scope, where the loop var is declared.
         conditions=tuple(
-            _lower_truthy(c, lc, body_declared) for c in gen.conditions),
+            _lower_truthy(c, lc, body_declared, temps_ok=True)
+            for c in gen.conditions),
         element=element,
         key=key,
         value=value,

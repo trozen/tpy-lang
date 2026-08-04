@@ -7682,3 +7682,498 @@ non-flushable position and the validator raises OUT of the fallback
 boundary. Named residue: the two Own[tuple]-return name sources (the
 parked F3 family), the record-rvalue-on-call-receiver and
 datetime-optional method-arg singles.
+
+### Designed-queue items 1+2+5+6: binding-fact machine-check, finally-deferred return, del multi-target, comp filter temps (2026-08-04)
+
+Three approved designed-queue items landed in one autonomous grind
+iteration.
+
+**Binding-fact machine-check (queue item 1).** `tpyc/binding_audit.py`
+joins per-function UNIONS of the four mirrored binding sets (pointers /
+ptr_variant / optional / storage_tuple) across both passes, move_audit
+discipline throughout (id(func) keys with strong refs, the fallback.py
+journal seams, routed-bodies-only, a `joined` denominator on the summary
+line beside the move-verdict tally). Captures fire at the scope-restore
+seams (`restore_local_scope`, `branch_scope`) where branch-scoped adds
+are still live; the AST window opens in `setup_body_scope` and closes at
+the next `reset_scope` / module end. The subset assertion (AST union
+must be within THIR's) FAILS the case in both the corpus and interop
+runners. The first corpus run paid for itself: (1) a real
+misattribution -- `_resumable_frame_ctx` restores the PREVIOUS
+emission's `pointer_locals`/`movable_locals` at exit, so lazily-closed
+windows credited the residue (`exc_val` from a Tracer.__exit__) to every
+async fn emitted after it; the window now closes before that restore,
+regression-pinned. (2) Two emit-internal temp families
+(`__await_lift_*`, `__for_tup_*`) the AST classifies for its own
+rendering -- excluded by prefix, documented in the module. (3) Four
+documented-partial producer families now machine-acknowledged AT their
+arms via `acknowledge_binding_partial` (the ACK channel in the same
+record): the Own[Opt[T_ref]] and owned-tuple param seeds, the owned-
+tuple walrus target (THIR keys those reads on walrus_slot_locals), and
+the mixed-own call decl -- the last is a REAL design fork (mirroring
+storage membership alone measurably flips `std::get<1>(x)->val` to
+`.val`; parked in TODO.md with the divergence evidence). One REAL
+missed producer was seeded: the fully-owned tuple call decl
+(`t = make()` at `tuple[Own[T], V]`) now registers
+storage_tuple_locals + promote_movable at the decl-arm entry, the AST's
+pre-shape twin. Pins: `test_binding_audit.py` (join arithmetic, missing
+-name report, subset direction, fallback rollback, window isolation).
+
+**Finally-deferred return (queue item 2).** `THIRFinallyDeferredReturn`
+mirrors `_deferred_return_recipe`'s two-recipe table (A: `&(lvalue)` /
+`std::move(*p)`; B: bare pointer local / `ptr_to_optional_move`) with
+the capture-before-chain interleave in emit (ptr name drawn from the
+shared iter counter BEFORE the chain buffer, `[[maybe_unused]]` under a
+terminating finally). Stamped-but-uncovered shapes REJECT; the
+emit-time retraction is never mirrored; `res.finally_return` stays
+rejected (zero witnesses). Dualgen'd across nested frames, with-frame
+crossings, @error_return, value-type eagerness -- all committed as pins
+(`test_thir_wave_finally_deferred.py`).
+`finally_mutates_returned_local_indirect` + `finally_return_nocopy_move`
+flip; `finally_mutates_returned_local` cleared its 7 return sites but
+stays on main()'s `call.ret_type.record_borrow` design stop.
+
+**del multi-target (queue item 5).** The del_item arm loops targets
+(per-target admission, one rejecting target folds the statement);
+`THIRDelItem` emits one `::tpy::__delitem__` line per target;
+single-target keeps the THIRExprStmt render byte-for-byte. The old
+"one comment across N lines" reject-pin converted to a routing pin.
+`dict/dict_del` clean; mixed receiver kinds + user-record __delitem__ +
+three-target pinned (`test_thir_wave_del_multi.py`).
+
+**Comp filter temps (queue item 6).** `temps_ok` on the comprehension
+condition lowering (the existing while/sgen cond-temp parameter, one
+call-site away) + a checkpointed `flush_since` at loop-body indent
+before the `if` -- checkpointing matters: a naive full flush swept an
+OUTER walrus predecl into the loop scope (caught by the corpus
+byte-diff on `list/comp_nested_list_cond`, fixed same wave).
+`set/set_comp_owned_move` flips; the owned-ELEMENT position stays
+fenced (pinned); the old comp-filter fence in the generic-own-args
+pins converted to a routing pin.
+
+Lesson worth keeping: the check found five distinct producer families in
+its FIRST corpus run -- every one either a misattribution in the new
+recorder, an emit-internal name, or a documented partial nobody had a
+detector for. The acknowledgment channel turns those comments into
+machine state deleted with the mirror, which is exactly the shape the
+original entry asked for ("catch a missed producer on first witness").
+
+### Designed-queue item 4: the borrow-tuple const fixpoint (2026-08-04)
+
+`ensure_borrow_tuple_const` -- the lazy `_compute_borrow_tuple_const`
+mirror on `_LowerCtx`: OR const over every binding source of a
+reassigned/hoisted ptr-repr-tuple local, to a fixpoint over name chains,
+BOTH sets (plain + nullable) in one pass, over THIR's own verdicts
+(`_param_is_const`, `const_locals`, the const tuple sets). Consumers:
+the existing `decl.btuple_*` arm spells `to_cpp_return_const()` and
+threads `is_const` into the lift; the btuple reseat arm's
+`_borrow_tuple_source_ok` gate drops its const-source rejections (the
+deferred rung the fixpoint unlocks) and the reseat FormConvert targets
+the decl verdict; the walrus btuple arm REJECTS a fixpoint-const name
+(no witnessed const render there). The MIXED own-borrow call decl gets
+its direct-bind row (`decl.btuple_reassigned` -- the render already IS
+the local's shape; materializing would copy the borrowed half). Both
+const sets joined into the binding-fact subset check.
+
+Cases: `tuple_reassign_borrow_tuple_ok` + `mixed_own_tuple_local_realias`
+clean. Two fence pins converted (annotated-const decl, mixed-call init);
+name-source and ternary INITS keep rejecting (pinned). Dualgen probing
+surfaced a PRE-EXISTING AST miscompile -- one const source + a later
+element write emits a write through `const Box*` (g++ rejects valid
+Python); filed in BUGS.md, THIR mirrors the oracle byte-identically.
+
+Process lesson (cheap to keep): the first cut of this cell REBUILT a
+decl row that already existed (`decl.btuple_lift` et al.) because the
+gate widening made the existing arm fire divergently -- grep for the
+construct's existing faces BEFORE writing a new arm; the raise-site
+histogram names the site, not whether an arm already half-covers it.
+
+### Genrec track cell A: the match union-switch tiers (2026-08-04)
+
+The `_wrapper_union_like` accessor (thir predicates): the shared duck view
+of a wrapper-union-like subject -- a recursive-alias WRAPPER union or a
+generic instance (`RecursiveAliasInstanceType`), both carrying the same
+duck API. Cell A rekeys the match KIND classifier through it; the whole
+downstream match flow was already duck-keyed (`needs_wrapper()`,
+`wrapper_info()` via `_union_index_members`, `.value` via
+`_narrow_variant_cpp`), so the cell is essentially two lines -- the
+`stmt.match` axis drained across ALL 21 genrec cases byte-identically,
+exactly the design's 19/22 shared-axis prediction. Boundaries pinned:
+the wrapper slice stays NAME-only + unguarded-only, and a plain union
+keeps the bare-variant render (`test_thir_wave_genrec_match.py`).
+
+The boundary probe caught a PRE-EXISTING unwitnessed divergence (confirmed
+by stash-bisect): a member-valued scalar arg at a GENREC slot passed bare
+where the AST hoists `Tree<T> __tmp_N = v;` -- the scalar arg disjunct's
+`_member_valued_union_slot` guard keyed `isinstance(pt, UnionType)` and a
+genrec slot escaped it. CONTAINED by rekeying that guard through the
+accessor (the shape now rejects -> byte-identity restored); the proper
+temp row is cell B's work, where the member-name/literal typed-temp rows
+rekey the same way. Residue after cell A matches the designed cell map:
+B (call/ctor args: generic_arg_shape x6 + the arg tags + the qualcall
+pair), C (return slots x~11), D (ctor MIL fields x6), E (tuple-unpack
+x3, opt_slot_pointee, the optional-cond single).
+
+### Genrec track cell B: call/ctor arg rows + decl converting-ctor rows (2026-08-04)
+
+`_ru_wrapper_arg_slot` rekeys on the accessor (the generic instance
+Ref-peels -- unlike the non-generic wrapper it is not a value type, so
+its param slot arrives Ref-wrapped; the UnionType path's unwrap stays
+byte-frozen), members read via the new `_wrapper_like_members`
+(`wrapper_info().full_members`, both classes). The already-union
+exclusions in the literal/member-name/member-rvalue rows gain the
+RecursiveAliasInstanceType class; the generic-call arg tail gains the
+four wrapper rows against the SUBSTITUTED slot (`leaf_count(t)` at
+`Tree[T]` resolved `Tree[int]` binds the name bare into the
+`leaf_count<::tpy::BigInt>` instantiation). Decl side:
+`_wrapper_member_ctor_slot` rekeys on the accessor and gains the LITERAL
+sibling (`leaf: Tree[int] = 9` -> the plain spelled copy). Two latent
+gaps found and fixed on the way: the ru-literal decl rows never
+registered `declared[name]` (every later use of the declared name
+rejected -- the reason the family looked call-blocked), and cell A's
+containment (the `_member_valued_union_slot` guard) is now re-admitted
+properly through the temp rows.
+
+The genrec dial after B: 6 of 21 cases fully CLEAN
+(alias_name_collision, cross_module x3 flavors, tree_str,
+two_module_qualified -- all six flipped), all 21 byte-identical
+(two_param stays marked: an `iter.method_call_shape` residue outside
+the track). Residue matches cells C/D/E: return slots (x~11), ctor MIL
+fields (x6), tuple unpacks (x3) + the box_field/optional singles and
+one tree_int `==` fold.
+
+### Genrec track cell C, first slice: Own[genrec] return rows + the elem fold (2026-08-04)
+
+`prescan.ret_genrec` (`_own_genrec_return`) admits the `Own[Tree[T]]`
+return slot into `ret_supported` -- no member restriction (the wrapper is
+one C++ value type; SOURCE rows gate): a container literal returns the
+ru-instance spelled render (`return std::vector<Tree<int32_t>>{1, 2,
+3};`), a scalar member value returns bare through the generic tail
+(`return 7;`); everything else is the named `return.genrec_source`
+reject (NAME sources pinned fenced). `_ru_elem_ok` gains the fixed-int
+ctor fold (`Int32(1)` elements render their bare tokens, same int32
+bounds as the raw literal) -- shared with the decl/arg ru-literal rows.
+Remaining cell-C flavors for the next slice: the bare genrec BORROW
+return (`-> Tree[Int32]` field reads), the tuple-of-genrec return, the
+`Own[genrec] | None` optional slots, and the genrec-returning CALL
+rvalue at arg positions (`leaf_count(make_leaf())` -- the argtemp row).
+
+### Genrec track cells C-remainder + D: field rows, borrow returns, the Own ctor-arg cascade (2026-08-04)
+
+Three more row families on the accessor: (1) the ctor MIL-field arm for
+generic-instance fields -- the `Own[Tree[T]]` param move rides the
+type-agnostic M3b-move arm verbatim; a container literal renders
+ru-instance spelled (`mil.genrec_literal`); (2) `_record_borrow_return`
+admits the bare `-> Tree[Int32]` slot (the same borrow direction --
+`Tree<int32_t>&`, `return this->t;`); (3) `_own_lvalue_temp_slot` gains
+the generic-instance payload arm, so `Holder(seed)` at an
+`Own[Tree[Int32]]` ctor slot rides the Own-slot cascade -- and the
+ru-literal decl rows now PROMOTE MOVABILITY (they never did; the
+temp-free `std::move(seed)` at a movable last use needs it, and the
+move-verdict join is the second witness). All 21 genrec cases stay
+byte-identical. Remaining residue: the genrec-returning-call argtemp
+row (`call.ret_type.other` / ctor-arg-call singles), the borrow-call
+decl rows (`g = h.get()` -- `decl.slot_type`), the open-T MIL field
+(box_field's `genrec_open`), tuple-of-genrec returns/unpacks, the
+optional slots, and the tree_int `==` fold.
+
+### Genrec track cell E, first slice: the ctor-arg rows (2026-08-04)
+
+The ctor-arg gate gains the M4c wrapper NAME row (`Summary(seed)` /
+`Pair(t)` -- a same-wrapper name, non-generic alias or generic instance,
+binds the borrow ctor slot bare) and the `Own[genrec]` container-literal
+row (`Holder([1, 2])` renders the ru-instance spelling INLINE -- a
+prvalue into the by-value Own slot, placed OUTSIDE the temp_args block
+since it needs no flush; the first cut sat inside it and never fired,
+caught by the corpus chain-walk). `generic_recursive_ctor_arg` goes
+CLEAN (the 7th of 21); one old fence
+(`test_wrapper_union_ctor_arg_keeps_rejecting`) converted -- its stated
+reason was exactly the missing row. Remaining genrec residue: the
+borrow-call decl (`g = h.get()`), the call-subject match boundary, the
+genrec-returning-call argtemp row, open-T MIL, tuple/optional flavors,
+and the tree_int `==` fold.
+
+### Genrec track cell E, second slice: the borrow-call/field tail (2026-08-04)
+
+Three tail rows: (1) the borrow-call decl alias -- `_borrow_local_binding`'s
+REF_ALIAS call gate admits the generic instance (`g = h.get()` ->
+`Tree<int32_t>& g = h.get();`; the shared `classify_local_binding` already
+said REF_ALIAS, only THIR's F1 filter blocked); (2)
+`_ru_wrapper_borrow_call_arg` -- a BORROW-returning wrapper call binds a
+same-wrapper slot bare (`leaf_count(h.get())`); (3)
+`_ru_wrapper_field_arg` -- a same-wrapper FIELD read binds bare
+(`leaf_count(self.t)` / `leaf_count(h.t)`), with the render prechecking
+the field arm so its result gate does not re-ask. The method-arg ladder
+also gains the four wrapper rows (the record-method twins). Three more
+cases go clean (return_readonly, record_field, record_field_cross_module)
+-- 10 of 21; all byte-identical throughout.
+
+### The poly early-return narrowing cell (designed-queue item 3) + the branch comp decl row (2026-08-04)
+
+The last approved design-queue item. `if not isinstance(v, Sub):
+return/raise` and `assert isinstance(v, Sub)` on a poly-dispatch subject
+now lower: `THIRDynNarrowAlias` (the persistent cast-and-cache alias,
+`[const ]Sub& __v = *<cast_rhs>;`, composed via the shared
+`_poly_cast_context`/`narrow_cast_rhs` chokepoints), the negated-guard IF
+arm (`THIRUnaryNot` over the single-check `THIRDynIsinstanceMulti`), the
+chain-walked `_poly_post_if_fact`, and the poly assert arm +
+`_append_assert_narrow` tail. Re-narrowing chains bump the alias
+(`__p` -> `__p_2`) and anchor every cast to the ORIGINAL declared type
+via the new `lc.narrow.poly_source` (the AST's `lookup_var_type`
+semantics; `declared` retypes to the member for the rest of the walk).
+
+Design-vs-reality: the planned name-render override map and
+`THIRIf.post_extractions` were NOT needed -- the existing
+`lc.narrow.narrowed` rename already IS the override layer, and the
+statement-level alias slots into `_lower_stmts`' post-if pass beside the
+union arm. Two real discoveries instead: (1) a polymorphic-CLASS record
+param is seeded `Ref[Pet]`, and `_poly_subject_decl`'s wrapper check
+rejected the Ref -- the peel unlocked the whole class-subject side of
+every poly arm (the dyn-protocol side never Ref-wraps, which is why the
+landed if-init slice worked); (2) the peel must NOT widen
+`_poly_isinstance_value_info` -- the corpus byte-diff caught
+`short_circuit` (`isinstance(p, Dog) and len(p.bark()) > t`) where the
+`&&`-RHS narrowed read renders the AST's inline static_cast, unmirrored;
+Ref subjects are fenced out of the value-position arm and pinned.
+Fences: else-bodied guards, `self` subjects (receiver arms render
+`this->`, unreached by the rename -- dualgen caught the divergence),
+resumable frames. `protocols/isinstance_early_return_narrowing` (15
+bodies, the full scope-discipline battery: loops/try/match/with sibling
+chains) went CLEAN in one slice and flipped.
+
+The BARE comp-shadow half collapsed to removing the comp decl arm's
+fn_top gate (the render is a position-independent stmt-expr; hoisted
+names and classified shadows already reject via prescan + the route's
+shadow check) -- `match/capture_rebind_comprehension` flipped.
+
+### Genrec tail: the Own[genrec]-returning call argtemp row (2026-08-04)
+
+`leaf_count(make_leaf())` hoists the AST's argtemp
+(`Tree<int32_t> __tmp_N = make_leaf();`, prvalue init, bare name
+passed): `_ru_wrapper_own_call_arg` (keyed on the Own-DECLARED return
+matching the slot's instance; free calls only), the gate row, the
+`argtemp.ru_wrapper_call` lowering row, and the STORAGE result family
+`call.genrec_own_ret`. The chain's real lesson:
+`_recursive_union_borrow_call_arg` was ALREADY capturing the call and
+binding the fresh prvalue inline to the `const&` slot (C++-legal via
+temporary lifetime extension, but not the AST's render) -- the
+borrow-vs-owned discriminator is the DECLARED return spelling, now
+excluded there for both flavors; the non-generic flavor falls back
+(pinned). `union/generic_recursive_return` flipped -- genrec 11 of 21.
+
+### Batch-4 review round (2026-08-04)
+
+Codegen-correctness, safety-model, architecture-fit,
+convention-compliance all clean (byte-composition traced to the AST
+chokepoints; poly_source anchoring verified against lookup_var_type
+semantics). Applied: the non-generic Own-call-arg boundary pin
+(test-coverage's warning -- the exclusion's second flavor had no unit
+witness), the self-subject ASSERT fence pin, the resumable-guard fence
+pin. Filed: the isinstance_early_return_narrowing mutate-and-observe
+gap (TODO, cpython-parity). Suite green start to end: 11022 passed,
+dial 3134 -> 3137, 0 move/binding divergences.
+
+### Genrec tail: compare pair, Own-tuple rows, MIL move, protocol-method rows (2026-08-04)
+
+Four more tail cells, four flips (genrec 15 of 21): (1) the
+same-instance wrapper compare pair -- a `_union_compare_pair` arm keyed
+`RecursiveAliasInstanceType == RecursiveAliasInstanceType` (the wrapper
+struct's own operator, bare render; the NON-generic pair stays out,
+boundary-pinned) -- `tree_int` flipped; (2) the Own[genrec] tuple slots
+-- `_value_tuple_return_element_ok` / `_owned_tuple_call_ret` / the
+standalone unpack's "move" target arm gain the genrec sibling of their
+Own[F1-record] rows, and a container literal at the Own[genrec] element
+slot takes the ru-instance render (`containerlit.genrec_own_elem`) --
+`return_tuple` + `_readonly` flipped, the Own-tuple LOCAL decl slot
+keeps its fence; (3) `mil.generic_record_move` -- an Own-param move
+into a generic-record field `_f1_record` rejects (`Box[Tree[T]]`)
+rides the type-agnostic M3b arm; verified against the AST side, whose
+std::move wrap is unconditionally source-keyed, so the arm cannot
+diverge for any field shape -- box_field's ctor routes, its ctor-ARG
+side stays on the parked `_f1_record_type_arg_ok` fork; (4) the
+protocol-method rows -- the wrapper NAME arg row, the
+`method.protocol_genrec_storage_ret` result row, and
+`_ru_wrapper_own_call_arg` widened to METHOD sources (the record
+flavor routes too; the old fence pin converted) --
+`protocol_method` flipped.
+
+### Batch-5 review round (2026-08-04)
+
+Codegen-correctness (all renders verified against oracles; the
+compare-pair op-permissiveness and MIL type-agnosticism both traced to
+matching AST behavior), safety-model and conventions clean. Applied:
+the protocol-rows unit pin (test-coverage's critical -- the rows were
+corpus-witnessed only), the MIL non-move boundary pin, the
+name-source-at-tuple-element routing pin (from the cell's dualgen
+probe). TODO item 7 refreshed (15/21) and the parked MIL entry split
+into its landed MOVE half and the still-parked ctor-ARG fork. Suite
+green throughout: 11030 passed, dial 3137 -> 3141, 0 move/binding
+divergences.
+
+### Genrec dict-view iteration + the poly-match FIELD/SUBSCRIPT subject (2026-08-04)
+
+Two cells + a harvest, six flips: (1) `_container_genrec_elem` -- the
+genrec sibling of `_container_record_elem` -- admits the dict-view
+iteration over `dict[K, DictTree[K, V]]`, with the open-K key
+admission scoped to that ONE predicate (the values-view render is
+key-blind; `_dict_key_shape_ok` untouched for every other consumer);
+`generic_recursive_two_param` flipped -- genrec 16 of 21, the
+remaining five all parked (field_alias's match boundary, the two
+optional flavors, box_field's ctor-ARG fork, the const-borrow-pointer
+try hoist). (2) The poly match lowered its SUBJECT with the default
+VALUE use, so any non-name subject rejected at the field/subscript
+result gates; a field subject binds the lvalue borrow
+(`auto& __match_subject_N = o.pet;`), so non-name subjects now lower
+under BORROW_BIND, where the existing F1 rows admit them --
+`match/poly_expr_{field,const,guard}` flipped, and the harvest picked
+up `poly_expr_subscript` + `protocols/dyn_recursive_alias_method` as
+side effects (the subscript flavor disproved the pin comment's
+"sema-rejected" claim; corrected). Dial 3141 -> 3147.
+
+### Batch-6 review round (2026-08-04)
+
+Codegen-correctness + safety clean (BORROW_BIND verified unreachable
+for previously-routed subject kinds; the open-K admission verified
+single-consumer). Applied: the keys()-over-open-K routing pin, the
+plain-open-V dict-view boundary pin, and the SUBSCRIPT-subject pin
+(mirroring the corpus shape). One nit carried: the harvest commit's
+subject line ran 83 chars (left as-is per the no-amend rule). Suite
+green throughout: 11036 passed, 0 move/binding divergences.
+
+### The stored-exception raise + the container equality pair (2026-08-04)
+
+Two cells. (1) The gather_settled quartet's stored-exception raise
+(`raise r.exception` on a narrowed Optional[Box[Throwable]] field),
+landed as the ordinary cell its avoid-list re-price recommended: the
+non-call raise operand lowers at RECEIVER (keeping indirect_read, whose
+branch precedes the receiver exclusion in `_name_read_deref`, so every
+routed pointer-local raise still derefs -- dualgen-verified), and the
+field result gate gains the generic-record RECEIVER row
+(`field.generic_record_recv`) for instantiations `_f1_record` rejects.
+All four async cases flipped; the raise_expr frontier is fully
+drained. (2) The @dataclass __eq__ chain's container rows:
+`_container_compare_pair` (same-type ==/!=, the container's own
+operator) and the compare-operand ladder's container-FIELD row
+(BORROW_BIND; the field gate's container row widened
+ITERABLE -> ITERABLE|BORROW_BIND, DECLARED-keyed). One stale dict
+fence converted. No flips yet -- the dataclass cluster still carries
+the fstring/repr tag (the per-family repr arg rows, next wave).
+
+### Batch-7 review round (2026-08-04)
+
+Codegen-correctness + safety clean (the RECEIVER widening traced as
+admission-only; other BORROW_BIND field consumers verified pre-gated
+away from containers; ordered_set/map operator== confirmed
+order-correct in the runtime). Applied: the binop.container_eq face
+assert, the Array-pair fence (the reviewer's real find: the Array
+flavor is pair-admitted but has no operand read row -- fenced until
+wired), and the note that the minimal sync raise fixture routes via
+pre-existing narrowed-field machinery (the new face's witness is the
+quartet itself). Skipped as guarded: the narrowed-global raise
+combination (corpus byte-diff covers; no reachable witness found).
+Suite green: 11043 passed, dial 3147 -> 3151, 0 divergences.
+
+### The dataclass repr/print field rows + a dead-row deletion (2026-08-04)
+
+The fstring/repr half of the dataclass cluster: (1) the dict flavor of
+the repr field rows (`_native_protocol_field_arg`'s container branch,
+the native-arm whole-member split, `_value_elem_container`) --
+`::tpy::dict_to_str(this->lookup)`; (2) `arg.protocol_record_field` --
+a concrete F1-record field at a still-PROTOCOL slot of a TEMPLATE
+callee (the `repr_of({0})` fi's param stays Representable, so the
+exact-match regime never fires; the AST's Adapter wrap is
+@dynamic-only, verified, so the bare bind is exact); (3)
+`print.record_field` -- the F1-record FIELD print arg streams RAW
+under BORROW_BIND like the record-call row. The fstring rejects
+cleared cluster-wide; `records/dataclass_field` flipped (dial 3152).
+Residue per case: the asdict expr-stmt calls, dict_comp, and the
+tuple-field `==` shapes.
+
+Also: the `field.generic_record_recv` row (batch-7's raise cell) was
+DELETED one run after landing -- the corpus faces tally exposed it as
+zero-witness, and probes showed every raise-operand field flavor
+(narrowed and plain) routes through pre-existing RECEIVER admissions;
+the cell's real fix was the operand USE change alone. The dead-row
+doctrine's fastest catch yet: the faces tally, not review, found it.
+
+### Batch-8 review round (2026-08-04)
+
+Clean on code: the protocol-slot record row verified against the AST's
+@dynamic-only Adapter wrap; the dict widening's two consumers verified
+render-shared; the deletion verified reference-free. Applied: ledger
+entries + a stale class-docstring citation of the deleted row. Suite
+green: 11046 passed, 0 move/binding divergences.
+
+### Pointer-slot container globals in the print wrap row (2026-08-04)
+
+A container GLOBAL printed at top level is a pointer-slot name the
+container print rows excluded; the hoisted-container disjunct gains
+`lc.prescan.global_slots` (the same kind-keyed wrap over the slot
+deref, `ListPrinter((*nums))`; Optional bindings still excluded --
+verified non-vacuous at top level, where `declared` keeps the real
+OptionalType). Four flips: list_from_range, list_from_iterator,
+empty_list_inference, module_scope_empty_literals (harvest). Dial
+3152 -> 3156. The dataclass asdict/astuple residue is PARKED on the
+TODO-42 macro-peel fork; the deref-check call-receiver field family
+(`field.receiver_shape`) is the next open group.
+
+### Batch-9 review round (2026-08-04)
+
+Clean; the reviewer hand-verified the Optional exclusion fires at top
+level (a broken exclusion would null-deref -- UB class) and that all
+four oracles show the deref render. Applied: the Optional-container-
+global boundary pin (fixture Own-returned to satisfy sema) + this
+ledger sync. Suite green: 11047 passed, 0 move/binding divergences.
+
+### The deref-checked CALL receiver rows (2026-08-04)
+
+`find(points, 5).x` / `.mag()` -- an unproven field or method access
+off a BORROW-returning ptr-Optional call wraps the raw `T*` result in
+`::tpy::deref_check(...)`: the shared `_optional_checked_recv_call`
+core (Own-declared returns excluded), the field flavor lowered under
+ptr_opt_passthrough into the existing deref_check emit, and the method
+flavor admitted at the nonname-receiver + optional-check gates with
+the same passthrough threading. `pointers/optional_param` flipped +
+`optional_chain_access` harvested (dial 3157). The batch-10 review
+PROBED the Own exclusion and found it load-bearing: the AST's own emit
+for that shape is uncompilable C++ (deref_check has no
+std::optional overload) -- filed in BUGS.md, boundary-pinned; the
+review also verified the passthrough threading is admission-only and
+rests on all three iterable_override predicates rejecting
+needs_optional_runtime_check (now commented at the site).
+
+### Batch-10 review round (2026-08-04)
+
+Applied: the Own-flavor boundary pin, the BUGS.md filing for the
+pre-existing uncompilable deref_check-over-Own emit, the cross-file
+invariant comment, this ledger sync. Suite green: 11049 passed, 0
+move/binding divergences.
+
+### The double-subscript field receiver arm (2026-08-04)
+
+`nested[0][0].x` -- the borrow-elem subscript shell resolves a
+DOUBLE-subscript receiver (the inner subscript is a nested-container
+element lvalue via `_container_ref_alias_elem_subscript`), so every
+level renders the same __getitem__ nest with `.` member access. No
+full flip on its own (the receiver-shape family's remaining cases
+carry other sub-shapes); routing-pinned. One fallback-frontier LABEL
+pin updated (the doubly-nested len arg resolves one receiver level
+deeper before rejecting). Landed after the batch-10 round; reviewed
+by the full-branch pass.
+
+### Full-branch /tpy-review round (2026-08-04)
+
+Seven specialists over master..HEAD (87 files, 46 commits) + a
+meta-review. Codegen-correctness (live compile probes of the
+finally-deferred return and negated poly narrow included) and
+safety-model fully clean; zero Criticals stood after meta-review
+re-bucketed the two docs-sync counts. Applied: the genrec item-7
+count fix (22 cases / 16 flipped / 6 parked -- tuple_param_element
+named as the sixth, probe-verified still blocked on its BORROW-form
+tuple-param return/unpack slots), the gather_settled entry reworded
+past-tense on the deleted row, this ledger entry pair, the vacuous
+genrec-match boundary assert fixed to test the real render, a direct
+unit for the binding-audit ACK-suppression arithmetic, and the
+fourth-copy note on the arg-ladder debt entry. Dropped visibly:
+commit-subject lengths (no-amend + squash-merge), two low-confidence
+pin suggestions (corpus-guarded).

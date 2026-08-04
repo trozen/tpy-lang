@@ -14,6 +14,7 @@ import os
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..binding_audit import end_ast_body as _binding_end_body
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -825,6 +826,10 @@ class CodeGenerator:
             self.functions.gen_namespace_close(cpp)
 
         self._write_header_epilogue(hpp)
+
+        # The module's last body has no successor whose scope setup would
+        # close its binding-audit window -- close it here.
+        _binding_end_body(self.ctx)
 
         return hpp.getvalue(), cpp.getvalue()
 
