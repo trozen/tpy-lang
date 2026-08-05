@@ -1509,9 +1509,13 @@ def test_print_arg_reports_the_inner_reject_not_its_own_shape():
     # The print arm's own shape tag is composed AFTER the inner lowering
     # rejects; since the detail slot is first-wins, a tag composed here would
     # win by default and bury the reason that actually blocked the body.
-    src = ("from tpy import Int32\n"
+    # The inner shape must still reject: a VIEW-keyed set haystack
+    # (`set[StrView]`) threads view_key_target into the needle render,
+    # unmirrored (the owned-str field haystack routes since the
+    # container-field membership row).
+    src = ("from tpy import Int32, StrView\n"
            "class Item:\n"
-           "    tags: set[str]\n"
+           "    tags: set[StrView]\n"
            "    def __init__(self) -> None:\n        self.tags = set()\n"
            "def f(item: Item) -> None:\n"
            "    print(\"fruit\" in item.tags)\n"

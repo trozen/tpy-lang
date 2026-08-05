@@ -1354,12 +1354,12 @@ class TestBorrowTupleLocals:
         assert witnesses.get("res.btuple_yield", 0) >= 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_generic_tuple_yield_defers(self):
-        # A TypeParamRef element spells `val_or_ptr_t<T>` with to_val_or_ptr
-        # wraps (the generic builder rung) -- must fall back, not take the
-        # concrete value/borrow builders. Regression for the divergence the
-        # corpus byte-diff caught on gen_generic_tuple_yield (two yields:
-        # the resumable frame, not the peephole).
+    def test_generic_tuple_yield_routes(self):
+        # CONVERTED (the generic tuple-yield builder): a
+        # TypeParamRef element spells `val_or_ptr_t<T>` with to_val_or_ptr
+        # wraps -- the generic builder now serves the yield slot, NOT the
+        # concrete value/borrow builders (whose misuse was the divergence
+        # the corpus byte-diff once caught here).
         src = ("from typing import Iterator\n\n"
                + "def zip_pairs[K, V](ks: list[K], vs: list[V])"
                + " -> Iterator[tuple[K, V]]:\n"
@@ -1369,9 +1369,9 @@ class TestBorrowTupleLocals:
                + "        yield (ks[i], vs[i])\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.btuple_yield_generic", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_self_element_sync_method_passes_bare(self):
         # `self` in a sync method is the prvalue pointer `this` -- it passes
@@ -4746,9 +4746,12 @@ class TestResForHeadIterableUse:
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_generic_factory_iterable_still_defers(self):
-        # BOUNDARY: a GENERIC generator factory (`pair[T]`) keeps the
-        # _free_callee_kind generic-generator reject.
+    def test_generic_factory_iterable_routes(self):
+        # CONVERTED: the GENERIC generator factory in the
+        # resumable for-head routes -- the explicit-targ spelling with the
+        # ref-slot literal temps flushed at the setup statement
+        # (`__for_src_N.emplace(pair<int32_t>(__tmp_1, __tmp_2));`).
+        from .testutil import _assert_routes_byte_identical
         src = ("from typing import Iterator\n"
                "from tpy import Int32\n\n"
                "def pair[T](a: T, b: T) -> Iterator[T]:\n"
@@ -4757,9 +4760,11 @@ class TestResForHeadIterableUse:
                "    yield 0\n"
                "    for x in pair(7, 8):\n"
                "        yield x\n\n"
-               "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert any(k.startswith("resumable:") for k in fallback)
+               "def main() -> None:\n"
+               "    for v in gen():\n        print(v)\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "pair<int32_t>(__tmp_1, __tmp_2)" in _hpp + cpp
 
 
 class TestResMatchValueHoists:
@@ -5378,9 +5383,11 @@ class TestResumableContainerFieldForHead:
 
 class TestResumableLeafFinally:
     # A leaf try/FINALLY in a resumable renders as the plain sync
-    # duplicated-body try -- no finally-frame scaffolding -- as long as no
-    # return/break/continue crosses it. A crossing is exactly what ties the
-    # finally frame to the async return chain, and stays rejected.
+    # duplicated-body try -- no finally-frame scaffolding -- when nothing
+    # crosses it. A crossing RETURN rides the leaf finally bridge: THIR
+    # mirrors the frame onto the AST finally stack (shared guard numbering
+    # and liveness) so _make_async_return's chain walk inlines the finally
+    # body. Break/continue crossings stay fenced.
     _PRE = "from tpy import Int32\n\n"
 
     def test_leaf_finally_without_crossing_routes(self):
@@ -5407,15 +5414,22 @@ class TestResumableLeafFinally:
         witnesses, _fallback = _assert_identical(src)
         assert witnesses.get("res.leaf_try_finally", 0) == 1
 
-    def test_return_inside_try_still_defers(self):
-        # BOUNDARY: the return is what binds the finally frame to
-        # _make_async_return's chain walk -- the named rung.
+    def test_return_inside_try_routes(self):
+        # CONVERTED (wave 13, the leaf finally bridge): the crossing
+        # return now rides the hook's chain walk -- the frame mirrors onto
+        # the AST finally stack with the shared guard.
+        from .testutil import _assert_routes_byte_identical
         src = (self._PRE
                + "async def f(n: Int32) -> Int32:\n"
                + "    try:\n        return n\n"
                + "    finally:\n        print('cleanup')\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert "leaf_try" in str(_res_fallback(src))
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # Shared guard numbering + liveness: the hook references the guard
+        # THIR declared, and the eager value capture precedes the chain.
+        assert "bool __fin_ran_1 = false;" in cpp
+        assert "__tpy_async_ret_0 = n;" in cpp
+        assert "if (!__fin_ran_1) {" in cpp
 
     def test_self_contained_break_still_defers(self):
         # The walk does not track which loop a break binds to, so a break
@@ -5449,8 +5463,10 @@ class TestResumableLeafFinally:
                + "def main() -> None:\n    pass\nmain()\n")
         assert "leaf_try" in str(_res_fallback(src))
 
-    def test_nested_return_inside_try_still_defers(self):
-        # The crossing is found through nested compound bodies too.
+    def test_nested_return_inside_try_routes(self):
+        # CONVERTED (wave 13): a nested crossing return rides the same
+        # bridge; the break/continue slice keeps the fence
+        # (test_self_contained_break_still_defers).
         src = (self._PRE
                + "async def f(n: Int32) -> Int32:\n"
                + "    try:\n"
@@ -5459,7 +5475,33 @@ class TestResumableLeafFinally:
                + "    finally:\n        print('cleanup')\n"
                + "    return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert "leaf_try" in str(_res_fallback(src))
+        assert not _res_fallback(src)
+
+    def test_nested_finally_frames_route(self):
+        # Two frames on the stack: the chain walk inlines BOTH finally
+        # bodies (inner first), each behind its own shared guard.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n"
+               + "        try:\n            return n\n"
+               + "        finally:\n            print('inner')\n"
+               + "    finally:\n        print('outer')\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert cpp.count("bool __fin_ran_") == 2
+
+    def test_terminating_finally_routes(self):
+        # A finally that itself returns terminates the chain -- the
+        # crossing return's capture is dead after the walk, and both
+        # paths must agree on that render.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + "async def f(n: Int32) -> Int32:\n"
+               + "    try:\n        return n\n"
+               + "    finally:\n        return 99\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_routes_byte_identical(src)
 
 
 class TestResumableFlatAssertNarrow:
@@ -5938,3 +5980,474 @@ class TestFramePtrSlotReseats:
         assert witnesses.get("reseat.opt_frame_slot", 0) >= 1
         _, _hpp, cpp = _gen(src, thir=True)
         assert "p = &*(__ptr_slot_f0 = Cat());" in cpp
+
+
+class TestForwardedProtoParamAlias:
+    """A forwarded proto-param alias in a resumable (`xs = it`): the decl
+    is a compile-time rename -- it emits nothing (trivia only,
+    decl.forwarded_alias) and every read renders the BACKING param (the
+    AST's generator_storage_name substitution, name.forwarded_alias). The
+    oracle contains no `xs` at all."""
+
+    _SRC = (
+        "from typing import Iterator, Iterable\n"
+        "def echo(it: Iterable[int]) -> Iterator[int]:\n"
+        "    xs = it\n"
+        "    for x in xs:\n"
+        "        yield x\n"
+        "        yield x\n"
+        "def main() -> None:\n"
+        "    for v in echo([1, 2]):\n"
+        "        print(v)\n"
+        "main()\n"
+    )
+
+    def test_forwarded_alias_routes(self):
+        # The resumable body lowers at GENERATE time (not lower_module),
+        # so the witnesses come off the generating compiler.
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _assert_routes_byte_identical
+        outs = _assert_routes_byte_identical(self._SRC)
+        assert "resumable_iter_init(__for_itr_0, it)" in outs[0]
+        assert "xs" not in outs[0].replace("// xs = it", "")
+        compiler, modules = _compile(self._SRC)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        faces = compiler._thir_face_witnesses
+        assert faces.get("decl.forwarded_alias", 0) >= 1
+        assert faces.get("name.forwarded_alias", 0) >= 1
+
+
+class TestFrameCompWrite:
+    """A comprehension init at a frame_slot write (`rows = [[i, i+1] for
+    i in range(3) if i > 0]` across a yield): the ordinary comp
+    statement-expression renders inside the emplace arg
+    (`rows.emplace(({ ... })));` -- the sync decl's comp branch at the
+    frame sink, res.frame_comp_write)."""
+
+    _SRC = (
+        "from typing import Iterator\n"
+        "from tpy import Int32\n"
+        "def gen() -> Iterator[Int32]:\n"
+        "    rows = [[i, i + 1] for i in range(3) if i > 0]\n"
+        "    for r in rows:\n"
+        "        yield r[0]\n"
+        "        yield r[1]\n"
+        "def main() -> None:\n"
+        "    for v in gen():\n"
+        "        print(v)\n"
+        "main()\n"
+    )
+
+    def test_frame_comp_write_routes(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _assert_routes_byte_identical
+        outs = _assert_routes_byte_identical(self._SRC)
+        joined = outs[0] + outs[1]
+        assert "rows.emplace(({" in joined
+        compiler, modules = _compile(self._SRC)
+        entry = _entry(modules)
+        compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert compiler._thir_face_witnesses.get(
+            "res.frame_comp_write", 0) >= 1
+
+
+class TestResumableYieldShapes:
+    # Yield-slot rows: Own[container] slots peel Own (the borrow render
+    # is the plain container's), a ternary of frame-slot containers hands out
+    # the branch-picked borrow, and a record field off self reads bare.
+    _IT = "from typing import Iterator\nfrom tpy import Int32, Own\n\n"
+
+    def test_own_container_yield_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "def lists() -> Iterator[Own[list[Int32]]]:\n"
+               + "    a: list[Int32] = [1]\n"
+               + "    yield a\n"
+               + "    b: list[Int32] = [2]\n"
+               + "    yield b\n\n"
+               + "def main() -> None:\n"
+               + "    for xs in lists():\n        print(xs[0])\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return (*a);" in cpp
+
+    def test_container_ternary_yield_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "def gen(flag: bool) -> Iterator[list[Int32]]:\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        a: list[Int32] = [7]\n"
+               + "        b: list[Int32] = [8]\n"
+               + "        yield (a if flag else b)\n"
+               + "        print(len(a if flag else b))\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for xs in gen(True):\n        print(len(xs))\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return ((flag) ? ((*a)) : ((*b)));" in cpp
+        assert "::tpy::__len__(((flag) ? ((*a)) : ((*b))))" in cpp
+
+    def test_record_field_yield_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "class Node:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "class Holder:\n"
+               + "    a: Node\n"
+               + "    b: Node\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.a = Node(1)\n"
+               + "        self.b = Node(2)\n"
+               + "    def nodes(self) -> Iterator[Node]:\n"
+               + "        yield self.a\n"
+               + "        yield self.b\n\n"
+               + "def main() -> None:\n"
+               + "    h = Holder()\n"
+               + "    for n in h.nodes():\n        print(n.v)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return __self.a;" in cpp
+
+    def test_nonself_field_yield_defers(self):
+        # BOUNDARY: a field yield off a non-self receiver stays fenced.
+        src = (self._IT
+               + "class Node:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "class Holder:\n"
+               + "    a: Node\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.a = Node(5)\n\n"
+               + "def gen(h: Holder) -> Iterator[Node]:\n"
+               + "    yield h.a\n\n"
+               + "def main() -> None:\n"
+               + "    h = Holder()\n"
+               + "    for n in gen(h):\n        print(n.v)\n"
+               + "main()\n")
+        assert "res.yield_type" in str(_res_fallback(src))
+
+    def test_walrus_yield_defers(self):
+        # BOUNDARY (PARKED design): the AST plants a dead frame_slot member
+        # AND a shadowing case-block pointer local for a yield-position
+        # borrow walrus -- fenced until the AST wart is resolved (TODO.md).
+        src = (self._IT
+               + "def gen() -> Iterator[list[Int32]]:\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        buf: list[Int32] = [3]\n"
+               + "        yield (x := buf)\n"
+               + "        print(len(buf))\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for xs in gen():\n        print(len(xs))\n"
+               + "main()\n")
+        assert "res.yield_type" in str(_res_fallback(src))
+
+    def test_own_record_yield_routes(self):
+        # The Own peel also reaches the RECORD yield family
+        # (`Iterator[Own[Node]]` on a resumable): pinned routed after the
+        # safety review hand-verified byte-identity -- the render is the
+        # frame-slot borrow deref, ownership rides the consumer binding.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "class Node:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def nodes() -> Iterator[Own[Node]]:\n"
+               + "    n = Node(1)\n"
+               + "    yield n\n"
+               + "    m = Node(2)\n"
+               + "    yield m\n\n"
+               + "def main() -> None:\n"
+               + "    for x in nodes():\n        print(x.v)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return (*n);" in cpp
+
+
+class TestResumableBoundFieldLoop:
+    # A non-suspending for over an open-T SELF field in a
+    # resumable leaf. An Iterable-bound T takes the universal
+    # `::tpy::__iter__` loop over the member lvalue capture; a
+    # NativeIterable/Spannable-bound T takes the begin/end member loop
+    # (foreach.native_bound_field). Non-self receivers keep the fence.
+
+    def test_iterable_bound_self_field_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("import asyncio\n"
+               "from typing import Iterable\n"
+               "from tpy import Int32\n\n"
+               "class Summer[T: Iterable[Int32]]:\n"
+               "    items: T\n"
+               "    def __init__(self, items: T) -> None:\n"
+               "        self.items = items\n"
+               "    async def total(self) -> Int32:\n"
+               "        result: Int32 = 0\n"
+               "        for x in self.items:\n"
+               "            result += x\n"
+               "        return result\n\n"
+               "def main() -> None:\n"
+               "    xs: list[Int32] = [1, 2]\n"
+               "    print(asyncio.run(Summer(xs).total()))\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __src_0 = __self.items;" in _hpp + cpp
+        assert "::tpy::__iter__(__src_0)" in _hpp + cpp
+
+    def test_native_bound_self_field_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("import asyncio\n"
+               "from tpy import Int32, NativeIterable\n\n"
+               "class Wrap[T: NativeIterable[Int32]]:\n"
+               "    items: T\n"
+               "    def __init__(self, items: T) -> None:\n"
+               "        self.items = items\n"
+               "    async def total(self) -> Int32:\n"
+               "        result: Int32 = 0\n"
+               "        for x in self.items:\n"
+               "            result += x\n"
+               "        return result\n\n"
+               "def main() -> None:\n"
+               "    xs: list[Int32] = [1, 2]\n"
+               "    print(asyncio.run(Wrap(xs).total()))\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __obj_0 = __self.items;" in _hpp + cpp
+        assert "__obj_0.begin();" in _hpp + cpp
+
+    def test_nonself_bound_field_defers(self):
+        # BOUNDARY: the leaf gate admits SELF-field iterables only; a
+        # bound field off a monomorphized param receiver stays fenced.
+        src = ("import asyncio\n"
+               "from typing import Iterable\n"
+               "from tpy import Int32\n\n"
+               "class Summer[T: Iterable[Int32]]:\n"
+               "    items: T\n"
+               "    def __init__(self, items: T) -> None:\n"
+               "        self.items = items\n\n"
+               "async def total(s: Summer[list[Int32]]) -> Int32:\n"
+               "    result: Int32 = 0\n"
+               "    for x in s.items:\n"
+               "        result += x\n"
+               "    return result\n\n"
+               "def main() -> None:\n"
+               "    xs: list[Int32] = [1, 2]\n"
+               "    print(asyncio.run(total(Summer(xs))))\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("field.result_type" in k or "for_each" in k
+                   for k in fb), fb
+
+
+class TestResumableTupleYieldSources:
+    # Tuple-yield sources: a GENERIC tuple literal spells the
+    # val_or_ptr_t brace-init with to_val_or_ptr wraps (subscript elements
+    # included), and a tuple NAME outside the storage-form sets passes bare
+    # (value aliases and borrow-form params alike).
+
+    def test_generic_tuple_literal_yield_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("from typing import Iterator\n\n"
+               "def zip_pairs[K, V](ks: list[K], vs: list[V])"
+               " -> Iterator[tuple[K, V]]:\n"
+               "    i = 0\n"
+               "    try:\n"
+               "        while i < len(ks) and i < len(vs):\n"
+               "            yield (ks[i], vs[i])\n"
+               "            i += 1\n"
+               "    finally:\n"
+               "        print('done')\n\n"
+               "def main() -> None:\n"
+               "    for k, v in zip_pairs([1, 2], ['a', 'b']):\n"
+               "        print(k, v)\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        out = _hpp + cpp
+        assert "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>" in out
+        assert "std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>" in out
+
+    def test_value_alias_and_param_tuple_yields_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "class P:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n\n"
+               "def val_gen() -> Iterator[tuple[Int32, Int32]]:\n"
+               "    t = (1, 2)\n"
+               "    u = t\n"
+               "    yield u\n"
+               "    yield u\n\n"
+               "def ref_gen(p: tuple[P, Int32]) -> Iterator[tuple[P, Int32]]:\n"
+               "    yield p\n"
+               "    yield p\n\n"
+               "def main() -> None:\n"
+               "    for pair in val_gen():\n"
+               "        print(pair[0] + pair[1])\n"
+               "    items = (P(5), 6)\n"
+               "    for q, n in ref_gen(items):\n"
+               "        q.x += 1\n"
+               "        print(q.x + n)\n"
+               "    print(items[0].x)\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return u;" in _hpp + cpp
+        assert "return p;" in _hpp + cpp
+
+    def test_generic_elem_narrowed_subscript_recv_defers(self):
+        # BOUNDARY: the narrowed-receiver shape rejects UPSTREAM at the
+        # frame param gate (res.param_type -- an Optional[list[T]] param
+        # never enters the frame), so the subscript leg's own narrowed
+        # fence sits behind it as defense in depth.
+        src = ("from typing import Iterator, Optional\n\n"
+               "def pick[T](ks: Optional[list[T]]) -> Iterator[tuple[T, T]]:\n"
+               "    if ks is not None:\n"
+               "        yield (ks[0], ks[0])\n"
+               "        yield (ks[0], ks[0])\n\n"
+               "def main() -> None:\n"
+               "    for a, b in pick([1, 2]):\n"
+               "        print(a, b)\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("res.param_type" in k for k in fb), fb
+
+
+class TestResumableGenericCoroFactory:
+    # Generic coro factories route where the factory spelling is
+    # consumed -- the coro-handle frame write (`c.emplace(ident<int32_t>(
+    # __tmp_1));`, ref-slot literal temps flushed at the decl) and the
+    # make_adapter erasure boundary (`await ident("hi")` direct).
+
+    def test_generic_handle_bind_and_direct_await_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("import asyncio\n\n"
+               "async def ident[T](v: T) -> T:\n"
+               "    return v\n\n"
+               "async def main_coro() -> None:\n"
+               "    c = ident(41)\n"
+               "    r = await c\n"
+               "    print(r)\n"
+               "    print(await ident('hi'))\n\n"
+               "def main() -> None:\n"
+               "    asyncio.run(main_coro())\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        out = _hpp + cpp
+        assert "c.emplace(ident<int32_t>(__tmp_1));" in out
+
+
+class TestGenericFactoryBoundaries:
+    # The coro_factory_ok widening admits generic factories
+    # ONLY where the factory spelling is consumed; other positions and
+    # owned-tuple param yields keep their fences.
+
+    def test_generic_factory_container_literal_defers(self):
+        # A generic factory call inside a container literal is not an
+        # admitted factory position -- the body stays AST-side.
+        src = ("import asyncio\n\n"
+               "async def ident[T](v: T) -> T:\n"
+               "    return v\n\n"
+               "async def main_coro() -> None:\n"
+               "    xs = [ident(1)]\n"
+               "    print(len(xs))\n\n"
+               "def main() -> None:\n"
+               "    asyncio.run(main_coro())\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("container_literal" in k for k in fb), fb
+
+    def test_own_tuple_param_yield_defers(self):
+        # An Own[tuple-with-ptr-elem] PARAM rejects upstream at the frame
+        # param gate (res.param_type); the bare-yield leg's Own exclusion
+        # is defense in depth behind it.
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32, Own\n\n"
+               "class P:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n\n"
+               "def g(p: Own[tuple[P, Int32]]) -> Iterator[tuple[P, Int32]]:\n"
+               "    yield p\n"
+               "    yield p\n\n"
+               "def main() -> None:\n"
+               "    for q, n in g((P(1), 2)):\n"
+               "        print(q.x + n)\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("res.param_type" in k for k in fb), fb
+
+    def test_spannable_bound_self_field_routes(self):
+        # The native-bound field leg's SPANNABLE flavor (synthesized
+        # begin/end off __span__) -- previously admitted unwitnessed.
+        from .testutil import _assert_routes_byte_identical
+        src = ("import asyncio\n"
+               "from tpy import Int32, Spannable\n\n"
+               "class Wrap[T: Spannable[Int32]]:\n"
+               "    items: T\n"
+               "    def __init__(self, items: T) -> None:\n"
+               "        self.items = items\n"
+               "    async def total(self) -> Int32:\n"
+               "        result: Int32 = 0\n"
+               "        for x in self.items:\n"
+               "            result += x\n"
+               "        return result\n\n"
+               "def main() -> None:\n"
+               "    xs: list[Int32] = [1, 2]\n"
+               "    print(asyncio.run(Wrap(xs).total()))\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "__obj_0.begin();" in _hpp + cpp
+
+
+class TestMixedLoopUnpackBindingFences:
+    # The unpack-target promotion (_var_decl_names includes TpyTupleUnpack
+    # targets) promotes UP FRONT while the AST promotes at the unpack
+    # statement. The timing skew could only be observed by a name bound by
+    # BOTH an earlier non-consuming loop and a later unpack -- and both
+    # flavors of that shape are closed by upstream fences, pinned here.
+
+    def test_loop_unpack_then_unpack_defers(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "def gen(items: list[tuple[Int32, Int32]]) -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    total = 0\n"
+               "    for a, n in items:\n"
+               "        total += a + n\n"
+               "    a, n = (5, 6)\n"
+               "    yield total + a + n\n\n"
+               "def main() -> None:\n"
+               "    for v in gen([(1, 2), (3, 4)]):\n"
+               "        print(v)\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("tuple.reused_target" in k for k in fb), fb
+
+    def test_loop_var_then_unpack_defers(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n\n"
+               "def gen(xs: list[Int32]) -> Iterator[Int32]:\n"
+               "    yield 0\n"
+               "    total = 0\n"
+               "    for a in xs:\n"
+               "        total += a\n"
+               "    a, n = (5, 6)\n"
+               "    yield total + a + n\n\n"
+               "def main() -> None:\n"
+               "    for v in gen([1, 2]):\n"
+               "        print(v)\n"
+               "main()\n")
+        fb = _res_fallback(src)
+        assert any("foreach.var_shadow" in k for k in fb), fb

@@ -76,6 +76,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the optional<P>&& slot bare
     "field.opt_record_recv",        # narrowed owned-optional record name
                                     # receiver derefs -- (*r).field
+    "field.storage_opt_recv",       # narrowed storage-opt local receiver
+                                    # derefs at the access -- (*item).field
+    "arg.storage_opt_whole",        # narrowed storage-opt local at a
+                                    # protocol slot passes the whole optional
+    "field.opt_check_storage_name", # unproven access off a storage-opt name
+                                    # -- deref_optional_check(item).field
     "call.storage_opt_ret",         # Own-optional call result lands bare
                                     # in its storage optional decl slot
     "move.opt_own_ptr_lift",        # ptr-repr Optional name lifts owning
@@ -113,6 +119,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =
                                     # nullptr;` + borrow-lifted assign
                                     # (optional_to_ptr / nullptr / bare ptr)
+    "expr.walrus_btuple_emplace",   # hoisted borrow-tuple walrus with an
+                                    # owning-call value: emplace + name tail
+    "if.deref_view_narrow",         # isinstance through a Deref wrapper:
+                                    # if-init cast of the payload pointer
+    "method.deref_view_narrowed",   # branch member call reads (*__b_ptr)
     "expr.walrus_ptr_alias",        # borrow-alias pointer walrus target:
                                     # `[const ]T* n = nullptr;` +
                                     # `(n = &(v), *n)` (bare for a
@@ -210,6 +221,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "er.reraise",                   # bare `raise` in a return-tier handler
     "er.bind",                      # var-decl/assign `__try_tmp_N` block
     "er.bind_ptr_rebind",           # bind line reseats `&*(__slot_N = ..)`
+    "er.bind_alias",                # aliasing result into a hoisted ptr:
+                                    # `v = &(::tpy::unwrap_ref(*tmp));`
     "er.discard",                   # expr-stmt `__try_tmp_N` block
     "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
     # No corpus witness (every reaching shape needs a borrow-returning
@@ -911,6 +924,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # crossing it: renders as the plain sync duplicated-body try, so no
     # finally-frame scaffolding is involved.
     "res.leaf_try_finally",
+    "res.leaf_deferred_capture",    # a crossing return's deferred pointer
+                                    # capture rendered by the hook's recipe
     # A top-level narrowing `assert isinstance` in a resumable flat BB: the
     # alias is appended after the assert and is BB-local (each resume case
     # re-establishes the stamped fact).
@@ -1003,6 +1018,19 @@ THIR_FACES: frozenset[str] = frozenset({
                                      # the storage-form __getitem__ read
     "call.opt_callable_unwrap",      # `f(x)` on a `Callable | None` binding
                                      # -> `f.value()(x)` (declared-type keyed)
+    "isnone.property_subject",       # `w.node is None` on a @property read
+                                     # -> has_value over the getter call
+    "decl.forwarded_alias",          # `xs = it` proto-param alias: no code,
+                                     # trivia only
+    "name.forwarded_alias",          # a forwarded alias read renders the
+                                     # backing param
+    "decl.opt_property_lift",        # `n = w.node` on an Optional @property
+                                     # -> optional_to_ptr(w.node())
+    "binop.contains_field_recv",     # `x in si.tags` on a container field
+                                     # -> si.tags.contains(x)
+    "binop.iter_membership",         # `x in b` on a user iterable with no
+                                     # __contains__ -> the __iter__/__next__
+                                     # statement-expression loop
     "isnone.tuple_elem_lift",        # `h.t[0] is None` -> pre-lifted
                                      # `optional_to_ptr(std::get<0>(h.t))
                                      # == nullptr`
@@ -1461,6 +1489,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.else",                     # goto __after_else_N past the handlers
     "try.except_finally",           # throw tier wrapped in the finally frame
     "try.hoist_decl",               # sema-hoisted plain-value predecls
+    "try.hoist_const_ptr",          # const borrow-decl hoist -> const T* name;
     "try.body_terminates",          # normal-path finally copy elided
     "try.finally_terminates",       # raise/return-ending finally: no rethrow
     # if/elif/else (lowering, per statement).
@@ -1472,6 +1501,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.record_method_rvalue", # d[k] = rc.clone() -- bare method rvalue value
     "btuple.reseat_literal",        # borrow-tuple local = REF-capture literal
     "btuple.reseat_lift",           # borrow-tuple local = tuple_to_pointer(lvalue)
+    "btuple.reseat_emplace",        # owning-call reseat of a HOISTED btuple:
+                                    # t = tuple_to_pointer<..>(__slot_N
+                                    # .emplace(make_pair(9)))
+    "btuple.reseat_emplace_emit",   # the emit half of the same reseat
+    "btuple.reseat_name_copy",      # sibling btuple local: bare `u = t;`
     "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
     "if.hoist_dyn_protocol",        # @dynamic branch decl -> Base* name;
     "reseat.opt_storage",           # plain assign into an OPTIONAL_STORAGE hoist
@@ -1614,6 +1648,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # brace-init literal / nested comp value
     "comp.nested",                  # comprehension VALUE inside a dict comp ->
                                     # the recursive stmt-expr render
+    "comp.storage_opt_elem",        # ptr-repr Optional[F1] loop var: storage
+                                    # binding registered for the body walk
     "argtemp.comprehension",        # slot-typed comp ArgTemp at a plain
                                     # container ref slot (accept([x for ..]))
     "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
@@ -1834,6 +1870,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
     "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
+    "res.yield_container_ternary",  # ternary of frame-slot containers hands
+                                    # out the branch-picked deref borrow
+    "res.yield_record_field",       # `yield self.a` at a record slot reads
+                                    # the storage member bare
+    "res.btuple_yield_generic",     # generic tuple literal yield -- spelled
+                                    # val_or_ptr_t brace-init + to_val_or_ptr
+    "ifexpr.container",             # container ternary of NAME arms -- a
+                                    # BORROW lvalue ternary, arms bare
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
@@ -1851,6 +1895,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.yield_record_borrow",      # record yield of a routed loop-var name
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
+    "res.frame_comp_write",         # a comp init emplaces its stmt-expr:
+                                    # rows.emplace(({ ... }))
     "res.coro_handle_write",        # concrete-coro handle factory-call bind
     "res.erased_handle_write",      # owned-erased dyn handle own-arg bind
     "res.await_prebuilt",           # bound-handle await routed (poll-in-place)
@@ -1888,6 +1934,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.narrowed_proto_src",  # narrowed-alias iterable -> the
                                     # universal __iter__/__next__ loop
     "foreach.native_proto_param",
+    "foreach.native_bound_field",   # open-T field with a NativeIterable/
+                                    # Spannable bound: begin/end member loop
     # Tuple-unpack head over the universal loop (`for a, b in zip(..)` /
     # a tuple-yield generator call -- the same head decls as the container
     # tuple-unpack, THIRForIterProto instead of begin/end).

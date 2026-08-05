@@ -257,3 +257,197 @@ class TestPlainRecordBtupleLiteral:
                + "        print(a.x + b.x)\n")
         assert _fn(_lower_ctx(src), "f") is None
         _assert_byte_identical(src)
+
+
+class TestBtupleBranchHoist:
+    """The if-head borrow-tuple hoist track (wave 9): an OWNING tuple-call
+    branch bind emplaces into the name's pre-declared rebind slot
+    (`std::optional<std::tuple<int32_t, Box>> __slot_1;` at the chain
+    head, `t = ::tpy::tuple_to_pointer<...>(__slot_1.emplace(
+    make_pair(9)));` per branch); a sibling borrow-tuple LOCAL source is
+    the bare pointer-tuple copy (`u = t;`); a borrow-tuple PARAM source
+    keeps the whole-body fallback (const-element spelling mismatch)."""
+
+    _BOX = (
+        "from tpy import Int32, Own\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32):\n"
+        "        self.val = v\n"
+        "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
+        "    return (n, Box(n))\n"
+    )
+
+    def test_owning_call_emplace_routes(self):
+        src = (self._BOX
+               + "def use(c: bool) -> Int32:\n"
+               + "    if c:\n"
+               + "        t = make_pair(9)\n"
+               + "    else:\n"
+               + "        t = make_pair(5)\n"
+               + "    return t[1].val\n"
+               + "print(use(True), use(False))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("if.hoist_borrow_tuple", 0) >= 1
+        assert faces.get("btuple.reseat_emplace", 0) >= 2
+        cpp = _emit_cpp(src)
+        assert "std::optional<std::tuple<int32_t, Box>> __slot_1;" in cpp
+        assert ("t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(__slot_1.emplace(make_pair(9)));") in cpp
+        _assert_byte_identical(src)
+
+    def test_sibling_name_copy_routes(self):
+        src = (self._BOX
+               + "def f(b: Box, c: bool) -> tuple[Int32, Box]:\n"
+               + "    t = (1, b)\n"
+               + "    if c:\n"
+               + "        u = t\n"
+               + "    else:\n"
+               + "        u = (2, b)\n"
+               + "    return u\n"
+               + "def main() -> None:\n"
+               + "    b = Box(5)\n"
+               + "    pair = f(b, True)\n"
+               + "    pair[1].val = 99\n"
+               + "    print(b.val)\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("btuple.reseat_name_copy", 0) >= 1
+        assert faces.get("btuple.reseat_literal", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_param_source_still_defers(self):
+        src = (self._BOX
+               + "def f(p: tuple[Int32, Box], c: bool) -> Int32:\n"
+               + "    if c:\n"
+               + "        u = p\n"
+               + "    else:\n"
+               + "        u = (3, Box(3))\n"
+               + "    return u[0]\n"
+               + "print(f((4, Box(4)), True))\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+def _emit_cpp(src: str) -> str:
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(src)
+    entry = _entry(modules)
+    _, cpp = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(emit_source_comments=False,
+                                      thir_codegen=True))
+    return cpp
+
+
+class TestBtupleHoistedWalrus:
+    """Cell 2 of the branch-hoist track: a HOISTED borrow-tuple walrus
+    with an owning-call value (`(t := make_pair(9))[0]`) renders the
+    emplace + bare-name tail (`(t = ::tpy::tuple_to_pointer<...>(
+    __slot_N.emplace(make_pair(9))), t)`) over the if-head slot; an
+    owning-call walrus VALUE counts as an ordinary binding source in the
+    hoist admission. A non-owning walrus bind keeps the fence."""
+
+    _SRC = (
+        "from tpy import Int32, Own\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32):\n"
+        "        self.val = v\n"
+        "class Holder:\n"
+        "    pair: tuple[Int32, Box]\n"
+        "    def __init__(self, p: Own[tuple[Int32, Box]]):\n"
+        "        self.pair = p\n"
+        "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
+        "    return (n, Box(n))\n"
+        "def use(h: Holder, c: bool) -> Int32:\n"
+        "    if c:\n"
+        "        if (t := make_pair(9))[0] > 0:\n"
+        "            return t[1].val\n"
+        "    else:\n"
+        "        t = h.pair\n"
+        "        t[1].val = 77\n"
+        "    return h.pair[1].val\n"
+        "def main() -> None:\n"
+        "    h = Holder(make_pair(1))\n"
+        "    print(use(h, True), use(h, False))\n"
+        "main()\n"
+    )
+
+    def test_hoisted_walrus_emplace_routes(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "use") is not None
+        assert faces.get("expr.walrus_btuple_emplace", 0) >= 1
+        cpp = _emit_cpp(self._SRC)
+        assert ("(t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(__slot_1.emplace(make_pair(9))), t)") in cpp
+        _assert_byte_identical(self._SRC)
+
+
+class TestBtupleHoistBoundaries2:
+    """Batch-3 review hardenings: the REVERSED branch order (a plain
+    btuple reseat emitted before any emplace -- the emit arm's structural
+    TupleType exclusion carries it); a NON-owning-call walrus value keeps
+    the sources fence (borrow-returning callee)."""
+
+    def test_reversed_branch_order_routes(self):
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32):\n"
+            "        self.val = v\n"
+            "class Holder:\n"
+            "    pair: tuple[Int32, Box]\n"
+            "    def __init__(self, p: Own[tuple[Int32, Box]]):\n"
+            "        self.pair = p\n"
+            "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
+            "    return (n, Box(n))\n"
+            "def use(h: Holder, c: bool) -> Int32:\n"
+            "    if c:\n"
+            "        t = h.pair\n"
+            "        t[1].val = 77\n"
+            "    else:\n"
+            "        t = make_pair(9)\n"
+            "    return t[1].val\n"
+            "def main() -> None:\n"
+            "    h = Holder(make_pair(1))\n"
+            "    print(use(h, True), use(h, False))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("btuple.reseat_emplace", 0) >= 1
+        assert faces.get("btuple.reseat_lift", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_borrow_call_walrus_still_defers(self):
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32):\n"
+            "        self.val = v\n"
+            "class Holder:\n"
+            "    pair: tuple[Int32, Box]\n"
+            "    def __init__(self, p: Own[tuple[Int32, Box]]):\n"
+            "        self.pair = p\n"
+            "    def view(self) -> tuple[Int32, Box]:\n"
+            "        return self.pair\n"
+            "def use(h: Holder, c: bool) -> Int32:\n"
+            "    if c:\n"
+            "        if (t := h.view())[0] > 0:\n"
+            "            return t[1].val\n"
+            "    else:\n"
+            "        t = h.pair\n"
+            "        return t[0]\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    h = Holder((1, Box(2)))\n"
+            "    print(use(h, True))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is None
+        assert not faces.get("expr.walrus_btuple_emplace")
+        _assert_byte_identical(src)

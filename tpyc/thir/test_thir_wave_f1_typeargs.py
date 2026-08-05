@@ -254,3 +254,4 @@ class TestFenceHoles:
         )
         fell = _thir_fallbacks(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
+

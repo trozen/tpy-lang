@@ -458,13 +458,20 @@ class THIRMembership(THIRExpr):
     native container whose `__contains__` is NOT a resolved member -- e.g. a
     `readonly[set[T]]`, whose readonly wrapper strips the resolved member), the
     emit is `[!]std::ranges::contains(receiver, needle)` -- no outer parens, the
-    negation a bare `!` prefix. `method_cpp` is unused in this form."""
+    negation a bare `!` prefix. `method_cpp` is unused in this form.
+
+    When `iter_loop` is set (the AST's universal `__iter__`+`__next__`
+    fallback for a user iterable with no `__contains__`), the emit is the
+    fixed statement-expression loop (`({ auto&& __itr = ::tpy::__iter__(
+    recv); ... __found; })`), negation the same bare `!` prefix.
+    `method_cpp` is unused in this form too."""
     receiver: THIRExpr
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
     free_function: bool = False
     ranges_contains: bool = False
+    iter_loop: bool = False
 
 
 @dataclass(frozen=True)
@@ -1692,6 +1699,12 @@ class THIRAssign(THIRStmt):
     value: THIRExpr
     recv_eval: 'THIRExpr | None' = None
     recv_wrap: 'str | None' = None
+    # A borrow-tuple reseat from an OWNING tuple call (`t = make_pair(9)`
+    # over a branch-hoisted `std::tuple<..., T*> t;`): the rvalue emplaces
+    # into the name's pre-declared rebind slot and the assign renders
+    # `t = ::tpy::tuple_to_pointer<{borrow}>(__slot_N.emplace({v}));` --
+    # the reseat sibling of THIRVarDecl.btuple_slot_cpp.
+    btuple_borrow_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2657,14 +2670,17 @@ class THIRErrorReturnBind(THIRStmt):
     already declared (a reassign, or a try-hoisted local). `ptr_rebind`
     switches the bind line to a rebind-slot pointer reseat
     (`<name> = &*(__slot_N = ::tpy::unwrap_ref_move(*__try_tmp_N));`) --
-    `_error_return_assign_to_name`'s `_ptr_from_rvalue_slot` arm. The
-    borrow-aliasing result shape (`_error_return_result_aliases`) and
-    slot-less pointer targets are gate-rejected. `name` is raw; emit
-    escapes."""
+    `_error_return_assign_to_name`'s `_ptr_from_rvalue_slot` arm.
+    `alias_bind` switches it to the borrow-aliasing pointer bind
+    (`<name> = &(::tpy::unwrap_ref(*__try_tmp_N));` -- an aliasing result
+    into a hoisted pointer target; the AST's aliases-and-pointer-local
+    arm). Other aliasing-result target shapes and slot-less pointer
+    targets are gate-rejected. `name` is raw; emit escapes."""
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
     ptr_rebind: bool = False
+    alias_bind: bool = False
 
 
 @dataclass(frozen=True)

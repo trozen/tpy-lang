@@ -1139,6 +1139,42 @@ def _any_narrow_info(
     return var, members
 
 
+def _deref_view_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, NominalType, TpyType, TpyType, int] | None':
+    """The deref-view isinstance if condition (`isinstance(b, Dog)` on a
+    Deref-wrapper NAME subject -- Box[Pet] / Rc[Pet] -- with
+    isinstance_deref_depth > 0): the payload narrows, the wrapper keeps
+    its own type (sema stamps the fact under deref_view_key(var), never
+    retyping the name). Returns (var, member, wrapper_decl,
+    dispatch_inner, depth) or None."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if (not cond.isinstance_deref_depth or cond.isinstance_type_param
+            or cond.macro_expansion is not None):
+        return None
+    member = cond.isinstance_type
+    if not isinstance(member, NominalType):
+        return None
+    var = cond.isinstance_var
+    dt = declared.get(var)
+    if dt is None:
+        return None
+    dtu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+    depth = cond.isinstance_deref_depth
+    cur: 'TpyType | None' = dtu
+    for _ in range(depth):
+        if cur is None:
+            return None
+        cur = analyzer.type_ops.get_deref_target_type(cur)
+        if cur is not None:
+            cur = unwrap_readonly(cur)
+    if cur is None:
+        return None
+    return var, member, dtu, cur, depth
+
+
 def _poly_narrow_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
 ) -> 'tuple[str, NominalType, TpyType] | None':
@@ -1750,6 +1786,13 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
             or _eligible_ptr_value(gt, analyzer)):
         return gt
     if _value_tuple_global(gt, analyzer) is not None:
+        return gt
+    # A VALUE-record global (`UTC: timezone = timezone(timedelta())`) is a
+    # plain namespace-scope object like any value global: never a pointer
+    # slot, so reads render the bare (same-module) or qualified (imported)
+    # name with no indirection. The F1 slice keeps the type spelling
+    # byte-identical; non-value records stay on the pointer-slot branch.
+    if gt.is_value_type() and _f1_record(gt, analyzer):
         return gt
     # A value-repr Optional[scalar] global (`std::optional<T>` at namespace
     # scope) reads exactly like a value-opt LOCAL: bare whole-optional
@@ -2936,6 +2979,35 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
 
 
+def _deref_wrapper_record_ok(u: 'TpyType | None', analyzer) -> bool:
+    """`_f1_record` widened with SAME-MODULE @dynamic-protocol type-args
+    (`Box[Pet]`) -- SCOPED to the user-Deref receiver resolution, where no
+    wrapper type spelling is at stake (the call renders `.__deref__()`
+    chains, never the template args). The GLOBAL F1 slice keeps its
+    protocol-arg fence: admitting it corpus-wide de-routed 38 bodies whose
+    F1-False shapes previously fell through to working arms (the wave-10
+    harvest regression)."""
+    if not isinstance(u, NominalType):
+        return False
+    if _f1_record(u, analyzer):
+        return True
+    if not u.is_user_record or not u.type_args:
+        return False
+
+    def arg_ok(a) -> bool:
+        if _f1_record_type_arg_ok(a, analyzer):
+            return True
+        au = unwrap_readonly(a) if isinstance(a, TpyType) else None
+        if isinstance(au, NominalType) and is_dyn_protocol(au):
+            qn = au.qualified_name()
+            mod = qn.rsplit(".", 1)[0] if "." in qn else None
+            return au.to_cpp() == au.name and mod == analyzer.ctx.module_name
+        return False
+
+    return (all(arg_ok(a) for a in u.type_args)
+            and analyzer.registry.get_record_for_type(u) is not None)
+
+
 def _deref_wrapper_receiver_record(recv: TpyExpr,
                                    declared: dict[str, TpyType],
                                    narrowed: 'AbstractSet[str]',
@@ -2958,7 +3030,7 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
         if recv.name not in pointers or not u.uses_pointer_repr():
             return None
         u = unwrap_readonly(_unwrap_own(u.inner))
-    if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
+    if not _deref_wrapper_record_ok(u, analyzer):
         return None
     return u
 
@@ -3220,7 +3292,13 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
         or _wrapper_union_like(iu, analyzer) is not None
         or isinstance(iu, TypeParamRef)
         or (isinstance(iu, NominalType) and is_dyn_protocol(iu))
-        or is_list(iu) or is_dict(iu) or is_set(iu))
+        or is_list(iu) or is_dict(iu) or is_set(iu)
+        # A CONCRETE scalar/Char pointee (`dict_get(d, k)` -> `int32_t*`):
+        # the same member-shape-blind renders -- `int32_t*` spellings,
+        # nullptr compares, `(*v)` derefs -- with no member machinery at
+        # all. The open-T row above already carried instantiated scalars;
+        # this admits the concretely-typed twin.
+        or _eligible_scalar(iu) or _eligible_char(iu))
 
 
 def _optional_ptr_borrow_wide(t: TpyType | None,
@@ -5986,6 +6064,24 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
                 or _value_opt_scalar(wt, analyzer) is not None):
             return operand
         return None
+    if (isinstance(operand, TpyFieldAccess)
+            and operand.property_getter_call is not None):
+        # A @property read subject (`w.node is None`): the AST's Optional
+        # detection sees the field-access node (an OptionalType, whatever
+        # the repr) and its storage-form classifier admits any FieldAccess,
+        # so the render is has_value over the getter call
+        # (`!w.node().has_value()`). A static-protocol optional takes the
+        # AST's pointer-compare arm instead -- keep it rejecting. Keyed on
+        # the ANALYZED type like the AST: a sema-narrowed subject is no
+        # longer Optional and falls out here (the AST's narrowed-field
+        # recovery excludes property getters too).
+        pt = analyzer.get_expr_type(operand)
+        ptu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+               if pt is not None else None)
+        if (isinstance(ptu, OptionalType)
+                and not is_protocol_type(unwrap_readonly(ptu.inner))):
+            return operand
+        return None
     if (_optional_ptr_borrow_name(operand, locals_, analyzer) is None
             # The WIDE ptr-repr pointee class (a T/wrapper/dyn-protocol
             # pointee binding): the same pointee-blind `!= nullptr` compare.
@@ -6301,6 +6397,29 @@ def _storage_call_container(t: TpyType) -> bool:
     one whose reassigned locals take the AST's pointer-local machinery
     (tuples/unions are value types; their reassign is a plain value assign)."""
     return is_list(t) or is_dict(t) or is_set(t)
+
+def _btuple_owning_call_init(init: TpyExpr, analyzer) -> bool:
+    """An init call that OWNS its tuple result WHOLE -- the decl-position
+    admission for the owning-slot render (`__slot_N.emplace(call)`): an
+    Own-declared return, or an all-Own/value per-element tuple. A MIXED
+    Own+ref-element return renders the own-borrow hybrid and a plain
+    borrow-tuple return is an F1 alias -- both excluded (the same owning
+    -signal split as the storage_call_tuple decl arm)."""
+    if not isinstance(init, (TpyCall, TpyMethodCall)):
+        return False
+    fi = getattr(init, "resolved_function_info", None)
+    if fi is None or call_returns_cpp_ref(analyzer, fi):
+        return False
+    if _own_declared_call_ret(init):
+        return True
+    crt = getattr(fi, "return_type", None)
+    cru = (unwrap_readonly(unwrap_send_sync(crt))
+           if isinstance(crt, TpyType) else None)
+    return (isinstance(cru, TupleType) and cru.has_own_element()
+            and all(isinstance(unwrap_readonly(et), OwnType)
+                    or not TupleType._element_is_pointer_repr(et)
+                    for et in cru.element_types))
+
 
 def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
     """Whether the callee's DECLARED return is `Own[...]` -- the owning
@@ -7406,6 +7525,25 @@ def _container_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         # pairing is the BytesView coerce, which arrives as its own node.
         return is_bytearray_type(pt)
     return is_list(pt) or is_dict(pt) or is_set(pt) or is_array(pt)
+
+def _container_ternary_arg(a: TpyExpr, ptype: 'TpyType | None',
+                           locals_: dict[str, TpyType], analyzer) -> bool:
+    """A container-typed ternary of declared container NAMES at a native
+    protocol slot (`len(a if flag else b)` -> `::tpy::__len__(((flag) ?
+    ((*a)) : ((*b))))`): the ifexpr's container arm renders the lvalue
+    ternary and the template binds it bare, like the single-name rows."""
+    if not isinstance(a, TpyIfExpr):
+        return False
+    if not (isinstance(a.then_expr, TpyName) and a.then_expr.name in locals_
+            and isinstance(a.else_expr, TpyName)
+            and a.else_expr.name in locals_):
+        return False
+    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(a))))
+    if not (is_list(at) or is_dict(at) or is_set(at)):
+        return False
+    return _protocol_binding(ptype) is not None
+
 
 def _native_iterable_container_arg(a: TpyExpr, ptype: 'TpyType | None',
                                    locals_: dict[str, TpyType]) -> bool:

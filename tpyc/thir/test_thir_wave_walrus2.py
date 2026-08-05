@@ -75,9 +75,14 @@ class TestWalrusLongTail:
         assert "std::get<0>((t = make_pair(5), *t))" in cpp[1]
         assert "std::get<1>((*t)).val" in cpp[1]
 
-    def test_branch_hoisted_walrus_stays_ast(self):
-        # A walrus target with a sibling-branch borrow binding (the
-        # if.hoist_type family) keeps falling back.
+    def test_branch_hoisted_walrus_routes(self):
+        # CONVERTED (btuple branch-hoist track, 2026-08-05): the hoisted
+        # owning-call walrus now routes -- the emplace + bare-name tail
+        # over the if-head slot (expr.walrus_btuple_emplace), the sibling
+        # field bind the tuple_to_pointer reseat. This fixture never
+        # mutates through the local, so the fixpoint spells the CONST
+        # element predecl (`std::tuple<int32_t, const Box*> t;`) -- the
+        # flavor the conversion itself surfaced as a divergence.
         src = (_PAIR +
                "class Holder:\n"
                "    pair: tuple[Int32, Box]\n"
@@ -94,8 +99,9 @@ class TestWalrusLongTail:
                "def main() -> None:\n"
                "    print(use(Holder(), True))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "use") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "use") is not None
+        outs = _assert_byte_identical(src)
+        assert "std::tuple<int32_t, const Box*> t;" in outs[1]
 
     # No reassigned-owned-tuple-walrus boundary pin: sema rejects walrus
     # reassignment of a non-value local outright ("use a separate

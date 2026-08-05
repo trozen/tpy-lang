@@ -63,6 +63,7 @@ from .expressions import (_lower_expr, _lower_truthy,
                           _lower_copy_record)
 from .functions import (_check_callable_structure, _iter_thir,
                         _needs_held_back_slot, _seed_global_scope)
+from ...type_def_registry import is_dict, is_list, is_set
 from .predicates import (
     _f1_record,
     _value_tuple_nested,
@@ -114,6 +115,11 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     if iter_elem is None:
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(iter_elem)))
+    # A CONTAINER element binds the same skeleton `auto&& v = *__beg++;`
+    # as an F1 record, and the leaf reads it through the container-name
+    # arms (`v.push_back(9)` / `len(v)`) exactly like a sync for-each var.
+    if is_list(u) or is_dict(u) or is_set(u):
+        return True
     return _f1_record(u, analyzer)
 
 

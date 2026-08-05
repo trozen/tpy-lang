@@ -655,3 +655,40 @@ class TestYieldCopyRecord:
                + "    for p in points():\n        print(p.x)\nmain()\n")
         witnesses, _fallback = _assert_identical(src)
         assert witnesses.get("sgen.yield_copy_record", 0) == 0
+
+
+class TestContainerLoopVar:
+    """A CONTAINER element loop var (`for v in d.values():`) binds the same
+    skeleton `auto&& v = *__beg++;` as an F1 record, and the leaf reads it
+    through the container-name arms (`v.append(9)` -> `v.push_back(9)`).
+    A TUPLE element (`d.items()`) keeps its own rung (the storage-form
+    tuple-local machinery), rejected at sgen.loop_var_type."""
+
+    def test_container_loop_var_routes(self):
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def bump(d: dict[str, list[Int32]]) -> Iterator[Int32]:\n"
+               + "    for v in d.values():\n"
+               + "        v.append(9)\n"
+               + "        yield len(v)\n\n"
+               + "def main() -> None:\n"
+               + "    d: dict[str, list[Int32]] = {}\n"
+               + "    d[\"a\"] = [1]\n"
+               + "    for n in bump(d):\n        print(n)\n"
+               + "    print(d[\"a\"])\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not fallback
+
+    def test_whole_tuple_loop_var_still_defers(self):
+        # The `d.items()` UNPACK form routes (the items tuple-unpack arm);
+        # the fence is the WHOLE-tuple loop var (`for kv in d.items()`),
+        # whose element is a tuple type -- the storage-form tuple-local
+        # rung, rejected at sgen.loop_var_type.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def pairs(d: dict[str, Int32]) -> Iterator[Int32]:\n"
+               + "    for kv in d.items():\n"
+               + "        yield kv[1]\n\n"
+               + "def main() -> None:\n"
+               + "    for n in pairs({\"a\": 1}):\n        print(n)\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert any("sgen.loop_var_type" in k for k in fallback), fallback

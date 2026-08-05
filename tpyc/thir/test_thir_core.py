@@ -19,17 +19,20 @@ from .lower.functions import _shadow_bound_names
 from ..typesys import TupleType
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall,
-    THIRChainedCompareStmtExpr, THIRClassConstant, THIRConsumingIter, THIRCopy,
+    THIRChainedCompareStmtExpr, THIRClassConstant, THIRConsumingIter,
+    THIRContainerLiteral, THIRCopy,
     THIRDelVar, THIRExprStmt,
     THIRFieldAccess, THIRForEach, THIRForRange, THIRFormConvert, THIRIf,
-    THIRLiteral, THIRMethodCall, THIRModuleVar, THIRName, THIRNoOpStmt,
+    THIRLiteral, THIRMethodCall, THIRModuleVar, THIRMove, THIRName,
+    THIRNoOpStmt,
     THIRParamCopy,
     THIRPrint, THIRReturn,
     THIRStrLiteral, THIRUnaryNot, THIRVarDecl, THIRWhile,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor,
-    _lower_ctx_witnessed, _assert_byte_identical, _PRELUDE, _F1_RECORDS,
+    _lower_ctx_witnessed, _assert_byte_identical,
+    _assert_routes_byte_identical, _PRELUDE, _F1_RECORDS,
 )
 
 class TestEligibility:
@@ -4189,6 +4192,155 @@ class TestGlobalSpelledSeed:
         read = fn.body[0].value.left
         assert read.cpp == "::g_count"
         assert witnessed.get("name.global_imported", 0) >= 1
+
+
+class TestValueRecordGlobalSeed:
+    """A VALUE-record global (`UTC: timezone = ...`) is a plain namespace-
+    scope object, never a pointer slot: it seeds READ-ONLY exactly like a
+    scalar global (bare same-module render, qualified imported render) and
+    its reads ride the record name/receiver arms unchanged. Non-value
+    record globals keep the pointer-slot classification (pinned in
+    test_thir_top_level's TestTopLevel.test_record_global_slot)."""
+
+    SRC = (
+        "from tpy import Int32, ValueType, readonly\n"
+        "class Pt(ValueType):\n"
+        "    x: Int32\n"
+        "    y: Int32\n"
+        "    def __init__(self, x: Int32, y: Int32):\n"
+        "        self.x = x\n"
+        "        self.y = y\n"
+        "    @readonly\n"
+        "    def mag2(self) -> Int32:\n"
+        "        return self.x * self.x + self.y * self.y\n"
+        "    def __eq__(self, other: Pt) -> bool:\n"
+        "        return self.x == other.x and self.y == other.y\n"
+        "ORIGIN: Pt = Pt(0, 0)\n"
+        "UNIT: Pt = Pt(1, 0)\n"
+        "def read_bare() -> Int32:\n"
+        "    return ORIGIN.x\n"
+        "def recv_method() -> Int32:\n"
+        "    return UNIT.mag2()\n"
+        "def as_arg(p: Pt) -> Int32:\n"
+        "    return p.x + p.y\n"
+        "def pass_global() -> Int32:\n"
+        "    return as_arg(UNIT)\n"
+        "def compare() -> bool:\n"
+        "    return ORIGIN == UNIT\n"
+        "def shadowing() -> Int32:\n"
+        "    ORIGIN = Pt(5, 5)\n"
+        "    return ORIGIN.x\n"
+        "def main():\n"
+        "    print(read_bare(), recv_method(), pass_global())\n"
+        "    print(compare(), shadowing())\n"
+        "main()\n"
+    )
+
+    def test_reads_route_bare(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        for name in ("read_bare", "recv_method", "pass_global", "compare"):
+            assert _fn(thir, name) is not None, name
+        read = _fn(thir, "read_bare").body[0].value
+        assert isinstance(read, THIRFieldAccess)
+        assert isinstance(read.receiver, THIRName)
+        assert read.receiver.cpp is None
+        assert witnessed.get("name.global_seeded", 0) >= 4
+
+    def test_shadowing_body_not_seeded(self):
+        fn = _fn(_lower_ctx(self.SRC), "shadowing")
+        assert fn is not None
+        assert isinstance(fn.body[0], THIRVarDecl)
+
+    def test_byte_identical(self):
+        _assert_routes_byte_identical(self.SRC)
+
+    def test_imported_value_record_global(self, tmp_path):
+        # The imported branch of the same seeding: the read spells the
+        # qualified name (`::tpyapp::geom::UNIT`) via imported_variable_cpp,
+        # with no deref -- a value global is not a pointer slot.
+        (tmp_path / "geom.py").write_text(
+            "from tpy import Int32, ValueType\n"
+            "class Pt(ValueType):\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n"
+            "        self.x = x\n"
+            "UNIT: Pt = Pt(1)\n")
+        src = (
+            "from tpy import Int32\n"
+            "from geom import Pt, UNIT\n"
+            "def read_x() -> Int32:\n"
+            "    return UNIT.x\n"
+            "def main():\n"
+            "    print(read_x())\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
+        fn = _fn(thir, "read_x")
+        assert fn is not None
+        read = fn.body[0].value
+        assert isinstance(read, THIRFieldAccess)
+        assert isinstance(read.receiver, THIRName)
+        assert read.receiver.cpp == "::tpyapp::geom::UNIT"
+        assert witnessed.get("name.global_imported", 0) >= 1
+        _assert_routes_byte_identical(src, extra_lib_dirs=[tmp_path])
+
+
+class TestValueRecordDeclNoPromote:
+    """The AST's plain decl arm promotes only NON-value locals into the
+    movable working set (its value-type filter); a sema-movable VALUE-record
+    local (expensive innards, e.g. an owned str field) must therefore COPY
+    at its last-use read on both paths, while a non-value record still
+    moves. The datetime dict-key divergence: THIR's owned-record decl arm
+    promoted unconditionally, so `{dt: \"a\", u: \"b\"}` moved `u` where
+    the AST brace-init copied."""
+
+    SRC = (
+        "from tpy import Int32, ValueType\n"
+        "class Tag(ValueType):\n"
+        "    name: str\n"
+        "    n: Int32\n"
+        "    def __init__(self, name: str, n: Int32):\n"
+        "        self.name = name\n"
+        "        self.n = n\n"
+        "class Box:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32):\n"
+        "        self.v = v\n"
+        "def value_last_use() -> Int32:\n"
+        "    a = Tag(\"aaa\", 1)\n"
+        "    b = Tag(\"bbb\", 2)\n"
+        "    xs = [a, b]\n"
+        "    return len(xs)\n"
+        "def nonvalue_last_use() -> Int32:\n"
+        "    p = Box(7)\n"
+        "    q = Box(8)\n"
+        "    xs = [p, q]\n"
+        "    return xs[0].v\n"
+        "def main():\n"
+        "    print(value_last_use(), nonvalue_last_use())\n"
+        "main()\n"
+    )
+
+    def _list_literal(self, fn):
+        decl = next(s for s in fn.body
+                    if isinstance(s, THIRVarDecl) and s.name == "xs")
+        assert isinstance(decl.init, THIRContainerLiteral)
+        return decl.init
+
+    def test_value_record_elements_copy(self):
+        fn = _fn(_lower_ctx(self.SRC), "value_last_use")
+        assert fn is not None
+        lit = self._list_literal(fn)
+        assert not any(isinstance(el, THIRMove) for el in lit.elements)
+
+    def test_nonvalue_record_elements_still_move(self):
+        fn = _fn(_lower_ctx(self.SRC), "nonvalue_last_use")
+        assert fn is not None
+        lit = self._list_literal(fn)
+        assert all(isinstance(el, THIRMove) for el in lit.elements)
+
+    def test_byte_identical(self):
+        _assert_routes_byte_identical(self.SRC)
 
 
 class TestRecordFieldWrite:

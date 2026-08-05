@@ -20,6 +20,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
+    OptionalType,
     OwnType,
     TpyType,
     TupleType,
@@ -39,6 +40,7 @@ from ...type_def_registry import (
     is_list,
     is_set,
     is_span,
+    is_span_iter,
 )
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
 from ...codegen_cpp.context import (
@@ -57,6 +59,7 @@ from .predicates import (
     _field_decl_type,
     _field_receiver_ok,
     _for_each_elem_binding_ok,
+    _foreach_storage_opt_elem,
     _is_range_call,
     _nonvalue_container_ret,
     _optional_ptr_borrow,
@@ -103,6 +106,27 @@ class _CompRoute:
     unpack_types: 'tuple | None'
     owns_elements: bool = False      # source yields Own[T]: sinks move
 
+
+def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
+    """A user record the record emitter gives synthesized begin()/end()
+    (records.py: no explicit begin/end member, has `__span__`, any `__iter__`
+    returns SpanIter): the AST comp loop calls `.begin()`/`.end()` on it
+    unconditionally, so the begin/end comp render is byte-identical. Records
+    outside the synthesis condition keep rejecting -- their comp C++ has no
+    corpus witness."""
+    ri = analyzer.registry.get_record_for_type(it_type)
+    if ri is None or ri.is_native:
+        return False
+    if "begin" in ri.methods or "end" in ri.methods:
+        return False
+    if any(f.name in ("begin", "end") for f in ri.fields):
+        return False
+    if "__span__" not in ri.methods:
+        return False
+    iter_ovl = ri.methods.get("__iter__")
+    if iter_ovl and not is_span_iter(iter_ovl[0].return_type):
+        return False
+    return True
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # Mirror of `_is_sized_type` over the admitted iterable families (Span /
@@ -233,12 +257,27 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if it_type is None:
         return None
     # The owned-generator call arm iterates via begin/end; every other arm
-    # requires a NativeIterable source.
+    # requires a NativeIterable source -- or a user record with SYNTHESIZED
+    # begin/end (a Spannable conformer), which the AST's unconditional
+    # begin/end comp loop serves the same way. The synth family carries no
+    # storage-form registration (the AST's register_loop_var_storage_form
+    # early-returns on non-native-iterable sources), so elements that would
+    # need one -- and unpack heads -- keep rejecting.
+    synth_src = False
     if not owns and not is_native_iterable(it_type, analyzer.registry):
-        return None
+        if (gen.unpack_vars is not None
+                or not _comp_synth_begin_end(it_type, analyzer)):
+            return None
+        synth_src = True
     et = get_iterable_element_type(it_type, registry=analyzer.registry)
     if et is None:
         return None
+    if synth_src:
+        et_b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+        if (isinstance(et_b, OptionalType)
+                or (isinstance(et_b, TupleType)
+                    and et_b.has_pointer_repr_element())):
+            return None
     et = resolve_int_literals(unwrap_ref_type(et),
                               analyzer.ctx.default_int_for_literal)
     sized = kind == "list" and _comp_sized_iterable(it_type)
@@ -285,8 +324,11 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     # resolved element renders identically; the element/key/value/filter reads
     # of the var route recursively through expression lowering. Only an unresolved
     # pending element (spelled before the AST's resolve_type concretizes it)
-    # stays on the AST path.
-    if not _for_each_elem_binding_ok(et):
+    # stays on the AST path. A ptr-repr Optional[F1-record] element rides the
+    # storage-opt registration in _lower_comprehension (the for-STATEMENT
+    # container leg's comp twin).
+    if not (_for_each_elem_binding_ok(et)
+            or _foreach_storage_opt_elem(et, analyzer)):
         return None
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
@@ -487,6 +529,10 @@ def _comp_array_route(
     # Array). A view result off the source rebinds it_type in _comp_route.
     base = _comp_route(init, declared, narrowed, analyzer)
     if base is None or base.loop != "begin_end":
+        return None
+    # A storage-opt element under the INDEXED read (`__obj_N[__i_N]`) has no
+    # witness -- only the begin/end loop registers the storage-opt loop var.
+    if _foreach_storage_opt_elem(base.et, analyzer):
         return None
     src = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base.it_type)))
     if not is_array(src):
@@ -719,6 +765,21 @@ def _lower_comprehension(
                     and uname not in lc.storage_opt_locals):
                 comp_opt_vars.append(uname)
                 lc.storage_opt_locals.add(uname)
+    elif (_foreach_storage_opt_elem(route.et, analyzer)
+          and gen.var not in lc.storage_opt_locals):
+        # The storage-opt LOOP VAR (`[v.x if v is not None else -1 for v in
+        # items]` over `list[P | None]`): binds the STORAGE-form
+        # `std::optional<P>` and registers like the for-STATEMENT container
+        # leg. Same const fence: a const-bound source's consumers spell
+        # `const P*` (the unmirrored const twin).
+        _cs_src = (gen.iterable.obj
+                   if isinstance(gen.iterable, TpyMethodCall)
+                   else gen.iterable)
+        if _statements._iteration_yields_const(_cs_src, lc, analyzer):
+            raise ThirUnsupported("comp.storage_opt_const", detail=True)
+        _witness("comp.storage_opt_elem")
+        comp_opt_vars.append(gen.var)
+        lc.storage_opt_locals.add(gen.var)
     try:
         return _build_comprehension_body(
             init, result_type, route, lc, declared, body_declared, gen,

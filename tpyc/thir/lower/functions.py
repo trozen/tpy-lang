@@ -126,6 +126,7 @@ from ..nodes import (
     THIRTupleLiteral,
 )
 from .predicates import (
+    _IDENTITY_STR_COERCIONS,
     _callable_value,
     _ru_instance_literal_ok,
     _span_value,
@@ -1752,6 +1753,12 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     Anything that could register a codegen temp is out -- a base-init cell
     has no flush point (same contract as the MIL)."""
     analyzer = lc.analyzer
+    # An identity str-family coerce renders its inner bare in EVERY position
+    # (`super().__init__(message)` on a `String` param into a `str` base
+    # slot: both sides spell std::string), so the shape rows key the inner.
+    while (isinstance(a, TpyCoerce)
+           and a.coercion.name in _IDENTITY_STR_COERCIONS):
+        a = a.expr
     at = analyzer.get_expr_type(a)
     if _eligible_scalar(at):
         return True
@@ -1776,6 +1783,13 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     if (is_list(vt) or is_dict(vt) or is_set(vt) or is_array(vt)
             or _is_type_param_slot(vt) or _is_string_owned(vt)):
         return True
+    # A value-repr Optional param (`note: str | None` ->
+    # `std::optional<std::string_view>`, or an Optional scalar): the whole
+    # optional passes bare into the matching base slot (`: Tagged(tag,
+    # note)`); the lowering reads it allow_whole_optional.
+    if (_value_opt_scalar(vt, analyzer) is not None
+            or _value_opt_view(vt, analyzer) is not None):
+        return True
     if _optional_ptr_borrow_name(a, declared, analyzer) is not None:
         return True
     own = unwrap_optional_own(vt)
@@ -1799,7 +1813,8 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
         return THIRLiteral(result_type=lc.analyzer.get_expr_type(a),
                            value=None, loc=getattr(a, "loc", None),
                            none_cpp=none_cpp)
-    return _lower_expr(a, lc, declared)
+    # A value-opt param passes WHOLE into the base slot (bare name).
+    return _lower_expr(a, lc, declared, allow_whole_optional=True)
 
 def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':

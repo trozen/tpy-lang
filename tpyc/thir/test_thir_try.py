@@ -837,3 +837,110 @@ class TestRaiseCallReceiverPosition:
              if isinstance(s, THIRRaise)][0]
         assert isinstance(r.raise_expr, THIRName) and r.raise_expr.deref
         _assert_byte_identical(src)
+
+
+class TestTryHoistFlavors:
+    """The wave-4 try-hoist rows, mirroring the with family's flavors: a
+    borrow-only non-value hoist predecls the pointer local
+    (`std::vector<int32_t>* v;`, body bind reseats `v = &(...)`); the
+    CONST borrow-decl sibling spells `const T* v;` (try.hoist_const_ptr);
+    a VALUE-record hoist predecls the default-constructed record
+    (`ZoneInfo z;`, plain body assign); an aliasing @error_return result
+    into the hoisted pointer binds `v = &(::tpy::unwrap_ref(*tmp));`
+    (er.bind_alias). An rvalue-reassigned hoisted name still rejects
+    (THIRTry carries no rebind slot)."""
+
+    _ERR = (
+        "from tpy import Int32, readonly, error_return, ReturnException\n"
+        "class E(Exception, ReturnException):\n"
+        "    pass\n"
+        "class H:\n"
+        "    items: list[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.items = [1, 2]\n"
+        "    def view(self) -> list[Int32]:\n"
+        "        return self.items\n"
+        "    @error_return(E)\n"
+        "    def rview(self) -> readonly[list[Int32]]:\n"
+        "        return self.items\n"
+        "    @error_return(E)\n"
+        "    def poke(self) -> Int32:\n"
+        "        return 1\n"
+    )
+
+    def test_pointer_hoist_routes(self):
+        src = (self._ERR
+               + "def main() -> None:\n"
+               + "    h = H()\n"
+               + "    try:\n"
+               + "        v = h.view()\n"
+               + "        n = h.poke()\n"
+               + "        v.append(9)\n"
+               + "        print(h.items, n)\n"
+               + "    except E:\n"
+               + "        print(\"err\")\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("with.hoist_ptr_local", 0) >= 1
+        assert faces.get("try.hoist_decl", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_const_ptr_hoist_and_alias_bind_route(self):
+        src = (self._ERR
+               + "def main() -> None:\n"
+               + "    h = H()\n"
+               + "    try:\n"
+               + "        v = h.rview()\n"
+               + "        print(len(v))\n"
+               + "    except E:\n"
+               + "        print(\"err\")\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("try.hoist_const_ptr", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert "const std::vector<int32_t>* v;" in cpp
+        assert "v = &(::tpy::unwrap_ref(*__try_tmp_" in cpp
+        assert _emit_witnesses(src).get("er.bind_alias", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_value_record_hoist_routes(self):
+        src = (
+            "from tpy import Int32, ValueType\n"
+            "class Pt(ValueType):\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n"
+            "        self.x = x\n"
+            "class Bad(Exception):\n"
+            "    pass\n"
+            "def mk(n: Int32) -> Pt:\n"
+            "    if n < 0:\n"
+            "        raise Bad()\n"
+            "    return Pt(n)\n"
+            "def probe(n: Int32) -> Int32:\n"
+            "    try:\n"
+            "        z = mk(n)\n"
+            "        return z.x\n"
+            "    except Bad:\n"
+            "        return -1\n"
+            "print(probe(3), probe(-1))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("try.hoist_decl", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_rvalue_reassigned_hoist_still_defers(self):
+        src = (self._ERR
+               + "def main() -> None:\n"
+               + "    h = H()\n"
+               + "    try:\n"
+               + "        v = h.view()\n"
+               + "        v = [3, 4]\n"
+               + "        print(len(v))\n"
+               + "    except E:\n"
+               + "        print(\"err\")\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is None
+        _assert_byte_identical(src)

@@ -652,3 +652,198 @@ class TestGenexprC4Cells:
         out = _cpp(src, thir=True)
         assert out == _cpp(src, thir=False)
         assert "auto __tmp_1 = ::tpy::make_generator<int32_t>(" in out
+
+
+_OPT_COMP_PRE = (
+    "from typing import Optional\n"
+    "from tpy import Int32\n\n"
+    "class Foo:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n"
+    "        self.x = x\n"
+    "    def __repr__(self) -> str:\n"
+    "        return f\"Foo({self.x})\"\n\n"
+)
+
+
+class TestStorageOptCompLoopVar:
+    # A ptr-repr Optional[F1-record] comp ELEMENT registers the loop var in
+    # the storage-opt set (the for-STATEMENT container leg's comp twin): a
+    # NARROWED member access derefs at the ACCESS site (`(*item).x`), a
+    # protocol-slot arg passes the WHOLE optional (`repr_of(item)`), and the
+    # None-test spells has_value over the bare storage binding.
+
+    def test_narrowed_ternary_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (_OPT_COMP_PRE
+               + "def main() -> None:\n"
+               + "    items: list[Optional[Foo]] = [Foo(1), None, Foo(3)]\n"
+               + "    xs = [item.x if item is not None else -1 for item in items]\n"
+               + "    print(xs)\n"
+               + "    reprs = [repr(item) if item is not None else \"none\" for item in items]\n"
+               + "    print(reprs)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "(*item).x" in cpp
+        assert "::tpy::repr_of(item)" in cpp
+        assert "item.has_value()" in cpp
+
+    def test_filter_unproven_access_routes(self):
+        # A FILTERED comp's element access stays sema-unproven: the AST
+        # wraps the whole storage optional -- deref_optional_check, NOT the
+        # optional_to_ptr lift the pointer-repr families take.
+        from .testutil import _assert_routes_byte_identical
+        src = (_OPT_COMP_PRE
+               + "def main() -> None:\n"
+               + "    items: list[Optional[Foo]] = [Foo(1), None]\n"
+               + "    xs = [item.x for item in items if item is not None]\n"
+               + "    print(xs)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::deref_optional_check(item).x" in cpp
+        assert "optional_to_ptr" not in cpp
+
+    def test_const_source_defers(self):
+        # A const-bound iteration source's consumers spell `const P*` -- the
+        # unmirrored const twin keeps the fence.
+        src = (_OPT_COMP_PRE
+               + "from tpy import readonly\n"
+               + "def pick(items: readonly[list[Optional[Foo]]]) -> Int32:\n"
+               + "    xs = [item.x if item is not None else -1 for item in items]\n"
+               + "    return xs[0]\n"
+               + "def main() -> None:\n"
+               + "    items: list[Optional[Foo]] = [Foo(1), None]\n"
+               + "    print(pick(items))\n"
+               + "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "pick") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_record_slot_arg_defers(self):
+        # A NARROWED storage-opt read at a plain RECORD param slot is not the
+        # whole-optional protocol pass -- the name fence keeps it AST-side.
+        src = (_OPT_COMP_PRE
+               + "def take(f: Foo) -> Int32:\n"
+               + "    return f.x\n"
+               + "def main() -> None:\n"
+               + "    items: list[Optional[Foo]] = [Foo(1), None]\n"
+               + "    xs = [take(item) if item is not None else -1 for item in items]\n"
+               + "    print(xs)\n"
+               + "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "main") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+_SPAN_BUF_PRE = (
+    "from tpy import Int32, Array, Span, SpanIter, auto_readonly\n\n"
+    "class Buf:\n"
+    "    _data: Array[Int32, 4]\n"
+    "    _n: Int32\n\n"
+    "    def __init__(self) -> None:\n"
+    "        self._data = [10, 20, 30, 0]\n"
+    "        self._n = 3\n\n"
+    "    @auto_readonly\n"
+    "    def __span__(self) -> Span[auto_readonly[Int32]]:\n"
+    "        return self._data\n\n"
+    "    @auto_readonly\n"
+    "    def __iter__(self) -> SpanIter[auto_readonly[Int32]]:\n"
+    "        return SpanIter(self.__span__())\n\n"
+)
+
+
+class TestSynthBeginEndCompIterable:
+    # A user record with SYNTHESIZED begin()/end() (a Spannable conformer:
+    # `__span__` + SpanIter-returning `__iter__`, no explicit begin/end) is a
+    # comp iterable: the AST's unconditional begin/end comp loop serves it,
+    # unsized (no reserve) and with no storage-form registration.
+
+    def test_comp_over_spannable_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (_SPAN_BUF_PRE
+               + "def main() -> None:\n"
+               + "    b = Buf()\n"
+               + "    xs = [x * 2 for x in b]\n"
+               + "    print(xs)\n"
+               + "    s = {x // 10 for x in b}\n"
+               + "    print(len(s))\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "__obj_0.begin()" in cpp
+        assert ".reserve(" not in cpp
+
+    def test_user_iterator_comp_defers(self):
+        # A record whose `__iter__` does NOT return SpanIter is outside the
+        # begin/end synthesis -- the comp keeps rejecting.
+        src = ("from tpy import Int32\n\n"
+               "class Counter:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n"
+               "        self.n = 0\n"
+               "    def __iter__(self) -> \"Counter\":\n"
+               "        return self\n"
+               "    def __next__(self) -> Int32:\n"
+               "        if self.n >= 3:\n"
+               "            raise StopIteration\n"
+               "        self.n += 1\n"
+               "        return self.n\n\n"
+               "def main() -> None:\n"
+               "    c = Counter()\n"
+               "    xs = [v * 2 for v in c]\n"
+               "    print(xs)\n"
+               "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "main") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_genexpr_over_spannable_defers(self):
+        # The genexpr route keeps its own native-iterable gate -- a synth
+        # source genexpr stays AST-side.
+        src = (_SPAN_BUF_PRE
+               + "def main() -> None:\n"
+               + "    b = Buf()\n"
+               + "    print(sum(x * x for x in b))\n"
+               + "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "main") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestCompStorageOptFences:
+    # Boundary pins for the storage-opt/synth widenings' sibling routes:
+    # the Array-source indexed comp and a synth (Spannable) source with an
+    # Optional element both keep rejecting.
+
+    def test_array_source_storage_opt_elem_defers(self):
+        src = (_OPT_COMP_PRE
+               + "from tpy import Array\n"
+               + "def main() -> None:\n"
+               + "    ps: Array[Optional[Foo], 2] = [Foo(1), None]\n"
+               + "    xs = [p for p in ps]\n"
+               + "    print(len(xs))\n"
+               + "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "main") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_synth_source_optional_elem_defers(self):
+        src = (_OPT_COMP_PRE
+               + "from tpy import Array, Span, SpanIter, auto_readonly\n"
+               + "class OptBuf:\n"
+               + "    _data: Array[Optional[Foo], 2]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self._data = [Foo(1), None]\n"
+               + "    @auto_readonly\n"
+               + "    def __span__(self) -> Span[auto_readonly[Optional[Foo]]]:\n"
+               + "        return self._data\n"
+               + "    @auto_readonly\n"
+               + "    def __iter__(self) -> SpanIter[auto_readonly[Optional[Foo]]]:\n"
+               + "        return SpanIter(self.__span__())\n"
+               + "def main() -> None:\n"
+               + "    b = OptBuf()\n"
+               + "    xs = [1 if p is not None else 0 for p in b]\n"
+               + "    print(xs)\n"
+               + "main()\n")
+        thir = _lower(src)
+        assert _fn(thir, "main") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

@@ -137,7 +137,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...codegen_cpp.context import escape_cpp_name, is_constructor_call
 from ...codegen_cpp.protocols import narrow_cast_rhs
-from ...prescan import match_is_none
+from ...prescan import deref_view_key, match_is_none
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
@@ -296,6 +296,7 @@ from .predicates import (
     _any_narrow_fact,
     _const_borrow_name,
     _poly_anchor_declared,
+    _deref_view_narrow_info,
     _poly_narrow_info,
     _poly_post_if_fact,
     _poly_narrow_multi_info,
@@ -320,6 +321,7 @@ from .predicates import (
     _storage_optional_return_type,
     _unwrap_own,
     _owned_str_append_target,
+    _btuple_owning_call_init,
     _owned_str_slot,
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
@@ -943,8 +945,8 @@ def _resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
 def _for_each_container_route(
         stmt: TpyForEach, analyzer,
         declared: dict[str, TpyType],
-        shadowable_globals: 'AbstractSet[str]'
-        = frozenset()) -> '_ForEachRoute | None':
+        shadowable_globals: 'AbstractSet[str]' = frozenset(),
+        tparam_bounds: 'dict | None' = None) -> '_ForEachRoute | None':
     # `for v in <container>` over a NativeIterable with a value-scalar (`list[scalar]` /
     # `dict[fixed-int-key]`, a typed copy; bytes/BytesView are
     # NativeIterable[UInt8] -- the same typed-copy loop var), Char (str/StrView,
@@ -1071,6 +1073,30 @@ def _for_each_container_route(
                 return None
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
             container_field = True
+            if isinstance(it_type, TypeParamRef):
+                # An open-T FIELD whose bound is NativeIterable/Spannable
+                # (`Wrap[T: NativeIterable[Int32]]`, `for x in self.items:`):
+                # the AST's begin/end peephole reads the bound off
+                # current_type_param_bounds, so the member takes the same
+                # `auto& __obj_N =` begin/end loop a concrete container does.
+                b = (tparam_bounds or {}).get(it_type.name)
+                bu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(b)))
+                      if b is not None else None)
+                if not (isinstance(bu, NominalType)
+                        and bu.qualified_name() in ("tpy.NativeIterable",
+                                                    "tpy.Spannable")):
+                    note_detail("foreach.field_family")
+                    return None
+                et = _resolved_loop_elem_type(stmt, analyzer)
+                if not _for_each_elem_binding_ok(et):
+                    note_detail("foreach.elem_family."
+                                + _type_family_tag(et, analyzer))
+                    return None
+                _witness("foreach.native_bound_field")
+                return _ForEachRoute(
+                    route="container", elem_type=et, iterable_lvalue=True,
+                    container_field=True,
+                    value_tuple_elem=_value_tuple(et, analyzer) is not None)
     elif (isinstance(it, TpySubscript)
           and it.slice_function_info is not None
           and isinstance(it.index, TpySlice)):
@@ -1601,7 +1627,8 @@ def _select_for_each_route(
         route = _for_consuming_route(stmt, analyzer, declared)
         if route is None:
             route = _for_each_container_route(stmt, analyzer, declared,
-                                              shadowable_globals)
+                                              shadowable_globals,
+                                              tparam_bounds=tparam_bounds)
         if route is None:
             route = _for_iter_proto_route(stmt, analyzer, declared,
                                           iterator_object_locals,
@@ -2027,13 +2054,21 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
             or _resolved_bytes_value(vtype, analyzer) is not None
             or _is_string_owned(vtype)
             or _eligible_value_union(vtype) is not None
-            or _slice_object_type(vtype))
+            or _slice_object_type(vtype)
+            # A VALUE-record hoist (`z = ZoneInfo(key)` inside a try):
+            # the AST's plain-value arm predecls the default-constructed
+            # record (`::tpystd::datetime::ZoneInfo z;`), the body assign
+            # riding the value-record reassign rows.
+            or (isinstance(vtype, NominalType)
+                and _f1_record(vtype, analyzer)
+                and _value_record_slot(vtype)))
 
 def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           lc: '_LowerCtx', witness_tag: str,
                           opt_storage: 'AbstractSet[str]' = frozenset(),
                           borrow_tuple: 'AbstractSet[str]' = frozenset(),
-                          pointer: 'AbstractSet[str]' = frozenset()
+                          pointer: 'AbstractSet[str]' = frozenset(),
+                          const_pointer: 'AbstractSet[str]' = frozenset()
                           ) -> list[tuple[str, str]]:
     """Chain-head predecls for the branch-first-decls shared by if / try /
     with. A name spells its sema-resolved view type (render_type's default
@@ -2074,6 +2109,18 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             lc.branch_hoisted.add(name)
             declared[name] = vtype
             _witness("with.hoist_ptr_local")
+            continue
+        if name in const_pointer:
+            # The CONST borrow-decl flavor (`const Tree<int32_t>* v;` --
+            # sema's stmt-borrow const bit): same pointer local, const
+            # spelling and registration; never movable.
+            vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
+            hoist_decls.append((name, f"const {lc.render_type(vtype)}*"))
+            lc.pointers.add(name)
+            lc.const_locals.add(name)
+            lc.branch_hoisted.add(name)
+            declared[name] = vtype
+            _witness("try.hoist_const_ptr")
             continue
         hoist_decls.append(_value_hoist_entry(name, vtype, declared, lc))
     if hoist_decls:
@@ -2147,7 +2194,13 @@ def _borrow_tuple_binding_sources(name: str, lc: '_LowerCtx'
     def scan_expr(e) -> None:
         nonlocal walrus_hit
         if isinstance(e, TpyNamedExpr) and e.target == name:
-            walrus_hit = True
+            # An OWNING-call walrus value is an ordinary binding source
+            # (the emplace reseat; owned slot storage, no const bit to
+            # contribute). Any other walrus bind keeps the None fence.
+            if _btuple_owning_call_init(e.value, lc.analyzer):
+                sources.append(e.value)
+            else:
+                walrus_hit = True
         for f in dc_fields(e):
             v = getattr(e, f.name)
             if isinstance(v, TpyExpr):
@@ -2215,34 +2268,24 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
         # decl's fixpoint verdict spells `const T*` and the lift targets it);
         # the field's own read admission runs during lowering.
         return not isinstance(analyzer.get_expr_type(src.obj), ReadonlyType)
+    if isinstance(src, TpyName):
+        # Another borrow-form tuple LOCAL of the same shape (`u = t`): the
+        # reseat is the bare pointer-tuple copy. Params stay out (their
+        # const-element spelling would mismatch a mutable target).
+        st = analyzer.get_expr_type(src)
+        stu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+               if st is not None else None)
+        return (src.name not in lc.prescan.param_names
+                and src.name not in lc.const_borrow_tuple_locals
+                and src.name not in lc.storage_tuple_locals
+                and isinstance(stu, TupleType)
+                and stu.has_pointer_repr_element())
     return False
 
 
-def _btuple_owning_call_init(init: TpyExpr, analyzer) -> bool:
-    """An init call that OWNS its tuple result WHOLE -- the decl-position
-    admission for the owning-slot render (`__slot_N.emplace(call)`): an
-    Own-declared return, or an all-Own/value per-element tuple. A MIXED
-    Own+ref-element return renders the own-borrow hybrid and a plain
-    borrow-tuple return is an F1 alias -- both excluded (the same owning
-    -signal split as the storage_call_tuple decl arm)."""
-    if not isinstance(init, (TpyCall, TpyMethodCall)):
-        return False
-    fi = getattr(init, "resolved_function_info", None)
-    if fi is None or call_returns_cpp_ref(analyzer, fi):
-        return False
-    if _own_declared_call_ret(init):
-        return True
-    crt = getattr(fi, "return_type", None)
-    cru = (unwrap_readonly(unwrap_send_sync(crt))
-           if isinstance(crt, TpyType) else None)
-    return (isinstance(cru, TupleType) and cru.has_own_element()
-            and all(isinstance(unwrap_readonly(et), OwnType)
-                    or not TupleType._element_is_pointer_repr(et)
-                    for et in cru.element_types))
-
-
 def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
-                           lc: '_LowerCtx') -> bool:
+                           lc: '_LowerCtx',
+                           owning_call_ok: bool = False) -> bool:
     """The borrow-tuple hoist admission SHARED by the if-cascade and the
     for-each arms -- the non-const routable slice. Rejects: resumable
     bodies (no leaf drain for the hoist line); move-through names; the
@@ -2268,8 +2311,14 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
             for t in bare.inner_types()):
         return False
     srcs = _borrow_tuple_binding_sources(name, lc)
+    # `owning_call_ok` (the if-cascade only) admits OWNING tuple-call
+    # sources (`t = make_pair(9)` in a branch): the caller allocates the
+    # name's rebind slot and each call reseat emplaces into it.
     return (srcs is not None
-            and all(_borrow_tuple_source_ok(s, lc) for s in srcs))
+            and all(_borrow_tuple_source_ok(s, lc)
+                    or (owning_call_ok
+                        and _btuple_owning_call_init(s, lc.analyzer))
+                    for s in srcs))
 
 
 def _optional_storage_hoist_entry(name: str, var_type: TpyType,
@@ -2381,10 +2430,26 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
             # the borrow-literal / tuple_to_pointer arms. Deferred rungs
             # reject via the shared admission; inner scopes via the
             # registration-scope rule above.
-            if in_branch or not _borrow_tuple_hoist_ok(name, var_type, lc):
+            if in_branch or not _borrow_tuple_hoist_ok(name, var_type, lc,
+                                                       owning_call_ok=True):
                 note_detail("if.hoist_type")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            hoist_decls.append((name, var_type.to_cpp_return()))
+            # An OWNING tuple-call source (`t = make_pair(9)`) emplaces
+            # into the name's rebind slot; pre-decl it at the chain head
+            # (`std::optional<std::tuple<...>> __slot_N;`) like the
+            # ptr-Optional rvalue hoists.
+            bt_srcs = _borrow_tuple_binding_sources(name, lc) or ()
+            if any(_btuple_owning_call_init(s, analyzer) for s in bt_srcs):
+                hoist_slots.append((name, var_type.to_cpp()))
+                lc.rebind_slot_locals.add(name)
+            # The element const-ness comes from the whole-body fixpoint
+            # (`const Box*` when nothing mutates through the local), same
+            # verdict the reseat renders target.
+            lc.ensure_borrow_tuple_const()
+            hoist_decls.append((name,
+                                var_type.to_cpp_return_const()
+                                if name in lc.const_borrow_tuple_locals
+                                else var_type.to_cpp_return()))
             declared[name] = var_type
             _witness("if.hoist_borrow_tuple")
             continue
@@ -2530,6 +2595,18 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
         raise ThirUnsupported(stmt_reject_reason(stmt))
     _reject_nested_error_return_arg(stmt, init, analyzer)
     if call_returns_cpp_ref(analyzer, er_fi):
+        # The borrow-aliasing result over a HOISTED pointer target
+        # (`v = &(::tpy::unwrap_ref(*__try_tmp_N));` -- the AST's
+        # aliases-and-pointer-local arm). Any other target shape for an
+        # aliasing result stays AST (owned storage would copy and sever
+        # the alias).
+        if (name in lc.pointers and name in declared
+                and name not in lc.rebind_slot_locals):
+            call_node = _lower_expr(
+                init, lc, declared, error_return_raw=True,
+                use=_ExprUse(allow_temps=True))
+            return THIRErrorReturnBind(name=name, call=call_node,
+                                       alias_bind=True, loc=loc)
         note_detail("error_return.alias_bind")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # A rebind-slot pointer local reseats through its own optional slot --
@@ -2831,6 +2908,21 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         convert = THIRFormConvert(result_type=vtype, value=src,
                                   form=Form.BORROW, is_const=is_const, loc=loc)
         _witness("decl.opt_tuple_elem_lift")
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=convert,
+            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            is_const=is_const, cpp_local_representation=binding, loc=loc)
+    if (binding is LocalBinding.OPTIONAL_TO_PTR
+            and isinstance(stmt.init, TpyFieldAccess)
+            and stmt.init.property_getter_call is not None):
+        # A @property source lowers through the getter delegation (the raw
+        # field-source build would re-read a member that does not exist);
+        # the lift wraps the bare call render.
+        src = _lower_expr(stmt.init, lc, declared, allow_whole_optional=True)
+        convert = THIRFormConvert(result_type=vtype, value=src,
+                                  form=Form.BORROW, is_const=is_const,
+                                  loc=loc)
+        _witness("decl.opt_property_lift")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
             cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
@@ -4256,6 +4348,57 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
                                   declared, loc, loop_depth=loop_depth)
 
 
+def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
+                                declared: dict[str, TpyType], loc, *,
+                                loop_depth: int = 0) -> THIRIf:
+    """The deref-view isinstance `if` (`isinstance(b, Dog)` through a
+    Deref wrapper): the C++17 if-init cast of the deref PAYLOAD pointer
+    (`Dog* __b_ptr = dynamic_cast<Dog*>(&(b.__deref__()));`), composed via
+    the shared narrow_cast_rhs chokepoint. The wrapper var is NOT retyped;
+    branch-body member calls carrying deref_narrowed_to read the payload
+    via lc.deref_view_spelled (`(*__b_ptr)`), and post-branch reads revert
+    to the deref chain."""
+    var, member, wrap_decl, dispatch_inner, depth = dvinfo
+    analyzer = lc.analyzer
+    cpp_type = lc.render_type(member)
+    const = (_const_borrow_name(var, lc)
+             or _poly_subject_readonly(declared.get(var)))
+    const_pfx = "const " if const else ""
+    ptr_local = f"__{var}_ptr"
+    cast_arg = ("&(" + escape_cpp_name(var)
+                + ".__deref__()" * depth + ")")
+    cast_rhs = narrow_cast_rhs(cpp_type, member, dispatch_inner, cast_arg,
+                               is_const=const, analyzer=analyzer)
+    inner = stmt.condition
+    cond = THIRDynIsinstance(
+        result_type=analyzer.get_expr_type(inner),
+        init_cpp=f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}",
+        ptr_local=ptr_local,
+        loc=getattr(inner, "loc", None))
+    dkey = deref_view_key(var)
+
+    def fact_of(facts):
+        ft = facts.get(dkey)
+        return ft if ft == member else None
+
+    def branch_of(body, fact, alias_loc):
+        if fact is None:
+            return _lower_narrowed_branch(body, None, var, None, lc,
+                                          declared, alias_loc,
+                                          loop_depth=loop_depth)
+        lc.deref_view_spelled[var] = f"(*{ptr_local})"
+        try:
+            return _lower_narrowed_branch(body, None, var, None, lc,
+                                          declared, alias_loc,
+                                          loop_depth=loop_depth)
+        finally:
+            del lc.deref_view_spelled[var]
+
+    _witness("if.deref_view_narrow")
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
+
 def _lower_dyn_multi_if(stmt: TpyIf, minfo, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc, *,
                         loop_depth: int = 0) -> THIRIf:
@@ -4428,19 +4571,19 @@ def _list_inplace_extend(stmt: TpyAugAssign, lc: _LowerCtx,
     )
 
 
-def _leaf_finally_crossing(stmt: TpyTry) -> bool:
-    """Whether a leaf try/finally CONTAINS a `return` / `break` / `continue`.
-    Those are what tie the finally frame to the resumable return
-    scaffolding; a finally without one renders as the plain sync try. The
-    walk covers every nested compound body, since a crossing buried in an
-    inner `if` binds the same scaffolding as a top-level one -- and it does
-    not track which loop a break binds to, so a break bound by a loop INSIDE
-    the try rejects too. Deliberately conservative: over-rejecting costs a
-    fallback, under-rejecting costs a divergence."""
+def _leaf_finally_crossing_loop(stmt: TpyTry) -> bool:
+    """Whether a leaf try/finally contains a `break`/`continue`: RETURN
+    crossings ride the leaf finally bridge (the emit mirrors the frame
+    onto the AST finally stack for _make_async_return's walk), but a
+    break/continue crossing binds the loop-frame walk, which is not
+    bridged -- those keep rejecting. The nested walk is deliberately
+    conservative: it does not track which loop a break binds to, so a
+    break bound by a loop INSIDE the try rejects too (over-rejecting
+    costs a fallback, under-rejecting a divergence)."""
     stack = [s for body in stmt.sub_bodies() for s in body]
     while stack:
         s = stack.pop()
-        if isinstance(s, (TpyReturn, TpyBreak, TpyContinue)):
+        if isinstance(s, (TpyBreak, TpyContinue)):
             return True
         for body in s.sub_bodies():
             stack.extend(body)
@@ -4479,11 +4622,12 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     (`_wrap_view_owned_return`), and value-tuple / generic-tuple literals
     (the AST's tuple-literal-targeted arm in `_async_return_value_cpp`)."""
     if ret.finally_deferred_capture:
-        # Finally-deferred return capture (borrow before the chain, move
-        # after) is not lowered yet; the AST scaffolding path defers while
-        # the leaf seam renders position-blind, so fall the body back.
-        note_detail("return.finally_deferred_capture")
-        raise ThirUnsupported(stmt_reject_reason(ret))
+        # The finally-deferred capture (borrow before the chain, move
+        # after) renders inside the HOOK (_make_async_return's own
+        # _deferred_return_recipe) now that the leaf finally bridge mirrors
+        # the frame -- the value render below feeds the recipe through the
+        # seam's return_values table like any leaf return.
+        _witness("res.leaf_deferred_capture")
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
     if (lc.prescan.ret_res_container is not None
@@ -4950,8 +5094,25 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     Shared by the top-level leaf decl arm and the branch-nested decl arm."""
     init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
                                          lc.analyzer)
-    value = _lower_expr(init, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.STORAGE))
+    if type(init) in _comprehensions._COMP_KINDS:
+        # A comprehension init (`rows = [[i, i+1] for i in range(3)]`):
+        # the ordinary comp statement-expression renders INSIDE the
+        # emplace arg (`rows.emplace(({ ... })));` -- the sync decl's comp
+        # branch at the frame sink. Reassigned names re-emplace the same
+        # way; move-through keeps its own arm.
+        if stmt.name in lc.prescan.move_through:
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        value = _comprehensions._lower_comprehension(
+            init, declared[stmt.name], lc, declared,
+            # The shadow-check pointer set filters Optional-ptr-borrow
+            # names like every other comprehension call site.
+            frozenset(n for n in lc.pointers
+                      if _optional_ptr_borrow(declared.get(n),
+                                              lc.analyzer) is None))
+        _witness("res.frame_comp_write")
+    else:
+        value = _lower_expr(init, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.STORAGE))
     _witness("res.frame_slot_write")
     # The brace-init prefix spells the SLOT, so it reads the resolved frame
     # local type (the AST's `ctx.var_types`) -- a branch-declared container
@@ -5625,7 +5786,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # crossing it. Without one the finally emits as the plain sync
             # duplicated-body try, byte-identical mid-state.
             if stmt.finally_body:
-                if _leaf_finally_crossing(stmt):
+                # A crossing return rides the leaf finally BRIDGE: the emit
+                # mirrors the frame onto the skeleton's AST finally stack,
+                # so _make_async_return inlines the finally with the shared
+                # guard. break/continue crossings keep rejecting (their
+                # loop-frame walk is not bridged).
+                if _leaf_finally_crossing_loop(stmt):
                     raise ThirUnsupported("res.leaf_try")
                 _witness("res.leaf_try_finally")
             else:
@@ -5670,6 +5836,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         return THIRImportInit(calls=calls, loc=loc)
     if isinstance(stmt, TpyVarDecl):
         begin_stmt()
+        if stmt.name in lc.forwarded_map:
+            # A forwarded proto-param alias (`xs = it`): a compile-time
+            # rename -- the binding emits nothing (leading trivia only)
+            # and every later read renders the backing param.
+            declared[stmt.name] = declared.get(
+                lc.forwarded_map[stmt.name], _var_decl_type(stmt, analyzer))
+            _witness("decl.forwarded_alias")
+            return THIRNoOpStmt(trivia_loc=loc)
         if stmt.linkage != VarLinkage.DEFAULT:
             if lc.top_level_scope:
                 # A `native_global(...)` binding declares nothing of its own
@@ -6093,7 +6267,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if copy_row is not None:
                 _witness("decl.copy_record")
                 declared[stmt.name] = vtype
-                lc.promote_movable(stmt.name)
+                # The AST's plain decl arm promotes non-value locals only
+                # (its value-type filter); a VALUE record's last-use read
+                # copies on both paths even when sema marked it movable.
+                if not vtype.is_value_type():
+                    lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype, init=copy_row,
                     cpp_type=lc.render_type(vtype), form=Form.STORAGE, loc=loc)
@@ -6108,7 +6286,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                          if isinstance(stmt.init, TpyMethodCall)
                          else "decl.owned_record")
                 declared[stmt.name] = vtype
-                lc.promote_movable(stmt.name)
+                # Mirror the AST plain arm's value-type filter: a VALUE
+                # record decl never promotes, so its last-use read copies.
+                if not vtype.is_value_type():
+                    lc.promote_movable(stmt.name)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype,
                     init=_lower_expr(
@@ -6160,6 +6341,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if is_reassign and stmt.name not in lc.prescan.param_names
                 else None)
         if bt_t is not None:
+            if (stmt.name in lc.rebind_slot_locals
+                    and _btuple_owning_call_init(stmt.init, analyzer)):
+                # The OWNING-call reseat over a hoisted borrow-tuple local:
+                # the rvalue emplaces into the pre-declared slot,
+                # `t = ::tpy::tuple_to_pointer<{borrow}>(__slot_N.emplace(
+                # make_pair(9)));`. Slot-less btuple names (literal first
+                # decls) keep rejecting below.
+                lc.ensure_borrow_tuple_const()
+                bc = (bt_t.to_cpp_return_const()
+                      if stmt.name in lc.const_borrow_tuple_locals
+                      else bt_t.to_cpp_return())
+                value = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 allow_temps=True, tuple_source=True))
+                _witness("btuple.reseat_emplace")
+                return THIRAssign(
+                    target=THIRName(result_type=bt_t, name=stmt.name,
+                                    loc=loc),
+                    value=value, btuple_borrow_cpp=bc, loc=loc)
             if not _borrow_tuple_source_ok(stmt.init, lc):
                 note_detail("reseat.borrow_tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -6167,6 +6368,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value: THIRExpr = _lower_borrow_tuple_literal(
                     stmt.init, bt_t, lc, declared)
                 _witness("btuple.reseat_literal")
+            elif isinstance(stmt.init, TpyName):
+                # A sibling borrow-tuple local: the bare pointer-tuple copy
+                # (`u = t;`) -- same form, no lift.
+                value = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                _witness("btuple.reseat_name_copy")
             else:
                 # BORROW_BIND: the tuple_to_pointer wrap consumes the bare
                 # storage read (subscript element or F3 tuple field). The
@@ -9601,6 +9809,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_dyn_narrow_if(stmt, pinfo, lc, declared, loc,
                                         loop_depth=scope.loop_depth)
+        dvinfo = _deref_view_narrow_info(stmt.condition, declared, analyzer)
+        if dvinfo is not None:
+            dvar, dmember, _dwrap, _dinner, _ddepth = dvinfo
+            dkey = deref_view_key(dvar)
+            dv_ok = not (
+                bool(hoists)
+                or lc.func.is_generator or lc.func.is_async
+                or dvar in lc.pointers
+                or dvar in lc.prescan.global_seeded
+                or dvar in lc.narrow.narrowed
+                or dvar in lc.narrow.spelled
+                or dvar in lc.deref_view_spelled
+                or any(k != dkey for k in stmt.then_type_facts)
+                or stmt.then_type_facts.get(dkey) != dmember
+                or any(k == dkey for k in stmt.else_type_facts))
+            if not dv_ok:
+                note_detail("if.deref_view_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_deref_view_narrow_if(stmt, dvinfo, lc, declared,
+                                               loc,
+                                               loop_depth=scope.loop_depth)
         minfo = _poly_narrow_multi_info(stmt.condition, declared, analyzer)
         if minfo is not None:
             mvar, _mmembers, mdecl = minfo
@@ -10220,7 +10449,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 or (lc.resumable_leaf_mode
                     and isinstance(stmt.iterable, TpyName)
                     and stmt.iterable.name not in lc.frame_slots
-                    and stmt.iterable.name not in lc.pointers)),
+                    and stmt.iterable.name not in lc.pointers)
+                # A SELF-field iterable in a leaf: the member renders
+                # `__self.items` through the ordinary field lowering (the
+                # same respell every frame self-field read takes), so the
+                # open-T field leg's `auto& __src_N =` capture is the
+                # sync render verbatim.
+                or (lc.resumable_leaf_mode
+                    and isinstance(stmt.iterable, TpyFieldAccess)
+                    and isinstance(stmt.iterable.obj, TpyName)
+                    and stmt.iterable.obj.name == "self")),
             tparam_bounds=lc.tparam_bounds,
             shadowable_globals=_shadowable_globals(lc, declared))
         it = stmt.iterable
@@ -10895,6 +11133,8 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         raise ThirUnsupported(stmt_reject_reason(stmt))
     hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
     opt_storage_hoists: set[str] = set()
+    pointer_hoists: set[str] = set()
+    const_pointer_hoists: set[str] = set()
     for name, raw in hoists.items():
         if name in declared:
             continue
@@ -10915,8 +11155,23 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         var_type = unwrap_ref_type(raw)
         var_type = (resolve_pending_container(var_type, lc.analyzer)
                     or var_type)
-        if _opt_storage_hoist_flavor(name, var_type, lc) is None:
+        flavor = _opt_storage_hoist_flavor(name, var_type, lc)
+        if flavor is None:
             opt_storage_hoists.add(name)
+            continue
+        # Borrow-only / reassigned plain non-value hoists take the pointer
+        # predecl (`std::vector<int32_t>* v;`, the body bind reseating
+        # `v = &(...)`) -- the with family's pointer flavor. An
+        # rvalue-reassigned name would need the if-head rebind slot,
+        # which THIRTry has no field for -- reject.
+        if (flavor == "other" and is_plain_nonvalue(var_type)
+                and name not in lc.prescan.rvalue_reassigned):
+            pointer_hoists.add(name)
+            continue
+        # The CONST borrow-decl sibling (`const Tree<int32_t>* v;`).
+        if (flavor == "const" and is_plain_nonvalue(var_type)
+                and name not in lc.prescan.rvalue_reassigned):
+            const_pointer_hoists.add(name)
             continue
         note_detail("try.hoist")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10926,7 +11181,9 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
                 and _handler_binding_type(handler, lc.analyzer) is None):
             raise ThirUnsupported(stmt_reject_reason(stmt))
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl",
-                                        opt_storage=opt_storage_hoists)
+                                        opt_storage=opt_storage_hoists,
+                                        pointer=pointer_hoists,
+                                        const_pointer=const_pointer_hoists)
     body_terminates = try_terminates_ignoring_finally(stmt)
     if stmt.tier == "finally_only":
         _witness("try.finally_only")

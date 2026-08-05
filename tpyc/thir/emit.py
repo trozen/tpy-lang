@@ -323,6 +323,34 @@ class ModuleCounter:
         return self._n
 
 
+class IterCounter:
+    """PRE-value draw counter for the `__tpy_ret_N` / `__tpy_retp_N` /
+    `__after_else_N` iter stream (first id 0, unlike ModuleCounter's 1).
+    The leaf seam passes a ctx-backed one so hooked AST renders (the
+    skeleton's iter_counter draws) and THIR draws share one stream."""
+
+    def __init__(self) -> None:
+        self._n = 0
+
+    def draw(self) -> int:
+        n = self._n
+        self._n += 1
+        return n
+
+
+class CtxIterCounter(IterCounter):
+    """IterCounter backed by the live CodeGenContext's `iter_counter` --
+    the leaf seam's shared draw stream."""
+
+    def __init__(self, ctx) -> None:
+        self._ctx = ctx
+
+    def draw(self) -> int:
+        n = self._ctx.iter_counter
+        self._ctx.iter_counter = n + 1
+        return n
+
+
 class CtxCounter(ModuleCounter):
     """ModuleCounter backed by a named int attribute of the live
     CodeGenContext (duck-typed on `ctx` like CtxTempSink, keeping emit.py
@@ -426,7 +454,7 @@ class _EmitState:
     # / `_make_generator_resumable_return` bound to the live ctx, called
     # with (ast_stmt, indent_level). None outside resumable leaves.
     resumable_return_hook: 'Callable[[object, int], str] | None' = None
-    iter_counter: int = 0
+    iter_counter: IterCounter = field(default_factory=IterCounter)
     slot_counter: int = 0
     # Slot spelling for the module-init walk: codegen's SlotState switches the
     # prefix to `__global_slot` and every slot decl gains `static` there
@@ -481,6 +509,12 @@ class _EmitState:
     # guard only when its name is present (per-function; names are unique
     # via the module-cumulative finally_guard_counter).
     live_finally_guards: set[str] = field(default_factory=set)
+    # Leaf-mode bridge to the skeleton's AST finally stack: push mirrors a
+    # THIR finally frame as a FinallyContext (so the resumable return
+    # hook's chain walk inlines the finally with the SAME guard), pop
+    # removes it. None in sync emission.
+    ast_finally_push: 'Callable[..., object] | None' = None
+    ast_finally_pop: 'Callable[[], None] | None' = None
     loop_depth: int = 0
     # Per-function match-switch state, mirroring reset_scope's fields:
     # `match_counter` numbers `__match_subject_N` (one bump per match, the
@@ -506,9 +540,7 @@ class _EmitState:
     stmt_indent_level: int = 0
 
     def next_loop_index(self) -> int:
-        n = self.iter_counter
-        self.iter_counter += 1
-        return n
+        return self.iter_counter.draw()
 
     def next_slot(self) -> int:
         self.slot_counter += 1  # pre-increment: first slot is __slot_1
@@ -1504,9 +1536,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             if slot_n is None:
                 slot_n = (state.assert_local_slot() or state.next_slot())
                 state.rebind_slots[e.name] = slot_n
-                state.btuple_slot_locals.add(e.name)
                 state.temps.declare_named(
                     f"__slot_{slot_n}", f"std::optional<{e.slot_cpp}>")
+            # Both the fresh and the hoisted-slot (reuse) paths mark the
+            # name so plain reseats stay off the ptr-Optional arm.
+            state.btuple_slot_locals.add(e.name)
             v = (f"::tpy::tuple_to_pointer<{e.borrow_cpp}>"
                  f"(__slot_{slot_n}.emplace({v}))")
         if e.addr_of:
@@ -1578,6 +1612,20 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             call = (f"std::ranges::contains({_emit_expr(e.receiver, state)}, "
                     f"{_emit_expr(e.needle, state)})")
             return f"!{call}" if e.negate else call
+        if e.iter_loop:
+            # The universal `__iter__`+`__next__` statement-expression loop
+            # (no `__contains__`, not native-iterable); fixed temp names,
+            # negation a `!` prefix.
+            recv = _emit_expr(e.receiver, state)
+            needle = _emit_expr(e.needle, state)
+            loop = (f"({{ auto&& __itr = ::tpy::__iter__({recv}); "
+                    f"bool __found = false; "
+                    f"for (;;) {{ auto __r = __itr.__next__(); "
+                    f"if (!__r.has_value()) break; "
+                    f"if (::tpy::unwrap_ref(*__r) == {needle}) "
+                    f"{{ __found = true; break; }} }} "
+                    f"__found; }})")
+            return f"!{loop}" if e.negate else loop
         if e.free_function:
             inner = (f"({qualify_native_name(e.method_cpp)}"
                      f"({_emit_expr(e.receiver, state)}, "
@@ -1925,8 +1973,7 @@ def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
     # depth for _pop_loop_frame.
     label = ""
     if has_else:
-        label = f"__after_else_{state.iter_counter}"
-        state.iter_counter += 1
+        label = f"__after_else_{state.iter_counter.draw()}"
     state.loop_else_labels.append(label)
     state.loop_break_labels.append("")
     saved = state.switch_depth
@@ -2250,8 +2297,7 @@ def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
         else:
             out.write(f"{indent}return;\n")
         return
-    tmp = f"__tpy_ret_{state.iter_counter}"
-    state.iter_counter += 1
+    tmp = f"__tpy_ret_{state.iter_counter.draw()}"
     ret_cpp = state.return_cpp or "auto"
     chain = io.StringIO()
     terminated = _emit_finally_chain(chain, indent, state)
@@ -2338,8 +2384,8 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
         return
     if is_break and state.switch_depth > 0 and state.loop_break_labels:
         if not state.loop_break_labels[-1]:
-            state.loop_break_labels[-1] = f"__loop_break_{state.iter_counter}"
-            state.iter_counter += 1
+            state.loop_break_labels[-1] = (
+                f"__loop_break_{state.iter_counter.draw()}")
         _witness("match.loop_break_goto")
         out.write(f"{indent}goto {state.loop_break_labels[-1]};\n")
         return
@@ -2497,14 +2543,31 @@ def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
     # emits into a buffer first: an exit site inside it decides whether the
     # frame's guard is needed, which has to be declared before the `try {`.
     inner = INDENT * inner_level
+    ast_fctx = None
+    if state.ast_finally_push is not None:
+        # Leaf mode: mirror this frame onto the skeleton's AST finally
+        # stack so the resumable return hook's chain walk inlines the
+        # finally (with the SAME guard -- the AST push allocates it from
+        # the shared counter and we reuse its name).
+        def _fin_writer(w, ind, _stmts=stmt.finally_body):
+            _emit_stmts(w, _stmts, len(ind) // len(INDENT), state)
+        ast_fctx = state.ast_finally_push(_fin_writer,
+                                          stmt.finally_terminates)
+        guard_name = ast_fctx.guard_name
+    else:
+        guard_name = f"__fin_ran_{state.finally_guard_counter.next()}"
     fr = _FinallyFrame(
         loop_depth=state.loop_depth,
         stmts=stmt.finally_body,
         terminates=stmt.finally_terminates,
-        guard_name=f"__fin_ran_{state.finally_guard_counter.next()}")
+        guard_name=guard_name)
     state.finally_frames.append(fr)
     body_buf = io.StringIO()
-    emit_body(body_buf, inner_level + 1)
+    try:
+        emit_body(body_buf, inner_level + 1)
+    finally:
+        if ast_fctx is not None:
+            state.ast_finally_pop()
     guard = (fr.guard_name
              if fr.guard_name in state.live_finally_guards else None)
     if guard is not None:
@@ -3787,9 +3850,31 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both. An
         # F2d rebind-slot pointer-local reseat reuses its optional slot:
         # `p = &*(__slot_N = <rvalue>);`.
-        if (isinstance(stmt.target, THIRName)
+        if (stmt.btuple_borrow_cpp is not None
+                and isinstance(stmt.target, THIRName)):
+            # Owning-call reseat of a hoisted borrow-tuple local: emplace
+            # into the pre-declared slot, alias via tuple_to_pointer. The
+            # name joins btuple_slot_locals so later plain reseats stay
+            # off the `&*(__slot = ...)` ptr-Optional arm.
+            v = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            slot = _use_rebind_slot(state, stmt.target.name)
+            assert slot is not None, "btuple emplace reseat without a slot"
+            state.btuple_slot_locals.add(stmt.target.name)
+            out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
+                      f"::tpy::tuple_to_pointer<{stmt.btuple_borrow_cpp}>"
+                      f"(__slot_{slot}.emplace({v}));\n")
+            _witness("btuple.reseat_emplace_emit")
+        elif (isinstance(stmt.target, THIRName)
                 and stmt.target.name not in state.union_slot_locals
                 and stmt.target.name not in state.btuple_slot_locals
+                # A borrow-tuple target never takes the ptr-Optional
+                # `&*(__slot = ...)` reseat, whatever the branch order put
+                # in btuple_slot_locals so far -- its plain reseats are
+                # bare tuple_to_pointer assigns over the SAME hoisted slot.
+                and not (isinstance(stmt.target.result_type, TupleType)
+                         and stmt.target.result_type
+                         .has_pointer_repr_element())
                 and _use_rebind_slot(state, stmt.target.name) is not None):
             slot = state.rebind_slots[stmt.target.name]
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
@@ -3954,8 +4039,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # terminating finally keeps the [[maybe_unused]] capture -- Python
         # still evaluates the return expression it then overrides.
         _witness_chain("return", state, 0)
-        ptr = f"__tpy_retp_{state.iter_counter}"
-        state.iter_counter += 1
+        ptr = f"__tpy_retp_{state.iter_counter.draw()}"
         chain = io.StringIO()
         terminated = _emit_finally_chain(chain, indent, state)
         maybe_unused = "[[maybe_unused]] " if terminated else ""
@@ -4162,6 +4246,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{inner}{name} = &*({state.slot_prefix}_{slot} = "
                       f"::tpy::unwrap_ref_move(*{tmp}));\n")
             _witness("er.bind_ptr_rebind")
+        elif stmt.alias_bind:
+            out.write(f"{inner}{name} = &(::tpy::unwrap_ref(*{tmp}));\n")
+            _witness("er.bind_alias")
         else:
             out.write(f"{inner}{name} = ::tpy::unwrap_ref_move(*{tmp});\n")
         out.write(f"{indent}}}\n")
@@ -4487,6 +4574,9 @@ class ResumableLeafEmitter:
                  frame_shadow_probe: 'Callable[[str], bool] | None' = None,
                  resumable_return_hook: 'Callable[[object, int], str] | None'
                  = None,
+                 live_finally_guards: 'set[str] | None' = None,
+                 ast_finally_push=None, ast_finally_pop=None,
+                 iter_counter: 'IterCounter | None' = None,
                  ) -> None:
         self._body = body
         self._state = _EmitState(comments or _NO_COMMENTS,
@@ -4499,6 +4589,16 @@ class ResumableLeafEmitter:
                                  frame_shadow_probe=frame_shadow_probe,
                                  resumable_return_hook=resumable_return_hook,
                                  hoist_drainable=False)
+        if live_finally_guards is not None:
+            # Share the CTX's live-guard set: hook-side exit sites (the
+            # skeleton's _emit_finally_chain) and THIR's guard decls must
+            # see one liveness truth (names are unique via the shared
+            # counter).
+            self._state.live_finally_guards = live_finally_guards
+        self._state.ast_finally_push = ast_finally_push
+        self._state.ast_finally_pop = ast_finally_pop
+        if iter_counter is not None:
+            self._state.iter_counter = iter_counter
 
     def _lookup(self, table, node, what: str):
         if id(node) not in table:

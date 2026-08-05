@@ -4332,3 +4332,252 @@ class TestPrintTupleRecordElement:
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("print.tuple_record_elem", 0) == 0
         _assert_byte_identical(src)
+
+
+class TestMembershipFieldAndIterRows:
+    """The wave-3 membership rows: a container-FIELD haystack composes into
+    the same `.contains` member as a name receiver
+    (`si.tags.contains(Tag("a", 1))`); a user `__contains__` off a
+    call-rvalue field receiver chains the member call over the postfix
+    field read; a user iterable with NO `__contains__` takes the AST's
+    universal `__iter__`+`__next__` statement-expression loop (scalar
+    needle over a bare declared name only -- a str needle keeps the
+    whole-body fallback)."""
+
+    _COMMON = (
+        "from tpy import Int32, UInt64, Own\n"
+        "class Tag:\n"
+        "    name: str\n"
+        "    n: Int32\n"
+        "    def __init__(self, name: str, n: Int32):\n"
+        "        self.name = name\n"
+        "        self.n = n\n"
+        "    def __eq__(self, other: Tag) -> bool:\n"
+        "        return self.name == other.name and self.n == other.n\n"
+        "    def __hash__(self) -> UInt64:\n"
+        "        return UInt64(self.n)\n"
+        "class Holder:\n"
+        "    tags: set[Tag]\n"
+        "    lookup: dict[Tag, str]\n"
+        "    def __init__(self):\n"
+        "        self.tags = {Tag(\"a\", 1)}\n"
+        "        self.lookup = {Tag(\"a\", 1): \"x\"}\n"
+    )
+
+    def test_container_field_haystack_routes(self):
+        src = (self._COMMON
+               + "def probe(h: Holder) -> None:\n"
+               + "    print(Tag(\"a\", 1) in h.tags)\n"
+               + "    print(Tag(\"z\", 9) not in h.tags)\n"
+               + "    print(Tag(\"a\", 1) in h.lookup)\n"
+               + "probe(Holder())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("binop.contains_field_recv", 0) >= 3
+        _assert_byte_identical(src)
+
+    _JAR = (
+        "from tpy import Own\n"
+        "class Jar:\n"
+        "    keys: set[str]\n"
+        "    def __init__(self):\n"
+        "        self.keys = {\"k\"}\n"
+        "    def __contains__(self, name: str) -> bool:\n"
+        "        return name in self.keys\n"
+        "class JarBox:\n"
+        "    jar: Jar\n"
+        "    def __init__(self):\n"
+        "        self.jar = Jar()\n"
+        "def make_box() -> Own[JarBox]:\n"
+        "    return JarBox()\n"
+    )
+
+    def test_user_contains_call_recv_field_routes(self):
+        src = (self._JAR
+               + "def probe() -> None:\n"
+               + "    print(\"k\" in make_box().jar)\n"
+               + "    print(\"z\" not in make_box().jar)\n"
+               + "probe()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("field.call_recv", 0) >= 2
+        assert faces.get("binop.user_membership", 0) >= 2
+        _assert_byte_identical(src)
+
+    def test_contains_recv_field_over_nonrecord_call_still_defers(self):
+        # The receiver row requires an F1-RECORD-returning call under the
+        # field (_field_over_call_ok); a field off a LIST-returning call
+        # is outside it, so the membership keeps the whole-body fallback.
+        src = (self._JAR
+               + "def boxes() -> Own[list[JarBox]]:\n"
+               + "    return [JarBox()]\n"
+               + "def probe() -> None:\n"
+               + "    print(\"k\" in boxes()[0].jar)\n"
+               + "probe()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        _assert_byte_identical(src)
+
+    _BUF = (
+        "from tpy import Int32, Own\n"
+        "class Buf:\n"
+        "    a: Int32\n"
+        "    b: Int32\n"
+        "    def __init__(self):\n"
+        "        self.a = 10\n"
+        "        self.b = 20\n"
+        "    def __iter__(self) -> Own[BufIter]:\n"
+        "        return BufIter(self)\n"
+        "class BufIter:\n"
+        "    src: Buf\n"
+        "    i: Int32\n"
+        "    def __init__(self, src: Buf):\n"
+        "        self.src = src\n"
+        "        self.i = 0\n"
+        "    def __next__(self) -> Int32 | None:\n"
+        "        self.i += 1\n"
+        "        if self.i == 1:\n"
+        "            return self.src.a\n"
+        "        if self.i == 2:\n"
+        "            return self.src.b\n"
+        "        return None\n"
+    )
+
+    def test_iter_loop_membership_routes(self):
+        src = (self._BUF
+               + "def probe(b: Buf) -> None:\n"
+               + "    print(10 in b)\n"
+               + "    print(99 not in b)\n"
+               + "probe(Buf())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("binop.iter_membership", 0) >= 2
+        _assert_byte_identical(src)
+
+    def test_iter_loop_emit(self):
+        src = (self._BUF
+               + "def probe(b: Buf) -> None:\n"
+               + "    print(10 in b)\n"
+               + "probe(Buf())\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "auto&& __itr = ::tpy::__iter__(b);" in cpp
+        assert "if (::tpy::unwrap_ref(*__r) == 10)" in cpp
+
+    def test_str_needle_iterable_still_defers(self):
+        # A non-scalar needle keeps the whole-body fallback: the AST's
+        # view_key_target threading over the loop compare is unmirrored.
+        src = (self._BUF.replace("Int32 | None", "Int32 | None")
+               + "class Bag:\n"
+               + "    a: str\n"
+               + "    def __init__(self):\n"
+               + "        self.a = \"x\"\n"
+               + "    def __iter__(self) -> Own[BagIter]:\n"
+               + "        return BagIter(self)\n"
+               + "class BagIter:\n"
+               + "    src2: Bag\n"
+               + "    done: bool\n"
+               + "    def __init__(self, src2: Bag):\n"
+               + "        self.src2 = src2\n"
+               + "        self.done = False\n"
+               + "    def __next__(self) -> Int32 | None:\n"
+               + "        if self.done:\n"
+               + "            return None\n"
+               + "        self.done = True\n"
+               + "        return 1\n"
+               + "def probe(b: Bag) -> None:\n"
+               + "    print(\"x\" in b)\n"
+               + "probe(Bag())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        assert not faces.get("binop.iter_membership")
+        _assert_byte_identical(src)
+
+
+class TestScalarPtrOptBinding:
+    """The scalar-pointee widening of _opt_pointee_wide: `v = d.get("a")`
+    on a value dict binds the borrow `int32_t* v = ::tpy::dict_get(...)`
+    (decl.opt_call_passthrough), whole-optional sinks read the bare
+    pointer (None tests, print_optional, optional pass-throughs), and a
+    NARROWED value read derefs `(*v)` -- the one consumer shape the wide
+    pointee classes never had. A reassigned local keeps the slot
+    machinery (fallback)."""
+
+    _P = ("from tpy import Int32\n"
+          "def probe(d: dict[str, Int32]) -> Int32:\n")
+
+    def test_decl_and_narrowed_deref_route(self):
+        src = (self._P
+               + "    v = d.get(\"a\")\n"
+               + "    if v is not None:\n"
+               + "        return v + 1\n"
+               + "    return -1\n"
+               + "print(probe({\"a\": 10}))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "probe")
+        assert fn is not None
+        assert faces.get("decl.opt_call_passthrough", 0) >= 1
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert "int32_t* v = ::tpy::dict_get(d, \"a\");" in cpp
+        assert "(::tpy::add_check<int32_t>((*v), 1))" in cpp
+
+    def test_whole_optional_sinks_stay_bare(self):
+        src = ("from tpy import Int32\n"
+               "def take(v: Int32 | None) -> Int32:\n"
+               "    if v is None:\n"
+               "        return -1\n"
+               "    return v\n"
+               "def probe(d: dict[str, Int32]) -> Int32 | None:\n"
+               "    v = d.get(\"a\")\n"
+               "    print(v, v is None)\n"
+               "    print(take(d.get(\"a\")))\n"
+               "    return d.get(\"b\")\n"
+               "print(probe({\"a\": 1, \"b\": 2}))\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        _assert_byte_identical(src)
+
+    def test_reassigned_local_still_defers(self):
+        src = (self._P
+               + "    v = d.get(\"a\")\n"
+               + "    print(v)\n"
+               + "    v = d.get(\"b\")\n"
+               + "    print(v)\n"
+               + "    return 0\n"
+               + "print(probe({\"a\": 1}))\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        _assert_byte_identical(src)
+
+    def test_unwired_whole_optional_sinks_defer(self):
+        # The batch-3 Critical's boundary: an UNPROVEN whole read of the
+        # scalar ptr-opt binding at a value-repr Optional sink (`return v`
+        # / a value-opt param arg) rejects -- the AST lifts via
+        # ptr_to_optional_move, unmirrored; a deref would be UB on None.
+        src = ("from tpy import Int32\n"
+               "def take(v: Int32 | None) -> Int32:\n"
+               "    if v is None:\n"
+               "        return -1\n"
+               "    return v\n"
+               "def ret_bound(d: dict[str, Int32]) -> Int32 | None:\n"
+               "    v = d.get(\"a\")\n"
+               "    return v\n"
+               "def arg_bound(d: dict[str, Int32]) -> Int32:\n"
+               "    v = d.get(\"zz\")\n"
+               "    return take(v)\n"
+               "def main() -> None:\n"
+               "    d = {\"a\": 10}\n"
+               "    print(ret_bound(d), arg_bound(d))\n"
+               "main()\n")
+        thir, _f = _lower_ctx_witnessed(src)
+        assert _fn(thir, "ret_bound") is None
+        assert _fn(thir, "arg_bound") is None
+        _assert_byte_identical(src)

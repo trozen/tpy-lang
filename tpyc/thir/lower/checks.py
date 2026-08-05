@@ -139,6 +139,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _container_ternary_arg,
     _protocol_union_arg,
     _nullable_static_protocol_param,
     _static_protocol_union_binding,
@@ -1338,6 +1339,15 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and isinstance(stmt.init.obj, TpyMethodCall)
                 and _indirect_field_receiver_ok(stmt.init, declared,
                                                 analyzer)):
+            return binding
+        # An OPTIONAL_TO_PTR lift whose source is a @property read
+        # (`n = w.node` -> `Node* n = ::tpy::optional_to_ptr(w.node());`):
+        # the getter call renders bare (the field arm delegates to the
+        # method-call lowering, whose own gates re-validate receiver/args)
+        # and the lift wraps it -- the property twin of the row above.
+        if (binding is LocalBinding.OPTIONAL_TO_PTR
+                and isinstance(stmt.init, TpyFieldAccess)
+                and stmt.init.property_getter_call is not None):
             return binding
         # A STORAGE-form Optional CONTAINER-subscript source (`a = d["a"]`
         # on `dict[str, P | None]`): the same optional_to_ptr lift over the
@@ -2720,14 +2730,14 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     `generator_ok` admits a free GENERATOR callee (set only by the iterable
     position): its factory call spells exactly like a plain/imported call
     (both the lambda peephole's `inline auto f(...)` and the resumable
-    frame's factory), so only the callee-kind reject differs. Generic
-    generator callees stay rejected -- the generic-plain-call spelling is
-    unprobed against the factory forms.
+    frame's factory), so only the callee-kind reject differs. A GENERIC
+    generator callee rides the generic arm's explicit-targ spelling under
+    the same flag.
 
-    `coro_factory_ok` is the async sibling (set only by the make_adapter
-    arg position): an async-def CALL is a coroutine-FACTORY call spelling
-    exactly like a plain/imported call; generic factories stay rejected
-    for the same reason as generic generators."""
+    `coro_factory_ok` is the async sibling (the make_adapter arg position
+    and the coro-handle frame write): an async-def CALL is a
+    coroutine-FACTORY call spelling exactly like a plain/imported call,
+    and a generic factory rides the generic arm the same way."""
     if not isinstance(e.func, TpyName):
         note_detail("call.expr_callee")
         return None
@@ -2830,17 +2840,16 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     native_free_ctor = (
         fi.native_function and fi.is_method and fi.name == "__init__"
         and not would_fold)
+    # A generic generator/coro FACTORY is admitted only where the factory
+    # spelling is consumed (generator_ok / coro_factory_ok): the callee-kind
+    # reject below subsumes the generic flavor, and the admitted flavor
+    # rides the generic arm's explicit-targ spelling (`pair<int32_t>(..)`,
+    # `ident<int32_t>(..)`).
     if (((fi.is_method or fi.is_staticmethod) and not native_free_ctor)
             or (fi.is_async and not coro_factory_ok)
             or (fi.is_generator and not generator_ok)
             or fi.is_property_getter or fi.is_property_setter):
         note_detail("call.callee_kind")
-        return None
-    if fi.is_generator and (fi.type_params or has_targs) and not generator_ok:
-        note_detail("call.generic_generator")
-        return None
-    if fi.is_async and (fi.type_params or has_targs):
-        note_detail("call.generic_coro_factory")
         return None
     if fi.cpp_template:
         # A generic template substitutes its named {T} placeholders exactly
@@ -3354,6 +3363,10 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # witnessed at the lowering arm (call.native_own_scalar_lvalue)
             or _native_own_scalar_lvalue_arg(a, ptype, locals_, analyzer)
             or _native_iterable_container_arg(a, ptype, locals_)
+            # A container ternary of declared names at a protocol slot
+            # (`len(a if flag else b)`): the ifexpr container arm renders
+            # the lvalue ternary, bound bare like the single-name row.
+            or _container_ternary_arg(a, ptype, locals_, analyzer)
             or _native_iterable_call_arg(a, ptype, analyzer)
             or _native_iterable_range_arg(a, ptype)
             or _native_iterable_iterator_call_arg(a, ptype, analyzer)
@@ -8291,6 +8304,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                                  owned_tuple_ret_ok: bool = False,
                                  btuple_ret_ok: bool = False,
                                  union_subject_ret_ok: bool = False,
+                                 raw_stmt_handled: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     `_gen_method_call` user-record arm reduced to its pass-through subset. The
@@ -8605,12 +8619,26 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # (`a.gettimeout() is None` / `== 0.0` -- the has_value /
             # std::optional mixed-compare renders take the bare call).
             or (value_opt_ret_ok and _value_opt_ret(ret))
+            # A @property getter's PTR-repr Optional result at the same
+            # whole-optional sink (`w.node is None`): the getter returns
+            # the storage optional by cpp-ref -- the AST skips the
+            # optional_to_ptr lift exactly on is_property_getter -- so the
+            # has_value test reads the bare call. Plain methods keep the
+            # borrow-form `T*` + nullptr compare and stay rejected here.
+            or (value_opt_ret_ok and fi.is_property_getter
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ret))), OptionalType))
             # The module-init pass-through write of a pointer-slot global
             # (`g = h.find(k);`): a BORROW-returning ptr-repr Optional
             # result IS the `T*` the slot holds, so it lands bare -- the
             # free-call row's method twin.
             or (ptr_opt_passthrough and _ptr_opt_borrow_call_ret(e, ret)
-                and _witness("method.ptr_opt_passthrough"))):
+                and _witness("method.ptr_opt_passthrough"))
+            # A RAW (statement-handled) @error_return call: the bare
+            # `std::expected` member call renders whatever the SUCCESS type
+            # -- the caller's unwrap block owns consumption, so the
+            # ret-family rows above say nothing about this position.
+            or (raw_stmt_handled and ret is not None)):
         return note_detail("method.ret_type")
     return True
 

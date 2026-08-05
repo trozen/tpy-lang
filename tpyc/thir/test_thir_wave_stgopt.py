@@ -99,10 +99,10 @@ class TestForStatementHeadRoutesOptPtr:
         assert w.get("stmt.tuple_unpack.opt_ptr_target", 0) >= 1
 
 
-class TestNarrowedTargetReadDefers:
-    # BOUNDARY: a NARROWED occurrence of the registered target (a deref
-    # render) is a later rung -- the name row rejects it and the body
-    # defers whole.
+class TestNarrowedTargetReadRoutes:
+    # CONVERTED (storage-opt narrow wave): a NARROWED occurrence of the
+    # registered unpack target derefs at the access -- `(*p).x` -- through
+    # the same rows the storage-opt loop var rides.
     SRC = (
         _PRE +
         "def main() -> None:\n"
@@ -112,11 +112,10 @@ class TestNarrowedTargetReadDefers:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert fb.get("body:expr.list_comp") == 1, fb
+    def test_routes_byte_identical(self):
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "(*p).x" in cpp
 
 
 class TestMovedGenexprUnpackDefers:

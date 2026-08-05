@@ -63,9 +63,10 @@ class TestOptionalContainerSubscript:
         cpp = _assert_routes_byte_identical(src)
         assert "borrow(::tpy::optional_to_ptr(v))" in cpp[1]
 
-    def test_narrowed_loop_var_read_stays_ast(self):
-        # A NARROWED occurrence of the storage-opt loop var is a later
-        # rung -- the body must keep falling back.
+    def test_narrowed_loop_var_read_routes(self):
+        # CONVERTED (storage-opt narrow wave): a NARROWED member access off
+        # the storage-opt loop var derefs at the ACCESS site -- `(*v).x` --
+        # the same rows the comp loop var rides.
         src = (_HDR +
                "def main() -> None:\n"
                "    d: dict[str, P | None] = {\"a\": P(Int32(10))}\n"
@@ -73,8 +74,8 @@ class TestOptionalContainerSubscript:
                "        if v is not None:\n"
                "            print(v.x)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        cpp = _assert_routes_byte_identical(src)
+        assert "(*v).x" in cpp[1]
 
     def test_checked_subscript_field_write_stays_ast(self):
         # The WRITE side (`d["a"].x = 5`) is outside the read-only

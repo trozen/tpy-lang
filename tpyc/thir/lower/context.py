@@ -563,6 +563,9 @@ _FUNCTION_SCOPED_STATE = (
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
     "walrus_slot_locals",
     "frame_local_types",
+    # Forwarded proto-param aliases (`xs = it` in a resumable): a
+    # compile-time name->param map seeded once at entry, never mutated.
+    "forwarded_map",
     # Per-@overload-stub literal facts: seeded once at lower_function setup
     # for a literal-only group's stub, immutable across the walk.
     "overload_literal_facts",
@@ -610,6 +613,7 @@ class _LowerCtx:
                  "iterator_object_locals",
                  "ref_alias_locals",
                  "value_opt_bindings", "storage_opt_locals",
+                 "deref_view_spelled", "forwarded_map",
                  "movable_locals",
                  "sema_movable_locals",
                  "params",
@@ -886,6 +890,15 @@ class _LowerCtx:
         # record lvalue consumed as a receiver. The None-test/truthiness
         # read the whole optional (`.has_value()`) for every kind.
         self.value_opt_bindings: dict[str, ValueOptKind] = {}
+        # Deref-view narrowed subjects (the if-init cast local): branch-body
+        # member calls carrying deref_narrowed_to read the wrapper var via
+        # this spelling (`(*__b_ptr)`), never the deref chain. Registered
+        # per branch by the deref-view narrow-if arm.
+        self.deref_view_spelled: dict[str, str] = {}
+        # Forwarded proto-param aliases (`xs = it`): the local's decl emits
+        # nothing and every read renders the BACKING param's name (the
+        # AST's generator_storage_name substitution). Resumable-only.
+        self.forwarded_map: dict[str, str] = {}
         # The `Optional[Own[T_ref]]` PARAM seed (`Own[Point] | None` -- a
         # by-value `std::optional<Point>`; the reverse `Own[Optional[T]]`
         # nesting keeps its pointer_locals fence): the binding IS the

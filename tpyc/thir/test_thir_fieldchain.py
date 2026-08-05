@@ -168,3 +168,58 @@ class TestFieldOverCallRead:
         assert witnessed.get("field.call_recv", 0) >= 1
         assert "std::cout << make().s" in self._emit(src, thir=True)
         assert self._emit(src, thir=True) == self._emit(src, thir=False)
+
+
+class TestFieldOverTemplateCallRead:
+    """Field reads off TEMPLATE/builtin-rewrite record-rvalue call
+    receivers: the @cpp_template expansion and the abs()->__abs__()
+    builtin rewrite both render bare under the postfix member
+    (`(t).__abs__().v` -- the RECEIVER admission on the template/native
+    record-rvalue rows). A cpp-ref-returning (borrow) callee under a
+    field keeps the whole-body fallback (the REF_ALIAS value-position
+    design stop)."""
+
+    _TEMP = (
+        "from tpy import Int32, ValueType\n"
+        "class Temp(ValueType):\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32):\n"
+        "        self.v = v\n"
+        "    def __abs__(self) -> Temp:\n"
+        "        return Temp(-self.v if self.v < 0 else self.v)\n"
+    )
+
+    def test_abs_receiver_routes(self):
+        src = (self._TEMP
+               + "def probe() -> Int32:\n"
+               + "    return abs(Temp(-7)).v\n"
+               + "print(probe())\n")
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert witnessed.get("call.template_record_rvalue", 0) >= 1
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        outs = [compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=t)) for t in (True,
+                                                                     False)]
+        assert outs[0] == outs[1]
+        assert "(Temp(-7)).__abs__().v" in outs[0][1]
+
+    def test_borrow_call_receiver_still_defers(self):
+        # A borrow-returning free call under a field read stays AST: the
+        # REF_ALIAS place/loan frontier (the addr_call carve-out is the
+        # only admitted borrow-call consumer).
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32):\n"
+            "        self.x = x\n"
+            "def pick(a: P, b: P) -> P:\n"
+            "    return a\n"
+            "def probe(a: P, b: P) -> Int32:\n"
+            "    return pick(a, b).x\n"
+            "print(probe(P(1), P(2)))\n")
+        thir, _w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None

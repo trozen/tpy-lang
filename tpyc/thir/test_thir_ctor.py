@@ -1729,3 +1729,70 @@ class TestCtorOwnStrLiteralArg:
         assert w.get("ctor.own_str_literal", 0) == 0
         t, a = _cpp_both(src)
         assert t == a
+
+
+class TestBaseInitCoerceAndValueOptArgs:
+    """The wave-6 base-init arg rows: an IDENTITY str coerce (String param
+    into a `str` base slot, both sides std::string) peels to its inner name
+    (`: ::tpy::OSError(message)`); a value-repr Optional param passes WHOLE
+    into the matching base slot (`: Tagged(tag, note)` -- the
+    allow_whole_optional read). A temp-registering CALL arg keeps the ctor
+    on the AST path (no flush point in a base-init cell)."""
+
+    _BASE = (
+        "from typing import Optional\n"
+        "from tpy import Int32, String\n"
+        "class Base:\n"
+        "    tag: str\n"
+        "    note: Optional[str]\n"
+        "    n: Int32 | None\n"
+        "    def __init__(self, tag: str, note: Optional[str] = None,\n"
+        "                 n: Int32 | None = None) -> None:\n"
+        "        self.tag = tag\n"
+        "        self.note = note\n"
+        "        self.n = n\n")
+
+    def test_identity_coerce_and_value_opt_params_route(self):
+        ctor = _lower_ctor(
+            self._BASE
+            + "class Sub(Base):\n"
+            + "    extra: Int32\n"
+            + "    def __init__(self, tag: String, note: Optional[str],\n"
+            + "                 n: Int32 | None) -> None:\n"
+            + "        super().__init__(tag, note, n)\n"
+            + "        self.extra = 1\n",
+            "Sub")
+        assert ctor is not None
+        assert _ctor_tail(ctor).startswith(" : Base(tag, note, n)")
+
+    def test_identity_coerce_value_opt_byte_identical(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        src = (self._BASE
+               + "class Sub(Base):\n"
+               + "    extra: Int32\n"
+               + "    def __init__(self, tag: String, note: Optional[str],\n"
+               + "                 n: Int32 | None) -> None:\n"
+               + "        super().__init__(tag, note, n)\n"
+               + "        self.extra = 1\n"
+               + "def main() -> None:\n"
+               + "    s = Sub(String(\"a\"), \"note\", 5)\n"
+               + "    print(s.tag, s.extra)\n"
+               + "main()\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        outs = [compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=t))
+                for t in (True, False)]
+        assert outs[0] == outs[1]
+
+    def test_call_arg_still_defers(self):
+        ctor = _lower_ctor(
+            self._BASE
+            + "def mk_tag() -> str:\n"
+            + "    return \"t\"\n"
+            + "class SubCall(Base):\n"
+            + "    def __init__(self) -> None:\n"
+            + "        super().__init__(mk_tag())\n",
+            "SubCall")
+        assert ctor is None

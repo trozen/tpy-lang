@@ -45,6 +45,7 @@ from ..nodes import (
     THIRAssign,
     THIRExpr,
     THIRFrameSlotWrite,
+    THIRIfExpr,
     THIRName,
     THIRResumableBody,
     THIRStmt,
@@ -62,6 +63,7 @@ from ...parse.nodes import (
     TpyForEach,
     TpyFunction,
     TpyIf,
+    TpyIfExpr,
     TpyMethodCall,
     TpyName,
     TpyReturn,
@@ -108,6 +110,7 @@ from .expressions import (
     _lower_borrow_tuple_literal,
     _lower_call_arg,
     _lower_expr,
+    _lower_generic_tuple_literal,
     _lower_truthy,
     _lower_tuple_literal,
     _slot_literal_retype,
@@ -345,21 +348,53 @@ def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
 
 
 def _var_decl_names(stmts: list) -> 'set[str]':
-    """Every name a `TpyVarDecl` binds anywhere in the body -- the frame-local
-    promotion's mirror of "the AST's `_gen_var_decl` ran for this name".
+    """Every name a `TpyVarDecl` binds anywhere in the body, plus tuple-unpack
+    targets -- the frame-local promotion's mirror of "a PROMOTING decl arm ran
+    for this name" (the AST's `_gen_var_decl`, and `_gen_tuple_unpack`, which
+    promotes each target the same way).
 
     Do NOT also exclude await inits: tried, and it breaks `await_in_with` +
     `await_in_with_multi_cm`, because a BigInt bound by `x = await f()` IS
     promoted on the AST path and moves at its return. The residual divergence
-    (BUGS.md) is not about await at all -- it is a frame-field POINTER-set
+    is not about await at all -- it is a frame-field POINTER-set
     disagreement, so it must be fixed by aligning that membership."""
     out: 'set[str]' = set()
     for s in stmts:
         if isinstance(s, TpyVarDecl):
             out.add(s.name)
+        elif isinstance(s, TpyTupleUnpack):
+            out.update(n for n in s.targets if n is not None)
         for body in s.sub_bodies():
             out |= _var_decl_names(body)
     return out
+
+
+def _bare_yield_tuple_name_ok(name: str, lc: '_LowerCtx',
+                              declared: dict[str, TpyType]) -> bool:
+    """A tuple NAME the yield hands out BARE (`return v;` / `return p;`):
+    the AST's `_maybe_wrap_tuple_to_pointer` no-ops for a non-storage-form
+    source. Admitted order-independently by TYPE, not by the (partially
+    mirrored, lowering-order-populated) storage sets: a VALUE tuple (no
+    pointer-repr element -- the wrap no-ops on the target alone), or a
+    BORROW-form tuple PARAM (not Own-wrapped, not owned-movable -- the
+    shapes seed_param_locals registers storage-form stay out). Locals with
+    pointer-repr elements keep the `res.btuple_yield_source` fence (the
+    tuple_to_pointer lift rung), as do pointer-form names."""
+    if name not in declared or name in lc.pointers:
+        return False
+    if (name in lc.storage_tuple_locals
+            or name in lc.const_storage_tuple_locals):
+        return False
+    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[name])))
+    if not isinstance(tu, TupleType):
+        return False
+    if not tu.has_pointer_repr_element():
+        return True
+    if name not in lc.prescan.param_names:
+        return False
+    raw = dict(lc.params).get(name)
+    raw_u = unwrap_send_sync(raw) if raw is not None else None
+    return not (isinstance(raw_u, OwnType) or tu.is_owned_movable())
 
 
 def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
@@ -627,9 +662,13 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
     # ITERABLE result use, mirroring the sync for-head: the skeleton's
     # source capture consumes the render whole (`gen_expr(iterable_expr)`,
     # position-blind), so generator-factory calls admit here exactly like
-    # the sync route (their render is the same bare call).
+    # the sync route (their render is the same bare call). The setup is a
+    # statement position -- arg temps (`int32_t __tmp_N = 7;` ref-slot
+    # literals of a generic factory call) flush before the source capture,
+    # exactly where the AST flushes them.
     region_exprs[id(it)] = _lower_expr(
-        it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE))
+        it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                       allow_temps=True))
 
 
 def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
@@ -820,7 +859,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # bridge + borrow literal builder -- each its own rung.
         yt = func.generator_yield_type
         yt_t = yt if isinstance(yt, TpyType) else None
-        yt_tuple = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt_t)))
+        # An `Own[container]` yield slot renders exactly like the plain
+        # container borrow (`return (*a);` -- the ownership fact lives in
+        # the consumer's loop-var binding), so the family checks peel Own.
+        yt_tuple = (_unwrap_own(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(yt_t))))
                     if yt_t is not None else None)
         if not (_res_capture_ok(yt_t, analyzer)
                 or _resolved_str_value(yt_t, analyzer) is not None
@@ -889,8 +932,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # other source keeps the return.borrow_form fence.
                 or _f1_record(rt_inner, analyzer)):
             return _reject("res.return_type")
+    # Forwarded proto-param aliases (`xs = it`) are compile-time renames:
+    # the decl emits nothing and every read renders the backing param
+    # (the AST's generator_storage_name substitution). Admitted whenever
+    # each backing IS a param; lc.forwarded_map carries the swap.
     if func.forwarded_locals:
-        return _reject("res.forwarded_local")
+        param_names = {n for n, _t in func.params}
+        if not all(backing in param_names
+                   for backing in func.forwarded_locals.values()):
+            return _reject("res.forwarded_local")
     # Classify each hoisted local off its FrameLayoutPlan verdict (the
     # skeleton's own placement decision, passed through the seam); a
     # verdict whose READ/WRITE render family is not mirrored yet rejects
@@ -1197,6 +1247,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                    self_receiver="self" if has_self else None,
                    record_name=record_name if has_self else None,
                    self_cpp="__self", self_is_pointer=False)
+    if func.forwarded_locals:
+        lc.forwarded_map = dict(func.forwarded_locals)
     # R1c: frame_slot local reads render `(*name)` (THIRName.deref) and writes
     # `name.emplace(value)` (THIRFrameSlotWrite).
     lc.frame_slots = frame_slots
@@ -1214,7 +1266,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # `_frame_ptr_locals` is this mirror's weak joint: it must equal the AST's
     # `pointer_locals` membership for frame fields, and for at least one
     # classification it does not, so an `Own[record]` frame local moves here
-    # and copies there (BUGS.md). Align the two memberships to fix it -- the
+    # and copies there. Align the two memberships to fix it -- the
     # await bind is a red herring, see `_var_decl_names`.
     _frame_ptr_locals = (ptr_frame_locals | opt_ptr_locals | alias_ptr_locals
                          | unpack_ptr_targets)
@@ -1396,10 +1448,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if stmt.name in coro_handle_slots:
                 if not isinstance(init, (TpyCall, TpyMethodCall)):
                     raise ThirUnsupported("res.coro_handle_source")
+                # The decl is a statement position: a generic factory's
+                # ref-slot literal temps (`int32_t __tmp_N = 41;`) flush
+                # before the emplace, where the AST flushes them.
                 value = _lower_expr(
                     init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 coro_factory=True))
+                                 coro_factory=True, allow_temps=True))
                 _witness("res.coro_handle_write")
                 # ConcreteCoroType has no self-contained C++ spelling; the
                 # brace-init prefix can never fire for a call render, so no
@@ -1650,7 +1705,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 raise ThirUnsupported("res.bare_yield")
             begin_stmt()
             yt = func.generator_yield_type
-            yt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(yt)))
+            # Own peel mirrors the eligibility gate: an Own[container] slot
+            # renders like the plain container borrow.
+            yt_bare = (_unwrap_own(unwrap_readonly(unwrap_ref_type(
+                           unwrap_send_sync(yt))))
                        if isinstance(yt, TpyType) else None)
             if _eligible_char(yt_bare) and isinstance(ys.value, TpyStrLiteral):
                 raise ThirUnsupported(stmt_reject_reason(ys))
@@ -1671,19 +1729,30 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                             yv_src, yt_bare, lc, declared,
                             target_readonly=target_ro)
                     else:
-                        # The VALUE-tuple path must pass the same nested
-                        # value-tuple predicate its decl/return callers gate
-                        # on: a TypeParamRef element reports neither
-                        # pointer-repr nor value, but its slot spells
-                        # `val_or_ptr_t<T>` with `to_val_or_ptr` element
-                        # wraps -- the generic builder rung, not this one.
-                        vt = _value_tuple_nested(yt_bare, analyzer)
-                        if vt is None:
-                            raise ThirUnsupported("res.btuple_yield_source")
-                        yield_values[id(ys)] = _lower_tuple_literal(
-                            yv_src, vt, lc, declared)
+                        # A GENERIC tuple literal (>=1 TypeParamRef element)
+                        # renders the spelled `val_or_ptr_t<T>` brace-init
+                        # with `to_val_or_ptr` element wraps -- the return
+                        # arm's generic builder at the yield slot.
+                        gt = _generic_value_tuple_return(yt_bare, analyzer)
+                        if gt is not None:
+                            yield_values[id(ys)] = \
+                                _lower_generic_tuple_literal(
+                                    yv_src, gt, lc, declared)
+                            _witness("res.btuple_yield_generic")
+                        else:
+                            # The VALUE-tuple path must pass the same nested
+                            # value-tuple predicate its decl/return callers
+                            # gate on.
+                            vt = _value_tuple_nested(yt_bare, analyzer)
+                            if vt is None:
+                                raise ThirUnsupported(
+                                    "res.btuple_yield_source")
+                            yield_values[id(ys)] = _lower_tuple_literal(
+                                yv_src, vt, lc, declared)
                 elif (isinstance(yv_src, TpyName)
-                        and yv_src.name in borrow_tuple_locals):
+                        and (yv_src.name in borrow_tuple_locals
+                             or _bare_yield_tuple_name_ok(
+                                 yv_src.name, lc, declared))):
                     yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
                 else:
                     raise ThirUnsupported("res.btuple_yield_source")
@@ -1693,12 +1762,29 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Container yield slot (val_or_ref<C> in the skeleton's
                 # signature): a yielded frame_slot LOCAL hands out the
                 # deref borrow -- `return (*buf);` -- the existing
-                # frame-slot name read. Literals/calls at this slot need
-                # the target-typed render -- named rung.
-                if not (isinstance(ys.value, TpyName)
-                        and ys.value.name in lc.frame_slots):
+                # frame-slot name read. A TERNARY of frame-slot locals
+                # hands out the branch-picked borrow (`((flag) ? ((*a)) :
+                # ((*b)))`). Literals/calls at this slot need the
+                # target-typed render -- named rung.
+                yv_src = ys.value
+                if (isinstance(yv_src, TpyIfExpr)
+                        and isinstance(yv_src.then_expr, TpyName)
+                        and yv_src.then_expr.name in lc.frame_slots
+                        and isinstance(yv_src.else_expr, TpyName)
+                        and yv_src.else_expr.name in lc.frame_slots):
+                    yield_values[id(ys)] = THIRIfExpr(
+                        result_type=yt_bare,
+                        cond=_lower_truthy(yv_src.condition, lc, declared),
+                        then=_lower_expr(yv_src.then_expr, lc, declared),
+                        orelse=_lower_expr(yv_src.else_expr, lc, declared),
+                        form=Form.BORROW,
+                        loc=getattr(yv_src, "loc", None))
+                    _witness("res.yield_container_ternary")
+                    return
+                if not (isinstance(yv_src, TpyName)
+                        and yv_src.name in lc.frame_slots):
                     raise ThirUnsupported("res.yield_type")
-                yield_values[id(ys)] = _lower_expr(ys.value, lc, declared)
+                yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
                 _witness("res.yield_container_borrow")
                 return
             if _f1_record(yt_bare, analyzer):
@@ -1711,6 +1797,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # by reference ("declare Iterator[Own[R]]"), so pointer-form
                 # loop vars are the known-live source.
                 yv_src = ys.value
+                if (isinstance(yv_src, TpyFieldAccess)
+                        and isinstance(yv_src.obj, TpyName)
+                        and yv_src.obj.name == "self"
+                        and _f1_record(unwrap_readonly(unwrap_ref_type(
+                            unwrap_send_sync(analyzer.get_expr_type(yv_src)))),
+                            analyzer)):
+                    # A record FIELD off self at the record yield slot reads
+                    # bare (`return __self.a;`) -- the storage member binds
+                    # the val_or_ref slot directly, no deref (BORROW_BIND,
+                    # like the for-head member bind).
+                    yield_values[id(ys)] = _lower_expr(
+                        yv_src, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                    _witness("res.yield_record_field")
+                    return
                 if not (isinstance(yv_src, TpyName)
                         and (yv_src.name in lc.frame_slots
                              or yv_src.name in ptr_frame_locals)):

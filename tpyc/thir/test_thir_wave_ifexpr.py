@@ -250,3 +250,58 @@ class TestOwnDeclaredOptCallSlotLift:
         assert thir == ast
         assert not dict(compiler._thir_fallback)
         assert "::tpy::optional_to_ptr(__slot_" in thir[1]
+
+
+class TestContainerLvalueTernary:
+    # A container-RESULT ternary of NAME arms is a BORROW lvalue ternary
+    # (`((flag) ? (xs) : (ys))`): a decl init binds the REFERENCE (`&` --
+    # Python aliasing), native protocol slots (len) bind it bare. Non-name arms and plain-TPy callee slots keep
+    # rejecting.
+    _PRE = "from tpy import Int32\n\n"
+
+    def test_decl_and_len_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + "def main() -> None:\n"
+               + "    xs: list[Int32] = [1, 2]\n"
+               + "    ys: list[Int32] = [3]\n"
+               + "    flag = True\n"
+               + "    zs = xs if flag else ys\n"
+               + "    print(len(zs))\n"
+               + "    print(len(xs if flag else ys))\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<int32_t>& zs = ((flag) ? (xs) : (ys));" in cpp
+        assert "::tpy::__len__(((flag) ? (xs) : (ys)))" in cpp
+
+    def test_plain_callee_slot_defers(self):
+        # The plain-loop arg ladder does not admit the ternary shape -- a
+        # user fn's list param keeps the body AST-side.
+        src = (self._PRE
+               + "def total(items: list[Int32]) -> Int32:\n"
+               + "    t: Int32 = 0\n"
+               + "    for x in items:\n        t += x\n"
+               + "    return t\n"
+               + "def main() -> None:\n"
+               + "    xs: list[Int32] = [1, 2]\n"
+               + "    ys: list[Int32] = [3]\n"
+               + "    print(total(xs if False else ys))\n"
+               + "main()\n")
+        compiler, ast, thir = _gen(src)
+        assert thir == ast
+        fb = dict(compiler._thir_fallback)
+        assert any("call.arg_shape.container" in k for k in fb), fb
+
+    def test_for_head_ternary_iterable_defers(self):
+        # The for-head iterable position keeps its own gate.
+        src = (self._PRE
+               + "def main() -> None:\n"
+               + "    xs: list[Int32] = [1]\n"
+               + "    ys: list[Int32] = [2]\n"
+               + "    for v in (xs if True else ys):\n"
+               + "        print(v)\n"
+               + "main()\n")
+        compiler, ast, thir = _gen(src)
+        assert thir == ast
+        fb = dict(compiler._thir_fallback)
+        assert any("iter.if_expr_shape" in k for k in fb), fb

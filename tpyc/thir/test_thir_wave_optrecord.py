@@ -175,3 +175,78 @@ class TestValueOptRecordSlot:
         assert _fn(thir, "use") is not None
         assert faces.get("field.opt_record_recv", 0) >= 1
         _assert_byte_identical(src)
+
+
+class TestPropertyIsNoneSubject:
+    """A @property read as the DIRECT `is [not] None` subject (`w.node is
+    None`): the AST sees an Optional-typed FieldAccess (storage-form
+    source), so the render is has_value over the getter call -- any repr
+    (the property getter skips the plain-method optional_to_ptr lift).
+    The OPTIONAL_TO_PTR decl off a property (`n = w.node`) wraps the same
+    bare call in the lift. A plain METHOD-call subject keeps falling back
+    (its AST render is the borrow-form `T*` + nullptr compare)."""
+
+    _SRC = (
+        "from typing import Optional\n"
+        "from tpy import Int32\n"
+        "class Node:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "class Wrapper:\n"
+        "    _node: Optional[Node]\n"
+        "    _port: Optional[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self._node = None\n"
+        "        self._port = None\n"
+        "    @property\n"
+        "    def node(self) -> Optional[Node]:\n"
+        "        return self._node\n"
+        "    @node.setter\n"
+        "    def node(self, n: Optional[Node]) -> None:\n"
+        "        self._node = n\n"
+        "    @property\n"
+        "    def port(self) -> Optional[Int32]:\n"
+        "        return self._port\n"
+        "    def find(self) -> Optional[Node]:\n"
+        "        return self._node\n"
+    )
+
+    def test_property_subjects_route(self):
+        src = (self._SRC
+               + "def probe(w: Wrapper) -> None:\n"
+               + "    print(w.node is None)\n"
+               + "    print(w.node is not None)\n"
+               + "    print(None is w.node)\n"
+               + "    print(w.port is None)\n"
+               + "probe(Wrapper())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("isnone.property_subject", 0) >= 4
+        _assert_byte_identical(src)
+
+    def test_property_decl_lift_routes(self):
+        # `n = w.node` -> `Node* n = ::tpy::optional_to_ptr(w.node());`
+        src = (self._SRC
+               + "def probe(w: Wrapper) -> Int32:\n"
+               + "    n = w.node\n"
+               + "    if n is not None:\n"
+               + "        return n.val\n"
+               + "    return -1\n"
+               + "print(probe(Wrapper()))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert faces.get("decl.opt_property_lift", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_plain_method_subject_still_defers(self):
+        # The method-call sibling keeps the whole-body fallback: the AST
+        # renders the borrow-form nullptr compare there, unmirrored.
+        src = (self._SRC
+               + "def probe(w: Wrapper) -> None:\n"
+               + "    print(w.find() is None)\n"
+               + "probe(Wrapper())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        assert not faces.get("isnone.property_subject")
+        _assert_byte_identical(src)

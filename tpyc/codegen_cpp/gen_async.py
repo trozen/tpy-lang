@@ -2074,8 +2074,8 @@ class AsyncCoroCodegen:
         rb = self._thir_resumable_attempt(func, record_name, cfg)
         if rb is None:
             return None
-        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
-                                 ResumableLeafEmitter)
+        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxIterCounter,
+                                 CtxTempSink, ResumableLeafEmitter)
 
         def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
             # Nested leaf return: the same dispatch as the AST gen_stmt
@@ -2112,7 +2112,14 @@ class AsyncCoroCodegen:
             # deref exactly while a shadow is in scope, like the AST body.
             frame_shadow_probe=(
                 lambda n: n in self.ctx.frame_field_shadows),
-            resumable_return_hook=_return_hook)
+            resumable_return_hook=_return_hook,
+            # The leaf finally bridge: THIR finally frames mirror onto the
+            # AST finally stack (so _make_async_return's chain walk inlines
+            # them) with one shared guard-liveness truth.
+            live_finally_guards=self.ctx.live_finally_guards,
+            ast_finally_push=self.statements._push_finally,
+            ast_finally_pop=lambda: self.ctx.finally_stack.pop(),
+            iter_counter=CtxIterCounter(self.ctx))
 
     @contextlib.contextmanager
     def _thir_leaf_scope(self, leaf):

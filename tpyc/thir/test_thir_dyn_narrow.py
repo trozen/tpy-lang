@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _assert_byte_identical, _compile, _entry, _fn, _lower_ctx,
+    _lower_ctx_witnessed,
 )
 
 _PRELUDE = (
@@ -129,4 +130,115 @@ class TestDynNarrowLowering:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+
+class TestDerefViewNarrowIf:
+    """The deref-view isinstance if (wave 10): `isinstance(b, Dog)` through
+    a Deref wrapper (Box[Pet]) lowers the C++17 if-init cast of the deref
+    PAYLOAD pointer; branch member calls carrying deref_narrowed_to read
+    `(*__b_ptr)`; post-branch calls revert to the deref chain. The wrapper
+    var is never retyped (sema keys the fact under deref_view_key). A
+    same-module @dynamic-protocol type-arg is in the F1 slice (both paths
+    spell the bare name); imported ones keep rejecting."""
+
+    _SRC = (
+        "from typing import Protocol\n"
+        "from tpy import Int32, dynamic\n"
+        "from tplib.box import Box\n"
+        "@dynamic\n"
+        "class Pet(Protocol):\n"
+        "    def name(self) -> str: ...\n"
+        "class Dog(Pet):\n"
+        "    def name(self) -> str:\n"
+        "        return \"dog\"\n"
+        "    def bark(self) -> str:\n"
+        "        return \"woof\"\n"
+        "class Cat(Pet):\n"
+        "    def name(self) -> str:\n"
+        "        return \"cat\"\n"
+        "def describe(b: Box[Pet]) -> str:\n"
+        "    if isinstance(b, Dog):\n"
+        "        return \"dog:\" + b.bark()\n"
+        "    return \"other:\" + b.name()\n"
+        "def main() -> None:\n"
+        "    print(describe(Box(Dog())))\n"
+        "    print(describe(Box(Cat())))\n"
+        "main()\n"
+    )
+
+    def test_deref_view_if_routes(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "describe") is not None
+        assert faces.get("if.deref_view_narrow", 0) >= 1
+        assert faces.get("method.deref_view_narrowed", 0) >= 1
+        _assert_byte_identical(self._SRC)
+
+    def test_emit_shapes(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(self._SRC)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        out = hpp + cpp
+        assert "__b_ptr = dynamic_cast<Dog*>(&(b.__deref__()));" in out
+        assert "(*__b_ptr).bark()" in out
+        assert "b.__deref__().name()" in out
+
+    def test_narrowed_call_with_args_defers(self):
+        # The witnessed slice is zero-arg methods; an ARG-carrying narrowed
+        # call keeps the whole-body fallback.
+        src = self._SRC.replace(
+            "    def bark(self) -> str:\n        return \"woof\"\n",
+            "    def bark(self, n: Int32) -> str:\n"
+            "        return \"woof\" * n\n").replace(
+            "b.bark()", "b.bark(2)")
+        thir, _f = _lower_ctx_witnessed(src)
+        assert _fn(thir, "describe") is None
+        _assert_byte_identical(src)
+
+    def test_branch_rebind_of_wrapper_defers(self):
+        # Reassigning the wrapper LOCAL inside the narrowed branch (the
+        # deref_view_rebind_invalidates shape): nothing may keep reading
+        # the stale cast pointer -- the body defers whole.
+        src = self._SRC.replace(
+            "def describe(b: Box[Pet]) -> str:\n"
+            "    if isinstance(b, Dog):\n"
+            "        return \"dog:\" + b.bark()\n"
+            "    return \"other:\" + b.name()\n",
+            "def describe() -> str:\n"
+            "    b: Box[Pet] = Box(Dog())\n"
+            "    if isinstance(b, Dog):\n"
+            "        b = Box(Cat())\n"
+            "        return \"rebound:\" + b.name()\n"
+            "    return \"other:\" + b.name()\n").replace(
+            "    print(describe(Box(Dog())))\n"
+            "    print(describe(Box(Cat())))\n",
+            "    print(describe())\n")
+        thir, _f = _lower_ctx_witnessed(src)
+        assert _fn(thir, "describe") is None
+        _assert_byte_identical(src)
+
+    def test_structural_conformer_adapter_cast(self):
+        # The STRUCTURAL flavor (Cat conforms without inheriting): the
+        # if-init spells dyn_adapter_cast over the same deref payload.
+        src = self._SRC.replace(
+            "    if isinstance(b, Dog):\n"
+            "        return \"dog:\" + b.bark()\n",
+            "    if isinstance(b, Cat):\n"
+            "        return \"cat:\" + b.name()\n").replace(
+            "class Cat(Pet):\n", "class Cat:\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "describe") is not None
+        assert faces.get("if.deref_view_narrow", 0) >= 1
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        out = hpp + cpp
+        assert "::tpy::dyn_adapter_cast<Pet, Cat>(&(b.__deref__()))" in out
+        assert "(*__b_ptr).name()" in out
         _assert_byte_identical(src)

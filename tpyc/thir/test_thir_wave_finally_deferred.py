@@ -169,16 +169,10 @@ class TestResumableKeepsRejecting:
         + "main()\n"
     )
 
-    def test_resumable_deferred_return_stays_ast(self):
-        # The async frame's deferred-return scaffolding is unmirrored: the
-        # body must fall back (byte-identically) at a resumable: seam, not
-        # route through the sync recipe.
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("resumable:")
-                   for k in compiler._thir_fallback), compiler._thir_fallback
+    def test_resumable_deferred_return_routes(self):
+        # CONVERTED (wave 13, the leaf finally bridge): the crossing
+        # return renders through the hook's own deferred recipe -- the
+        # pointer capture and the post-chain move both appear in the frame.
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "__tpy_retp_0" in cpp
+        assert "return ::tpy::Poll" in cpp or "std::move(*__tpy_retp_0)" in cpp

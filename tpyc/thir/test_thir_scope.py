@@ -37,9 +37,11 @@ class TestScopeRegistry:
         # composite slot must be added here CONSCIOUSLY, not slip through.
         # `literal_facts` is arm-scoped by explicit save/restore in
         # `_lower_scalar_arms` (a dict -- the branch snapshot's set() copy
-        # would drop its values).
+        # would drop its values). `deref_view_spelled` follows the same
+        # discipline: the deref-view narrow-if arm registers the cast
+        # spelling before lowering the branch and deletes it in a finally.
         composite = {"narrow", "analyzer", "func", "prescan", "params",
-                     "literal_facts"}
+                     "literal_facts", "deref_view_spelled"}
         unclassified = []
         for slot in _LowerCtx.__slots__:
             value = getattr(lc, slot)

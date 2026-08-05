@@ -7,10 +7,9 @@ threading at all on the for-head route; the bound now reaches it the way the
 AST reads it (`ctx.current_type_param_bounds`).
 
 The bound decides: a NativeIterable / Spannable bound takes the AST's
-begin/end peephole instead. Resumable bodies keep the whole protocol-loop
-family rejecting -- `protocol_param_ok` is threaded False there because the
-frame emitters have no witnessed shape -- and the three cases still marked in
-this bucket are all generators or coroutines.
+begin/end peephole instead (the native-bound field leg on the container
+route). Resumable LEAVES admit self-field iterables too (wave 16); the
+non-self receiver flavor keeps the fence.
 """
 
 from __future__ import annotations
@@ -18,8 +17,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _fn, _assert_byte_identical, _compile,
-                       _entry)
+from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+                       _assert_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
 
@@ -87,9 +86,14 @@ class TestOpenTIterableField:
         assert "::tpy::__iter__(__src_0)" in body
         _assert_byte_identical(_SUMMER)
 
-    def test_native_iterable_bound_still_defers(self):
-        # That bound renders the begin/end peephole, not the universal loop.
-        assert _fn(_lower_ctx(_NATIVE), "total") is None
+    def test_native_iterable_bound_takes_begin_end(self):
+        # CONVERTED (the native-bound field leg): that bound renders the
+        # begin/end member peephole, not the universal loop.
+        thir, witnesses = _lower_ctx_witnessed(_NATIVE)
+        body = _body(thir, "total")
+        assert "auto& __obj_0 = this->items;" in body
+        assert "__obj_0.begin();" in body
+        assert witnesses.get("foreach.native_bound_field", 0) >= 1
         _assert_byte_identical(_NATIVE)
 
     def test_generator_over_the_same_field_still_defers(self):

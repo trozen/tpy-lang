@@ -50,9 +50,10 @@ class TestIsinstanceLongTail:
         assert ("g.value.has_value() && g.value.type() == "
                 "typeid(::tpy::BigInt)" in cpp[1])
 
-    def test_deref_view_isinstance_stays_ast(self):
-        # The Box deref-view family (the C++17 if-init dynamic_cast) keeps
-        # falling back.
+    def test_deref_view_isinstance_routes(self):
+        # CONVERTED (wave 10, 2026-08-05): the Box deref-view family now
+        # routes -- the C++17 if-init cast of the deref payload pointer
+        # (a STRUCTURAL conformer here, so dyn_adapter_cast).
         src = ("from typing import Protocol\n"
                "from tpy import dynamic\n"
                "from tplib import Box\n"
@@ -73,5 +74,5 @@ class TestIsinstanceLongTail:
                "def main() -> None:\n"
                "    print(f())\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
