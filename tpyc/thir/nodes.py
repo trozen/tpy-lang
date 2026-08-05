@@ -1117,6 +1117,21 @@ class THIRGenExpr(THIRExpr):
     unpack_targets: tuple = ()
     unpack_target_cpps: tuple = ()
     const_loop_var: bool = False
+    # Filter conditions (`x for x in xs if x > t`): &&-joined truthy exprs
+    # wrapping the yield (`if (...) { return optional<slot>(elem); }` --
+    # _gen_genexpr_yield's conditional arm; cond/yield temps flush inside
+    # the lambda body at their own indents).
+    conditions: tuple = ()
+    # RANGE source (`x for x in range(...)`): the counter-lambda flavor of
+    # _gen_genexpr_counter_lambda. `range_args` are the lowered bounds
+    # (1-3, each cast `static_cast<counter_cpp>(...)` in the init-captures);
+    # `binding_cpp` carries the pre-rendered `{counter} {var} = __i++;`
+    # (2-arg) / `= __i;` (3-arg, the emit adds `__i += __step;`); nargs==3
+    # adds the step checks (`range_overflow_check` gates the fixed-int
+    # overflow probe).
+    range_args: tuple = ()
+    counter_cpp: str = ""
+    range_overflow_check: bool = False
 
 
 @dataclass(frozen=True)
@@ -1555,6 +1570,16 @@ class PtrSlotKind(Enum):
     # `name = &*(__slot_N = <rvalue>);` (`_gen_pointer_local_rebind`'s
     # is_hoisted rvalue branch). `val_cpp` carries the slot's T spelling.
     BRANCH_RVALUE = auto()
+    # Resumable frame body: an rvalue reseat of a pointer-form frame local
+    # materializes in its prescanned FRAME-FIELD slot (one per write site,
+    # `_prescan_resumable_ptr_slots`; an inline/case-block slot would die at
+    # the next suspension) -- `saved = &*(__ptr_slot_fN = Point(9));`.
+    # `val_cpp` carries the field name.
+    FRAME_RVALUE = auto()
+    # ... and its Own-declared-optional-call sibling: the storage optional
+    # fills the prescanned frame field and the pointer re-lifts
+    # (`__ptr_slot_fN = make_opt(3); got = optional_to_ptr(__ptr_slot_fN);`).
+    FRAME_STORAGE_CALL = auto()
     # Address-of an lvalue, in BOTH directions of the decl/reseat pair (like
     # the OPT_NONE / UNION_NONE twins above):
     #   * as a RESEAT -- `items = base;` -> `items = &(base);`

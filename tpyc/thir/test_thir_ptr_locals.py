@@ -173,20 +173,41 @@ class TestOptPtrSlotDecl:
         assert _fn(thir, "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_own_optional_call_init_is_ineligible(self):
-        # An `Own[Inner | None]`-returning call init needs the
-        # `optional_to_ptr` slot-lift arm (a later rung) -- the whole body
-        # stays AST (the classifier says OPT_PTR_SLOT, the source gate's
-        # type-equality check rejects: the expr type is the Optional, never
-        # the inner).
-        thir = _lower_ctx(
-            _F1_RECORDS
-            + "def make() -> Own[Inner | None]:\n    return Inner(1)\n"
-            + "def f() -> bool:\n"
-            + "    p: Inner | None = make()\n"
-            + "    p = None\n"
-            + "    return p is None\n")
+    def test_own_optional_call_init_routes_slot_lift(self):
+        # An `Own[Inner | None]`-returning call init on a REASSIGNED name:
+        # the OPT_STORAGE_CALL slot machinery routes it (`std::optional
+        # <Inner> __slot_1 = make(); Inner* p = optional_to_ptr(__slot_1);`)
+        # and the None reseat renders the plain `p = nullptr;` (former
+        # fence, converted per the un-defer rule -- dualgen-verified
+        # byte-identical when the reassigned admission landed).
+        src = (_F1_RECORDS
+               + "def make() -> Own[Inner | None]:\n    return Inner(1)\n"
+               + "def f() -> bool:\n"
+               + "    p: Inner | None = make()\n"
+               + "    p = None\n"
+               + "    return p is None\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _cpp(src, thir=True)
+        assert cpp == _cpp(src, thir=False)
+        assert "std::optional<Inner> __slot_1 = make();" in cpp
+        assert "p = nullptr;" in cpp
+
+    def test_own_optional_call_local_name_reseat_stays_ast(self):
+        # The OPT_STORAGE_CALL boundary: a NAME-source reseat of a
+        # slot-carrying local (`p = q`) is not the own-call re-fill shape --
+        # the arm rejects it (the generic THIRAssign rebind emit would
+        # hijack it into the `&*(__slot = ...)` render), so the body stays
+        # AST byte-identically.
+        src = (_F1_RECORDS
+               + "def make() -> Own[Inner | None]:\n    return Inner(1)\n"
+               + "def f(q: Inner | None) -> bool:\n"
+               + "    p: Inner | None = make()\n"
+               + "    p = q\n"
+               + "    return p is None\n")
+        thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_lvalue_reseat_routes(self):
         # Reseating a pointer-repr Optional local from a field lvalue

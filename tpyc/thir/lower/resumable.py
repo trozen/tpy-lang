@@ -120,6 +120,7 @@ from .functions import (
 )
 from . import match as _match
 from .predicates import (
+    _callable_value,
     _chain_post_if_fact,
     _eligible_char,
     _eligible_enum,
@@ -265,6 +266,11 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     # call `pred(x)`.
     if unwrapped is not None and is_fn_type(unwrapped):
         return True
+    # A non-template Callable param is a by-value `std::function<...>` frame
+    # field (moved capture, skeleton); the leaf reads are the bare binding
+    # call (`factory(a)`) and the bare pass -- the sync param's rows.
+    if _callable_value(unwrapped):
+        return True
     # A None-typed param (the `__aexit__(et, ev, tb)` triple) is a
     # `std::monostate` value field; capture and any read are position-blind.
     if isinstance(unwrapped, NoneType):
@@ -307,11 +313,16 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
     joins them: its frame field is the same bare `std::optional<T>` value the
     PARAM capture already admits, and every read gates per-shape at the
     value-opt arms. Records / pointer-repr Optionals (frame_slot) and
-    pointer-alias / tuple locals stay their own rungs (R1c)."""
+    pointer-alias / tuple locals stay their own rungs (R1c). A non-template
+    Callable local joins the bare-value families: its frame field is the
+    `std::function<...>` value itself (`factory = pick();` writes the plain
+    frame assign, `factory(7)` reads through the ordinary callable-value
+    call arm)."""
     return bool(_res_value_ok(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None
-                or _value_opt_scalar(t, analyzer) is not None)
+                or _value_opt_scalar(t, analyzer) is not None
+                or _callable_value(t))
 
 
 def _region_reject(region: 'rcfg.Region') -> 'str | None':

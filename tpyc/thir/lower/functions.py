@@ -21,6 +21,7 @@ from ...parse.nodes import (
     TpyFunction,
     TpyImport,
     TpyIntLiteral,
+    TpyLambda,
     TpyMatch,
     TpyMethodCall,
     TpyModule,
@@ -160,6 +161,7 @@ from .context import (
 )
 from .checks import (
     _container_literal_shape_ok,
+    _lambda_routable,
     _record_rvalue_source_shape,
     _stub_template_param,
     _nondef_ctor_field,
@@ -1455,13 +1457,18 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     ft_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ftype)))
     if _callable_value(ft_bare):
         # A `std::function<...>` field copies bare from a same-typed callable
-        # param name (`on_event(cb)`). Lambda / mismatched-signature sources
-        # stay out (the lambda render is a body-lowering concern). The
+        # param name (`on_event(cb)`) or a routable LAMBDA literal
+        # (`self.action = lambda: print(0)` -> `action([]() { ... })` -- the
+        # closure converts implicitly in the member direct-init). A
+        # self-capturing lambda stays out (self_this defaults False: the MIL
+        # never confirmed the `this` receiver spelling). The
         # `Send[...]` wrapper is erased in storage form on BOTH sides, so it
         # is peeled off the field type as well as the param's -- comparing a
         # peeled param against an unpeeled field would reject the pair the
         # AST spells identically (`std::function<void(int32_t)> cb : cb(cb)`).
         source = _unwrap_copy(stmt.value, analyzer)
+        if isinstance(source, TpyLambda):
+            return _lambda_routable(source, analyzer)
         if not isinstance(source, TpyName):
             return False
         dt = declared.get(source.name)
@@ -2083,8 +2090,10 @@ def _lower_ctor_mil_init(
     if _callable_value(unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(ftype)))):
         # Same-typed callable param name: the bare `std::function` copy
-        # (`on_event(cb)`), per the gate's exact-type pin.
-        _witness("mil.callable_copy")
+        # (`on_event(cb)`), per the gate's exact-type pin. A routable LAMBDA
+        # literal renders its closure into the same direct-init slot.
+        _witness("mil.callable_lambda" if isinstance(source, TpyLambda)
+                 else "mil.callable_copy")
         return THIRMilInit(field_cpp=field_cpp,
                            value=_lower_expr(source, lc, declared))
     if _method_rvalue_f1_record(source, analyzer):

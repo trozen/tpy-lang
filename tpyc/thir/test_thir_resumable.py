@@ -740,13 +740,13 @@ class TestSlicedOutShapes:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "x = &(b);" in cpp
 
-    def test_rebind_slot_holder_defers(self):
+    def test_rebind_slot_holder_routes_frame_slot(self):
         # An rvalue-reassigned Optional-ptr frame local must never reach
         # the sync rebind-slot arm (its `&*(__slot_N = ...)` references
-        # storage only the sync THIRPtrLocalDecl pre-declares). Observed:
-        # the sync reseat arm's own source gate rejects first
-        # (decl.opt_reseat_source) -- the resumable-side rebind-slot
-        # guard (res.leaf_field_write) stays defensive behind it.
+        # storage only the sync THIRPtrLocalDecl pre-declares). The FRAME
+        # arm captures the shape FIRST (`x = &*(__ptr_slot_f0 = R(5));`
+        # -- the prescanned per-write frame field), so the sync arm
+        # stays unreachable by construction.
         src = ("import asyncio\n" + _PRE
                + "class R:\n"
                + "    v: Int32\n"
@@ -759,9 +759,10 @@ class TestSlicedOutShapes:
                + "        return x.v\n"
                + "    return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get(
-            "stmt.var_decl:decl.opt_reseat_source") == 1
-        _assert_identical(src)
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "x = &*(__ptr_slot_f0 = R(5));" in cpp
 
     def test_lowering_reject_falls_back_after_await(self):
         src = (_PRE
@@ -4971,12 +4972,11 @@ class TestMemberCoroFactoryArg:
         assert ("::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<"
                 "::tpystd::coro::Cancellable<int32_t>>(b.take()))" in cpp)
 
-    def test_awaitable_record_factory_still_defers(self):
-        # BOUNDARY: a NON-async method returning a concrete awaitable
-        # record (`loop.sock_recv(...)` -> _SockRecv) into wait_for's
-        # adapter slot is the method-call CONFORMER face, not an async
-        # factory -- must keep falling back. (The DIRECT-await position
-        # routes via the suspend-operand machinery instead.)
+    def test_awaitable_record_factory_routes(self):
+        # A NON-async method returning a concrete awaitable record
+        # (`loop.sock_recv(...)` -> _SockRecv) into wait_for's adapter
+        # slot takes the method-rvalue CONFORMER face (make_adapter over
+        # the record prvalue).
         src = ("import asyncio\n"
                "from socket import socketpair\n\n"
                "async def main_coro() -> None:\n"
@@ -4987,7 +4987,7 @@ class TestMemberCoroFactoryArg:
                "    print(len(data))\n\n"
                "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
-        assert any(k.startswith("resumable:") for k in fallback)
+        assert not fallback, fallback
 
 
 class TestResForHeadDictViewIterable:
@@ -5822,3 +5822,119 @@ class TestOptTupleUnpackHolder:
         assert fallback.get("res.local_storage") == 1
         _assert_identical(src)
 
+
+
+class TestFramePtrSlotReseats:
+    """Flat-tail wave 4: the resumable frame-field materialization rows --
+    an rvalue reseat of a ptr-form frame local (`saved = &*(__ptr_slot_f0 =
+    Point(9));`), the Own-opt-call fill+re-lift twin, and the slotless
+    subscript-element re-point. Corpus witnesses:
+    generators/gen_ptr_local_rvalue_frame, gen_ptr_slot_drop_timing,
+    async/async_ptr_local_rvalue_frame."""
+
+    def test_frame_rvalue_reseat_routes(self):
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n"
+               "def gen() -> Iterator[Int32]:\n"
+               "    saved: Optional[Point] = None\n"
+               "    yield 1\n"
+               "    saved = Point(9)\n"
+               "    if saved is not None:\n"
+               "        yield saved.x\n"
+               "def main() -> None:\n"
+               "    for v in gen():\n        print(v)\n"
+               "main()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "saved = &*(__ptr_slot_f0 = Point(9));" in cpp
+
+    def test_frame_storage_call_fill_and_relift_routes(self):
+        # Each Own-optional call write fills its OWN prescanned frame
+        # field and re-lifts the pointer (the OPT_STORAGE_CALL decl's
+        # resumable twin) -- covers both the first write and the rebind.
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32, Own\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n"
+               "def make_opt(n: Int32) -> Own[Optional[Point]]:\n"
+               "    if n > 0:\n        return Point(n)\n"
+               "    return None\n"
+               "def gen() -> Iterator[Int32]:\n"
+               "    got = make_opt(3)\n"
+               "    yield 1\n"
+               "    got = make_opt(9)\n"
+               "    yield 2\n"
+               "    if got is not None:\n"
+               "        yield got.x\n"
+               "def main() -> None:\n"
+               "    for v in gen():\n        print(v)\n"
+               "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert witnesses.get("reseat.opt_frame_storage_call", 0) >= 2
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__ptr_slot_f0 = make_opt(3);" in cpp
+        assert "got = ::tpy::optional_to_ptr(__ptr_slot_f0);" in cpp
+        assert "__ptr_slot_f1 = make_opt(9);" in cpp
+        assert "got = ::tpy::optional_to_ptr(__ptr_slot_f1);" in cpp
+
+    def test_subscript_elem_reseat_routes(self):
+        # A mutable container ELEMENT re-pointing the slotless Optional
+        # frame local: the plain pointer chain's subscript arm, Optional
+        # flavor -- an alias, no frame slot involved.
+        src = ("from typing import Iterator, Optional\n"
+               "from tpy import Int32\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n"
+               "def gen(items: list[Point]) -> Iterator[Int32]:\n"
+               "    saved: Optional[Point] = None\n"
+               "    yield 1\n"
+               "    saved = items[0]\n"
+               "    if saved is not None:\n"
+               "        yield saved.x\n"
+               "def main() -> None:\n"
+               "    pts = [Point(4)]\n"
+               "    for v in gen(pts):\n        print(v)\n"
+               "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert witnesses.get("reseat.subscript_elem", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "saved = &(::tpy::__getitem__(items, 0));" in cpp
+
+    def test_frame_subclass_rvalue_reseat_routes(self):
+        # A plain-class SUBCLASS ctor rvalue is admitted in the FRAME
+        # flavor only: the base-typed frame field takes the warned
+        # slicing upcast. The @dynamic sibling never reaches lowering
+        # (sema rejects it first -- error_gen_dyn_opt_rebind).
+        src = ("from typing import Iterator, Optional\n"
+               "class Animal:\n"
+               "    kind: str\n"
+               "    def __init__(self) -> None:\n"
+               "        self.kind = \"animal\"\n"
+               "class Cat(Animal):\n"
+               "    def __init__(self) -> None:\n"
+               "        self.kind = \"cat\"\n"
+               "def gen() -> Iterator[str]:\n"
+               "    p: Optional[Animal] = None\n"
+               "    yield \"start\"\n"
+               "    p = Cat()\n"
+               "    if p is not None:\n"
+               "        yield p.kind\n"
+               "def main() -> None:\n"
+               "    for s in gen():\n        print(s)\n"
+               "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert witnesses.get("reseat.opt_frame_slot", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "p = &*(__ptr_slot_f0 = Cat());" in cpp

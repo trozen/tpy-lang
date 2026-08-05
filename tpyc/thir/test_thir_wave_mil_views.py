@@ -59,12 +59,27 @@ class TestSendCallableFieldMil:
                "        self.cb = s.cb\n")
         assert _lower_ctor(src, "Handler") is None
 
-    def test_lambda_source_stays_ast(self):
-        # The lambda render is a body-lowering concern the MIL slice does
-        # not carry.
+    def test_lambda_source_routes(self):
+        # A routable lambda renders its closure into the MIL direct-init
+        # (`action([]() { ... })` -- the mil.callable_lambda row; former
+        # fence, converted when the row landed; byte identity pinned in
+        # test_thir_wave_callable_ref).
         src = ("from typing import Callable\n"
                "class Handler:\n"
                "    action: Callable[[], None]\n"
                "    def __init__(self) -> None:\n"
                "        self.action = lambda: print(0)\n")
+        assert _lower_ctor(src, "Handler") is not None
+
+    def test_self_capturing_lambda_source_stays_ast(self):
+        # A self-capturing lambda stays out: the MIL never confirmed the
+        # `this` receiver spelling (_lambda_routable's self_this default).
+        src = ("from typing import Callable\n"
+               "from tpy import Int32\n"
+               "class Handler:\n"
+               "    n: Int32\n"
+               "    action: Callable[[], None]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.n = 1\n"
+               "        self.action = lambda: print(self.n)\n")
         assert _lower_ctor(src, "Handler") is None

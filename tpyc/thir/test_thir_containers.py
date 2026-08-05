@@ -1548,17 +1548,21 @@ class TestNativeIterableBuiltins:
         assert ast_cpp == thir_cpp
         assert "__started = false" in thir_cpp
 
-    def test_genexpr_range_stays_ast(self):
-        # A range() source uses the counter-lambda arm -- outside the slice.
+    def test_genexpr_range_routes(self):
+        # A range() source takes the counter-lambda arm (`[__i = int32_t(0),
+        # __stop = static_cast<int32_t>(n)]` -- the genexpr.range row;
+        # former fence, converted when the C4 range cell landed).
         thir = _lower(_PRELUDE + "def f(n: Int32) -> bool:\n"
                       "    return all(x > 0 for x in range(n))\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
-    def test_genexpr_filter_stays_ast(self):
-        # A filter condition takes the per-iteration temp-flush arm -- deferred.
+    def test_genexpr_filter_routes(self):
+        # A filter condition wraps the yield inside the lambda (`if (x < 10)
+        # { return ...; }` -- the genexpr.filter row; former fence, converted
+        # when the C4 filter cell landed).
         thir = _lower(_PRELUDE + "def f(xs: list[Int32]) -> bool:\n"
                       "    return all(x > 0 for x in xs if x < 10)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_genexpr_dict_source_stays_ast(self):
         # A dict `*__beg` yields a key/value pair, so the scalar loop-var binding

@@ -8380,3 +8380,295 @@ predicates.py as the shared gate/lowering verdict.
 opt_dyn_protocol_{local,param} (P-A);
 isinstance_optional_protocol, protocol_optional_param,
 protocol_union_optional, protocol_narrowed_to_union (P-B).
+
+### Deref inversion + queue items 6-7 (2026-08-05)
+
+Dial 3203 -> 3212/3729 (+9 flips over three cells), markers 526 -> 517.
+Full comp suite green each cell (11100 passed; move-verdict and
+binding-fact joins clean throughout).
+
+**Cell 1 -- the `_name_read_deref` inversion (the 2026-08-04 retro's
+mechanical followup).** The value-position arm's accumulating admission
+classes (containers, protocol flavors) flipped to the exclusion-based
+mirror of the AST rule: outside RECEIVER/BORROW_BIND any pointer-set
+name derefs, EXCEPT the record class (`_record_class_binding` --
+_f1_record's record-ness legs without the spelling constraints; a
+formatter-carrying builtin is NOT a record, which reproduces the old
+container admission by construction) and the ptr-repr Optional binding
+(None tests key on the pointer; the nullable-static-protocol param stays
+out of the carve-out). Zero behavior change: corpus byte-diff green,
+dial unchanged. The `_protocol_union_arg` rename rode the touch.
+
+**Cell 2 -- queue item 6, the Own[P|None] storage bundle (+3 flips).**
+The reverse-nesting own-optional landed as one sync piece set: param
+seeding (pointers + optional_locals, replacing the two _binding_ack
+partials; the binding stays declared Own[Optional[P]] and rows key on
+`_own_storage_opt_param`), has_value None-tests, arrow reads (read and
+write positions), `return std::move(x)`, the arg rows (NAME move /
+same-Optional call bare / optional_to_ptr borrow-forward / the
+method-ladder ctor-rvalue wiring), the pure-lift decl+reseat rows, the
+REASSIGNED OPT_STORAGE_CALL slot reuse (`__slot_1 = make(43); z =
+optional_to_ptr(__slot_1);` -- opt_storage_call_locals fences other
+reseat shapes off the slot), the field-write whole-optional move, and
+the per-element-own tuple return + tuple_to_pointer'd unpack capture
+with opt_ptr targets. Two stale pins converted -- each had held only
+via WHOLE-BODY fallback and was re-adjudicated by dualgen (zero
+fallback, byte-identical): the own-optional call-init fence and the
+narrowed-occurrence face==0 pin (the AST is narrow-blind for Optional
+None-narrowing, so the null-safe rebuild is the correct render there).
+Flips: auto_move/scalar_own_optional,
+records/ctor_field_init_own_optional, tuple/own_tuple_unpack_optional.
+
+**Cell 3 -- queue item 7, the callable-reference bundle (+6 flips).**
+Generic fn-ref template-args suffix (one shared predicate serves
+decl/return/arg); the MIL callable-lambda field row (self-capturing
+lambdas stay fenced); the async coroutine-factory wrapper synthesis
+(`_async_factory_wrap_cpp` mirroring _maybe_wrap_async_coro_factory) at
+the name arm, Callable return row, and ctor-arg ladder; std::function
+frame PARAM + LOCAL admission (bare value fields); the Own[P]-forward
+row in the qualcall ladder, now also serving METHOD-shaped
+callable-FIELD invocations via the shared classify_dyn_own_arg
+'forward' verdict; the callable-field receiver arm's resumable-method
+`__self` (Record&) dot flavor. The start_server trio RE-PROBED: its
+remaining blocker is chained subscript receivers, not the callable
+bridge -- ordinary rows for the next census. Flips:
+async/async_fn_as_callable_{arg,field,return},
+calls/callable_field_print, calls/func_ref_generic{,_cross_module}.
+
+**Pins:** the Own[P|None] routing/boundary set
+(test_thir_binding_facts.TestOwnOptionalStorageBundle + the converted
+param-read/field-write pins, the own-slot-forward fence, the
+scalar-twin fence), the OPT_STORAGE_CALL slot-reuse pin
+(test_thir_ptr_locals), the narrowed-rebuild pin
+(test_thir_wave_call_argrow), test_thir_wave_callable_ref.py (targs
+suffix, MIL lambda render, the wrapper-lambda byte string), and the
+MIL self-capture boundary (test_thir_wave_mil_views).
+
+### Genexpr C4 + flat-tail waves 1-2 (2026-08-05)
+
+Dial 3212 -> 3221/3729 (+9 flips over three waves), markers 517 -> 508.
+Full exec suite green (11112 passed, all 3728 built+run). The designed
+queue closed with item 8; the flat-tail grind then opened on the fresh
+census (513 marked / 299 sole, max sole tag 6 -- the long tail is the
+work now).
+
+**Item 8 -- genexpr C4 (+4: genexpr_basic, genexpr_builtins,
+enumerate_rvalue, literal_binding_resolves).** THIRGenExpr grew the
+range counter-lambda flavor (1/2/3-arg bound captures, step-nonzero +
+fixed-int overflow checks), &&-joined filter conditions wrapping the
+yield (cond/yield temps flush per-iteration via checkpoint/flush_since),
+str loop-var bindings, and the POSITION matrix: a structural user slot
+hoists the un-spelled auto temp (argtemp.genexpr_proto) while
+native/template slots keep the inline render (the blanket
+_lower_call_arg intercept now defers to the protocol block); method
+slots admit position-blind (str.join); ITERABLE-use value positions
+route (list(...)/extend) while other value positions keep the
+dispatch-tail reject. Three stale fences converted (range, filter,
+filtered-unpack). Residue: genexpr_ref_mutate (borrow-slot yield +
+for-head genexpr source), list_from_iter_nested (call.inst_arg_shape).
+
+**Flat-tail wave 1 (+2: generic_int_param_array_subst,
+requests_cookies_send).** VALUE-Array call results land bare at any
+sink (call/method.array_value_ret -- std::array is a value container,
+span-like no-duality) + the matching-slot arg rows
+(_value_array_call_arg, free+method ladders); a container LITERAL at an
+Optional[container] slot hoists the spelled typed temp + `&(__tmp_N)`
+lift (optptr.container_temp, flush-gated). The site's third case
+(ref_generic_tuple_return, the dict(map(lambda ...)) generic
+composition) remains.
+
+**Flat-tail wave 2 (+3: the async start_server trio).** The trio's
+whole blocker was ONE admission row: a user-record __getitem__
+subscript returning a record borrow as a METHOD receiver
+(`server.sockets[0].getsockname()[1]`) -- the method arm's BORROW_BIND
+receiver lowering already rendered the operator[] chain
+byte-identically, so _method_nonname_receiver_ok just gains the row.
+Two speculative render-side rows probed DEAD during the wave and were
+dropped rather than committed (the disable-and-dualgen check -- worth
+repeating on future "obvious" render rows).
+
+**Pins:** TestGenexprC4Cells (range byte + negative step, filter byte,
+the temp-vs-inline split) + the three converted genexpr fences;
+test_thir_wave_tail1.py (Array-value rows, the optional-container
+literal temp, the sync start_server chain twin
+`std::get<1>(srv.sockets[0].getsockname())`).
+
+### Flat-tail waves 3-5 (2026-08-05)
+
+Dial 3221 -> 3229/3729 (+8 flips), markers 508 -> 500. Full exec suite
+green (11118 passed, all built+run).
+
+**Wave 3 (+4: the async reactor pair, match_union_primitive,
+isinstance_narrow_set).** _dyn_own_conformer_arg admits Own[record]-
+returning METHOD rvalues (`wait_for(loop.sock_accept(srv), ..)` -- the
+BORROW_BIND lowering already rendered the make_adapter wrap; the
+matching resumable fence converted). The ptr-union decl classifier:
+scalar/str LITERAL inits take the bare-literal UNION_RVALUE slot
+whatever type sema stamped (single-member-of-family keys out ambiguous
+variants -- boundary-pinned); a non-value NON-record member lvalue NAME
+falls to UNION_ADDR. _union_pass_through_arg widened to the WIDE member
+class (the by-value variant copy is member-shape-blind).
+union/ternary_mixed_form's mixed-variant ternary init parked as an
+ordinary later row.
+
+**Wave 4 (+3: the ptr-local rvalue-frame trio).** The resumable
+frame-field ptr-slot rows, each reading the skeleton's ptr_slot_map:
+FRAME_RVALUE (`saved = &*(__ptr_slot_fN = Point(9));`),
+FRAME_STORAGE_CALL (the Own-opt call fill + optional_to_ptr re-lift),
+and the slotless subscript-element re-point's Optional flavor. The
+rebind-slot-holder fence converted: its protective claim (the sync
+rebind-slot arm stays unreachable) is now satisfied by the frame arm
+capturing the shape first.
+
+**Wave 5 (+1: gen_subclass_opt_rebind).** The FRAME_RVALUE subclass
+slicing flavor: a subclass ctor rvalue into the base-typed frame slot
+(sema's warned "upcast narrows") admits via the plain registry
+subclass relation -- is_polymorphic_subclass_fact keys on
+dynamic-dispatch sources, which a data-only base is not, and the
+polymorphic flavor never reaches lowering (sema errors first).
+
+**Scouted, not taken:** stmt.match's 4 sole split into the PARKED
+genrec call-subject boundary (field_alias), the genrec-adjacent
+match_hoisted_wrapper_local, and capture_optional_narrow_in_body (the
+class-pattern keyword-capture registration -- an ordinary later row);
+coro_for_tuple_unpack_ref's tuple_value_to_borrow double-convert and
+ref_generic_tuple_return's dict-map-lambda composition stay next.
+
+**Pins:** TestPtrUnionDeclRows (+ the ambiguous-literal boundary),
+TestOwnRecordMethodRvalueConformer, TestFramePtrSlotReseats, the two
+converted fences (awaitable-record-factory, rebind-slot-holder).
+
+### Flat-tail waves 6-8 (2026-08-05)
+
+Three cells, +7 flips (dial 3229 -> 3236/3729; markers 500 -> 493).
+Review round 4 clean (two trivial suggestions applied: the wide-member
+consumer list, two pins moved onto _assert_routes_byte_identical).
+
+**Wave 6 (+4: the if.narrow_shape union quartet, incl.
+union_mutual_contexts -- its last blocker).** The single raise site
+(the narrow_ok ladder) drilled to two legs over its four sole-blocker
+cases. (a) folded+else: sema's exhaustiveness fold with an EXPLICIT
+else -- the chain skeleton already lowers it (`if (true)`, dead else
+arm extracting its excluded member from the else facts, the AST's dead
+emit); the fence leg dropped, witnessed if.narrow_folded_else. The F1
+inner-fold flavor with else stays fenced (different render family).
+(b) a non-member ELSE fact (the remaining NULLABLE union, `B | None`
+on an `A | B | None` subject) tolerated when NO else body exists --
+no else extraction runs and both paths' post-if arms take concrete
+members only (AST _narrows_to_union_member / THIR _narrow_fact_member);
+witnessed if.narrow_nc_else_fact, the with-else shape keeps rejecting.
+The leg conversion exposed one STALE fence: the str-member union
+isinstance "member-keyed still defers" pin held on the else-fact leg,
+not its stated member-eligibility reason (the isinstance gate already
+rides the wide class) -- re-adjudicated by dualgen, converted.
+
+**Wave 7 (+2: capture_optional_narrow_in_body, optional_basic).** Two
+rows. Match keyword captures of VALUE-repr Optional fields
+(Optional[scalar] / owned-inner Optional[str]): the gate admits, the
+shared capture arm registers the `auto&` alias as a value-opt binding
+(SCALAR/VIEW kind), so the body's None-test and narrowed derefs ride
+the existing binding-keyed arms; POINTER-repr fields keep the
+hoisted-pointer rung. And the str-concat operand rung for NARROWED
+value-repr Optional[str] BINDINGS (_opt_view_narrowed_concat_operand:
+the declared type fails _str_concat_operand, the analyzed type is the
+narrowed str, the VIEW name arm renders `(*t)`); registration is
+load-bearing -- an unregistered name would render bare -- and the
+bytes flavor keeps rejecting.
+
+**Wave 8 (+1: ternary_mixed_form).** The WIDE ptr-union ternary row:
+_ptr_union_source_ok admits a TpyIfExpr whose arms each re-classify,
+and _lower_if_expr normalizes per arm (`((c) ? (p) :
+(::tpy::to_ptr_variant(h.pet)))`) via _lower_ptr_union_ternary_arm --
+a same-union ptr-variant BINDING name bare, a value-variant field
+lvalue through the FormConvert union BORROW emit. A CALL arm keeps
+rejecting (bare render is a later rung); the const-field and
+member-typed arm shapes are sema-errors before lowering, probed.
+
+**Pins:** TestNarrowFoldedElseRows, TestPtrUnionTernary (both in
+test_thir_unions.py -- construct-named, not wave-named),
+TestNarrowedOptViewConcat, the TestKeywordCaptureFamilies additions,
+and the converted str-member isinstance routing pin.
+
+### Flat-tail waves 9-10 (2026-08-05)
+
+Two cells, +6 flips (dial 3236 -> 3242/3729; markers 493 -> 487).
+Review round 5: no Critical; applied as one commit (the F1-record
+predicate reuse, the missing annotation, the TODO test-gap rewording,
+the kind-blind rationale + boundary-gap notes).
+
+**Wave 9 (+1: coro_for_tuple_unpack_ref).** The plain-record
+ALL-RVALUE tuple-literal append row: the Own[btuple] literal gate's
+ptr-Optional element restriction gains its F1-record sibling
+(_btuple_literal_elems_rvalue), scoped to all-rvalue literals -- the
+CONST_REF storage rule the borrow builder does not carry only fires
+on lvalue members, and an all-rvalue literal rides the
+tuple_value_to_borrow source-tuple path into the same consuming
+tuple_to_storage_move lift (the AST's double-convert, a quirk-mirror
+render). A last-use movable local element keeps rejecting (its
+per-element move render is its own rung); a borrowed lvalue element
+is a sema error. calls/ref_generic_tuple_return was traced in the
+same session to the PARKED generics-lane lambda-inference family and
+recorded in TODO, not ground.
+
+**Wave 10 (+3 direct, +2 collateral: the tplib json family).** The
+value-opt NAME assign-target row: a registered value-opt name at the
+raw TpyAssign TARGET position is a whole-BINDING write, lowered with
+allow_whole_optional and rendered bare (`color = __color_2;`). The
+shape only arises in macro-generated bodies (user code reaches the
+binding via the var-decl reassign arm, which never lowers the target
+as an expression) -- the @model decode was the witness; a NARROWED
+target never reaches the row (the TpyAssign entry guard falls back
+first, parity-verified). Kind-blind on purpose (the write consumes
+the whole optional for every kind). Collateral: json_model_basic +
+json_model_field_rename.
+
+**Scouted, not taken:** the cross-module global-record RECEIVER
+family (os.environ x3 -- filed in TODO as the next mechanical cell:
+module-attr slot render + several receiver-gate rows).
+
+**Pins:** TestPlainRecordBtupleLiteral (routing + the spelled
+double-convert render + the last-use boundary),
+TestValueOptAssignTarget (macro-generated twin; the
+unregistered-target boundary is documented unpinnable -- parser never
+emits the shape, failure direction is a safe fallback).
+
+### Flat-tail waves 11-12 (2026-08-05)
+
+Two cells, +6 flips (dial 3242 -> 3248/3729; markers 487 -> 481).
+Review round 6: no Critical; applied as one commit (the shared
+_plain_or_opt_own_slot peel replacing the gate/lowering duplication,
+the dotted-form over-admit documented at _module_var_recv, the DEAD
+container-route for-head leg dropped -- disable-and-probe showed the
+user-iterator route carries os_environ_iter alone -- the set-literal
+flavor pinned, a dated docstring phrase removed).
+
+**Wave 11 (+3: the os.environ trio).** The cross-module global-record
+RECEIVER family: _module_var_recv (the cross-module twin of
+_global_record_recv, composing _bare_module_recv +
+_module_var_read_cpp) admitted at the user-record setitem receiver,
+the record-getitem index/receiver admission, the container/record del
+receiver resolver, and the user-iterator for-head arm; the
+record-getitem subscript arm and the del emit lower the receiver at
+RECEIVER use, and the for-head ITERABLE capture joins the module-var
+arm's pinned-consumer list (`auto& __src_N = (*environ);`). A bare
+BINDING read keeps rejecting (no pinned consumer) and the
+container-subscript flavor stays AST (the pre-existing fence held).
+
+**Wave 12 (+3: the call.arg_shape.optional trio).** Three rows: a
+value-opt-returning CALL rvalue at the SAME value-opt slot binds bare
+(_value_opt_call_ret_arg; borrow-returning callees and the view
+flavor stay out); copy(record) at an Own-OPTIONAL slot rides the
+shared peel into the same copy-construct rvalue
+(`consume_optional(Box(b))`); and the ptr-opt container-literal temp
+face KIND-matches a bare list literal (its sema type is the
+Array-inferred flavor) with the temp init self-spelled via
+typed_brace_cpp -- the one divergence dualgen caught mid-wave
+(`std::vector<std::string>{"a"}` vs the bare brace).
+
+**Pins:** TestModuleVarReceiverSurface (the dict-backed Env twin
+routes setitem/getitem/del/iterate with spelled renders; bare-binding
+boundary), TestValueOptArgRows (+ the view-flavor boundary), the
+list- and set-literal flavors on TestOptionalContainerLiteralArg.
+Residue noted for a later rung: the .get/.keys/in/len module-var
+receiver flavors are corpus-guarded only (they ride pre-existing
+pinned consumers).

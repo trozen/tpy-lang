@@ -55,6 +55,7 @@ from ..nodes import (
     THIRFieldAccess,
     THIRFormConvert,
     THIRLiteral,
+    THIRMove,
     THIRName,
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
@@ -622,6 +623,13 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     if (not mv and lowered.result_type == cnv_t
             and (lowered.form is Form.STORAGE or whole_opt_field)):
         return lowered
+    if mv and lowered.result_type == cnv_t and lowered.form is Form.STORAGE:
+        # An already-storage source at last use (an `Own[P | None]` param
+        # name): the sink absorbs the whole optional -- `field =
+        # std::move(p);` -- never the `ptr_to_optional_move` lift, which is
+        # the borrow `T*` sources' spelling.
+        return THIRMove(value=lowered, result_type=cnv_t, form=Form.STORAGE,
+                        loc=loc)
     return THIRFormConvert(result_type=cnv_t, value=lowered,
                            form=Form.STORAGE, move=mv, loc=loc)
 

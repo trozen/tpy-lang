@@ -70,6 +70,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> inline `::tpy::deref_check(p)`
     "move.opt_own_last_use",        # record name moved bare into an
                                     # Optional[Own[T]] slot (converting ctor)
+    "move.own_opt_last_use",        # ... and the reverse-nesting twin: the
+                                    # Own[record|None] slot (optional<P>&&)
+    "arg.own_opt_call_pass",        # Own[P|None]-returning call rvalue binds
+                                    # the optional<P>&& slot bare
     "field.opt_record_recv",        # narrowed owned-optional record name
                                     # receiver derefs -- (*r).field
     "call.storage_opt_ret",         # Own-optional call result lands bare
@@ -128,6 +132,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # literal / tuple_to_pointer lift
     "assign.btuple_elem_field",     # scalar field write through a borrow-
                                     # tuple element (std::get<N>(t)->f = v)
+    "assign.value_opt_target",      # registered value-opt NAME target: a
+                                    # whole-binding write, bare on both
+                                    # paths (the raw-assign macro shape)
     "expr.walrus_btuple_slot",      # reassigned borrow-tuple walrus: owning
                                     # __slot_N.emplace + tuple_to_pointer +
                                     # bare-name tail
@@ -142,6 +149,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ternary aliasing the chosen side
     "binop.protocol_raw",           # protocol-operand arith in a template
                                     # body: the raw `(a + b)` operator
+    "binop.opt_view_narrowed",      # narrowed registered Optional[str]
+                                    # binding at a str-concat operand:
+                                    # the VIEW arm's `(*t)` deref
     "ifexpr.container",             # container ternary: the bare
                                     # form-blind arm render
     "stmt.compile_time_assert",     # assert_send/assert_sync statement:
@@ -183,6 +193,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # generic tail render, the optional's converting ctor absorbing the bare
     # member -- `f(5)`, `f("hi")`, `f(Color.Red)`.
     "call.optval_member",
+    # A value-opt-returning CALL rvalue at the same value-opt slot -> the
+    # by-value optional prvalue binds bare.
+    "call.optval_ret_pass",
     # An owned value-repr Optional[str/bytes] LOCAL into a matching owned
     # Optional slot -> bare whole-optional pass (no view->owned shim).
     "call.optview_local_whole",
@@ -594,6 +607,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare-copied from a same-typed param
     "mil.callable_copy",            # `on_event(cb)` -- std::function field
                                     # bare-copied from a same-typed param
+    "mil.callable_lambda",          # `action([]() { ... })` -- routable
+                                    # lambda into the std::function field
     "mil.record_method_rvalue",     # Own-returning method rvalue constructs
                                     # the record field directly (Rc.new)
     # An own-field init the AST demotes to the ctor body (bare non-param name /
@@ -758,6 +773,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.folded_isinstance",     # F1 isinstance on an already-narrowed
                                     # subject -> `if (true)/(false)` + shadow
                                     # re-extraction from the ORIGINAL union
+    "if.narrow_folded_else",        # exhaustiveness-folded `if (true)` with
+                                    # an EXPLICIT else -> dead arm still
+                                    # extracts its excluded member
+    "if.narrow_nc_else_fact",       # non-member else fact (remaining
+                                    # nullable union) tolerated -- no else
+                                    # body, so no consumer exists
     "narrow.poly_tuple",            # tuple-form poly isinstance -> the
                                     # no-init dynamic_cast OR-chain
     "narrow.poly_value",            # value-position poly isinstance -> the
@@ -800,6 +821,20 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `this->f` (std::optional<T>& ref return)
     "ret.storage_opt_rvalue",       # `return Coord(0, 0)` -> bare ctor into a
                                     # value-storage / Own Optional slot
+    "ret.storage_opt_own_move",     # `return x` -- an Own[P|None] param
+                                    # (std::optional<P>&&) moves out whole
+    "decl.opt_own_param_lift",      # `y = x` off an Own[P|None] param: pure
+                                    # lift, `P* y = optional_to_ptr(x);`
+    "reseat.opt_own_param_lift",    # ... and the slotless reseat twin,
+                                    # `y = ::tpy::optional_to_ptr(x);`
+    "reseat.opt_storage_call",      # OPT_STORAGE_CALL reseat re-fills the
+                                    # decl slot and re-lifts the pointer
+    "stmt.tuple_unpack.call_storage_wrap",  # per-element-own call result
+                                    # lifts whole via tuple_to_pointer
+    "name.func_ref_targs",          # generic fn ref spells the template-args
+                                    # suffix (identity<int32_t>)
+    "name.async_factory_wrap",      # async-def ref at a Callable slot:
+                                    # the make_adapter wrapper lambda
     "ret.str_field",                # `return recv.field` (owned-str member,
                                     # STORAGE) at a str-family return slot
     # Storage container return slot (`-> Own[list/dict/set]`; the renders --
@@ -1324,6 +1359,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.ptr_opt",               # ptr-Optional result: per-arm `T*`
                                     # normalization (nullptr / bare / lift /
                                     # addr-of), whole ternary BORROW
+    "ifexpr.ptr_union",             # WIDE ptr-union result: per-arm
+                                    # normalization (bare binding name /
+                                    # to_ptr_variant field lift), BORROW
     "ifexpr.record",                # F1-record lvalue ternary: bare name
                                     # arms, a BORROW lvalue
     "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
@@ -1621,6 +1659,21 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`auto`/`auto&` name = subject.field)
     "fn.param_copy",                # reassigned const-ref param -> the mutable
                                     # owned-copy prologue (THIRParamCopy)
+    "argtemp.genexpr_proto",        # genexpr at a structural protocol slot:
+                                    # the un-spelled auto make_generator temp
+    "optptr.container_temp",        # container literal at an Optional
+                                    # [container] slot: typed temp + &(...)
+    "method.array_value_ret",       # VALUE Array method result lands bare
+                                    # (std::array prvalue, span-like)
+    "call.array_value_ret",         # ... and the free-call twin
+    "reseat.opt_frame_slot",        # resumable rvalue reseat via the
+                                    # prescanned frame-field slot (&*(f=..))
+    "reseat.opt_frame_storage_call",  # ... and the Own-opt-call sibling:
+                                    # field fill + optional_to_ptr re-lift
+    "genexpr.range",                # the range-source counter lambda
+                                    # (1/2/3-arg, step checks on 3-arg)
+    "genexpr.filter",               # &&-joined filter conditions wrapping
+                                    # the yield inside the lambda
     "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->
                                     # the make_generator IIFE (all/any/sum arg)
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
@@ -1710,6 +1763,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.field_cond",             # literal field condition (`==` compare)
     "match.field_none",             # field=None -> has_value/monostate check
     "match.field_bind",             # field capture: `{base}.{f}` rhs binding
+    "match.field_bind_opt",         # VALUE-repr Optional field capture:
+                                    # the `auto&` alias registered as a
+                                    # value-opt binding (scalar/view kind)
     "arg.literal_scalar_slot",      # resolved scalar at a Literal[...] slot
     "ctor.own_scalar_peel",         # nested ctor tail: Own[scalar] no-op peel
     "ctor.own_str_literal",         # str literal bare into an Own[str] slot

@@ -11,8 +11,10 @@ make_generator lambda).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_routes_byte_identical,
     _compile,
     _entry,
+    _lower_ctx_witnessed,
 )
 
 
@@ -140,8 +142,10 @@ class TestMovedGenexprUnpackDefers:
         assert fb.get("body:genexpr.unpack") == 1, fb
 
 
-class TestFilteredGenexprUnpackDefers:
-    # BOUNDARY: a filtered genexpr (unpack or not) keeps the filter reject.
+class TestFilteredGenexprUnpackRoutes:
+    # A filtered UNPACK genexpr composes the C4 filter cell with the unpack
+    # head (`if (n > 0) { return ...; }` inside the lambda; former fence,
+    # converted when the filter cell landed) -- routing + byte identity.
     SRC = (
         _PRE +
         "def main() -> None:\n"
@@ -151,8 +155,44 @@ class TestFilteredGenexprUnpackDefers:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
+    def test_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
         fb = dict(compiler._thir_fallback)
-        assert fb, fb
+        assert not fb, fb
+
+
+class TestValueOptAssignTarget:
+    """The registered value-opt NAME assign-target row: a raw TpyAssign
+    target is a whole-BINDING write, lowered with allow_whole_optional
+    (the @model macro's generated `color = __color_2;` -- user code
+    reaches the same binding via the var-decl reassign arm, which never
+    lowers the target as an expression, so the raw-assign shape only
+    arises in generated bodies). The unproven-read fence stays for
+    SOURCE positions. No boundary pin for an UNREGISTERED target: the
+    parser never emits a raw NAME assign for user source and today's
+    macros always target a registered local -- and the failure direction
+    is a safe whole-body fallback, which the corpus byte-diff would
+    catch if a future macro changed that. Corpus witnesses:
+    tplib/json_model_errors and the two panic twins."""
+
+    def test_macro_generated_assign_routes(self):
+        src = ("from enum import Enum\n"
+               "from tplib.json import JsonError\n"
+               "from tplib.json.model import model\n"
+               "class Color(Enum):\n"
+               "    Red = 0\n"
+               "    Blue = 1\n"
+               "@model\n"
+               "class Item:\n"
+               "    name: str\n"
+               "    color: Color\n"
+               "def main() -> None:\n"
+               "    try:\n"
+               "        Item.try_from_json('{\"name\": \"x\"}')\n"
+               "    except JsonError as e:\n"
+               "        print(e.message)\n"
+               "main()\n")
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("assign.value_opt_target", 0) >= 1
+        _assert_routes_byte_identical(src)

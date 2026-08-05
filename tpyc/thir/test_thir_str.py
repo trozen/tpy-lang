@@ -14,7 +14,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _PRELUDE,
-    _assert_byte_identical,
+    _assert_byte_identical, _assert_routes_byte_identical,
 )
 
 # --- S1 str slice: str/StrView values (params, locals, print, compare, len,
@@ -1900,3 +1900,60 @@ class TestStrFieldBinopOperands:
         assert ('return (::tpy::str_concat("[base] ", this->message));'
                 in thir_cpp)
         assert "return (s == this->message);" in thir_cpp
+
+
+class TestNarrowedOptViewConcat:
+    """The str-concat operand rung for NARROWED value-repr Optional[str]
+    BINDINGS: a param (`optional<string_view>`, BORROW deref) and a
+    registered owned-view local (`optional<string>`, STORAGE deref) both
+    render `str_concat("x=", (*t))`. Registration is load-bearing -- an
+    unregistered name would render bare off the str-name arm. Corpus
+    witness: match/capture_optional_narrow_in_body (via the match-capture
+    registration). The bytes flavor keeps rejecting."""
+
+    SRC = (
+        "from typing import Optional\n"
+        "class Build:\n"
+        "    target: Optional[str]\n"
+        "    def __init__(self, target: Optional[str]) -> None:\n"
+        "        self.target = target\n"
+        "def p(t: Optional[str]) -> None:\n"
+        "    if t is not None:\n"
+        '        print("p=" + t)\n'
+        "def l(b: Build) -> None:\n"
+        "    t = b.target\n"
+        "    if t is not None:\n"
+        '        print("l=" + t)\n'
+        "def main() -> None:\n"
+        '    p("x")\n'
+        "    p(None)\n"
+        '    l(Build("y"))\n'
+        "    l(Build(None))\n"
+        "main()\n")
+
+    def test_param_and_local_route(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("binop.opt_view_narrowed", 0) >= 2
+        _assert_routes_byte_identical(self.SRC)
+        compiler, modules = _compile(self.SRC)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert '(::tpy::str_concat("p=", (*t)))' in cpp
+        assert '(::tpy::str_concat("l=", (*t)))' in cpp
+
+    def test_bytes_flavor_stays_ast(self):
+        # BOUNDARY (dualgen-probed): the bytes twin is not admitted -- its
+        # own row when a witness appears.
+        src = (
+            "from typing import Optional\n"
+            "def f(t: Optional[bytes]) -> None:\n"
+            "    if t is not None:\n"
+            '        print(len(b"x=" + t))\n'
+            "def main() -> None:\n"
+            '    f(b"yz")\n'
+            "    f(None)\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)

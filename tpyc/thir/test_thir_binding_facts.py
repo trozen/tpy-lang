@@ -78,16 +78,23 @@ class TestUnmirroredParamSeeds:
         assert "if ((!a.has_value()))" in thir_out
         assert "return (*a).v;" in thir_out
 
-    def test_own_optional_param_fenced(self):
-        # `Own[A | None]` (Own[Optional[A]], `std::optional<A>&&` +
-        # codegen's pointer_locals seed) -> reads spell `a->v`
-        # (operator->), a render the RECORD-kind deref does not mirror --
-        # the seed excludes this spelling and the body keeps falling back.
+    def test_own_optional_param_routes(self):
+        # `Own[A | None]` (Own[Optional[A]], `std::optional<A>&&`): the
+        # pointers + optional_locals seeds route the body -- the None test
+        # reads has_value over the bare name, member reads spell `a->v`
+        # (optional<A>::operator->).
         src = (_RECORD
                + "def f(a: Own[A | None]) -> Int32:\n"
                + "    if a is None:\n        return -1\n"
                + "    return a.v\n")
-        _assert_body_fenced(src, "f")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "if ((!a.has_value()))" in thir_out
+        assert "return a->v;" in thir_out
 
     def test_own_optional_scalar_param_still_fenced(self):
         # The VALUE-payload twin (`Own[Int32] | None`) is outside the
@@ -99,16 +106,39 @@ class TestUnmirroredParamSeeds:
                "    return -1\n")
         _assert_body_fenced(src, "f")
 
-    def test_own_optional_param_field_write_fenced(self):
-        # A WRITE through the narrowed binding stays on the AST path (the
-        # field-write arm has no `(*a)` receiver row yet).
+    def test_own_optional_param_field_write_routes(self):
+        # A WRITE through the narrowed binding: `a->v = 5` -- the same
+        # arrow spelling as the read side (_field_receiver_ok's Own[Opt]
+        # leg serves both positions).
         src = (_RECORD
                + "def f(a: Own[A | None]) -> Int32:\n"
                + "    if a is not None:\n"
                + "        a.v = 5\n"
                + "        return a.v\n"
                + "    return -1\n")
-        _assert_body_fenced(src, "f")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "a->v = 5;" in thir_out
+
+    def test_own_optional_param_own_slot_forward_fenced(self):
+        # An Own[A|None] param name forwarded into ANOTHER Own[A|None] slot
+        # (`return take(a)`): the whole-optional move-forward arg row is
+        # unwitnessed -- the body keeps falling back (dualgen-probed
+        # byte-identical via fallback).
+        src = (_RECORD
+               + "def take(x: Own[A | None]) -> Int32:\n"
+               + "    if x is None:\n        return -1\n"
+               + "    return x.v\n"
+               + "def f(a: Own[A | None]) -> Int32:\n"
+               + "    return take(a)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        fallback = _assert_identical(src)
+        assert any(k.startswith("body:") for k in fallback), fallback
 
     def test_nullable_protocol_param_fenced(self):
         # A nullable static-protocol param -> codegen registers pointer_locals
@@ -133,6 +163,89 @@ class TestUnmirroredParamSeeds:
                + "def f(t: tuple[Own[A], Int32]) -> Int32:\n"
                + "    return sink(t)\n")
         _assert_body_fenced(src, "f")
+
+
+class TestOwnOptionalStorageBundle:
+    """The Own[P | None] sync piece set beyond the param reads: return move,
+    OPT_STORAGE_CALL slot reuse, the pure-lift decl/reseat, and the
+    per-element-own tuple return + unpack (spec cases
+    auto_move/scalar_own_optional + tuple/own_tuple_unpack_optional carry the
+    corpus witnesses; these pin routing on the isolated shapes)."""
+
+    def test_own_optional_passthrough_return_moves(self):
+        # `return x` at the Own[A|None] slot moves the whole storage
+        # optional out -- never the ptr_to_optional_move lift.
+        src = (_RECORD
+               + "def f(x: Own[A | None]) -> Own[A | None]:\n"
+               + "    return x\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "return std::move(x);" in thir_out
+
+    def test_own_optional_call_decl_slot_reuse(self):
+        # A REASSIGNED Own[A|None]-call local keeps ONE slot: the decl
+        # materializes it, each reseat re-fills and re-lifts.
+        src = (_RECORD
+               + "def make(v: Int32) -> Own[A | None]:\n"
+               + "    if v > 0:\n        return A(v)\n"
+               + "    return None\n"
+               + "def f() -> Int32:\n"
+               + "    z = make(1)\n"
+               + "    z = make(2)\n"
+               + "    if z is not None:\n        return z.v\n"
+               + "    return -1\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "std::optional<A> __slot_1 = make(1);" in thir_out
+        assert "__slot_1 = make(2);" in thir_out
+        assert thir_out.count("::tpy::optional_to_ptr(__slot_1)") == 2
+
+    def test_own_optional_param_pointer_local_lift(self):
+        # First-decl and reseat of a pointer local from the param: the pure
+        # optional_to_ptr lift, no slot.
+        src = (_RECORD
+               + "def f(x: Own[A | None]) -> Int32:\n"
+               + "    y = x\n"
+               + "    if y is None:\n        return -1\n"
+               + "    return y.v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert "A* y = ::tpy::optional_to_ptr(x);" in thir_out
+
+    def test_own_optional_tuple_elem_return_and_unpack(self):
+        # `-> tuple[Own[A | None], Int32]` returns the spelled storage
+        # brace-init; the standalone unpack lifts the capture whole via
+        # tuple_to_pointer and binds the opt_ptr target bare.
+        src = (_RECORD
+               + "def pair() -> tuple[Own[A | None], Int32]:\n"
+               + "    return (A(42), Int32(99))\n"
+               + "def f() -> Int32:\n"
+               + "    p, n = pair()\n"
+               + "    if p is None:\n        return n\n"
+               + "    return p.v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pair") is not None
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
+        assert ("return std::tuple<std::optional<A>, int32_t>{A(42), 99};"
+                in thir_out)
+        assert ("::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(pair())"
+                in thir_out)
 
 
 class TestUnmirroredLocalBindings:

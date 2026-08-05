@@ -83,6 +83,7 @@ from .predicates import (
     _poly_subject_const,
     _resolved_bytes_value,
     _resolved_str_value,
+    _value_opt_owned_view,
     _value_opt_scalar,
     _value_tuple,
 )
@@ -310,17 +311,23 @@ def _match_field_cond(pattern: TpyClassPattern, field_name: str, value,
 def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
     """A field capture joins the arm walk as a plain declared local, so its
     type must be one the slice's name-read classification already covers:
-    value scalars, Char, registered enums, resolved str, value tuples, and
-    the non-value families whose binding is the plain `auto&` alias into the
-    subject's field (an F1 record, a list/dict/set). An Optional field binds
-    a hoisted pointer instead -- its own rung."""
+    value scalars, Char, registered enums, resolved str, value tuples, the
+    non-value families whose binding is the plain `auto&` alias into the
+    subject's field (an F1 record, a list/dict/set), and the VALUE-repr
+    Optional families (`Optional[scalar]` / owned-inner `Optional[str]`,
+    the `auto&` alias over the `std::optional` field -- registered as a
+    value-opt binding at the capture arm so the body's None-test/deref
+    reads ride the binding-keyed arms). A POINTER-repr Optional field
+    still binds a hoisted pointer instead -- its own rung."""
     t = unwrap_readonly(ft)
     return (_eligible_scalar(t) or _eligible_char(t)
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None
             or _value_tuple(t, analyzer) is not None
             or _f1_record(t, analyzer)
-            or is_list(t) or is_dict(t) or is_set(t))
+            or is_list(t) or is_dict(t) or is_set(t)
+            or _value_opt_scalar(t, analyzer) is not None
+            or _value_opt_owned_view(t, analyzer) is not None)
 
 def _match_field_type_subst(pattern: TpyClassPattern, field_name: str,
                             analyzer) -> 'TpyType | None':
@@ -1382,6 +1389,17 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
             ft = _match_record_field_type(pattern, fname, lc.analyzer)
             assert ft is not None, "ineligible field capture reached lowering"
             arm_declared[inner.name] = ft
+            # A VALUE-repr Optional field capture aliases the whole
+            # `std::optional` field, so its body reads (None-test,
+            # narrowed `(*t)` deref) ride the binding-keyed arms; the
+            # registration leaks function-wide like every match binding.
+            ft_u = unwrap_readonly(ft)
+            if _value_opt_scalar(ft_u, lc.analyzer) is not None:
+                _witness("match.field_bind_opt")
+                lc.value_opt_bindings[inner.name] = ValueOptKind.SCALAR
+            elif _value_opt_owned_view(ft_u, lc.analyzer) is not None:
+                _witness("match.field_bind_opt")
+                lc.value_opt_bindings[inner.name] = ValueOptKind.VIEW
         elif isinstance(inner, TpyClassPattern):
             if inner.is_union_field_guard:
                 t_cpp = lc.render_type(unwrap_readonly(inner.resolved_type))

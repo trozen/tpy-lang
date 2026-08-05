@@ -4547,6 +4547,79 @@ class TestModuleVarRead:
         assert "::tpyapp::helper::G" in thir_out[1]
 
 
+class TestModuleVarReceiverSurface:
+    """The cross-module global-record RECEIVER family: a pointer-slot
+    module var (`mod.env`) as a record-getitem/setitem/del receiver and a
+    user-iterator for-head iterable -- each position threads the pinned
+    RECEIVER/ITERABLE use so the module-var arm's `(*slot)` deref read is
+    admitted. A bare BINDING read (`e = mod.env`) keeps rejecting (no
+    pinned consumer), and the container-subscript flavor stays AST
+    (TestModuleVarRead.test_nonvalue_module_var_stays_ast). Corpus
+    witnesses: stdlib/os_environ, os_environ_iter, ospath_expanduser."""
+
+    HELPER = (
+        "from typing import Iterator\n"
+        "class Env:\n"
+        "    _data: dict[str, str]\n"
+        "    def __init__(self) -> None:\n"
+        "        self._data = {}\n"
+        "    def __getitem__(self, key: str) -> str:\n"
+        "        return self._data[key]\n"
+        "    def __setitem__(self, key: str, value: str) -> None:\n"
+        "        self._data[key] = value\n"
+        "    def __delitem__(self, key: str) -> None:\n"
+        "        del self._data[key]\n"
+        "    def __iter__(self) -> Iterator[str]:\n"
+        "        return iter(self._data)\n"
+        "env: Env = Env()\n"
+    )
+    SRC = (
+        "import helper\n"
+        "def surface() -> None:\n"
+        "    helper.env[\"a\"] = \"x\"\n"
+        "    print(helper.env[\"a\"])\n"
+        "    for k in helper.env:\n"
+        "        print(k)\n"
+        "    del helper.env[\"a\"]\n"
+        "def main() -> None:\n"
+        "    surface()\n"
+        "main()\n"
+    )
+
+    def test_receiver_surface_routes(self, tmp_path):
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        thir, w = _lower_ctx_witnessed(self.SRC, extra_lib_dirs=[tmp_path])
+        assert _fn(thir, "surface") is not None
+        assert w.get("subscript.record_getitem", 0) >= 1
+        assert w.get("delitem.user_record", 0) >= 1
+        compiler, modules = _compile(self.SRC, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        ast_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+        thir_out = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        assert thir_out == ast_out
+        assert "::tpy::__setitem__((*::tpyapp::helper::env)" in thir_out[1]
+        assert "auto& __src_0 = (*::tpyapp::helper::env);" in thir_out[1]
+
+    def test_bare_binding_read_stays_ast(self, tmp_path):
+        # BOUNDARY (dualgen-probed): the pointer-slot record at a DECL
+        # sink has no pinned consumer.
+        (tmp_path / "helper.py").write_text(self.HELPER)
+        src = (
+            "import helper\n"
+            "def bind() -> None:\n"
+            "    e = helper.env\n"
+            "    e[\"b\"] = \"y\"\n"
+            "def main() -> None:\n"
+            "    bind()\n"
+            "main()\n"
+        )
+        thir, _w = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
+        assert _fn(thir, "bind") is None
+
+
 class TestGlobalRecordReceiverRead:
     """Field reads AND writes off a SAME-module global-record receiver:
     the seeded pointer-slot name with an arrow (`gate->x`,

@@ -259,10 +259,14 @@ class TestUnionNoneTest:
             "    print(check(a))\n")
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_str_member_union_member_keyed_still_defers(self):
-        # A str member fails _eligible_ptr_union, so member-KEYED positions
-        # (isinstance narrowing here) keep rejecting even though the
-        # member-blind None-test routes.
+    def test_str_member_union_isinstance_routes(self):
+        # The isinstance CONDITION rides the WIDE member class
+        # (`_eligible_ptr_union_wide` in `_isinstance_narrow_info`), and the
+        # non-member implicit-else fact (`str | None`) is tolerated without
+        # an else body -- so this routes; the extraction is member-keyed on
+        # the CHECKED member only, blind to the str sibling. Arg/decl
+        # positions still reject str members via `_eligible_ptr_union`
+        # (their own gates, untouched).
         src = (
             "from tpy import Int32\n"
             "class Dog:\n"
@@ -273,7 +277,8 @@ class TestUnionNoneTest:
             "    if isinstance(v, Dog):\n"
             "        return True\n"
             "    return False\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
     def test_str_member_union_none_test_member_blind(self):
         # The None-test render is MEMBER-BLIND (holds_alternative over the

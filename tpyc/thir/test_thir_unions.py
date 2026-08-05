@@ -22,8 +22,8 @@ from .validate import (
     THIRValidationError, validate_constructor, validate_function,
 )
 from .testutil import (
-    _assert_byte_identical, _compile, _entry, _fn, _lower, _lower_ctor,
-    _lower_ctx, _lower_ctx_witnessed,
+    _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
+    _fn, _lower, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
 )
 
 _PRELUDE = "from tpy import Int32, Int64, Float64\n"
@@ -2049,3 +2049,139 @@ class TestUnionCallSubjectMatch:
         )
         assert _fn(_lower_ctx(src), "main") is None
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+class TestNarrowFoldedElseRows:
+    """The narrow_ok gate's two widened legs: an exhaustiveness-folded `if`
+    WITH an explicit else (the dead arm still extracts its excluded member,
+    exactly as the AST's dead emit does), and a non-member ELSE fact (the
+    remaining NULLABLE union) tolerated when no else branch exists. Corpus
+    witnesses: union/union_assign_narrowing_branch,
+    union/union_isinstance_function_call, union/union_mutual_contexts,
+    union/union_field_ctor_bare_alternative."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    FOLDED_SRC = (_THREE_RECORDS
+                  + "def main() -> None:\n"
+                  + "    c: A | B = A(5)\n"
+                  + "    if isinstance(c, A):\n"
+                  + "        print(c.x)\n"
+                  + "    else:\n"
+                  + "        print(c.y)\n"
+                  + "main()\n")
+
+    def test_folded_with_else_routes(self):
+        _thir, w = _lower_ctx_witnessed(self.FOLDED_SRC)
+        assert w.get("if.narrow_folded_else", 0) >= 1
+        _assert_routes_byte_identical(self.FOLDED_SRC)
+        cpp = self._cpp(self.FOLDED_SRC, thir=True)
+        assert "if (true) {" in cpp
+        assert "*std::get<B*>(c)" in cpp
+
+    NC_SRC = (_THREE_RECORDS
+              + "def probe(h: A | B | None) -> Int32:\n"
+              + "    if isinstance(h, A):\n"
+              + "        return h.x\n"
+              + "    return 0\n"
+              + "def main() -> None:\n"
+              + "    print(probe(A(1)))\n"
+              + "    print(probe(None))\n"
+              + "main()\n")
+
+    def test_nc_else_fact_no_else_routes(self):
+        # The early-return implicit-else consumes no extraction on either
+        # path (both post-if arms take concrete members only).
+        _thir, w = _lower_ctx_witnessed(self.NC_SRC)
+        assert w.get("if.narrow_nc_else_fact", 0) >= 1
+        _assert_routes_byte_identical(self.NC_SRC)
+
+    def test_nc_else_fact_with_else_stays_ast(self):
+        # BOUNDARY (dualgen-probed): with an else BODY the AST reaches its
+        # extraction arm on the non-member fact -- keep rejecting.
+        src = (_THREE_RECORDS
+               + "def probe(h: A | B | None) -> Int32:\n"
+               + "    if isinstance(h, A):\n"
+               + "        return h.x\n"
+               + "    else:\n"
+               + "        return 0\n"
+               + "def main() -> None:\n"
+               + "    print(probe(A(1)))\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "probe") is None
+        _assert_byte_identical(src)
+
+
+class TestPtrUnionTernary:
+    """The WIDE ptr-union ternary row: per-arm normalization (`((c) ? (p) :
+    (::tpy::to_ptr_variant(h.pet)))`) -- a same-union ptr-variant binding
+    name passes bare, a value-variant field lvalue lifts. Corpus witness:
+    union/ternary_mixed_form. A CALL arm keeps rejecting (its bare
+    ptr-variant render is a later rung); the const-field and member-typed
+    arm shapes are sema-rejected before lowering."""
+
+    _FIX = (_PRELUDE + _PTR_RECORDS)
+
+    def test_name_and_field_arms_route(self):
+        src = (self._FIX
+               + "def bump(p: A | B, h: H, c: bool) -> None:\n"
+               + "    t = p if c else h.u\n"
+               + "    if isinstance(t, A):\n"
+               + "        t.x += 100\n"
+               + "def main() -> None:\n"
+               + "    h = H(B(7))\n"
+               + "    p = A(3)\n"
+               + "    bump(p, h, True)\n"
+               + "    print(p.x)\n"
+               + "main()\n")
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ifexpr.ptr_union", 0) >= 1
+        _assert_routes_byte_identical(src)
+        compiler, modules = _compile(src)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert "((c) ? (p) : (::tpy::to_ptr_variant(h.u)))" in cpp
+
+    def test_reversed_arm_order_routes(self):
+        src = (self._FIX
+               + "def bump(p: A | B, h: H, c: bool) -> None:\n"
+               + "    t = h.u if c else p\n"
+               + "    if isinstance(t, A):\n"
+               + "        t.x += 100\n"
+               + "def main() -> None:\n"
+               + "    h = H(B(7))\n"
+               + "    p = A(3)\n"
+               + "    bump(p, h, False)\n"
+               + "    print(p.x)\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ifexpr.ptr_union", 0) >= 1
+        assert _fn(thir, "bump") is not None
+        _assert_byte_identical(src)
+
+    def test_call_arm_stays_ast(self):
+        # BOUNDARY (dualgen-probed): a ptr-variant-returning CALL arm is
+        # not admitted (bare-call render is its own rung).
+        src = (self._FIX
+               + "def pick(h: H) -> A | B:\n"
+               + "    return h.u\n"
+               + "def bump(p: A | B, h: H, c: bool) -> None:\n"
+               + "    t = p if c else pick(h)\n"
+               + "    if isinstance(t, A):\n"
+               + "        t.x += 100\n"
+               + "def main() -> None:\n"
+               + "    h = H(B(7))\n"
+               + "    p = A(3)\n"
+               + "    bump(p, h, True)\n"
+               + "    print(p.x)\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "bump") is None
+        _assert_byte_identical(src)

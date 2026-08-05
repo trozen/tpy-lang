@@ -870,9 +870,15 @@ class TestOwnOptionalRecordSlotArgs:
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
 
-    def test_narrowed_occurrence_is_not_claimed(self):
-        # The boundary: a narrowed name reads as the extracted value, a
-        # different render -- only the ctor-rvalue row may fire here.
+    def test_narrowed_occurrence_takes_the_same_rebuild(self):
+        # A NARROWED occurrence still takes the null-safe rebuild: codegen's
+        # narrowed_vars is not populated for Optional None-narrowing, so the
+        # AST renders the same `r ? optional<Rec>(std::move(*r)) : nullopt`
+        # as the un-narrowed read -- the row is legitimately narrow-blind
+        # here. (The former face==0 pin only ever held via WHOLE-BODY
+        # fallback -- the `r is not None` test was unrouted before the
+        # Own[P|None] bundle; dualgen re-adjudicated the render at
+        # conversion: zero fallback, byte-identical.)
         src = self._PRE + (
             "def take(r: Own[Rec | None]) -> Int32:\n"
             "    if r is not None:\n"
@@ -882,8 +888,9 @@ class TestOwnOptionalRecordSlotArgs:
             "    print(take(Rec(3)))\n"
             "main()\n"
         )
-        _thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("own.opt_ptr_name_rebuild", 0) == 0
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is not None
+        assert faces.get("own.opt_ptr_name_rebuild", 0) >= 1
         _assert_byte_identical(src)
 
     def test_non_last_use_name_renders_without_the_outer_move(self):

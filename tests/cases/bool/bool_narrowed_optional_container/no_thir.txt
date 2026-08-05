@@ -1,4 +1,0 @@
-Narrowed Optional[container] truthiness routes through THIR, but the
-container param / None-narrowing / empty-container-local constructs in
-these bodies are not THIR-migrated yet, so the whole bodies fall back.
-The case still guards the AST codegen + CPython parity for the fix.

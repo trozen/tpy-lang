@@ -1,4 +1,0 @@
-The pointer-form Optional decl falls back at
-stmt.var_decl:decl.opt_reseat_source (the reseat-source decl family is
-not lowered); the case exists for the frame-slot placement of rvalue
-writes, which exec + cpy verify on the AST path.

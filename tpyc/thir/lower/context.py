@@ -532,7 +532,7 @@ class _NarrowScope:
 # re-adds them at the pop.
 _BRANCH_SCOPED_SETS = (
     "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
-    "dyn_protocol_locals",
+    "dyn_protocol_locals", "opt_storage_call_locals",
     "optional_locals", "branch_hoisted", "iterator_object_locals",
     "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
     "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
@@ -605,7 +605,7 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
                  "pointers", "ptr_variant_locals", "rebind_slot_locals",
-                 "dyn_protocol_locals",
+                 "dyn_protocol_locals", "opt_storage_call_locals",
                  "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
@@ -765,15 +765,13 @@ class _LowerCtx:
         # method access, the `(*p)` value deref, and the bare pass into `T*`
         # slots. The GATE side has no pointer-set analog for the Optional
         # names -- its faces key on the declared type in `ws.declared`.
-        # PARTIAL against `seed_param_locals`: its nullable-static-protocol and
-        # `Own[Optional[T_ref]]` arms (the latter also an `optional_locals`
-        # seed) are NOT mirrored -- both bind a pointer whose declared type
-        # `_optional_ptr_borrow` rejects. Nothing here fences them: they stay
-        # unreachable because every arm such a param can reach (the None test,
-        # the Optional arg shape) rejects a binding it cannot classify, so
-        # widening one of those must seed here in the same change
-        # (test_thir_binding_facts).
+        # Mirrors all three `seed_param_locals` pointer arms: the wide
+        # ptr-repr Optional class, the nullable-static-protocol param, and
+        # the `Own[Opt[T_ref]]` storage param (also an `optional_locals`
+        # seed, like the AST).
         self.pointers: set[str] = set()
+        # Initialized here (full docstring below) -- the param loop seeds it.
+        self.optional_locals: set[str] = set()
         for pname, ptype in self.params:
             # WIDE pointee class: an Optional[wrapper] / `T | None` /
             # Optional[dyn-protocol] param binds the same `T*` shape as the
@@ -788,15 +786,15 @@ class _LowerCtx:
                 self.pointers.add(pname)
             elif is_own_pointer_repr_optional(
                     unwrap_readonly(unwrap_send_sync(ptype))):
-                # The AST's `Own[Opt[T_ref]]` param seed registers BOTH
-                # pointer_locals and optional_locals; the mirror is the
-                # documented partial above (every arm such a param reaches
-                # rejects a binding it cannot classify, so seeding here
-                # without widening those arms is untestable). Acknowledged
-                # so the binding-fact join stays honest until the widening
-                # change seeds it for real.
-                _binding_ack(self, "pointers", pname)
-                _binding_ack(self, "optional_locals", pname)
+                # The AST's `Own[Opt[T_ref]]` param seed: BOTH pointer_locals
+                # (arrow reads via optional<P>::operator->) and
+                # optional_locals (the None test picks has_value over
+                # `!= nullptr`). The binding stays declared Own[Optional[P]]
+                # -- consumers key their rows on that type, not on a
+                # var_types rebind (`_own_storage_opt_param`); only the
+                # F1-record pointee routes reads (_unrouted_binding_read).
+                self.pointers.add(pname)
+                self.optional_locals.add(pname)
         # Names BOUND as `std::variant<A*, B*>` -- codegen's
         # `ctx.ptr_variant_locals`, which is a BINDING set, not a type
         # verdict: a ptr-variant-typed union reaching a name through a
@@ -826,18 +824,25 @@ class _LowerCtx:
         # First-declared @dynamic protocol locals that are reassigned: their
         # reseat statements take the rebind emit (hoisted optional slot).
         self.dyn_protocol_locals: set[str] = set()
-        # OPTIONAL_STORAGE branch-hoisted locals (`std::optional<T> name;`
-        # if-head predecl, the AST's ctx.optional_locals): a subset of
-        # `pointers` for the read side (deref reads, `->` access); assigns
-        # write PLAIN into the optional (`name = <storage rvalue>;`).
-        # Mirrors the branch-decl producer only -- codegen's `Own[Opt[T_ref]]`
-        # param seed has no entry here (see `pointers`). Its SIBLING
-        # set `storage_form_optional_locals` (the storage-optional loop var /
+        # OPT_STORAGE_CALL-declared names (an Own[P|None]-returning call
+        # materialized in a `std::optional<P> __slot_N`): a reseat re-fills
+        # THAT slot and re-lifts (`__slot_N = make(43); z =
+        # optional_to_ptr(__slot_N);` -- the AST's rebind_slots reuse); any
+        # other reseat shape for such a name rejects (the generic THIRAssign
+        # rebind emit would hijack it into the `&*(__slot = ...)` render).
+        self.opt_storage_call_locals: set[str] = set()
+        # OPTIONAL_STORAGE bindings (`std::optional<T>`), the AST's
+        # ctx.optional_locals: branch-hoisted locals (if-head predecl) and
+        # `Own[Opt[T_ref]]` params (`std::optional<P>&&`, seeded above). A
+        # subset of `pointers` for the read side (deref reads, `->` access);
+        # assigns write PLAIN into the optional (`name = <storage rvalue>;`)
+        # and the None test picks has_value over the pointer compare. Its
+        # SIBLING set
+        # `storage_form_optional_locals` (the storage-optional loop var /
         # unpack target -- storage form like these, but NOT pointer-accessed,
         # so it lifts via `optional_to_ptr` at a `T*` slot) has no mirror at
         # all; the for-each Optional element family rejects before one can be
-        # bound.
-        self.optional_locals: set[str] = set()
+        # bound. (Initialized above the param-seed loop.)
         # Storage-optional comp/genexpr UNPACK targets -- the mirror of
         # codegen's `storage_form_optional_locals` (a ptr-repr
         # Optional[F1-record] tuple element bound `auto& p = std::get<i>(t)`:

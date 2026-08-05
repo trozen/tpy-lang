@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn,
-    _assert_byte_identical,
+    _assert_byte_identical, _assert_routes_byte_identical,
+    _compile, _entry,
 )
+from ..codegen_cpp import CodeGenOptions
 
 _P = (
     "from tpy import Int32, copy\n"
@@ -210,3 +212,48 @@ class TestOwnBtupleAppend:
                + "    d[0] = pair\n"
                + "    print(len(d))\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestPlainRecordBtupleLiteral:
+    """The plain-record sibling of the all-Optional literal row: an
+    ALL-RVALUE tuple literal at `list[tuple[Item, Item]].append` takes the
+    same consuming lift (`tuple_to_storage_move` over
+    `tuple_value_to_borrow` -- the AST's double-convert). A last-use
+    movable local element keeps rejecting (its per-element move render is
+    its own rung); a plain borrowed lvalue element is sema-rejected before
+    lowering. Corpus witness: async/coro_for_tuple_unpack_ref."""
+
+    SRC = (_P
+           + "def f() -> None:\n"
+           + "    pairs: list[tuple[P, P]] = []\n"
+           + "    pairs.append((P(1), P(2)))\n"
+           + "    for a, b in pairs:\n"
+           + "        print(a.x + b.x)\n"
+           + "def main() -> None:\n"
+           + "    f()\n"
+           + "main()\n")
+
+    def test_all_rvalue_literal_routes(self):
+        thir, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("arg.own_btuple_literal", 0) >= 1
+        _assert_routes_byte_identical(self.SRC)
+        compiler, modules = _compile(self.SRC)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert ("::tpy::tuple_to_storage_move<std::tuple<P, P>>("
+                "::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>("
+                in cpp)
+
+    def test_lastuse_element_stays_ast(self):
+        # BOUNDARY (dualgen-probed): a last-use movable local is not an
+        # rvalue source -- the gate keeps it out.
+        src = (_P
+               + "def f() -> None:\n"
+               + "    pairs: list[tuple[P, P]] = []\n"
+               + "    x = P(5)\n"
+               + "    pairs.append((x, P(2)))\n"
+               + "    for a, b in pairs:\n"
+               + "        print(a.x + b.x)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)

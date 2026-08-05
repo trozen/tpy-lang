@@ -998,7 +998,67 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
                     f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
         return out
 
-    elem = _emit_expr(e.element, state)
+    def yield_lines(buf: io.StringIO, ind: str, ind_inner: str) -> None:
+        # _gen_genexpr_yield: cond/yield temps flush per-iteration inside
+        # the lambda (the AST's _emit_iter_temps), the yield wrapped in the
+        # &&-joined filter when conditions exist.
+        if e.conditions:
+            cp = state.temps.checkpoint()
+            cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
+            state.temps.flush_since(buf, cp, ind)
+            buf.write(f"{ind}if ({cond_str}) {{\n")
+            cp2 = state.temps.checkpoint()
+            elem_s = _emit_expr(e.element, state)
+            state.temps.flush_since(buf, cp2, ind_inner)
+            buf.write(f"{ind_inner}return std::optional<{e.slot_cpp}>"
+                      f"({elem_s});\n")
+            buf.write(f"{ind}}}\n")
+        else:
+            cp = state.temps.checkpoint()
+            elem_s = _emit_expr(e.element, state)
+            state.temps.flush_since(buf, cp, ind)
+            buf.write(f"{ind}return std::optional<{e.slot_cpp}>({elem_s});\n")
+
+    if e.range_args:
+        # The counter lambda (_gen_genexpr_counter_lambda): range bounds
+        # move into the init-captures, no IIFE at any arity.
+        ind2 = ind1 + INDENT
+        ind3 = ind2 + INDENT
+        cpp_iter = e.counter_cpp
+        args = [_emit_expr(a, state) for a in e.range_args]
+        if len(args) == 1:
+            captures = (f"__i = {cpp_iter}(0), "
+                        f"__stop = static_cast<{cpp_iter}>({args[0]})")
+        elif len(args) == 2:
+            captures = (f"__i = static_cast<{cpp_iter}>({args[0]}), "
+                        f"__stop = static_cast<{cpp_iter}>({args[1]})")
+        else:
+            captures = (f"__i = static_cast<{cpp_iter}>({args[0]}), "
+                        f"__stop = static_cast<{cpp_iter}>({args[1]}), "
+                        f"__step = static_cast<{cpp_iter}>({args[2]})")
+        buf = io.StringIO()
+        buf.write(f"::tpy::make_generator<{e.slot_cpp}>(\n")
+        buf.write(f"{ind1}[{e.inner_captures}{captures}]() mutable -> "
+                  f"std::optional<{e.slot_cpp}> {{\n")
+        if len(args) <= 2:
+            buf.write(f"{ind2}while (__i < __stop) {{\n")
+            buf.write(f"{ind3}{e.binding_cpp}\n")
+        else:
+            buf.write(f"{ind2}::tpy::range_check_step_nonzero(__step);\n")
+            if e.range_overflow_check:
+                buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>"
+                          f"(__i, __stop, __step);\n")
+            buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : "
+                      f"(__i > __stop)) {{\n")
+            buf.write(f"{ind3}{e.binding_cpp}\n")
+            buf.write(f"{ind3}__i += __step;\n")
+        yield_lines(buf, ind3, ind3 + INDENT)
+        buf.write(f"{ind2}}}\n")
+        buf.write(f"{ind2}return std::nullopt;\n")
+        buf.write(f"{ind1}}}\n")
+        buf.write(f"{stmt_ind})")
+        return buf.getvalue()
+
     if e.moved_source:
         lambda_ind = ind1
         ind2i = lambda_ind + INDENT
@@ -1015,7 +1075,7 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
                   f"__end = __src.end(); __started = true; }}\n")
         buf.write(f"{ind2i}while (__beg != __end) {{\n")
         buf.write(binding_lines(ind3i))
-        buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
+        yield_lines(buf, ind3i, ind3i + INDENT)
         buf.write(f"{ind2i}}}\n")
         buf.write(f"{ind2i}return std::nullopt;\n")
         buf.write(f"{lambda_ind}}}\n")
@@ -1034,7 +1094,7 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
               f"__end = __src.end()]() mutable -> std::optional<{e.slot_cpp}> {{\n")
     buf.write(f"{ind2i}while (__beg != __end) {{\n")
     buf.write(binding_lines(ind3i))
-    buf.write(f"{ind3i}return std::optional<{e.slot_cpp}>({elem});\n")
+    yield_lines(buf, ind3i, ind3i + INDENT)
     buf.write(f"{ind2i}}}\n")
     buf.write(f"{ind2i}return std::nullopt;\n")
     buf.write(f"{lambda_ind}}}\n")
@@ -3568,13 +3628,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Own-declared optional-returning call init: the storage
             # optional materializes in a slot, the binding lifts the
             # pointer (`std::optional<T> __slot_N = make_some();`
-            # `T* s = ::tpy::optional_to_ptr(__slot_N);`).
+            # `T* s = ::tpy::optional_to_ptr(__slot_N);`). The slot is
+            # registered for reseat reuse like the AST's rebind_slots
+            # write at the decl site -- the OPT_STORAGE_CALL rebind arm
+            # is its only consumer (lowering rejects other reseat shapes
+            # for such names, so the THIRAssign special-case cannot see
+            # them).
             init_slot = (state.assert_local_slot() or state.next_slot())
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}std::optional<{stmt.cpp_type}> "
                       f"__slot_{init_slot} = {init_cpp};\n")
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"::tpy::optional_to_ptr(__slot_{init_slot});\n")
+            state.rebind_slots[stmt.name] = init_slot
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
             # Address-of an existing lvalue -- the decl itself takes no slot
             # (the decl twin of the PTR_ADDR reseat). A rebind slot is drawn
@@ -3597,6 +3663,37 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         name = escape_cpp_name(stmt.name)
         if stmt.kind is PtrSlotKind.OPT_NONE:
             out.write(f"{indent}{name} = nullptr;\n")
+        elif stmt.kind is PtrSlotKind.FRAME_STORAGE_CALL:
+            # The Own-declared optional call's frame-field fill + re-lift
+            # (`__ptr_slot_fN = make_opt(3);` then
+            # `got = ::tpy::optional_to_ptr(__ptr_slot_fN);`).
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{stmt.val_cpp} = {value_cpp};\n")
+            out.write(f"{indent}{name} = "
+                      f"::tpy::optional_to_ptr({stmt.val_cpp});\n")
+        elif stmt.kind is PtrSlotKind.FRAME_RVALUE:
+            # Resumable frame-field slot reseat: emplace-assign the field
+            # and re-point the pointer in one expression
+            # (`saved = &*(__ptr_slot_fN = Point(9));` -- the AST's
+            # _ptr_from_rvalue_slot over the prescanned frame field).
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{name} = "
+                      f"&*({stmt.val_cpp} = {value_cpp});\n")
+        elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
+            # Reseat of an OPT_STORAGE_CALL-declared name: re-fill the slot
+            # registered at the decl, re-lift the pointer (`__slot_1 =
+            # make(43);` `z = ::tpy::optional_to_ptr(__slot_1);` -- the
+            # AST rebind's own-ptr-optional call-source branch).
+            slot = state.rebind_slots.get(stmt.name)
+            assert slot is not None, (
+                "OPT_STORAGE_CALL reseat without its decl-registered slot")
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}__slot_{slot} = {value_cpp};\n")
+            out.write(f"{indent}{name} = "
+                      f"::tpy::optional_to_ptr(__slot_{slot});\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
             # @dynamic rebind: a FRESH hoisted optional slot per reseat (the
             # AST's _gen_dynamic_protocol_rebind -- a distinct concrete/adapter

@@ -597,3 +597,58 @@ class TestBranchPositionCompDecl:
         thir = _lower(src)
         assert _fn(thir, "f") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestGenexprC4Cells:
+    """The C4 make_generator cells: range counter lambdas, filter
+    conditions, the structural-slot auto temp vs the native inline split.
+    Corpus witnesses: iterators/genexpr_basic + genexpr_builtins,
+    builtins/enumerate_rvalue, inference/literal_binding_resolves."""
+
+    def test_range_counter_lambda_routes_byte_identical(self):
+        src = (_PRELUDE
+               + "def total(n: Int32) -> Int32:\n"
+               + "    return sum(x * x for x in range(n))\n"
+               + "def stepped() -> Int32:\n"
+               + "    return sum(x for x in range(10, 0, -2))\n"
+               + "print(total(5))\nprint(stepped())\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "total") is not None
+        assert _fn(thir, "stepped") is not None
+        assert witnesses.get("genexpr.range", 0) >= 2
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "__i = int32_t(0), __stop = static_cast<int32_t>(n)" in out
+        assert "::tpy::range_check_step_nonzero(__step);" in out
+
+    def test_filter_wraps_the_yield_byte_identical(self):
+        src = (_PRELUDE
+               + "def evens(xs: list[Int32]) -> Int32:\n"
+               + "    return sum(x for x in xs if x % 2 == 0)\n"
+               + "print(evens([1, 2, 3, 4]))\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "evens") is not None
+        assert witnesses.get("genexpr.filter", 0) >= 1
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {" in out
+
+    def test_structural_slot_hoists_auto_temp(self):
+        # A USER fn's Iterable slot hoists `auto __tmp_N = <make_generator>`
+        # (the argtemp.genexpr_proto row) where a native consumer renders
+        # inline -- the AST's temp-vs-inline split.
+        src = (_PRELUDE
+               + "from typing import Iterable\n"
+               + "def total(items: Iterable[Int32]) -> Int32:\n"
+               + "    t: Int32 = 0\n"
+               + "    for x in items:\n        t += x\n"
+               + "    return t\n"
+               + "def main() -> None:\n"
+               + "    print(total(x for x in range(4)))\n"
+               + "main()\n")
+        thir, witnesses = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert witnesses.get("argtemp.genexpr_proto", 0) >= 1
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "auto __tmp_1 = ::tpy::make_generator<int32_t>(" in out

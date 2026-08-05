@@ -35,6 +35,7 @@ from ...type_def_registry import (
     is_bytes_type,
     is_dict,
     is_dict_view,
+    is_fixed_int_type,
     is_list,
     is_set,
     is_span,
@@ -868,18 +869,18 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
     """Lower a generator expression to the make_generator render
-    (`_gen_generator_expression`). Current slice: single loop var, no filter,
-    scalar element/binding, over an LVALUE bare-name container OR a NON-LVALUE
-    container literal. Everything else raises ThirUnsupported so the enclosing
-    body falls back to AST."""
+    (`_gen_generator_expression`). Slice: scalar/Char/str loop-var bindings
+    (or the tuple-unpack head) over an LVALUE bare-name container / a
+    NON-LVALUE container literal / a range() source (delegated to
+    `_lower_genexpr_range`'s counter lambda), with optional &&-joined
+    filter conditions. Everything else raises ThirUnsupported so the
+    enclosing body falls back to AST."""
     analyzer = lc.analyzer
     gen = expr.generator
     loc = getattr(expr, "loc", None)
-    if gen.conditions:
-        raise ThirUnsupported("genexpr.filter")
     it = gen.iterable
     if isinstance(it, TpyCall) and it.func_name == "range":
-        raise ThirUnsupported("genexpr.range")
+        return _lower_genexpr_range(expr, it, lc, declared)
     if isinstance(it, TpyName):
         if it.name not in declared or it.name in lc.narrow.narrowed:
             raise ThirUnsupported("genexpr.iterable_shape")
@@ -942,7 +943,12 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         comp_vars = {n for n in gen.unpack_vars if n is not None}
         _witness("genexpr.unpack")
     else:
-        if not (_eligible_scalar(sema_elem) or _eligible_char(sema_elem)):
+        if not (_eligible_scalar(sema_elem) or _eligible_char(sema_elem)
+                # A str element binds through the same shared
+                # loop_var_binding (`std::string_view w = *__beg++;` -- the
+                # view aliases the source element, valid for the lambda's
+                # scope like the comp loop var).
+                or _resolved_str_value(sema_elem, analyzer) is not None):
             raise ThirUnsupported("genexpr.binding_shape")
         binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
                                        "*__beg++", gen.const_loop_var)
@@ -954,9 +960,16 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     slot_cpp = lc.render_type(elem_type)
     try:
         element = _lower_expr(expr.element_expr, lc, body_declared)
+        # Filter conditions render inside the lambda body against the loop
+        # vars (the comp slice's truthy lowering; per-iteration temps flush
+        # at emit).
+        conditions = tuple(_lower_truthy(c, lc, body_declared, temps_ok=True)
+                           for c in gen.conditions)
     finally:
         for uname in genexpr_opt_vars:
             lc.storage_opt_locals.discard(uname)
+    if gen.conditions:
+        _witness("genexpr.filter")
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
                                        lc.self_receiver)
@@ -967,6 +980,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         return THIRGenExpr(
             result_type=analyzer.get_expr_type(expr),
             element=element,
+            conditions=conditions,
             slot_cpp=slot_cpp,
             binding_cpp=binding_cpp,
             inner_captures=inner_captures,
@@ -982,6 +996,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         result_type=analyzer.get_expr_type(expr),
         iterable=_lower_expr(it, lc, declared),
         element=element,
+        conditions=conditions,
         slot_cpp=slot_cpp,
         binding_cpp=binding_cpp,
         iife_captures=iife_captures,
@@ -989,5 +1004,66 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
         const_loop_var=gen.const_loop_var,
+        loc=loc,
+    )
+
+
+def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
+                         lc: '_LowerCtx',
+                         declared: dict[str, TpyType]) -> THIRGenExpr:
+    """The RANGE-source counter lambda (_gen_genexpr_counter_lambda): the
+    bounds move into init-captures cast to the counter type, the loop var
+    binds `{counter} {var} = __i++;` (2-arg) / `= __i;` + `__i += __step;`
+    (3-arg, with the step-nonzero and fixed-int overflow checks). Bounds
+    lower as gen_expr_deref against the counter type; non-scalar counters
+    reject."""
+    analyzer = lc.analyzer
+    gen = expr.generator
+    loc = getattr(expr, "loc", None)
+    if gen.unpack_vars is not None or len(it.args) not in (1, 2, 3):
+        raise ThirUnsupported("genexpr.range")
+    it_type = analyzer.get_expr_type(it)
+    sema_elem = (get_iterable_element_type(it_type,
+                                           registry=analyzer.registry)
+                 if it_type is not None else None)
+    if sema_elem is None or isinstance(sema_elem, IntLiteralType):
+        sema_elem = analyzer.ctx.default_int_type
+    if not _eligible_scalar(sema_elem):
+        raise ThirUnsupported("genexpr.range")
+    counter_cpp = sema_elem.to_cpp()
+    range_args = tuple(
+        _lower_expr(a, lc, declared, use=_ExprUse(indirect_read=True),
+                    target_type=sema_elem)
+        for a in it.args)
+    body_declared = dict(declared)
+    body_declared[gen.var] = sema_elem
+    comp_vars = {gen.var}
+    elem_type = _comp_result_type(expr.result_elem_type, analyzer)
+    if yield_uses_borrow_slot(elem_type):
+        raise ThirUnsupported("genexpr.borrow_slot")
+    slot_cpp = lc.render_type(elem_type)
+    element = _lower_expr(expr.element_expr, lc, body_declared)
+    conditions = tuple(_lower_truthy(c, lc, body_declared, temps_ok=True)
+                       for c in gen.conditions)
+    if gen.conditions:
+        _witness("genexpr.filter")
+    inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
+                                       None, declared, comp_vars,
+                                       lc.self_receiver)
+    var_cpp = escape_cpp_name(gen.var)
+    binding_cpp = (f"{counter_cpp} {var_cpp} = __i++;" if len(it.args) <= 2
+                   else f"{counter_cpp} {var_cpp} = __i;")
+    _witness("genexpr.range")
+    return THIRGenExpr(
+        result_type=analyzer.get_expr_type(expr),
+        element=element,
+        conditions=conditions,
+        slot_cpp=slot_cpp,
+        binding_cpp=binding_cpp,
+        inner_captures=inner_captures,
+        range_args=range_args,
+        counter_cpp=counter_cpp,
+        range_overflow_check=(len(it.args) == 3
+                              and is_fixed_int_type(sema_elem)),
         loc=loc,
     )
