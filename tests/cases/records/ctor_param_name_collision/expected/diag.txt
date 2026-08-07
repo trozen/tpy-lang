@@ -1,0 +1,1 @@
+main.py:31: warning: Own[A | B] param 'v' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

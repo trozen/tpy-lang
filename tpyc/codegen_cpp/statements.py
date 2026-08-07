@@ -79,8 +79,13 @@ if TYPE_CHECKING:
 
 # The ctx set-fields `StatementGenerator.seed_param_locals` mutates -- the single
 # authoritative list the ctor member-init save/restore (records._extract_field_inits)
-# snapshots. Add here when seed_param_locals starts writing a new set. (var_types,
-# a dict, is snapshotted separately by that caller.)
+# snapshots AND clears before seeding (the MIL window must classify against
+# exactly the ctor's params; stale same-named entries flip name-keyed
+# verdicts). Add here when seed_param_locals starts writing a new set.
+# (var_types, a dict, is snapshotted and cleared separately by that caller.)
+# NB other name-keyed per-body fields (const_ref_params, declared_vars,
+# local_scope_names, narrowed_vars) stay stale through the window; none
+# has a demonstrated MIL-render consumer.
 PARAM_LOCAL_SET_FIELDS = (
     "pointer_locals", "const_indirect_locals", "optional_locals",
     "ptr_variant_locals", "movable_locals", "storage_form_tuple_locals",
@@ -247,10 +252,19 @@ class StatementGenerator:
         that run before `setup_body_scope`/`reset_scope` (the ctor member-init
         extraction) where the full scope snapshot isn't usable yet. Owning the
         save/restore here keeps it from drifting out of sync with what
-        seed_param_locals mutates."""
+        seed_param_locals mutates.
+
+        The sets are CLEARED before seeding, not merely added to: the caller
+        runs outside any body scope, so whatever the previously emitted body
+        left behind is stale -- a same-named binding from it would flip
+        name-keyed verdicts (`is_ptr_variant_source`, pointer derefs, moves)
+        inside the window."""
         saved = {f: getattr(self.ctx, f).copy() for f in PARAM_LOCAL_SET_FIELDS}
         saved_var_types = dict(self.ctx.var_types)
         try:
+            for f in PARAM_LOCAL_SET_FIELDS:
+                setattr(self.ctx, f, set())
+            self.ctx.var_types = {}
             self.seed_param_locals(params, local_ns, deep_const_borrow_params)
             yield
         finally:
