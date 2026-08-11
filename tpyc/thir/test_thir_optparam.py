@@ -14,7 +14,7 @@ from .nodes import (
     THIRUnaryNot, THIRWhile,
 )
 from .testutil import (_compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
-                       _assert_byte_identical)
+                       _assert_byte_identical, _assert_routes_byte_identical)
 
 _PRELUDE = (
     "from tpy import Int32, Own\n"
@@ -1615,4 +1615,66 @@ class TestValueOptOwnedStrFieldWrite:
                + "f()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestValueRecordOptionalBinding:
+    """Value-repr `Optional[ValueType record]` bindings (`tz: Fixed | None`
+    -> `std::optional<Fixed>`): the has_value None test and the narrowed
+    deref reads (`(*tz).off`), via `_value_opt_value_record`."""
+
+    _SRC = (
+        "from tpy import Int64, ValueType\n"
+        "class Fixed(ValueType):\n"
+        "    off: Int64\n"
+        "    def __init__(self, off: Int64) -> None:\n"
+        "        self.off = off\n"
+        "    def doubled(self) -> Int64:\n"
+        "        return self.off * 2\n")
+
+    def test_param_none_test_and_narrowed_read(self):
+        src = (self._SRC
+               + "def use(tz: \"Fixed | None\" = None) -> Int64:\n"
+               + "    if tz is None:\n"
+               + "        return -1\n"
+               + "    return tz.off\n"
+               + "def pick(tz: \"Fixed | None\") -> Int64:\n"
+               + "    return -2 if tz is None else tz.off\n"
+               + "print(use(Fixed(4)), pick(None))\n")
+        _assert_routes_byte_identical(src)
+
+    def test_local_binding_and_is_not_polarity(self):
+        src = (self._SRC
+               + "def use(tz: \"Fixed | None\" = None) -> Int64:\n"
+               + "    if tz is not None:\n"
+               + "        return tz.off\n"
+               + "    return -1\n"
+               + "def local_binding() -> Int64:\n"
+               + "    lz: \"Fixed | None\" = Fixed(9)\n"
+               + "    if lz is None:\n"
+               + "        return -3\n"
+               + "    return lz.off\n"
+               + "print(use(Fixed(4)), local_binding())\n")
+        _assert_routes_byte_identical(src)
+
+    def test_method_through_narrowed_binding(self):
+        src = (self._SRC
+               + "def use(tz: \"Fixed | None\" = None) -> Int64:\n"
+               + "    if tz is not None:\n"
+               + "        return tz.doubled()\n"
+               + "    return -1\n"
+               + "print(use(Fixed(4)))\n")
+        _assert_routes_byte_identical(src)
+
+    def test_tuple_inner_optional_still_defers(self):
+        # BOUNDARY: a value-repr optional with a non-record VALUE inner
+        # (tuple) is outside the value-record row and must keep deferring.
+        src = ("from tpy import Int64\n"
+               "def use(tz: \"tuple[Int64, Int64] | None\" = None) -> Int64:\n"
+               "    if tz is None:\n"
+               "        return -1\n"
+               "    return tz[0]\n"
+               "print(use((3, 4)))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
         _assert_byte_identical(src)

@@ -1,4 +1,0 @@
-The narrowed-field reassign into a str local decl falls back at
-stmt.var_decl:field.result_type (the field-read decl-slot family is not
-lowered yet); the case exists for the frame view-local owned promotion,
-which the exec + cpy phases verify on the AST path.

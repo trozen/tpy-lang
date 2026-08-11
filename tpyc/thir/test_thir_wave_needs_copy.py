@@ -244,9 +244,10 @@ class TestRecordSliceMethod:
         assert _fn(thir, "head_count") is None
         _assert_byte_identical(src)
 
-    def test_stepped_record_slice_stays_ast(self):
-        # Only the non-stepped BasicSlice overload is mirrored; a stepped
-        # slice on the record receiver must keep rejecting.
+    def test_stepped_record_slice_routes(self):
+        # The stepped overload now dispatches on the 3-part
+        # `::tpy::Slice{...}` initializer (the emit picks the spelling
+        # off the stepped flag) -- routed, byte-identical.
         src = (
             "from tpy import Int32\n"
             "from tplib import ArrayList\n"
@@ -256,5 +257,5 @@ class TestRecordSliceMethod:
             "    sp = a[::2]\n"
             "    print(len(sp))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)

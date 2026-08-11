@@ -155,8 +155,10 @@ class TestOptCallPassthroughDeclAndPrint:
 
 
 class TestRecordTernaryCallArmDefers:
-    # BOUNDARY: a record ternary with a CALL arm is a C++ prvalue mixed with
-    # an lvalue -- outside the NAME-arm slice, the body defers whole.
+    # A record ternary with a BORROW-returning call arm now routes: the
+    # `T&` result is an lvalue like the name arm, so the ternary stays an
+    # lvalue -- the record-arm slice admits name and borrow-call arms
+    # (value-returning call arms would make a prvalue and keep rejecting).
     SRC = (
         _PRE +
         "def trusted(b: Box) -> Box:\n"
@@ -172,8 +174,7 @@ class TestRecordTernaryCallArmDefers:
     def test_defers_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert fb.get("body:expr.ifexpr") == 1, fb
+        assert not compiler._thir_fallback, compiler._thir_fallback
 
 
 class TestPtrOptTernaryCallArmRoutes:

@@ -38,12 +38,11 @@ class TestNameFieldWriteFamilies:
 
 
 class TestNameFieldWriteBoundaries:
-    def test_callable_field_stays_ast(self):
-        # A `Callable` field is NOT in the row: `std::function` has no
-        # borrow->storage convert arm, so admitting it would CRASH the
-        # emitter (`unhandled THIRFormConvert: CallableType`) instead of
-        # falling back. Verified during this cell -- do not add it without
-        # the convert arm.
+    def test_callable_field_name_routes(self):
+        # A `Callable` field written from a NAME rides the value plan's
+        # PLAIN render (bare `this->cb = f;` -- std::function copies; no
+        # FormConvert node, so the old unhandled-CallableType crash path
+        # is never reached). Non-NAME sources stay out of the row.
         src = ("from typing import Callable\n"
                "class C:\n"
                "    cb: Callable[[], None]\n"
@@ -52,7 +51,11 @@ class TestNameFieldWriteBoundaries:
                "    def set(self, f: Callable[[], None]) -> None:\n"
                "        self.cb = f\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "set") is None
+        assert _fn(thir, "set") is not None
+        _assert_byte_identical(
+            src + "def hi() -> None:\n    print(1)\n"
+            "def main() -> None:\n"
+            "    c = C(hi)\n    c.set(hi)\n    c.cb()\nmain()\n")
 
     def test_optional_callable_field_stays_ast(self):
         # `Callable | None` is the OPTIONAL family, not the callable one --

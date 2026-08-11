@@ -9,7 +9,7 @@ from .dump import dump_thir
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctx_witnessed, _PRELUDE,
-    _F1_RECORDS,
+    _F1_RECORDS, _assert_byte_identical,
 )
 
 
@@ -847,3 +847,43 @@ class TestCompStorageOptFences:
         thir = _lower(src)
         assert _fn(thir, "main") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestGenexprRecordElements:
+    """F1-record genexpr elements (`for b in (n for n in data):`): the
+    borrow-alias binding (`auto&& n = *__beg++;`) yielding through the
+    reference-preserving `::tpy::val_or_ref<T>` slot -- a body mutation
+    through the loop var reaches the source."""
+
+    _NODE = ("from tpy import Int32\n"
+             "class Node:\n"
+             "    val: Int32\n"
+             "    def __init__(self, val: Int32) -> None:\n"
+             "        self.val = val\n")
+
+    def test_record_genexpr_iterable_routes(self):
+        src = (self._NODE
+               + "def f() -> None:\n"
+               + "    data = [Node(1), Node(2)]\n"
+               + "    for b in (n for n in data):\n"
+               + "        b.val = b.val + 100\n"
+               + "    print(data[0].val, data[1].val)\n"
+               + "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("foreach.genexpr_iterable", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_record_genexpr_filter_and_moved_route(self):
+        src = (self._NODE
+               + "def f() -> None:\n"
+               + "    data = [Node(1), Node(2)]\n"
+               + "    for b in (n for n in data if n.val > 1):\n"
+               + "        b.val = b.val + 10\n"
+               + "    print(data[1].val)\n"
+               + "    for b in (n for n in [Node(7)]):\n"
+               + "        print(b.val)\n"
+               + "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)

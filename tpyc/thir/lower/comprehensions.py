@@ -5,6 +5,7 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
 from ...parse.nodes import (
     TpyArrayLiteral,
+    TpyDictLiteral,
     TpyTupleLiteral,
     TpyCall,
     TpyCoerce,
@@ -105,6 +106,7 @@ class _CompRoute:
     sized_reserve: bool
     unpack_types: 'tuple | None'
     owns_elements: bool = False      # source yields Own[T]: sinks move
+    gen_factory: bool = False        # value-yielding generator-call source
 
 
 def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
@@ -151,6 +153,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     gen = init.generator
     owns = gen.owns_elements
     it = gen.iterable
+    genfac = False
     if _is_range_call(it):
         if owns:
             return None  # defensive: range yields scalars, never Own[T]
@@ -233,9 +236,23 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         if gen.unpack_vars is not None:
             return None
         if not _nonvalue_container_ret(ret):
-            return None
-        it_type = unwrap_readonly(unwrap_send_sync(ret))
-        lvalue = _call_iterable_lvalue(it, analyzer)
+            # A VALUE-yielding generator-factory source (`[v for v in
+            # wrap(3)]`): the owned-move arm's begin/end iteration with a
+            # plain (non-moving) element read -- the owning `auto __obj_N`
+            # capture of the frame rvalue.
+            mfi = it.resolved_function_info
+            if not (mfi is not None and mfi.is_generator):
+                return None
+            it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+            if (it_type is None
+                    or _resolved_str_value(it_type, analyzer) is not None):
+                return None
+            genfac = True
+            lvalue = is_lvalue_iterable(it, analyzer.registry.get_record,
+                                        analyzer.get_expr_type)
+        else:
+            it_type = unwrap_readonly(unwrap_send_sync(ret))
+            lvalue = _call_iterable_lvalue(it, analyzer)
     elif isinstance(it, TpyCall) and owns:
         # An Own[T]-yielding generator source (`widgets(3)`), the owned-move
         # comprehension. The generator is iterated via begin/end (the AST's
@@ -264,7 +281,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     # early-returns on non-native-iterable sources), so elements that would
     # need one -- and unpack heads -- keep rejecting.
     synth_src = False
-    if not owns and not is_native_iterable(it_type, analyzer.registry):
+    if not owns and not genfac \
+            and not is_native_iterable(it_type, analyzer.registry):
         if (gen.unpack_vars is not None
                 or not _comp_synth_begin_end(it_type, analyzer)):
             return None
@@ -333,7 +351,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
                       sized_reserve=sized, unpack_types=None,
-                      owns_elements=owns)
+                      owns_elements=owns, gen_factory=genfac)
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
@@ -384,7 +402,7 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     if slot is None:
         return False
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
-    return is_list(su) or is_array(su)
+    return is_list(su) or is_array(su) or is_dict(su)
 
 def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
                         const_loop_var: bool = True) -> tuple:
@@ -664,6 +682,13 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         if typed_brace and isinstance(value, THIRContainerLiteral):
             value = replace(value, typed_brace_cpp=lc.render_type(
                 unwrap_readonly(unwrap_ref_type(vt))))
+    elif isinstance(e, TpyDictLiteral):
+        # A dict-literal element at a dict element slot (the asdict list
+        # recursion's per-member `{"x": m.x, ...}`): self-describing
+        # ordered_map render, pushed bare -- typed_brace no-ops on it.
+        value = _lower_checked_container_elem(
+            e, vt, lc, body_declared, threaded=True, forced=True,
+            allow_nested=True, field_str_ok=True)
     else:
         raise ThirUnsupported("comp.container_value", detail=True)
     _witness("comp.container_value")
@@ -858,9 +883,14 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         _witness("comp.field_iter")
         iterable = _lower_field_source(gen.iterable, lc, declared)
     else:
+        if route.gen_factory:
+            _witness("comp.genfac_source")
+        # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
+        # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
+        # enclosing statement, exactly where the AST hoists them.
         iterable = _lower_expr(
             gen.iterable, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.ITERABLE))
+            use=_ExprUse(result=_ExprResultUse.ITERABLE, allow_temps=True))
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     if route.unpack_types is not None:
@@ -1009,7 +1039,13 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                 # loop_var_binding (`std::string_view w = *__beg++;` -- the
                 # view aliases the source element, valid for the lambda's
                 # scope like the comp loop var).
-                or _resolved_str_value(sema_elem, analyzer) is not None):
+                or _resolved_str_value(sema_elem, analyzer) is not None
+                # An F1-record element binds the borrow alias
+                # (`auto&& n = *__beg++;`) and yields through the
+                # `val_or_ref<T>` slot -- reference-preserving, so a body
+                # mutation through the loop var reaches the source.
+                or _f1_record(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(sema_elem))), analyzer)):
             raise ThirUnsupported("genexpr.binding_shape")
         binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
                                        "*__beg++", gen.const_loop_var)
@@ -1017,8 +1053,13 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         comp_vars = {gen.var}
     elem_type = _comp_result_type(expr.result_elem_type, analyzer)
     if yield_uses_borrow_slot(elem_type):
-        raise ThirUnsupported("genexpr.borrow_slot")
-    slot_cpp = lc.render_type(elem_type)
+        # A record element yields through the reference-preserving
+        # `::tpy::val_or_ref<T>` slot (`make_generator<val_or_ref<Node>>`,
+        # `std::optional<val_or_ref<Node>>(n)`) -- the AST's borrow-slot
+        # spelling; the loop-var name feeds the wrap bare.
+        slot_cpp = f"::tpy::val_or_ref<{lc.render_type(elem_type)}>"
+    else:
+        slot_cpp = lc.render_type(elem_type)
     try:
         element = _lower_expr(expr.element_expr, lc, body_declared)
         # Filter conditions render inside the lambda body against the loop

@@ -45,11 +45,13 @@ class TestIsinstanceValueRejects:
         "    return b\n"
     )
 
-    def test_rejects_with_isinstance_detail(self):
-        routed, reason, detail = _reject_detail(self.SRC, "f")
-        assert routed is False
-        assert reason == "expr.call"
-        assert detail == "call.special_form.isinstance"
+    def test_union_subject_value_position_routes(self):
+        # Former fence: the union-subject value-position isinstance now
+        # renders the holds_alternative chain (call.isinstance_union_value,
+        # dualgen-verified byte-identical), so the special-form reject no
+        # longer fires for this shape.
+        routed, _reason, _detail = _reject_detail(self.SRC, "f")
+        assert routed is True
 
 
 class TestStrLitOverloadPinRoutes:

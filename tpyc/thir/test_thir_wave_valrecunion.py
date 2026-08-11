@@ -12,7 +12,7 @@ from .emit import emit_thir_body
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
-    _compile, _entry,
+    _assert_routes_byte_identical, _compile, _entry,
 )
 
 
@@ -86,15 +86,17 @@ class TestValueRecordUnionNarrowing:
             "    return 0\n")
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_value_opt_record_none_test_still_defers(self):
+    def test_value_opt_record_none_test_routes(self):
         # `Fx | None` is a value-repr OPTIONAL[record], not a union: the
-        # has_value/narrowed-read binding family is unrouted (parked).
+        # has_value None test and narrowed reads route via
+        # `_value_opt_value_record` (see TestValueRecordOptionalBinding in
+        # test_thir_optparam.py for the family's own pins).
         src = _VALREC + (
             "def f(u: Fx | None) -> Int32:\n"
             "    if u is None:\n"
             "        return -1\n"
             "    return 0\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        _assert_routes_byte_identical(src)
 
 
 class TestValueRecordUnionArgTemps:
@@ -268,9 +270,11 @@ class TestPrintOptvalRecordCall:
         assert faces.get("print.optval", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_ptr_repr_optional_method_result_still_defers(self):
-        # A pointer-repr Optional[record] result (a non-value class) keeps
-        # falling back -- only value-repr optionals take the wrap.
+    def test_ptr_repr_optional_method_result_routes(self):
+        # A pointer-repr Optional[record] result prints through
+        # `::tpy::print_optional(h.pick())` via the print.opt_ptr_call
+        # row (see TestPrintOptPtrCallSliceUnionField in
+        # test_thir_forms.py for the family's own pins).
         src = (
             "from tpy import Int32\n"
             "class Dog:\n"
@@ -284,8 +288,9 @@ class TestPrintOptvalRecordCall:
             "    def pick(self) -> Dog | None:\n"
             "        return self.d\n"
             "def f(h: H) -> None:\n"
-            "    print(h.pick())\n")
-        assert _fn(_lower_ctx(src), "f") is None
+            "    print(h.pick())\n"
+            "f(H())\n")
+        _assert_routes_byte_identical(src)
 
 
 class TestBorrowContainerReturns:
@@ -455,9 +460,10 @@ class TestModuleQualifiedCtorArgTemp:
         assert faces.get("ret.record_methodcall", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_methodcall_borrow_return_still_defers(self):
-        # A method-call source at a BORROW (`T&`) return slot stays AST
-        # (the borrow-return machinery is a different render).
+    def test_methodcall_borrow_return_routes(self):
+        # Former fence: a T&-returning method call at the borrow return
+        # passes through bare (the return ladder's
+        # call_returns_cpp_ref leg; dualgen-verified byte-identical).
         src = (
             "from tpy import Int32\n"
             "class C:\n"
@@ -473,7 +479,8 @@ class TestModuleQualifiedCtorArgTemp:
             "    def via(self) -> C:\n"
             "        return self.get()\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "via") is None
+        assert _fn(thir, "via") is not None
+        _assert_byte_identical(src)
 
     def test_strview_field_return_takes_the_str_arm(self):
         # A str field returned as StrView takes the view-form split, NOT the

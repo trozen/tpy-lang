@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _PRELUDE = (
@@ -860,3 +861,39 @@ class TestValueOptCallableBoundaries:
         # has no cond arm) -- the pin is that admission did not widen past
         # the exact slot; byte-identity holds either way.
         _assert_byte_identical(src)
+
+
+class TestTypedDictMembershipCallReceiver:
+    """A CALL receiver at the TypedDict membership (`"a" in make()`): the
+    fold keeps the operand evaluated (`(static_cast<void>(make()), true)`)
+    and the non-total flavor tests has_value over the call render."""
+
+    def test_total_fold_call_receiver_routes(self):
+        src = (
+            "from typing import TypedDict\n"
+            "from tpy import Own\n"
+            "class TD(TypedDict):\n"
+            "    a: int\n"
+            "def make() -> Own[TD]:\n"
+            "    return TD(a=1)\n"
+            "def f() -> None:\n"
+            "    if \"a\" in make():\n"
+            "        print(\"in\")\n"
+            "    if \"a\" not in make():\n"
+            "        print(\"unreachable\")\n"
+            "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_non_total_call_receiver_routes(self):
+        src = (
+            "from typing import TypedDict\n"
+            "from tpy import Own\n"
+            "class TD(TypedDict, total=False):\n"
+            "    a: int\n"
+            "def make() -> Own[TD]:\n"
+            "    return TD(a=1)\n"
+            "def f() -> None:\n"
+            "    if \"a\" in make():\n"
+            "        print(\"present\")\n"
+            "f()\n")
+        _assert_routes_byte_identical(src)

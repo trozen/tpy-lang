@@ -1786,6 +1786,18 @@ class THIRFrameSlotWrite(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRCoroHandleMove(THIRStmt):
+    """A NAME-source write into a concrete-coro handle slot (`d = c`):
+    the two-line pair `d.emplace(std::move(*c));` + `c.reset();` --
+    optional's move-ASSIGN is deleted when the frame holds reference
+    members, so emplace move-CONSTRUCTS from the source payload and the
+    source then resets. A self-write is a Python no-op and never
+    constructs this node."""
+    target: str
+    source: str
+
+
+@dataclass(frozen=True)
 class THIRResumableReturn(THIRStmt):
     """A `return` nested in a NON-SUSPENDING leaf compound of a routed
     resumable body (the CFG only splits compounds at suspensions, so
@@ -2377,6 +2389,10 @@ class THIRForEach(THIRStmt):
     # `std::string_view(...)` -- C string literals include the NUL terminator,
     # which the view trims (mirrors _gen_for_each_loop's TpyStrLiteral wrap).
     str_literal_iterable: bool = False
+    # A consuming (own_iter) loop: the elem binds `auto&&` into the
+    # move-iterator storage whatever its type -- loop_var_binding's
+    # consuming arm.
+    consuming: bool = False
     # A loop var used after the loop (sema's `hoist_loop_var`): the per-iteration
     # binding assigns the predeclared slot (`s = *__beg_N;`) instead of declaring
     # a fresh local, so the post-loop read sees the last element.
@@ -3049,6 +3065,9 @@ class THIRPrint(THIRStmt):
     sep_value: 'str | None' = " "
     end_value: 'str | None' = "\n"
     sink_expr: 'THIRExpr | None' = None
+    # A literal `flush=True` appends `<< std::flush` after the end token
+    # (gen_print's flush arm); runtime flush values stay AST.
+    flush: bool = False
 
 
 @dataclass(frozen=True)

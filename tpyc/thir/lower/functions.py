@@ -122,10 +122,13 @@ from ..nodes import (
     PtrSlotKind,
     THIROverloadDefault,
     THIRParamCopy,
+    THIRMove,
     THIRRecordCopy,
     THIRTupleLiteral,
 )
+from ...value_category import is_rvalue_source
 from .predicates import (
+    _peel_coerce,
     _IDENTITY_STR_COERCIONS,
     _callable_value,
     _ru_instance_literal_ok,
@@ -162,6 +165,8 @@ from .context import (
 )
 from .checks import (
     _container_literal_shape_ok,
+    _ctor_shape_ok,
+    _storage_form_tuple_return,
     _lambda_routable,
     _record_rvalue_source_shape,
     _stub_template_param,
@@ -1072,6 +1077,14 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
     if isinstance(value, TpyStrLiteral):
         return True
     src = value
+    if (isinstance(src, (TpyCall, TpyMethodCall))
+            and is_rvalue_source(analyzer, src)
+            and _resolved_str_value(analyzer.get_expr_type(src),
+                                    analyzer) is not None):
+        # An owned-str-returning call rvalue (`message(s.speak())`): the
+        # prvalue lands bare in the MIL direct-init; the call
+        # re-validates itself during the source's lowering.
+        return True
     if isinstance(src, TpyCoerce):
         if _coerce_disposition(src) not in ("identity", "materialize"):
             return False
@@ -1134,7 +1147,8 @@ def _mil_container_field(t) -> bool:
     return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
 
 def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
-                           declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
+                           declared: dict[str, TpyType], lc: _LowerCtx, *,
+                           own_params: 'set[str]' = frozenset()) -> bool:
     """One pointer-repr-tuple-literal element the MIL cell admits, per SLOT
     family (`_f1_tuple_element_ok` families):
 
@@ -1168,6 +1182,13 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
         return False
     if _f1_record(bare, analyzer):
         src = _unwrap_copy(elem, analyzer)
+        if (src is elem and isinstance(src, TpyName)
+                and isinstance((_pt := _param_type(src.name)), OwnType)
+                and unwrap_readonly(_pt.wrapped) == bare
+                and _is_move_source(src, lc, own_params)):
+            # An Own[T] param at its LAST USE moves into the element slot
+            # (`{1, std::move(b)}` inside the tuple_to_storage wrap).
+            return True
         return (isinstance(src, TpyName)
                 and _param_type(src.name) == bare)
     if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
@@ -1387,8 +1408,16 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                                 for c in lit.elem_capture))):
                 return False
             return all(
-                _mil_ptr_tuple_elem_ok(e, s, declared, lc)
+                _mil_ptr_tuple_elem_ok(e, s, declared, lc,
+                                       own_params=own_param_names)
                 for e, s in zip(lit.elements, ft_tuple.element_types))
+        # A storage-form-tuple-returning CALL stores bare
+        # (`t(make_pair(5))` -- no tuple_to_storage lift, the AST's
+        # needs_tuple_storage_lift call verdict).
+        if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                and _storage_form_tuple_return(
+                    stmt.value.resolved_function_info)):
+            return True
         # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
         # (the body field-write arm's MIL sibling). No copy()-unwrap: a
         # `copy()` of a pointer-repr tuple takes the AST's storage-form
@@ -1425,6 +1454,13 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # borrow `optional<view>` -> the field's owned `optional<owned>`
         # (`f(v ? std::make_optional(<conv>(*v)) : std::nullopt)`).
         source = _unwrap_copy(stmt.value, analyzer)
+        if (_value_opt_scalar(ftype, analyzer) is not None
+                and isinstance(_peel_coerce(source),
+                               (TpyIntLiteral, TpyFloatLiteral,
+                                TpyBoolLiteral))):
+            # `self.slot = 1` on `int | None` -> `slot(1)`: the converting
+            # ctor absorbs the bare (target-retyped) literal.
+            return True
         if not isinstance(source, TpyName):
             return False
         dt = declared.get(source.name)
@@ -1565,7 +1601,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # rejects them as record-field sources (mirror `_extract_field_inits`'s set).
     own_param_names = {pname for pname, ptype in init_method.params
                        if isinstance(ptype, TpyType)
-                       and unwrap_optional_own(unwrap_readonly(ptype)) is not None}
+                       and unwrap_optional_own(unwrap_readonly(
+                           unwrap_send_sync(ptype))) is not None}
     declared: dict[str, TpyType] = {n: t for n, t in init_method.params}
     declared["self"] = self_type
     own_field_names = {f.name for f in record.fields}
@@ -1763,6 +1800,21 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     if _eligible_scalar(at):
         return True
     if isinstance(a, (TpyStrLiteral, TpyNoneLiteral)):
+        return True
+    if (isinstance(a, TpyCall) and not a.kwargs
+            and a.double_star_unpack is None
+            and _f1_record(at, analyzer)
+            and _ctor_shape_ok(a, analyzer)
+            and all(
+                isinstance(_peel_coerce(sub),
+                           (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                            TpyStrLiteral))
+                or (isinstance(sub, TpyName)
+                    and _eligible_scalar(analyzer.get_expr_type(sub)))
+                for sub in a.args)):
+        # A materialized-default CTOR rvalue (`: Base(a, Fixed(5), 2)`):
+        # the target-less render is the bare prvalue; scalar-literal/name
+        # ctor args cannot register a temp, keeping the no-flush contract.
         return True
     if isinstance(a, TpyIntLiteral):
         return (isinstance(at, IntLiteralType)
@@ -2026,6 +2078,15 @@ def _lower_ctor_mil_init(
                 slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     ft_tuple.element_types[i])))
                 src = _unwrap_copy(e, analyzer)
+                if (src is e and isinstance(e, TpyName)
+                        and _is_move_source(e, lc, own_param_names)):
+                    # The Own-param element's last-use move
+                    # (`{1, std::move(b)}`).
+                    return THIRMove(
+                        result_type=slot,
+                        value=_lower_expr(e, lc, declared,
+                                          allow_unrouted_name=True),
+                        form=Form.STORAGE, loc=getattr(e, "loc", None))
                 if src is not e and isinstance(src, TpyName):
                     st = declared.get(src.name)
                     st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
@@ -2048,6 +2109,17 @@ def _lower_ctor_mil_init(
                 field_cpp=field_cpp,
                 value=THIRFormConvert(result_type=ftype, value=inner,
                                       form=Form.STORAGE, move=False, loc=loc))
+        if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                and _storage_form_tuple_return(
+                    stmt.value.resolved_function_info)):
+            # The storage-form-tuple call stores bare (`t(make_pair(5))`).
+            _witness("mil.tuple_storage_call")
+            return THIRMilInit(
+                field_cpp=field_cpp,
+                value=_lower_expr(
+                    stmt.value, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 tuple_source=True, allow_temps=True)))
         # F3: the borrow pointer-repr tuple param stores via
         # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
         # bare borrow-name source).

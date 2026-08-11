@@ -12,7 +12,7 @@ from .nodes import (
 from .nodes import Form
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
-    _assert_byte_identical,
+    _assert_byte_identical, _assert_routes_byte_identical,
 )
 
 # Class A's body, open for extra methods (`_src(extra_a=...)` appends at the
@@ -1039,15 +1039,17 @@ class TestOwnSlotGateRejects:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is None
 
-    def test_coerced_lvalue_into_own_slot_stays_ast(self):
-        # A coerce-WRAPPED lvalue splits on the AST's rendered-identity
-        # `needs_copy` check (identity coercion temps, real conversion binds
-        # bare) -- not mirrored, both faces stay AST.
+    def test_coerced_lvalue_into_own_slot_routes(self):
+        # A REAL-conversion coerce over a local name at an Own[scalar]
+        # slot routes (the wrap changes the rendered string, so the AST's
+        # needs_copy test flips False and the cast rvalue binds bare --
+        # the own_coerce_cast leg); the identity-coercion face has no
+        # scalar witness and stays unadmitted at the gate.
         src = ("from tpy import Int32, Int64, Own\n"
                "def take64(o: Own[Int64]) -> Int64:\n    return o\n"
                "def use(n: Int32) -> Int64:\n    return take64(n)\n")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert _fn(_lower_ctx(src), "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
 
     def test_f2d_own_ctor_arg_stays_ast(self):
         # The F2d rebind-slot ctor face shares the slot-blindness fix: an
@@ -2853,6 +2855,53 @@ class TestGenericVarargPack:
             "    print(scalars())\n    print(empty())\nmain()\n")
 
 
+class TestVarargPackAugValue:
+    """A vararg pack in a NAME-target scalar aug's value (`total +=
+    take_mut(b)`): the aug is a flushable statement, so the pack's
+    std::array temp flushes before the assign exactly like the AST. The
+    ctor MIL source stays AST: the AST's temps rollback burns a temp
+    number before the demoted body emit, which lowering must not mirror."""
+    _SRC = (
+        "from tpy import Int32, nocopy\n"
+        "@nocopy\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+        "def take_mut(*items: Box) -> Int32:\n"
+        "    n: Int32 = 0\n"
+        "    for b in items:\n        n += b.val\n"
+        "    return n\n")
+
+    def test_aug_name_target_pack_routes(self):
+        src = (self._SRC
+               + "def via(xs: list[Box]) -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    for b in xs:\n"
+               + "        total += take_mut(b)\n"
+               + "    return total\n"
+               + "def main() -> None:\n"
+               + "    items: list[Box] = []\n"
+               + "    items.append(Box(5))\n"
+               + "    print(via(items))\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "via") is not None
+        assert w.get("vararg.pack_ref", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::array<const Box*, 1> __tmp_1{&b};" in cpp
+
+    def test_ctor_mil_vararg_source_stays_ast(self):
+        src = (self._SRC
+               + "class Seg:\n"
+               + "    length: Int32\n"
+               + "    def __init__(self, a: Box, b: Box) -> None:\n"
+               + "        self.length = take_mut(a, b)\n"
+               + "def main() -> None:\n"
+               + "    print(Seg(Box(1), Box(2)).length)\n"
+               + "main()\n")
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
 class TestCopyOwnArgFreeCall:
     """`copy(name)` into a same-nominal Own slot at a FREE call
     (`consume(Box(b))` -- the copy-construct rvalue, no temp, no move).
@@ -2898,3 +2947,338 @@ class TestCopyOwnArgFreeCall:
                + "main()\n")
         assert _fn(_lower_ctx(src), "pick") is None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+
+class TestNativeArgWidenings:
+    """Native-arg rows: enum members at protocol slots
+    (hash(Color.Red) -> __hash__(Color::Red)), container-call rvalues at
+    Sized slots (len(empty_set())), and member generator factories at
+    Iterable slots (sum(lim.gen(..)) -- the ITERABLE result wire)."""
+
+    def test_enum_member_at_protocol_slot_routes(self):
+        src = ("from enum import Enum\n"
+               "class Color(Enum):\n"
+               "    Red = 1\n"
+               "    Blue = 2\n"
+               "def f() -> None:\n"
+               "    print(hash(Color.Red) == hash(Color.Blue))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_container_call_at_sized_slot_routes(self):
+        src = ("from tpy import Int32, Own\n"
+               "def empty_set() -> Own[set[Int32]]:\n"
+               "    return set()\n"
+               "def f() -> None:\n"
+               "    print(len(empty_set()))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_bytearray_name_at_iterable_slot_routes(self):
+        # `ba.extend(other)` -- a bytearray NAME binds the native
+        # Iterable[UInt8] template bare, like any vector.
+        src = ("def f() -> None:\n"
+               "    ba = bytearray()\n"
+               "    other = bytearray([50, 60])\n"
+               "    ba.extend(other)\n"
+               "    print(len(ba))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_call_rvalue_at_view_method_iterable_routes(self):
+        # `",".join(sorted(xs))` -- the container-returning call rvalue
+        # binds the str stub's structural Iterable slot bare inline (the
+        # view family's twin of the container family's call-rvalue row).
+        src = ("def f() -> None:\n"
+               "    xs: list[str] = [\"b\", \"a\"]\n"
+               "    print(\",\".join(sorted(xs)))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_member_generator_factory_at_iterable_routes(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n"
+               "class Lim:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def upto(self, n: Int32) -> Iterator[Int32]:\n"
+               "        i = 0\n"
+               "        while i < n:\n"
+               "            yield i\n"
+               "            i += 1\n"
+               "def f() -> None:\n"
+               "    lim = Lim()\n"
+               "    print(sum(lim.upto(4)))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestValueOptRecordMethodArgs:
+    """Value-opt ValueType-record method slots (call.value_opt_record_arg):
+    a member ctor rvalue binds the `std::optional<V>` param INLINE
+    (`h.method(c, Vec(7))`), and a member-typed NAME copies bare through
+    the converting ctor (`waw.utcoffset(summer)`)."""
+
+    def test_ctor_rvalue_and_name_route(self):
+        src = ("from tpy import Int32, ValueType\n"
+               "class Vec(ValueType):\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "class H:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def m(self, v: Vec | None = None) -> Int32:\n"
+               "        if v is None:\n"
+               "            return -1\n"
+               "        return v.n\n"
+               "def f() -> None:\n"
+               "    h = H()\n"
+               "    print(h.m(Vec(7)))\n"
+               "    w = Vec(9)\n"
+               "    print(h.m(w))\n"
+               "    print(h.m())\n"
+               "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.value_opt_record_arg", 0) >= 2
+        _assert_byte_identical(src)
+
+
+_GENFAC_PRELUDE = (
+    "from typing import Iterator\n"
+    "from tpy import Int32, readonly\n"
+    "class Rec:\n"
+    "    v: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.v = v\n"
+    "class Lim:\n"
+    "    def first(self, items: list[Int32], cap: Int32) -> Iterator[Int32]:\n"
+    "        n = 0\n"
+    "        for x in items:\n"
+    "            if n >= cap:\n"
+    "                break\n"
+    "            yield x\n"
+    "            n += 1\n"
+    "    def rec_val(self, r: readonly[Rec]) -> Iterator[Int32]:\n"
+    "        yield r.v\n"
+    "    def dvals(self, d: readonly[dict[str, Int32]]) -> Iterator[Int32]:\n"
+    "        yield len(d)\n"
+)
+
+
+class TestGenFactoryMethodArgTemps:
+    """Temporary args at a generator-factory METHOD's ref / readonly-ref
+    slots (argtemp.gen_factory): the frame borrows the param past the
+    statement, so container literals and record ctor rvalues materialize as
+    named scope-locals (`Rec __tmp_N = Rec(41);` -- a mutable T& cannot
+    bind an rvalue; a readonly const T& would dangle once the frame
+    resumes). Sync methods keep their inline/reject behavior and
+    unmirrored temporary shapes fall back rather than render inline."""
+
+    def test_factory_temporaries_route_hoisted(self):
+        # list literal at a plain ref slot, ctor rvalue + dict literal at
+        # readonly slots -- all through the nested `sum(...)` iterable
+        # position (allow_temps rides the statement flush in).
+        src = (_GENFAC_PRELUDE
+               + "def f() -> None:\n"
+               + "    lim = Lim()\n"
+               + "    print(sum(lim.first([5, 6, 7], 2)))\n"
+               + "    print(sum(lim.rec_val(Rec(41))))\n"
+               + "    print(sum(lim.dvals({'a': 1, 'b': 2})))\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.gen_factory", 0) >= 3
+
+    def test_sync_readonly_ctor_rvalue_still_rejects(self):
+        # The sync sibling of the readonly-slot ctor rvalue binds the const
+        # ref inline on the AST path -- a shape the method ladder does not
+        # mirror (the frame-capturing row must not admit it).
+        src = ("from tpy import Int32, readonly\n"
+               "class Rec:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32):\n        self.v = v\n"
+               "class Use:\n"
+               "    def combine(self, other: readonly[Rec]) -> Int32:\n"
+               "        return other.v + 1\n"
+               "def f() -> None:\n"
+               "    u = Use()\n"
+               "    print(u.combine(Rec(41)))\n"
+               "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_dyn_protocol_method_slot_hoists_adapter(self):
+        # A structural conformer at a USER-record method's @dynamic
+        # protocol slot: the ctor rvalue hoists the owning
+        # `Adapter<P, C> __tmp_N{C(...)};`, a bound NAME the zero-copy
+        # RefAdapter -- the free-call protocol pre-arms wired into the
+        # method loop (gate row _protocol_slot_arg + protocol_slots).
+        src = ("from typing import Protocol\n"
+               "from tpy import Int32, dynamic\n"
+               "@dynamic\n"
+               "class Shape(Protocol):\n"
+               "    def area(self) -> Int32: ...\n"
+               "class Square:\n"
+               "    side: Int32\n"
+               "    def __init__(self, side: Int32):\n"
+               "        self.side = side\n"
+               "    def area(self) -> Int32:\n"
+               "        return self.side * self.side\n"
+               "class Canvas:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def draw(self, s: Shape) -> Int32:\n"
+               "        return s.area()\n"
+               "def f() -> None:\n"
+               "    c = Canvas()\n"
+               "    print(c.draw(Square(4)))\n"
+               "    sq = Square(5)\n"
+               "    print(c.draw(sq))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.protocol", 0) >= 2
+
+    def test_unmirrored_temporary_shape_falls_back(self):
+        # A binop rvalue (`a + b`) at the factory's ref slot is a temporary
+        # the AST would hoist; the mirror has no row for it, so the body
+        # must FALL BACK -- never render the operand inline.
+        src = (_GENFAC_PRELUDE
+               + "def f() -> None:\n"
+               + "    lim = Lim()\n"
+               + "    a: list[Int32] = [1, 2]\n"
+               + "    b: list[Int32] = [3]\n"
+               + "    print(sum(lim.first(a + b, 2)))\n"
+               + "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestStrViewConstOwnedSinks:
+    """A declared-StrView module constant (`Final[str]`) arrives at owned-str
+    sinks under the sema `strview_to_str` coerce -- the coerce IS the
+    `std::string(x)` copy (the _view_source_to_owned chokepoint): the
+    Own[str] container-element arg row and the user-record setitem value
+    row peel it and wrap the bare view read."""
+
+    _CONST = ("from typing import Final\n"
+              "from tpy import Int32\n"
+              "CERT: Final[str] = \"/tmp/cert.pem\"\n")
+
+    def test_container_insert_of_const_routes(self):
+        src = (self._CONST
+               + "def f() -> None:\n"
+               + "    xs: list[str] = []\n"
+               + "    xs.insert(0, CERT)\n"
+               + "    print(len(xs))\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.own_str_slot", 0) >= 1
+
+    def test_user_record_setitem_of_const_routes(self):
+        src = (self._CONST
+               + "class Env:\n"
+               + "    data: dict[str, str]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.data = {}\n"
+               + "    def __getitem__(self, key: str) -> str:\n"
+               + "        return self.data[key]\n"
+               + "    def __setitem__(self, key: str, value: str) -> None:\n"
+               + "        self.data[key] = value\n"
+               + "def f() -> None:\n"
+               + "    e = Env()\n"
+               + "    e[\"SSL_CERT_FILE\"] = CERT\n"
+               + "    print(e[\"SSL_CERT_FILE\"])\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.user_record", 0) >= 1
+
+    def test_coerced_field_source_stays_ast(self):
+        # The coerce leg admits NAME inners only: a strview_to_str coerce
+        # over a FIELD read keeps the AST's copy/temp machinery.
+        src = ("from tpy import Int32, StrView\n"
+               "class Cfg:\n"
+               "    path: StrView\n"
+               "    def __init__(self, p: StrView) -> None:\n"
+               "        self.path = p\n"
+               "def f() -> None:\n"
+               "    c = Cfg(\"/tmp/x\")\n"
+               "    xs: list[str] = []\n"
+               "    xs.insert(0, c.path)\n"
+               "    print(len(xs))\n"
+               "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestValueOptRecordMethodArgBoundaries:
+    """Boundary pins for the value-opt record method-arg rows: sources
+    outside the ctor-rvalue / member-NAME slice keep falling back."""
+
+    def test_field_source_falls_back(self):
+        # A FIELD read of the member type at the Optional[Vec] slot is
+        # neither the ctor rvalue nor the bare NAME the rows admit.
+        src = ("from tpy import Int32, ValueType\n"
+               "class Vec(ValueType):\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "class W:\n"
+               "    v: Vec\n"
+               "    def __init__(self) -> None:\n"
+               "        self.v = Vec(3)\n"
+               "class H:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def m(self, v: Vec | None = None) -> Int32:\n"
+               "        if v is None:\n"
+               "            return -1\n"
+               "        return v.n\n"
+               "def f() -> None:\n"
+               "    h = H()\n"
+               "    w = W()\n"
+               "    print(h.m(w.v))\n"
+               "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestStrViewSetitemBoundaries:
+    """The user-record setitem strview_to_str value row is NAME-only: a
+    FIELD source keeps the AST's machinery (the arg-gate flavor has its own
+    field boundary in TestStrViewConstOwnedSinks)."""
+
+    def test_field_source_stays_ast(self):
+        src = ("from tpy import Int32, StrView\n"
+               "class Cfg:\n"
+               "    path: StrView\n"
+               "    def __init__(self, p: StrView) -> None:\n"
+               "        self.path = p\n"
+               "class Env:\n"
+               "    data: dict[str, str]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.data = {}\n"
+               "    def __getitem__(self, key: str) -> str:\n"
+               "        return self.data[key]\n"
+               "    def __setitem__(self, key: str, value: str) -> None:\n"
+               "        self.data[key] = value\n"
+               "def f() -> None:\n"
+               "    c = Cfg(\"/tmp/x\")\n"
+               "    e = Env()\n"
+               "    e[\"P\"] = c.path\n"
+               "    print(e[\"P\"])\n"
+               "f()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)

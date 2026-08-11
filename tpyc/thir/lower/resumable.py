@@ -43,8 +43,10 @@ from ..faces import witness as _witness
 from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import (
     THIRAssign,
+    THIRCoroHandleMove,
     THIRExpr,
     THIRFrameSlotWrite,
+    THIRNoOpStmt,
     THIRIfExpr,
     THIRName,
     THIRResumableBody,
@@ -66,6 +68,7 @@ from ...parse.nodes import (
     TpyIfExpr,
     TpyMethodCall,
     TpyName,
+    TpyNoneLiteral,
     TpyReturn,
     TpyStrLiteral,
     TpyStmt,
@@ -138,6 +141,7 @@ from .predicates import (
     _res_container_return,
     _resolved_bytes_value,
     _resolved_str_value,
+    _slot_free_ptr_reseat_ok,
     _str_field_value_read,
     _wrap_view_owned_sink,
     _unwrap_own,
@@ -1446,6 +1450,23 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # mirror yet. coro_factory lifts only the async-callee reject;
             # arg slots and callee kind gate like any call.
             if stmt.name in coro_handle_slots:
+                if (isinstance(init, TpyName)
+                        and init.name in coro_handle_slots
+                        and init.name != stmt.name):
+                    # A NAME source move-constructs from the source's
+                    # payload and resets it (`d.emplace(std::move(*c));
+                    # c.reset();` -- optional's move-assign is deleted
+                    # when the frame holds reference members). A
+                    # self-write is a Python no-op (the AST emits "").
+                    _witness("res.coro_handle_move")
+                    return THIRCoroHandleMove(
+                        target=stmt.name, source=init.name, loc=stmt.loc,
+                        no_source_comment=getattr(stmt, "no_source_comment",
+                                                  False))
+                if (isinstance(init, TpyName)
+                        and init.name == stmt.name):
+                    _witness("res.coro_handle_move")
+                    return THIRNoOpStmt(loc=stmt.loc)
                 if not isinstance(init, (TpyCall, TpyMethodCall)):
                     raise ThirUnsupported("res.coro_handle_source")
                 # The decl is a statement position: a generic factory's
@@ -1485,7 +1506,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if stmt.name in alias_ptr_locals:
                 return _lower_alias_bind(stmt, lc, declared)
             if stmt.name in lc.pointers:
-                if stmt.name in lc.rebind_slot_locals:
+                if (stmt.name in lc.rebind_slot_locals
+                        and not _slot_free_ptr_reseat_ok(stmt.init, lc)):
+                    # Only RVALUE reseats touch the sync-only `__slot_N`.
                     raise ThirUnsupported("res.leaf_field_write")
                 return _lower_stmt(stmt, lc, declared)
             # Plain frame-field write -- the shared position-blind member
@@ -1873,10 +1896,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # never reaches here (gated as res.await_prebuilt).
                 begin_stmt()
                 try:
+                    # The emplace is a statement position: arg temps (the
+                    # vararg pack's std::array) flush before the suspend
+                    # line, exactly where the AST flushes them.
                     suspend_exprs[id(operand)] = _strip_slot_leaf_deref(
                         _lower_expr(
                             operand, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.SUSPEND)),
+                            use=_ExprUse(result=_ExprResultUse.SUSPEND,
+                                         allow_temps=True)),
                         lc)
                 except ThirUnsupported:
                     raise ThirUnsupported("res.await_operand_shape") from None

@@ -9,7 +9,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
-    _assert_byte_identical,
+    _assert_byte_identical, _top_level,
 )
 
 # --- Bare numeric-literal call args + negated int literals (increment 45) ---
@@ -668,3 +668,175 @@ class TestBitwiseBinops:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "inter") is None
+
+
+_MACRO_MOD = '''# tpy: macro_module
+"""Post-sema function macros for the resolver-less scalar-binop pins."""
+from tpyc.macro_api import (
+    function_macro, FunctionMacroContext, ast, TpyCall, TpyName,
+)
+
+
+def _calls(body, fname):
+    out = []
+    for stmt in body:
+        for expr in stmt.exprs():
+            if (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
+                    and expr.func.name == fname):
+                out.append(expr)
+    return out
+
+
+@function_macro
+def to_name_add(ctx: FunctionMacroContext) -> None:
+    if _calls(ctx.body, "sentinel"):
+        ctx.defer_until_sema_complete(_resolve_names)
+
+
+def _resolve_names(ctx) -> None:
+    for call in _calls(ctx.body, "sentinel"):
+        t = ctx.type_of(call.args[0])
+        summed = ast.binop(call.args[0], "+", call.args[1])
+        ctx.set_expr_type(summed, t)
+        ctx.replace_expr(call, summed)
+
+
+@function_macro
+def to_literal_add(ctx: FunctionMacroContext) -> None:
+    if _calls(ctx.body, "sentinel"):
+        ctx.defer_until_sema_complete(_resolve_literal)
+
+
+def _resolve_literal(ctx) -> None:
+    for call in _calls(ctx.body, "sentinel"):
+        t = ctx.type_of(call.args[0])
+        summed = ast.binop(call.args[0], "+", ast.int_lit(1))
+        ctx.set_expr_type(summed, t)
+        ctx.replace_expr(call, summed)
+'''
+
+_MACRO_SRC = (
+    "from rawbinmod import {deco}\n"
+    "from tpy import Int32\n"
+    "def sentinel(a: Int32, b: Int32) -> Int32:\n"
+    "    return 0\n"
+    "@{deco}\n"
+    "def combine(a: Int32, b: Int32) -> Int32:\n"
+    "    return sentinel(a, b)\n"
+    "def main() -> None:\n"
+    "    print(combine(3, 4))\n"
+    "main()\n")
+
+
+class TestScalarRawBinop:
+    """A resolver-less scalar binop (a post-sema function macro synthesizes
+    `a + b` AFTER sema's binop resolution, so `resolved_binop` is None):
+    the AST's record-dunder fallback renders the raw C++ operator
+    (`(a + b)`) -- mirrored by the `binop.scalar_raw` leg, bare NAME
+    operands only."""
+
+    def _write_macro(self, tmp_path):
+        (tmp_path / "rawbinmod.py").write_text(_MACRO_MOD)
+
+    def _cpp(self, src, tmp_path, thir):
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=thir))
+        return cpp
+
+    def test_macro_synthesized_name_binop_routes(self, tmp_path):
+        self._write_macro(tmp_path)
+        src = _MACRO_SRC.format(deco="to_name_add")
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        from ..compiler import activate_compiler
+        from .lower import lower_module
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "combine") is not None
+        cpp = self._cpp(src, tmp_path, thir=True)
+        assert "return (a + b);" in cpp
+        assert cpp == self._cpp(src, tmp_path, thir=False)
+
+    def test_literal_operand_still_defers(self, tmp_path):
+        # BOUNDARY: a macro-synthesized `a + 1` has a literal operand --
+        # outside the bare-NAME slice, the body keeps falling back.
+        self._write_macro(tmp_path)
+        src = _MACRO_SRC.format(deco="to_literal_add")
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        from ..compiler import activate_compiler
+        from .lower import lower_module
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "combine") is None
+        assert (self._cpp(src, tmp_path, thir=True)
+                == self._cpp(src, tmp_path, thir=False))
+
+
+class TestMarkerSpecialFolds:
+    """Marker-site cells: the module-qualified twins of the
+    special-builtin arms (the AST intercepts both spellings before the
+    module dispatch), plus the imported-name local-shadow callee."""
+
+    def test_module_float_fold_routes(self):
+        # The corpus shape: `float("nan")` resolves through the
+        # builtins-module ctor marker inside a math call -- the method-call
+        # twin of the free fold arm.
+        src = ("import math\n"
+               "def f() -> None:\n"
+               "    print(math.isnan(float(\"nan\")))\n"
+               "    print(math.isinf(float(\"-inf\")))\n"
+               "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.float_str_fold", 0) >= 2
+        _assert_byte_identical(src)
+
+    def test_module_copy_str_routes(self):
+        # `u = t.copy(s)` at top level -> `u = std::string(s);`: the
+        # module-qualified copy spelling over the new str-NAME arm
+        # (call.copy_str). Top-level only: an in-FUNCTION local source is
+        # still PendingStr at the copy render and crashes the AST path
+        # (BUGS.md) -- THIR's NominalType guard falls it back gracefully.
+        src = ("import tpy as t\n"
+               "s: str = \"hello\"\n"
+               "u = t.copy(s)\n"
+               "print(u)\n")
+        top, faces, _fb = _top_level(src)
+        assert top is not None
+        assert faces.get("call.copy_str", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_copy_str_field_source_stays_ast(self):
+        # The str copy arm is NAME-only: a FIELD source keeps the AST's
+        # copy machinery (boundary).
+        src = ("import tpy as t\n"
+               "class H:\n"
+               "    s: str\n"
+               "    def __init__(self) -> None:\n"
+               "        self.s = \"x\"\n"
+               "def f() -> None:\n"
+               "    h = H()\n"
+               "    u = t.copy(h.s)\n"
+               "    print(u)\n"
+               "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_imported_name_local_shadow_routes(self):
+        # `from time import time` + a LOCAL `def time()`: the call resolves
+        # to the local def and emits the bare unqualified name (the AST's
+        # conditional-qualification arm leaves shadows alone).
+        src = ("from time import time\n"
+               "def time() -> int:\n"
+               "    return 42\n"
+               "def f() -> None:\n"
+               "    print(time())\n"
+               "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)

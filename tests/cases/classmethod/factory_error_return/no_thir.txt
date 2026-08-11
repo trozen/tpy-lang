@@ -1,4 +1,0 @@
-Binding an @error_return call's result (`p = Point.parse(3)` inside a try) is
-not routed by THIR yet (stmt.var_decl:error_return.bind_target) -- pre-existing
-and decorator-agnostic: the same shape with @staticmethod falls back with the
-identical reason. The fallback is in main(), not in the classmethod.

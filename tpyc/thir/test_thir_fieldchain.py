@@ -8,7 +8,8 @@ the self / param / narrowed-Optional bottom receivers."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (_compile, _entry, _fn, _lower_ctx,
+                       _lower_ctx_witnessed, _assert_routes_byte_identical)
 
 # Three-deep value F1-record chain. `f` returns a param chain, `via_self` a
 # `this->` chain, `local` binds the chain then reads it, `narrowed` reaches the
@@ -223,3 +224,97 @@ class TestFieldOverTemplateCallRead:
             "print(probe(P(1), P(2)))\n")
         thir, _w = _lower_ctx_witnessed(src)
         assert _fn(thir, "probe") is None
+
+
+class TestPtrChainNoneSubject:
+    """A raw `Ptr[T]` field at the END of a field chain as an `is [not]
+    None` subject (`self.inner.node is not None` -> `this->inner.node !=
+    nullptr`) and its checked read (`deref_check(this->inner.node).value`),
+    via `_ptr_value_none_field` / `_ptr_value_field_recv_ok`'s
+    `_chained_field_read_ok` legs."""
+
+    _SRC = (
+        "from tpy import Int32, Ptr\n"
+        "class Node:\n"
+        "    value: Int32\n"
+        "    def __init__(self, value: Int32) -> None:\n"
+        "        self.value = value\n"
+        "class Container:\n"
+        "    node: Ptr[Node]\n"
+        "    def __init__(self, node: Ptr[Node]) -> None:\n"
+        "        self.node = node\n"
+        "    def mutate(self) -> None:\n"
+        "        pass\n")
+
+    def test_depth_two_chain_subject_and_read(self):
+        # The corpus shape: narrowing invalidated by the mutate() call, so
+        # the read keeps its deref_check.
+        src = (self._SRC
+               + "class Wrapper:\n"
+               + "    inner: Container\n"
+               + "    def __init__(self, inner: Container) -> None:\n"
+               + "        self.inner = inner\n"
+               + "    def read(self) -> Int32:\n"
+               + "        if self.inner.node is not None:\n"
+               + "            self.inner.mutate()\n"
+               + "            return self.inner.node.value\n"
+               + "        return -1\n"
+               + "def go() -> None:\n"
+               + "    n = Node(7)\n"
+               + "    p: Ptr[Node] = n\n"
+               + "    print(Wrapper(Container(p)).read())\n"
+               + "go()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_depth_three_chain_subject(self):
+        src = (self._SRC
+               + "class Wrapper:\n"
+               + "    inner: Container\n"
+               + "    def __init__(self, inner: Container) -> None:\n"
+               + "        self.inner = inner\n"
+               + "class Outer:\n"
+               + "    w: Wrapper\n"
+               + "    def __init__(self, w: Wrapper) -> None:\n"
+               + "        self.w = w\n"
+               + "    def read(self) -> Int32:\n"
+               + "        if self.w.inner.node is not None:\n"
+               + "            return self.w.inner.node.value\n"
+               + "        return -1\n"
+               + "def go() -> None:\n"
+               + "    n = Node(7)\n"
+               + "    p: Ptr[Node] = n\n"
+               + "    print(Outer(Wrapper(Container(p))).read())\n"
+               + "go()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_valuetype_inner_chain_routes(self):
+        # A chain whose INNER hop is a ValueType record admits through the
+        # pre-existing value-field arms, not `_chained_field_read_ok`
+        # (F1-keyed) -- a regression guard that the widening did not
+        # disturb that route. (This class deliberately has no reject
+        # boundary pin: the probed adjacent shapes all route correctly
+        # via other arms, so there is no adjacent must-reject shape.)
+        src = (
+            "from tpy import Int32, Ptr, ValueType\n"
+            "class Node:\n"
+            "    value: Int32\n"
+            "    def __init__(self, value: Int32) -> None:\n"
+            "        self.value = value\n"
+            "class VInner(ValueType):\n"
+            "    node: Ptr[Node]\n"
+            "    def __init__(self, node: Ptr[Node]) -> None:\n"
+            "        self.node = node\n"
+            "class Holder:\n"
+            "    vinner: VInner\n"
+            "    def __init__(self, vinner: VInner) -> None:\n"
+            "        self.vinner = vinner\n"
+            "    def read(self) -> Int32:\n"
+            "        if self.vinner.node is not None:\n"
+            "            return self.vinner.node.value\n"
+            "        return -1\n"
+            "def go() -> None:\n"
+            "    n = Node(3)\n"
+            "    p: Ptr[Node] = n\n"
+            "    print(Holder(VInner(p)).read())\n"
+            "go()\n")
+        _assert_routes_byte_identical(src)

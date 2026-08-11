@@ -2185,3 +2185,187 @@ class TestPtrUnionTernary:
         thir = _lower_ctx(src)
         assert _fn(thir, "bump") is None
         _assert_byte_identical(src)
+
+
+class TestIsinstanceUnionValuePosition:
+    """A union-subject isinstance at a VALUE position (`print(isinstance(
+    p, A))`): the same holds_alternative chain the narrowing condition
+    renders, no extraction alias (call.isinstance_union_value). Polymorphic
+    and narrowed subjects keep rejecting."""
+
+    def test_value_position_isinstance_routes(self):
+        src = (_THREE_RECORDS
+               + "def f(v: A | B) -> None:\n"
+               + "    print(isinstance(v, A))\n"
+               + "    print(isinstance(v, (A, B)))\n"
+               + "def main() -> None:\n"
+               + "    f(A(1))\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("call.isinstance_union_value", 0) >= 2
+
+    def test_assert_narrowed_subject_routes_bare(self):
+        # After an assert-narrow, a value-position isinstance still spells
+        # the bare ORIGINAL variant name on both paths (the AST skips the
+        # extraction alias deliberately; the arm mirrors it) -- routes
+        # byte-identically, dualgen-verified.
+        src = (_THREE_RECORDS
+               + "def f(v: A | B) -> Int32:\n"
+               + "    assert isinstance(v, A)\n"
+               + "    print(isinstance(v, A))\n"
+               + "    return v.x\n"
+               + "def main() -> None:\n"
+               + "    f(A(1))\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+
+    _LOCAL_AB = (
+        "from tpy import Int32\n"
+        "class LA:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n        self.x = x\n"
+        "class LB:\n"
+        "    y: Int32\n"
+        "    def __init__(self, y: Int32):\n        self.y = y\n"
+    )
+
+    def test_generator_body_subject_falls_back(self):
+        # The value-position arm excludes generator/async bodies (the
+        # frame-slot deref spelling is unmirrored) -- the body must FALL
+        # BACK, never render the bare name over a frame slot. Local
+        # prelude: the shared _PTR_RECORDS H ctor trips the parked
+        # attempt-contamination bug (TODO.md) under a failed resumable
+        # lowering, which is not this pin's claim.
+        src = (self._LOCAL_AB
+               + "from typing import Iterator\n"
+               + "def g(v: LA | LB) -> Iterator[bool]:\n"
+               + "    yield isinstance(v, LA)\n"
+               + "def main() -> None:\n"
+               + "    for b in g(LA(1)):\n"
+               + "        print(b)\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "g") is None
+        _assert_byte_identical(src)
+
+    def test_branch_narrowed_subject_routes_bare(self):
+        # Inside an isinstance-narrowed IF branch a value-position
+        # isinstance still spells the bare ORIGINAL variant on both paths
+        # (the AST skips the extraction alias deliberately, like the
+        # assert-narrow flavor above) -- routes byte-identically,
+        # dualgen-verified.
+        src = (_THREE_RECORDS
+               + "def f(v: A | B) -> Int32:\n"
+               + "    if isinstance(v, A):\n"
+               + "        print(isinstance(v, A))\n"
+               + "        return v.x\n"
+               + "    return 0\n"
+               + "def main() -> None:\n"
+               + "    print(f(A(1)))\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestValueUnionSubscriptElem:
+    """A VALUE-repr union element read (`v = d2["z"]` off
+    `dict[str, Int32 | str]`): the whole `std::variant<...>` element copies
+    bare into its same-union sink (subscript.value_union_elem). The
+    pointer-variant (record-member) element family routes on a bare-NAME
+    receiver only -- a chained receiver keeps rejecting (its const verdict
+    would need the AST's root-name recursion)."""
+
+    def test_value_union_elem_decl_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    d2: dict[str, Int32 | str] = {\"x\": 1, \"y\": \"hi\"}\n"
+               "    v = d2[\"y\"]\n"
+               "    if isinstance(v, str):\n"
+               "        print(v)\n"
+               "def main() -> None:\n"
+               "    f()\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("subscript.value_union_elem", 0) >= 1
+
+    def test_ptr_union_elem_routes(self):
+        # A record-member union element (`xs[0]` off `list[A | B]`)
+        # lifts through to_ptr_variant at the ptr-variant decl (the
+        # union-decl subscript source row) -- routed, byte-identical.
+        src = (_THREE_RECORDS
+               + "def f() -> None:\n"
+               + "    xs: list[A | B] = [A(1)]\n"
+               + "    v = xs[0]\n"
+               + "    if isinstance(v, A):\n"
+               + "        print(v.x)\n"
+               + "def main() -> None:\n"
+               + "    f()\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_ptr_union_elem_field_recv_stays_ast(self):
+        # A CHAINED subscript receiver (`h.pets["k"]`) keeps rejecting:
+        # the decl arm's const verdict reads a bare receiver name, while
+        # the AST oracle recurses the field chain to its root -- routing
+        # it would diverge on the const lift.
+        src = (_THREE_RECORDS
+               + "class Holder:\n"
+               + "    pets: dict[str, A | B]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.pets = {\"k\": A(1)}\n"
+               + "def f(h: Holder) -> None:\n"
+               + "    pet = h.pets[\"k\"]\n"
+               + "    if isinstance(pet, A):\n"
+               + "        print(pet.x)\n"
+               + "def main() -> None:\n"
+               + "    f(Holder())\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestPtrUnionViewMembers:
+    """The ptr-union member scan admits str and concrete-container members
+    (`list[int] | str` -- inside a variant both spell the STORAGE form
+    position-uniformly), so the wave-20 decl-subscript row serves mixed
+    unions; a LOCAL plain union alias ELEMENT keeps the outer union out
+    (the F1 type-arg recursion's reject)."""
+
+    def test_str_container_members_route(self):
+        src = ("from tpy import Int32\n"
+               "def f(d5: dict[str, list[int] | str]) -> None:\n"
+               "    v3 = d5[\"label\"]\n"
+               "    if isinstance(v3, str):\n"
+               "        print(v3)\n"
+               "def main() -> None:\n"
+               "    d: dict[str, list[int] | str] = {\"label\": \"t\"}\n"
+               "    f(d)\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
+
+    def test_local_alias_element_stays_ast(self):
+        # BOUNDARY: a container member whose ELEMENT is a module-LOCAL
+        # plain union alias fails the F1 type-arg recursion, keeping the
+        # outer union out of the scan.
+        src = ("from tpy import Int32, StrView\n"
+               "type Num = Int32 | StrView\n"
+               "def f(d: dict[str, list[Num] | str]) -> None:\n"
+               "    v = d[\"k\"]\n"
+               "    if isinstance(v, str):\n"
+               "        print(v)\n"
+               "def main() -> None:\n"
+               "    d: dict[str, list[Num] | str] = {\"k\": \"x\"}\n"
+               "    f(d)\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)

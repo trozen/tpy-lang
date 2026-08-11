@@ -71,7 +71,12 @@ class TestNativeIterMethodReturn:
             "main()\n"
         )
         fell = _thir_fallbacks(src)
-        assert "body:expr.call" in fell, fell
+        # The reject moved INTO the structural-temp init's method-call
+        # lowering when the protocol call-rvalue leg landed (the arg gate
+        # now admits the hoist; the inner __iter__ call still rejects) --
+        # the stays-AST claim is unchanged, dualgen-verified identical.
+        assert ("body:expr.call" in fell
+                or "body:expr.method_call" in fell), fell
 
 
 class TestConsumingPointerReceiver:

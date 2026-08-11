@@ -192,10 +192,10 @@ class TestGenericRecordFieldMilMove:
                                    thir_codegen=False))
         assert (hpp, cpp) == (hpp2, cpp2)
 
-    def test_non_move_source_stays_fenced(self):
-        # BOUNDARY for mil.generic_record_move: a CALL source at the same
-        # generic-record field (not an Own-param move) keeps rejecting --
-        # the parked Rc-MIL/call family.
+    def test_call_source_mil_routes(self):
+        # A CALL source at the same generic-record field now routes: the
+        # alias-instance type-arg slice made Box[Tree[Int32]] F1, so the
+        # MIL call row admits it -- byte-identical, no fallback.
         from ..codegen_cpp import CodeGenOptions
         from .testutil import _compile, _entry
         src = (
@@ -215,8 +215,7 @@ class TestGenericRecordFieldMilMove:
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=False,
                                    thir_codegen=True))
-        assert any(k.startswith("ctor:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        assert not compiler._thir_fallback, compiler._thir_fallback
         compiler2, modules2 = _compile(src)
         hpp2, cpp2 = compiler2.generate_code_to_strings(
             _entry(modules2),

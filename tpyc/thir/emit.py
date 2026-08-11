@@ -25,7 +25,8 @@ from ..codegen_cpp.context import (
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_array, is_bytearray_type, is_bytes_type, is_bytes_view_type, is_dict,
+    is_array, is_big_int_type, is_bytearray_type, is_bytes_type,
+    is_bytes_view_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
@@ -124,6 +125,7 @@ from .nodes import (
     THIRSliceAssign,
     THIRInplaceContainerOp,
     THIRStmt,
+    THIRCoroHandleMove,
     THIRFrameSlotWrite,
     THIRStrAppend,
     THIRStrLiteral,
@@ -2126,8 +2128,15 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
                   f"{counter} > {stop_cpp}; --{counter}) {{\n")
     elif stmt.step_kind in ("literal_pos", "literal_neg"):
         step_cpp = _emit_expr(stmt.step, state)
-        out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
-                  f"{start_cpp}, {stop_cpp}, {step_cpp});\n")
+        if is_big_int_type(stmt.elem_type):
+            # A BigInt counter's literal step captures into a `__step_N`
+            # temp and skips the overflow check (fixed-int only) --
+            # _gen_range_counter_loop's is_big_int_type arm.
+            out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
+            step_cpp = f"__step_{n}"
+        else:
+            out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
+                      f"{start_cpp}, {stop_cpp}, {step_cpp});\n")
         cmp = "<" if stmt.step_kind == "literal_pos" else ">"
         out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
                   f"{counter} {cmp} {stop_cpp}; {counter} += {step_cpp}) {{\n")
@@ -2178,6 +2187,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
                               f"*{beg}", stmt.const_loop_var,
                               hoisted=stmt.hoist_loop_var,
+                              consuming=stmt.consuming,
                               hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp)
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
@@ -3967,6 +3977,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             value_cpp = f"{stmt.cpp_type}{value_cpp}"
         state.temps.flush(out, indent)
         out.write(f"{indent}{escape_cpp_name(stmt.name)}.emplace({value_cpp});\n")
+    elif isinstance(stmt, THIRCoroHandleMove):
+        # The NAME-source coro-handle write's two-line pair
+        # (_gen_concrete_coro_write's name arm).
+        tgt = escape_cpp_name(stmt.target)
+        src = escape_cpp_name(stmt.source)
+        out.write(f"{indent}{tgt}.emplace(std::move(*{src}));\n")
+        out.write(f"{indent}{src}.reset();\n")
     elif isinstance(stmt, THIRNarrowAlias):
         # The isinstance-narrowing extraction (F4 U3) -- mirrors
         # _emit_isinstance_extractions' variant arm (VariantAccess.get_by_type
@@ -4441,6 +4458,8 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
     parts = _print_parts(stmt.args, sep_token, end_token, state)
+    if stmt.flush:
+        parts.append("std::flush")
     # Args render first: their hoisted temps flush before the cout line
     # (the AST's pre-statement `ctx.temps.flush`).
     state.temps.flush(out, indent)

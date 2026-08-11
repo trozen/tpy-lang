@@ -135,9 +135,10 @@ class TestGeneralValuePositions:
     The bind and the method-receiver positions route through rows that never
     consulted this gate (`LocalBinding.REF_ALIAS`, the container-method
     receiver), so they are pinned as already-routing, not as this arm's work.
-    The call-arg and for-head positions still REJECT: their own gates -- not
-    `ret_ok` -- decide them, which is what "the arm is position-blind but the
-    positions are not all open" means here.
+    The call-arg and for-head positions now route through their OWN gates
+    (the elem-subscript ref-arg row and the container route's subscript
+    leg) -- pinned below as routing, with the begin/end render the oracle
+    demands.
     """
 
     def test_local_bind_routes_through_its_own_row(self):
@@ -155,23 +156,33 @@ class TestGeneralValuePositions:
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_call_arg_position_still_rejects(self):
-        # The free-call arg gate, not `ret_ok`, decides this one.
+    def test_call_arg_position_routes(self):
+        # The container-element subscript at a matching ref param now
+        # routes (the _record_elem_subscript_arg container flavor): the
+        # checked lvalue binds the `std::vector<T>&` slot inline.
         src = ("from tpy import Int32\n"
                "def take(xs: list[Int32]) -> Int32:\n"
                "    return len(xs)\n"
                "def f(g: dict[str, list[Int32]]) -> Int32:\n"
                "    return take(g[\"a\"])\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
-    def test_for_head_position_still_rejects(self):
+    def test_for_head_position_routes(self):
+        # A NATIVE-iterable container element (`for v in g["a"]:`) now
+        # routes through the CONTAINER route's subscript leg -- the
+        # begin/end capture the oracle demands (the historical hazard was
+        # an iter-proto admission rendering the WRONG universal loop; the
+        # container-route leg renders `auto& __obj_N = __getitem__(...)`
+        # + begin/end, byte-verified).
         src = ("from tpy import Int32\n"
                "def f(g: dict[str, list[Int32]]) -> Int32:\n"
                "    total = 0\n"
                "    for v in g[\"a\"]:\n"
                "        total += v\n"
                "    return total\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 class TestGateBoundaries:
@@ -189,3 +200,38 @@ class TestGateBoundaries:
                "def f(m: list[list[Int32]]) -> Int32:\n"
                "    return len(m[0:2])\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestElemRowsDictSetFlavors:
+    """The dict/set flavors of the wave-24 element rows: a set-typed
+    element at a matching ref param, a dict element iterated at the
+    for-head, and the named non-container reject (a str element loop
+    stays out of the subscript leg)."""
+
+    def test_set_elem_arg_and_dict_elem_iter_route(self):
+        src = ("from tpy import Int32\n"
+               "def grow(s: set[Int32], v: Int32) -> None:\n"
+               "    s.add(v)\n"
+               "def main() -> None:\n"
+               "    g: dict[str, set[Int32]] = {\"a\": {1}}\n"
+               "    grow(g[\"a\"], 2)\n"
+               "    m: list[dict[str, Int32]] = [{\"k\": 3}]\n"
+               "    for k in m[0]:\n"
+               "        print(k)\n"
+               "    print(len(g[\"a\"]))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is not None
+        _assert_byte_identical(src)
+        assert 'grow(::tpy::__getitem__(g, "a"), 2);' in _body(thir, "main")
+
+    def test_str_elem_loop_stays_out_of_the_leg(self):
+        # A str ELEMENT char loop is not a container element -- the leg's
+        # named reject (foreach.subscript_elem_family) falls it back.
+        src = ("from tpy import Int32\n"
+               "def main() -> None:\n"
+               "    xs: list[str] = [\"ab\"]\n"
+               "    for c in xs[0]:\n"
+               "        print(c)\n"
+               "main()\n")
+        _assert_byte_identical(src)

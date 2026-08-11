@@ -372,10 +372,10 @@ class TestGenericDynOwnRows:
         assert faces["expr.lambda"] >= 1
         _assert_byte_identical(src)
 
-    def test_list_concat_lambda_body_stays_ast(self):
-        # A list-concat body (`acc + [x]`) has no THIR binop arm yet: the
-        # lambda gate admits the params, the body raise falls the enclosing
-        # body back whole.
+    def test_list_concat_lambda_body_routes(self):
+        # A list-concat lambda body (`acc + [x]`) routes via the
+        # binop.list_concat leg (see TestListConcatBinop in
+        # test_thir_containers.py for the family's own pins).
         src = (
             "from tpy import Int32\n"
             "from functools import reduce\n"
@@ -385,7 +385,7 @@ class TestGenericDynOwnRows:
             "    built = reduce(lambda acc, x: acc + [x], nums, init)\n"
             "    print(built)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
     def test_async_factory_wraps_at_a_cancellable_slot(self):
@@ -404,4 +404,46 @@ class TestGenericDynOwnRows:
         assert "make_adapter<::tpystd::coro::Cancellable<int32_t>>(once())" \
             in body
         assert faces["call.coro_factory_adapter"] >= 1
+        _assert_byte_identical(src)
+
+
+class TestGenericOptOwnSlot:
+    """A substituted `Own[T] | None` slot: a record NAME moves bare
+    (`take_optional<Box>(std::move(b), 99)` -- the optional's converting
+    ctor absorbs the move; the name may arrive under the Own-lift coerce
+    on an inferred-targ call), and `None` renders `std::nullopt`. A
+    REUSED (non-last-use) name keeps rejecting via the move verdict."""
+
+    _PRE = ("from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    value: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.value = 0\n"
+            "def take_optional[T](item: Own[T] | None, fallback: Int32)"
+            " -> Int32:\n"
+            "    return fallback\n")
+
+    def test_move_and_none_route(self):
+        src = (self._PRE
+               + "def main() -> None:\n"
+               + "    b = Box()\n"
+               + "    print(take_optional(b, 99))\n"
+               + "    print(take_optional[Box](None, 77))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("move.opt_own_last_use", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_reused_name_stays_ast(self):
+        # `b` is read after the call, so the move verdict fails -- the
+        # copy shape is unwitnessed and the body falls back.
+        src = (self._PRE
+               + "def main() -> None:\n"
+               + "    b = Box()\n"
+               + "    print(take_optional(b, 99))\n"
+               + "    print(b.value)\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
         _assert_byte_identical(src)

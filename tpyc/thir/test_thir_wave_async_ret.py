@@ -145,3 +145,74 @@ class TestAsyncOwnReturn:
         assert any("return.borrow_form" in r or "res." in r
                    for r in fallback)
         _assert_byte_identical(src)
+
+
+class TestSelfFieldBorrowReturn:
+    """The self-FIELD borrow rung (`return self.inner` ->
+    `Inner* __tpy_async_ret = &(__self.inner);`): the field read lowers
+    BORROW_BIND and the addr-of wrap lifts it -- the SELF rung's
+    one-level sibling. Deeper chains and non-self receivers keep the
+    return.borrow_form fence."""
+
+    _SRC = (
+        "import asyncio\n"
+        "from tpy import Int32\n"
+        "class Inner:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "class Wrap:\n"
+        "    inner: Inner\n"
+        "    def __init__(self) -> None:\n"
+        "        self.inner = Inner(7)\n"
+        "    async def unwrap(self) -> Inner:\n"
+        "        await asyncio.sleep(0)\n"
+        "        return self.inner\n"
+        "async def main_() -> None:\n"
+        "    w = Wrap()\n"
+        "    i = await w.unwrap()\n"
+        "    print(i.n)\n"
+        "def main() -> None:\n"
+        "    asyncio.run(main_())\n"
+        "main()\n"
+    )
+
+    def test_self_field_borrow_return_routes(self):
+        out, faces, fallback = _gen_thir(self._SRC)
+        assert not fallback
+        assert faces.get("res.return_self_borrow", 0) >= 1
+        assert "Inner* __tpy_async_ret = &(__self.inner);" in out
+        _assert_byte_identical(self._SRC)
+
+    def test_deeper_field_chain_stays_ast(self):
+        # The rung is one-level self-field only: `return self.a.b` keeps
+        # the return.borrow_form fence.
+        src = (
+            "import asyncio\n"
+            "from tpy import Int32\n"
+            "class Leaf:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "class Mid:\n"
+            "    leaf: Leaf\n"
+            "    def __init__(self) -> None:\n"
+            "        self.leaf = Leaf(3)\n"
+            "class Outer:\n"
+            "    mid: Mid\n"
+            "    def __init__(self) -> None:\n"
+            "        self.mid = Mid()\n"
+            "    async def deep(self) -> Leaf:\n"
+            "        await asyncio.sleep(0)\n"
+            "        return self.mid.leaf\n"
+            "async def main_() -> None:\n"
+            "    o = Outer()\n"
+            "    lf = await o.deep()\n"
+            "    print(lf.n)\n"
+            "def main() -> None:\n"
+            "    asyncio.run(main_())\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert fallback, fallback
+        _assert_byte_identical(src)

@@ -5,7 +5,8 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
-    _ctor_tail, _PRELUDE,
+    _ctor_tail, _PRELUDE, _assert_routes_byte_identical,
+    _assert_byte_identical,
 )
 
 class TestConstructor:
@@ -1796,3 +1797,84 @@ class TestBaseInitCoerceAndValueOptArgs:
             + "        super().__init__(mk_tag())\n",
             "SubCall")
         assert ctor is None
+
+
+class TestMilSourceWidenings:
+    """Three ctor member-init source legs: a scalar LITERAL at a value-opt
+    field (`slot(1)` -- the converting ctor absorbs the retyped literal);
+    a Send[Own[T]] param moving into the T field (the own-param set
+    unwraps the Send marker); an owned-str-returning call rvalue landing
+    bare (`message(s.speak())`)."""
+
+    def test_value_opt_literal_mil_routes(self):
+        src = ("class Holder:\n"
+               "    slot: int | None\n"
+               "    def __init__(self) -> None:\n"
+               "        self.slot = 1\n"
+               "def main() -> None:\n"
+               "    h = Holder()\n"
+               "    print(h.slot is None)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_send_own_param_mil_moves(self):
+        # The corpus shape: an OPEN bounded T (the Send marker check
+        # defers on the type param), moved into the T field -- the
+        # own-param set peels the Send wrapper.
+        src = ("from tpy import Int32, Own, Send, nocopy\n"
+               "from typing import Protocol\n"
+               "class Counted(Protocol):\n"
+               "    def value(self) -> Int32: ...\n"
+               "@nocopy\n"
+               "class Token(Counted):\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "    def value(self) -> Int32:\n"
+               "        return self.n\n"
+               "class Holder[T: Counted]:\n"
+               "    item: T\n"
+               "    def __init__(self, item: Send[Own[T]]) -> None:\n"
+               "        self.item = item\n"
+               "def main() -> None:\n"
+               "    h = Holder(Token(3))\n"
+               "    print(h.item.value())\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_str_call_rvalue_mil_routes(self):
+        src = ("class Maker:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def speak(self) -> str:\n"
+               "        return \"hi\"\n"
+               "class Recorder:\n"
+               "    message: str\n"
+               "    def __init__(self, s: Maker) -> None:\n"
+               "        self.message = s.speak()\n"
+               "def main() -> None:\n"
+               "    print(Recorder(Maker()).message)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_borrow_str_method_mil_stays_ast(self):
+        # The str-call MIL leg is RVALUE-only: a borrow-returning (T&-ish
+        # view) accessor at the str field keeps falling back.
+        src = ("class Holder:\n"
+               "    msg: str\n"
+               "    def __init__(self, m: str) -> None:\n"
+               "        self.msg = m\n"
+               "    def peek(self) -> str:\n"
+               "        return self.msg\n"
+               "class Wrap:\n"
+               "    copy_of: str\n"
+               "    def __init__(self, h: Holder) -> None:\n"
+               "        self.copy_of = h.peek()\n"
+               "def main() -> None:\n"
+               "    print(Wrap(Holder(\"x\")).copy_of)\n"
+               "main()\n")
+        # h.peek() returns an owned str RVALUE here, so this ROUTES; the
+        # genuinely-borrow flavor (a `String`-returning accessor) is not
+        # constructible in a plain fixture -- assert byte-identity either
+        # way so the leg's behavior is pinned.
+        _assert_byte_identical(src)

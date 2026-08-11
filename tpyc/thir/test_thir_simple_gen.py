@@ -537,10 +537,10 @@ class TestForeachCallers:
         witnesses, _ = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
 
-    def test_foreach_self_iterable_defers(self):
-        # `for x in self:` renders the receiver dereferenced (`(*this)`) --
-        # the self-iterable rung stays on the AST path (byte-identical via
-        # fallback).
+    def test_foreach_self_iterable_routes(self):
+        # `for x in self:` captures the receiver dereferenced (`(*this)`)
+        # -- the foreach.self_iterable row (a generator __iter__ conforms
+        # to the user-iterator shape).
         src = (_ITER
                + "class Bag:\n"
                + "    total: Int32\n"
@@ -556,9 +556,8 @@ class TestForeachCallers:
                + "    b = Bag()\n"
                + "    print(b.first())\nmain()\n")
         witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("foreach.iter_proto")
-        assert any("iter.name" in k or "user_iterator" in k
-                   for k in fallback), fallback
+        assert not fallback
+        assert witnesses.get("foreach.self_iterable", 0) >= 1
 
 
 class TestTupleYield:
@@ -692,3 +691,58 @@ class TestContainerLoopVar:
                + "    for n in pairs({\"a\": 1}):\n        print(n)\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert any("sgen.loop_var_type" in k for k in fallback), fallback
+
+
+class TestSelfAndElementIterables:
+    """`for x in self:` on a user-iterator record (the `(*this)` capture)
+    and a user-iterator container-ELEMENT iterable (`for x in items[0]:`
+    -- the `auto& __src_N = __getitem__(items, 0);` capture)."""
+
+    _COUNTER = (
+        "from __future__ import annotations\n"
+        "from tpy import Int32, Own\n"
+        "class Counter:\n"
+        "    current: Int32\n"
+        "    limit: Int32\n"
+        "    def __init__(self, limit: Int32) -> None:\n"
+        "        self.current = 0\n"
+        "        self.limit = limit\n"
+        "    def __iter__(self) -> Counter:\n"
+        "        return self\n"
+        "    def __next__(self) -> Int32:\n"
+        "        if self.current < self.limit:\n"
+        "            result = self.current\n"
+        "            self.current += 1\n"
+        "            return result\n"
+        "        raise StopIteration\n")
+
+    def test_self_iterable_routes(self):
+        src = (self._COUNTER
+               + "class Stack:\n"
+               + "    total_limit: Int32\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.total_limit = 3\n"
+               + "    def __iter__(self) -> Own[Counter]:\n"
+               + "        return Counter(self.total_limit)\n"
+               + "    def sum(self) -> Int32:\n"
+               + "        total: Int32 = 0\n"
+               + "        for x in self:\n"
+               + "            total += x\n"
+               + "        return total\n"
+               + "def main() -> None:\n"
+               + "    print(Stack().sum())\n"
+               + "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        assert witnesses.get("foreach.self_iterable", 0) >= 1
+
+    def test_element_iterable_routes(self):
+        src = (self._COUNTER
+               + "def main() -> None:\n"
+               + "    items: list[Counter] = [Counter(2), Counter(3)]\n"
+               + "    for x in items[0]:\n"
+               + "        print(x)\n"
+               + "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback
+        assert witnesses.get("foreach.iter_proto", 0) >= 1

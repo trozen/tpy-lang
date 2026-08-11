@@ -9,7 +9,8 @@ for another reason; these pin the reject so a widening of that gate cannot
 silently un-fence the binding, and name the mirror that must land first.
 """
 
-from .testutil import _compile, _entry, _lower_ctx, _fn
+from .testutil import (_compile, _entry, _lower_ctx, _fn,
+                       _assert_byte_identical, _assert_routes_byte_identical)
 from ..codegen_cpp import CodeGenOptions
 
 _RECORD = (
@@ -152,17 +153,24 @@ class TestUnmirroredParamSeeds:
                + "    return s.area()\n")
         _assert_body_fenced(src, "f")
 
-    def test_owned_tuple_param_fenced(self):
-        # An owned-movable tuple param -> codegen registers
-        # storage_form_tuple_locals + movable_locals (STORAGE_TUPLE, so a read
-        # is STORAGE form); lc seeds neither, and `_is_borrow_form_name` would
-        # tag the same type BORROW. Fence: the tuple-subscript / call arms.
+    def test_owned_tuple_param_pass_routes(self):
+        # An owned-movable tuple param at a same-slot pass routes via the
+        # wave-4 own-tuple move row: BOTH paths emit `sink(std::move(t))`
+        # (the param IS movable-seeded -- the old fence's "lc seeds
+        # neither" rationale was stale). The byte diff pins the render.
         src = (_RECORD
                + "def sink(t: tuple[Own[A], Int32]) -> Int32:\n"
                + "    return t[1]\n"
                + "def f(t: tuple[Own[A], Int32]) -> Int32:\n"
                + "    return sink(t)\n")
-        _assert_body_fenced(src, "f")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _, ast_out = _gen(src, thir=False)
+        compiler, thir_out = _gen(src, thir=True)
+        assert ast_out == thir_out
+        # `sink`'s own tuple-subscript body still falls back; `f` routes
+        # (asserted via _fn above) and emits the move.
+        assert "sink(std::move(t))" in thir_out
 
 
 class TestOwnOptionalStorageBundle:
@@ -388,3 +396,70 @@ class TestOverloadStubPrologueProducer:
         # and is never reassigned, which is exactly the case needing no
         # prologue local -- and therefore no registration to mirror.
         assert fallback.get("body:sig.overload_set.arity") == 1, fallback
+
+
+class TestBtupleTernaryAndContainerBinopDecl:
+    """Two decl-init widenings: a ternary of two same-typed borrow-tuple
+    NAMES aliases like the plain name copy (`auto t = ((c) ? (p1) :
+    (p2));`), and a container-typed arithmetic binop init lands in the
+    plain spelled copy decl (`std::vector<T> c = (::tpy::list_concat(a,
+    b));`)."""
+
+    def test_btuple_ternary_decl_routes(self):
+        src = ("from tpy import Int32, readonly\n"
+               "class Tag:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32):\n        self.n = n\n"
+               "def pick(p1: readonly[tuple[Tag, Tag]],\n"
+               "         p2: readonly[tuple[Tag, Tag]], c: bool) -> Int32:\n"
+               "    t = p1 if c else p2\n"
+               "    return t[1].n\n"
+               "def main() -> None:\n"
+               "    a = Tag(1)\n"
+               "    b = Tag(2)\n"
+               "    print(pick((a, b), (b, a), True))\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_btuple_ternary_field_arm_stays_ast(self):
+        # One arm a borrow-tuple name, the other a FIELD read: outside the
+        # names-only slice, falls back.
+        src = ("from tpy import Int32\n"
+               "class Tag:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32):\n        self.n = n\n"
+               "class H:\n"
+               "    pair: tuple[Tag, Tag]\n"
+               "    def __init__(self, a: Tag, b: Tag):\n"
+               "        self.pair = (a, b)\n"
+               "def pick(p1: tuple[Tag, Tag], h: H, c: bool) -> Int32:\n"
+               "    t = p1 if c else h.pair\n"
+               "    return t[1].n\n"
+               "def main() -> None:\n"
+               "    x = Tag(1)\n"
+               "    y = Tag(2)\n"
+               "    print(pick((x, y), H(y, x), True))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None
+        _assert_byte_identical(src)
+
+    def test_container_binop_decl_routes(self):
+        src = ("def f() -> None:\n"
+               "    a: list[int] = [1, 2]\n"
+               "    b: list[int] = [3, 4]\n"
+               "    c: list[int] = a + b\n"
+               "    print(c)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_set_binop_decl_routes(self):
+        # The set flavor of the container-binop decl widening
+        # (`c: set[int] = a | b` -> the set_union prvalue copy).
+        src = ("def f() -> None:\n"
+               "    a: set[int] = {1, 2}\n"
+               "    b: set[int] = {2, 3}\n"
+               "    c: set[int] = a | b\n"
+               "    print(len(c))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)

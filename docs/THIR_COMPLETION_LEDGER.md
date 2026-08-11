@@ -8982,3 +8982,975 @@ statement-order timing skew (wave 18) is UNREACHABLE -- both mixed
 loop+unpack binding flavors reject at pre-existing fences
 (tuple.reused_target / foreach.var_shadow), now unit-pinned
 (TestMixedLoopUnpackBindingFences).
+
+### The binop reject-surface wave (2026-08-05/06)
+
+Eight cells ground `_lower_binop`'s shared `reject()` surface
+(expressions.py, the top cross-tag raise site: 14 of 226 sole-blocker
+cases) to zero; 13 flips (dial 3299 -> 3312/3729). Site selection came
+from a NEW cross-tag instrument: with the tag histogram flat (top tag 5
+cases), a sites_all.py variant of probe_sites histogramed raise SITES
+over ALL sole-blocker cases at once, with re-raise trampolines
+attributed to the inner site via exception-chain inheritance -- the
+per-tag probe under-attributes both.
+
+Cells: slot-threaded nested binops (`_ExprUse.slot_threaded`: resolved
+operand slots, fixed-int call args, return values -- the AST threads a
+target at all three, so both-literal sub-binops never fold there);
+value-record optionals (`_value_opt_value_record`, USER records only --
+builtin nominals carry record info too and must stay on the scalar/view
+rows, caught by pins) + Ptr field-chain None subjects
+(`_chained_field_read_ok`); Char concat/repeat operands (emit already
+applies rb operand wrappers -- gate-only); resolver-less scalar binops
+(post-sema macro synthesis; raw-operator render, NAME operands only);
+pointer-repr tuple-literal compares (tuple_eq/tuple_lt via
+template_override, pending elements resolved before spelling) +
+membership needles (tuple_to_storage FormConvert); TypedDict membership
+over call receivers; universal-loop membership over structural protocol
+params (is_native_in admits only tpy.NativeIterable to
+ranges::contains); value-opt record eq pairs + list_concat.
+
+Lesson: three de-routings-by-pin were caught by re-running touched pin
+files BEFORE the corpus run (the readiness-gate construction rule
+paying off); the `_value_opt_value_record` builtin-nominal over-match
+was caught the same way. An out-of-context `_f1_record` probe
+false-negatived (memory's activate_compiler rule) and cost a
+divergence-chase: the print wrap's F1 verdicts must be probed
+in-context.
+
+### The print-arg site wave (2026-08-06)
+
+Seven cells ground the print-arg admission gate (statements.py, the #2
+site: 13 sole-blocker cases) to zero; 7 flips (dial -> 3319/3729), six
+cases chained out to other sites (method-call, aug-assign, genexpr,
+special-form isinstance, native-arg families). Rows: print(None);
+pointer-bound RAW-wrap names (the wrap render now lowers with the
+full-deref use -- every AST printer-wrap arm renders via
+gen_expr_deref); bytearray/dict-view/range call results; container/
+tuple literals (typed-brace CTAD + borrow-form TuplePrinter);
+value-tuple container-element subscripts (BORROW_BIND); container-binop
+wraps (list_concat generalized to the four set operators; set ordering
+compares admitted -- the "ordering has no witnessed corpus shape" note
+was falsified by set_operators); container property reads (ITERABLE
+use); opt-ptr call prints (ptr_opt_passthrough); slice objects (name +
+object-index slice reads); union-field is-None monostate tests.
+
+Review round (7 specialists + meta, all findings verified, none
+dropped): ledger entries (this text), the union-FIELD print STREAMING
+arm pinned (admitted-but-unwitnessed -- its motivating case still falls
+back on a later blocker, so no corpus witness existed; dualgen showed
+byte-identical), `_resolve_pending_tuple_elems` extracted from three
+same-diff copies, list-ordering + return-row boundary pins added.
+
+Lesson (meta-observation worth keeping): TWO findings this round were
+the same defect class -- an admission landed without the three-unit
+contract (the union-field STREAM arm unpinned; the set-ordering widening
+without its reject boundary). The wave self-check should grep new
+`_wrap_print_form` / pair-predicate legs for a matching pin BEFORE
+review, not rely on review to catch it.
+
+### The for-each iterable wave (2026-08-06)
+
+Seven cells ground the for-each route selector (statements.py, the #3
+cross-tag site: 12 sole-blocker cases) to zero; 10 flips (dial 3319 ->
+3329/3729), 2 cases chained out (setitem / genexpr-unpack families).
+Rows: BigInt stepped ranges (literal steps take a `__step_N` temp with
+NO overflow check -- the emit's is_big_int_type arm; variable BigInt
+steps stay fenced) + the ZERO-literal-step range-OBJECT foreach (the
+counter loop's decline path, a dispatcher fall-through to the container
+route); `for x in self` on user-iterator records (the `(*this)` capture
+via the THIRSelf deref retag); user-iterator container-ELEMENT
+iterables (the element gate's ITERABLE-use whole-lvalue admission --
+which over-admitted NATIVE-iterable elements and rendered the wrong
+loop form until the restored fence pin caught it); free container-call
+iterables at tuple-unpack heads; open-T param iterables; proven-
+narrowed ptr-opt dict key loops; value-opt scalar unpack targets;
+explicit `own_iter` loops (the ConsumingIter wrap re-spelled with the
+call's ARG, plus the THIRForEach.consuming elem-bind flag the implicit
+route had never needed); F1-record genexpr elements (the borrow-slot
+fence guarded only the `val_or_ref<T>` slot spelling).
+
+Two defects the verify run caught: (1) THE ATTEMPT-CONTAMINATION FIND
+-- admitting a value-opt-scalar dict element let a GENERATOR body's
+lowering attempt poison the AST re-emit on fallback (a narrowed loop
+var lost its deref); surgical ablation proved the eligibility entry
+causal, fencing the route selector did NOT stop it, so the row is
+REVERTED and PARKED in TODO.md as the attempt-rollback design class.
+(2) The native-element over-admission above -- caught only because a
+fence pin existed; the wrong render was a whole different loop FORM,
+invisible to the sole corpus witness (a user-iterator element).
+
+### The call-arg wave (2026-08-06)
+
+Three cells at the free-call arg ladder (the #4 site: 10 live cases; 1
+parked design case excluded); 4 flips (dial -> 3333/3729), 3 chained
+out (method-arg literal temps, imported-symbol callee, generic-tuple
+return), 1 sub-family given back. Rows: OWN-element tuple NAME moves at
+the matching rvalue slot (`consume(std::move(t))`, _is_move_source
+joining the move audit) + the sync-body widening of
+_borrow_tuple_bare_names (single-assignment ptr-repr tuple DECL locals
+pass bare; generator/async lanes keep the reassigned-only slice); enum
+members at native protocol slots; Sized container-call rvalues; member
+generator factories at Iterable slots under the ITERABLE result wire.
+
+THE SHADOWING LESSON: a kind-blind wrapper-union-literal head leg
+DUPLICATED the existing argtemp.recursive_union_literal /
+ru_wrapper_literal row family, took over its cases with a subtly
+different render, and DIVERGED on the mutual-recursion shapes the
+original gates deliberately exclude (union_mutual_mixed/_contexts). The
+existing rows' pins caught it as witness counts dropping to ZERO --
+REVERTED whole; the union pair's widening must go through the existing
+arm's gate. Before building a "new" row, grep faces.py for the
+construct: an existing face with the same name-shape is the strongest
+evidence the row exists.
+
+### The method-arg wave (2026-08-06)
+
+Seven cells at the method-call arg gate (the top cross-tag site after
+the call-arg wave); 8 flips (dial -> 3341/3729). Rows: value-opt
+ValueType-record method slots (ctor rvalues inline + member NAMEs via
+the converting optional ctor); generator-factory method arg TEMPS
+(container literals + record ctor rvalues materialize the named
+scope-local the frame borrows -- dualgen showed the container-literal
+flavor was an admitted-but-DIVERGENT latent shape rendering inline
+where the AST hoists, and the `sum(...)` iterable wire arm was not
+threading allow_temps; unmirrored temporary shapes now RAISE rather
+than fall through); the full protocol-slot faces on user-record
+methods (the Adapter/RefAdapter hoists, protocol_slots + flush
+threaded for exactly the protocol slot); the strview_to_str coerce
+over a view NAME peeled at Own[str] element args and user-record
+setitem values (a declared-StrView module constant arrives wrapped
+where a pending-resolved local goes bare); bytearray NAMEs and
+container-returning CALL rvalues joining the native-Iterable bare-bind
+family.
+
+LESSON (repeated, now twice in two waves): re-run the pin files
+adjacent to a widening BEFORE the corpus run -- two stale fence pins
+(bytearray extend, StrView name at Own[str]) failed in the harvest run
+because their stated reasons were exactly what the wave implemented.
+Fences converted on dualgen-verified byte-identity.
+
+### The marker-cells wave (2026-08-06)
+
+Five cells at the two marker sites (builtin-module ctor /
+module-native + the special-form classifier); 6 flips (dial ->
+3347/3729, auto_move_user_copy_no_warn riding along). Rows:
+union-subject isinstance at VALUE positions (the narrowing condition's
+holds_alternative chain with no extraction alias, spelled on the bare
+original name -- assert-narrowed and branch-narrowed subjects route
+bare too, dualgen-verified); the module-qualified float("nan") fold
+twin; @native(binding="C")/@export cross-module callees via the
+qualified kind over the module-qualified NATIVE symbol; copy()
+extracted into _lower_copy_special (free + qualified spellings) with a
+new str-NAME arm; the imported-name conditional-qualification arm (a
+LOCAL shadow emits the bare unqualified call).
+
+Filed: the pre-existing AST crash on copy() of a str LOCAL
+(PendingStrType at _gen_copy_expr) -- BUGS.md; THIR's NominalType
+guard falls back gracefully. Review round 3 confirmed all lowering
+clean (codegen-correctness/safety-model/cpython-parity deep-traced);
+its fix round extracted the float-fold and strview-peel duplications
+into shared helpers and added the boundary pins the batch owed.
+
+SECOND ATTEMPT-CONTAMINATION REPRO (worktree-verified pre-existing): a
+failed generator lowering attempt drops the to_value_variant wrap from
+an UNRELATED ctor member-init in the same pass -- see the PARKED
+TODO.md entry; the contaminated emit is not narrowing-local, which
+strengthens the rollback-fix framing.
+
+### The subscript-receiver wave (2026-08-06)
+
+Eight cells at the subscript read gate + its receiver resolution; 12
+flips (dial -> 3359/3729). Rows: container-returning CALL receivers
+interpolate into the checked dunder (READ-only -- the shared recv-type
+resolver has no call arm, so setitem/del/aug keep their slice; two
+result-gate composition rows opened the view and protocol families;
+the FREE-call result gate still lacks its composition row -- pinned as
+the residual boundary); None-narrowed Optional[view] receivers read
+their `(*s)` deref (str + bytes, param and STORAGE-local flavors --
+NO narrow-set test: sema hard-errors on the un-narrowed use, so
+reaching the gate implies the proof); the recv-type resolver
+substitutes a raw TypeParamRef field decl via the expr type (read and
+write ride the same resolver); value-union subscript elements copy
+the whole variant bare; btuple ternary-of-names alias decls;
+container-binop decl inits (any binop rvalue, delegating to
+is_rvalue_source -- aliasing dunders excluded there); substituted
+Own[T]|None slots (record-name move with the Own-lift coerce peel --
+two independent guards; None -> nullopt).
+
+PARKED: the OwnIter explicit-decl family -- the decl `auto` slot and
+the begin/end for-head route both need the registry-gap question
+answered (a probe routed the protocol loop and DIVERGED; findings in
+the TODO entry, both halves built and reverted).
+
+### The method-receiver wave (2026-08-06)
+
+Three cells at the method receiver gates; 5 flips (dial ->
+3364/3729). Rows: None-narrowed Optional[view] receivers join the
+view family (type-keyed -- the same sema-implied proof); a plain
+@staticmethod through an instance renders the ordinary member call
+(the classmethod rule's witnessed sibling; two fences converted);
+function=True natives on @native-record receivers take the
+receiver-prepend spelling on the ptr-template arm; scalar-value
+rvalue receivers (ctor / marker-call / binop results) compose stub
+members bare via one shared predicate.
+
+Review round 4 (waves 7-8): codegen-correctness traced the
+sema-invariant behind the narrowed-Optional widenings to the actual
+hard-error sites; safety-model verified the read-only claim and the
+coerce-peel guards; the one Critical (unpinned STORAGE-local flavor)
+was dualgen-verified byte-identical and pinned in the fix round,
+along with the scalar-receiver predicate consolidation and the
+set-binop decl pin.
+
+### The composition-rows wave (2026-08-06)
+
+Waves 9-10 (the free-call/ctor/return composition rows); 11 flips
+(dial -> 3375/3729). Rows: free-call container-at-receiver + readonly
+[scalar] results + structural CALL-rvalue protocol temps; three ctor
+member-init legs (value-opt literal, the Send-peeled own-param set --
+closing a mirror gap against _extract_field_inits -- and the owned-str
+call rvalue); the type-param-bearing field-decl substitution at the
+shared recv resolver; the async self-FIELD borrow-return rung
+(`&(__self.inner)`, BORROW_BIND value lowering); the callable
+container-literal element family; return-ladder call sources (storage
+rvalue passthrough + the borrow passthrough via the DEDICATED
+borrow_ret_passthrough flag, scoped to the return arm only).
+
+THE SHADOWING LESSON, SECOND FIRING (now at the RESULT gate): a coarse
+F1-record-at-RECEIVER row stole the er-unwrap / template-call /
+native-iter arms' witnesses AND opened the PARKED REF_ALIAS design
+stop -- REVERTED whole; the flag-scoped passthrough replaced it. A
+result-gate row must be family-precise; grep faces.py before building
+result rows too.
+
+Review round 5: parity probed single-eval + aliasing empirically;
+codegen-correctness verified the revert complete (zero stray refs, the
+flag has ONE construction site) and surfaced the pre-existing
+StrView-field-from-call-rvalue certain-UAF -- filed in BUGS.md (the
+MIL leg mirrors it byte-identically per the owned-bytes precedent).
+
+### The vararg-flush wave (2026-08-06)
+
+Wave 12's vararg cell; 2 flips (dial -> 3380/3729). Two allow_temps
+widenings at positions where the AST flushes the pack's std::array:
+NAME-target scalar augs (the aug is a flushable statement like its
+subscript-target sibling) and the ERASED/BORROWED await operand (the
+emplace line; the for-head-setup precedent). The trio's third case
+(ctor MIL vararg) is PARKED in TODO.md: the AST's temps.rollback ->
+demote BURNS a temp counter number (`__tmp_2` where the up-front
+demote says `__tmp_1`) -- a demote trigger was built, probed divergent,
+and REVERTED; closing it is the AST-first counter-reset fix (snapshot
+churn, needs approval). Fence:
+TestVarargPackAugValue::test_ctor_mil_vararg_source_stays_ast.
+
+### The field-gate wave (2026-08-06)
+
+Wave 13; 5 flips (dial -> 3385/3729), all five sole-blockers at ONE
+raise (field.result_type), four independent rows: allow_whole_optional
+threaded at the VALUE_OPT field-write sink for same-family FIELD
+sources; copy()'s container arm lowering FIELD sources with the
+BORROW_BIND copy-source use (STORAGE stays for call sources); the new
+field.suspend_borrow arm (`await self.evt` -> `&(__self.evt)`, the
+skeleton owns the wrap); field_owned_str_ok threaded on the frame-field
+assign like the sync decl sink (`q = (*__self.s);`). Bytes-field frame
+reads stay deferred (fenced). Pins: test_thir_wave_fieldresult2.py.
+
+### The genarg wave (2026-08-06)
+
+Wave 14; 4 flips (dial -> 3389/3729), the four sole-blockers at the
+_generic_plain_arg_ok raise: lambdas at still-open Fn slots (tuple
+params admitted via _lambda_routable minus pointer-repr elements; the
+sibling-open tuple read via _open_sibling_value_tuple, scoped to the
+subscript value-read predicate); container-element subscripts binding
+open slots bare (free-call ladder + _tparam_slot_arg); nested
+value-tuple NAMES at bounded-T slots (literals fenced); the ptr-repr
+Optional[wrapper] pointer-local deref at a same-wrapper slot (sema
+admits the occurrence only where proven non-null -- the sema-implied
+-proof rule). Exposed and closed alongside: argtemp.iter_proto threads
+allow_temps (a factory's own ref-slot literal temps flush first), and
+the comp route gained the VALUE-yielding generator-factory source arm
+(comp.genfac_source; unpack-over-call keeps rejecting, pinned in
+test_fallback.py). Two premise-fixtures updated: the freecall-ret
+arg-position fence now routes; test_fallback's comp fixture moved to
+the unpack shape.
+
+LADDER-DEBT NOTE (the TODO.md stop-loss): this wave ADDED near
+-duplicate rows again -- the open-slot compare (factored into a local
+helper at review), the _tparam_slot_arg subscript widening, and the
+lambda/nested-tuple rows in _generic_plain_arg_ok. The (source-shape,
+sink-family) table fold is overdue by its own 2026-08-04 stop-loss.
+
+Review round 6 (batch over waves 12-14): parity clean; the vacuous
+`or c._thir_fallback` fence assertion fixed (the lesson: an or-tail
+turns a scoped fallback assert into assert-anything); the claimed-but
+-untested pointer-receiver copy boundary probed -- it ROUTES, so the
+claim became a routing pin, not a fence; boundary pins added for the
+value-opt field-write sink (subscript source) and the open-slot elem
+row (field-access source); comp.genfac_source face registered.
+
+### The asdict track + setitem/tuple-key waves (2026-08-06)
+
+Waves 15-16; 5 flips (dial -> 3394/3729): the elem-field-chain setitem
+receiver (`root.kids["a"].kids["b"] = v` -- the container-FIELD-off
+-record-element arm; deeper chains fenced; flips
+recursive_record_dict_field); the asdict/astuple expansion track --
+container-ctor calls at VALUE sinks (also resolving the f-string
+combinator fence: `f"{list(map(lambda ...))}"` routes), `dict({...})`
+instantiation, scalar/str FIELD reads at non-wrapper union element
+slots, field_str_ok threading at dict values + tuple-literal elements,
+the dict/comp unique-member union rows, and the dict-elem comp arm
+(flips dataclass_asdict_mixed); the nested storage-decl families
+(dict-of-scalar-read-dict + nested value-tuple results, the self-typed
+nested tuple literal; flips dataclass_asdict_nested and, via harvest,
+str_pending_nested_tuple); the tuple-keyed dict family (value-tuple
+keys, the membership needle at both contains arms, the `pairs[0][0]`
+chain read; flips dict_in_tuple_key). asdict_optional stays marked on
+the TERNARY element at an Optional[dict]-member union slot (per-arm
+target typing -- next in the track). PARKED: isinstance inside
+`and`/`or` conditions (condition-scoped narrowed-read renames -- a
+third rename regime; TODO.md).
+
+Review round 7: the comp-at-union-slot arm had ZERO units and
+TestCompDictElement's docstring CLAIMED the row it did not exercise --
+the docstring masked the gap (lesson: a docstring claiming coverage is
+itself a review surface). Fixed with a dedicated face
+(comp.union_member_source) + routing/boundary pins; the duplicated
+membership-needle predicate factored into _value_tuple_needle_ok
+(witnesses stay at call sites); nested-tuple-key and dict-name-elem
+boundaries pinned; the record-valued storage-decl boundary probed
+UNREACHABLE (sibling arms own those shapes -- noted in the pin file);
+the _vu_field decided-vs-consumed instance appended to the tracked
+TODO entry.
+
+### The pointer-rows wave (2026-08-06)
+
+Wave 17; 7 flips (dial -> 3401/3729, crossing 3400): the reassigned
+borrow-call decl (decl.ptr_call_addr -- THIRPtrLocalDecl's PTR_ADDR
+over the bare borrow-call render, placed ahead of the generic
+borrow-call arm that would swallow calls into the REF_ALIAS render;
+rvalue reseats ride the existing rebind-slot machinery; flips
+return_borrow_aug_assign, plus two stays-AST fences converted after
+byte-verification); the proven Optional-ptr alias source
+(decl.alias_opt_ptr_deref_src, keyed on the deref-check marker; flips
+json_model_user_type); the field-write receiver/source rows (property
+-getter receivers, Callable-field NAME sources -- the old crash-fear
+fence converted, its FormConvert path is never reached by the PLAIN
+render -- and str-over-getitem with literal-index resolution; flips
+inherited_accessor_subst + escaping_field); and the opt-tuple yield
+elements + slot-free frame pointer reseats (container-element lvalue
+lifts, pointee-typed passthrough, `prev = nullptr;`/`prev = it;`
+rendering slot-free at both resumable write sites; flips the
+tuple-yield trio).
+
+STILL MARKED from the wave's probes: arraylist_move_nontrivial (the
+moved-local pointer-classification mismatch, filed in TODO.md) and
+asdict_optional (the ternary per-arm target typing).
+
+Review round 8 (meta-review skipped this round: all findings were the
+self-verifying docs/pins species confirmed verbatim in rounds 6-7):
+the slot-free reseat admission extracted into
+_slot_free_ptr_reseat_ok (the dead ptr_frame_locals disjunct removed
+-- it was already folded into lc.pointers); BOTH proposed reject
+boundaries PROBED as routing via sibling families (a value-returning
+reassigned call is REBIND_SLOT, an inline-lambda callable write
+renders itself) -- pinned as documenting routing pins instead; the
+unproven opt-ptr alias boundary is sema-unreachable (the
+sema-implied-proof rule) -- noted in the pin file; the wave-number
+docstring label dropped.
+
+### The frame-slot wave (2026-08-06)
+
+Wave 18; 6 flips (dial -> 3407/3729): the del arm's frame-slot
+exclusion dropped (the AST's _gen_del_var_code never special-cases
+frame slots -- the bare `{ auto __del_sink = std::move(t); }` sink is
+position-blind; flips the asyncio fire-and-forget/drain pair, plus the
+old list-frame-slot fence's shape); Own[value-type] PARAM reads (the
+no-op Own spelling renders the bare name; LOCALS keep the reject --
+the widening without the param scoping DIVERGED on heapq_merge's
+harmless std::move loop var, now pinned as a unit fence); the
+THIRCoroHandleMove node (a NAME-source handle write's two-line
+`emplace(std::move(*c)); c.reset();` pair; flips the async_bind move
+pair + coro_optional_nonvalue_local via harvest). PARKED: the
+sync-body concrete-coro handle pair (the erased-vs-concrete retype
+decision -- a cell; TODO.md).
+
+Review round 9 (meta skipped, round-8 rationale): three proposed
+boundaries probed -- the coro self-write and ternary-source shapes are
+SEMA-UNREACHABLE (noted in the pin file; the rejects guard defensive
+residue), the narrowed-param del is INTERIOR to the skip ladder
+(routes; pinned as such); the Own[Int32] LOCAL boundary is real and
+now unit-pinned (the heapq flavor keeps own_read). The stale
+sliced-out test name renamed; ledger entry written.
+
+### The reseat/er-bind wave (2026-08-06)
+
+Wave 19; 3 flips (dial -> 3410/3729): the POINTEE-typed pointer reseat
+source (`saved = p;` -- the escape-hoisted `Point* p` copies bare;
+flips escape_hoist_optional_target; the same-Optional GLOBAL flavor
+stays blocked on the pointer-slot-global one-place consumer guard),
+and the er-bind gate's TRY-HOISTED optional exemption (`p =
+::tpy::unwrap_ref_move(*__try_tmp_N);` into the predecled optional --
+the bind arm's default render verbatim; flips factory_error_return +
+json_model_file_io). PARKED: the non-value hoisted-loop-var pair (two
+predecl+rebind render families -- sync pointer-repoint vs resumable
+optional-copy -- whose selection fact needs mirroring; TODO.md).
+Deferred to the next stretch: the native record-eq / tuple-ordering
+site (needs the native-operator==-vs-__eq__ discriminator mirrored).
+
+Review round 10: the pointee-reseat type-mismatch boundary is a sema
+error (type-checked assign); the er-bind's OTHER optional_locals
+flavor (if-cascade-hoisted) probed -- it falls back safely at its own
+try.hoist gate BEFORE the er-bind arm, pinned as the stays-AST
+boundary; the parked entry's misattributed oracle-comment reference
+corrected (the aliasing note belongs to dict_items_postloop, the
+async sibling documents the orphaned-predecl regression).
+
+### The tuple/slice/union-decl wave (2026-08-06)
+
+Wave 20; 3 flips (dial -> 3413/3729): literal tuple ordering compares
+(`(1, 2) < t` -- IntLiteralType elements resolve via
+resolve_int_literals inside `_tuple_compare_pair`, matching the sibling
+call sites; flips tuple_ordering), slice-object field reads
+(`index.start` off the split slice-overload NAME receiver renders bare
+via `_slice_object_type` -- the field.slice_recv face; flips
+overload_getitem_slice), and ptr-union decl sources (SELF-rooted field
+chains with const from the method's readonly-ness, plus union
+container-element reads off a bare-NAME receiver with const from the
+receiver binding -- the subscript.value_union_elem gate rows; flips
+union_readonly_method_field). The Own[container] literal at a FREE-call
+slot rides the plain-arg ladder (`consume({...})` inline spelled).
+
+Review round 11: the subscript decl-source gate TIGHTENED to bare-NAME
+receivers -- the arm's const verdict reads the receiver name while the
+AST oracle recurses a field chain to its root, so a chained receiver
+(`h.pets["k"]`) would mint the mutable variant where the oracle mints
+const; a call receiver is additionally the dangling rvalue-container
+borrow shape THIR declines to route. Field-receiver reject pinned. The
+hand-rolled UnionType/needs_wrapper admission in the subscript read
+gate replaced with the shared `_eligible_ptr_union` (narrower: keeps
+generic-record members and all-value unions out). The Own-literal
+free-arg leg gained its routing pin + the non-Own borrow boundary
+(probed: routes via the ordinary literal arms). Mutable self-chain
+flavor pinned beside the readonly one; faces.py comment placement and
+the stale keeps-rejecting docstring fixed.
+
+### The coerce-cast/lambda-btuple/alias-instance wave (2026-08-06)
+
+Wave 21; 3 flips (dial -> 3416/3729), all in the expr.call long tail:
+the own-coerce-cast leg (`take(big)` -- a REAL scalar-cast coerce over
+a plainly-declared scalar local at an Own[scalar] slot binds the cast
+rvalue bare, the AST's needs_copy=False flip; plus copy(scalar-name)'s
+type-blind general tail; flips pointers/own_coercion), the lambda
+borrow-tuple return (`-> std::tuple<std::string, Point*>` via
+to_cpp_return, admitted ONLY for a same-typed generic-call body through
+the lambda_btuple_ret use flag; the record dict-element print arg rides
+BORROW_BIND; flips calls/ref_generic_tuple_return), and the
+RecursiveAliasInstanceType type-arg admission (`Box[Tree[int]]` joins
+the byte-identical slice -- both paths spell through the same
+recursive_alias_cpp_names map; the wrapper borrow-call arm lands in
+_lower_call_arg as the qualcall twin; flips
+union/generic_recursive_box_field). Two disable-probes killed
+speculative legs before commit (a dead Own-slot render intercept, a
+dead w_genrec widening); a third proved the trailing-return spelling
+branch load-bearing via a real byte divergence.
+
+Review round 12: the meta-review's R5 probe found the own-coerce-cast
+leg OVER-ADMITTING narrowed `int | None` names -- and the AST side
+emits ill-typed C++ there (the narrowing deref is dropped under the
+coerce; g++-confirmed, filed in BUGS.md) -- fixed by requiring the
+DECLARED type be the scalar itself, with the divergent shape pinned as
+a stays-AST fence. The alias-instance slice gained its local-union-
+alias boundary pin (the UnionType sibling's reject through the new
+arm); the scalar-GLOBAL coerce flavor probed as ROUTING (value-scalar
+globals are not pointer slots) and its vacuous boundary claim was
+corrected; the dict-elem witness and the call-receiver subscript-print
+reject were pinned; four stale TODO.md sites pruned; the ~266-consumer
+blast radius of the slice widening filed as a coverage TODO.
+
+### The union-lift/property-receiver wave (2026-08-06)
+
+Wave 22; 2 flips (dial -> 3418/3729): the union value-lift arm (a
+ptr-variant-BOUND union name at a value-variant Own[union] arg slot
+takes `to_value_variant<...>(p)` -- the AST Own-cascade's lift, keyed
+on lc.ptr_variant_locals and positioned BEFORE the copy/move machinery;
+flips lists/container_store_borrow_to_storage) and container-valued
+property receivers (`c.items.append(4)` -> `c.items().push_back(4)` --
+the container flavor of the view-field property row; flips
+records/property_ref_semantics). The lift probe found the FREE-call
+flavor already ROUTING DIVERGENTLY in the tree (an ill-typed ptr-variant
+copy temp; dualgen-only, no corpus witness) -- the arm fixed it and the
+routing pin doubles as the regression guard. PARKED: wrapper-union
+match SUBJECT captures beyond the NAME slice (two witnesses; each needs
+a new subject-bind render -- TODO.md).
+
+Review round 13 (no meta pass -- no Critical): the container-property
+arm now gates through the SHARED _container_method_recv predicate (the
+hand-rolled is_list/dict/set admitted any set element where the family
+predicate slices them -- the admission paths could drift); the lift arm
+gained the defensive narrowed-name guard (the AST skips the wrap for a
+narrowed name; all current admissions exclude them, but the arm is not
+gate-trusted); the set-property and value-variant-container-arg
+witnesses were pinned; the spliced faces.py comment was reattached.
+cpython-parity verified the lift's copy-where-CPython-aliases is warned
+(not silent) and the property-receiver aliasing observes correctly.
+
+### The assert/setitem long-tail wave (2026-08-06)
+
+Wave 23; 2 flips (dial -> 3420/3729): the whole-optional element copy
+at a value-opt setitem slot (`items[i] = items[0]` -- the
+std::optional element passes bare, TYPE-keyed on element equality;
+flips both none_safety warn-subscript cases) and the
+PROTOCOL-isinstance ASSERT arm (`if (!(<concept>))
+raise_assertion_error();` -- the F5 constexpr-if arm's assert flavor;
+its witness case chains into the parked name.union_binding_divergent
+family, so the arm is pinned on minimal fixtures instead of a flip).
+PARKED: the SELF-subject poly assert (needs the __self receiver-alias
+model) and the sgen generic-record receiver (the generic-peephole
+slice proof).
+
+Review round 14: safety traced the assert arm's "no retype" claim to a
+REAL gap -- a child-protocol fact retypes downstream dispatch on the
+AST side (protocol_narrowings feeds the NativeIterable for-loop
+peephole) while THIR's declared entry stayed stale. The probe showed
+the stale type falls back honestly at the for-head gate (no divergence
+reached the byte-diff), and the fix -- the constexpr-if branches'
+declared-retype in the arm -- turns that fallback into routing, pinned
+on the peephole fixture. The two prescribed reject boundaries proved
+sema/codegen-unreachable (cross-type element assigns reject at sema;
+generator protocol-union params reject at async codegen) and are
+documented as such. The "same-container" comments were corrected to
+the type-keyed truth, with the cross-container routing pin proving it;
+the consumed TODO recipe entry is marked landed.
+
+### The member-scan/element-rows wave (2026-08-06)
+
+Wave 24; 2 flips (dial -> 3422/3729): the ptr-union member-scan
+widening (str + concrete-container members ride
+_ptr_union_view_member_ok -- to_cpp_ptr_variant pointer-spells every
+member uniformly, so the shape-blind machinery covers them; flips
+match/protocol_narrow_no_bleed by completing the wave-23 assert arm's
+chain) and the nested-container element rows (the setitem move row,
+_record_elem_subscript_arg's container flavor, and the for-head
+container route's element-subscript leg; flips
+dict/nested_container_element_alias). Two fences in
+test_thir_wave_elem_len.py guarded exactly the widened positions
+(their hazard was an iter-proto misrender; the container-route leg
+renders the oracle's begin/end capture) -- byte-verified, converted.
+
+Review round 15: safety and parity CLEAN with deep verification (the
+move verdict funnels through the shared move-audit join; the readonly
+-into-mutable hazard is sema-rejected upstream; the borrow-tracker gap
+for subscript iterables PREDATES the diff; the live-name copy
+divergence is warned and probed against CPython). Applied: the
+dict/set flavor pins + the named non-container reject pin, the
+local-alias element boundary for the member scan, the narrow-predicate
+docstring reconciled with the _ptr_union_member_wide split it
+contradicted, the stale still-REJECT class docstring corrected, and
+four stale TODO entries marked landed/resolved.
+
+### The tail-probe wave (2026-08-06)
+
+Wave 25; 1 flip (dial -> 3423/3729): stepped slices at record @overload
+getitem (the 3-part `::tpy::Slice{lo, hi, step}` initializer; the emit
+already picked the spelling off the stepped flag; flips
+calls/overload_getitem_both_slices, converting the wave-20 stepped
+fence). The wave's other probes ended in parks and a bug: the truthy
+Optional-FIELD condition needs the dotted-path narrow fact (the code
+names the gap; PARKED), the tuple-literal unpack chains into REF_ALIAS
+(PARKED), and the narrowed pointer-repr Optional[container] subscript
+probe DIVERGED against the oracle -- because the ORACLE is broken (the
+AST's narrowed-Optional unwrap misses the pointer-repr flavor and
+drops to a raw operator[], skipping bounds; filed in BUGS.md with the
+fix shape; the probe was REVERTED per the AST-first rule). Two recipes
+filed: the Own-element tuple param subscript reads and the (AST-
+blocked) narrowed-container receiver row.
+
+Review round 16 (scoped: architecture/coverage/docs -- the 55-line
+diff): architecture and docs clean (the reverted probe left zero
+residue; the BUGS cross-reference verified verbatim). Coverage's
+boundary ask was probed: an int-VARIABLE step is a supported bound and
+ROUTES byte-identically -- pinned as documenting, with the
+negative-step render asserted at unit level.
+
+### The own-tuple/native-optptr wave (2026-08-06)
+
+Wave 26; 2 flips (dial -> 3425/3729): Own-element tuple param subscript
+reads (the tuple value-read gate's family check gains _own_record_tuple
+-- borrow and storage coincide, `std::get<N>(p)` bare; flips
+tuple_argpass_own_named_source_mixed, the filed recipe's shape) and the
+whole-optional pass at native same-optional slots (`repr(opt_none)` ->
+the bare `T*`; slot-equality-keyed since repr is generic over the arg;
+flips records/container_repr_dispatch). The isinstance-TERNARY ctor
+witness stays in the parked isinstance-in-conditions family.
+
+Review round 17 (scoped): the inline native row extracted to the named
+_native_optptr_name_arg predicate per the chain's convention, dropping
+a dead runtime-check guard (the marker field never exists on a bare
+NAME node -- coverage caught it); the str-element mixed-tuple flavor
+probed as ROUTING and pinned documenting; the mismatched-slot boundary
+is unconstructible (the callee's resolved param IS the arg's own
+optional type). Docs clean; no faces spliced.
+
+### The nested-opt/borrow-ternary wave (2026-08-06)
+
+Wave 27; 2 flips (dial -> 3427/3729): the restricted NESTED ctor-arg
+tail gains the None/str-literal value-opt rows (both temp-free,
+mirroring the direct loop; flips match/poly_field_none), and the
+borrow-call ternary arms land twice -- the pointer-reseat ladder's
+ternary-of-borrow-calls rung (`b = &(((flag) ? (g.itself()) :
+(h.itself())));`) and the record-ifexpr arm slice widening from
+NAME-only to name-or-borrow-call arms (a `T&` call result is an lvalue
+like the name arm; flips auto_move/move_borrow_reassign_consume, and
+the old prvalue fence's mixed shape routes byte-identically --
+converted). Also parked: generic_bounded_func (the REF_ALIAS
+alias-decl frontier) and with_target_readonly_enter (branch-hoist
+const).
+
+Review round 18: safety verified the widened value categories
+empirically (the ternary lvalue copy-constructs at Own-temp consumers;
+literal-only rows admit no lvalue source) and flagged the reseat
+rung's container flavor as incidentally unreachable -- pinned
+documenting so a future gate loosening surfaces here. Coverage's two
+boundary asks landed: the value-returning ctor-arm ternary reject and
+the NAME-at-nested-value-opt reject. Tracked: a readonly-strip gap in
+call_returns_cpp_ref's equality (harmless today -- a const mismatch
+fails at the C++ step).
+
+### The own-tuple-args wave (2026-08-06)
+
+Wave 28; 2 flips (dial -> 3429/3729): Own-element tuple NAME args at
+the `std::tuple<...>&&` slot. A FIRST attempt (a preempting arm +
+free-ladder delegation) was caught by the corpus byte-diff CAPTURING
+the still-live flavors of param_forward_own_copyable_warn and fully
+REVERTED -- the byte-diff working exactly as designed. The corrected
+build: _own_tuple_move_arg's element compare widens to per-element
+modulo-Own (flips tuple_per_element_own_arg_copy_ok), and the new
+_own_tuple_borrow_lift_arg row lifts a BORROW-form binding through the
+F3 tuple_to_storage conversion, ordered after the move arm and
+excluding storage-form bindings / Own-tuple params (flips
+tuple_per_element_own_name_copy_warn). The still-live STORAGE flavor
+(the AST's `auto(p)` decay-copy) is genuinely unmirrored -- a future
+row, pinned as a fallback boundary. NB the reverted attempt's recipe
+claimed an existing auto(p) arm; that was WRONG (the case always fell
+back) -- corrected in the TODO entry.
+
+Review round 19 (scoped): the copy-pasted shape-compare prologue
+extracted into the shared _own_tuple_shape_match helper (both arms
+call it before their distinct verdicts); coverage verified all three
+units present, the mismatched-element boundary sema-unreachable, and
+param_forward's continued fallback held by the every-run byte-diff.
+
+### The long-tail singles wave (2026-08-07)
+
+Wave 29; 7 flips (dial -> 3436/3729), five 1:1 cells off the tail:
+
+1. copy_iter at the for-head (flips imports/tpy_builtin_internal_path):
+   the AST's OwnIter/CopyIter peephole is the container route's owning
+   rvalue capture; a copy_iter call admits directly (is_copy_iter),
+   own_iter (consuming binding) and IntLiteral elems stay fenced. A
+   first attempt keyed on is_native_iterable was reverted -- CopyIter
+   is NOT in that classifier; the AST dispatches these on a dedicated
+   registry predicate.
+2. Module-qual ctor at a structural protocol slot (flips
+   stdlib/io_read_size): the protocol arg-temp's init is a storage
+   sink, so a `_module_qual_ctor_shape` init lowers under STORAGE and
+   the marker result gate admits the F1-record -- the record-rvalue
+   temp arm's twin. @dynamic slots keep their adapter fence.
+3. bytearray aug-concat (flips tplib/requests_stream + _redirect):
+   `got += chunk` on a bytearray LOCAL takes the same
+   `bytes_concat`-and-assign render as owned bytes; the bytes row's
+   local-only condition is kept mirrored (param dangling concern does
+   not translate but has no witness). Converted the stale
+   test_bytearray_aug_stays_ast fence to a routing pin.
+4. Union field-write sources (flips union/union_field_assign +
+   _nullable): an assign-narrowed same-union ptr-variant NAME lifts
+   whole via to_value_variant (the divergent-read fence opens ONLY at
+   the union-typed sink -- member-typed sinks keep the miscompile
+   fence), and a ptr-variant-returning free CALL admits via the new
+   `union_value_lift` use flag -- the ptr_opt_lift sink flag's union
+   twin.
+5. Stub-method container-call args (flips dict/warn_dict_copy):
+   `a.update(make_dict())` / `a.update(copy(b))` -- the bare call under
+   the cpp_template, STORAGE-threaded; the slot match is
+   element-Own-blind (stub slots spell `dict[K, Own[V]]`).
+
+Also probed and re-routed to the parked isinstance-conditions entry:
+the datetime_zoneinfo pair's census tag (`binop.shape.==.record`)
+names the operand family, but the blocker is the condition-scoped
+narrowed-read rename (value-position `&&` chains install no inline
+narrow facts) -- already filed. tplib/requests_pool's residue is a
+module-qual setitem KEY, a separate shape.
+
+### The kwargs/self tail wave (2026-08-07)
+
+Wave 30; 4 flips (dial -> 3440/3729) + two parks:
+
+1. Record-NAME print sink (flips kwargs_print_file_textio): `file=f`
+   on an open() TextFile / user Writable record local is the bare
+   lvalue under the pinned `::tpy::as_ostream(<sink>)` consumer --
+   the module-var sink row's name sibling.
+2. print flush= + empty-args file-only (flips kwargs_print_flush +
+   _file_writable): a literal True appends `<< std::flush` (new
+   THIRPrint.flush flag; sema pins flush= to a bool literal, so the
+   guard mirrors a proven fact), False is a no-op; `print(file=s)`
+   emits just the end token. Converted test_print_flush_kwarg_rejects
+   (stale fence) to a routing pin. Empty-args with sep/end kwargs
+   keeps deferring (gen_print's emit-nothing arm).
+3. `return self` at `-> Optional[Self]` (flips records/self_type):
+   the bare `this` token -- the receiver already IS the `T*`; both
+   auto_readonly clones share it. Guarded to the sync-method self
+   (self_cpp == "this", un-narrowed).
+
+Parks: tplib/requests_pool's setitem KEY (2-piece: an owned-str
+call-rvalue arg row + flush-position threading for the subscript
+WRITE-target's index -- the drafted arg row was REVERTED as
+unwitnessed); comp sources that are iterator-object factory chains
+(stdlib/itertools_basic -- pre-statement arg-temp hoist + the same
+not-in-is_native_iterable classifier chase as the for-head lane).
+Probed and left on their parked families: the sgen dict-view tuple
+rungs (gen_dict_items_mutate, tuple_optional_yield_compose), the er
+comp (comp_array_error_return_fallback).
+
+Review round 20 (waves 29-30): codegen-correctness and docs-sync
+clean (the union-name lift, `return this`, bytearray concat and
+copy_iter routes each traced to their oracles). Applied: the
+modulo-Own type-args strip extracted to the shared _unown_type_args
+(was hand-copied at the stub-slot gate and the container-literal
+method-arg arm); the union field-write FormConvert's move flag forced
+honest (to_value_variant deref-copies, so move=True there was a claim
+no render can honor -- scoped to the convert, the storage-form
+THIRMove arm untouched); a genuine fallback boundary (Own-elem slot)
+plus the set leg added to the stub-container arg pins; a stale
+TODO.md flip reference corrected. Skipped as established convention:
+the fixture Int32 spellings and the was-a-fence comment phrasing.
+
+### The copy/tuple-return wave (2026-08-07)
+
+Wave 31; 2 flips (dial -> 3442/3729) + one 3-unit clear:
+
+1. copy() of a ptr-variant union binding (union/union_copy_ptr_variant,
+   3 of 4 units cleared; still marked -- the 4th is a branch-position
+   ptr-union decl, the parked branch-hoist lane): the whole-variant
+   deep copy via to_value_variant (the STORAGE FormConvert on the bare
+   name), keyed on the BINDING type -- an assign-narrowed local reads
+   as its member but still copies the variant; the plain-record copy
+   row now excludes ptr-variant bindings (it had mis-captured them via
+   the narrowed read type, saved from divergence only by the divergent
+   fence raising inside its inner lowering); the slot-kind classifier
+   admits the copy call as UNION_RVALUE.
+2. Storage-form Own-element tuple NAME returns (flips
+   tuple/tuple_alias_own_member_escape_ok +
+   tuple_own_return_param_member): `return pair;` bare through the
+   generic tail, gated on storage_tuple_locals + the shared
+   _own_tuple_shape_match. A FIRST placement in the Own-storage-tuple
+   arm was dead code -- the return classifies as the WIDENED value
+   tuple (Own[record] elements admitted there), so the row lives in
+   the ret_vt NAME rung. The borrow-form sibling is sema-unreachable
+   (borrowed element into an Own slot is a SemanticError).
+
+Probed and re-routed to parked families: exceptions/
+finally_mutates_returned_local (the borrow-record-at-RECEIVER reject
+is the documented REF_ALIAS design stop -- a prior general admission
+was reverted for exactly this), none_safety/narrowed_field_print (the
+dotted-path narrow fact), iterators/consuming_for_loop (the
+iterator-decl residue), stdlib/re_basic (fstring interpolations over
+multi-family method rets).
+
+### The own-elem tuple-literal wave (2026-08-07)
+
+Wave 32; 1 flip (dial -> 3443/3729): a tuple LITERAL at an
+Own-ELEMENT tuple slot (`read_owned((A(1), A(2)))` at
+`std::tuple<A, A>&&`) renders the spelled brace-init with each element
+against its Own-peeled by-value slot -- the Own-storage-tuple RETURN
+arm's arg twin, same storage-direct member rules (flips
+tuple/param_own_tuple_never_consumed_warn; rvalue, movable-last-use
+and copy() members dualgen-verified). tuple/tuple_ref_readonly is a
+different family (a @readonly borrow-tuple RETURN of const-rooted
+field reads) and keeps deferring, pinned. New park: the nested-def
+rebind-slot pair is an EMIT-model limitation (_rejects_lambda_hoist
+is the documented protection; slot allocation would need to scope to
+the nested-def emit).
+
+### The pointer-receiver getitem wave (2026-08-07)
+
+Wave 33; 1 flip (dial -> 3444/3729): a pointer-slot LOCAL receiver at
+a record-getitem field read (`acc[0].name` on a rebind-slot ArrayList
+local) derefs at the name read (`(*acc)[0].name`) -- indirect_read
+threaded at the PRECHECKED record-getitem construction, admission via
+a ptr_recv_ok kwarg consumed only by the field-over-getitem gate (the
+subscript arm's other positions keep excluding pointer receivers; a
+first edit at the un-prechecked construction was dead code and was
+reverted). Flips list/arraylist_move_nontrivial. The nested-tuple
+subscript-chain sibling (tuple/tuple_own_nested_inline, `pp[0][0].fd`)
+is a different receiver rung -- next.
+
+Review round 21 (waves 31-33 + the tuple_per_element_own_name_move
+harvest flip): codegen-correctness (live-probed the ptr-variant copy
+as a genuine deep copy), safety-model (traced the divergent read-type
+inert at the whole-variant sink; the _lower_copy_record exclusion is
+genuine bug-avoidance -- Dog(pet) from a variant local would be
+invalid C++), and the combined convention/docs pass all clean.
+Applied from test-coverage: the own-elem tuple-literal arm's SAME-SITE
+reject boundary (a ternary member -- neither rvalue nor movable name),
+the movable-NAME element move witness ({std::move(a), 4}), and the
+bare ptr-receiver subscript reject pin (ptr_recv_ok stays scoped to
+the field-over-getitem gate). Skipped: the fold-on-third-site dedup
+note (conditional).
+
+### The assign-narrowed method-receiver wave (2026-08-07)
+
+Wave 34; 1 flip (dial -> 3446/3729): an ASSIGN-narrowed ptr-variant
+union NAME as a METHOD receiver (`c: Circle | Rect = Circle(5.0);
+c.area()`) renders the inline bare-get read
+(`(*std::get<Circle*>(c)).area()`) -- the field row's method twin
+(THIRNarrowedRead receiver at the method arm; the SHAPE gate and the
+ARG gate both resolve the receiver to the member sema retyped the
+read to). The arg-gate half was caught by the pin, not the dualgen: a
+witness fires at gate time, so a body can witness an arm and STILL
+fall back at a later statement -- a dualgen fallback count of 1 says
+which COUNT, not which BODY; identify the failing body before reading
+a probe as a boundary. Flips union/union_assign_narrowing_method;
+isinstance-narrowed receivers stay on their alias arms (pinned
+witness==0).
+
+### The F3 str-element wave (2026-08-07)
+
+Wave 35; 1 flip (dial -> 3447/3729): an owned-str element joins the
+F3 tuple family (_f1_tuple_element_ok) -- str is a value type
+spelling `std::string` in BOTH forms, so every per-element conversion
+rides it untouched. A SHARED-predicate widening: return literal, call
+decl, arg pass and unpack positions all dualgen-verified before the
+corpus run (the F3 machinery is position-blind by design; str was an
+omission, not an exclusion). Flips calls/ref_strip_ctor_type_arg
+(`return (str(p), p)` -> the borrow-tuple literal builder's spelled
+`std::tuple<std::string, Point*>{...}` -- the ret.btuple_literal arm
+existed; only the slot classification blocked it). StrView elements
+stay out (views split forms), pinned.
+
+### The opt-view field-return wave (2026-08-07)
+
+Wave 36; 1 flip (dial -> 3448/3729): an owned-str FIELD read at the
+value-opt view return (`return sub.value` through the narrowed ptr
+local -> `return sub->value;`) lands bare in the
+`std::optional<std::string>` return -- the field arm gates its own
+receiver shapes, the row threads field_owned_str_ok so the result
+gate admits the owned member. Flips
+records/property_optional_field_local; StrView members type as views
+and keep deferring, pinned.
+
+Review round 22 (waves 34-36): both combined passes clean.
+codegen+safety verified the wave-34 gates against constructed
+divergence attempts (none reproduce -- the lowering re-checks), the
+F3 str seam against the runtime's same-type short-circuit (no extra
+copy), and the opt-view field guard against view leakage. Coverage
+confirmed the F3 pin genuinely exercises four positions in one
+fixture and the dial arithmetic across the harvest commit. Filed: the
+triplicated assign-narrowed-union test (collapse onto one predicate
+in predicates.py at next touch -- checks.py cannot import the
+expressions.py original).
+
+### The MIL tuple wave (2026-08-07)
+
+Wave 37; 2 flips (dial -> 3450/3729): the ctor MIL's F1-tuple field
+gains two rows. A storage-form-tuple-returning CALL stores bare
+(`t(make_pair(5))` -- _storage_form_tuple_return, the AST's
+needs_tuple_storage_lift call verdict; no tuple_to_storage wrap), and
+an Own-param element at its LAST USE moves inside the literal wrap
+(`{1, std::move(b)}` -- the elem_ok gate takes own_params and the
+elem() builder wraps THIRMove). Flips tuple/tuple_own_call_field_store
++ tuple/tuple_param_yield_storage_arg. A copy()-of-Own-param element
+stays out (the copy row is plain-param only), pinned via the
+still-live flavor.
+
+### The base-init ctor-default wave (2026-08-07)
+
+Wave 38; 1 flip (dial -> 3451/3729): a materialized-default CTOR
+rvalue at the base-init slot (`: Base(a, Fixed(5), 2)` -- sema fills
+omitted defaults and kwargs into positional args before codegen, so
+the base-init cell sees plain positional TpyCalls). The arg row
+admits an F1 ctor rvalue whose own args are scalar literals/names
+(the no-flush contract holds: such a ctor cannot register a temp).
+Flips defaults/super_init_materialized_default; a ctor arg wrapping a
+record field-read stays out, pinned.
+
+### The bytes-ternary wave (2026-08-07)
+
+Wave 39; 1 flip (dial -> 3452/3729): a bytes ternary mixing a VIEW
+arm and a bytes-LITERAL arm (`b if b is not None else b"none"`)
+renders the raw mixed ternary -- the span converts from the literal's
+owned temporary (alive to the full expression's end), the whole
+ternary stays BORROW, and the owned sink wraps it in bytes_copy.
+Flips bytes/bytes_param_return; a literal + CALL arm mix keeps
+deferring, pinned.
+
+CORRECTION (same day): the first build of the arm keyed on ANY view
+arm and broke test_bytes_result_rejected -- and that fence turned out
+LOAD-BEARING: the PLAIN bytes-param flavor's AST emit is UNCOMPILABLE
+(`return ((c) ? (b) : (bytes_literal_owned(..)))` -- span vs vector,
+no common type; hidden because no exec witness exercises it; compile-
+verified and filed in BUGS.md). The arm now keys on the value-opt
+PARAM deref flavor only (_value_opt_view_param), the fence pin stays
+as the bug's documenting boundary, and the wave commit went in red --
+the corpus notification's exit code is NOT the pytest verdict when a
+command chain follows it; check the tail before committing.
+
+Review round 23 (waves 37-39 + the fix): both combined passes clean.
+Coverage build-verified the BUGS.md uncompilable-emit claim and
+confirmed the CORRECTION narrative against the two commits; codegen
+traced the ternary's C++ overload resolution (why the value-opt
+flavor compiles and the plain-param flavor cannot) and verified all
+three arms reuse previously-vetted predicates. Applied: the BUGS.md
+size tag ([MED] -> [MED small]).
+
+### The discard-subscript wave (2026-08-07)
+
+Wave 40; 1 flip (dial -> 3453/3729): the `_` unpack half desugars to
+a bare subscript statement evaluated for its bounds check
+(`::tpy::__getitem__(items, 0);`) -- the expr-stmt arm admits
+non-slice subscripts and the element gate's DISCARD position takes
+the record element lvalue (dropped, no alias escapes). Flips
+tuple/tuple_literal_unpack_alias; a discarded SLICE subscript keeps
+deferring, pinned via witness==0.
+
+### The own-tuple-param return wave (2026-08-07)
+
+Wave 41; 1 flip (dial -> 3454/3729): `return p;` of an Own-element
+tuple PARAM (`std::tuple<A, A>&& p`) at the widened value-tuple
+return -- the rvalue-ref binding is already storage form, so the bare
+name rides the generic tail (the wave-31 storage-local row's param
+leg; found by the census REFRESH after 25 flips of drift moved the
+case's tag). Flips tuple/param_unpack_own. Also this wave: three
+parks committed (hoisted container unpack targets -- 3 coordinated
+pieces; Own[scalar] loop-var moves -- the value-move verdict split;
+temp-demoted ctor inits -- blocked on attempt rollback), and the
+fresh census maps 107 marked sole-blockers with the un-parked
+remainder nearly all belonging to parked families on inspection.
+
+Review round 24 (waves 40-41): clean, no findings. The reviewer
+traced the discard-subscript dispatch (slices excluded at two
+independent gates; checked-optional elements still raise), probed
+both tuple-param flavors (the non-Own sibling is a pointer-repr
+param routed by a different pre-existing arm -- structurally
+unreachable by the new gate, so no boundary pin is needed), and
+verified the C++20 implicit-move-on-return matches the AST's bare
+render. All three parks' claims verified against the cited sites.
+
+MERGE-CYCLE NOTES (2026-08-11, pre-squash): the residual 275
+unmigrated cases decompose as ~107 marked sole-blockers (census
+2026-08-07, ALL parked-family or filed-recipe on inspection) plus
+multi-tag cases chaining into the same families -- the next session
+needs a design round, not a re-measure. expressions.py crossed 13k
+lines this branch (+1307); a split is DELIBERATELY DEFERRED to the
+cutover consolidation (the file dissolves into the printer layer +
+per-construct lowering modules there; splitting now would churn every
+open recipe's line references).
+
+SESSION CLOSE (2026-08-07): the autonomously grindable queue is
+EXHAUSTED. The fresh census (107 marked sole-blockers) leaves no
+mechanical single outside a parked family or a filed multi-piece
+recipe -- the remaining tail is design-session territory (the parked
+entries in TODO.md, each with its analysis and oracle). Session
+total: waves 29-41, reviews 20-24, dial 3429 -> 3454/3729 (25
+flips), one AST bug filed (the uncompilable bytes ternary), nine
+parks with recipes.

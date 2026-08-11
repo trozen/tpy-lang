@@ -61,10 +61,11 @@ class TestMethodRvalueRebindSlot:
         assert "cur = &__slot_1;" in cpp
         assert "cur = &*(__slot_2 = nxt->clone());" in cpp
 
-    def test_borrow_returning_method_decl_keeps_rejecting(self):
-        # A BORROW-returning method result at a reassigned decl is not an
-        # rvalue source -- the REBIND_SLOT admission must not claim it (the
-        # AST binds a pointer to live storage there, not a slot).
+    def test_borrow_returning_method_decl_routes(self):
+        # A BORROW-returning method result at a reassigned decl: the
+        # decl.ptr_call_addr arm binds a pointer to the live storage
+        # (`Node* cur = &(h.peek());`), and the rvalue reseat rides the
+        # rebind slot -- REBIND_SLOT never claims it.
         src = (
             "from tpy import Int32, Own\n"
             "class Node:\n"
@@ -83,7 +84,7 @@ class TestMethodRvalueRebindSlot:
             "    return cur.value\n"
         )
         fell = _thir_fallbacks(src)
-        assert "body:stmt.var_decl:decl.record_call_reassigned" in fell, fell
+        assert not fell, fell
 
 
 class TestOptPtrLiftOffMethodCallField:

@@ -487,6 +487,30 @@ class TestAwaitModes:
         assert (".emplace(std::move(::tpystd::asyncio::sleep(0.01)));"
                 in cpp)
 
+    def test_erased_gather_vararg_operand_routes(self):
+        # A vararg pack inside an ERASED await operand (`await
+        # asyncio.gather(t1, t2)`): the emplace is a statement position, so
+        # the pack's std::array temp flushes before the suspend line exactly
+        # where the AST flushes it.
+        src = ("import asyncio\n"
+               "from tpy import Int32\n\n"
+               "async def fetch(n: Int32) -> Int32:\n"
+               "    await asyncio.sleep(0.001)\n"
+               "    return n * 2\n\n"
+               "async def go() -> None:\n"
+               "    t1 = asyncio.create_task(fetch(1))\n"
+               "    t2 = asyncio.create_task(fetch(2))\n"
+               "    rs = await asyncio.gather(t1, t2)\n"
+               "    for r in rs:\n"
+               "        print(r)\n\n"
+               "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.suspend_operand", 0) >= 1
+        assert witnesses.get("vararg.pack_ref", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 2> __tmp_1{&(*t1), &(*t2)};" in cpp
+
     def test_await_arg_families_route(self):
         # Await-arg slots share the DIRECT-param families (str/bytes/
         # F1-record) -- the emplace ctor param is the sync borrow shape, so
@@ -764,7 +788,7 @@ class TestSlicedOutShapes:
         _, _hpp, cpp = _gen(src, thir=True)
         assert "x = &*(__ptr_slot_f0 = R(5));" in cpp
 
-    def test_lowering_reject_falls_back_after_await(self):
+    def test_frame_slot_del_routes_after_await(self):
         src = (_PRE
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
@@ -774,9 +798,9 @@ class TestSlicedOutShapes:
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        # `xs` is a resumable frame slot -- the del move-sink has no mirrored
-        # frame-slot render, so the body stays AST.
-        assert fallback.get("resumable:stmt.del_var:binding") == 1
+        # `xs` is a resumable frame slot; the del move-sink renders the
+        # same position-blind bare member move, so the body routes.
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_global_lowering_reject_falls_back_after_await(self):
         # A STR global is not an eligible-scalar write slot, so its
@@ -1242,17 +1266,18 @@ class TestBoundCoroAwaits:
         assert witnesses.get("res.await_prebuilt", 0) >= 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_name_source_rebind_defers(self):
-        # `c2 = c` (handle move-bind) is the two-statement
-        # `emplace(std::move(*c)); c.reset();` render -- sliced out.
+    def test_name_source_rebind_routes(self):
+        # `c2 = c` (handle move-bind) renders the two-statement
+        # `emplace(std::move(*c)); c.reset();` pair (THIRCoroHandleMove).
         src = (self._PRELUDE
                + "async def main_coro() -> None:\n"
                + "    c = add_one(1)\n"
                + "    c2 = c\n"
                + "    print(await c2)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.coro_handle_source") == 1
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.coro_handle_move", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_erased_handle_local_routes(self):
         # An ERASED handle local (a helper returning Own[Cancellable[T]]):

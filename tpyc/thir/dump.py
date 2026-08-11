@@ -91,6 +91,7 @@ from .nodes import (
     THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap,
     THIRForIterProto,
+    THIRCoroHandleMove,
     THIRFrameSlotWrite,
     THIRFunction,
     THIRGenExpr,
@@ -626,6 +627,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}ptr_rebind[{stmt.kind.name.lower()}] %{stmt.name}{val}"]
     if isinstance(stmt, THIRFrameSlotWrite):
         return [f"{pad}frame_slot %{stmt.name} <- {_expr(stmt.value)}"]
+    if isinstance(stmt, THIRCoroHandleMove):
+        return [f"{pad}coro_handle_move %{stmt.target} <- %{stmt.source}"]
     if isinstance(stmt, THIRResumableReturn):
         val = "" if stmt.value is None else f" {_expr(stmt.value)}"
         return [f"{pad}resumable_return{val}"]

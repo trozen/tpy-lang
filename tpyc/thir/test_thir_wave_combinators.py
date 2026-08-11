@@ -56,9 +56,10 @@ class TestNativeLadderRungs:
         assert faces["call.native_iter_call_arg"] >= 1
         _assert_byte_identical(src)
 
-    def test_user_iterator_call_stays_ast(self):
-        # A plain user function returning an Iterator-conforming record is
-        # NOT a combinator rvalue -- the row must not take it.
+    def test_user_iterator_call_unpack_routes(self):
+        # A plain user function returning an Iterator-conforming record now
+        # rides the tuple-unpack head's iter-proto call leg (zip is a
+        # generator call; the unpack targets are scalars).
         src = (
             "from tpy import Int32, Own\n"
             "class CountUp:\n"
@@ -80,7 +81,7 @@ class TestNativeLadderRungs:
             "    for a, b in zip(make_counter(3), [10, 20, 30]):\n"
             "        print(a, b)\n"
         )
-        assert _fn(_lower_ctx(src), "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
         _assert_byte_identical(src)
 
 

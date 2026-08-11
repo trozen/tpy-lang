@@ -259,7 +259,7 @@ class TestFormConvertMoveValidation:
 
 
 class TestTypeArgSpellingFoundation:
-    """Wave-7 foundation: `expand_fi_template` mirrors gen_call_from_fi's
+    """`expand_fi_template` mirrors gen_call_from_fi's
     {T}/{cpp} substitution; `THIRCall.template_args_cpp` renders the explicit
     template-arg list over the plain/imported spellings only."""
 

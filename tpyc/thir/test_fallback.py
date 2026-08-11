@@ -167,11 +167,12 @@ _SRC = (
     "from tpy import Array, Int32\n"
     "async def af() -> None:\n"
     "    pass\n"
-    "def gen() -> Iterator[Int32]:\n"
-    "    yield 1\n"
+    "def gen() -> Iterator[tuple[Int32, Int32]]:\n"
+    "    yield (1, 2)\n"
     "def comp(src: Array[Int32, 3]) -> Int32:\n"
-    # comp over an ITERATOR-protocol call (no container return): still AST
-    "    xs = [v for v in gen()]\n"
+    # UNPACK comp over a generator call: the genfac comp arm takes only
+    # unpack-less value-yielding sources -- this shape stays AST
+    "    xs = [a + b for a, b in gen()]\n"
     "    return len(xs)\n"
     "def ok(n: Int32) -> Int32:\n"
     "    return n + 1\n"

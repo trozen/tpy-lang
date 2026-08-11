@@ -76,6 +76,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the optional<P>&& slot bare
     "field.opt_record_recv",        # narrowed owned-optional record name
                                     # receiver derefs -- (*r).field
+    "field.slice_recv",             # slice-object name: index.start bare
     "field.storage_opt_recv",       # narrowed storage-opt local receiver
                                     # derefs at the access -- (*item).field
     "arg.storage_opt_whole",        # narrowed storage-opt local at a
@@ -114,6 +115,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ref slot -> hoisted `__tmp_N` temp
     "argtemp.generic_container_literal",  # the same hoist at a GENERIC
                                     # callee's substituted container slot
+    "argtemp.gen_factory",          # temporary at a generator/coro factory
+                                    # METHOD's ref / readonly-ref slot ->
+                                    # named scope-local the frame borrows
     "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
                                     # pre-decl on the sink's named row
     "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =
@@ -163,6 +167,21 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.opt_view_narrowed",      # narrowed registered Optional[str]
                                     # binding at a str-concat operand:
                                     # the VIEW arm's `(*t)` deref
+    "binop.char_concat",            # Char-typed str-concat operand: the
+                                    # resolved overload's char_to_str
+                                    # operand wrapper
+    "binop.scalar_raw",             # resolver-less scalar binop (post-sema
+                                    # macro synthesis): the raw C++
+                                    # operator render
+    "binop.tuple_ptr_compare",      # pointer-repr tuple-literal compare
+                                    # pair: the deref-aware tuple_eq /
+                                    # tuple_lt helper composition
+    "binop.tuple_ptr_needle",       # pointer-repr tuple-literal membership
+                                    # needle: the tuple_to_storage lift
+                                    # over the borrow-form literal
+    "binop.list_concat",            # list + list -> ::tpy::list_concat;
+                                    # a literal operand takes the
+                                    # typed-brace prefix
     "ifexpr.container",             # container ternary: the bare
                                     # form-blind arm render
     "stmt.compile_time_assert",     # assert_send/assert_sync statement:
@@ -186,6 +205,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "vararg.star_span",             # `*container` borrowed span
     # The temp-free last-use move (lowering).
     "move.own_last_use",            # `f(std::move(name))`
+    "move.own_tuple",               # OWN-element tuple name moved whole
+                                    # at the matching rvalue tuple slot
     # Pointer-repr Optional[record] slot faces (lowering).
     "optptr.none",                  # `nullptr`
     "optptr.ctor_rvalue",           # `&(__tmp_N)` addr-of arg temp
@@ -243,6 +264,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> `::tpy::bytes_copy(x)`
     "call.isinstance_static_value", # tparam isinstance trait disjunction at
                                     # a value position
+    "call.isinstance_union_value",  # union-subject holds_alternative chain
+                                    # at a value position (no alias)
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
@@ -278,6 +301,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.consuming_move",        # consuming method: std::move(name) receiver wrap
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
+    "call.value_opt_record_arg",    # ValueType-record ctor rvalue inline
+                                    # at a value-opt record slot
+    "call.value_record_name_arg",   # ValueType-record NAME bare at a
+                                    # by-value same-record slot
     "call.float_str_fold",          # float("nan"/"inf") -> spelled numeric-limits constant
     "print.record_call",            # F1-record call rvalue streams raw via operator<<
     "print.protocol_call",          # protocol-result call (`print(iter(s))`) streams raw
@@ -427,9 +454,35 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # native slot (len(os.environ))
     "method.recv.view_field",       # str/bytes field receiver routing the
                                     # view family over the member read
+    # A CONTAINER-valued property receiver: the borrow-returning
+    # getter call is the receiver lvalue (`c.items().push_back(4)`).
+    "method.recv.container_property",
+    # The protocol-isinstance ASSERT: the concept spelling under
+    # THIRAssert's negated-if wrap (the F5 arm's assert flavor).
+    "assert.protocol_concept",
+    # A same-element-type whole-optional element read at a value-opt
+    # setitem slot passes bare (`items[i] = items[0]`).
+    "setitem.optval_elem_copy",
+    # A move-source same-type container NAME at a nested-container
+    # element store moves in whole (`__setitem__(g, "a", std::move(a))`).
+    "setitem.container_move",
+    # A ptr-repr Optional[F1-record] name at a native protocol slot:
+    # bare T* un-narrowed, the (*name) deref when proven.
+    "arg.native_protocol_optptr",
+    # A None literal at a value-opt slot of a NESTED ctor arg
+    # (`describe(Dog(None))` -> `std::nullopt`, temp-free).
+    "ctor.nested_none_value_opt",
+    # A ternary of borrow-returning calls at a pointer reseat
+    # (`b = &(((flag) ? (g.itself()) : (h.itself())));`).
+    "reseat.borrow_call_ternary",
+    # A borrow-form Own-element tuple name at the && slot lifts via
+    # the F3 tuple_to_storage (the warned copy).
+    "arg.own_tuple_borrow_lift",
     "method.recv.bytes_method",     # `srv.recv(32).decode()` -- a bytes-VALUE
                                     # method-call result feeding the outer
                                     # bytes method's receiver slot
+    "method.recv.scalar_call",      # scalar-value call result receiver
+                                    # (`int(0).bit_length()`)
     "method.recv.str_method",       # `s.strip().lower()` -- a str-VALUE
                                     # method-call/free-call receiver, the inner
                                     # str method's bare nested-call render
@@ -525,6 +578,49 @@ THIR_FACES: frozenset[str] = frozenset({
     # call of the inner type): the bare copy `recv.opt = Inner(args);`.
     "field_write.optrec_rvalue",
     "field_write.union_member_ctor",  # member ctor rvalue -> bare variant store
+    # Assign-narrowed same-union NAME source: the whole ptr-variant lifts
+    # via to_value_variant into the union field slot.
+    "field_write.union_name_lift",
+    # The union field sink's CALL twin: a ptr-variant union call result
+    # consumed whole by the sink's to_value_variant lift.
+    "call.union_value_lift_ret",
+    # A container-returning call at a stub method's concrete container
+    # slot: the bare call under the cpp_template (STORAGE-threaded).
+    "arg.container_call_rvalue",
+    # A record-NAME print sink (`file=f`): the bare lvalue under the
+    # pinned as_ostream consumer.
+    "print.file_name_sink",
+    # A literal flush=True kwarg: the `<< std::flush` tail token.
+    "print.kw_flush",
+    # `return self` at an Optional[Self] ptr-opt return: the bare `this`.
+    "ret.ptr_opt_self",
+    # copy() of a ptr-variant union binding: the to_value_variant deep
+    # copy (STORAGE FormConvert on the bare name).
+    "call.copy_ptr_variant",
+    # A storage-form tuple NAME at the Own-storage-tuple return: the
+    # bare name (NRVO, no lift).
+    "ret.own_storage_tuple_name",
+    # A tuple LITERAL at an Own-ELEMENT tuple slot: the spelled
+    # brace-init, elements against their Own-peeled by-value slots.
+    "arg.own_elem_tuple_literal",
+    # An assign-narrowed ptr-variant union NAME method receiver: the
+    # inline bare-get read ((*std::get<M*>(c)).m()).
+    "method.assign_narrowed_union",
+    # An owned-str FIELD read at the value-opt view return: the member
+    # lands bare in the optional (converting ctor).
+    "ret.value_opt_view_field",
+    # A storage-form-tuple-returning call at the ctor MIL slot: bare
+    # (no tuple_to_storage lift).
+    "mil.tuple_storage_call",
+    # A bytes ternary mixing a VIEW arm and a bytes-LITERAL arm: the raw
+    # mixed render, whole-ternary BORROW (the sink copies).
+    "ifexpr.bytes_view_lit",
+    # A DISCARDED element-subscript statement: the checked
+    # __getitem__(recv, i); evaluated for effect/bounds.
+    "expr_stmt.subscript_discard",
+    # An Own-element tuple PARAM name at the widened value-tuple return:
+    # the bare name (the rvalue-ref binding is already storage form).
+    "ret.own_tuple_param",
     # F1-record element/value slot: a record RVALUE (exact or covariant
     # upcast) forwarded bare by the checked `__setitem__`
     # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).
@@ -574,6 +670,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # a method receiver / borrow bind
     "method.recv.dyn_call",         # free-call receiver with a dyn-protocol
                                     # result (own arrows, borrow dots)
+    "method.protocol_container_ret", # borrow-container protocol result
+                                    # feeding the checked-dunder receiver
     "method.protocol_chain_ret",    # protocol-typed method result feeding
                                     # the composing call's receiver slot
     "method.protocol_own_dyn_ret",  # Own[@dynamic P] method result renders
@@ -822,6 +920,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # ctor expansion -- are shared with the pass-through emits, so admission
     # is the only distinguishing site).
     "ret.record_borrow",
+    "call.borrow_ret_passthrough",  # T&-returning call bare at the
+                                    # borrow-record RETURN sink only
+    "ret.record_call_storage",      # record rvalue call at the STORAGE
+                                    # return -- bare passthrough
+    "ret.record_call_borrow",       # T&-returning call at the borrow
+                                    # return -- bare passthrough
     "ret.record_storage",
     "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
@@ -934,6 +1038,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # bare member read is what begin()/end() are taken off
     # (`(__self.nodes).begin()`). The sync for-head has its own arm.
     "field.container_iterable",
+    # A stored-awaitable F1-record field at the BORROWED suspend operand
+    # (`await self.evt` -> `__sub_0 = &(__self.evt);`): the bare member
+    # read; the skeleton owns the `&(..)` wrap.
+    "field.suspend_borrow",
     # A CONTAINER field as the `std::ranges::contains` haystack
     # (`item in self.xs` -> `std::ranges::contains(this->xs, item)`).
     "binop.membership_container_field",
@@ -971,6 +1079,36 @@ THIR_FACES: frozenset[str] = frozenset({
     # A conformer NAME into a still-open single structural protocol slot
     # (`drive_implicit(t)` at `Awaitable[T]`): binds the template param bare.
     "call.generic_open_proto_name",
+    # A lambda at a still-open Fn slot in a generic caller
+    # (`map_keys(pairs, lambda p: p[1])`): the lambda renders itself.
+    "call.generic_open_slot_lambda",
+    # A container-element subscript at the still-open slot inside a generic
+    # body (`f(xs[i])` at `T`): the element read binds the ref slot bare.
+    "call.generic_open_slot_elem",
+    # A nested value-tuple NAME at a T slot (`less(a, b)` on
+    # `((1, 2), "x")`): the recursive value family binds bare.
+    "call.generic_nested_tuple_name",
+    # A narrowed ptr-repr Optional[wrapper] param at a same-wrapper slot
+    # (`leaf_count(t)` on `Tree[int] | None`): the `(*t)` deref binds bare.
+    "arg.ru_wrapper_opt_narrowed",
+    # A VALUE-yielding generator-factory comp source (`[v for v in
+    # wrap(3)]`): the owning `auto __obj_N` capture with begin/end.
+    "comp.genfac_source",
+    # A container-type ctor call at a VALUE sink (`print(asdict(p))` --
+    # the expansion's `dict(...)` prvalue under the printer wrap).
+    "call.container_ctor_value",
+    # `dict({...})` -- the spelled result type around the dict literal's
+    # own ordered_map render (the asdict expansion's shape).
+    "call.dict_literal_instantiation",
+    # A scalar/owned-str FIELD read at a value-union element slot renders
+    # bare (`{{"name", p.name}}` -- the converting ctor picks the member).
+    "containerlit.union_field_elem",
+    # A value-tuple needle in a tuple-keyed dict/set membership
+    # (`(1, 2) in d`): the spelled tuple render inside contains(...).
+    "binop.contains_tuple_needle",
+    # A list comp at a union value slot with a unique list member: the
+    # comp lowers against the member (the asdict list recursion).
+    "comp.union_member_source",
     # A Callable field read into a callable slot (`apply(handler.cb, 10)`):
     # the bare member read, the std::function converting implicitly.
     "call.callable_field_arg",
@@ -1234,6 +1372,19 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.copy_container",
     # `copy(span)` of a Span NAME -> `std::span<T>(span)` (a view copy).
     "call.copy_span",
+    # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
+    "call.copy_str",
+    # `copy(big)` of a scalar NAME -> `::tpy::BigInt(big)` (the same
+    # type-blind general tail; scalars are value types).
+    "call.copy_scalar",
+    # A REAL scalar-cast coerce over a local name at an Own[scalar] slot
+    # binds the cast rvalue bare (the AST's needs_copy=False flip); the
+    # generic coerce-template render is the whole emit.
+    "call.own_coerce_cast",
+    # A ptr-variant-BOUND union name at a value-variant Own[union] slot
+    # copies the active member out (`to_value_variant<...>(p)`) -- the
+    # AST Own-cascade's union lift, keyed on the binding set.
+    "arg.union_value_lift",
     # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
@@ -1271,6 +1422,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # &(::tpy::__getitem__(ps, i));` -- the decl twin of `reseat.subscript_elem`.
     "decl.subscript_elem_addr",
     "decl.ptr_name_addr",           # reassigned record-name alias: T* x = &(a)
+    "decl.ptr_call_addr",           # reassigned borrow-call: T* x = &(f(a))
     "decl.opt_tuple_elem_lift",     # ptr-Optional tuple-field element decl:
                                     # optional_to_ptr(std::get<N>(h.t))
     # NAME-reassigned container-LITERAL pointer-local: `std::vector<T>
@@ -1286,6 +1438,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # REF_ALIAS decl off a PLAIN pointer-local source: `Point& alias =
     # (*p);` (the name lowering's deref render at the alias init).
     "decl.alias_ptr_deref_src",
+    "decl.alias_opt_ptr_deref_src",  # proven Optional-ptr source: T& a = (*p)
     # Reseat of a slot-hoist Optional local to None: `x = nullptr;`.
     "reseat.opt_call_pass",         # borrow-returning ptr-opt call reseat:
                                     # the bare pointer copy, no slot write
@@ -1593,6 +1746,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRLambda (lowering): a `lambda` expr -> _gen_lambda's C++ closure;
     # by-ref capture, non-void or void body.
     "expr.lambda",
+    # A pointer-repr tuple lambda return spells the borrow form
+    # (to_cpp_return) -- the same-typed bare-call body slice.
+    "lambda.btuple_ret",
+    # The generic call whose val_or_ptr_t tuple IS that closure's
+    # borrow-form return (the lambda_btuple_ret use row).
+    "call.lambda_btuple_ret",
+    # An F1-record container element streams RAW at a print arg
+    # (`<< ::tpy::__getitem__(d, k)`) -- the subscript sibling of
+    # print.record_field.
+    "print.record_subscript",
     # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):
     # `const auto& __tup_N = name;` + per-target scalar decls.
     "stmt.tuple_unpack",
@@ -1659,6 +1822,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.btuple_storage_name",      # storage-form tuple LOCAL (loop var /
                                     # storage-bound local) through the wrap
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
+    "subscript.value_union_elem",   # value-variant union element read
+                                    # bare into its same-union sink
+    "call.readonly_scalar_ret",     # readonly[scalar] call result -- a
+                                    # const value copy, scalar everywhere
+    "call.container_recv_ret",      # container call result consumed as
+                                    # the next receiver (free-call twin)
+    "subscript.call_recv",          # container-returning CALL receiver ->
+                                    # the checked dunder over the inline
+                                    # call render (READ-only)
     "subscript.borrow_tuple_elem",  # borrow-form tuple element at a
                                     # BORROW_BIND sink (the arg wrap)
     "subscript.record_elem_borrow", # checked F1-record element lvalue at a
@@ -1712,12 +1884,34 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the yield inside the lambda
     "genexpr.native_iterable",      # genexpr into a native Iterable consumer ->
                                     # the make_generator IIFE (all/any/sum arg)
+    "print.none_literal",           # print(None): the bare "None" string
+                                    # literal
     "print.optval",                 # un-narrowed value-repr Optional[scalar/str]
                                     # print arg -> bare `::tpy::print_optional_val`
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
     "print.tuple_record_elem",      # std::get<i>(t) record element at a
                                     # print sink; deref iff borrow-form
+    "foreach.range_object",       # zero-literal-step range: the generic
+                                  # begin/end loop over the Range object
+    "foreach.copy_iter_call",     # copy_iter(...) call iterable: the owning
+                                  # begin/end capture of the iterator object
+    "foreach.self_iterable",      # `for x in self:` on a user-iterator
+                                  # record: the (*this) capture
+    "foreach.open_t_param",       # open-T PARAM iterable (Iterable-bound
+                                  # T): the universal loop over the bare
+                                  # param lvalue
+    "foreach.narrowed_opt_dict",  # proven-narrowed ptr-opt dict param
+                                  # iterable: the (*d) capture into the
+                                  # universal key loop
+    "foreach.genexpr_iterable",   # genexpr iterable: the make_generator
+                                  # lambda's rvalue owning capture
+    "print.opt_ptr_call",         # ptr-repr Optional-returning call print
+                                  # arg: print_optional over the bare T*
+                                  # call result
+    "print.record_name",          # F1-record NAME print arg: the raw
+                                  # operator<< stream, pointer bindings
+                                  # deref
     "print.self_arg",             # `print(self)` -> the `(*this)` receiver
                                     # streamed raw via operator<<
     "print.wrap_field_arg",         # container FIELD read print arg -> its
@@ -1726,6 +1920,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `.field` inside a BytesPrinter wrap
     "print.tuple_subscript_arg",    # value-tuple subscript read print arg ->
                                     # TuplePrinter(std::get<N>(t))
+    "print.container_literal_arg",  # list/Array LITERAL print arg: the
+                                    # typed brace-init inside ListPrinter
+    "print.tuple_literal_arg",      # pointer-repr tuple LITERAL print arg:
+                                    # the borrow-form render inside
+                                    # TuplePrinter
     "print.container_slice_arg",    # list/Array/Span slice read print arg ->
                                     # ListPrinter(list_slice/list_stepped_slice)
     "print.walrus_arg",             # container walrus print arg -> the
@@ -1898,6 +2097,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_comp_write",         # a comp init emplaces its stmt-expr:
                                     # rows.emplace(({ ... }))
     "res.coro_handle_write",        # concrete-coro handle factory-call bind
+    "res.coro_handle_move",         # NAME source: emplace(move(*c)); c.reset()
     "res.erased_handle_write",      # owned-erased dyn handle own-arg bind
     "res.await_prebuilt",           # bound-handle await routed (poll-in-place)
     "res.match_dispatch",           # MatchDispatch routed through the tiers

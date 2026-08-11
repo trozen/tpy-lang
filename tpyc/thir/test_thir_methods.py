@@ -25,7 +25,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
-    _fn, _F1_RECORDS, _assert_byte_identical,
+    _fn, _F1_RECORDS, _assert_byte_identical, _assert_routes_byte_identical,
 )
 
 # --- M1 method frontier: instance methods with a `self` (`this`) receiver ---
@@ -1334,16 +1334,16 @@ class TestNativeRecordFrontier:
         assert "f.do_write(5)" in out
         assert "f.do_close();" in out
 
-    def test_native_function_method_stays_ast(self):
-        # A @native(function=True) method takes the free-function form
-        # `::sym(recv, args)`, a different emit than the plain member call, so
-        # it stays AST (the native_method arm admits native_name only).
+    def test_native_function_method_routes(self):
+        # Former fence: the function=True receiver-prepend face
+        # (`::sz(f)`) landed on the ptr-template arm
+        # (native/native_method_annotations is the corpus witness).
         src = ("from tpy.extern import native\nfrom tpy import Int32\n"
                "@native(\"nsF\")\nclass NF:\n"
                "    @native(\"sz\", function=True)\n"
                "    def size(self) -> Int32: ...\n"
                "def use(f: NF) -> Int32:\n    return f.size()\n")
-        assert _fn(_lower_ctx(src), "use") is None
+        _assert_routes_byte_identical(src)
 
 
 class TestNativeRecordFrontierEmit:
@@ -3073,17 +3073,17 @@ class TestBuiltinModuleTemplateCall:
             compiler.generate_code_to_strings(
                 entry, options=CodeGenOptions(emit_source_comments=False))
 
-    def test_special_builtin_module_call_stays_ast(self):
-        # A special-handling builtin (`tpy.copy`) has its own bespoke emit
-        # arm, which the marker classifier excludes before the template
-        # branch -- widening the template row must not open it.
+    def test_special_builtin_module_call_routes(self):
+        # Former fence: `t.copy(s)` now rides the shared _lower_copy_special
+        # arm ahead of the marker classifier (the str-NAME row's
+        # `std::string(s)`, dualgen-verified byte-identical).
         src = (
             "import tpy as t\n"
             "def f(s: str) -> str:\n"
             "    return t.copy(s)\n"
             "def main() -> None:\n    print(f('a'))\nmain()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         compiler, modules = _compile(src)
         entry = _entry(modules)
         assert compiler.generate_code_to_strings(
@@ -3123,17 +3123,17 @@ class TestClassmethodThroughInstance:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
-    def test_staticmethod_through_instance_still_defers(self):
-        # BOUNDARY: a plain @staticmethod carries the same bit but is not the
-        # witnessed shape -- the gate must keep it out.
+    def test_staticmethod_through_instance_routes(self):
+        # Former fence: the witnessed shape arrived
+        # (records/staticmethod_basic) -- a plain @staticmethod through an
+        # instance renders the same ordinary member call as the
+        # classmethod rule.
         src = (self._SRC
                + "def f() -> Int32:\n"
                + "    p = Point(7)\n"
                + "    return p.helper(2)\n"
                + "print(f())\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_routes_byte_identical(src)
 
 
 class TestConsumingMethodBody:
@@ -3366,3 +3366,81 @@ class TestAutoOwnConsumingClone:
         thir, faces = _lower_ctx_witnessed(src)
         assert not faces.get("ret.consuming_self_field")
         _assert_byte_identical(src)
+
+
+class TestReceiverFamilyWidenings:
+    """Wave cells at the method receiver gates: a None-narrowed
+    Optional[view] receiver joins the view family (`name.upper()` ->
+    `::tpy::str_upper((*name))`, sema-implied proof); a plain @staticmethod
+    through an instance renders the ordinary member call (`c.zero()` --
+    the classmethod rule's witnessed sibling); a function=True native on a
+    @native-record receiver takes the receiver-prepend spelling
+    (`v.pop_last()` -> `::tpy::pop_back(v)`)."""
+
+    def test_narrowed_opt_view_receiver_routes(self):
+        src = ("def greet(name: str | None) -> None:\n"
+               "    if name is not None:\n"
+               "        print(name.upper())\n"
+               "        print(name.startswith(\"A\"))\n"
+               "def main() -> None:\n"
+               "    greet(\"anna\")\n"
+               "    greet(None)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_staticmethod_via_instance_routes(self):
+        src = ("from tpy import Int32\n"
+               "class Counter:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32):\n        self.n = n\n"
+               "    @staticmethod\n"
+               "    def zero() -> Int32:\n        return 0\n"
+               "def f() -> None:\n"
+               "    c = Counter(100)\n"
+               "    print(c.zero())\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestScalarCallReceivers:
+    """Scalar-VALUE rvalue receivers compose stub members bare
+    (method.recv.scalar_call): a ctor call (`int(0).bit_length()`), a
+    qualified-call result (`math.isqrt(x).bit_length()`), and a binop
+    render (`(int(1) << 64).bit_length()`)."""
+
+    def test_scalar_receivers_route(self):
+        src = ("import math\n"
+               "def f() -> None:\n"
+               "    print(int(0).bit_length())\n"
+               "    print(math.isqrt(int(100)).bit_length())\n"
+               "    print((int(1) << 64).bit_length())\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("method.recv.scalar_call", 0) >= 3
+
+
+class TestOwnBoundedTparamReceiver:
+    """An `Own[T]` / `Send[Own[T]]` bounded-T param dispatches its bound's
+    members with the bare `.` call (the own_param_t<T> value binding) --
+    the bound resolver peels Own like the plain-T binding."""
+
+    def test_send_own_bounded_receiver_routes(self):
+        src = ("from tpy import Int32, Own, Send, nocopy\n"
+               "from typing import Protocol\n"
+               "class Counted(Protocol):\n"
+               "    def value(self) -> Int32: ...\n"
+               "@nocopy\n"
+               "class Token(Counted):\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "    def value(self) -> Int32:\n"
+               "        return self.n\n"
+               "def read[T: Counted](item: Send[Own[T]]) -> Int32:\n"
+               "    return item.value()\n"
+               "def main() -> None:\n"
+               "    print(read(Token(3)))\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)

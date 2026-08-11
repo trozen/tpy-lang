@@ -18,6 +18,7 @@ from .nodes import (
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
     _PRELUDE, _F1_RECORDS, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 
@@ -3580,13 +3581,14 @@ class TestBytearraySurface:
             "def f(xs: list[Int32], i: Int32) -> None:\n"
             "    xs[i] = 5\n")
 
-    def test_extend_iterable_arg_stays_ast(self):
-        # `extend` takes an Iterable arg outside the view arg set -- the
-        # gate's reject boundary (falls back whole-body today).
+    def test_extend_bytearray_arg_routes(self):
+        # `a.extend(b)` -- a bytearray NAME joined the native-iterable
+        # bare-bind family (a std::vector<uint8_t> binds the runtime
+        # template like any vector), converting this former fence.
         thir = _lower_ctx(
             "def f(a: bytearray, b: bytearray) -> None:\n"
             "    a.extend(b)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
 
 class TestForSliceIterable:
@@ -4496,6 +4498,39 @@ class TestMembershipFieldAndIterRows:
         assert not faces.get("binop.iter_membership")
         _assert_byte_identical(src)
 
+    def test_protocol_param_receiver_routes(self):
+        # A structural Iterable[T] param receiver takes the same universal
+        # loop over the bare monomorphized param -- the AST's is_native_in
+        # admits only tpy.NativeIterable to ranges::contains.
+        src = ("from typing import Iterable\n"
+               "from tpy import Array, Int32\n"
+               "def contains_value(items: Iterable[Int32],"
+               " target: Int32) -> bool:\n"
+               "    return target in items\n"
+               "def go() -> None:\n"
+               "    arr: Array[Int32, 3] = [10, 20, 30]\n"
+               "    print(contains_value(arr, 20))\n"
+               "go()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "contains_value") is not None
+        assert faces.get("binop.iter_membership", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_native_iterable_param_still_defers(self):
+        # BOUNDARY: a tpy.NativeIterable param takes the AST's
+        # ranges::contains arm, which this leg does not mirror.
+        src = ("from tpy import Array, Int32, NativeIterable\n"
+               "def contains_value(items: NativeIterable[Int32],"
+               " target: Int32) -> bool:\n"
+               "    return target in items\n"
+               "def go() -> None:\n"
+               "    arr: Array[Int32, 3] = [10, 20, 30]\n"
+               "    print(contains_value(arr, 30))\n"
+               "go()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "contains_value") is None
+        _assert_byte_identical(src)
+
 
 class TestScalarPtrOptBinding:
     """The scalar-pointee widening of _opt_pointee_wide: `v = d.get("a")`
@@ -4580,4 +4615,234 @@ class TestScalarPtrOptBinding:
         thir, _f = _lower_ctx_witnessed(src)
         assert _fn(thir, "ret_bound") is None
         assert _fn(thir, "arg_bound") is None
+        _assert_byte_identical(src)
+
+
+class TestListConcatBinop:
+    """`list + list` -> `::tpy::list_concat(l, r)` (binop.list_concat) and
+    the set-operator siblings: the native free-function dunder render, a
+    literal operand taking the typed-brace prefix. Print args wrap the
+    operator render in the kind-keyed printer; the RETURN container row
+    stays a separate unrouted gate (boundary-pinned below)."""
+
+    def test_reduce_lambda_concat_routes(self):
+        src = ("from functools import reduce\n"
+               "from tpy import Int32\n"
+               "def go() -> None:\n"
+               "    init: list[Int32] = [100]\n"
+               "    nums: list[Int32] = [1, 2, 3]\n"
+               "    built = reduce(lambda acc, x: acc + [x], nums, init)\n"
+               "    print(built)\n"
+               "go()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "go") is not None
+        assert faces.get("binop.list_concat", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_print_arg_concat_routes(self):
+        # A container binop at a PRINT arg wraps the operator render in the
+        # kind-keyed printer (`ListPrinter((::tpy::list_concat(a, b)))`).
+        src = ("from tpy import Int32\n"
+               "def f(a: list[Int32], b: list[Int32]) -> None:\n"
+               "    print(a + b)\n"
+               "def go() -> None:\n"
+               "    a: list[Int32] = [1]\n"
+               "    b: list[Int32] = [2]\n"
+               "    f(a, b)\n"
+               "go()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_set_operator_prints_route(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    a: set[Int32] = {1, 2, 3}\n"
+               "    b: set[Int32] = {2, 3, 4}\n"
+               "    print(a | b)\n"
+               "    print(a & b)\n"
+               "    print(a - b)\n"
+               "    print(a ^ b)\n"
+               "    print(a <= b)\n"
+               "    print(a < b)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_list_ordering_compare_still_defers(self):
+        # BOUNDARY: the ordering widening in _container_compare_pair is
+        # SET-only -- a list ordering compare must keep falling back.
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    a: list[Int32] = [1, 2]\n"
+               "    b: list[Int32] = [1, 3]\n"
+               "    print(a < b)\n"
+               "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_return_container_concat_still_defers(self):
+        # BOUNDARY: the RETURN container row is a separate unrouted gate
+        # (return.container_source) -- the concat leg must not open it.
+        src = ("from tpy import Int32, Own\n"
+               "def concat(a: list[Int32], b: list[Int32])"
+               " -> Own[list[Int32]]:\n"
+               "    return a + b\n"
+               "def go() -> None:\n"
+               "    a: list[Int32] = [1]\n"
+               "    b: list[Int32] = [2]\n"
+               "    print(concat(a, b))\n"
+               "go()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "concat") is None
+        _assert_byte_identical(src)
+
+
+class TestCallableElementLiteral:
+    """A `list[Callable[...]]` literal: callable-returning call rvalues,
+    routable lambdas / func refs, and callable-value NAMES render bare in
+    the brace init (`{make_adder(1), make_negator()}`)."""
+
+    def test_callable_call_rvalue_elements_route(self):
+        src = ("from typing import Callable\n"
+               "from tpy import Int32\n"
+               "def make_adder(n: Int32) -> Callable[[Int32], Int32]:\n"
+               "    return lambda x: x + n\n"
+               "def f() -> None:\n"
+               "    fns: list[Callable[[Int32], Int32]] = ["
+               "make_adder(1), make_adder(2)]\n"
+               "    print(len(fns))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_record_element_source_still_gates(self):
+        # A RECORD-ctor element at a record-element slot keeps its own
+        # family's admission (the callable arm must not leak): boundary
+        # via the record family's existing behavior -- byte-identical
+        # either way.
+        src = ("from tpy import Int32\n"
+               "class P:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "def f() -> None:\n"
+               "    ps: list[P] = [P(1), P(2)]\n"
+               "    print(len(ps))\n"
+               "f()\n")
+        _assert_byte_identical(src)
+
+
+class TestSetAugNameValue:
+    """`e |= b` with a SAME-typed set NAME value binds the in-place dunder
+    bare (`::tpy::set_update(e, b)`); a bytearray `+=` target keeps its
+    deliberate exclusion (in-place vs rebind is a reference-type aliasing
+    axis)."""
+
+    def test_set_name_value_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    e: set[Int32] = {1, 2}\n"
+               "    b: set[Int32] = {2, 3}\n"
+               "    e |= b\n"
+               "    print(len(e))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("aug.inplace_dunder", 0) >= 1
+
+    def test_bytearray_aug_routes(self):
+        # Was a fence while only owned-bytes targets had the concat row;
+        # the bytearray-local widening routes it through the same
+        # concat-and-assign render.
+        src = ("def f() -> None:\n"
+               "    got = bytearray()\n"
+               "    chunk = b\"xy\"\n"
+               "    got += chunk\n"
+               "    print(len(got))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestNarrowedOptDictWrite:
+    """A None-narrowed ptr-repr Optional[container] NAME receiver WRITES
+    through the deref (`__setitem__((*d), k, v)` -- the setitem gate
+    proves it, the target lowers prechecked). Bare READS keep their
+    bounds-safe fence (the direct `(*lst)[0]` render is a future cell)."""
+
+    def test_narrowed_opt_dict_write_routes(self):
+        src = ("def scan(d: dict[str, str] | None) -> int:\n"
+               "    n = 0\n"
+               "    if d is not None:\n"
+               "        d[\"k\"] = \"v\"\n"
+               "        n += len(d)\n"
+               "    return n\n"
+               "def main() -> None:\n"
+               "    print(scan({\"a\": \"b\"}))\n"
+               "    print(scan(None))\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_opt_list_read_stays_ast(self):
+        # The READ flavor's bounds-safe direct render is unmirrored.
+        src = ("from tpy import Int32\n"
+               "def f(lst: list[Int32] | None) -> None:\n"
+               "    if lst is None:\n"
+               "        return\n"
+               "    lst[0] = 5\n"
+               "    print(lst[0])\n"
+               "def main() -> None:\n"
+               "    f([1])\n"
+               "    f(None)\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestElemFieldChainSetitem:
+    """A container FIELD off a record-element borrow lvalue as the setitem
+    receiver (`root.kids["a"].kids["b"] = v` ->
+    `__setitem__(__getitem__(root.kids, "a").kids, "b", v)`). A deeper
+    chain (field-of-field off the element) stays AST."""
+    _SRC = (
+        "from __future__ import annotations\n"
+        "from tpy import Int32\n"
+        "class Node:\n"
+        "    val: Int32\n"
+        "    kids: dict[str, Node]\n"
+        "    def __init__(self, val: Int32) -> None:\n"
+        "        self.val = val\n"
+        "        self.kids = {}\n"
+        "def graft(root: Node) -> None:\n"
+        "    root.kids[\"a\"].kids[\"b\"] = Node(99)\n"
+        "def main() -> None:\n"
+        "    r = Node(1)\n"
+        "    r.kids[\"a\"] = Node(2)\n"
+        "    graft(r)\n"
+        "    print(r.kids[\"a\"].kids[\"b\"].val)\n"
+        "main()\n")
+
+    def test_elem_field_receiver_routes(self):
+        thir = _lower_ctx(self._SRC)
+        assert _fn(thir, "graft") is not None
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert ('::tpy::__setitem__(::tpy::__getitem__(root.kids, "a").kids,'
+                ' "b", Node(99));') in cpp
+
+    def test_field_of_field_chain_stays_ast(self):
+        src = (
+            "from __future__ import annotations\n"
+            "from tpy import Int32\n"
+            "class Inner:\n"
+            "    slots: dict[str, Int32]\n"
+            "    def __init__(self) -> None:\n        self.slots = {}\n"
+            "class Node:\n"
+            "    inner: Inner\n"
+            "    def __init__(self) -> None:\n        self.inner = Inner()\n"
+            "def put(nodes: list[Node]) -> None:\n"
+            "    nodes[0].inner.slots[\"k\"] = 5\n"
+            "def main() -> None:\n"
+            "    ns = [Node()]\n"
+            "    put(ns)\n"
+            "    print(ns[0].inner.slots[\"k\"])\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "put") is None
         _assert_byte_identical(src)

@@ -44,10 +44,12 @@ class TestCoerceLongTail:
         assert ("items.push_back(std::string(::tpy::str_slice(subject, "
                 "::tpy::BasicSlice{std::nullopt, 5})));" in cpp[1])
 
-    def test_strview_name_at_own_str_slot_stays_ast(self):
-        # The materialize row is rvalue-only: a StrView NAME at the
-        # Own[str] slot keeps its copy-temp render on the AST path
-        # (gen_call_arg's simple-lvalue branch, not the bare T&& bind).
+    def test_strview_name_at_own_str_slot_routes(self):
+        # A declared-StrView NAME at the Own[str] element slot arrives
+        # under the sema strview_to_str coerce; the owned-str arg row
+        # peels it and wraps the bare view read (`std::string(s)` -- the
+        # stub method's inline_template render skips the copy temp), so
+        # this former fence routes byte-identically.
         src = ("from tpy import StrView\n"
                "def add(items: list[str], s: StrView) -> None:\n"
                "    items.append(s)\n"
@@ -56,7 +58,7 @@ class TestCoerceLongTail:
                "    add(items, \"hi\")\n"
                "    print(items[0])\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "add") is None
+        assert _fn(_lower_ctx(src), "add") is not None
         _assert_byte_identical(src)
 
     def test_bytes_view_identity_routes(self):

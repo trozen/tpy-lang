@@ -89,6 +89,7 @@ from .predicates import (
     _f2b_optional_field_write_ok,
     _field_decl_type,
     _field_receiver_ok,
+    _callable_value,
     _peel_coerce,
     _plain_container_read,
     _resolved_bytes_value,
@@ -296,7 +297,12 @@ def _classify_value(stmt: TpyAssign, lc: _LowerCtx,
     plan = None
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
             or _eligible_enum(ftype, analyzer) is not None
-            or _eligible_ptr_value(ftype, analyzer)):
+            or _eligible_ptr_value(ftype, analyzer)
+            # A Callable field written from a hoisted-lambda NAME
+            # (`self.callback = add_offset;` -- std::function copies the
+            # closure bare). NAMES only; other sources are unwitnessed.
+            or (_callable_value(ftype)
+                and isinstance(_peel_coerce(stmt.value), TpyName))):
         plan = _ValueFieldPlan(_ValueRender.PLAIN, ftype)
     elif ((_value_opt_scalar(ftype, analyzer) is not None
            or (_value_opt_owned_str(ftype, analyzer)
@@ -348,7 +354,14 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
                 "flush.field_write",
                 _lower_expr(stmt.value, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                         allow_temps=True))),
+                                         allow_temps=True),
+                            # A FIELD source of the same value-repr Optional
+                            # is consumed WHOLE (the `std::optional<T>`
+                            # member copies bare) -- the same rule the
+                            # ptr-repr tail applies to its field sources.
+                            allow_whole_optional=(
+                                plan.render is _ValueRender.VALUE_OPT
+                                and isinstance(stmt.value, TpyFieldAccess)))),
             plan.ftype, lc), loc=loc)
 
 
@@ -570,7 +583,8 @@ def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
 
 
 def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
-                      declared: dict[str, TpyType], loc) -> THIRExpr:
+                      declared: dict[str, TpyType], loc, *,
+                      union_divergent_ok: bool = False) -> THIRExpr:
     """The shared borrow/name value render: borrow->storage FormConvert vs
     bare copy, the F2b `ptr_to_optional` lift, the pointer-slot-global
     RECEIVER quirk, and the copy()-peel identity. The container, tuple,
@@ -596,16 +610,20 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     ptr_opt_field = (isinstance(ftype, OptionalType)
                      and not val_opt_container
                      and ftype.uses_pointer_repr())
+    union_field = (not isinstance(ftype, OptionalType)
+                   and _eligible_ptr_union(ftype, lc.analyzer) is not None)
     lowered = _lower_expr(
         tail_src, lc, declared,
         use=(_ExprUse(result=_ExprResultUse.RECEIVER)
              if ptr_src
-             else _ExprUse(ptr_opt_lift=ptr_opt_field)),
+             else _ExprUse(ptr_opt_lift=ptr_opt_field,
+                           union_value_lift=union_field)),
         # A FIELD source of the same Optional is consumed WHOLE (the
         # `std::optional<T>` member copies bare); the read must not take the
         # narrowing deref a value position gets.
         allow_whole_optional=(ptr_opt_field and not ptr_src
-                              and isinstance(tail_src, TpyFieldAccess)))
+                              and isinstance(tail_src, TpyFieldAccess)),
+        allow_union_divergent=union_divergent_ok)
     mv = peeled is None and _is_move_source(tail_src, lc)
     # A storage-form source of the field's own type needing no move is a
     # bare copy (`field = v`); the borrow->storage convert would be a no-op
@@ -630,8 +648,15 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
         # the borrow `T*` sources' spelling.
         return THIRMove(value=lowered, result_type=cnv_t, form=Form.STORAGE,
                         loc=loc)
+    # The union STORAGE conversion can never move (to_value_variant takes
+    # the ptr-variant by const& and deref-copies), so keep the node's move
+    # flag a real-move claim for future consumers -- today's union render
+    # ignores it, so this is invariant hygiene, not a render change. The
+    # THIRMove arm above is untouched: a storage-form same-type source
+    # still moves whole.
     return THIRFormConvert(result_type=cnv_t, value=lowered,
-                           form=Form.STORAGE, move=mv, loc=loc)
+                           form=Form.STORAGE, move=mv and not union_field,
+                           loc=loc)
 
 
 class _TupleRow(Enum):
@@ -731,7 +756,20 @@ def _lower_union_field(stmt: TpyAssign, plan: _UnionFieldPlan, lc: _LowerCtx,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
                                      allow_temps=True)))
     else:
-        fvalue = _lower_tail_value(stmt, plan.ftype, lc, declared, loc)
+        # An assign-narrowed same-union NAME (`new_pet: Dog | Cat = Cat(..);
+        # z.pet = new_pet`): the sink is the UNION slot, so the read consumes
+        # the whole variant through the to_value_variant lift -- the
+        # member-typed-sink miscompile the divergent fence guards cannot
+        # arise (the container-literal elem row's twin).
+        v = stmt.value
+        vb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared[v.name])))
+              if isinstance(v, TpyName) and v.name in declared else None)
+        divergent_ok = (vb is not None and vb == plan.union_t
+                        and v.name in lc.ptr_variant_locals
+                        and _witness("field_write.union_name_lift"))
+        fvalue = _lower_tail_value(stmt, plan.ftype, lc, declared, loc,
+                                   union_divergent_ok=divergent_ok)
     return THIRAssign(
         target=_lower_field_write_target(stmt, lc, declared),
         value=fvalue, loc=loc)

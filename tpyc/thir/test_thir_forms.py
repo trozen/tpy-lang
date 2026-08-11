@@ -15,7 +15,7 @@ from .nodes import (
 from ..typesys import NominalType
 from .testutil import (
     _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn, _F1_RECORDS,
-    _emit_expr, _assert_byte_identical,
+    _emit_expr, _assert_byte_identical, _assert_routes_byte_identical,
 )
 
 # --- F1 form rung: single-assignment non-value record locals + field reads ---
@@ -1881,8 +1881,10 @@ class TestRecordBorrowCallAlias:
         assert "Inner& q = shared(b);" in cpp_t
         assert "const Inner& r = shared_ro(b);" in cpp_t
 
-    def test_reassigned_alias_ineligible(self):
-        # POINTER-from-call: the `&(shared(b))` reseat is unmirrored.
+    def test_reassigned_alias_routes(self):
+        # POINTER-from-call: the decl.ptr_call_addr arm spells
+        # `Inner* q = &(shared(b));` and the lvalue reseat re-points it
+        # (`q = &(shared(b));`) -- byte-identical, routed.
         src = (
             _F1_RECORDS
             + "def shared(b: Box) -> Inner:\n    return b.inner\n"
@@ -1892,7 +1894,10 @@ class TestRecordBorrowCallAlias:
             + "    return q.value\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "go") is None
+        assert _fn(thir, "go") is not None
+        _assert_byte_identical(
+            src + "def main() -> None:\n"
+            "    b = Box(Inner(5))\n    print(go(b, 1))\nmain()\n")
 
     def test_optional_return_call_slot_lift(self):
         # An Own-declared Optional-returning call decl materializes the
@@ -1993,10 +1998,10 @@ class TestPrintWrapArgs:
         assert faces.get("print.wrap_arg", 0) == 2
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_pointer_local_container_stays_ast(self):
-        # A reassigned record local is a pointer-local; printing it derefs
-        # on the AST path -- the bare-name row must not admit it. (Container
-        # locals reassign in place, so the pointer shape needs a RECORD.)
+    def test_pointer_local_record_print_derefs(self):
+        # A reassigned/alias record local is a pointer-local; printing it
+        # derefs on the AST path (`(*x)`) -- the RAW-wrap pointer-name leg
+        # admits it and the wrap render lowers with the full-deref use.
         src = (
             _F1_RECORDS
             + "def use(b: Box, c: Box, flag: bool) -> None:\n"
@@ -2005,8 +2010,7 @@ class TestPrintWrapArgs:
             + "    print(x)\n"
             + "use(Box(Inner(1)), Box(Inner(2)), True)\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        _assert_routes_byte_identical(src)
 
     def test_self_print_routes(self):
         # `print(self)` renders `(*this)` on the AST path: the receiver is a
@@ -2332,3 +2336,168 @@ class TestStrFieldConcatWrite:
             entry, options=CodeGenOptions(emit_source_comments=False,
                                           thir_codegen=True))
         assert "this->buf = (::tpy::str_concat(this->buf, s));" in hpp + cpp
+
+
+class TestPrintNoneAndRecordName:
+    """The print(None) literal row and the pointer-bound record NAME row
+    (print.none_literal / print.record_name)."""
+
+    def test_none_literal_routes(self):
+        src = "def f() -> None:\n    print(None)\nf()\n"
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("print.none_literal", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_top_level_record_global_print_derefs(self):
+        # A top-level record global is a pointer slot; print(al) derefs
+        # (`(*al)`) through the RAW wrap leg.
+        src = (_F1_RECORDS
+               + "b = Box(Inner(3))\n"
+               + "print(b)\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestPrintCallWrapLegs:
+    """Call-result print wraps beyond the container kinds: bytearray
+    (ByteArrayPrinter), dict views and range() (raw via their own
+    operator<<) -- gen_print's per-kind arms over the inline call render."""
+
+    def test_dict_view_and_bytearray_and_range_calls_route(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    d: dict[str, Int32] = {\"a\": 1}\n"
+               "    print(d.keys())\n"
+               "    print(d.values())\n"
+               "    print(d.items())\n"
+               "    ba = bytearray(b\"mixed\")\n"
+               "    print(ba.upper())\n"
+               "    print(bytearray(b\"xy\"))\n"
+               "    print(range(5))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestPrintLiteralWraps:
+    """Container/tuple LITERAL print args: the typed brace-init inside
+    ListPrinter (CTAD) and the borrow-form pointer-repr tuple literal
+    inside TuplePrinter."""
+
+    def test_list_literal_routes(self):
+        src = "def f() -> None:\n    print([10, 20, 30])\nf()\n"
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("print.container_literal_arg", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_tuple_literal_routes(self):
+        src = (_F1_RECORDS
+               + "def f(a: Inner, b: Inner) -> None:\n"
+               + "    print((a, b))\n"
+               + "f(Inner(1), Inner(2))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("print.tuple_literal_arg", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_value_tuple_literal_still_defers(self):
+        # BOUNDARY: a VALUE-tuple literal print is outside the borrow leg
+        # (its wrap verdict stays None here).
+        src = "def f() -> None:\n    print((1, 2))\nf()\n"
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestPrintTupleElementSubscript:
+    """A container-ELEMENT read yielding a whole value tuple at a print arg
+    (`print(pairs[0])` -> `TuplePrinter(::tpy::__getitem__(pairs, 0))`):
+    the borrow-bind whole-element consumption over the value-tuple flavor
+    of the element gate."""
+
+    def test_value_tuple_element_print_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    pairs: list[tuple[str, Int32]] = [(\"a\", 1), (\"b\", 2)]\n"
+               "    print(pairs[0], pairs[1])\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestPrintPropertyContainer:
+    """A container PROPERTY read at a print arg (`print(c.items)` ->
+    `ListPrinter(c.items())`): the getter call renders inside the
+    kind-keyed wrap under the ITERABLE result family."""
+
+    def test_property_list_print_routes(self):
+        src = ("from tpy import Int32\n"
+               "class C:\n"
+               "    _items: list[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self._items = [1, 2, 3]\n"
+               "    @property\n"
+               "    def items(self) -> list[Int32]:\n"
+               "        return self._items\n"
+               "def f() -> None:\n"
+               "    c = C()\n"
+               "    print(c.items)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestPrintOptPtrCallSliceUnionField:
+    """The wave's last three print-site rows: a ptr-repr Optional-returning
+    call under print_optional, a slice object streaming raw (name + object
+    index slice reads), and a union FIELD is-None monostate test."""
+
+    def test_opt_ptr_call_print_routes(self):
+        src = (_F1_RECORDS
+               + "def find(b: Box, want: bool) -> \"Inner | None\":\n"
+               + "    if want:\n"
+               + "        return b.inner\n"
+               + "    return None\n"
+               + "def f(b: Box) -> None:\n"
+               + "    print(find(b, True))\n"
+               + "    print(find(b, False))\n"
+               + "f(Box(Inner(1)))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("print.opt_ptr_call", 0) >= 2
+        _assert_routes_byte_identical(src)
+
+    def test_slice_object_name_and_index_route(self):
+        src = ("from tpy import Int32, basic_slice\n"
+               "def f() -> None:\n"
+               "    items: list[Int32] = [1, 2, 3, 4, 5]\n"
+               "    s = basic_slice(1, 4)\n"
+               "    print(s)\n"
+               "    print(items[s])\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_union_field_is_none_routes(self):
+        src = ("from tpy import Int32, Float64\n"
+               "class H:\n"
+               "    un: Int32 | Float64 | None\n"
+               "    def __init__(self) -> None:\n"
+               "        self.un = None\n"
+               "def f(h: H) -> None:\n"
+               "    print(h.un is None)\n"
+               "    print(h.un is not None)\n"
+               "f(H())\n")
+        _assert_routes_byte_identical(src)
+
+    def test_union_field_print_streams_str_visitor(self):
+        # The union-FIELD print STREAMING arm (`print(h.vu)` ->
+        # `::tpy::__str__(h.vu)`) -- distinct from the is-None sibling
+        # above; its motivating corpus case still falls back on a later
+        # blocker, so this pin is the arm's only witness.
+        src = ("from tpy import Int32, Float64\n"
+               "class H:\n"
+               "    vu: Int32 | Float64\n"
+               "    def __init__(self) -> None:\n"
+               "        self.vu = 3\n"
+               "def f(h: H) -> None:\n"
+               "    print(h.vu)\n"
+               "f(H())\n")
+        _assert_routes_byte_identical(src)

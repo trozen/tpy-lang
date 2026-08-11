@@ -199,8 +199,9 @@ class TestIfExprRejects:
         _assert_byte_identical(src)
 
     def test_bytes_result_rejected(self):
-        # Bytes-literal arm renders are target-threaded inside the ternary --
-        # deliberately out of the slice.
+        # A PLAIN bytes-param arm + literal mix must keep deferring: the
+        # AST emit for it is uncompilable (span-vs-vector ternary, BUGS.md)
+        # -- only the value-opt-param flavor routes (ifexpr.bytes_view_lit).
         thir = _lower(
             "def f(c: bool, b: bytes) -> bytes:\n"
             '    return b if c else b"x"\n')

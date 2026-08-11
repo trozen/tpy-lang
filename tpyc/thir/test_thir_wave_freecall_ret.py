@@ -189,11 +189,10 @@ class TestGenericGeneratorFactory:
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
 
-    def test_arg_position_still_defers(self):
-        # The widening is scoped to callers that pass `generator_ok` (the
-        # iterable positions). A generic generator factory handed to an
-        # ordinary CALL ARG has no such admission and must keep rejecting --
-        # its arg slot render is unprobed.
+    def test_arg_position_routes(self):
+        # The factory hoists through the iter-proto argtemp arm with
+        # allow_temps riding through, so its own ref-slot literal temp
+        # flushes first and the arg position routes.
         src = ("from tpy import Int32\nfrom typing import Iterator\n"
                "def rep[T](v: T, n: Int32) -> Iterator[T]:\n"
                "    for _i in range(n):\n        yield v\n"
@@ -204,7 +203,7 @@ class TestGenericGeneratorFactory:
                "main()\n")
         _assert_byte_identical(src)
         thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
 
 
 class TestSliceAssignGeneratorRhs:

@@ -138,8 +138,9 @@ def test_dump_names_fallback_bodies():
         "from tpy import Int32\n\n"
         "class R:\n    n: Int32\n"
         "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
-        "def f(rs: list[R]) -> Int32:\n"
-        "    return sum(r.n for r in rs)\n\n"
+        "def pick(a: R, b: R) -> R:\n    return a\n\n"
+        "def f(a: R, b: R) -> Int32:\n"
+        "    return pick(a, b).n\n\n"
         "def main() -> None:\n    pass\nmain()\n")
     # The first-reject reason rides along, so the dump answers WHY. Matched
     # loosely: the exact tag moves as constructs migrate, and this test is

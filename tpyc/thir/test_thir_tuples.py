@@ -2917,3 +2917,147 @@ class TestBorrowTupleElementSources:
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("btuple.elem_btuple_subscript", 0) == 0
         _assert_byte_identical(src)
+
+
+class TestPtrTupleLiteralCompare:
+    """Pointer-repr tuple-LITERAL compare pairs and membership needles
+    (binop.tuple_ptr_compare / binop.tuple_ptr_needle): borrow-form literal
+    renders (`std::tuple<int32_t, Box*>{1, &(a)}`) through the deref-aware
+    `::tpy::tuple_eq` / `tuple_lt` composition and the `tuple_to_storage`
+    needle lift. NAME tuple operands stay outside the slice."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, val: Int32) -> None:\n"
+        "        self.val = val\n"
+        "    def __eq__(self, other: \"Box\") -> bool:\n"
+        "        return self.val == other.val\n"
+        "    def __lt__(self, other: \"Box\") -> bool:\n"
+        "        return self.val < other.val\n"
+        "    def __le__(self, other: \"Box\") -> bool:\n"
+        "        return self.val <= other.val\n"
+        "    def __gt__(self, other: \"Box\") -> bool:\n"
+        "        return self.val > other.val\n"
+        "    def __ge__(self, other: \"Box\") -> bool:\n"
+        "        return self.val >= other.val\n")
+
+    def test_all_six_ops_route(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    a = Box(5)\n"
+               + "    b = Box(5)\n"
+               + "    print((1, a) == (1, b))\n"
+               + "    print((1, a) != (1, b))\n"
+               + "    print((1, a) < (1, b))\n"
+               + "    print((1, a) > (1, b))\n"
+               + "    print((1, a) <= (1, b))\n"
+               + "    print((1, a) >= (1, b))\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_membership_needle_lift_routes(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    a = Box(5)\n"
+               + "    b = Box(5)\n"
+               + "    ts = [(1, a)]\n"
+               + "    print((1, b) in ts)\n"
+               + "    print((2, b) not in ts)\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_str_element_mix_routes(self):
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    a = Box(5)\n"
+               + "    b = Box(5)\n"
+               + "    print((\"x\", a) == (\"x\", b))\n"
+               + "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_name_tuple_operand_still_defers(self):
+        # BOUNDARY: a NAME tuple operand's read carries form conversions
+        # the literal pair does not mirror -- the body keeps falling back.
+        src = (self._SRC
+               + "def f() -> None:\n"
+               + "    a = Box(5)\n"
+               + "    b = Box(5)\n"
+               + "    t1 = (1, a)\n"
+               + "    t2 = (1, b)\n"
+               + "    print(t1 == t2)\n"
+               + "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestValueOptScalarUnpackTargets:
+    """Value-opt SCALAR tuple-unpack targets (`for a, b in gen():` on
+    `Iterator[tuple[Int32 | None, ...]]`): the plain typed copy bind
+    (`std::optional<int32_t> a = std::get<0>(tup);`)."""
+
+    def test_generator_optional_pair_unpack_routes(self):
+        src = ("from typing import Iterator\n"
+               "from tpy import Int32\n"
+               "def gen(items: list[Int32])"
+               " -> Iterator[tuple[Int32 | None, Int32 | None]]:\n"
+               "    for it in items:\n"
+               "        yield (it, None)\n"
+               "def f() -> None:\n"
+               "    items = [Int32(1), Int32(2)]\n"
+               "    for a, b in gen(items):\n"
+               "        if a is not None:\n"
+               "            print(a)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestTupleNameCallArgs:
+    """Tuple NAMES at matching call slots: the own-element move
+    (`consume(std::move(t))`, move.own_tuple -- the movable/last-use
+    verdict rides _is_move_source and the move audit) and the borrow
+    ptr-opt tuple decl local passed bare (the sync-body bare-names
+    widening)."""
+
+    def test_own_tuple_name_moves_at_last_use(self):
+        src = ("from tpy import Int32, Own\n"
+               "class A:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "def make_pair() -> tuple[Own[A], Own[A]]:\n"
+               "    return (A(1), A(2))\n"
+               "def consume(p: tuple[Own[A], Own[A]]) -> Int32:\n"
+               "    a, b = p\n"
+               "    return a.n + b.n\n"
+               "def f() -> None:\n"
+               "    t = make_pair()\n"
+               "    print(consume(t))\n"
+               "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("move.own_tuple", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_borrow_opt_tuple_local_passes_bare(self):
+        src = ("from tpy import Int32\n"
+               "class T:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "def make_pair(a: T, b: T) -> tuple[T | None, T | None]:\n"
+               "    return (a, None)\n"
+               "def consume(p: tuple[T | None, T | None]) -> Int32:\n"
+               "    x, y = p\n"
+               "    if x is not None:\n"
+               "        return x.n\n"
+               "    return -1\n"
+               "def f() -> None:\n"
+               "    a = T(1)\n"
+               "    b = T(2)\n"
+               "    pair = make_pair(a, b)\n"
+               "    print(consume(pair))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)

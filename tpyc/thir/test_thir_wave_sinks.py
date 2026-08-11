@@ -9,6 +9,7 @@ from __future__ import annotations
 from .nodes import THIRMembership, THIRPrint
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _JAR = (
@@ -92,19 +93,18 @@ class TestLiteralFold:
         assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
-    def test_slot_positions_stay_ast(self):
+    def test_slot_positions_render_the_operator(self):
         # Slot-threaded positions (decl init / arg / return) do NOT fold on
         # the AST path (a threaded target skips `_gen_binop`'s pure-literal
-        # arm), so the un-flagged fold slice must keep falling back -- routing
-        # the folded literal there would silently diverge.
+        # arm) -- they render the FULL operator chain, nested operands
+        # included (`_ExprUse.slot_threaded` threads the operand slots and
+        # the return value).
         src_decl = ("def use() -> None:\n"
                     "    n: int = 2**40 - 1\n"
                     "    print(n)\n")
-        thir = _lower_ctx(src_decl)
-        assert _fn(thir, "use") is None
+        _assert_routes_byte_identical(src_decl)
         src_ret = "def use() -> int:\n    return 2**40 + 1\n"
-        thir = _lower_ctx(src_ret)
-        assert _fn(thir, "use") is None
+        _assert_routes_byte_identical(src_ret)
 
     def test_overflowing_fold_folds_in_print(self):
         # A fold value OVERFLOWING int64 folds to `BigInt::from_str` on the

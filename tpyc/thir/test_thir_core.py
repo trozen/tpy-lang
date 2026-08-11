@@ -558,13 +558,18 @@ class TestForRange:
         assert isinstance(loop, THIRForRange) and loop.step_kind == "variable"
         assert isinstance(loop.step, THIRName) and loop.step.name == "s"
 
-    def test_zero_literal_step_is_ineligible(self):
-        # A zero literal step panics at runtime; the AST emits the Range ctor
-        # path there, not this counter loop -- deferred.
-        thir = _lower(_PRELUDE
-                      + "def f(n: Int32) -> Int32:\n    acc = 0\n"
-                      + "    for i in range(0, n, 0):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+    def test_zero_literal_step_routes_range_object(self):
+        # A zero literal step panics at runtime; the AST emits the Range
+        # ctor path there, not this counter loop -- mirrored by the
+        # container route's range-object leg (foreach.range_object; see
+        # TestForRangeBigIntAndObject).
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n    acc = 0\n"
+               + "    for i in range(0, n, 0):\n        acc = acc + i\n"
+               + "    return acc\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_ctor_literal_step_routes_as_literal(self):
         # `Int32(2)` step: folded like the AST's _extract_int_literal ctor arm
@@ -585,13 +590,17 @@ class TestForRange:
                       + "    for i in range(0, n, s + 1):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
 
-    def test_bigint_counter_stepped_is_ineligible(self):
-        # A BigInt counter's stepped emit differs (literal-step temp, no
-        # overflow check); deferred to the AST path.
-        thir = _lower(_PRELUDE
-                      + "def f(n: int) -> int:\n    acc = 0\n"
-                      + "    for i in range(0, n, 2):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+    def test_bigint_counter_stepped_routes(self):
+        # A BigInt counter's stepped emit (literal-step temp, no overflow
+        # check) is mirrored by the emit's is_big_int_type arm (see
+        # TestForRangeBigIntAndObject).
+        src = (_PRELUDE
+               + "def f(n: int) -> int:\n    acc = 0\n"
+               + "    for i in range(0, n, 2):\n        acc = acc + i\n"
+               + "    return acc\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_break_in_body_routes(self):
         thir = _lower(_PRELUDE
@@ -1368,13 +1377,16 @@ class TestPrintStmt:
                          thir=True) == self._cpp(
             src + "def main() -> None:\n    f()\nmain()\n", thir=False)
 
-    def test_print_flush_kwarg_rejects(self):
-        # flush= still needs gen_print's `<< std::flush` tail -- stays AST.
+    def test_print_flush_kwarg_routes(self):
+        # Was a fence until the `<< std::flush` tail landed on THIRPrint;
+        # a literal flush=True now routes with the flag set.
         thir = _lower(
             _PRELUDE
             + "def f() -> None:\n"
             + "    print(\"a\", flush=True)\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[-1].flush
 
     def test_print_kwargs_empty_args_reject(self):
         # `print(end=...)` with no args needs gen_print's emit-nothing arm.
@@ -5006,3 +5018,427 @@ class TestNoInitValueDecl:
                + "    r = R()\n"
                + "    if r is not None:\n        print(r.x)\n")
         assert _fn(_lower(src), "f") is None
+
+
+class TestForRangeBigIntAndObject:
+    """The BigInt stepped counter loop (literal steps: a `__step_N` temp,
+    no overflow check -- _gen_range_counter_loop's is_big_int_type arm)
+    and the ZERO-literal-step range-OBJECT foreach
+    (`auto __obj_N = ::tpy::Range<int32_t>(1, 10, 0);` + begin/end)."""
+
+    def test_bigint_literal_steps_route(self):
+        src = ("def f() -> None:\n"
+               "    base = 1 << 100"
+               "  # tpyc: warning(/outside default Int32 range/)\n"
+               "    for i in range(base, base + 10, 3):\n"
+               "        print(i)\n"
+               "    for i in range(base + 4, base - 1, -1):\n"
+               "        print(i)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_zero_literal_step_range_object_routes(self):
+        src = ("def f() -> None:\n"
+               "    n = 10\n"
+               "    for i in range(1, n, 0):\n"
+               "        print(i)\n"
+               "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("foreach.range_object", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_variable_bigint_step_still_defers(self):
+        # BOUNDARY: the variable-step BigInt render (nonzero check +
+        # ternary, no overflow) is unwitnessed and stays on the AST path.
+        src = ("def f(s: int) -> None:\n"
+               "    base = 1 << 100"
+               "  # tpyc: warning(/outside default Int32 range/)\n"
+               "    for i in range(base, base + 10, s):\n"
+               "        print(i)\n"
+               "f(4)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestTupleUnpackFreeCallIterable:
+    """A container-returning FREE call at the tuple-unpack loop head
+    (`for p, s in sorted(pairs):` -- the owning `auto __obj_N` capture,
+    the method-call arm's free twin)."""
+
+    def test_sorted_unpack_routes(self):
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    pairs: list[tuple[Int32, str]] = [(2, \"b\"), (1, \"a\")]\n"
+               "    for p, s in sorted(pairs):\n"
+               "        print(p, s)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestIterableRouteWidenings:
+    """Iterable rows: the open-T param universal loop, the
+    value-opt-scalar dict-view element, and the proven-narrowed ptr-opt
+    dict key loop."""
+
+    def test_open_t_param_iterable_routes(self):
+        src = ("from typing import Iterable\n"
+               "from tpy import Array, Int32\n"
+               "def sum_all[T: Iterable[Int32]](items: T) -> Int32:\n"
+               "    total: Int32 = 0\n"
+               "    for x in items:\n"
+               "        total += x\n"
+               "    return total\n"
+               "def go() -> None:\n"
+               "    arr: Array[Int32, 3] = [1, 2, 3]\n"
+               "    print(sum_all(arr))\n"
+               "go()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "sum_all") is not None
+        assert faces.get("foreach.open_t_param", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_value_opt_dict_values_still_defers(self):
+        # PARKED: the value-opt-scalar dict-view element is excluded from
+        # `_dict_view_iterable_ok` although its sync render is
+        # byte-identical -- admitting it lets a GENERATOR body's lowering
+        # attempt poison the AST re-emit on fallback (the narrowed
+        # value-opt loop var loses its deref). Re-open with the
+        # attempt-rollback fix (see TODO).
+        src = ("from tpy import Int32\n"
+               "def f(d: dict[str, Int32 | None]) -> Int32:\n"
+               "    total = 0\n"
+               "    for val in d.values():\n"
+               "        if val is not None:\n"
+               "            total += val\n"
+               "    return total\n"
+               "def go() -> None:\n"
+               "    d: dict[str, Int32 | None] = {\"a\": 1, \"b\": None}\n"
+               "    print(f(d))\n"
+               "go()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_narrowed_opt_dict_key_loop_routes(self):
+        src = ("def scan(d: dict[str, str] | None) -> int:\n"
+               "    n = 0\n"
+               "    if d is not None:\n"
+               "        for k in d:\n"
+               "            if len(k) > 2:\n"
+               "                n += 1\n"
+               "    return n\n"
+               "def go() -> None:\n"
+               "    d: dict[str, str] = {\"abc\": \"x\", \"y\": \"z\"}\n"
+               "    print(scan(d))\n"
+               "go()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "scan") is not None
+        assert faces.get("foreach.narrowed_opt_dict", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_early_return_narrowed_opt_dict_routes(self):
+        # The early-return-narrowed flavor is ALSO proven (sema's flow
+        # proof), so it routes through the same face as the if-guard
+        # flavor. A genuinely UN-proven optional iterable is a
+        # SemanticError upstream and unreachable at lowering -- there is
+        # no reject shape to pin here.
+        src = ("def scan(d: dict[str, str] | None) -> int:\n"
+               "    n = 0\n"
+               "    if d is None:\n"
+               "        return 0\n"
+               "    for k in d:\n"
+               "        n += 1\n"
+               "    return n\n"
+               "def go() -> None:\n"
+               "    d: dict[str, str] = {\"a\": \"x\"}\n"
+               "    print(scan(d))\n"
+               "go()\n")
+        _assert_byte_identical(src)
+
+
+class TestExplicitOwnIterLoop:
+    """The EXPLICIT `own_iter(items)` iterable (the not-at-last-use warn
+    case): the same `::tpy::own_iter(std::move(items))` wrap + consuming
+    `auto&&` elem bind as the implicit route, with the call's ARG as the
+    wrapped value."""
+
+    def test_explicit_own_iter_routes(self):
+        src = ("from tpy import Int32, own_iter\n"
+               "def f() -> None:\n"
+               "    items: list[Int32] = [1, 2, 3]\n"
+               "    for x in own_iter(items):"
+               "  # tpyc: warning(/own_iter\\(\\) consumes/)\n"
+               "        print(x)\n"
+               "    print(len(items))\n"
+               "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("foreach.consuming_iter", 0) >= 1
+        _assert_byte_identical(src)
+
+
+class TestCallReceiverSubscript:
+    """A container-returning CALL receiver subscripted (`x.get()[0]`,
+    `b.split(sep)[0]`): the checked dunder interpolates the inline call
+    render (subscript.call_recv) -- READ-only; writes keep rejecting."""
+
+    def test_owned_rvalue_receiver_routes(self):
+        # bytes.split returns Own[list[bytes]]; the rvalue interpolates
+        # into `__getitem__(bytes_split(..), 0)` (the view family's
+        # container-at-receiver composition row).
+        src = ("def f(b: bytes) -> None:\n"
+               "    print(b.split(b\",\")[0])\n"
+               "def main() -> None:\n"
+               "    f(b\"x,y\")\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("subscript.call_recv", 0) >= 1
+
+    def test_borrow_method_receiver_routes(self):
+        # A user-record method returning the container BORROW (`list&`)
+        # composes the same way (`__getitem__(x.get(), 0)`).
+        src = ("from tpy import Int32\n"
+               "class Box:\n"
+               "    xs: list[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.xs = [1, 2]\n"
+               "    def get(self) -> list[Int32]:\n"
+               "        return self.xs\n"
+               "def f(b: Box) -> Int32:\n"
+               "    return b.get()[0]\n"
+               "def main() -> None:\n"
+               "    print(f(Box()))\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("subscript.call_recv", 0) >= 1
+
+    def test_call_receiver_write_stays_ast(self):
+        # The setitem/del gates keep their name/field receiver slice: a
+        # WRITE through a call receiver falls back whole-body.
+        src = ("from tpy import Int32\n"
+               "class Box:\n"
+               "    xs: list[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.xs = [1, 2]\n"
+               "    def get(self) -> list[Int32]:\n"
+               "        return self.xs\n"
+               "def f(b: Box) -> None:\n"
+               "    b.get()[0] = 9\n"
+               "def main() -> None:\n"
+               "    b = Box()\n"
+               "    f(b)\n"
+               "    print(b.xs[0])\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestOptViewAndGenericFieldSubscript:
+    """Receiver-resolution widenings at the subscript read: a None-narrowed
+    Optional[view] binding reads its `(*s)` deref (sema-implied proof --
+    an un-narrowed optional subscript is a sema error), and a monomorphized
+    generic receiver's field resolves its substituted container type."""
+
+    def test_narrowed_opt_str_receiver_routes(self):
+        src = ("def check(s: str | None) -> None:\n"
+               "    if s is not None:\n"
+               "        print(s[0])\n"
+               "        print(s[1:4])\n"
+               "        print(len(s))\n"
+               "def main() -> None:\n"
+               "    check(\"hello\")\n"
+               "    check(None)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_opt_bytes_receiver_routes(self):
+        src = ("def check(b: bytes | None) -> None:\n"
+               "    if b is not None:\n"
+               "        print(b[0])\n"
+               "def main() -> None:\n"
+               "    check(b\"abc\")\n"
+               "    check(None)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_generic_field_receiver_read_and_write_route(self):
+        # The recv-type resolver substitutes a RAW TypeParamRef field decl
+        # via the expr type (`box.value[0]` on Box[list[int]] ->
+        # `__getitem__(box.value, 0)`); the shared resolver serves the
+        # WRITE the same way (dualgen-verified).
+        src = ("class Box[T]:\n"
+               "    value: T\n"
+               "    def __init__(self, value: T):\n"
+               "        self.value = value\n"
+               "def main() -> None:\n"
+               "    box = Box([1, 2, 3])\n"
+               "    print(box.value[0])\n"
+               "    box.value[0] = 9\n"
+               "    print(box.value[0])\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_opt_str_local_routes(self):
+        # The STORAGE-inner LOCAL flavor (`s = make(flag)` then narrowed
+        # reads): the registered Optional[str] local's deref is OWNED where
+        # a param's is a borrowed view -- both route byte-identically
+        # (dualgen-verified during review batch 4).
+        src = ("def make(flag: bool) -> str | None:\n"
+               "    if flag:\n"
+               "        return \"hello\"\n"
+               "    return None\n"
+               "def f(flag: bool) -> None:\n"
+               "    s = make(flag)\n"
+               "    if s is not None:\n"
+               "        print(s[0])\n"
+               "        print(s.upper())\n"
+               "def main() -> None:\n"
+               "    f(True)\n"
+               "    f(False)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_free_call_receiver_routes(self):
+        # The TpyCall (free-function) receiver flavor of
+        # subscript.call_recv (`make_list()[0]`): the free-call result
+        # gate's container-at-receiver composition row
+        # (call.container_recv_ret) closed the residual boundary the
+        # view/protocol families' rows left.
+        src = ("from tpy import Int32, Own\n"
+               "def make_list() -> Own[list[Int32]]:\n"
+               "    return [7, 8]\n"
+               "def f() -> None:\n"
+               "    print(make_list()[0])\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("call.container_recv_ret", 0) >= 1
+
+
+class TestCallResultCompositionRows:
+    """Free-call result-gate composition rows: an F1-record result as a
+    member receiver (`ret_param_ref(shared).n` -- borrow or rvalue, bare
+    postfix member); a readonly[scalar] result (a const value copy,
+    scalar in every sink); a plain call rvalue at a STRUCTURAL protocol
+    slot (the un-spelled `auto __tmp_N` hoist)."""
+
+    def test_borrow_call_member_receiver_stays_ast(self):
+        # A borrow-returning call's field read is the PARKED REF_ALIAS
+        # place/loan frontier (TestRecordBorrowCallReturnDesignStop): a
+        # coarse record-at-RECEIVER row landed here briefly and was
+        # REVERTED -- it shadowed the er-unwrap / template-call /
+        # native-iter arms and opened the design stop.
+        src = ("from tpy import Int32\n"
+               "class Box:\n"
+               "    n: Int32\n"
+               "    def __init__(self) -> None:\n"
+               "        self.n = 5\n"
+               "def ret_param_ref(b: Box) -> Box:\n"
+               "    return b\n"
+               "def f() -> None:\n"
+               "    shared = Box()\n"
+               "    print(ret_param_ref(shared).n, shared.n)\n"
+               "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_readonly_scalar_ret_routes(self):
+        src = ("from tpy import Int32, Ptr, deref, readonly, take_ptr\n"
+               "def f() -> None:\n"
+               "    y: Int32 = 77\n"
+               "    rp: Ptr[readonly[Int32]] = take_ptr(y)\n"
+               "    print(deref(rp))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("call.readonly_scalar_ret", 0) >= 1
+
+    def test_call_rvalue_at_structural_slot_routes(self):
+        src = ("from tpy import Int32, Deref, deref, take_ptr\n"
+               "def deref_protocol(p: Deref[Int32]) -> Int32:\n"
+               "    return deref(p)\n"
+               "def f() -> None:\n"
+               "    z: Int32 = 99\n"
+               "    print(deref_protocol(take_ptr(z)))\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestGenericCompositeFieldSubscript:
+    """The recv-type resolver substitutes ANY type-param-bearing field
+    decl via the expr type (`box._items[0].x` on `_items: list[T]` ->
+    `::tpy::__getitem__(box._items, 0).x`), widening the earlier bare-T
+    leg."""
+
+    def test_generic_list_field_elem_read_routes(self):
+        src = ("from tpy import Int32, Own\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "class Box[T]:\n"
+               "    _items: list[T]\n"
+               "    def __init__(self) -> None:\n"
+               "        self._items = []\n"
+               "    def add(self, item: Own[T]) -> None:\n"
+               "        self._items.append(item)\n"
+               "def main() -> None:\n"
+               "    box = Box()\n"
+               "    box.add(Point(1))\n"
+               "    print(box._items[0].x)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestRecordCallReturnPassthroughs:
+    """Return-ladder call sources: a record rvalue call at the STORAGE
+    return passes through bare (`return add_vecs(a, b);`), and a
+    T&-returning call at the BORROW return passes through bare via the
+    dedicated borrow_ret_passthrough flag (`return get_first(items);` --
+    the flag never leaves the return arm, so the REF_ALIAS field-read
+    design stop stays closed)."""
+
+    def test_storage_call_return_routes(self):
+        src = ("from tpy import Int32, Own\n"
+               "class Vec:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "def add_vecs(a: Vec, b: Vec) -> Own[Vec]:\n"
+               "    return Vec(a.x + b.x)\n"
+               "def use_add(a: Vec, b: Vec) -> Own[Vec]:\n"
+               "    return add_vecs(a, b)\n"
+               "def main() -> None:\n"
+               "    print(use_add(Vec(1), Vec(2)).x)\n"
+               "main()\n")
+        # The plain-record flavor routes through pre-existing arms; the
+        # new ret.record_call_storage leg's witness is the flipped corpus
+        # case (native/native_module_namespace, @native records).
+        _assert_routes_byte_identical(src)
+
+    def test_borrow_call_return_routes(self):
+        src = ("from tpy import Int32\n"
+               "class Point:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32):\n        self.x = x\n"
+               "def get_first(items: list[Point]) -> Point:\n"
+               "    return items[0]\n"
+               "def wrapper(items: list[Point]) -> Point:\n"
+               "    return get_first(items)\n"
+               "def main() -> None:\n"
+               "    ps: list[Point] = [Point(5)]\n"
+               "    print(wrapper(ps).x)\n"
+               "main()\n")
+        # main() field-reads the wrapper result -- the design-stopped
+        # REF_ALIAS shape -- so only `wrapper` itself is asserted routed.
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "wrapper") is not None
+        assert faces.get("call.borrow_ret_passthrough", 0) >= 1
+        _assert_byte_identical(src)

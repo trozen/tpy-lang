@@ -623,16 +623,18 @@ class TestFString:
         fstr = _fn(thir, "f").body[1].value
         assert _emit_expr(fstr) == 'std::format("{}", ::tpy::list_to_str(xs))'
 
-    def test_ineligible_inner_expr_rejects(self):
-        # The interpolated expr itself must be in the slice (the iterator-
-        # combinator machinery -- `list(map(...))` -- is avoid-list
-        # territory; a container global seeds as a pointer slot now and
-        # routes).
-        thir = _lower(
-            "from tpy import Int32\n"
-            "def f(xs: list[Int32]) -> str:\n"
-            '    return f"{list(map(lambda v: v + 1, xs))}"\n')
-        assert _fn(thir, "f") is None
+    def test_combinator_inner_expr_routes(self):
+        # `list(map(lambda ...))` interpolated: the container-ctor VALUE
+        # admission opened the result position; the instantiation + map
+        # lowering already existed, so the shape routes byte-identically.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[Int32]) -> str:\n"
+               '    return f"{list(map(lambda v: v + 1, xs))}"\n')
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("call.container_ctor_value", 0) >= 1
+        _assert_byte_identical(
+            src + "def main() -> None:\n    print(f([1, 2]))\nmain()\n")
 
     def test_string_concat_arg_routes(self):
         # A String (concat result) is std::string -- it formats bare, exactly
@@ -784,13 +786,14 @@ class TestStrConcat:
         thir = _lower('def f(a: str) -> str:\n    a += "x"\n    return a\n')
         assert _fn(thir, "f") is None
 
-    def test_char_operand_ineligible(self):
-        # A Char operand resolves the char_to_str __add__ overload -- Char
-        # values ride the S4 cell, so the shape stays on the AST path.
-        thir = _lower(
-            "from tpy import Char\n"
-            "def f(a: str, c: Char) -> str:\n    return a + c\n")
-        assert _fn(thir, "f") is None
+    def test_char_operand_routes(self):
+        # A Char operand resolves the char_to_str __add__ overload; the
+        # emit applies the resolved binop's operand wrappers, so the shape
+        # routes (binop.char_concat -- see TestCharConcatRepeat).
+        src = ("from tpy import Char\n"
+               "def f(a: str, c: Char) -> str:\n    return a + c\n"
+               "print(f(\"x\", \"y\"))\n")
+        _assert_routes_byte_identical(src)
 
     def test_str_repeat_routes(self):
         # `s * n` / `n * s` resolve __mul__/__rmul__ (str_repeat) with a str
@@ -823,6 +826,47 @@ class TestStrConcat:
         assert isinstance(cmp, THIRBinOp)
         assert _emit_expr(cmp) == "((::tpy::str_concat(a, b)) == c)"
 
+
+class TestCharConcatRepeat:
+    """Char-typed operands at the str-concat / str-repeat arms
+    (binop.char_concat): the resolved overload's `char_to_str` operand
+    wrapper renders on both paths, so the gate admits Char-typed sides.
+    Single-char str LITERALS stay plain string operands (the str-pair
+    overload resolves first)."""
+
+    def test_char_concat_and_repeat_route(self):
+        src = ("from tpy import Char\n"
+               "def f() -> None:\n"
+               "    c: Char = \"A\"\n"
+               "    d: Char = \"b\"\n"
+               "    print(\"hello\" + c)\n"
+               "    print(c + \"hello\")\n"
+               "    print(c + d)\n"
+               "    print(c * 3)\n"
+               "    print(3 * c)\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_char_self_append_and_nested(self):
+        # `s = s + c` (the self-append peephole's rhs) and a Char under a
+        # NESTED concat both keep the wrapper render.
+        src = ("from tpy import Char\n"
+               "def f() -> None:\n"
+               "    c: Char = \"A\"\n"
+               "    s = \"go\"\n"
+               "    s = s + c\n"
+               "    print(s)\n"
+               "    print((\"pre\" + c) + \"post\")\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_chr_call_operand_routes(self):
+        # A chr() CALL operand: the wrapper composes over the call's own
+        # render (`char_to_str(static_cast<char>(8))`).
+        src = ("def f() -> None:\n"
+               "    print(chr(8) + \"x\")\n"
+               "f()\n")
+        _assert_routes_byte_identical(src)
 
 
 class TestStrConcatEmit:

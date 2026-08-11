@@ -132,12 +132,31 @@ class _ExprUse:
     # absorbs the `T&`). Other STORAGE sinks (decls) bind REF_ALIAS off
     # the same result and must keep rejecting.
     record_copy_sink: bool = False
+    # The BORROW-record RETURN sink only: admit a T&-returning call's
+    # bare passthrough (`return get_first(items);`). A field read /
+    # decl bind off the same result is the REF_ALIAS frontier and must
+    # keep rejecting -- this flag never leaves the return arm.
+    borrow_ret_passthrough: bool = False
+    # The pointer-repr-tuple LAMBDA-return body only: admit a generic
+    # call whose monomorphized val_or_ptr_t tuple IS the closure's
+    # borrow-form trailing return -- the direct `return body;` needs no
+    # element conversion. This flag never leaves the lambda arm.
+    lambda_btuple_ret: bool = False
     # TARGET-LESS positions only (print args, compare operands): the AST's
     # pure-literal binop fold fires there (`_gen_binop` folds only when
     # target_type is None), so the THIR fold arm may mirror it. Slot-threaded
     # positions (decl init / arg / return) render the FULL operator expr on
     # the AST path and must keep rejecting.
     literal_fold_ok: bool = False
+    # Positions where the AST threads a slot target into the render while
+    # THIR lowers target-less: resolved-binop OPERAND slots
+    # (`gen_expr_deref(left, receiver_type)`) and fixed-int FREE-call/ctor
+    # arg slots (`gen_call_arg` threads the param). A both-literal
+    # sub-binop renders the full operator there, never the target-less
+    # fold -- so the nested binop lowers `slot_threaded` regardless of the
+    # outer's sink. User-record METHOD args stay unflagged (the AST's
+    # record loop passes target_type=None, so those FOLD).
+    slot_threaded: bool = False
     # The module-init pointer-slot-global pass-through write
     # (`g = find(xs, k);`) and the bare ptr-opt call DECL bind
     # (`Point* r1 = get_or_none(true, p);`): admit a BORROW-returning
@@ -152,6 +171,10 @@ class _ExprUse:
     # Distinct from `ptr_opt_passthrough`, whose result lands BARE -- one flag
     # cannot stand for both renders.
     ptr_opt_lift: bool = False
+    # The value-variant UNION field-write sink only (`z.pet =
+    # identity(new_pet);`): admit a ptr-variant union call result, which
+    # the sink consumes whole through the `to_value_variant` lift.
+    union_value_lift: bool = False
     # The borrow-tuple local decl sink only (`auto p = pair_of(b);`): admit a
     # pointer-repr tuple result, which the `auto` slot binds whole. Every other
     # consumer of such a result converts form, so they keep their own rows.
