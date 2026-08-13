@@ -12,7 +12,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _fn, _lower, _lower_ctx, _lower_ctx_witnessed,
-    _assert_byte_identical,
+    _assert_byte_identical, _assert_routes_byte_identical,
 )
 
 
@@ -218,10 +218,13 @@ class TestIfExprRejects:
             "    return 0\n")
         assert _fn(thir, "f") is None
 
-    def test_isinstance_condition_rejected(self):
-        # An isinstance condition would need the inline narrowing facts the
-        # node does not carry -- the condition gate has no call arm.
-        thir = _lower_ctx(
+    def test_isinstance_condition_routes(self):
+        # The isinstance-ternary arm carries the condition-scoped inline
+        # facts (2-member subject, scalar result); PLAIN-VAR arms (no
+        # subject reads) route too and must stay byte-identical. The
+        # wide-union and non-scalar boundaries are pinned in
+        # test_thir_unions.
+        _assert_routes_byte_identical(
             "from tpy import Int32\n"
             "class A:\n"
             "    n: Int32\n"
@@ -230,8 +233,11 @@ class TestIfExprRejects:
             "    n: Int32\n"
             "    def __init__(self):\n        self.n = 1\n"
             "def f(v: A | B, x: Int32, y: Int32) -> Int32:\n"
-            "    return x if isinstance(v, A) else y\n")
-        assert _fn(thir, "f") is None
+            "    return x if isinstance(v, A) else y\n"
+            "def main() -> None:\n"
+            "    print(f(A(), 1, 2))\n"
+            "    print(f(B(), 1, 2))\n"
+            "main()\n")
 
 
 class TestIfExprEmit:

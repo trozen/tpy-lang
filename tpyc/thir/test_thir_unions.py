@@ -1140,16 +1140,347 @@ class TestNarrowingEligibility:
             "    return v.x\n")
         assert "assert isinstance(%v, [A*]), 'want A'" in dump_thir(thir)
 
-    def test_compound_or_and_multi_isinstance_reject(self):
+    def test_compound_or_routes(self):
+        # CONVERTED FENCE (or-chain wave): a single isinstance leaf under
+        # `||` with a bool leaf rides the or-chain arm -- the bool leaf
+        # lowers with the complement installed.
         thir = self._lower(
             "def f(v: A | B, flag: bool) -> Int32:\n"
             "    if isinstance(v, A) or flag:\n        return 0\n"
+            "    return 0\n")
+        assert _fn(thir, "f") is not None
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "def f(v: A | B, flag: bool) -> Int32:\n"
+            "    if isinstance(v, A) or flag:\n        return 0\n"
             "    return 0\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    print(f(a, False))\n"
+            "main()\n"))
+
+    def test_multi_var_compound_routes(self):
+        # Two isinstance leaves on distinct subjects: composed holds tests,
+        # one branch alias per subject in source order.
+        thir = self._lower(
             "def g(v: A | B, w: A | B) -> Int32:\n"
-            "    if isinstance(v, A) and isinstance(w, B):\n        return v.x\n"
+            "    if isinstance(v, A) and isinstance(w, B):\n"
+            "        return v.x + w.y\n"
+            "    return 0\n")
+        fn = _fn(thir, "g")
+        assert fn is not None
+        node = fn.body[0]
+        assert isinstance(node, THIRIf)
+        assert isinstance(node.condition.left, THIRIsinstance)
+        assert isinstance(node.condition.right, THIRIsinstance)
+        a0, a1 = node.then_body[0], node.then_body[1]
+        assert isinstance(a0, THIRNarrowAlias) and a0.alias == "__v"
+        assert isinstance(a1, THIRNarrowAlias) and a1.alias == "__w"
+
+    def test_multi_var_mixed_bool_leaves_routes(self):
+        # Bool leaves interleave; leaves after each isinstance read that
+        # subject through the inline get -- byte-diffed, since the
+        # interleaved shape exercises the multi-var retype composition
+        # the pure-isinstance pin does not.
+        src = (_PTR_RECORDS + (
+            "def f(v: A | B, w: A | B, n: Int32) -> Int32:\n"
+            "    if isinstance(v, A) and v.x > 0 and isinstance(w, B)"
+            " and w.y > v.x and n > 0:\n"
+            "        return v.x + w.y\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    a = A(5)\n"
+            "    b = B(9)\n"
+            "    print(f(a, b, 1))\n"
+            "    print(f(b, a, 1))\n"
+            "main()\n"))
+        _assert_routes_byte_identical(src)
+
+    def test_multi_var_byte_identical(self):
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "def g(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A) and isinstance(w, B):\n"
+            "        return v.x + w.y\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    a = A(10)\n"
+            "    b = B(20)\n"
+            "    print(g(a, b))\n"
+            "    print(g(b, a))\n"
+            "main()\n"))
+
+    EQ_RECORDS = (
+        "from tpy import Int32\n"
+        "class A:\n    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "    def __eq__(self, other: \"A\") -> bool:\n"
+        "        return self.x == other.x\n"
+        "class B:\n    y: Int32\n"
+        "    def __init__(self, y: Int32) -> None:\n        self.y = y\n"
+    )
+
+    def test_expr_position_narrowed_compare_routes(self):
+        # The cell-D witness: an expression-position `&&` chain whose
+        # record compare reads the condition-scope-narrowed subject via
+        # the inline get (no alias exists at a value position).
+        src = self.EQ_RECORDS + (
+            "def f(tz: A | B | None, waw: A) -> None:\n"
+            "    print(tz is not None and isinstance(tz, A)"
+            " and tz == waw)\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    f(a, A(1))\n"
+            "    f(None, A(1))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("binop.narrowed_union_operand", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_expr_position_value_union_compare_routes(self):
+        # The value-union scalar flavor: `std::get<int32_t>(v)` at an
+        # ordering compare, expression position.
+        src = ("from tpy import Int32\n"
+               "def f(v: Int32 | float) -> None:\n"
+               "    print(isinstance(v, Int32) and v > 3)\n"
+               "def main() -> None:\n"
+               "    f(5)\n"
+               "    f(1.5)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_compare_alias_in_scope_uses_alias(self):
+        # Inside an isinstance BRANCH the extraction alias exists -- the
+        # compare operand renames to it; the inline-get row must not fire.
+        thir, faces = _lower_ctx_witnessed(self.EQ_RECORDS + (
+            "def f(tz: A | B, waw: A) -> Int32:\n"
+            "    if isinstance(tz, A):\n"
+            "        if tz == waw:\n"
+            "            return 1\n"
+            "    return 0\n"))
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("binop.narrowed_union_operand", 0) == 0
+        inner = fn.body[0].then_body[1]
+        cmp_left = inner.condition.left
+        assert isinstance(cmp_left, THIRName) and cmp_left.name == "__tz"
+
+    def test_unnarrowed_union_compare_reject(self):
+        # With no narrow in flow, the operand stays the union -- the
+        # compare gate keeps rejecting (the AST would emit the invalid
+        # bare mixed pair, the union-operand BUGS.md class).
+        thir = _lower_ctx(self.EQ_RECORDS + (
+            "def f(tz: A | B, waw: A) -> bool:\n"
+            "    return tz == waw\n"))
+        assert _fn(thir, "f") is None
+
+    def test_union_fact_narrowed_native_arg_routes(self):
+        # `repr(tz)` under `tz is not None` on a 3-member union: the slot
+        # substitutes to the SMALLER occurrence union; the render is the
+        # bare full-variant name on both paths.
+        src = _PTR_RECORDS + (
+            "def f(tz: A | B | None) -> None:\n"
+            "    if tz is not None:\n"
+            "        print(repr(tz))\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    f(a)\n"
+            "    f(None)\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.native_union_name", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_or_chain_exhaustive_fold_routes(self):
+        # `isinstance(v, A) or isinstance(v, B)` on A|B: the second leaf
+        # sema-folds to `true`; the early-return implicit-else emits the
+        # same DEAD extraction the AST commits (unreachable -- the chain
+        # is tautological).
+        thir = self._lower(
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A) or isinstance(v, B):\n"
+            "        return 1\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        node = fn.body[0]
+        assert isinstance(node.condition.left, THIRIsinstance)
+        assert isinstance(node.condition.right, THIRLiteral)
+        assert node.condition.right.value is True
+        assert isinstance(fn.body[1], THIRNarrowAlias)
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "def f(v: A | B) -> Int32:\n"
+            "    if isinstance(v, A) or isinstance(v, B):\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    print(f(a))\n"
+            "main()\n"))
+
+    def test_or_chain_negated_routes(self):
+        # `not (isinstance(v, A) or isinstance(v, B))`: the `!` wrap over
+        # the folded chain, the dead in-branch extraction mirrored as the
+        # AST commits it.
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "def f(v: A | B) -> Int32:\n"
+            "    if not (isinstance(v, A) or isinstance(v, B)):\n"
+            "        return -1\n"
+            "    return 1\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    print(f(a))\n"
+            "main()\n"))
+
+    def test_or_chain_value_union_routes(self):
+        # The value-union flavor: `std::get<T>(v)`-family renders with no
+        # ptr deref -- _narrow_member_cpp's value verdict for this arm.
+        _assert_routes_byte_identical(
+            "from tpy import Int32, Float64\n"
+            "def f(v: Int32 | Float64) -> Int32:\n"
+            "    if isinstance(v, Int32) or isinstance(v, Float64):\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(f(5))\n"
+            "    print(f(2.5))\n"
+            "main()\n")
+
+    def test_or_chain_three_member_routes(self):
+        # No fold on a 3-member subject: both holds tests render; the
+        # union then-fact extracts nothing.
+        thir = self._lower(
+            "class E:\n    w: Int32\n"
+            "    def __init__(self, w: Int32) -> None:\n"
+            "        self.w = w\n"
+            "def f(v: A | B | E) -> Int32:\n"
+            "    if isinstance(v, A) or isinstance(v, B):\n"
+            "        return 1\n"
+            "    return 0\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        node = fn.body[0]
+        assert isinstance(node.condition.left, THIRIsinstance)
+        assert isinstance(node.condition.right, THIRIsinstance)
+        assert not isinstance(node.then_body[0], THIRNarrowAlias)
+        # No post-if extraction: sema stamps no concrete else fact for
+        # the pure all-isinstance chain (unlike the mixed bool-leaf
+        # flavor, whose remainder fact extracts -- the complement pin).
+        assert not isinstance(fn.body[1], THIRNarrowAlias)
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "class E:\n    w: Int32\n"
+            "    def __init__(self, w: Int32) -> None:\n"
+            "        self.w = w\n"
+            "def f(v: A | B | E) -> Int32:\n"
+            "    if isinstance(v, A) or isinstance(v, B):\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    a = A(1)\n"
+            "    e = E(3)\n"
+            "    print(f(a))\n"
+            "    print(f(e))\n"
+            "main()\n"))
+
+    def test_or_compound_complement_read_routes(self):
+        # A bool leaf after the checks reads the single-member COMPLEMENT
+        # through the inline get (the AST's false-branch remainder
+        # install).
+        src = _PTR_RECORDS + (
+            "class E:\n    w: Int32\n"
+            "    def __init__(self, w: Int32) -> None:\n"
+            "        self.w = w\n"
+            "def f(v: A | B | E) -> Int32:\n"
+            "    if isinstance(v, (A, B)) or v.w > 0:\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(f(A(1)))\n"
+            "    print(f(E(3)))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_or_chain_two_subjects_reject(self):
+        # Different subjects across the leaves -- no single-subject chain,
+        # stays AST.
+        thir = self._lower(
+            "def f(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A) or isinstance(w, B):\n"
+            "        return 1\n"
             "    return 0\n")
         assert _fn(thir, "f") is None
-        assert _fn(thir, "g") is None
+
+    def test_multi_var_repeated_subject_reject(self):
+        # The same subject twice (a re-narrow inside one condition) has no
+        # mirrored emit -- the distinct-vars gate keeps it AST.
+        thir = self._lower(
+            "def f(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A) and isinstance(w, B)"
+            " and isinstance(v, A):\n"
+            "        return v.x + w.y\n"
+            "    return 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_isin_ternary_routes(self):
+        # `p.x if isinstance(p, A) else p.y`: holds-test condition, then
+        # arm reads the checked member inline, else arm the 2-member
+        # complement -- no aliases (expression position).
+        thir = self._lower(
+            "def f(p: A | B) -> Int32:\n"
+            "    return p.x if isinstance(p, A) else p.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        tern = fn.body[0].value
+        assert isinstance(tern.cond, THIRIsinstance)
+        assert tern.cond.member_cpps == ("A*",)
+        then_recv = tern.then.receiver
+        else_recv = tern.orelse.receiver
+        assert isinstance(then_recv, THIRNarrowedRead)
+        assert then_recv.member_cpp == "A*"
+        assert isinstance(else_recv, THIRNarrowedRead)
+        assert else_recv.member_cpp == "B*"
+
+    def test_isin_ternary_byte_identical(self):
+        _assert_routes_byte_identical(_PTR_RECORDS + (
+            "def f(p: A | B) -> Int32:\n"
+            "    return p.x if isinstance(p, A) else p.y\n"
+            "def main() -> None:\n"
+            "    a = A(3)\n"
+            "    b = B(4)\n"
+            "    print(f(a))\n"
+            "    print(f(b))\n"
+            "main()\n"))
+
+    def test_isin_ternary_wide_union_reject(self):
+        # A 3-member subject's complement is a union -- no inline render,
+        # stays AST.
+        thir = self._lower(
+            "class E:\n    w: Int32\n"
+            "    def __init__(self, w: Int32) -> None:\n"
+            "        self.w = w\n"
+            "def f(p: A | B | E) -> Int32:\n"
+            "    return p.x if isinstance(p, A) else 0\n")
+        assert _fn(thir, "f") is None
+
+    def test_isin_ternary_nonscalar_result_reject(self):
+        # A record-result ternary's arms carry family-specific renders with
+        # no narrowed witness -- the scalar-only gate keeps it AST.
+        thir = self._lower(
+            "def f(p: A | B, a: A, a2: A) -> Int32:\n"
+            "    r = a if isinstance(p, A) else a2\n"
+            "    return r.x\n")
+        assert _fn(thir, "f") is None
+
+    def test_multi_var_with_else_reject(self):
+        # A conjunction's negation narrows nothing: an else arm has no
+        # mirrored extraction -- stays AST.
+        thir = self._lower(
+            "def f(v: A | B, w: A | B) -> Int32:\n"
+            "    if isinstance(v, A) and isinstance(w, B):\n"
+            "        return v.x + w.y\n"
+            "    else:\n"
+            "        return -2\n")
+        assert _fn(thir, "f") is None
 
     def test_unused_alias_still_emitted(self):
         # The AST extracts at branch entry even when the branch never reads

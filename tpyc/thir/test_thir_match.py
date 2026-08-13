@@ -23,7 +23,8 @@ import pytest
 from ..codegen_cpp.context import CodeGenOptions
 from ..diagnostics import SemanticError
 from .nodes import THIRMatch
-from .testutil import _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed
+from .testutil import (_compile, _entry, _fn, _lower_ctx,
+                       _lower_ctx_witnessed, _assert_routes_byte_identical)
 
 
 def _cpp(src: str, thir: bool):
@@ -3470,3 +3471,50 @@ class TestMatchLiteralSubject:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("match.field_guard_as", 0) > 0
+
+
+class TestMatchIsinstanceGuard:
+    PRE = (
+        "from tpy import Int32\n"
+        "class A:\n    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class B:\n    y: Int32\n"
+        "    def __init__(self, y: Int32) -> None:\n        self.y = y\n"
+        "class C:\n    z: Int32\n"
+        "    def __init__(self, z: Int32) -> None:\n        self.z = z\n"
+    )
+
+    def test_isinstance_guard_routes(self):
+        # `case _ if isinstance(v, (A, B)):` renders the holds test like
+        # an if condition (gen_truthy_expr's isinstance arm).
+        src = self.PRE + (
+            "def f(v: A | B | C) -> str:\n"
+            "    match v:\n"
+            "        case _ if isinstance(v, (A, B)):\n"
+            "            return \"ab\"\n"
+            "        case _:\n"
+            "            return \"c\"\n"
+            "def main() -> None:\n"
+            "    print(f(A(1)))\n"
+            "    print(f(C(3)))\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("match.guard_isinstance", 0) > 0
+        _assert_routes_byte_identical(src)
+
+    def test_isinstance_guard_narrowed_subject_defers(self):
+        # A guard whose subject already carries a narrowing alias reads
+        # __v on the AST path -- the bare-holds arm must not fire; the
+        # body falls back through the truthy fence.
+        src = self.PRE + (
+            "def f(v: A | B | C) -> str:\n"
+            "    if isinstance(v, A):\n"
+            "        match v:\n"
+            "            case _ if isinstance(v, A):\n"
+            "                return \"still-a\"\n"
+            "            case _:\n"
+            "                return \"other\"\n"
+            "    return \"not-a\"\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None

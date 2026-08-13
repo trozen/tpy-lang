@@ -56,6 +56,48 @@ class TestAnyNarrowLowering:
         assert ("if ((!((v.value.has_value() && "
                 "v.value.type() == typeid(std::string))))) {") in out
 
+    def test_compound_and_rhs_reads_route(self):
+        # The `&&` RHS reads the subject through the condition-scoped
+        # any_cast spelling; the branch alias follows as usual.
+        src = (_PRELUDE
+               + "def f(a: Any) -> None:\n"
+               + "    if isinstance(a, int) and a > 3:\n"
+               + "        print(\"big\", a)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        out = _cpp(src, thir=True)
+        assert ("&& (std::any_cast<const ::tpy::BigInt&>(a.value) > 3)"
+                in out)
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_compound_or_no_facts_routes(self):
+        # A `||` spine installs nothing (Any has no complement fact); the
+        # RHS lowers un-narrowed.
+        src = (_PRELUDE
+               + "def f(a: Any) -> None:\n"
+               + "    if isinstance(a, str) or len(\"x\") > 0:\n"
+               + "        print(\"either\")\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    def test_compound_two_any_leaves_reject(self):
+        # Two Any-isinstance leaves -- the single-leaf gate keeps it AST
+        # (the multi-var machinery is union-keyed, not Any).
+        src = (_PRELUDE
+               + "def f(a: Any, b: Any) -> None:\n"
+               + "    if isinstance(a, int) and isinstance(b, int):\n"
+               + "        print(\"both\")\n")
+        assert _fn(_lower(src), "f") is None
+
+    def test_compound_negated_reject(self):
+        # `not (isinstance(a, T) and ...)` -- negated compounds stay AST.
+        src = (_PRELUDE
+               + "def f(a: Any) -> None:\n"
+               + "    if not (isinstance(a, int) and a > 0):\n"
+               + "        print(\"no\")\n")
+        assert _fn(_lower(src), "f") is None
+
     def test_record_subject_routes(self):
         # The corpus record_in_any shape: alias field reads consumed inside
         # the branch (a RETURN of an alias field read gates elsewhere).

@@ -60,6 +60,7 @@ from .nodes import (
     THIRIfExpr, THIRMethodCall,
     THIRNode, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
+    THIRSubscript,
     THIRPtrLocalDecl, THIRUnionArgLift, THIRVarDecl,
 )
 
@@ -320,9 +321,18 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRSetItem):
-        # The value is a flushable position (like an assign value); the
-        # target subscript's receiver/index never carry temps.
-        _walk(owner, node.target, return_type)
+        # The value AND the target's INDEX are flushable positions: the
+        # write sits at a statement, so an index-call's arg temps hoist
+        # before the setitem line exactly like the value's (the AST's
+        # statement flush; threaded via the setitem arm's allow_temps
+        # target use). The RECEIVER stays temp-free -- the lowering never
+        # forwards flushability there, so a temp reaching it is a
+        # lowering bug (the THIRAssign discipline).
+        if isinstance(node.target, THIRSubscript):
+            _walk(owner, node.target.receiver, return_type)
+            _walk(owner, node.target.index, return_type, argtemp_ok=True)
+        else:
+            _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRSliceAssign):

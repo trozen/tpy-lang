@@ -73,6 +73,7 @@ from ..nodes import (
 )
 from .predicates import (
     _container_scalar_read,
+    _isinstance_narrow_info,
     _eligible_char,
     _wrapper_union_like,
     _eligible_enum,
@@ -96,6 +97,7 @@ from .context import (
 )
 from .expressions import (
     _lower_expr,
+    _lower_isinstance_cond,
     _lower_field_source,
     _lower_truthy,
     _narrow_subject_is_ptr,
@@ -1012,6 +1014,16 @@ def _match_case_label(pattern, kind: str, analyzer) -> str:
 
 def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
                        declared: dict[str, TpyType]) -> THIRExpr:
+    # A bare isinstance guard (`case _ if isinstance(v, (A, B)):`) renders
+    # the holds test exactly like an if condition (gen_truthy_expr's
+    # isinstance arm); the subject must be un-narrowed -- a narrowed one
+    # reads its alias, which _isinstance_narrow_info's declared lookup
+    # does not model.
+    ginfo = _isinstance_narrow_info(guard, declared, lc.analyzer)
+    if (ginfo is not None and ginfo[0] not in lc.narrow.narrowed
+            and ginfo[0] not in lc.narrow.spelled):
+        _witness("match.guard_isinstance")
+        return _lower_isinstance_cond(ginfo, guard, lc)
     # The AST renders every guard through gen_truthy_expr, so a non-bool guard
     # takes its type's truthiness wrap rather than rejecting.
     lowered = _lower_truthy(guard, lc, declared)

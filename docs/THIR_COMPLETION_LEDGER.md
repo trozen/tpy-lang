@@ -9954,3 +9954,161 @@ entries in TODO.md, each with its analysis and oracle). Session
 total: waves 29-41, reviews 20-24, dial 3429 -> 3454/3729 (25
 flips), one AST bug filed (the uncompilable bytes ternary), nine
 parks with recipes.
+
+DESIGN-ROUND WAVE (2026-08-11, thir-design): the attempt-poisoning
+park RESOLVED-EMPTY by re-bisection. Repro 1 re-run on the
+scope-leak-fixed base: the generator body now ROUTES (the session's
+resumable waves cleared its old res.yield_type reject), an
+instrumented AST+CFG before/after dump across the attempt shows zero
+mutated leaves, and the fallen-back bodies re-emit byte-identically
+-- the deref loss was THIR's OWN render, not contamination. Root
+cause: value-opt narrows have no extraction alias (the AST derefs in
+place), and value-opt-scalar loop vars / unpack targets never
+registered in lc.value_opt_bindings, so narrowed reads fell through
+to the plain-name arm and rendered the bare optional SILENTLY (sema
+had retyped the read to the scalar). Fixed by registering the binding
+at three missing sites: the resumable AsyncForAdvance loop var, the
+resumable pass-1 tuple-unpack targets, and the sync for-head +
+standalone unpack target loops -- the STANDALONE one was a latent
+divergence already reachable on master (tuple[T | None, ...] param
+unpack + narrowed read), found only by dualgen, not the corpus. The
+_dict_view_iterable_ok value-opt leg is re-admitted; the still-defers
+pin converted back to routes; new pins: narrowed loop-var yield
+routes with (*val), items()-unpack sibling (sync + frame), standalone
+narrowed target, view-flavor boundary defers. LESSON: both
+"poisoning" repros (this and the H-ctor scope leak) were ordinary
+bugs whose symptom moved with the routing set; treat "the attempt
+changed the output" as a missing-registration or emission-order
+hypothesis before reaching for rollback machinery.
+
+ISINSTANCE-CONDITIONS WAVE (2026-08-11, thir-design, cells A/C/B of
+the design memo): three flips. Cell A: multi-var `&&` compounds --
+_compound_isin_hits shared scan, _multi_narrow_cond_info (N leaves,
+distinct subjects), _lower_multi_compound_cond (the single-var arm now
+delegates), _lower_multi_narrow_if (one alias per subject, no-else
+gate); flip union/union_isinstance_compound. Cell C: isinstance
+ternaries -- _ifexpr_isin_narrow_info (bare single-member check,
+2-member subject, scalar result) + _lower_narrowed_ternary (per-arm
+inline gets, else = the exact complement); _lower_isinstance_cond
+moved to expressions.py; flip records/ctor_field_init_union; one
+stale ifexpr fence converted. Cell B: Any compounds --
+_any_narrow_cond_info grows the single-leaf &&/|| form; the && spine
+installs the condition-scoped any_cast spelling via lc.narrow.spelled
+(the poly-narrow regime, condition-scoped -- NOT a new rename
+regime); flip any/isinstance_inline_and. VERIFICATION NOTE: the
+park's "third rename regime must be designed" premise was STALE --
+inline_narrowed/spelled existed; the cells were arm plumbing. STILL
+OPEN in-family: cell D (expression-position &&-chains, the datetime
+zoneinfo pair, held for a design look at leaf sequencing), and the
+or-chain family (same-subject multi-leaf ORs with sema exhaustiveness
+folds -- `(holds<A*>(v) || true)` -- union-fact branches, negation;
+union_isinstance_or_chain + union_isinstance_tuple), a distinct
+render family, NOT the cell-C complement shape.
+
+CELL D (2026-08-12, thir-design): expression-position isinstance
+chains DE-DESIGNED on bisection -- the held design question ("how do
+narrow facts accumulate across leaf kinds outside a statement
+context") dissolved: a probe matrix showed the if-position chain,
+the expression-position chain with a narrowed FIELD read, and the
+record-eq compare in if-position ALL already routed; sema's retype
+plus the assign-narrowed receiver arm carry condition-scoped facts
+at value positions with no install machinery. The only gaps were
+two operand rows: (1) a condition-scope-narrowed union NAME at a
+compare slot -- `_narrowed_union_compare_operand` (the
+`_assign_narrowed_union_recv` invariant widened to value unions),
+gating lt/rt as the member and rendering THIRNarrowedRead
+(`std::get<ZoneInfo>(tz) == waw`), face
+binop.narrowed_union_operand; (2) a union-FACT narrowed name at a
+native/template union slot (`repr(tz)` under `tz is not None` -- the
+slot substitutes to the SMALLER occurrence union) --
+`_native_union_name_arg` admits nested-member occurrence unions, the
+render staying the bare full-variant name. Flips
+stdlib/datetime_zoneinfo_basic + _convert; boundary pins: alias-in-
+scope uses the alias (row must not fire), un-narrowed union compare
+keeps rejecting. LESSON (the streak again): the "design flavor" was
+an artifact of reading the park instead of bisecting -- one dualgen
+matrix settled in minutes what the entry framed as a leaf-
+sequencing design problem.
+
+OR-CHAIN WAVE (2026-08-12, thir-design): the isinstance-conditions
+cluster's last family, three shapes in one cell chain. (A) Pure
+or-chains (`isinstance(v, A) or isinstance(v, B)`):
+_or_chain_narrow_info + _lower_or_chain_cond compose per-leaf holds
+tests along the source `||` tree (a sema-folded exhaustiveness leaf
+renders `true`); branch facts ride the shared narrow-if skeleton,
+including the AST's DEAD else-extraction past a tautological chain
+-- _chain_post_if_fact grew the or-chain form (both helpers moved to
+predicates.py with _flatten_binop_leaves for import direction). (B)
+Mixed bool leaves (`isinstance(v, (A, B)) or flag`): each `||` node
+installs the left subtree's single-member COMPLEMENT (the AST's
+false-branch remainder) for its right side; the complement-read
+render is pinned. (C) Match guards (`case _ if isinstance(v, (A,
+B))`): _lower_match_guard takes the bare-isinstance holds render
+(face match.guard_isinstance); a narrowed-subject guard keeps
+deferring (the alias read is not modeled there). Flips
+union/union_isinstance_or_chain + union/union_isinstance_tuple; the
+cell-A `or`-fence converted to routes. NOTE the two_member/negated_or
+oracles commit DEAD extractions on unreachable paths (sema's facts on
+folded chains) -- mirrored as-is per the oracle discipline, worth a
+sema look someday but NOT via THIR.
+
+MECHANICS-PARKS WAVE (2026-08-12, thir-design): two parks closed, one
+pruned, 2 flips (dial 3462 -> 3464/3730). (1) requests_pool setitem
+KEY: piece 1 (owned-str call rvalue at the Own[str] slot) had been
+absorbed by intervening waves; piece 2 landed as flush threading --
+the setitem statement arm lowers its write target under allow_temps,
+the container-subscript arm forwards the enclosing use's flushability
+into the INDEX (the general rule: allow_temps rides through
+call-shaped positions), and the validator's SetItem arm accepts
+INDEX-side arg temps (receiver stays temp-free -- tightened at review
+to destructure rather than blanket-relax). (2) Hoisted container
+unpack targets: the null-initialized pointer predecl
+(THIRForEach.hoist_ptr_inits), per-iteration re-point via the
+EXISTING frame_ptr_elem bind (reuse, not a new render), post-loop
+reads via lc.pointers registered at the predecl; rode along -- the
+tuple-iterable element gate admits container elements and the
+container-element tuple CHAIN (`pairs[1][1]`) landed as a read row +
+LIST-only print-wrap leg (dict/set narrowed out at review until
+witnessed). (3) The iterator-decl residue entry was STALE -- all
+three listed cases already unmarked and clean; pruned. Review round
+(2 agents): the validator destructure, the aug-assign index-temp
+boundary pin, the false method-receiver-pin claim fixed (that flavor
+rides the pre-existing tuple_elem_subscript arm), the
+_lower_hoist_predecls fifth-flavor-param fold note updated.
+REMAINING iterator lane: the itertools comp-source park only
+(classifier chase + pre-statement flush + owning generic capture).
+
+ITERTOOLS COMP-SOURCE CELL (2026-08-12, thir-design): the last
+iterator-lane park, and its premise DE-DESIGNED -- the parked
+"classifier chase" (@native iterable records not in
+is_native_iterable) was wrong: itertools is pure-TPy generators. The
+chain-walk landed five widenings: the comp route's module-qualified
+genfac twin (TpyMethodCall arm); _genfac_like_call in predicates.py
+-- the overload-seam-aware verdict (a stub fi carries
+is_generator=False while the impl is the generator; the protocol
+Iterator[T] return admits, and sema FORBIDS that return type on
+non-generator user functions, so the widening is safe by
+construction) shared by the comp route, the marker gate's
+iterable_gen, and the arg-temp leg; the gen-factory ref-slot arg temp
+(argtemp.genfac_ref_slot -- `auto __tmp_N = count();`, the
+readonly-ref-generator flavor of gen_call_arg's is_temporary_expr
+hoist); protocol_hoist widened to generic_qualified callees (the
+first-pass literal hoist runs for generic module callees -- the
+oracle's `auto __tmp_4 = std::array{..}` + `cycle<int32_t>(__tmp_4)`);
+and the marker ladder's lambda row. Flip stdlib/itertools_basic; one
+stale fence converted (test_thir_wave_compcall's combinator reject).
+Boundary pins: the genexpr flavor defers on its own lane. ALL THREE
+mechanics parks from the committed order are now closed.
+
+ITERTOOLS CELL REVIEW ROUND (2026-08-12): the "safe by construction"
+claim in the cell's ledger entry above is CORRECTED -- @native /
+@cpp_template callees (map/zip/filter/reversed/iter) return
+Iterator[T] with is_generator=False and are exempt from sema's
+protocol-return prohibition, so _genfac_like_call now EXCLUDES them
+(native_function / cpp_template / is_stub) and matches the protocol
+by qualified name (typing.Iterator, not the bare name -- a user
+@dynamic protocol named Iterator would have misclassified). Lockstep
+completed: the TpyCall comp leg and the arg-temp leg's CALLEE gate
+now ride the shared predicate. Pins added: the generic_qualified
+literal hoist (argtemp.marker_protocol_literal under cycle), the
+genfac-arg-at-non-generator-callee boundary.

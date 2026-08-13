@@ -3013,6 +3013,39 @@ class TestValueOptScalarUnpackTargets:
                "f()\n")
         _assert_routes_byte_identical(src)
 
+    def test_items_narrowed_target_deref_routes(self):
+        # A narrowed value-opt target read at a VALUE sink (`total += v`)
+        # must deref -- the binding registration in the for-head unpack
+        # arm; without it the read renders the bare optional.
+        src = ("from tpy import Int32\n"
+               "def f(d: dict[str, Int32 | None]) -> Int32:\n"
+               "    total = 0\n"
+               "    for k, v in d.items():\n"
+               "        if v is not None and len(k) > 0:\n"
+               "            total += v\n"
+               "    return total\n"
+               "def go() -> None:\n"
+               "    d: dict[str, Int32 | None] = {\"a\": 1, \"b\": None}\n"
+               "    print(f(d))\n"
+               "go()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_standalone_narrowed_target_deref_routes(self):
+        # The STANDALONE unpack sibling: a fresh value-opt target's
+        # narrowed read at a value sink derefs (`(*a)`) via the same
+        # binding registration in the standalone target loop.
+        src = ("from tpy import Int32\n"
+               "def f(p: tuple[Int32 | None, Int32]) -> Int32:\n"
+               "    a, b = p\n"
+               "    if a is not None:\n"
+               "        return a + b\n"
+               "    return b\n"
+               "def go() -> None:\n"
+               "    print(f((3, 4)))\n"
+               "    print(f((None, 9)))\n"
+               "go()\n")
+        _assert_routes_byte_identical(src)
+
 
 class TestTupleNameCallArgs:
     """Tuple NAMES at matching call slots: the own-element move

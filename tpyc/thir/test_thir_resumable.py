@@ -3681,6 +3681,73 @@ class TestContainerYieldBorrow:
         assert _res_fallback(src).get("res.yield_type") == 1
         _assert_identical(src)
 
+    def test_value_opt_loop_var_narrowed_yield_routes(self):
+        # A value-opt-scalar dict-view loop var in a generator frame: the
+        # pass-1 AsyncForAdvance registration keys its reads to the
+        # binding arms, so the narrowed yield derefs (`return (*val);`)
+        # and the None-test reads the whole optional -- without the
+        # registration the narrowed read renders bare `val` (the repro-1
+        # divergence).
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def g_loop(d: dict[str, Int32 | None]) -> Iterator[Int32]:\n"
+               + "    for val in d.values():\n"
+               + "        if val is not None:\n"
+               + "            yield val\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return (*val);" in cpp
+        assert "val.has_value()" in cpp
+
+    def test_value_opt_unpack_target_narrowed_yield_routes(self):
+        # The items() unpack sibling in a frame: the pass-1 tuple-unpack
+        # registration keys the value-opt target, so the narrowed yield
+        # derefs (`return (*v);`).
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "def g_items(d: dict[str, Int32 | None])"
+               + " -> Iterator[Int32]:\n"
+               + "    for k, v in d.items():\n"
+               + "        if v is not None and len(k) > 0:\n"
+               + "            yield v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "return (*v);" in cpp
+
+    def test_multi_var_isinstance_frame_cond_defers(self):
+        # The multi-var isinstance compound is a SYNC-body admission; the
+        # resumable narrow model (`_narrow_cond_info` at the Branch) has
+        # no multi-var arm -- the frame lane keeps rejecting.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "class A:\n    x: Int32\n"
+               + "    def __init__(self, x: Int32) -> None:\n"
+               + "        self.x = x\n\n"
+               + "class B:\n    y: Int32\n"
+               + "    def __init__(self, y: Int32) -> None:\n"
+               + "        self.y = y\n\n"
+               + "def g(a: A | B, b: A | B) -> Iterator[Int32]:\n"
+               + "    if isinstance(a, A) and isinstance(b, B):\n"
+               + "        yield a.x + b.y\n"
+               + "    yield -1\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src)
+        _assert_identical(src)
+
+    def test_value_opt_view_loop_var_yield_defers(self):
+        # The VIEW flavor (`dict[str, str | None]`) stays out:
+        # `_container_value_opt_scalar_elem` is scalar-only, so the
+        # dict-view iterable gate rejects and the body falls back whole.
+        src = ("from typing import Iterator\n\n"
+               + "def g_loop(d: dict[str, str | None]) -> Iterator[str]:\n"
+               + "    for val in d.values():\n"
+               + "        if val is not None:\n"
+               + "            yield val\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        assert _res_fallback(src)
+        _assert_identical(src)
+
 
 class TestFrameFamilyAdmissions:
     """The local/param family admissions (value tuples, Optional-ptr

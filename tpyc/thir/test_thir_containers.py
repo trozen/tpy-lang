@@ -1876,6 +1876,126 @@ class TestContainerSetItem:
         assert isinstance(_fn(thir, "f").body[0], THIRSetItem)
         assert isinstance(_fn(thir, "g").body[0], THIRSetItem)
 
+    _KEY_PRE = (
+        "from tpy import Int32\n"
+        "def key_of(name: str, flag: bool | str) -> str:\n"
+        "    if isinstance(flag, bool):\n"
+        "        return name + (\"!\" if flag else \"?\")\n"
+        "    return name + flag\n")
+
+    def test_setitem_index_call_temp_routes(self):
+        # A setitem whose INDEX call needs a value-union arg temp: the
+        # write sits at a statement, so the temp flushes before the line
+        # (`std::variant<bool, std::string> __tmp_N = true;` + the bare
+        # call) -- allow_temps threads through the subscript arm's index.
+        src = self._KEY_PRE + (
+            "def f(d: dict[str, Int32]) -> None:\n"
+            "    d[key_of(\"a\", True)] = 1\n"
+            "def main() -> None:\n"
+            "    d: dict[str, Int32] = {}\n"
+            "    f(d)\n"
+            "    print(d[\"a!\"])\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_read_decl_index_call_temp_routes(self):
+        # The decl-init subscript READ is a flush position too.
+        src = self._KEY_PRE + (
+            "def f(d: dict[str, Int32]) -> Int32:\n"
+            "    x = d[key_of(\"a\", True)]\n"
+            "    return x\n"
+            "def main() -> None:\n"
+            "    d: dict[str, Int32] = {\"a!\": 7}\n"
+            "    print(f(d))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_aug_setitem_index_temp_defers(self):
+        # The AUG-assign subscript target lowers temp-free (its target
+        # renders twice, so a flushed index temp has no single flush
+        # point) -- the temp-needing index keeps the body AST.
+        src = self._KEY_PRE + (
+            "def f(d: dict[str, Int32]) -> None:\n"
+            "    d[key_of(\"a\", True)] += 1\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+
+    def test_user_record_setitem_index_temp_defers(self):
+        # The user-record __setitem__ flavor lowers its target through
+        # the record-getitem arm, which does not forward the flush use --
+        # the temp-needing index keeps the body AST.
+        src = self._KEY_PRE + (
+            "class H:\n"
+            "    d: dict[str, Int32]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.d = {}\n"
+            "    def __getitem__(self, k: str) -> Int32:\n"
+            "        return self.d[k]\n"
+            "    def __setitem__(self, k: str, v: Int32) -> None:\n"
+            "        self.d[k] = v\n"
+            "def f(h: H) -> None:\n"
+            "    h[key_of(\"b\", True)] = 2\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+
+    _PAIRS_PRE = ("from tpy import Int32\n")
+
+    def test_hoisted_container_unpack_target_routes(self):
+        # `for k, v in d.items(): ...` with post-loop v.append: the
+        # null-initialized pointer predecl + the per-iteration re-point
+        # (frame_ptr_elem) + post-loop deref reads.
+        src = ("from tpy import Int32\n"
+               "def f(d: dict[str, list[Int32]]) -> None:\n"
+               "    for k, v in d.items():\n"
+               "        print(k, len(v))\n"
+               "    v.append(99)\n"
+               "    print(len(v))\n"
+               "def main() -> None:\n"
+               "    d: dict[str, list[Int32]] = {}\n"
+               "    d[\"a\"] = [1, 2]\n"
+               "    f(d)\n"
+               "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("foreach.hoist_ptr_null", 0) >= 1
+        assert faces.get("foreach.hoist_ptr_target", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_container_tuple_chain_print_routes(self):
+        # `print(pairs[1][1])`: the borrow lvalue
+        # `std::get<1>(__getitem__(pairs, 1))` under the kind-keyed wrap.
+        src = self._PAIRS_PRE + (
+            "def f(pairs: list[tuple[Int32, list[Int32]]]) -> None:\n"
+            "    print(pairs[1][1])\n"
+            "def main() -> None:\n"
+            "    pairs: list[tuple[Int32, list[Int32]]] = "
+            "[(1, [10]), (2, [20])]\n"
+            "    f(pairs)\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_container_tuple_chain_decl_defers(self):
+        # The chain at a DECL sink (a REF_ALIAS bind) is unwitnessed --
+        # stays AST.
+        src = self._PAIRS_PRE + (
+            "def f(pairs: list[tuple[Int32, list[Int32]]]) -> None:\n"
+            "    row = pairs[0][1]\n"
+            "    print(row)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+
+    def test_hoisted_unpack_resumable_defers(self):
+        # The resumable flavor's hoists are frame fields -- the sync
+        # pointer-predecl machinery must not fire there.
+        src = ("from tpy import Int32\n"
+               "from typing import Iterator\n"
+               "def g(d: dict[str, list[Int32]]) -> Iterator[Int32]:\n"
+               "    for k, v in d.items():\n"
+               "        yield len(v)\n"
+               "    yield len(v)\n")
+        thir = _lower(src)
+        assert _fn(thir, "g") is None
+
     def test_array_and_span_route(self):
         thir = _lower(
             "from tpy import Int32, Span, Array\n"

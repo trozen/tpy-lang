@@ -64,6 +64,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.marker_protocol_literal",  # container literal at a PLAIN module
                                     # callee's structural slot -> the qualcall
                                     # loop's `auto __tmp_N = <self-spelled>` hoist
+    "argtemp.genfac_ref_slot",          # gen-factory rvalue at a generator
+                                        # callee's ref iterable slot ->
+                                        # `auto __tmp_N = count();`
     "argtemp.marker_protocol_range",    # range rvalue at the same slot ->
                                     # `auto __tmp_N = ::tpy::Range<...>(..);`
     "arg.deref_coerce_inline",      # Ptr[T] deref coercion at a record slot
@@ -184,6 +187,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # typed-brace prefix
     "ifexpr.container",             # container ternary: the bare
                                     # form-blind arm render
+    "ifexpr.isin_narrow",           # isinstance-condition ternary: holds
+                                    # test + per-arm inline get (else =
+                                    # the 2-member complement)
     "stmt.compile_time_assert",     # assert_send/assert_sync statement:
                                     # sema-checked, zero emission (NoOp)
     "ctor.union_pass_arg",          # already-union NAME bare into a
@@ -839,6 +845,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # typed `std::optional<T>` copy and registers the name so its body reads
     # ride the value-opt binding arms -- deref-on-narrow, the whole-optional
     # None-test / truthiness / arg renders).
+    "foreach.hoist_ptr_null",       # hoisted container unpack target ->
+                                    # `T* v = nullptr;` predecl
+    "foreach.hoist_ptr_target",     # its per-iteration re-point (the
+                                    # frame_ptr_elem render, sync twin)
     "foreach.value_opt_elem",
     # A ptr-repr Optional[F1-record] element loop var (`for v in d.values():`
     # over `dict[str, P | None]`): the STORAGE-form binding registers in the
@@ -890,6 +900,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "if.narrow_nc_else_fact",       # non-member else fact (remaining
                                     # nullable union) tolerated -- no else
                                     # body, so no consumer exists
+    "narrow.multi_var",             # multi-var `&&` isinstance compound ->
+                                    # composed holds tests + one branch
+                                    # alias per subject
+    "binop.narrowed_union_operand", # condition-scope-narrowed union NAME
+                                    # at a compare slot -> the inline get
     "narrow.poly_tuple",            # tuple-form poly isinstance -> the
                                     # no-init dynamic_cast OR-chain
     "narrow.poly_value",            # value-position poly isinstance -> the
@@ -1983,6 +1998,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.hoist_opt_ptr_local",    # ptr-repr Optional capture hoist: `T* name;`
     "match.hoist_optional_storage",  # capture hoist: `std::optional<T> name;` slot
     "match.if_elif_guarded",        # standalone-if + goto __match_end_N (M3b)
+    "match.guard_isinstance",       # a bare isinstance guard -> the holds
+                                    # test (the if-condition render)
     "match.guard_arm",              # a guarded arm's inner `if (guard)`
     "match.switch_guard_chain",     # in-switch guard chain (grouped entries)
     "match.default_goto",           # all-guarded group -> goto __match_default_N

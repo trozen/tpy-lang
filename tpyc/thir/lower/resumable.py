@@ -1383,6 +1383,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         if lt is not None:
                             declared[tname] = unwrap_readonly(
                                 unwrap_ref_type(unwrap_send_sync(lt)))
+                            # Same value-opt keying as the AsyncForAdvance
+                            # loop var below: a value-opt-scalar unpack
+                            # target's narrowed reads must deref.
+                            if _value_opt_scalar(declared[tname],
+                                                 analyzer) is not None:
+                                lc.value_opt_bindings[tname] = (
+                                    ValueOptKind.SCALAR)
             elif (isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup))
                     and stmt.item.target is not None
                     and stmt.item.target not in declared
@@ -1419,6 +1426,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if et is not None:
                     declared[lv] = unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(et)))
+                    # A value-repr Optional[scalar] loop var reads through
+                    # the same binding-keyed arms as a value-opt param
+                    # (deref-on-narrow, whole-optional None-test) -- the
+                    # resumable twin of the sync foreach registration.
+                    # Value-opt narrows have no extraction alias (the AST
+                    # derefs in place), so without the binding a narrowed
+                    # read falls through to the plain-name arm and renders
+                    # bare.
+                    if _value_opt_scalar(declared[lv],
+                                         analyzer) is not None:
+                        lc.value_opt_bindings[lv] = ValueOptKind.SCALAR
 
     leaves: dict[int, THIRStmt] = {}
     conds: dict[int, THIRExpr] = {}

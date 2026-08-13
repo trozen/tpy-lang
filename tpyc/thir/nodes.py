@@ -2404,6 +2404,10 @@ class THIRForEach(THIRStmt):
     hoisted_tuple_lift_cpp: 'str | None' = None
     # Branch-first-declared value locals used after the loop (see THIRForRange).
     hoist_decls: tuple[tuple[str, str], ...] = ()
+    # hoist_decls names whose pointer predecl null-initializes
+    # (`std::vector<int32_t>* v = nullptr;` -- the hoisted container
+    # unpack-target flavor; the with-family pointer hoist stays bare).
+    hoist_ptr_inits: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

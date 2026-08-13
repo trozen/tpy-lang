@@ -262,6 +262,8 @@ from .predicates import (
     _dict_view_iterable_ok,
     _eligible_char,
     _field_decl_type,
+    _genfac_like_call,
+    _isinstance_narrow_info,
     _eligible_enum,
     _eligible_ptr_value,
     _eligible_scalar,
@@ -398,6 +400,7 @@ from .predicates import (
     _span_ctor_call_fi,
     _viewfam_ctor_call_fi,
     _tuple_container_elem_read,
+    _tuple_subscript_container_elem_read,
     _tuple_subscript_value_read,
     _tparam_value,
     _opt_view_arg_shim,
@@ -1598,6 +1601,24 @@ def _lower_marker_method_arg(
             return THIRArgTemp(result_type=proto, cpp_type=None,
                                init=_lower_range_object(a, lc, declared),
                                form=Form.BORROW, loc=getattr(a, "loc", None))
+    # A GENERATOR-FACTORY rvalue at a generator callee's by-reference
+    # iterable slot (`islice(count(), 4)`): the AST hoists the frame
+    # rvalue into a named statement temp (`auto __tmp_N = count();`) so
+    # the reference param can bind it -- the readonly-ref-generator
+    # flavor of gen_call_arg's is_temporary_expr hoist. The factory call
+    # lowers at ITERABLE use (the same admission a for-head source gets).
+    if _genfac_like_call(a, lc.analyzer) and _genfac_like_call(e,
+                                                               lc.analyzer):
+        if not temp_args:
+            raise ThirUnsupported(
+                "protocol arg-temp outside a flush position")
+        init = _lower_expr(a, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                        allow_temps=True))
+        _witness("argtemp.genfac_ref_slot")
+        return THIRArgTemp(result_type=lc.analyzer.get_expr_type(a),
+                           cpp_type=None, init=init, form=Form.BORROW,
+                           loc=getattr(a, "loc", None))
     _require_method_call_arg(
         e, a, ptype, index, lc, declared, temp_args=temp_args,
         error_return_ok=error_return_ok)
@@ -2669,6 +2690,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             e.left, _operand_type(e.left, declared, analyzer), lc, analyzer)
         rt = _narrowed_opt_operand(
             e.right, _operand_type(e.right, declared, analyzer), lc, analyzer)
+        # A condition-scope-narrowed union NAME operand gates and renders
+        # as its concrete member (the inline get).
+        l_nu = _narrowed_union_compare_operand(e.left, declared, lc)
+        r_nu = _narrowed_union_compare_operand(e.right, declared, lc)
+        if l_nu is not None:
+            lt = l_nu[1]
+        if r_nu is not None:
+            rt = r_nu[1]
         opt_eq_targets = _opt_scalar_eq_pair(e, lt, rt, analyzer)
         if (opt_eq_targets is None
                 and _bare_field_eq_pair(e, lt, rt, analyzer)):
@@ -3280,11 +3309,29 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # both-literal sub-binop folds there.
             return _ExprUse(literal_fold_ok=True, allow_temps=temps_ok)
 
-        left = (_lower_unproven_opt_scalar(e.left, lc, declared)
+        def _narrowed_union_read(side: TpyExpr, nu) -> 'THIRExpr | None':
+            # The condition-scope-narrowed union NAME operand: the inline
+            # get (`std::get<ZoneInfo>(tz)` / `(*std::get<Z*>(tz))`), the
+            # compound-condition read's render at the compare slot.
+            if nu is None:
+                return None
+            u, member = nu
+            member_cpp, is_ptr = _narrow_member_cpp(side.name, member, u, lc)
+            _witness("binop.narrowed_union_operand")
+            return THIRNarrowedRead(
+                result_type=member, variant_cpp=side.name,
+                member_cpp=member_cpp, is_ptr_variant=is_ptr,
+                form=(Form.BORROW if _is_borrow_form_name(member)
+                      else Form.VALUE),
+                loc=getattr(side, "loc", None))
+
+        left = _narrowed_union_read(e.left, l_nu) or (
+            _lower_unproven_opt_scalar(e.left, lc, declared)
                 if e.op not in ("==", "!=") else None) or _lower_char_targeted(
             e.left, rt_a, lc, declared, use=_cmp_operand_use(e.left),
             field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
-        right = (_lower_unproven_opt_scalar(e.right, lc, declared)
+        right = _narrowed_union_read(e.right, r_nu) or (
+            _lower_unproven_opt_scalar(e.right, lc, declared)
                  if e.op not in ("==", "!=") else None) or _lower_char_targeted(
             e.right, lt_a, lc, declared, use=_cmp_operand_use(e.right),
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
@@ -3612,6 +3659,30 @@ def _narrow_member_cpp(var: str, member: TpyType, u: UnionType,
     return member_cpp, is_ptr
 
 
+def _lower_isinstance_cond(info, condition: TpyExpr,
+                           lc: '_LowerCtx') -> THIRExpr:
+    """The isinstance-condition render shared by the narrow if / while /
+    assert / ternary arms: the holds_alternative OR-chain (ptr `*` +
+    const-pointee in the template args for pointer variants), or the bare
+    `true` literal for sema's exhaustiveness fold."""
+    var, u, members, folded = info
+    cond_loc = getattr(condition, "loc", None)
+    result_type = lc.analyzer.get_expr_type(condition)
+    if folded:
+        return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
+    is_ptr = _narrow_subject_is_ptr(var, u, lc)
+    const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
+    if u.needs_wrapper():
+        _witness("narrow.wrapper_union")
+    return THIRIsinstance(
+        result_type=result_type,
+        variant_cpp=_narrow_variant_cpp(var, u, lc),
+        member_cpps=tuple(
+            f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
+            for m in members),
+        loc=cond_loc)
+
+
 def _assign_narrowed_union_recv(obj: TpyExpr, declared: dict[str, TpyType],
                                 lc: '_LowerCtx'
                                 ) -> 'tuple[UnionType, TpyType] | None':
@@ -3631,6 +3702,37 @@ def _assign_narrowed_union_recv(obj: TpyExpr, declared: dict[str, TpyType],
     mtb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(mt)))
            if mt is not None else None)
     if mtb is None or not any(
+            mtb == m for m in u.members if not is_void_like_type(m)):
+        return None
+    return u, mtb
+
+
+def _narrowed_union_compare_operand(side: TpyExpr,
+                                    declared: dict[str, TpyType],
+                                    lc: '_LowerCtx'
+                                    ) -> 'tuple[UnionType, TpyType] | None':
+    """A NAME compare operand sema retyped to a concrete union member with
+    NO narrow entry in scope: the condition-scoped inline narrow (an
+    isinstance leaf earlier in the enclosing `&&`/`||` chain installed the
+    AST's narrowed_vars fact -- `print(tz is not None and isinstance(tz,
+    ZoneInfo) and tz == waw)`), so the operand renders the inline get.
+    The compare-operand sibling of `_assign_narrowed_union_recv`, widened
+    to value unions (`std::get<M>(v)` -- no deref) beside the pointer
+    variants. Returns (union, member) or None."""
+    if not isinstance(side, TpyName) or side.name not in declared:
+        return None
+    if (side.name in lc.narrow.narrowed or side.name in lc.inline_narrowed
+            or side.name in lc.narrow.spelled):
+        return None
+    dt = declared[side.name]
+    u = (_eligible_value_union(dt)
+         or _eligible_ptr_union_wide(dt, lc.analyzer))
+    if u is None:
+        return None
+    mt = lc.analyzer.get_expr_type(side)
+    mtb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(mt)))
+           if mt is not None else None)
+    if mtb is None or isinstance(mtb, UnionType) or not any(
             mtb == m for m in u.members if not is_void_like_type(m)):
         return None
     return u, mtb
@@ -4696,7 +4798,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if tup is not None:
             if (not subscript_prechecked
                     and _tuple_subscript_value_read(
-                        e, declared, analyzer) is None):
+                        e, declared, analyzer) is None
+                    # A CONTAINER-element chain (`pairs[1][1]`): the
+                    # borrow lvalue `std::get<N>(__getitem__(..))`.
+                    and not _tuple_subscript_container_elem_read(
+                        e, declared, analyzer)):
                 raise ThirUnsupported("subscript.tuple_shape", detail=True)
             # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index
             # and an eligible-tuple receiver; the shared helper re-derives the
@@ -5193,9 +5299,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript),
                 allow_unrouted_name=own_recv),
-            index=_narrow_bigint_index(_lower_expr(e.index, lc, declared), e.index,
-                                       idx_obj_type,
-                                       analyzer, loc),
+            # The INDEX inherits the enclosing position's flushability: a
+            # statement-flushed subscript (a setitem write target) lets an
+            # index-call's arg temps hoist before the statement (the
+            # oracle's `std::variant<..> __tmp_N = ..;` + bare call), like
+            # any statement-position arg.
+            index=_narrow_bigint_index(
+                _lower_expr(e.index, lc, declared,
+                            use=_ExprUse(allow_temps=use.allow_temps)),
+                e.index, idx_obj_type, analyzer, loc),
             bounds_safe=e.bounds_safe,
             record_getitem=False,
             form=form,
@@ -7318,9 +7430,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     and len(e.args) == 1 and not e.kwargs):
                 return _lower_copy_special(e.args[0], e.method, rtype, lc,
                                            declared, loc)
+            # The overload-seam-aware verdict: a stub fi carries
+            # is_generator=False while the impl is the generator.
             iterable_gen = (result_use is _ExprResultUse.ITERABLE
-                            and e.resolved_function_info is not None
-                            and e.resolved_function_info.is_generator)
+                            and _genfac_like_call(e, analyzer))
             mk = _marker_call_kind(e, analyzer, generator_ok=iterable_gen,
                                    coro_factory_ok=use.coro_factory,
                                    error_return_ok=error_return_raw)
@@ -7390,7 +7503,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         e, a, mfi.params[i].type, i, lc, declared,
                         temp_args=temp_args,
                         error_return_ok=error_return_raw,
-                        protocol_hoist=mk[0] == "qualified")
+                        # GENERIC module callees run the same first-pass
+                        # hoist (the oracle's `auto __tmp_N = {literal};`
+                        # before `cycle<int32_t>(__tmp_N)`); only
+                        # native/template callees skip it.
+                        protocol_hoist=mk[0] in ("qualified",
+                                                 "generic_qualified"))
                     for i, a in enumerate(e.args)),
                 native_name=mk[1] if mk[0] == "native" else None,
                 callee_cpp=callee_cpp,
@@ -12714,6 +12832,73 @@ def _lower_ptr_union_ternary_arm(arm: TpyExpr, u: 'UnionType',
     raise ThirUnsupported("expr.ifexpr")
 
 
+def _ifexpr_isin_narrow_info(cond: TpyExpr, lc: '_LowerCtx',
+                             declared: dict[str, TpyType]):
+    """A ternary whose condition is a BARE single-member isinstance narrow
+    on an un-narrowed TWO-member union subject (`p.x if isinstance(p, A)
+    else p.y`): both arms read the subject through the condition-scoped
+    inline get -- the then arm as the checked member, the else arm as the
+    exact complement (the AST's `_collect_inline_isinstance_facts`
+    false-branch remainder). Returns `(var, union, then_member,
+    else_member)` or None. Compound conditions, wrapper unions, folded
+    checks, and wider unions (whose complement is a union, with no inline
+    render) stay out."""
+    info = _isinstance_narrow_info(cond, declared, lc.analyzer)
+    if info is None:
+        return None
+    var, u, members, folded = info
+    if folded or len(members) != 1 or u.needs_wrapper():
+        return None
+    if var in lc.narrow.narrowed or var in lc.narrow.spelled:
+        return None
+    if len(u.members) != 2:
+        return None
+    remaining = [m for m in u.members if m != members[0]]
+    if len(remaining) != 1 or isinstance(remaining[0], UnionType):
+        return None
+    if is_void_like_type(remaining[0]):
+        return None
+    return var, u, members[0], remaining[0]
+
+
+def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
+                            lc: '_LowerCtx',
+                            declared: dict[str, TpyType],
+                            loc) -> THIRIfExpr:
+    """Lower an isinstance-condition ternary: the holds test condition,
+    each arm under its condition-scoped inline fact (then = the checked
+    member, else = the complement). Slice: value-scalar results only --
+    every special result family (optional / union / container / record /
+    str / bytes / tuple) lowers its arms with family-specific wraps that
+    have no narrowed witness, so they keep rejecting."""
+    analyzer = lc.analyzer
+    var, u, then_m, else_m = ifn
+    result_t = slot if slot is not None else rtype
+    rbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t)))
+    if not _eligible_scalar(rbare):
+        raise ThirUnsupported("ifexpr.narrow_result", detail=True)
+    cond = _lower_isinstance_cond((var, u, (then_m,), False), e.condition,
+                                  lc)
+
+    def _arm(arm_expr, member):
+        saved = dict(lc.inline_narrowed)
+        arm_declared = dict(declared)
+        arm_declared[var] = member
+        try:
+            lc.inline_narrowed[var] = _narrow_member_cpp(var, member, u, lc)
+            return _slot_literal_retype(
+                _lower_char_targeted(arm_expr, slot, lc, arm_declared),
+                slot, lc)
+        finally:
+            lc.inline_narrowed = saved
+
+    then = _arm(e.then_expr, then_m)
+    orelse = _arm(e.else_expr, else_m)
+    _witness("ifexpr.isin_narrow")
+    return THIRIfExpr(result_type=result_t, cond=cond, then=then,
+                      orelse=orelse, form=Form.VALUE, loc=loc)
+
+
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                    declared: dict[str, TpyType], loc, *,
                    cond_temps_ok: bool = False) -> THIRIfExpr:
@@ -12735,6 +12920,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         cont_slot = _ifexpr_container(slot, analyzer)
         if cont_slot is not None:
             slot = cont_slot
+    ifn = _ifexpr_isin_narrow_info(e.condition, lc, declared)
+    if ifn is not None:
+        return _lower_narrowed_ternary(e, ifn, slot, rtype, lc, declared,
+                                       loc)
     # The condition evaluates exactly once unconditionally, so the
     # enclosing flush right extends into it (the AST hoists its arg temps
     # before the statement); the ARMS evaluate lazily and never get it.

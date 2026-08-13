@@ -182,6 +182,8 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
+    _flatten_binop_leaves,
+    _or_chain_narrow_info,
     _eligible_wrapper_union,
     _eligible_ptr_value,
     _eligible_scalar,
@@ -285,6 +287,7 @@ from .predicates import (
     _str_concat_operand,
     _subscript_container_recv_type,
     _tparam_value,
+    _tuple_subscript_container_elem_read,
     _tuple_subscript_value_read,
     _type_family_tag,
     _union_binding_divergent,
@@ -394,6 +397,30 @@ def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
                                          allow_field=allow_field))
     return False
 
+def _compound_isin_hits(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'list[tuple[str, UnionType, tuple[TpyType, ...], TpyExpr]] | None':
+    """Flatten an `and` tree (`&&` TpyBinOp) and collect its
+    isinstance-narrow leaves as `(var, union, members, leaf)` hits, in
+    source order. None for non-`&&` conditions, an empty/partial list
+    otherwise; folded and wrapper-union hits disqualify the whole
+    condition (folded leaves have no membership render here; the inline
+    THIRNarrowedRead render has no wrapper `.value` spelling)."""
+    if not (isinstance(cond, TpyBinOp) and cond.op == "&&"):
+        return None
+    hits = []
+    for leaf in _flatten_binop_leaves(cond, "&&"):
+        inf = _isinstance_narrow_info(leaf, declared, analyzer)
+        if inf is None:
+            continue
+        var, u, members, folded = inf
+        if folded or u.needs_wrapper():
+            return None
+        hits.append((var, u, members, leaf))
+    return hits
+
+
+
 def _compound_narrow_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
 ) -> 'tuple[str, UnionType, tuple[TpyType, ...], TpyExpr] | None':
@@ -402,34 +429,30 @@ def _compound_narrow_info(
     leaf (un-folded), every other leaf an eligible bool condition. Leaves
     AFTER the isinstance see the subject retyped to the single concrete
     member (sema narrowed their reads; they render as the inline deref);
-    leaves before it see the un-narrowed subject. `or` trees and multiple
-    isinstance leaves (facts on several vars) stay AST. Returns
+    leaves before it see the un-narrowed subject. `or` trees stay AST;
+    multiple isinstance leaves take `_multi_narrow_cond_info`. Returns
     `(var, union, members, isinstance_leaf)` or None."""
-    if not (isinstance(cond, TpyBinOp) and cond.op == "&&"):
+    hits = _compound_isin_hits(cond, declared, analyzer)
+    if hits is None or len(hits) != 1:
         return None
-    leaves: list[TpyExpr] = []
+    return hits[0]
 
-    def flat(e: TpyExpr) -> None:
-        if isinstance(e, TpyBinOp) and e.op == "&&":
-            flat(e.left)
-            flat(e.right)
-        else:
-            leaves.append(e)
-
-    flat(cond)
-    hits = [(i, _isinstance_narrow_info(l, declared, analyzer))
-            for i, l in enumerate(leaves)]
-    hits = [(i, inf) for i, inf in hits if inf is not None]
-    if len(hits) != 1:
+def _multi_narrow_cond_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[tuple[str, UnionType, tuple[TpyType, ...], TpyExpr], ...] | None':
+    """The multi-var sibling of `_compound_narrow_info`: an `&&` tree with
+    TWO OR MORE isinstance-narrow leaves on DISTINCT un-narrowed subjects
+    (`isinstance(a, A) and isinstance(b, B)`). Each leaf renders its holds
+    test in place; each single-member fact installs for the leaves after
+    it; the branch extracts one alias per subject. A repeated subject
+    (re-narrowing inside one condition) stays AST."""
+    hits = _compound_isin_hits(cond, declared, analyzer)
+    if hits is None or len(hits) < 2:
         return None
-    idx, (var, u, members, folded) = hits[0]
-    if folded:
+    vars_ = [h[0] for h in hits]
+    if len(set(vars_)) != len(vars_):
         return None
-    # The inline THIRNarrowedRead render has no wrapper `.value` spelling;
-    # compound conditions on wrapper-union subjects stay AST.
-    if u.needs_wrapper():
-        return None
-    return var, u, members, leaves[idx]
+    return tuple(hits)
 
 def _narrow_cond_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
@@ -458,18 +481,36 @@ def _narrow_cond_info(
 
 def _any_narrow_cond_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, tuple[TpyType, ...], bool] | None':
-    """The D15 Any-isinstance if condition, simple or negated-simple:
-    `(var, check_members, negated)`. The Any sibling of `_narrow_cond_info`;
-    compound (`&&`) conditions stay AST (no inline-read machinery for the
-    Any slice)."""
+) -> 'tuple[str, tuple[TpyType, ...], bool, TpyExpr | None] | None':
+    """The D15 Any-isinstance if condition:
+    `(var, check_members, negated, isin_leaf)`. `isin_leaf` is None for the
+    simple / negated-simple form; a compound form is a single-op `&&` or
+    `||` tree with EXACTLY ONE single-member Any-isinstance leaf on a
+    LOCAL/PARAM subject -- the `&&` RHS reads the subject through the
+    condition-scoped any_cast spelling (`lc.narrow.spelled`); a `||` RHS
+    has no false-branch fact for Any (an open type has no complement), so
+    its leaves lower un-narrowed. Negated compounds and multi-leaf trees
+    stay AST."""
     negated = isinstance(cond, TpyUnaryOp) and cond.op == "!"
     inner = cond.operand if negated else cond
     info = _any_narrow_info(inner, declared, analyzer)
-    if info is None:
+    if info is not None:
+        var, members = info
+        return var, members, negated, None
+    if not (isinstance(cond, TpyBinOp) and cond.op in ("&&", "||")):
         return None
-    var, members = info
-    return var, members, negated
+    op = cond.op
+    hits = [(leaf, _any_narrow_info(leaf, declared, analyzer))
+            for leaf in _flatten_binop_leaves(cond, op)]
+    hits = [(leaf, inf) for leaf, inf in hits if inf is not None]
+    if len(hits) != 1:
+        return None
+    leaf, (var, members) = hits[0]
+    # A GLOBAL Any subject spells its read through gcpp -- the compound
+    # install spells the bare name; locals/params only.
+    if len(members) != 1 or var not in declared:
+        return None
+    return var, members, False, leaf
 
 
 def _assert_narrow_info(
@@ -3681,7 +3722,16 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
     if u != pt:
-        return False
+        # A UNION-fact narrowed occurrence (`repr(tz)` under `tz is not
+        # None` on a 3-member union): the slot substitutes to the SMALLER
+        # occurrence union, but the C++ binding is the full variant and
+        # the render is the same bare name -- a union fact installs no
+        # alias on either path. Members must nest, declared stays the
+        # render-eligibility key.
+        if not (isinstance(u, UnionType)
+                and all(any(m == dm for dm in u.members)
+                        for m in pt.members)):
+            return False
     return bool((_eligible_value_union(u) is not None
                  or _eligible_ptr_union_wide(u, analyzer) is not None)
                 and _witness("arg.native_union_name"))
@@ -7533,6 +7583,10 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # reach it through gen_expr) -- the free-call ladder's slot-blind
             # row.
             or _func_ref_routable(a, analyzer)
+            # A lambda at a qualcall Fn slot (`itertools.takewhile(
+            # lambda n: n < 3, nums)`): the inline closure render is
+            # loop-blind -- the native ladder's row, same shapes.
+            or _lambda_routable(a, analyzer)
             # A whole value-repr Optional[Callable] name into a matching
             # value-opt slot passes bare (`os.walk(top, onerror=cb)`).
             or _value_opt_callable_pass_arg(a, ptype, locals_, narrowed,
@@ -10329,6 +10383,12 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
                 unwrap_send_sync(analyzer.get_expr_type(a))))
             if is_list(rt) or is_array(rt) or is_span(rt):
                 return PrintForm.LIST
+        # A CONTAINER-element tuple chain (`print(pairs[1][1])` ->
+        # `ListPrinter(std::get<1>(__getitem__(pairs, 1)))`): the borrow
+        # lvalue takes the same kind-keyed wrap. The predicate is
+        # list/Array-only until a dict/set witness appears.
+        if _tuple_subscript_container_elem_read(a, declared, analyzer):
+            return PrintForm.LIST
         # A nested-container ELEMENT read (`print(groups["a"])` ->
         # `ListPrinter(::tpy::__getitem__(groups, "a"))`): the element lvalue
         # streams through the same kind-keyed wrap a container name does.

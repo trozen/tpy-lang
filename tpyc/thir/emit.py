@@ -2171,7 +2171,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # not hardcoded).
     indent = INDENT * indent_level
     for name, cpp_type in stmt.hoist_decls:
-        out.write(f"{indent}{cpp_type} {name};\n")
+        init = " = nullptr" if name in stmt.hoist_ptr_inits else ""
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"

@@ -408,6 +408,8 @@ from .checks import (
     _record_rvalue_source_shape,
     _rvalue_free_call_shape,
     _narrow_cond_info,
+    _multi_narrow_cond_info,
+    _or_chain_narrow_info,
     _any_narrow_cond_info,
     _optional_record_field_inner,
     _covariant_record_upcast_ok,
@@ -437,6 +439,7 @@ from .expressions import (
     _flush_witness,
     _own_tuple_shape_match,
     _ptr_read_derefs,
+    _lower_isinstance_cond,
     _narrow_member_cpp,
     _narrow_subject_const,
     _narrow_subject_is_ptr,
@@ -732,11 +735,17 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
     return (isinstance(elem, TupleType) and bool(elem.element_types)
             and all(_scalar_or_str_unpack_elem(et, analyzer)
                     # `allow_record` (the borrow-tuple for-head unpack): an
-                    # F1-record element aliases into an is_ref target via the
-                    # loop element's tuple_to_pointer lift.
-                    or (allow_record and _f1_record(
-                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et))),
-                        analyzer))
+                    # F1-record element aliases into an is_ref target via
+                    # the loop element's tuple_to_pointer lift. A CONTAINER
+                    # element takes the same ref alias (`for n, xs in
+                    # pairs:` over `list[tuple[Int32, list[Int32]]]` -- the
+                    # target gate's ref family already admits it).
+                    or (allow_record and (
+                        _f1_record(
+                            (_etb := unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(et)))),
+                            analyzer)
+                        or is_list(_etb) or is_dict(_etb) or is_set(_etb)))
                     # `allow_storage_opt` (the COMP/genexpr unpack head
                     # only): a ptr-repr Optional[F1-record] element binds
                     # the storage_opt_locals target; the for-STATEMENT head
@@ -2234,7 +2243,8 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           opt_storage: 'AbstractSet[str]' = frozenset(),
                           borrow_tuple: 'AbstractSet[str]' = frozenset(),
                           pointer: 'AbstractSet[str]' = frozenset(),
-                          const_pointer: 'AbstractSet[str]' = frozenset()
+                          const_pointer: 'AbstractSet[str]' = frozenset(),
+                          ptr_null: 'AbstractSet[str]' = frozenset()
                           ) -> list[tuple[str, str]]:
     """Chain-head predecls for the branch-first-decls shared by if / try /
     with. A name spells its sema-resolved view type (render_type's default
@@ -2275,6 +2285,18 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             lc.branch_hoisted.add(name)
             declared[name] = vtype
             _witness("with.hoist_ptr_local")
+            continue
+        if name in ptr_null:
+            # The hoisted container unpack-target flavor: a
+            # null-initialized pointer predecl (the ForEach node's
+            # hoist_ptr_inits spells `= nullptr`); the loop head re-points
+            # it per iteration and post-loop reads deref via lc.pointers.
+            vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
+            hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
+            lc.pointers.add(name)
+            lc.branch_hoisted.add(name)
+            declared[name] = vtype
+            _witness("foreach.hoist_ptr_null")
             continue
         if name in const_pointer:
             # The CONST borrow-decl flavor (`const Tree<int32_t>* v;` --
@@ -4282,28 +4304,6 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
     return tuple(out)
 
 
-def _lower_isinstance_cond(info, condition: TpyExpr, lc: _LowerCtx) -> THIRExpr:
-    """The isinstance-condition render shared by the narrow if / while /
-    assert arms: the holds_alternative OR-chain (ptr `*` + const-pointee in
-    the template args for pointer variants), or the bare `true` literal for
-    sema's exhaustiveness fold."""
-    var, u, members, folded = info
-    cond_loc = getattr(condition, "loc", None)
-    result_type = lc.analyzer.get_expr_type(condition)
-    if folded:
-        return THIRLiteral(result_type=result_type, value=True, loc=cond_loc)
-    is_ptr = _narrow_subject_is_ptr(var, u, lc)
-    const = "const " if (is_ptr and _narrow_subject_const(var, lc)) else ""
-    if u.needs_wrapper():
-        _witness("narrow.wrapper_union")
-    return THIRIsinstance(
-        result_type=result_type,
-        variant_cpp=_narrow_variant_cpp(var, u, lc),
-        member_cpps=tuple(
-            f"{const}{lc.render_type(m)}*" if is_ptr else lc.render_type(m)
-            for m in members),
-        loc=cond_loc)
-
 def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
                          lc: _LowerCtx,
                          declared: dict[str, TpyType]) -> THIRExpr:
@@ -4315,24 +4315,67 @@ def _lower_compound_cond(cond: TpyExpr, isin: TpyExpr, info,
     the walk passes the isinstance leaf; the CALLER saves/restores it
     around the whole condition. Non-`&&` leaves lower through the normal
     expression path (compare char-targeting, chained compares, `not`)."""
-    if cond is isin:
-        var, u, members, folded = info
-        lowered = _lower_isinstance_cond(info, cond, lc)
+    var, u, members, _folded = info
+    return _lower_multi_compound_cond(cond, ((var, u, members, isin),),
+                                      lc, declared)
+
+def _lower_cond_tree(inner: TpyExpr, op: str, lc: _LowerCtx, *,
+                     leaf_hit, lower_leaf, lower_other,
+                     on_advance=None) -> THIRExpr:
+    """The shared descent for the compound-condition walkers (multi-var
+    `&&`, Any compound, `||` or-chain): same-op BinOp nodes compose
+    THIRBinOp in source order; a leaf `leaf_hit` recognizes renders via
+    `lower_leaf(hit, node)` (the `&&` flavors install their fact there);
+    `on_advance(left_subtree)` runs between a node's sides (the `||`
+    flavor's complement-install point); every other leaf lowers via
+    `lower_other(node)`. Fact SEMANTICS stay per-flavor in the callbacks
+    -- only the descent that must stay in lockstep is shared."""
+    def walk(c: TpyExpr) -> THIRExpr:
+        hit = leaf_hit(c)
+        if hit is not None:
+            return lower_leaf(hit, c)
+        if isinstance(c, TpyBinOp) and c.op == op:
+            left = walk(c.left)
+            if on_advance is not None:
+                on_advance(c.left)
+            right = walk(c.right)
+            return THIRBinOp(result_type=lc.analyzer.get_expr_type(c),
+                             left=left, op=op, right=right, resolved=None,
+                             loc=getattr(c, "loc", None))
+        return lower_other(c)
+
+    return walk(inner)
+
+
+def _lower_multi_compound_cond(cond: TpyExpr, hits, lc: _LowerCtx,
+                               declared: dict[str, TpyType]) -> THIRExpr:
+    """The N-leaf generalization `_lower_compound_cond` delegates to: each
+    isinstance leaf (matched by node identity) renders its holds test and
+    installs its single-member fact; every other leaf lowers with the
+    so-far-installed subjects retyped (sema narrowed those reads)."""
+    by_leaf = {id(leaf): (var, u, members)
+               for var, u, members, leaf in hits}
+
+    def lower_leaf(hit, c):
+        var, u, members = hit
+        lowered = _lower_isinstance_cond((var, u, members, False), c, lc)
         if len(members) == 1:
-            lc.inline_narrowed[var] = _narrow_member_cpp(var, members[0], u, lc)
+            lc.inline_narrowed[var] = _narrow_member_cpp(var, members[0],
+                                                         u, lc)
         return lowered
-    if isinstance(cond, TpyBinOp) and cond.op == "&&":
-        left = _lower_compound_cond(cond.left, isin, info, lc, declared)
-        right = _lower_compound_cond(cond.right, isin, info, lc, declared)
-        return THIRBinOp(result_type=lc.analyzer.get_expr_type(cond),
-                         left=left, op="&&", right=right, resolved=None,
-                         loc=getattr(cond, "loc", None))
-    active_declared = declared
-    var, _u, members, _folded = info
-    if var in lc.inline_narrowed and len(members) == 1:
-        active_declared = dict(declared)
-        active_declared[var] = members[0]
-    return _lower_truthy(cond, lc, active_declared)
+
+    def lower_other(c):
+        retypes = {var: members[0] for var, _u, members, _leaf in hits
+                   if var in lc.inline_narrowed and len(members) == 1}
+        active_declared = declared
+        if retypes:
+            active_declared = dict(declared)
+            active_declared.update(retypes)
+        return _lower_truthy(c, lc, active_declared)
+
+    return _lower_cond_tree(cond, "&&", lc,
+                            leaf_hit=lambda c: by_leaf.get(id(c)),
+                            lower_leaf=lower_leaf, lower_other=lower_other)
 
 def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
                        declared: dict[str, TpyType]) -> THIRExpr:
@@ -4357,6 +4400,92 @@ def _lower_narrow_cond(cinfo, condition: TpyExpr, lc: _LowerCtx,
             condition, isin, (var, u, members, folded), lc, declared)
     finally:
         lc.inline_narrowed = saved
+
+def _lower_or_chain_cond(oinfo, condition: TpyExpr, lc: _LowerCtx,
+                         declared: dict[str, TpyType]) -> THIRExpr:
+    """The or-chain condition render: each isinstance leaf's holds test (a
+    folded leaf renders `true` -- _lower_isinstance_cond's literal arm),
+    composed along the source `||` tree; a leading `not` wraps the whole
+    chain. At each `||` node the RIGHT side lowers with the left
+    subtree's COMPLEMENT installed when it is a single concrete member
+    (the AST installs the false-branch remainder per site); the CALLER
+    saves/restores lc.inline_narrowed around the whole condition."""
+    var, u, leaf_infos, negated = oinfo
+    inner = condition.operand if negated else condition
+    by_leaf = {id(leaf): (members, folded)
+               for members, folded, leaf in leaf_infos}
+
+    def checked(c: TpyExpr) -> 'set':
+        hit = by_leaf.get(id(c))
+        if hit is not None:
+            return set(hit[0])
+        if isinstance(c, TpyBinOp) and c.op == "||":
+            return checked(c.left) | checked(c.right)
+        return set()
+
+    # The live complement MEMBER for the truthy-arm retype; tracked beside
+    # the inline_narrowed install because the install stores only the
+    # rendered member_cpp, not the type the retype needs.
+    cur_member: list = [None]
+
+    def lower_leaf(hit, c):
+        members, folded = hit
+        return _lower_isinstance_cond((var, u, members, folded), c, lc)
+
+    def on_advance(left_subtree):
+        done = checked(left_subtree)
+        remaining = [m for m in u.members
+                     if m not in done and not is_void_like_type(m)]
+        if done and len(remaining) == 1:
+            lc.inline_narrowed[var] = _narrow_member_cpp(
+                var, remaining[0], u, lc)
+            cur_member[0] = remaining[0]
+        else:
+            lc.inline_narrowed.pop(var, None)
+            cur_member[0] = None
+
+    def lower_other(c):
+        active_declared = declared
+        if cur_member[0] is not None:
+            active_declared = dict(declared)
+            active_declared[var] = cur_member[0]
+        return _lower_truthy(c, lc, active_declared)
+
+    base = _lower_cond_tree(inner, "||", lc,
+                            leaf_hit=lambda c: by_leaf.get(id(c)),
+                            lower_leaf=lower_leaf, lower_other=lower_other,
+                            on_advance=on_advance)
+    if not negated:
+        return base
+    return THIRUnaryNot(
+        result_type=lc.analyzer.get_expr_type(condition),
+        operand=base, loc=getattr(condition, "loc", None))
+
+
+def _lower_or_chain_if(stmt: TpyIf, oinfo, lc: _LowerCtx,
+                       declared: dict[str, TpyType], loc, *,
+                       loop_depth: int = 0) -> THIRIf:
+    """Lower an or-chain isinstance `if` over the shared chain skeleton:
+    branch facts extract exactly as the simple form's (a UNION fact
+    extracts nothing; a concrete fact -- including sema's dead-branch
+    facts on a folded chain -- emits the alias)."""
+    var, u, _leaf_infos, _negated = oinfo
+    saved = dict(lc.inline_narrowed)
+    try:
+        cond = _lower_or_chain_cond(oinfo, stmt.condition, lc, declared)
+    finally:
+        lc.inline_narrowed = saved
+
+    def fact_of(facts):
+        return _narrow_fact_member(u, facts, var)
+
+    def branch_of(body, fact, alias_loc):
+        return _lower_narrowed_branch(body, fact, var, u, lc, declared,
+                                      alias_loc, loop_depth=loop_depth)
+
+    return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
+                                  declared, loc, loop_depth=loop_depth)
+
 
 def _lower_narrow_if_shape(stmt: TpyIf, cond: THIRExpr, fact_of, branch_of,
                            lc: _LowerCtx, declared: dict[str, TpyType],
@@ -4420,6 +4549,38 @@ def _lower_narrow_if(stmt: TpyIf, info, lc: _LowerCtx,
 
     return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
                                   declared, loc, loop_depth=loop_depth)
+
+
+def _lower_multi_narrow_if(stmt: TpyIf, hits, lc: _LowerCtx,
+                           declared: dict[str, TpyType], loc, *,
+                           loop_depth: int = 0) -> THIRIf:
+    """Lower a multi-var compound narrowing `if` (`isinstance(a, A) and
+    isinstance(b, B)`): the &&-composed holds tests, then one extraction
+    alias per subject in source order (the AST's per-fact
+    `_emit_isinstance_extractions`). The caller's gate guarantees a
+    then-fact per subject and no else arm."""
+    saved = dict(lc.inline_narrowed)
+    try:
+        cond = _lower_multi_compound_cond(stmt.condition, hits, lc, declared)
+    finally:
+        lc.inline_narrowed = saved
+    branch_declared = dict(declared)
+    out: list[THIRStmt] = []
+    with lc.branch_scope():
+        for var, u, _members, _leaf in hits:
+            fact = _narrow_fact_member(u, stmt.then_type_facts, var)
+            assert fact is not None  # dispatcher gate
+            alias = f"__{var}"
+            out.append(_make_narrow_alias(alias, var, fact, u, lc, loc))
+            lc.narrow.subject_union[var] = u
+            lc.narrow.narrowed[var] = alias
+            branch_declared[var] = fact
+        out.extend(_lower_stmts(stmt.then_body, lc, branch_declared,
+                                in_branch=True, branch_decls_ok=True,
+                                loop_depth=loop_depth))
+    _witness("narrow.multi_var")
+    return THIRIf(condition=cond, then_body=tuple(out), else_body=(),
+                  else_is_nested=False, loc=loc)
 
 
 def _folded_narrow_info(
@@ -4495,7 +4656,7 @@ def _lower_any_isinstance_cond(ainfo, condition: TpyExpr,
                                lc: _LowerCtx) -> THIRExpr:
     """The D15 Any-isinstance condition render: the has_value + typeid
     check(s), with the negated-polarity `!` wrap mirroring the union path."""
-    var, members, negated = ainfo
+    var, members, negated, _isin = ainfo
     inner = condition.operand if negated else condition
     base = THIRAnyIsinstance(
         result_type=lc.analyzer.get_expr_type(inner),
@@ -4507,6 +4668,39 @@ def _lower_any_isinstance_cond(ainfo, condition: TpyExpr,
     return THIRUnaryNot(
         result_type=lc.analyzer.get_expr_type(condition),
         operand=base, loc=getattr(condition, "loc", None))
+
+
+def _lower_any_compound_cond(cond: TpyExpr, isin: TpyExpr, var: str,
+                             member: TpyType, op: str, lc: _LowerCtx,
+                             declared: dict[str, TpyType]) -> THIRExpr:
+    """The compound Any-isinstance condition walk: the isinstance leaf
+    renders the typeid probe; on an `&&` spine, leaves after it read the
+    subject through the condition-scoped any_cast spelling (the AST's
+    `_collect_inline_isinstance_facts` inline expression, installed into
+    `lc.narrow.spelled` -- the CALLER saves/restores). A `||` spine
+    installs nothing (Any has no complement fact)."""
+    def lower_leaf(_hit, c):
+        lowered = THIRAnyIsinstance(
+            result_type=lc.analyzer.get_expr_type(c),
+            subject_cpp=var,
+            member_cpps=(lc.render_type(member),),
+            loc=getattr(c, "loc", None))
+        if op == "&&":
+            cpp = lc.render_type(member)
+            lc.narrow.spelled[var] = (
+                f"std::any_cast<const {cpp}&>({var}.value)")
+        return lowered
+
+    def lower_other(c):
+        active_declared = declared
+        if var in lc.narrow.spelled:
+            active_declared = dict(declared)
+            active_declared[var] = member
+        return _lower_truthy(c, lc, active_declared)
+
+    return _lower_cond_tree(cond, op, lc,
+                            leaf_hit=lambda c: True if c is isin else None,
+                            lower_leaf=lower_leaf, lower_other=lower_other)
 
 
 def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
@@ -4631,8 +4825,17 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
                          loop_depth: int = 0) -> THIRIf:
     """Lower a D15 Any-isinstance-narrowing `if`: the typeid condition over
     the shared chain skeleton, with the any_cast extraction alias."""
-    var, members, _negated = ainfo
-    cond = _lower_any_isinstance_cond(ainfo, stmt.condition, lc)
+    var, members, _negated, isin = ainfo
+    if isin is None:
+        cond = _lower_any_isinstance_cond(ainfo, stmt.condition, lc)
+    else:
+        saved_spelled = dict(lc.narrow.spelled)
+        try:
+            cond = _lower_any_compound_cond(
+                stmt.condition, isin, var, members[0], stmt.condition.op,
+                lc, declared)
+        finally:
+            lc.narrow.spelled = saved_spelled
 
     def fact_of(facts):
         return _any_narrow_fact(members, facts, var)
@@ -8310,8 +8513,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         unwrap_send_sync(declared[stmt.target.obj.name])))),
                     OptionalType)
                 and _orw.uses_pointer_repr())
+            # The write target sits at a STATEMENT position: index-call
+            # arg temps flush before the setitem (the AST's statement
+            # hoist), threaded through the subscript arm's index use.
             target = _lower_expr(
                 stmt.target, lc, declared,
+                use=_ExprUse(allow_temps=True),
                 subscript_prechecked=(any_dict_write or widened_elem
                                       or ba_write or tp_field_recv
                                       or tuple_elem_recv or _optrecv_w))
@@ -10194,13 +10401,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                              loc,
                                              loop_depth=scope.loop_depth)
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
-        ainfo = (None if info is not None
+        minfo = (None if info is not None
+                 else _multi_narrow_cond_info(stmt.condition, declared,
+                                              analyzer))
+        oinfo = (None if info is not None or minfo is not None
+                 else _or_chain_narrow_info(stmt.condition, declared,
+                                            analyzer))
+        ainfo = (None if info is not None or minfo is not None
+                 or oinfo is not None
                  else _any_narrow_cond_info(stmt.condition, declared,
                                             analyzer))
-        finfo = (None if info is not None or ainfo is not None
+        finfo = (None if info is not None or minfo is not None
+                 or oinfo is not None or ainfo is not None
                  else _folded_narrow_info(stmt.condition, lc))
         hoists = analyzer.if_branch_decls.get(id(stmt), {})
-        if hoists and (info is not None or ainfo is not None
+        if hoists and (info is not None or minfo is not None
+                       or oinfo is not None or ainfo is not None
                        or finfo is not None):
             note_detail("if.narrow_hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10240,8 +10456,40 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("if.narrow_folded_else")
             return _lower_narrow_if(stmt, info, lc, declared, loc,
                                     loop_depth=scope.loop_depth)
+        if minfo is not None:
+            # Tight slice: a concrete then-fact per subject, facts on no
+            # OTHER name, no else arm at all (a conjunction's negation
+            # narrows nothing, so an else body / else facts have no
+            # mirrored extraction), and no subject already narrowed.
+            multi_ok = not (
+                bool(hoists)
+                or bool(stmt.else_body)
+                or bool(stmt.else_type_facts)
+                or any(var in lc.narrow.narrowed for var, *_ in minfo)
+                or any(_narrow_fact_member(u, stmt.then_type_facts,
+                                           var) is None
+                       for var, u, _m, _l in minfo)
+                or any(k not in {var for var, *_ in minfo}
+                       for k in stmt.then_type_facts))
+            if not multi_ok:
+                note_detail("if.multi_narrow_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_multi_narrow_if(stmt, minfo, lc, declared, loc,
+                                          loop_depth=scope.loop_depth)
+        if oinfo is not None:
+            ovar, ou, _oleaves, _oneg = oinfo
+            or_ok = not (
+                bool(hoists)
+                or ovar in lc.narrow.narrowed
+                or not _narrow_facts_ok(ou, stmt.then_type_facts, ovar)
+                or not _narrow_facts_ok(ou, stmt.else_type_facts, ovar))
+            if not or_ok:
+                note_detail("if.or_chain_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return _lower_or_chain_if(stmt, oinfo, lc, declared, loc,
+                                      loop_depth=scope.loop_depth)
         if ainfo is not None:
-            avar, amembers, _negated = ainfo
+            avar, amembers, _negated, _aisin = ainfo
             any_ok = not (
                 avar in lc.narrow.narrowed
                 or not _any_narrow_facts_ok(amembers, stmt.then_type_facts,
@@ -10793,6 +11041,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # render, else `render_type` raises. Scalars/records pass through.
             tt, cpp = _unpack_target_decl(tt, analyzer, lc.render_type)
             declared[name] = tt
+            # A fresh value-opt-scalar target (`a, b = p` off a
+            # tuple[T | None, ...]) reads through the binding-keyed arms
+            # -- narrowed reads must deref, like the for-head targets.
+            if _value_opt_scalar(tt, analyzer) is not None:
+                lc.value_opt_bindings[name] = ValueOptKind.SCALAR
             target_cpps.append(cpp)
             bind_tags.append(bind)
             if bind == "move":
@@ -10990,6 +11243,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # includes the loop var itself when it is hoisted (used after the loop).
         foreach_hoists = analyzer.if_branch_decls.get(id(stmt), {})
         borrow_tuple_hoists: set[str] = set()
+        ptr_null_hoists: set[str] = set()
         for _hname, _hraw in foreach_hoists.items():
             if _hname in declared:
                 continue
@@ -11008,12 +11262,32 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and _borrow_tuple_hoist_ok(_hname, _hbare, lc)):
                 borrow_tuple_hoists.add(_hname)
                 continue
+            # A hoisted CONTAINER ref-target of the for-head unpack
+            # (`for k, v in d.items(): ...; v.append(6)` post-loop):
+            # a null-initialized pointer predecl, re-pointed per
+            # iteration by the head's frame_ptr_elem bind. Sync bodies
+            # only (a resumable leaf's hoists are frame fields); the
+            # plain hoisted loop VAR flavor stays parked (two render
+            # families -- see TODO).
+            _hcont = unwrap_readonly(_hbare)
+            if (route.route == "tuple_unpack"
+                    and not route.iter_proto
+                    and not lc.resumable_leaf_mode
+                    and (is_list(_hcont) or is_dict(_hcont)
+                         or is_set(_hcont))
+                    and _hname in stmt.body[0].targets
+                    and (_hi := stmt.body[0].targets.index(_hname))
+                    < len(stmt.body[0].is_ref)
+                    and stmt.body[0].is_ref[_hi]):
+                ptr_null_hoists.add(_hname)
+                continue
             note_detail("foreach.hoist_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         foreach_hoist_decls = tuple(
             _lower_hoist_predecls(foreach_hoists, declared, lc,
                                   "foreach.hoist_decl",
-                                  borrow_tuple=borrow_tuple_hoists))
+                                  borrow_tuple=borrow_tuple_hoists,
+                                  ptr_null=ptr_null_hoists))
         body_declared = dict(declared)
         body_declared[stmt.var] = et
         # Mirror of the AST's register_frame_field_shadow: in a resumable
@@ -11034,6 +11308,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # `T*`): the pointer-keyed renders (bare ptr-copy reseat, deref
             # reads) must not fire on the shadowing var.
             lc.pointers -= shadow_names
+            # EXCEPT a hoisted container target: it IS the pointer local
+            # inside the body too (re-pointed per iteration), so in-body
+            # reads keep the deref.
+            lc.pointers |= ptr_null_hoists
             lc.rebind_slot_locals -= shadow_names
             if route.route == "tuple_unpack":
                 # The head TpyTupleUnpack lowers to the dedicated node (a
@@ -11076,10 +11354,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # aliases the element ("ref"); a fresh expensive-copy target
                     # binds `const T&` ("cref").
                     if i < len(up.is_ref) and up.is_ref[i]:
-                        # A hoisted/reused ref target takes the AST's
-                        # pointer-slot assign (`name = &(unwrap_ref(...))`), not
-                        # the fresh `auto&&` alias -- not modeled, so defer
-                        # (mirrors the standalone bind's is_new exclusion).
+                        if name in ptr_null_hoists:
+                            # The hoisted container target: the predecl
+                            # made a null pointer local; the head
+                            # re-points it (`name = &(unwrap_ref(
+                            # tuple_elem_ref(std::get<i>(__tup))));` --
+                            # the frame_ptr_elem render, its sync twin).
+                            target_cpps.append(None)
+                            target_binds.append("frame_ptr_elem")
+                            _witness("foreach.hoist_ptr_target")
+                            continue
+                        # A REUSED (outer-bound) ref target takes the AST's
+                        # pointer-slot assign (`name = &(unwrap_ref(...))`),
+                        # not the fresh `auto&&` alias -- not modeled, so
+                        # defer (mirrors the standalone bind's is_new
+                        # exclusion).
                         if name in declared:
                             raise ThirUnsupported("stmt.tuple_unpack")
                         target_cpps.append(cpp)
@@ -11093,10 +11382,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     else:
                         target_cpps.append(cpp)
                         target_binds.append("value")
+                        # A fresh value-opt-scalar target (`for k, v in
+                        # d.items():` over a value-opt dict) reads through
+                        # the binding-keyed arms like the plain loop var
+                        # below -- narrowed reads must deref.
+                        if _value_opt_scalar(tt, analyzer) is not None:
+                            lc.value_opt_bindings[name] = (
+                                ValueOptKind.SCALAR)
                     body_declared[name] = tt
                 head_wrap_cpp = None
                 head_bind = TupleSourceBind.NAME_CREF
-                if any(b in ("ref", "opt_ptr") for b in target_binds):
+                if any(b in ("ref", "opt_ptr", "frame_ptr_elem")
+                       for b in target_binds):
                     if route.iter_proto:
                         # An iter-proto element (`std::tuple<..., T*>` off a
                         # zip/enumerate/generator yield) is ALREADY borrow
@@ -11352,6 +11649,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             hoisted_tuple_lift_cpp=(hoisted_bt.to_cpp_return()
                                     if hoisted_bt is not None else None),
             hoist_decls=foreach_hoist_decls,
+            hoist_ptr_inits=tuple(sorted(ptr_null_hoists)),
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                       "loop.for_else"),
             loc=loc,

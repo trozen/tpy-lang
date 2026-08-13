@@ -45,14 +45,15 @@ class TestCompCallIterable:
         cpp = _assert_routes_byte_identical(src)
         assert "= h.get();" in cpp[1]
 
-    def test_iterator_combinator_source_stays_ast(self):
-        # An Iterator-protocol combinator result (`islice(count(), 4)`) is
-        # no container return -- the comp route keeps rejecting.
+    def test_iterator_combinator_source_routes(self):
+        # CONVERTED FENCE (itertools comp-source cell): the qualified
+        # genfac leg admits the combinator chain -- the owning begin/end
+        # capture + the gen-factory arg temp.
         src = ("import itertools\n"
                "def main() -> None:\n"
                "    print([x for x in itertools.islice(itertools.count(), 4)])\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
+        assert _fn(_lower_ctx(src), "main") is not None
         _assert_byte_identical(src)
 
     def test_single_var_items_view_stays_out_of_call_arm(self):

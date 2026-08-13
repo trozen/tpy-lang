@@ -5099,13 +5099,7 @@ class TestIterableRouteWidenings:
         assert faces.get("foreach.open_t_param", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_value_opt_dict_values_still_defers(self):
-        # PARKED: the value-opt-scalar dict-view element is excluded from
-        # `_dict_view_iterable_ok` although its sync render is
-        # byte-identical -- admitting it lets a GENERATOR body's lowering
-        # attempt poison the AST re-emit on fallback (the narrowed
-        # value-opt loop var loses its deref). Re-open with the
-        # attempt-rollback fix (see TODO).
+    def test_value_opt_dict_values_routes(self):
         src = ("from tpy import Int32\n"
                "def f(d: dict[str, Int32 | None]) -> Int32:\n"
                "    total = 0\n"
@@ -5117,9 +5111,10 @@ class TestIterableRouteWidenings:
                "    d: dict[str, Int32 | None] = {\"a\": 1, \"b\": None}\n"
                "    print(f(d))\n"
                "go()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("foreach.value_opt_elem", 0) >= 1
+        _assert_routes_byte_identical(src)
 
     def test_narrowed_opt_dict_key_loop_routes(self):
         src = ("def scan(d: dict[str, str] | None) -> int:\n"

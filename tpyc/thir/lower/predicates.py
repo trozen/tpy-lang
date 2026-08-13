@@ -1437,6 +1437,58 @@ def _post_if_narrow_fact(
         return None
     return _narrow_fact_member(u, stmt.else_type_facts, var)
 
+def _flatten_binop_leaves(cond: TpyExpr, op: str) -> 'list[TpyExpr]':
+    """Flatten a single-op boolean tree into its leaves, in source order;
+    a nested different-op subtree stays one leaf."""
+    leaves: list[TpyExpr] = []
+
+    def flat(e: TpyExpr) -> None:
+        if isinstance(e, TpyBinOp) and e.op == op:
+            flat(e.left)
+            flat(e.right)
+        else:
+            leaves.append(e)
+
+    flat(cond)
+    return leaves
+
+
+def _or_chain_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, UnionType, list, bool] | None':
+    """An `or` chain with isinstance checks on ONE subject (`isinstance(v,
+    A) or isinstance(v, B)`, `isinstance(v, (A, B)) or flag`), possibly
+    under a leading `not`: every isinstance leaf narrows the same
+    var/union (a sema-FOLDED leaf -- the exhaustiveness constant --
+    renders `true` in place); other leaves are ordinary bool conditions,
+    lowered with the left-siblings' COMPLEMENT fact installed (the AST's
+    false-branch remainder). Returns `(var, union, [(members, folded,
+    leaf)...], negated)` -- isinstance leaves only -- or None; branch
+    facts ride the shared narrow-if skeleton (a union then-fact extracts
+    nothing; concrete facts, including sema's dead-branch ones on a folded
+    chain, emit the same extractions the AST commits)."""
+    negated = isinstance(cond, TpyUnaryOp) and cond.op == "!"
+    inner = cond.operand if negated else cond
+    if not (isinstance(inner, TpyBinOp) and inner.op == "||"):
+        return None
+    var: 'str | None' = None
+    u: 'UnionType | None' = None
+    leaf_infos = []
+    for leaf in _flatten_binop_leaves(inner, "||"):
+        info = _isinstance_narrow_info(leaf, declared, analyzer)
+        if info is None:
+            continue
+        lvar, lu, members, folded = info
+        if var is None:
+            var, u = lvar, lu
+        elif lvar != var or lu != u:
+            return None
+        leaf_infos.append((members, folded, leaf))
+    if var is None or u.needs_wrapper():
+        return None
+    return var, u, leaf_infos, negated
+
+
 def _chain_post_if_fact(
         stmt: TpyIf, declared: dict[str, TpyType],
         narrowed: 'set[str] | dict[str, str]', analyzer,
@@ -1461,7 +1513,15 @@ def _chain_post_if_fact(
         cond = cond.operand
     info = _isinstance_narrow_info(cond, declared, analyzer)
     if info is None:
-        return None
+        # An or-chain condition's post-if fact: the AST's post-narrowing
+        # arm reads the same else facts whatever the condition kind
+        # (including the dead extraction past an exhaustively-folded
+        # chain); chain-level folded is False -- a per-leaf fold does not
+        # suppress the arm.
+        oc = _or_chain_narrow_info(last.condition, declared, analyzer)
+        if oc is None:
+            return None
+        info = (oc[0], oc[1], (), False)
     post = _post_if_narrow_fact(last, info, narrowed)
     if post is None:
         return None
@@ -4475,9 +4535,74 @@ def _container_record_elem_style_tuple_read(recv: 'TpySubscript',
     if not (is_list(ct) or is_array(ct)):
         return False
     args = getattr(ct, "type_args", None)
-    return bool(args and _value_tuple_nested(
-        resolve_int_literals(args[0], analyzer.ctx.default_int_for_literal),
-        analyzer) is not None)
+    if not args:
+        return False
+    elem = resolve_int_literals(args[0],
+                                analyzer.ctx.default_int_for_literal)
+    if _value_tuple_nested(elem, analyzer) is not None:
+        return True
+    # A tuple with CONTAINER elements (`list[tuple[Int32, list[Int32]]]`):
+    # stored inline in the list, so `__getitem__` yields the same lvalue
+    # the value flavor gets -- the outer container-element read
+    # (`_tuple_subscript_container_elem_read`) consumes it.
+    eb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem)))
+    def _elem_ok(et: TpyType) -> bool:
+        etb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+        return (_eligible_scalar(etb)
+                or _resolved_str_value(etb, analyzer) is not None
+                or is_list(etb) or is_dict(etb) or is_set(etb))
+
+    return (isinstance(eb, TupleType) and bool(eb.element_types)
+            and all(_elem_ok(et) for et in eb.element_types))
+
+
+def _genfac_like_call(a: TpyExpr, analyzer) -> bool:
+    """A call producing a generator frame: the resolved fi is a generator,
+    or -- the overload seam, whose per-signature fis carry
+    is_generator=False while the impl is the generator -- a PLAIN-TPy
+    callee returning the `typing.Iterator` protocol (sema forbids that
+    return on non-generator plain functions, so only overload-seam fis
+    reach the leg; `is_stub` below is the DECLARATION-stub flag, a
+    different notion). @native / @cpp_template callees (map/zip/filter/
+    reversed/iter -- Iterator[T] returns over non-frame C++ objects) are
+    EXCLUDED: their renders ride their own combinator rows. Shared by the comp genfac routes, the
+    marker gate's iterable admission, and the gen-factory arg-temp leg,
+    so the consumers stay in lockstep."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    fi = a.resolved_function_info
+    if fi is None:
+        return False
+    if fi.is_generator:
+        return True
+    if fi.native_function or fi.cpp_template or fi.is_stub:
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(a))))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
+
+
+def _tuple_subscript_container_elem_read(
+        e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
+    """A CONTAINER-element tuple read chain (`print(pairs[1][1])` on
+    `list[tuple[Int32, list[Int32]]]`): the outer `std::get<N>` over the
+    inner `__getitem__` lvalue yields the container element (`T&`,
+    BORROW) -- ListPrinter's operand / a REF_ALIAS bind. Int-literal
+    index; the inner read is the container-element tuple shape."""
+    if not isinstance(e, TpySubscript) or not isinstance(e.obj, TpySubscript):
+        return False
+    if not _container_record_elem_style_tuple_read(e.obj, locals_, analyzer):
+        return False
+    res = _subscript_index_and_tuple(e, analyzer)
+    if res is None:
+        return False
+    recv_t, idx = res
+    eb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        recv_t.element_types[idx])))
+    # LIST elements only until a dict/set witness appears -- the wrap legs
+    # keyed on this predicate must not admit unwitnessed kinds.
+    return is_list(eb) or is_array(eb)
 
 
 def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
@@ -8547,13 +8672,12 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
             or _container_ref_alias_elem(locals_[e.obj.name], analyzer)
             # A genrec-element dict (`dict[K, DictTree[K, V]]`): the view
             # render is element-family-blind; the loop var binds `auto&&`.
-            or _container_genrec_elem(locals_[e.obj.name], analyzer))
-    # A value-opt-scalar-valued dict (`dict[str, Int32 | None]`) is
-    # EXCLUDED although its sync render is byte-identical: admitting it
-    # lets a GENERATOR body's lowering attempt proceed far enough to
-    # poison the AST re-emit on fallback (the narrowed value-opt loop var
-    # loses its deref -- generators/narrowed_value_opt_frame_faces
-    # diverged). Open it only with the attempt-rollback fix (see TODO).
+            or _container_genrec_elem(locals_[e.obj.name], analyzer)
+            # A value-opt-scalar-valued dict (`dict[str, Int32 | None]`):
+            # the loop var binds the storage optional by value
+            # (`std::optional<int32_t> val = *__beg_N;`).
+            or _container_value_opt_scalar_elem(
+                locals_[e.obj.name], analyzer))
 
 def _plain_scalar_slot(ptype: TpyType | None, analyzer) -> bool:
     """A NON-Own value-scalar param slot. The user-record sibling of

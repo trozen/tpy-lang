@@ -887,3 +887,92 @@ class TestGenexprRecordElements:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
+
+
+class TestQualifiedGenfacCompSource:
+    """The module-qualified generator-factory comp source (the itertools
+    chains): the owning `auto __obj_N` begin/end capture, the gen-factory
+    arg temp (`auto __tmp_N = count();` hoisted before the statement), and
+    the overload seam (a stub fi carries is_generator=False -- the
+    protocol Iterator[T] return admits)."""
+
+    PRE = ("import itertools\n"
+           "from tpy import Int32\n")
+
+    def test_chained_factory_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    print([x for x in"
+            " itertools.islice(itertools.count(), 4)])\n"
+            "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("argtemp.genfac_ref_slot", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_overload_stub_factory_routes(self):
+        # repeat's resolved fi is the overload STUB (is_generator=False);
+        # the Iterator[T]-return verdict admits it.
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    print([x for x in itertools.repeat(7, 3)])\n"
+            "f()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_lambda_marker_arg_routes(self):
+        # The marker ladder's lambda row: the inline closure at a qualcall
+        # Fn slot.
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "def f(nums: list[Int32]) -> None:\n"
+            "    print([x for x in"
+            " itertools.takewhile(lambda n: n < 3, nums)])\n"
+            "def main() -> None:\n"
+            "    f([1, 2, 5, 1])\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_genexpr_source_defers(self):
+        # The genexpr flavor stays on its own lane.
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    print(sum(x for x in"
+            " itertools.islice(itertools.count(), 3)))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_generic_callee_literal_hoist_routes(self):
+        # The protocol_hoist first pass runs for GENERIC module callees:
+        # the container literal at cycle's Iterable slot hoists
+        # (`auto __tmp_N = std::array{..};` + `cycle<int32_t>(__tmp_N)`).
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    print([x for x in"
+            " itertools.islice(itertools.cycle([1, 2, 3]), 5)])\n"
+            "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("argtemp.marker_protocol_literal", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_genfac_arg_at_nongen_callee_defers(self):
+        # The gen-factory arg temp is keyed on BOTH sides being genfac-like
+        # -- a generator rvalue at a plain (non-generator) callee slot has
+        # no witnessed hoist and keeps the body AST.
+        src = self.PRE + (
+            "from typing import Iterator\n"
+            "def first_or(it: Iterator[int], d: Int32) -> Int32:\n"
+            "    for x in it:\n"
+            "        return x\n"
+            "    return d\n"
+            "def f() -> None:\n"
+            "    print(first_or(itertools.count(), 9))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    # The lambda row's family boundaries (void bodies, unsupported param
+    # shapes) are sema-rejected at real itertools slots and already pinned
+    # at the other ladders sharing _lambda_routable (test_thir_callargs).

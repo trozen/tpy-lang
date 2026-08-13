@@ -21,6 +21,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
+    NominalType,
     OptionalType,
     OwnType,
     TpyType,
@@ -53,6 +54,7 @@ from ..nodes import (
 from .predicates import (
     _call_iterable_lvalue,
     _dict_view_iterable_ok,
+    _genfac_like_call,
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
@@ -189,11 +191,30 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # C++ lvalue (`auto&` capture), an Own return an owning rvalue.
             ret = analyzer.get_expr_type(it)
             if not _nonvalue_container_ret(ret):
-                return None
-            mfi = it.resolved_function_info
-            it_type = unwrap_readonly(unwrap_send_sync(ret))
-            lvalue = not (mfi is not None
-                          and isinstance(mfi.return_type, OwnType))
+                # The module-qualified generator-factory twin of the
+                # TpyCall genfac leg (`[x for x in itertools.islice(
+                # itertools.count(), 4)]`): the owning `auto __obj_N`
+                # capture of the frame rvalue, begin/end iteration --
+                # the AST's comp loop is unconditionally begin/end,
+                # callee-kind-blind, so the overload-seam-aware verdict
+                # serves (a stub fi carries is_generator=False).
+                if not _genfac_like_call(it, analyzer):
+                    return None
+                it_type = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ret)))
+                if (it_type is None
+                        or _resolved_str_value(it_type,
+                                               analyzer) is not None):
+                    return None
+                genfac = True
+                lvalue = is_lvalue_iterable(
+                    it, analyzer.registry.get_record,
+                    analyzer.get_expr_type)
+            else:
+                mfi = it.resolved_function_info
+                it_type = unwrap_readonly(unwrap_send_sync(ret))
+                lvalue = not (mfi is not None
+                              and isinstance(mfi.return_type, OwnType))
         else:
             return None
     elif isinstance(it, (TpyName, TpyFieldAccess)):
@@ -239,9 +260,9 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # A VALUE-yielding generator-factory source (`[v for v in
             # wrap(3)]`): the owned-move arm's begin/end iteration with a
             # plain (non-moving) element read -- the owning `auto __obj_N`
-            # capture of the frame rvalue.
-            mfi = it.resolved_function_info
-            if not (mfi is not None and mfi.is_generator):
+            # capture of the frame rvalue. The overload-seam-aware verdict
+            # keeps the free spelling in lockstep with the qualified twin.
+            if not _genfac_like_call(it, analyzer):
                 return None
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
             if (it_type is None
