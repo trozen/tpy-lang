@@ -258,15 +258,17 @@ class TestContainerLiteralInstantiation:
                 in cpp)
         _assert_byte_identical(src)
 
-    def test_dict_over_a_literal_keeps_rejecting(self):
-        # The boundary: a DICT result retargets its elements to `tuple[K, V]`,
-        # a derivation this arm's list-of-slot target does not reproduce.
+    def test_dict_over_a_literal_routes(self):
+        # A DICT result retargets its elements to `tuple[K, V]` -- the
+        # dict-tuple-literal instantiation arm reproduces the derivation
+        # (formerly a fence; converted when that arm landed).
         src = _PRELUDE + (
             "def main() -> None:\n"
             "    d = dict([(\"a\", Int32(1))])\n"
             "    print(len(d))\n"
         )
-        assert _fallback_reasons(src) == {"expr.call"}
+        _assert_byte_identical(src)
+        assert _fallback_reasons(src) == set()
 
     def test_str_element_keeps_rejecting(self):
         # The boundary: a str element slot IS one the AST derives an element
@@ -340,3 +342,115 @@ class TestInstantiationCallRvalueArg:
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("call.inst_call_rvalue_arg", 0) == 0
         assert _fallback_reasons(src) == {"expr.call"}
+
+
+class TestDictTupleLiteralInstantiation:
+    """`dict[K, V]([(k, v), ...])`: the spelled ordered_map around a
+    brace list of SPELLED tuple elements retargeted to tuple[K, V]; a
+    union V absorbs via the variant's converting ctor."""
+
+    def test_union_and_scalar_value_flavors_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "def union_v() -> None:\n"
+            "    d = dict[str, Int32 | str]([(\"x\", \"hello\"), (\"y\", 1)])\n"
+            "    v = d[\"x\"]\n"
+            "    if isinstance(v, str):\n"
+            "        print(v)\n"
+            "def scalar_v() -> None:\n"
+            "    d = dict[str, Int32]([(\"x\", 1), (\"y\", 2)])\n"
+            "    print(d[\"x\"])\n"
+            "def main() -> None:\n"
+            "    union_v()\n"
+            "    scalar_v()\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::tuple<std::string, std::variant<int32_t, "
+                "std::string>>{\"x\", \"hello\"}") in cpp
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("call.dict_tuple_literal_instantiation", 0) >= 2
+
+    def test_name_element_defers(self):
+        # BOUNDARY: a NAME element in the list is not the all-tuple-
+        # literals shape; the body stays AST.
+        src = (
+            "from tpy import Int32\n"
+            "def name_elem() -> None:\n"
+            "    t = (\"x\", 1)\n"
+            "    d = dict[str, Int32]([t, (\"y\", 2)])\n"
+            "    print(d[\"y\"])\n"
+            "name_elem()\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "name_elem") is None
+
+
+class TestInstantiationIterProtoArg:
+    """An iterator-protocol call rvalue at the instantiation arg slot
+    (`list(iter(words))` -> `construct<...>(::tpy::__iter__(words))`):
+    renders inline; the free-call gate's ITERABLE row owns the result."""
+
+    SRC = (
+        "def main() -> None:\n"
+        "    words = [\"hello\", \"world\"]\n"
+        "    print(list(iter(words)))\n"
+        "main()\n")
+
+    def test_routes_and_witnesses(self):
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("call.inst_iter_proto_arg", 0) >= 1
+        assert "(::tpy::__iter__(words))" in cpp
+
+    def test_set_flavor_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "def main() -> None:\n"
+            "    nums = [1, 2, 3]\n"
+            "    print(sorted(set(iter(nums))))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestStrViewCtorAtValueSinks:
+    """A StrView instantiation at a value/arg sink folds to its source
+    render (`pick_view(StrView("x"))` -> `pick_view("x")`) -- position-
+    independent, mirroring the routed decl slot."""
+
+    def test_arg_position_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import StrView\n"
+            "def pick_view(s: StrView) -> StrView:\n"
+            "    return s\n"
+            "def main() -> None:\n"
+            "    print(pick_view(StrView(\"x\")))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("call.view_ctor_value", 0) >= 1
+        assert 'pick_view("x")' in cpp
+
+    def test_branch_reseat_source_routes(self):
+        # The census shape: `sv = pick_view(StrView("x"))` reseating a
+        # branch-hoisted view local.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import StrView\n"
+            "def pick_view(s: StrView) -> StrView:\n"
+            "    return s\n"
+            "def mixed(p: str, flag: bool) -> StrView:\n"
+            "    if flag:\n"
+            "        sv: StrView = p\n"
+            "    else:\n"
+            "        sv = pick_view(StrView(\"x\"))\n"
+            "    return sv\n"
+            "def main() -> None:\n"
+            "    print(mixed(\"hello\", True))\n"
+            "    print(mixed(\"hello\", False))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)

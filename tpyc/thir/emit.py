@@ -94,6 +94,7 @@ from .nodes import (
     THIRLambda,
     THIRMethodCall,
     THIRModuleVar,
+    THIRDecayCopy,
     THIRMove,
     THIRName,
     THIRDynNarrowAlias,
@@ -1290,6 +1291,9 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
         if not isinstance(e.index, THIRLiteral):
             raise THIRCodeGenError("tuple subscript index is not a THIRLiteral")
         get = f"std::get<{e.index.value}>({recv})"
+        if e.elem_ref:
+            # Generic val_or_ptr slot: read as a usable value/reference.
+            get = f"::tpy::tuple_elem_ref({get})"
         return f"(*{get})" if e.deref else get
     # Container (list / dict) index/key lookup, mirroring _gen_subscript's
     # container branch. A runtime-BigInt index arrives pre-wrapped in its
@@ -1779,6 +1783,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                 f"(std::move({_emit_expr(e.value, state)}))")
     if isinstance(e, THIRMove):
         return f"std::move({_emit_expr(e.value, state)})"
+    if isinstance(e, THIRDecayCopy):
+        return f"auto({_emit_expr(e.value, state)})"
     if isinstance(e, THIRLambda):
         params = ", ".join(e.params_cpp)
         body = _emit_expr(e.body, state)
@@ -3635,7 +3641,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             slot = state.global_slot()
-            out.write(f"{indent}{state.slot_static}{stmt.cpp_type} {slot} = "
+            _gs_static = "" if stmt.branch_scope else state.slot_static
+            out.write(f"{indent}{_gs_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
             out.write(f"{indent}{name} = &{slot};\n")
             # A later rvalue write reuses this slot (the AST registers it in
@@ -3650,11 +3657,14 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (`T* x = &*(__slot_N = init);` -- _gen_pointer_local_init's
             # hoisted rvalue branch via _ptr_from_rvalue_slot).
             init_cpp = _emit_expr(stmt.init, state)
-            init_slot = (state.assert_local_slot() or state.next_slot())
+            # No assert_local_slot: the hoist line spells the scope's own
+            # prefix + static, so the module-scope flavor is lifetime-safe.
+            init_slot = state.next_slot()
             assert state.hoist_drainable, (
                 "RECORD_HOISTED decl hoist reached a non-draining leaf emitter")
             state.hoist_lines.append(
-                f"std::optional<{stmt.cpp_type}> __slot_{init_slot};")
+                f"{state.slot_static}std::optional<{stmt.cpp_type}> "
+                f"{state.slot_prefix}_{init_slot};")
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
                 _declare_rebind_slot(state, stmt.name, rebind, stmt.cpp_type)
@@ -3665,7 +3675,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # uncompilable. An rvalue reseat implies rvalue_reassigned,
             # which implies needs_rebind_slot -- no valid consumer exists.
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
-                      f"&*(__slot_{init_slot} = {init_cpp});\n")
+                      f"&*({state.slot_prefix}_{init_slot} = {init_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_RVALUE:
             init_cpp = _emit_expr(stmt.init, state)
             # Flush position, like the plain-decl arms: a member-ctor init's
@@ -3850,6 +3860,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 state.hoist_lines.append(
                     f"std::optional<{stmt.val_cpp}> __slot_{slot};")
             out.write(f"{indent}{name} = &*(__slot_{slot} = {val_cpp});\n")
+        elif stmt.kind is PtrSlotKind.UNION_INLINE_SLOT:
+            # The slotless reseat: a FRESH value-variant slot declared at
+            # the reseat line + the lift (the AST's inline-slot fallback
+            # when the decl pre-declared no rebind slot).
+            val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            slot = (state.assert_local_slot() or state.next_slot())
+            out.write(f"{indent}{stmt.val_cpp} __slot_{slot} = "
+                      f"{val_cpp};\n")
+            out.write(f"{indent}{name} = "
+                      f"::tpy::to_ptr_variant(__slot_{slot});\n")
         else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
             slot = _use_rebind_slot(state, stmt.name)
             out.write(f"{indent}__slot_{slot}.emplace("
@@ -4259,7 +4280,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(f"{indent}{{\n")
         out.write(f"{inner}auto {tmp} = {call_cpp};\n")
         out.write(_er_check_stmt(tmp, inner, state))
-        if stmt.ptr_rebind:
+        if stmt.target is not None:
+            tgt_cpp = _emit_expr(stmt.target, state)
+            out.write(f"{inner}{tgt_cpp} = "
+                      f"::tpy::unwrap_ref_move(*{tmp});\n")
+            _witness("er.bind_field_target")
+        elif stmt.ptr_rebind:
             slot = _use_rebind_slot(state, stmt.name)
             out.write(f"{inner}{name} = &*({state.slot_prefix}_{slot} = "
                       f"::tpy::unwrap_ref_move(*{tmp}));\n")

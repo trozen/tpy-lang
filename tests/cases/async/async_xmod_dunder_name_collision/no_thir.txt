@@ -1,5 +1,0 @@
-Two bodies fall back: `Gate.__aenter__` at res.with_manager (the `async with`
-manager is a cross-module ctor rvalue) and `Ticker.__anext__` at
-expr.method_call (the `async for` source is a cross-module ctor call). The case
-exists for the emit-ordering edges on those cross-module dunders, which exec +
-cpy verify on the AST path.

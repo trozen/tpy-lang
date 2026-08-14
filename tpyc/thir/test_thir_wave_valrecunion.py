@@ -314,11 +314,15 @@ class TestBorrowContainerReturns:
         assert faces.get("ret.container_borrow", 0) >= 2
         _assert_byte_identical(src)
 
-    def test_call_source_still_defers(self):
+    def test_call_source_routes(self):
+        # `return self.xs()` at the borrow-container return now rides the
+        # ret.container_call_borrow passthrough (byte-verified).
         src = self._SRC + (
             "    def via(self) -> list[Int32]:\n"
             "        return self.xs()\n")
-        assert _fn(_lower_ctx(src), "via") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "via") is not None
+        _assert_byte_identical(src)
 
 
 class TestValueRecordAndWrapperDecls:

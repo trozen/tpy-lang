@@ -334,11 +334,11 @@ class TestErrorReturnGateRejections:
         thir = _lower_ctx(src)
         return _fn(thir, name) is None
 
-    def test_borrow_result_bind_rejected(self):
+    def test_borrow_result_bind_routes(self):
         # An @error_return free function returning a borrow (`-> Item`, a
-        # cpp-ref result): the unwrap must ALIAS live storage
-        # (_error_return_result_aliases) -- the pointer-local bind shape is
-        # not mirrored (`error_return.alias_bind`); the caller falls back.
+        # cpp-ref result): the alias-bind arm mirrors the pointer-local
+        # bind (`it = &(::tpy::unwrap_ref(*__try_tmp_N));`) -- formerly a
+        # fence, converted when call.er_ref_bind landed.
         src = (
             _ERR
             + "class Item:\n"
@@ -359,7 +359,9 @@ class TestErrorReturnGateRejections:
             + "    return it.v\n"
             + "print(use(Store()))\n"
         )
-        assert self._rejected(src, "use")
+        from .testutil import _assert_byte_identical
+        _assert_byte_identical(src)
+        assert not self._rejected(src, "use")
 
     def test_expression_position_method_callee_rejected(self):
         # A METHOD @error_return callee OUTSIDE the statement handlers (here
@@ -660,8 +662,10 @@ class TestErrorReturnDeferredGateDetails:
         assert cpp.count("b = &*(__slot_1 = ") == 2
         assert _emit_witnesses(src).get("er.bind_ptr_rebind", 0) > 0
 
-    def test_assign_target_gated(self):
-        # A field assign target: _error_return_target_assign's non-name arm.
+    def test_assign_target_field_routes(self):
+        # A field assign target now rides the er field-target bind arm
+        # (_error_return_target_assign's non-name branch, scalar flavor):
+        # `this->v = ::tpy::unwrap_ref_move(*__try_tmp_N);`.
         src = (
             _ERR32
             + "@error_return(Err)\n"
@@ -685,8 +689,10 @@ class TestErrorReturnDeferredGateDetails:
             + "    print(c.v)\n"
             + "main()\n"
         )
-        tags = _fallback_tags(src)
-        assert tags.get("body:stmt.assign:error_return.assign_target") == 1
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        joined = _hpp + cpp
+        assert "this->v = ::tpy::unwrap_ref_move(*__try_tmp_" in joined
 
     def test_method_callee_statement_sites_route(self):
         # A METHOD fallible callee at all three statement-handled sites
@@ -1045,3 +1051,325 @@ class TestErrorReturnBindIsNotAutoMovable:
 
     def test_byte_identical(self):
         assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
+
+
+class TestErrorReturnRefBind:
+    """The er-bind of a REF-returning @error_return callee: the alias-bind
+    arm renders `r = &(::tpy::unwrap_ref(*__try_tmp_N));` into a hoisted
+    pointer local (call.er_ref_bind); reads then arrow through it."""
+
+    SRC = (
+        "from tpy import Int32, error_return, ReturnException\n"
+        "class E(Exception, ReturnException):\n"
+        "    pass\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32):\n"
+        "        self.x = x\n"
+        "@error_return(E)\n"
+        "def positive(p: Point) -> Point:\n"
+        "    if p.x < 0:\n"
+        "        raise E\n"
+        "    return p\n"
+        "def main() -> None:\n"
+        "    p = Point(1)\n"
+        "    try:\n"
+        "        r = positive(p)\n"
+        "    except E:\n"
+        "        print(\"err\")\n"
+        "    else:\n"
+        "        r.x = 9\n"
+        "        print(p.x)\n"
+        "main()\n")
+
+    def test_ref_bind_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        _thir, wit = _lower_ctx_witnessed(self.SRC)
+        assert wit.get("call.er_ref_bind", 0) >= 1
+        assert "r = &(::tpy::unwrap_ref(*__try_tmp_" in cpp
+
+    def test_ref_discard_routes(self):
+        # The DISCARD flavor of the same rung: the try block renders the
+        # bare call with no bind (`auto __try_tmp_N = positive(a);` +
+        # the goto), ref-ness-blind on the AST side.
+        from .testutil import _assert_routes_byte_identical
+        src = self.SRC.replace(
+            "    try:\n"
+            "        r = positive(p)\n",
+            "    try:\n"
+            "        positive(p)\n").replace(
+            "    else:\n"
+            "        r.x = 9\n"
+            "        print(p.x)\n",
+            "    else:\n"
+            "        print(p.x)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto __try_tmp_" in cpp
+
+
+class TestErrorReturnAliasFirstDecl:
+    """The FIRST-DECL alias bind (no try hoist -- the auto-propagate body):
+    `_error_return_decl_prefix`'s aliases arm predecls `T* v;`, the block
+    alias-assigns, and later reads arrow through the pointer local. Routed
+    slice is the provably non-const flavor; a readonly callee stays AST."""
+
+    _H = (
+        "from tpy import Int32, error_return, ReturnException, readonly\n"
+        "class E(Exception, ReturnException):\n"
+        "    pass\n"
+        "class H:\n"
+        "    items: list[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.items = [1, 2]\n"
+        "    @error_return(E)\n"
+        "    def view(self) -> list[Int32]:\n"
+        "        return self.items\n"
+        "    @error_return(E)\n"
+        "    @readonly\n"
+        "    def rview(self) -> list[Int32]:\n"
+        "        return self.items\n")
+
+    def test_first_decl_alias_bind_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            self._H
+            + "@error_return(E)\n"
+            + "def use_mut(h: H) -> Int32:\n"
+            + "    v = h.view()\n"
+            + "    v.append(8)\n"
+            + "    return len(h.items)\n"
+            + "def main() -> None:\n"
+            + "    h = H()\n"
+            + "    try:\n"
+            + "        print(use_mut(h))\n"
+            + "    except E:\n"
+            + "        print(\"error\")\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("er.alias_first_decl", 0) >= 1
+        assert "std::vector<int32_t>* v;" in cpp
+        assert "v = &(::tpy::unwrap_ref(*__try_tmp_" in cpp
+        assert "v->push_back(8);" in cpp
+
+    def test_readonly_callee_first_decl_still_defers(self):
+        # The const flavor (`const std::vector<int32_t>* r;`) is outside
+        # the slice -- a readonly er callee's alias bind keeps the AST path.
+        src = (
+            self._H
+            + "@error_return(E)\n"
+            + "def use_ro(h: H) -> Int32:\n"
+            + "    r = h.rview()\n"
+            + "    return len(r)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use_ro") is None
+
+
+class TestRefCallAtStorageReturn:
+    """A ref-returning call at the Own[record] STORAGE return slot renders
+    bare and the slot copies from the reference (`return p.updated();`,
+    `return positive(x, y).updated()` -- the er-receiver flavor)."""
+
+    _POINT = (
+        "from tpy import Int32, Own, Self\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "    def updated(self) -> Self:\n"
+        "        self.x += 1\n"
+        "        return self\n")
+
+    def test_method_ref_call_storage_return_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            self._POINT
+            + "def bump(p: Point) -> Own[Point]:\n"
+            + "    return p.updated()\n"
+            + "def main() -> None:\n"
+            + "    p = Point(1)\n"
+            + "    q = bump(p)\n"
+            + "    q.x = 10\n"
+            + "    print(p.x, q.x)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("ret.record_ref_call_storage", 0) >= 1
+        assert "return p.updated();" in cpp
+
+    def test_er_receiver_ref_call_storage_return_routes(self):
+        # The er-unwrap receiver composes under the same arm:
+        # `return ({ ...unwrap_ref_move(*__er_N); }).updated();`.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32, Own, Self, error_return, "
+            "ReturnException\n"
+            "class E(Exception, ReturnException):\n"
+            "    pass\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "    def updated(self) -> Self:\n"
+            "        self.x += 1\n"
+            "        return self\n"
+            "@error_return(E)\n"
+            "def positive(x: Int32) -> Own[Point]:\n"
+            "    if x < 0:\n"
+            "        raise E\n"
+            "    return Point(x)\n"
+            "@error_return(E)\n"
+            "def modify(x: Int32) -> Own[Point]:\n"
+            "    return positive(x).updated()\n"
+            "def main() -> None:\n"
+            "    try:\n"
+            "        p = modify(3)\n"
+            "        print(p.x)\n"
+            "    except E:\n"
+            "        print(\"err\")\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ").updated();" in cpp
+
+    def test_free_ref_call_storage_return_routes(self):
+        # The free-call twin (`return first(xs);` at Own[Point]) rides the
+        # same arm via the borrow_ret_passthrough call admission.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            self._POINT
+            + "def first(xs: list[Point]) -> Point:\n"
+            + "    return xs[0]\n"
+            + "def grab(xs: list[Point]) -> Own[Point]:\n"
+            + "    return first(xs)\n"
+            + "def main() -> None:\n"
+            + "    xs = [Point(5)]\n"
+            + "    g = grab(xs)\n"
+            + "    g.x = 7\n"
+            + "    print(xs[0].x, g.x)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return first(xs);" in cpp
+
+
+class TestErFieldTargetBind:
+    """`self.p = make(n)` inside try: the er-assign FIELD target renders the
+    bare lvalue and the bind line moves the unwrap into it
+    (`this->p = ::tpy::unwrap_ref_move(*__try_tmp_N);`)."""
+
+    _SRC = (
+        "from tpy import Int32, error_return, ReturnException, Own\n"
+        "class E(Exception, ReturnException):\n"
+        "    pass\n"
+        "class Payload:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "@error_return(E)\n"
+        "def make(n: Int32) -> Own[Payload]:\n"
+        "    if n < 0:\n"
+        "        raise E\n"
+        "    return Payload(n)\n"
+        "class Sink:\n"
+        "    p: Payload\n"
+        "    def __init__(self) -> None:\n"
+        "        self.p = Payload(0)\n"
+        "    def fill(self, n: Int32) -> None:\n"
+        "        try:\n"
+        "            self.p = make(n)\n"
+        "        except E:\n"
+        "            print(\"fill error\")\n"
+        "def main() -> None:\n"
+        "    s = Sink()\n"
+        "    s.fill(9)\n"
+        "    print(s.p.v)\n"
+        "main()\n")
+
+    def test_field_target_er_bind_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("er.field_target_bind", 0) >= 1
+        joined = _hpp + cpp
+        assert "this->p = ::tpy::unwrap_ref_move(*__try_tmp_" in joined
+
+    def test_container_field_target_still_defers(self):
+        # A container-field target's RECEIVER-use lowering is outside the
+        # slice (field.result_type) -- the body keeps the AST path.
+        src = self._SRC.replace(
+            "class Sink:\n"
+            "    p: Payload\n",
+            "class Sink:\n"
+            "    p: Payload\n"
+            "    xs: list[Int32]\n").replace(
+            "    def __init__(self) -> None:\n"
+            "        self.p = Payload(0)\n",
+            "    def __init__(self) -> None:\n"
+            "        self.p = Payload(0)\n"
+            "        self.xs = []\n").replace(
+            "    def fill(self, n: Int32) -> None:\n"
+            "        try:\n"
+            "            self.p = make(n)\n",
+            "    @error_return(E)\n"
+            "    def fill2(self, n: Int32) -> None:\n"
+            "        self.xs = make_list(n)\n"
+            "    def fill(self, n: Int32) -> None:\n"
+            "        try:\n"
+            "            self.p = make(n)\n")
+        src = src.replace(
+            "@error_return(E)\n"
+            "def make(n: Int32) -> Own[Payload]:\n",
+            "@error_return(E)\n"
+            "def make_list(n: Int32) -> Own[list[Int32]]:\n"
+            "    if n < 0:\n"
+            "        raise E\n"
+            "    return [n, n]\n"
+            "@error_return(E)\n"
+            "def make(n: Int32) -> Own[Payload]:\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "fill2") is None
+
+    def test_nested_er_arg_field_target_still_defers(self):
+        # A nested @error_return call in the RHS's argument subtree
+        # (`self.p = make(inner(n))`) keeps the AST path -- the same
+        # `_reject_nested_error_return_arg` gate the name-target bind
+        # applies (the AST's own render for this shape is a tracked bug;
+        # THIR must not silently diverge from it).
+        src = self._SRC.replace(
+            "@error_return(E)\n"
+            "def make(n: Int32) -> Own[Payload]:\n",
+            "@error_return(E)\n"
+            "def inner(n: Int32) -> Int32:\n"
+            "    if n > 99:\n"
+            "        raise E\n"
+            "    return n\n"
+            "@error_return(E)\n"
+            "def make(n: Int32) -> Own[Payload]:\n").replace(
+            "            self.p = make(n)\n",
+            "            self.p = make(inner(n))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "fill") is None
+
+
+class TestRefCallStorageReturnBoundary:
+    def test_ternary_source_at_storage_return_still_defers(self):
+        # The ladder admits CALL sources only: a ternary over two
+        # ref-returning method calls at the same Own[record] storage slot
+        # keeps the AST path.
+        src = (
+            "from tpy import Int32, Own, Self\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "    def updated(self) -> Self:\n"
+            "        self.x += 1\n"
+            "        return self\n"
+            "def pick(a: Point, b: Point, c: bool) -> Own[Point]:\n"
+            "    return a.updated() if c else b.updated()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None

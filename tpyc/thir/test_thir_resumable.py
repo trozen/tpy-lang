@@ -803,11 +803,12 @@ class TestSlicedOutShapes:
         assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_global_lowering_reject_falls_back_after_await(self):
-        # A STR global is not an eligible-scalar write slot, so its
-        # `global` declaration stays unseeded (the write-seeding admits
-        # scalar / Ptr-value globals only, resumables included).
+        # A BYTES global stays unseeded (the AST's bytes view-assign is
+        # a pre-existing bug, BUGS.md -- unsafe to mirror), so its
+        # `global` declaration rejects; str/scalar/Ptr-value globals DO
+        # seed now, which is why this fixture is bytes.
         src = (_PRE
-               + "message = 'before'\n\n"
+               + "message = b'before'\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
                + "    global message\n"
@@ -1301,9 +1302,13 @@ class TestBoundCoroAwaits:
         assert "c = spawn();" in cpp
         assert ".emplace(spawn()" not in cpp
 
-    def test_generic_method_factory_defers(self):
-        # A generic async METHOD factory (`c.echo(5)` with echo[T]) stays
-        # out, mirroring the free-call generic-coro-factory gate.
+    def test_generic_method_factory_routes(self):
+        # A generic async METHOD factory bound to a frame handle
+        # (`m = b.echo(5)` with echo[T]): the call spells inline with its
+        # method targs and the SKELETON owns the templated frame-type
+        # spelling, so the handle-write arm routes it (the fence's
+        # "different render" reason was removed with the factory-position
+        # targ admission).
         src = ("import asyncio\n"
                + "from tpy import Int32\n\n"
                + "class Box:\n"
@@ -1316,9 +1321,9 @@ class TestBoundCoroAwaits:
                + "    m = b.echo(5)\n"
                + "    print(await m)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert "res.coro_handle_write" not in fallback
-        assert sum(fallback.values()) >= 1
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.coro_handle_write")
 
 
 class TestBorrowTupleLocals:
@@ -2036,11 +2041,9 @@ class TestNarrowedResume:
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
-    def test_union_local_narrow_blocked_on_local_storage(self):
-        # The narrowing admission covers union LOCALS (gen_local_types),
-        # but the union frame-field decl family itself is un-routed
-        # (res.local_storage) -- the body falls back there first. Flips to
-        # a route pin when union locals land.
+    def test_union_local_narrow_routes(self):
+        # Union LOCALS route since the union frame-slot cell (formerly
+        # blocked on the un-routed decl family, res.local_storage).
         src = (self._UNION
                + "def vals() -> Iterator[str]:\n"
                + "    a: Dog | Cat = Dog()\n"
@@ -2049,7 +2052,7 @@ class TestNarrowedResume:
                + "        yield a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
+        assert not fallback, fallback
         _assert_identical(src)
 
     def test_narrowed_rebind_defers(self):
@@ -2793,10 +2796,11 @@ class TestAwaitLiftUnpack:
         assert ("lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref("
                 "std::get<0>(__tup_1))));") in cpp
 
-    def test_durable_own_tuple_local_defers(self):
+    def test_durable_own_tuple_local_routes(self):
         # A DURABLE (non-lift) Own-element tuple local is skeleton-owning
-        # too, but its decl/read arms are unrouted (the gen_tuple_own_local
-        # family) -- it keeps res.local_storage.
+        # too: the owning-tuple frame slot classification admits it (the
+        # gen_tuple_own_local family's emplace/(*t) renders) -- formerly a
+        # res.local_storage fence.
         src = ("import asyncio\nfrom tpy import Int32, Own\n\n"
                "class Box:\n"
                "    v: Int32\n"
@@ -2809,7 +2813,7 @@ class TestAwaitLiftUnpack:
                "    await asyncio.sleep(0)\n"
                "    return t[1]\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.local_storage") == 1
+        assert not _res_fallback(src)
         _assert_identical(src)
 
 
@@ -3087,11 +3091,11 @@ class TestAliasBinds:
         assert not fallback
         assert witnesses.get("res.alias_bind", 0) >= 2
 
-    def test_own_tuple_call_at_borrow_slot_defers(self):
-        # The corpus-caught divergence's unit pin: an `Own[tuple[...]]`-
-        # declared callee is the skeleton's OWNING signal (frame_slot +
-        # emplace/(*t) renders), invisible on the call EXPR's peeled type
-        # -- _own_declared_call_ret keeps the write on the named reject.
+    def test_own_tuple_call_routes_via_owning_slot(self):
+        # Formerly the corpus-caught divergence's fence: an
+        # `Own[tuple[...]]`-declared callee is the skeleton's OWNING
+        # signal -- the owning-tuple frame slot now mirrors it (emplace
+        # write, (*t) reads), so the shape routes byte-identically.
         src = (_ALIAS_PRE
                + "from tpy import Own\n\n"
                + "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
@@ -3101,8 +3105,7 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return t[0]\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("res.btuple_source") == 1
+        assert not _res_fallback(src)
         _assert_identical(src)
 
     def test_method_call_source_defers(self):
@@ -5106,6 +5109,278 @@ class TestResForHeadDictViewIterable:
         assert not any(k.startswith("resumable:") for k in fallback)
 
 
+class TestXmodCtorAsyncSinks:
+    """Module-qualified ctor rvalues at the resumable with-manager and
+    async-for source sinks (`async with svc.Gate()` / `async for v in
+    svc.Ticker(3)`): the qualified spelling rides the marker ctor arm; the
+    owned `__with_ctx_N` / `__for_itr` captures consume the rvalue whole
+    (ctx_manager / ITERABLE use at the setup lowerings)."""
+
+    def _fixture(self, tmp_path, main_src: str, extra_helper: str = ""):
+        from ..compiler import Compiler
+        from .testutil import _STDLIB_DIRS
+        (tmp_path / "helper.py").write_text(
+            "import asyncio\n"
+            "from tpy import Int32\n"
+            "class Gate:\n"
+            "    async def __aenter__(self) -> Int32:\n"
+            "        await asyncio.sleep(0)\n"
+            "        return 5\n"
+            "    async def __aexit__(self, et: None, ev: None,"
+            " tb: None) -> None:\n"
+            "        await asyncio.sleep(0)\n"
+            + extra_helper)
+        (tmp_path / "main.py").write_text(main_src)
+        compiler = Compiler(tmp_path / "main.py", lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        outs = {}
+        for thir in (False, True):
+            c2 = Compiler(tmp_path / "main.py", lib_dirs=_STDLIB_DIRS)
+            mods2 = c2.compile()
+            e2 = next(m for m in mods2 if m.is_entry_point)
+            outs[thir] = c2.generate_code_to_strings(
+                e2, options=CodeGenOptions(emit_source_comments=False,
+                                           thir_codegen=thir))
+            if thir:
+                fb = c2._thir_fallback
+        return outs, fb
+
+    def test_qualified_ctor_manager_routes(self, tmp_path):
+        outs, fb = self._fixture(tmp_path, (
+            "import asyncio\n"
+            "import helper\n"
+            "async def go() -> None:\n"
+            "    async with helper.Gate() as v:\n"
+            "        print(v)\n"
+            "def main() -> None:\n"
+            "    asyncio.run(go())\nmain()\n"))
+        assert outs[False] == outs[True]
+        assert not any(k.startswith("resumable:") for k in fb)
+
+    def test_qualified_factory_call_manager_still_defers(self, tmp_path):
+        # BOUNDARY: a module-qualified NON-ctor factory call manager
+        # (`helper.make_gate()`) is outside `_module_qual_ctor_shape`
+        # (is_constructor only) and keeps the res.with_manager fence.
+        # (A NAME-bound manager is NOT a fence: it rides the pre-existing
+        # borrowed F1-lvalue slice.)
+        outs, fb = self._fixture(tmp_path, (
+            "import asyncio\n"
+            "import helper\n"
+            "async def go() -> None:\n"
+            "    async with helper.make_gate() as v:\n"
+            "        print(v)\n"
+            "def main() -> None:\n"
+            "    asyncio.run(go())\nmain()\n"), extra_helper=(
+            "from tpy import Own\n"
+            "def make_gate() -> Own[Gate]:\n"
+            "    return Gate()\n"))
+        assert outs[False] == outs[True]
+        assert any(k.startswith("resumable:") for k in fb)
+
+
+class TestPtrValueLocalAndCallNoneTest:
+    """A raw `Ptr[T]` VALUE local in a resumable frame (bare `T*` field:
+    plain frame assign, `== nullptr` None-test, bare arg pass) and the
+    Ptr-returning CALL rvalue `is None` subject (the name row's rvalue
+    sibling) -- sync and resumable alike."""
+
+    _SRC = (_PRE
+            + "import asyncio\n"
+            + "from tpy import Ptr\n\n"
+            + "class Cell:\n"
+            + "    def __init__(self, v: Int32) -> None:\n"
+            + "        self.v = v\n\n"
+            + "_slot: Ptr[Cell] = None\n\n"
+            + "def get_cell() -> Ptr[Cell]:\n"
+            + "    return _slot\n\n"
+            + "async def coro_probe() -> None:\n"
+            + "    await asyncio.sleep(0)\n"
+            + "    p = get_cell()\n"
+            + "    print(p is None)\n"
+            + "    if p is not None:\n"
+            + "        print(p.v)\n\n"
+            + "def sync_probe() -> None:\n"
+            + "    print(get_cell() is None)\n\n"
+            + "def main() -> None:\n"
+            + "    sync_probe()\n"
+            + "    asyncio.run(coro_probe())\nmain()\n")
+
+    def test_ptr_local_and_call_subject_route(self):
+        witnesses, fallback = _assert_identical(src := self._SRC)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert not any(k.startswith("body:") for k in fallback)
+        _, hpp, cpp = _gen(src, thir=True)
+        joined = hpp + cpp
+        assert "(get_cell() == nullptr)" in joined
+        assert "(p == nullptr)" in joined
+
+    def test_non_ptr_call_subject_still_defers(self):
+        # BOUNDARY: a record-returning call is not a None-testable subject
+        # in TPy (sema rejects) -- instead pin the adjacent still-gated
+        # shape: an Optional[record]-returning call subject in a SYNC body
+        # keeps its own row's verdict (value_opt rvalues only; a ptr-repr
+        # Optional call subject stays rejected).
+        src = (_PRE
+               + "class Rec:\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "_r: Rec | None = None\n\n"
+               + "def find() -> Rec | None:\n"
+               + "    return _r\n\n"
+               + "def main() -> None:\n"
+               + "    print(find() is None)\nmain()\n")
+        compiler, _hpp, _cpp = _gen(src, thir=True)
+        assert any(k.startswith("body:") or k.startswith("top_level:")
+                   for k in compiler._thir_fallback)
+
+
+class TestVoidReturnNone:
+    """`return None` at a VOID async slot is skeleton-only (the AST keys
+    POLL_VOID_READY_RETURN on VoidType, never rendering the value); an
+    OPTIONAL slot still lowers its value (std::nullopt)."""
+
+    def test_void_slot_return_none_routes(self):
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "async def void_ret() -> None:\n"
+               + "    return None\n\n"
+               + "def main() -> None:\n"
+               + "    asyncio.run(void_ret())\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert ("::tpystd::tpy::Poll<::std::monostate>::ready("
+                "::std::monostate{})") in cpp
+
+    def test_optional_slot_return_none_still_lowers_value(self):
+        # BOUNDARY: `-> Int32 | None` renders the value (nullopt), so the
+        # skip must key on VoidType, not on the None literal.
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "async def opt_ret(flag: bool) -> Int32 | None:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    if flag:\n"
+               + "        return 7\n"
+               + "    return None\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(opt_ret(False)))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.return_value")
+
+
+class TestForNarrowedOptionalIterable:
+    """A narrowed value-Optional iterable (`str|None` proven non-None) at a
+    resumable begin_end for-head: the skeleton owns the unwrap
+    (`_maybe_unwrap_narrowed_optional` over the leaf render), so the leaf
+    supplies the BARE name -- a deref'd leaf would double-deref."""
+
+    _SRC = (_PRE
+            + "import asyncio\n\n"
+            + "async def count_s(s: str | None) -> int:\n"
+            + "    if s is None:\n"
+            + "        return -1\n"
+            + "    n = 0\n"
+            + "    for _c in s:\n"
+            + "        await asyncio.sleep(0)\n"
+            + "        n += 1\n"
+            + "    return n\n\n"
+            + "def main() -> None:\n"
+            + "    print(asyncio.run(count_s(\"abc\")))\nmain()\n")
+
+    def test_narrowed_value_opt_iterable_routes_bare(self):
+        witnesses, fallback = _assert_identical(self._SRC)
+        assert witnesses.get("res.for_narrowed_opt_src")
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        assert "((*s)).begin()" in cpp
+        assert "(*(*s))" not in cpp
+
+    def test_ptr_repr_optional_container_param_still_defers(self):
+        # BOUNDARY: the pointer-repr Optional[container] sibling stays fenced
+        # UPSTREAM (the frame-param gate) -- it never reaches the for-head
+        # strip, whose contract is checked only for the value-opt families.
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "async def sum_l(xs: list[Int32] | None) -> Int32:\n"
+               + "    if xs is None:\n"
+               + "        return -1\n"
+               + "    t = 0\n"
+               + "    for v in xs:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "        t += v\n"
+               + "    return t\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(sum_l([1, 2, 3])))\nmain()\n")
+        _assert_identical(src)
+        fb = _res_fallback(src)
+        assert fb.get("res.param_type")
+
+
+class TestAwaitOwnValueArgSlots:
+    """The `Own[value]` await-arg slot (a generic Own[T] param at a value
+    instantiation): the emplace arg rides the sync `_lower_call_arg` rows --
+    the copy-temp+move for a live name, the temp-free move at last use, bare
+    for a literal. The emplace is a statement position, so the arg temp
+    flushes before the suspend line (`temp_args=True` at the INLINE loop)."""
+
+    _SINK = (_PRE
+             + "import asyncio\n"
+             + "from tpy import Own\n\n"
+             + "async def sink(x: Own[Int32]) -> None:\n"
+             + "    await asyncio.sleep(0)\n"
+             + "    print(x)\n\n")
+
+    def test_nonlast_name_hoists_copy_temp(self):
+        src = (self._SINK
+               + "async def go() -> None:\n"
+               + "    i = 1\n"
+               + "    await sink(i)\n"
+               + "    print(i)\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("argtemp.own_copy")
+        # The DRIVER must route; the only tolerated fallback is the sink
+        # callee's own Own[Int32] frame param (res.param_type -- a body this
+        # cell does not touch). An exact-set pin: any driver fallback adds a
+        # different key and fails.
+        assert set(fallback) <= {"resumable:res.param_type"}
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __tmp_1 = i;" in cpp
+        assert "std::move(__tmp_1)" in cpp
+
+    def test_last_use_name_moves_without_temp(self):
+        src = (self._SINK
+               + "async def go() -> None:\n"
+               + "    j = 2\n"
+               + "    await sink(j)\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        # Same tolerated-set pin as the copy-temp flavor above.
+        assert set(fallback) <= {"resumable:res.param_type"}
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "__tmp_" not in cpp
+
+    def test_own_str_slot_still_defers(self):
+        # BOUNDARY: an Own[str] await slot is outside the value families --
+        # the owned brace-init temp render is unwitnessed at this position.
+        src = (_PRE
+               + "import asyncio\n"
+               + "from tpy import Own\n\n"
+               + "async def sink_s(s: Own[str]) -> None:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    print(s)\n\n"
+               + "async def go() -> None:\n"
+               + "    label = \"hey\"\n"
+               + "    await sink_s(label)\n"
+               + "    print(label)\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        _assert_identical(src)
+        fb = _res_fallback(src)
+        assert fb.get("res.await_param_type")
+
+
 class TestAwaitArgDcbpConstWrap:
     _SRC = (_PRE
             + "from tpy import Own\n\n"
@@ -6543,3 +6818,269 @@ class TestMixedLoopUnpackBindingFences:
                "main()\n")
         fb = _res_fallback(src)
         assert any("foreach.var_shadow" in k for k in fb), fb
+
+
+class TestOwningTupleFrameSlot:
+    """The owning-tuple frame slot (the skeleton's third owning signal):
+    an Own[tuple]-declared callee emplaces (`t.emplace(make_pair(9));`)
+    and element reads deref the slot VALUE-form (`std::get<1>((*t)).val`
+    -- the binding-form fact, dot not arrow). The subscript-lift twin
+    aliases a container element via tuple_to_pointer."""
+
+    _PRE = (
+        "from typing import Iterator\n"
+        "from tpy import Int32, Own\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:\n"
+        "    return (n, Box(n))\n")
+
+    def test_own_emplace_and_subscript_lift_route(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = self._PRE + (
+            "def gen() -> Iterator[Int32]:\n"
+            "    t = make_pair(9)\n"
+            "    t[1].val = 50\n"
+            "    yield t[0]\n"
+            "    yield t[1].val\n"
+            "def gen2() -> Iterator[Int32]:\n"
+            "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+            "    t = items[0]\n"
+            "    t[1].val = 99\n"
+            "    yield items[0][1].val\n"
+            "def main() -> None:\n"
+            "    for v in gen():\n"
+            "        print(v)\n"
+            "    for w in gen2():\n"
+            "        print(w)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # The witness fires in the resumable leaf pass, which only the
+        # full codegen runs -- read it off that compiler.
+        c, mods = _compile(src)
+        c.generate_code_to_strings(
+            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+        assert c._thir_face_witnesses.get("res.frame_slot_write", 0) >= 1
+        assert c._thir_face_witnesses.get("call.own_tuple_storage_ret",
+                                          0) >= 1
+        assert "t.emplace(make_pair(9));" in cpp
+        assert "std::get<1>((*t)).val = 50;" in cpp
+        assert ("t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(::tpy::__getitem__((*items), 0));") in cpp
+
+    def test_own_elem_and_reassigned_defer(self):
+        # BOUNDARY: an Own-ELEMENT tuple callee and a REASSIGNED owning
+        # tuple (not the never-reassigned third signal) keep deferring.
+        src = self._PRE + (
+            "def make_own_elem(n: Int32) -> Own[tuple[Own[Box], Int32]]:\n"
+            "    return (Box(n), n)\n"
+            "def gen_own_elem() -> Iterator[Int32]:\n"
+            "    t = make_own_elem(4)\n"
+            "    yield t[0].val\n"
+            "def gen_reassigned() -> Iterator[Int32]:\n"
+            "    t = make_pair(1)\n"
+            "    yield t[0]\n"
+            "    t = make_pair(2)\n"
+            "    yield t[1].val\n")
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "gen_own_elem") is None
+        assert _fn(thir, "gen_reassigned") is None
+
+
+class TestWithOptionalEnterFrameTarget:
+    """An Optional-enter `with` target in a resumable frame: the `P* m;`
+    frame member takes the FRAME_FIELD bare-pointer bind
+    (`m = __ctx_N.__enter__();`) and post-suspension reads ride the
+    registered pointer-binding arms (null test + deref + mutation)."""
+
+    def test_opt_and_ref_enter_targets_route(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    def __init__(self, n: Int32):\n"
+            "        self.n = n\n"
+            "class Holder:\n"
+            "    box: Box\n"
+            "    def __init__(self, n: Int32):\n"
+            "        self.box = Box(n)\n"
+            "    def __enter__(self) -> \"Box | None\":\n"
+            "        return self.box\n"
+            "    def __exit__(self, et, ev, tb) -> None:\n"
+            "        pass\n"
+            "def gen_opt() -> Iterator[Int32]:\n"
+            "    h = Holder(7)\n"
+            "    with h as m:\n"
+            "        pass\n"
+            "    yield 1\n"
+            "    if m is not None:\n"
+            "        m.n += 1\n"
+            "        yield m.n\n"
+            "def main() -> None:\n"
+            "    for x in gen_opt():\n"
+            "        print(x)\n"
+            "main()\n")
+        fb = _res_fallback(src)
+        assert not fb, fb
+        _assert_identical(src)
+        c, _hpp, cpp = _gen(src, thir=True)
+        assert "m = __ctx_1.__enter__();" in cpp
+
+    def test_value_repr_optional_enter_defers(self):
+        # BOUNDARY: a VALUE-repr Optional enter (Int32 | None -- the
+        # std::optional<int32_t> frame member) is outside the opt-ptr
+        # gate; the with target keeps deferring.
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class Holder:\n"
+            "    def __init__(self, n: Int32):\n"
+            "        self.n = n\n"
+            "    def __enter__(self) -> \"Int32 | None\":\n"
+            "        return self.n\n"
+            "    def __exit__(self, et, ev, tb) -> None:\n"
+            "        pass\n"
+            "def gen_val() -> Iterator[Int32]:\n"
+            "    h = Holder(7)\n"
+            "    with h as m:\n"
+            "        pass\n"
+            "    yield 1\n"
+            "    if m is not None:\n"
+            "        yield m\n"
+            "def main() -> None:\n"
+            "    for x in gen_val():\n"
+            "        print(x)\n"
+            "main()\n")
+        fb = _res_fallback(src)
+        assert any("with" in k for k in fb), fb
+        _assert_identical(src)
+
+
+class TestUnionFrameSlot:
+    """A ptr-repr UNION generator local is an ordinary frame_slot
+    (`frame_slot<std::variant<...>>`): writes emplace, and the narrowing
+    subject derefs the slot (`holds_alternative<T>((*t))` /
+    `std::get<T>((*t))` -- the R1c deref threaded through
+    _narrow_variant_cpp). A VALUE-union local keeps deferring."""
+
+    def test_record_union_slot_routes(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def gen_record_union(items: list[A | str]) -> Iterator[Int32]:\n"
+            "    t = items.pop()\n"
+            "    yield 1\n"
+            "    if isinstance(t, A):\n"
+            "        t.n += 1\n"
+            "        yield t.n\n"
+            "def main() -> None:\n"
+            "    xs: list[A | str] = [A(3)]\n"
+            "    for y in gen_record_union(xs):\n"
+            "        print(y)\n"
+            "main()\n")
+        fb = _res_fallback(src)
+        assert not fb, fb
+        _assert_identical(src)
+        c, _hpp, cpp = _gen(src, thir=True)
+        out = _hpp + cpp
+        assert "std::holds_alternative<A>((*t))" in out
+        assert "std::get<A>((*t))" in out
+
+    def test_value_union_slot_defers(self):
+        # BOUNDARY: a VALUE-union generator local is outside the ptr-repr
+        # slot admission; the body stays AST.
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "def gen_value_union() -> Iterator[Int32]:\n"
+            "    v: Int32 | str = 5\n"
+            "    yield 1\n"
+            "    if isinstance(v, Int32):\n"
+            "        yield v\n"
+            "def main() -> None:\n"
+            "    for x in gen_value_union():\n"
+            "        print(x)\n"
+            "main()\n")
+        fb = _res_fallback(src)
+        assert any("res.local_storage" in k for k in fb), fb
+        _assert_identical(src)
+
+    def test_sync_body_union_pop_decl_defers(self):
+        # BOUNDARY (the container_union_ret rung's shield): a sync-body
+        # `t = items.pop()` decl of a ptr-variant union defers DOWNSTREAM
+        # (decl.ptr_union_source) -- the rung admits the pop, the decl
+        # slot rejects; both byte-identical.
+        src = (
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def f(items: list[A | str]) -> None:\n"
+            "    t = items.pop()\n"
+            "    if isinstance(t, A):\n"
+            "        print(t.n)\n"
+            "def main() -> None:\n"
+            "    f([A(1)])\n"
+            "main()\n")
+        from .testutil import (_assert_byte_identical, _fn, _lower_ctx)
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+
+class TestResAliasNameSource:
+    """`ys = xs` in a resumable body off a frame-slot container: the alias
+    field re-addresses the deref (`ys = &((*xs));`)."""
+
+    def test_frame_slot_alias_source_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "import asyncio\n"
+            "from tpy import Int32, Own\n"
+            "async def make() -> Own[list[Int32]]:\n"
+            "    xs = [1, 2, 3]\n"
+            "    ys = xs\n"
+            "    try:\n"
+            "        return xs\n"
+            "    finally:\n"
+            "        ys.append(4)\n"
+            "def main() -> None:\n"
+            "    print(asyncio.run(make()))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "ys = &((*xs));" in (_hpp + cpp)
+
+
+class TestResReassignedNeedsCopyParams:
+    """Resumable reassigned needs-copy params (str/bytes/BigInt) need no
+    gate: the frame member respells owned at the skeleton and the body
+    reads ride the ordinary frame-field arms."""
+
+    def test_reassigned_view_param_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "import asyncio\n"
+            "from tpy import Int32\n"
+            "async def str_while(t: str) -> Int32:\n"
+            "    n = 0\n"
+            "    while t:\n"
+            "        await asyncio.sleep(0)\n"
+            "        n += 1\n"
+            "        t = \"\"\n"
+            "    return n\n"
+            "def main() -> None:\n"
+            "    print(asyncio.run(str_while(\"go\")))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::string t;" in _hpp

@@ -104,13 +104,12 @@ class TestGenrecCallRvalueArg:
         assert "eat(__tmp_1)" in cpp
 
 
-class TestNonGenericOwnCallArgStaysFenced:
-    # BOUNDARY for _recursive_union_borrow_call_arg's Own-return exclusion:
-    # the NON-generic wrapper flavor (`eat(make_json())` on a plain
-    # recursive union) is excluded from the inline-borrow row AND has no
-    # argtemp row (that row keys RecursiveAliasInstanceType) -- the body
-    # falls back byte-identically rather than binding the fresh prvalue
-    # inline where the AST hoists.
+class TestNonGenericOwnCallArg:
+    # The NON-generic wrapper flavor (`eat(make_json())` on a plain
+    # recursive union) at a MUTABLE slot: the call result is already the
+    # expanded UnionType (already_union), so both paths take the default
+    # bare render -- the _ru_wrapper_value_call_arg row (formerly a fence:
+    # before that row the body fell back byte-identically).
     SRC = (
         "from tpy import Int32, Own\n"
         "type Json = None | bool | Int32 | str | list[Json]\n"
@@ -123,18 +122,13 @@ class TestNonGenericOwnCallArgStaysFenced:
         "main()\n"
     )
 
-    def test_nongeneric_own_call_arg_stays_ast(self):
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+    def test_nongeneric_own_call_arg_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        _thir, wit = _lower_ctx_witnessed(self.SRC)
+        assert wit.get("arg.ru_wrapper_value_call", 0) >= 1
+        assert "eat(make_json())" in cpp
 
 
 class TestGenrecComparePair:
@@ -407,3 +401,143 @@ class TestGenrecDictViewBoundaries:
                                    thir_codegen=True))
         assert any(k.startswith("body:") for k in compiler._thir_fallback), (
             compiler._thir_fallback)
+
+
+class TestGenericOwnListLiteralArg:
+    """A list literal at a substituted `Own[list[T]]` slot renders the
+    prvalue brace INLINE (`make_bag<int32_t>({10, 20, 30})`) -- the owning
+    by-value param moves the rvalue straight in, no ref-slot temp."""
+
+    _SRC = (
+        "from tpy import Own, Int32, nocopy\n"
+        "@nocopy\n"
+        "class Holder[T]:\n"
+        "    _items: list[T]\n"
+        "    def __init__(self, items: Own[list[T]]) -> None:\n"
+        "        self._items = items\n"
+        "def make[T](items: Own[list[T]]) -> Own[Holder[T]]:\n"
+        "    return Holder[T](items)\n"
+        "def main() -> None:\n"
+        "    h = make([1, 2, 3])\n"
+        "    print(len(h._items))\n"
+        "main()\n")
+
+    def test_own_list_literal_arg_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("call.generic_own_list_literal", 0) >= 1
+        assert "make<int32_t>({1, 2, 3})" in (_hpp + cpp)
+
+    def test_ref_slot_literal_still_hoists_temp(self):
+        # The NON-Own sibling (`take_ref([7, 8])` at `list[T]`) keeps the
+        # ref-slot temp row (`std::vector<int32_t> __tmp_N = {7, 8};`) --
+        # the new inline row is Own-slot-keyed.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "def take_ref[T](items: list[T]) -> Int32:\n"
+            "    return len(items)\n"
+            "def main() -> None:\n"
+            "    print(take_ref([7, 8]))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "__tmp_1 = {7, 8};" in cpp
+
+
+class TestGenericShadowingBuiltinName:
+    """A LOCAL generic generator shadowing a builtin name spells the bare
+    explicit-targ call (`enumerate<std::string>(words)`) -- the generic
+    kind row mirrors the tail's conditional-qualification refinement
+    (reject only an fi genuinely living in the imported module)."""
+
+    def test_local_generic_shadow_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "from typing import Iterable, Iterator\n"
+            "def enumerate[T](iterable: Iterable[T])"
+            " -> Iterator[tuple[Int32, T]]:\n"
+            "    i: Int32 = 0\n"
+            "    for item in iterable:\n"
+            "        yield (i, item)\n"
+            "        i += 1\n"
+            "def main() -> None:\n"
+            "    words = [\"x\", \"y\"]\n"
+            "    for i, w in enumerate(words):\n"
+            "        print(i, w)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "enumerate<std::string>(words)" in cpp
+
+    def test_own_dict_literal_arg_still_defers(self):
+        # The inline row is LIST-keyed: a dict literal at a substituted
+        # Own[dict[...]] slot keeps the AST path.
+        from .testutil import _fn, _lower_ctx
+        src = (
+            "from tpy import Own, Int32, nocopy\n"
+            "@nocopy\n"
+            "class DHolder[T]:\n"
+            "    _m: dict[str, T]\n"
+            "    def __init__(self, m: Own[dict[str, T]]) -> None:\n"
+            "        self._m = m\n"
+            "def dmake[T](m: Own[dict[str, T]]) -> Own[DHolder[T]]:\n"
+            "    return DHolder[T](m)\n"
+            "def main() -> None:\n"
+            "    h = dmake({\"a\": 1})\n"
+            "    print(len(h._m))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
+
+
+class TestOpenTSetReceiver:
+    """`s.add(v)` on `set[T]` in a generic body: the open-T element joins
+    the set-receiver family (the list family's open-T admission mirrored);
+    the T-typed arg binds bare."""
+
+    def test_open_t_set_add_routes(self):
+        from .testutil import _lower_ctx, _fn as _fn_l
+        src = (
+            "def add_to_set[T](s: set[T], v: T) -> None:\n"
+            "    s.add(v)\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "add_to_set") is not None
+
+
+class TestGenericForwardTypeParam:
+    """Explicit-targ generic forwards inside generic bodies: the
+    borrow-container call passthrough at the T& return
+    (`return identity<std::vector<T>>(items);`) and the same-T field read
+    at the open T slot (`identity<T>(this->val)`)."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "def identity[T](x: T) -> T:\n"
+        "    return x\n"
+        "def wrap_list[T](items: list[T]) -> list[T]:\n"
+        "    return identity[list[T]](items)\n"
+        "class Holder[T]:\n"
+        "    val: T\n"
+        "    def __init__(self, v: T) -> None:\n"
+        "        self.val = v\n"
+        "    def forward_val(self) -> T:\n"
+        "        return identity[T](self.val)\n"
+        "def main() -> None:\n"
+        "    xs = [1, 2]\n"
+        "    print(wrap_list(xs))\n"
+        "    h = Holder(7)\n"
+        "    print(h.forward_val())\n"
+        "main()\n")
+
+    def test_forward_shapes_route(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("ret.container_call_borrow", 0) >= 1
+        assert wit.get("call.generic_open_slot_field", 0) >= 1
+        joined = _hpp + cpp
+        assert "return identity<std::vector<T>>(items);" in joined
+        assert "return identity<T>(this->val);" in joined

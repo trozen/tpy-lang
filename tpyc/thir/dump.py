@@ -57,6 +57,7 @@ from .nodes import (
     THIRModuleVar,
     THIRConsumingIter,
     THIRCopy,
+    THIRDecayCopy,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -263,6 +264,8 @@ def _expr(e: THIRExpr) -> str:
         return f"consuming_iter[{e.native_name}]({_expr(e.value)})"
     if isinstance(e, THIRMove):
         return f"move({_expr(e.value)})"
+    if isinstance(e, THIRDecayCopy):
+        return f"decay_copy({_expr(e.value)})"
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             inner = "nullptr"

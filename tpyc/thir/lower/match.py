@@ -42,7 +42,7 @@ from ...type_def_registry import (is_bool_type, is_dict, is_fixed_int_type,
                                   is_list, is_set)
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.types import resolve_pending_container
-from ...value_category import is_rvalue_source
+from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.match import (
     MatchGenerator,
@@ -75,6 +75,7 @@ from .predicates import (
     _container_scalar_read,
     _isinstance_narrow_info,
     _eligible_char,
+    _wrapper_borrow_return,
     _wrapper_union_like,
     _eligible_enum,
     _eligible_scalar,
@@ -369,7 +370,8 @@ def _match_keywords_ok(
         pattern: TpyClassPattern, analyzer, pointers: AbstractSet[str],
         narrowed: AbstractSet[str], storage_tuple_locals: AbstractSet[str],
         arm_declared: dict[str, TpyType], *, allow_conds: bool,
-        nested_ok: bool = False) -> bool:
+        nested_ok: bool = False,
+        opt_frame: AbstractSet[str] = frozenset()) -> bool:
     """The field sub-pattern slice for one class pattern: literal conditions
     (the record tiers and the guarded-union tier; the unconditional union
     switch has no `&&` position, so its walk passes allow_conds=False --
@@ -406,11 +408,22 @@ def _match_keywords_ok(
         if isinstance(inner, TpyCapturePattern):
             if as_node is not None:
                 return False
-            if (inner.name in pointers or inner.name in narrowed
+            _of_cap = inner.name in opt_frame
+            if ((inner.name in pointers and not _of_cap)
+                    or inner.name in narrowed
                     or inner.name in storage_tuple_locals):
                 return False
             ft = _match_record_field_type(pattern, fname, analyzer)
-            if ft is None or not _match_capture_field_ok(ft, analyzer):
+            if ft is None:
+                return False
+            if _of_cap:
+                # A ptr-repr Optional FIELD captured into the registered
+                # P* frame member (`v = optional_to_ptr(subject.f);`).
+                _ofu = unwrap_readonly(ft)
+                if not (isinstance(_ofu, OptionalType)
+                        and _ofu.uses_pointer_repr()):
+                    return False
+            elif not _match_capture_field_ok(ft, analyzer):
                 return False
             arm_declared[inner.name] = ft
             continue
@@ -651,7 +664,8 @@ def _record_arm_ok(
         case, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        subj_type: 'TpyType | None') -> bool:
+        subj_type: 'TpyType | None',
+        opt_frame: AbstractSet[str] = frozenset()) -> bool:
     """Admit one record arm while that arm is lowered."""
     if case.type_facts:
         return False
@@ -668,7 +682,7 @@ def _record_arm_ok(
         if not _match_keywords_ok(
                 test, analyzer, pointers, narrowed,
                 storage_tuple_locals, arm_declared, allow_conds=True,
-                nested_ok=True):
+                nested_ok=True, opt_frame=opt_frame):
             return False
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
@@ -788,10 +802,17 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             # a full-Optional whole-subject capture of a pointer-repr
             # subject. Reads/writes deref via `pointers`; the declared entry
             # keeps the Optional so unproven writes draw deref_check.
-            if lc.func.is_generator or lc.func.is_async:
-                return None
             if (name in prescan.move_through
                     or name in prescan.rvalue_reassigned):
+                return None
+            if lc.func.is_generator or lc.func.is_async:
+                # The RESUMABLE flavor: the capture is a `P* v;` FRAME
+                # field (the opt_ptr classification already seeded
+                # lc.pointers), so no decl line -- the bind writes the
+                # field and reads deref through the registered binding.
+                if name in lc.opt_ptr_frame_locals:
+                    hoist_declared.append((name, vtype, "opt_ptr_frame"))
+                    continue
                 return None
             hoist_declared.append((name, vtype, "opt_ptr"))
             continue
@@ -886,15 +907,29 @@ def _match_route(
             return None
         if (subj.name in pointers or subj.name in narrowed
                 or subj.name in storage_tuple_locals):
-            return None
+            # A POINTER-local WRAPPER subject derefs into the alias
+            # (`auto& __match_subject_N = (*v);` -- the hoisted wrapper
+            # local); the name arm's deref supplies the spelling.
+            if not (kind == "switch_union"
+                    and subj.name in pointers
+                    and subj.name not in narrowed
+                    and subj.name not in storage_tuple_locals
+                    and unwrap_readonly(stmt.subject_type).needs_wrapper()):
+                return None
     else:
         # Field/subscript LVALUE subjects (storage-form: value-variant
         # `std::get`, `auto&` bind) admit on the union and record tiers,
-        # plus the pointer-repr O1 partition and the pointer-repr unguarded
-        # optional chain (the `optional_to_ptr` lift, `auto` bind). The
-        # scalar tiers and the guarded chain stay name-only.
+        # plus the pointer-repr O1 partition, the pointer-repr unguarded
+        # optional chain (the `optional_to_ptr` lift, `auto` bind), and
+        # the unguarded SCALAR chain (`match self.n:` -- the `auto&`
+        # subject bind compares like a name). NB guards never demote
+        # fixed-int/enum subjects out of the SWITCH kinds, so guarded
+        # switch-kind field matches route too; only the chain scalars
+        # (bool/float/BigInt/str) demote to the excluded
+        # if_elif_guarded.
         if kind not in ("switch_union", "if_elif_record", "guarded_record",
-                        "optional_partition", "if_elif_optional"):
+                        "optional_partition", "if_elif_optional",
+                        "if_elif", "switch_primitive", "switch_enum"):
             return None
         if not _match_expr_subject_ok(subj, declared, pointers, narrowed,
                                       storage_tuple_locals):
@@ -915,14 +950,32 @@ def _match_route(
                 and isinstance(unwrap_readonly(stmt.subject_type), UnionType)
                 and unwrap_readonly(stmt.subject_type).uses_pointer_repr()
                 and not unwrap_readonly(stmt.subject_type).needs_wrapper())
-            if not (union_call_subject
-                    or (kind == "if_elif_record"
-                        and isinstance(subj, TpyCall)
-                        and is_rvalue_source(analyzer, subj)
-                        and not isinstance(unwrap_readonly(stmt.subject_type),
-                                           OptionalType))):
+            # A BORROW-returning WRAPPER call subject binds by reference
+            # (`auto& __match_subject_N = h.get();` -- the accessor's
+            # `Tree<T>&` return): subject_ref stays True, the existing
+            # wrapper-borrow result rung admits the call render.
+            _wrap_borrow_subj = (
+                kind == "switch_union"
+                and isinstance(subj, (TpyCall, TpyMethodCall))
+                and unwrap_readonly(stmt.subject_type).needs_wrapper()
+                and getattr(subj, "resolved_function_info", None) is not None
+                and (call_returns_cpp_ref(analyzer,
+                                          subj.resolved_function_info)
+                     or _wrapper_borrow_return(
+                         subj.resolved_function_info.return_type,
+                         analyzer) is not None))
+            if _wrap_borrow_subj:
+                pass
+            elif not (union_call_subject
+                      or (kind == "if_elif_record"
+                          and isinstance(subj, TpyCall)
+                          and is_rvalue_source(analyzer, subj)
+                          and not isinstance(
+                              unwrap_readonly(stmt.subject_type),
+                              OptionalType))):
                 return None
-            subject_rvalue = True
+            else:
+                subject_rvalue = True
         if (kind in ("optional_partition", "if_elif_optional")
                 and not unwrap_readonly(stmt.subject_type).uses_pointer_repr()):
             return None
@@ -939,11 +992,12 @@ def _match_route(
         u = unwrap_readonly(stmt.subject_type)
         union_route = _match_union_route(stmt, u)
         if u.needs_wrapper():
-            # M4c: wrapper subjects are NAME-only (a field/subscript
+            # M4c: wrapper subjects are NAME (incl. the deref'd pointer
+            # local) or borrow-returning-CALL only (a field/subscript
             # source would compose `.value` over a member read -- out of
             # slice) and unguarded-tier only (the guarded emit's get
             # positions are not wrapper-aware).
-            if (not isinstance(subj, TpyName)
+            if (not isinstance(subj, (TpyName, TpyCall, TpyMethodCall))
                     or union_route != "switch_union"):
                 return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
@@ -1053,7 +1107,10 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "switch_union", "if_elif_record", "optional_partition")
             or (kind == "switch_union"
                 and route.union_route == "guarded_union")
-            or any(hk != "value" for _n, _t, hk in route.hoist_types)):
+            # opt_ptr_frame IS a frame-field binding (no decl mechanics);
+            # every other non-value hoist kind stays out of hook mode.
+            or any(hk not in ("value", "opt_ptr_frame")
+                   for _n, _t, hk in route.hoist_types)):
         # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers,
         # the unguarded union switch, and the unguarded record chain carry
         # the skeleton hook at their arm-body points; the guarded tiers /
@@ -1105,6 +1162,13 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             declared[name] = vtype
             _witness("match.hoist_opt_ptr_local")
             continue
+        if hkind == "opt_ptr_frame":
+            # The resumable twin: the frame struct already declares the
+            # `P* v;` member and the classification seeded lc.pointers --
+            # register the binding only, no decl line.
+            declared[name] = vtype
+            _witness("match.hoist_opt_ptr_frame")
+            continue
         declared[name] = vtype
         if arm_body_hooks:
             # Resumable hook mode: the frame struct already declares every
@@ -1151,7 +1215,9 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind == "switch_str":
         return _lower_match_switch_str(stmt, lc, declared, loc, pointers,
                                        hoist_decls, loop_depth=loop_depth)
-    subj_type = declared.get(stmt.subject.name)
+    subj_type = (declared.get(stmt.subject.name)
+                 if isinstance(stmt.subject, TpyName)
+                 else lc.analyzer.get_expr_type(stmt.subject))
     arms, default_goto, has_defaults = _lower_scalar_arms(
         stmt.cases, kind, lc, declared, pointers, subj_type,
         allow_facts=False, chain_guards_ok=True, bind_from_case_var=False,
@@ -1167,7 +1233,9 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         _witness("match.unreachable_tail")
     return THIRMatch(
         strategy=kind,
-        subject=_lower_expr(stmt.subject, lc, declared),
+        subject=_lower_expr(stmt.subject, lc, declared,
+                            field_prechecked=isinstance(stmt.subject,
+                                                        TpyFieldAccess)),
         subject_ref=True,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
@@ -1349,6 +1417,7 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                              declared: dict[str, TpyType],
                              arm_declared: dict[str, TpyType],
                              lc: _LowerCtx, *, from_case_var: bool,
+                             subject_is_rvalue: bool = False,
                              _acc: '_SubAcc | None' = None,
                              _out: 'tuple | None' = None,
                              ) -> 'tuple[tuple, tuple]':
@@ -1384,6 +1453,26 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                      else "match.field_cond")
             field_conds.append((pair[0] + cpre, csuf + pair[1]))
         elif isinstance(inner, TpyCapturePattern):
+            if (inner.name in lc.opt_ptr_frame_locals
+                    and inner.name in lc.pointers
+                    and not subject_is_rvalue):
+                # A ptr-repr Optional FIELD captured into the registered
+                # P* frame member: the assign lifts through
+                # `optional_to_ptr` (`v = ::tpy::optional_to_ptr(
+                # __match_subject_N.f);`); reads ride the seeded pointer
+                # binding.
+                _witness("match.field_bind_opt_ptr_frame")
+                field_bindings.append(THIRMatchBinding(
+                    name=inner.name, mode="assign",
+                    from_case_var=from_case_var,
+                    subject_prefix=f"::tpy::optional_to_ptr({bpre}",
+                    subject_suffix=f"{bsuf}.{fname})",
+                    base_name=base))
+                _oft = _match_record_field_type(pattern, fname, lc.analyzer)
+                assert _oft is not None, \
+                    "ineligible opt-frame capture reached lowering"
+                arm_declared[inner.name] = _oft
+                continue
             if inner.name in lc.pointers:
                 # A capture the match hoisted into a POINTER local binds by
                 # address (`q = &(__match_subject_1.inner);`) -- its own rung.
@@ -1460,7 +1549,9 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                 _witness("match.field_nested")
                 _lower_field_subpatterns(
                     inner, declared, arm_declared, lc,
-                    from_case_var=from_case_var, _acc=n_acc, _out=_out)
+                    from_case_var=from_case_var,
+                    subject_is_rvalue=subject_is_rvalue,
+                    _acc=n_acc, _out=_out)
         else:
             assert (isinstance(inner, TpyWildcardPattern)
                     and as_node is None), \
@@ -1561,7 +1652,15 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         if not _record_arm_ok(
                 case, lc.analyzer, declared, pointers,
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
-                subj_type):
+                subj_type,
+                # The exemption requires an LVALUE subject: the AST
+                # raises "would dangle across a suspension" for a
+                # materialized rvalue subject, and the capture would be a
+                # genuine UAF -- withhold it so the fallback surfaces the
+                # AST diagnostic.
+                opt_frame=(lc.opt_ptr_frame_locals
+                           if arm_body_hooks and not subject_rvalue
+                           else frozenset())):
             raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
         if _match_record_arm_always(test):
@@ -1575,7 +1674,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         or_conds = None
         if isinstance(test, TpyClassPattern):
             field_conds, field_bindings = _lower_field_subpatterns(
-                test, declared, arm_declared, lc, from_case_var=False)
+                test, declared, arm_declared, lc, from_case_var=False,
+                subject_is_rvalue=subject_rvalue)
         elif isinstance(test, TpyOrPattern):
             or_conds = _lower_or_field_conds(test, lc)
         binding = None
@@ -1840,6 +1940,12 @@ def _lower_subject_expr(subj: TpyExpr, lc: _LowerCtx,
         return _lower_expr(subj, lc, declared, field_prechecked=True)
     if isinstance(subj, TpySubscript):
         return _lower_expr(subj, lc, declared, subscript_prechecked=True)
+    if isinstance(subj, (TpyCall, TpyMethodCall)):
+        # The borrow-returning wrapper-call subject: BORROW_BIND so the
+        # callee's result gate admits the `Tree<T>&` return the `auto&`
+        # bind consumes.
+        return _lower_expr(subj, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
     return _lower_expr(subj, lc, declared)
 
 

@@ -781,6 +781,14 @@ class THIRMove(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRDecayCopy(THIRExpr):
+    """`auto(<value>)` -- the C++23 decay-copy: a still-live STORAGE
+    binding at an rvalue-ref owned-tuple slot copies into a prvalue (the
+    warned Own-arg copy; sema rejected the @nocopy case)."""
+    value: THIRExpr
+
+
+@dataclass(frozen=True)
 class THIRLambda(THIRExpr):
     """A lambda expression -- `_gen_lambda`'s C++ closure:
 
@@ -1334,6 +1342,10 @@ class THIRSubscript(THIRExpr):
     receiver: THIRExpr
     index: THIRExpr
     bounds_safe: bool = False
+    # A GENERIC tuple element read (`p[0]` on `tuple[T, T]`): the val_or_ptr
+    # slot reads through `::tpy::tuple_elem_ref(std::get<N>(p))` (deref at
+    # instantiation for non-value T) -- _gen_subscript's TypeParamRef arm.
+    elem_ref: bool = False
     # A user-record `__getitem__` subscript -> the record's generated C++
     # `operator[]`, spelled bare `receiver[index]` over the plainly-rendered
     # index (no size_t cast -- the operator takes the user's declared key type,
@@ -1523,6 +1535,12 @@ class PtrSlotKind(Enum):
       * `UNION_RVALUE` -- `v: A | B = A(...)` -> value-variant `__slot_N` +
                           `to_ptr_variant(__slot_N)`. As a reseat: `.emplace`
                           into the pre-declared rebind slot + re-lift.
+      * `UNION_INLINE_SLOT` -- a ptr-variant union RESEAT whose decl had
+                          no rvalue init (no pre-declared rebind slot,
+                          `v: A | B | None = None; v = A(...)`): a FRESH
+                          value-variant `__slot_N = init;` declared at the
+                          reseat + `v = to_ptr_variant(__slot_N);` (the
+                          AST's slotless inline-slot fallback).
       * `UNION_ADDR`   -- `v: A | B = name` (concrete-member lvalue) ->
                           `variant<A*, B*> v{&(name)};`.
       * `DYN_PROTOCOL` -- `p: P = Concrete(...)` for a @dynamic protocol P ->
@@ -1537,6 +1555,7 @@ class PtrSlotKind(Enum):
     OPT_RVALUE = auto()
     UNION_NONE = auto()
     UNION_RVALUE = auto()
+    UNION_INLINE_SLOT = auto()
     UNION_ADDR = auto()
     DYN_PROTOCOL = auto()
     # Escape-hoist PLAIN-record pointer-locals (the classifier's OTHER, the
@@ -1650,6 +1669,10 @@ class THIRPtrLocalDecl(THIRStmt):
     cpp_type: str | None = None
     val_cpp: str | None = None
     needs_rebind_slot: bool = False
+    # GLOBAL_RVALUE only: the write sits inside a top-level branch/loop, so
+    # the in-place slot decl drops the `static` (the AST's current_ns leaves
+    # global_ns there; a static would init once across iterations).
+    branch_scope: bool = False
     # DYN_PROTOCOL only: the protocol base pointer spelling (`Base` of
     # `Base* p`), distinct from `cpp_type` (the concrete/adapter SLOT spelling).
     base_cpp: str | None = None
@@ -2695,12 +2718,16 @@ class THIRErrorReturnBind(THIRStmt):
     (`<name> = &(::tpy::unwrap_ref(*__try_tmp_N));` -- an aliasing result
     into a hoisted pointer target; the AST's aliases-and-pointer-local
     arm). Other aliasing-result target shapes and slot-less pointer
-    targets are gate-rejected. `name` is raw; emit escapes."""
+    targets are gate-rejected. `name` is raw; emit escapes. A non-None
+    `target` replaces the name on the bind line with the rendered lvalue
+    (`this->p = ::tpy::unwrap_ref_move(*__try_tmp_N);` -- the AST's
+    `_error_return_target_assign` non-name branch, plain gen_expr)."""
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
     ptr_rebind: bool = False
     alias_bind: bool = False
+    target: 'THIRExpr | None' = None
 
 
 @dataclass(frozen=True)

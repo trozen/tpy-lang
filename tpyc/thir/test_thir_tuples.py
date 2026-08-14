@@ -3094,3 +3094,195 @@ class TestTupleNameCallArgs:
                "    print(consume(pair))\n"
                "f()\n")
         _assert_routes_byte_identical(src)
+
+
+class TestOwnTupleDecayCopyArg:
+    """A still-live STORAGE Own-tuple name at the `std::tuple<...>&&`
+    slot decay-copies (`sink(auto(p))` -- the warned copy); the movable
+    last use keeps the move render."""
+
+    PRE = (
+        "from tpy import Own, Int32\n"
+        "class A:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "def sink(p: tuple[Own[A], Own[A]]) -> Int32:\n"
+        "    return p[0].n + p[1].n\n"
+        "def make() -> tuple[Own[A], Own[A]]:\n"
+        "    return (A(1), A(2))\n")
+
+    def test_still_live_decay_copies_last_use_moves(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = self.PRE + (
+            "def still_live(p: tuple[Own[A], Own[A]]) -> Int32:\n"
+            "    got = sink(p)\n"
+            "    return got + p[0].n\n"
+            "def last_use() -> Int32:\n"
+            "    t = make()\n"
+            "    return sink(t)\n"
+            "def main() -> None:\n"
+            "    print(still_live(make()))\n"
+            "    print(last_use())\n"
+            "main()\n")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("arg.own_tuple_decay_copy", 0) >= 1
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        _assert_byte_identical(src)
+        thir2 = _lower_ctx(src)
+        assert _fn(thir2, "still_live") is not None
+        assert _fn(thir2, "last_use") is not None
+        # main's tuple-returning CALL arg flavor keeps deferring.
+        assert _fn(thir2, "main") is None
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        c, mods = _compile(src)
+        _hpp, cpp = c.generate_code_to_strings(
+            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+        assert "sink(auto(p))" in cpp
+        assert "sink(std::move(t))" in cpp
+
+    def test_mixed_slot_stays_out(self):
+        # BOUNDARY: the AST's auto() gate keys on is_owned_movable (ALL
+        # non-value elements Own) -- a MIXED slot binds a const& of the
+        # mixed render, never a && slot, so the decay arm must not fire.
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        src = (
+            "from tpy import Own, Int32\n"
+            "class A:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "class B:\n"
+            "    m: Int32\n"
+            "    def __init__(self, m: Int32) -> None:\n"
+            "        self.m = m\n"
+            "def mixed_sink(p: tuple[Own[A], B]) -> Int32:\n"
+            "    return p[0].n\n"
+            "def mixed_caller(p: tuple[Own[A], Own[B]]) -> Int32:\n"
+            "    got = mixed_sink(p)\n"
+            "    return got + p[0].n\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "mixed_caller") is None
+
+
+class TestGenericTupleFamily:
+    """The generic-tuple val_or_ptr family: the elem_ref subscript read
+    (`::tpy::tuple_elem_ref(std::get<0>(p))` on `tuple[T, T]`), the
+    generic tuple-literal return, and the borrow-form tuple NAME at a
+    substituted mixed slot (`swap<int32_t, Point>(pt_pair)`)."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "def first_of_pair[T](p: tuple[T, T]) -> T:\n"
+        "    return p[0]\n"
+        "def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:\n"
+        "    return (p[1], p[0])\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    y: Int32\n"
+        "    def __init__(self, x: Int32, y: Int32) -> None:\n"
+        "        self.x = x\n"
+        "        self.y = y\n"
+        "def main() -> None:\n"
+        "    print(first_of_pair((1, 2)))\n"
+        "    pt = Point(Int32(1), Int32(2))\n"
+        "    pt_pair = (Int32(42), pt)\n"
+        "    swapped2 = swap(pt_pair)\n"
+        "    print(swapped2[0].x)\n"
+        "    pt.x = 9\n"
+        "    print(swapped2[0].x)\n"
+        "main()\n")
+
+    def test_generic_tuple_family_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("call.generic_btuple_name", 0) >= 1
+        joined = _hpp + cpp
+        assert "return ::tpy::tuple_elem_ref(std::get<0>(p));" in joined
+        assert "swap<int32_t, Point>(pt_pair)" in joined
+
+    def test_own_slot_btuple_literal_routes_consuming_lift(self):
+        # A tuple LITERAL at an Own[T]-resolved pointer-repr tuple slot:
+        # the CONSUMING storage lift (borrow build with per-element moves +
+        # tuple_to_storage_move) -- `_lower_call_arg`'s own_btuple_literal
+        # row reached through the generic gate.
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import Int32, Own\n"
+            "def consume[T](value: Own[T]) -> Int32:\n"
+            "    return 1\n"
+            "def main() -> None:\n"
+            "    xs: list[Int32] = [1, 2]\n"
+            "    print(consume((xs, Int32(3))))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("arg.own_btuple_literal", 0) >= 1
+        assert "::tpy::tuple_to_storage_move<" in _hpp + cpp
+
+    def test_own_slot_value_tuple_literal_keeps_value_row(self):
+        # BOUNDARY: a pure VALUE tuple literal at the same Own[T] slot takes
+        # the spelled value render, never the storage lift.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32, Own\n"
+            "def consume[T](value: Own[T]) -> Int32:\n"
+            "    return 1\n"
+            "def main() -> None:\n"
+            "    print(consume((Int32(1), Int32(2))))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "tuple_to_storage_move" not in _hpp + cpp
+
+    def test_storage_form_tuple_name_still_defers(self):
+        # An Own-element (storage-form) tuple name at the same slot fails
+        # the borrow-form gate -- the body keeps the AST path.
+        from .testutil import _fn as _fn_l, _lower_ctx
+        src = (
+            "from tpy import Int32, Own\n"
+            "def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:\n"
+            "    return (p[1], p[0])\n"
+            "class Box:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def f() -> None:\n"
+            "    t = (Int32(1), Box(2))\n"
+            "    s = swap(t)\n"
+            "    print(s[0].n)\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "f") is None
+
+
+class TestOwnElementTupleReads:
+    """`tuple[Int32, Own[Point]]`: the storage-form tuple local's record
+    element reads bare (`std::get<1>(t2)`), and a `copy(p)` element takes
+    the shared copy-construct row through the Own slot spelling
+    (`std::tuple<int32_t, Point>{42, Point(p)}`)."""
+
+    def test_own_elem_tuple_case_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32, Own, copy\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "    def __repr__(self) -> str:\n"
+            "        return \"P(\" + str(self.x) + \")\"\n"
+            "def make_pair(p: Point) -> tuple[Int32, Own[Point]]:\n"
+            "    return (Int32(42), copy(p))\n"
+            "def main() -> None:\n"
+            "    t2 = make_pair(Point(Int32(10)))\n"
+            "    print(t2[0])\n"
+            "    print(t2[1])\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return std::tuple<int32_t, Point>{42, Point(p)};" in cpp
+        assert "std::get<1>(t2)" in cpp

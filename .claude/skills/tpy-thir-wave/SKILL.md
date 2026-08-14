@@ -56,7 +56,9 @@ improvise.
    Every dualgen boundary probe becomes a COMMITTED pin before the cell
    commit -- probe-only boundary evidence has slipped through three review
    rounds in a row; the probe file is the pin's draft, convert it.
-7. **Commit the cell.** Auto-commit on the working branch.
+7. **Commit the cell.** Auto-commit on the working branch. Before the
+   commit: `grep -rn DBG tpyc/` must be empty (two committed spy prints
+   each cost a review-round catch).
 
 Repeat 3-7 until the site is empty.
 

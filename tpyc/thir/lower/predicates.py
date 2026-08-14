@@ -100,6 +100,7 @@ from ...typesys import (
     view_family_for_type,
 )
 from ...type_def_registry import (
+    TypeCategory,
     enum_info_of,
     int_traits_of,
     is_array,
@@ -611,6 +612,22 @@ def _value_record_member(m: 'TpyType') -> bool:
     return (isinstance(m, NominalType) and m.is_user_record
             and m.is_value_type() and not m.type_args)
 
+
+def _builtin_value_member(m: 'TpyType') -> bool:
+    """A non-generic BUILTIN value nominal as a union member (`basic_slice`
+    in `Int32 | basic_slice` -> `std::variant<int32_t, ::tpy::BasicSlice>`):
+    same by-value storage as a user value record, spelled via the TypeDef's
+    to_cpp. Non-user only -- the user flavor is `_value_record_member`;
+    the whole STR/BYTES type CLASSES keep their own rungs (an owned-buffer
+    member's insert/extract renders are theirs to gate, not this rung's --
+    and qname checks miss the tpy.String/FStr siblings)."""
+    if not (isinstance(m, NominalType) and not m.is_user_record
+            and m.is_value_type() and not m.type_args):
+        return False
+    td = type_def_of(m)
+    return (td is not None
+            and td.category not in (TypeCategory.STR, TypeCategory.BYTES))
+
 def _value_record_slot(t: 'TpyType | None') -> bool:
     """A user VALUE-record DECL slot -- `_value_record_member` widened to
     generic instantiations (`Pair<int32_t> q = p;`). The union-member
@@ -720,6 +737,7 @@ def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
     if not all(_eligible_scalar(m) or _eligible_char(m)
                or is_str_type(m) or is_str_view_type(m)
                or _value_record_member(m)
+               or _builtin_value_member(m)
                or is_void_like_type(m) for m in t.members):
         return None
     return t
@@ -984,6 +1002,20 @@ def _resolve_plain_alias(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     if isinstance(t, AliasRef) and not t.args and analyzer is not None:
         return analyzer.registry.resolve_alias_ref(t)
     return t
+
+
+def _wrapper_value_return(t: TpyType | None, analyzer) -> 'UnionType | None':
+    """A wrapper-union VALUE return slot (`-> Own[Expr]`): the by-value
+    wrapper struct binds a const-ref arg slot directly. Own-declared only
+    -- a bare `-> Expr` renders `Expr&` and rides
+    `_wrapper_borrow_return`."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if not isinstance(u, OwnType):
+        return None
+    w = _wrapper_union_like(unwrap_readonly(u.wrapped), analyzer)
+    return w if isinstance(w, UnionType) else None
 
 
 def _wrapper_union_like(t: TpyType | None, analyzer=None) -> 'TpyType | None':
@@ -1886,6 +1918,12 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # byte-identical; non-value records stay on the pointer-slot branch.
     if gt.is_value_type() and _f1_record(gt, analyzer):
         return gt
+    # A WRAPPER-union global (`g: Expr = [...]` -> `Expr g;`): the wrapper
+    # struct is a direct-storage namespace-scope object -- the generator's
+    # pointer_globals excludes needs_wrapper -- so reads render bare
+    # exactly like a wrapper LOCAL's.
+    if isinstance(gt, UnionType) and gt.needs_wrapper():
+        return gt
     # A value-repr Optional[scalar] global (`std::optional<T>` at namespace
     # scope) reads exactly like a value-opt LOCAL: bare whole-optional
     # (None-tests, opt slots), `(*g)` on a narrowed occurrence, and
@@ -1918,6 +1956,13 @@ def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
                              or name in analyzer.ctx.final_globals):
         return None
     gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
+    # A ptr-repr Optional global is the SAME `T* g{};` slot as its plain
+    # sibling (nullable); reads ride the pointer-binding arms (bare copy,
+    # `g == nullptr` tests, narrowed derefs) like an opt-ptr LOCAL's.
+    if (isinstance(gt, OptionalType) and gt.uses_pointer_repr()
+            and not isinstance(gt.inner, ReadonlyType)
+            and _f1_record(gt.inner, analyzer)):
+        return gt
     if gt.is_value_type() or gt.needs_wrapper():
         return None
     if (_f1_record(gt, analyzer)
@@ -3144,6 +3189,26 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
     local (`r: Ref | None` narrowed non-None, in `pointers` -- the lowering
     spells the `->` first hop off the pointer set), whose wrapper record is
     the Optional's inner. None outside the slice."""
+    if isinstance(recv, TpyFieldAccess):
+        # A markers-clean FIELD receiver (`self.val.speak()` off
+        # `val: Optional[Box[Pet]]` proven non-None): the field lowering
+        # renders its own storage-optional unwrap via narrowed_deref
+        # (`(*this->val).__deref__()...`); an UNPROVEN read carries
+        # needs_optional_runtime_check and fails the markers gate.
+        if not (_field_markers_clean(recv)
+                and _field_receiver_ok(recv, declared, analyzer)):
+            return None
+        ft = _field_decl_type(recv, declared, analyzer)
+        if ft is None:
+            return None
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
+        if isinstance(u, OwnType):
+            u = unwrap_readonly(u.wrapped)
+        if isinstance(u, OptionalType):
+            u = unwrap_readonly(_unwrap_own(u.inner))
+        if not _deref_wrapper_record_ok(u, analyzer):
+            return None
+        return u
     if not isinstance(recv, TpyName) or recv.name not in declared:
         return None
     if recv.name in narrowed:
@@ -3495,6 +3560,17 @@ def _storage_optional_return_wide(t: TpyType | None,
     if not isinstance(u, OptionalType) or u.uses_pointer_repr():
         return None
     return u if _sp(_unwrap_own(u.inner)) else None
+
+
+def _comp_shadow_pointers(pointers, declared, analyzer) -> frozenset:
+    """The comprehension shadow-check pointer set: every pointer-local name
+    EXCEPT the Optional-ptr-borrow bindings (their loop-var shadowing rules
+    differ). One shared source for the ~7 comprehension call sites -- the
+    hand-copied filter drifted once (an unfiltered set slipped through in a
+    review round), so new call sites must use this."""
+    return frozenset(n for n in pointers
+                     if _optional_ptr_borrow(declared.get(n), analyzer)
+                     is None)
 
 
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
@@ -4942,7 +5018,17 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             # A VALUE-TUPLE key (`dict[tuple[Int32, Int32], str]`): the
             # literal key renders its spelled `std::tuple<...>{...}` and
             # the membership/subscript renders are key-type-neutral.
-            or _value_tuple(kb, analyzer) is not None)
+            or _value_tuple(kb, analyzer) is not None
+            # A VIEW key (`set[StrView]` / `dict[BytesView, T]`): the
+            # key-position renders thread the view target (the AST's
+            # view_key_target), so a str literal lands bare and a bytes
+            # literal takes its static view spelling
+            # (`::tpy::bytes_literal("hello", 5)`).
+            or is_str_view_type(kb) or is_bytes_view_type(kb)
+            # An OWNED-bytes key (`dict[bytes, T]`): no view target, so a
+            # literal key keeps THIR's default owned spelling
+            # (`bytes_literal_owned`) -- key-type-neutral renders.
+            or is_bytes_type(kb))
 
 def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
                            *, span_ok: bool = False,
@@ -5170,7 +5256,20 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
                            or _f1_record(unwrap_readonly(unwrap_ref_type(
                                unwrap_send_sync(args[0]))), analyzer)
                            or isinstance(unwrap_readonly(unwrap_ref_type(
-                               unwrap_send_sync(args[0]))), AnyType))
+                               unwrap_send_sync(args[0]))), AnyType)
+                           # A VIEW element (`set[StrView]` / `set[BytesView]`
+                           # -- the view-key family): inserts thread the view
+                           # target into the literal arg render.
+                           or is_str_view_type(unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(args[0]))))
+                           or is_bytes_view_type(unwrap_readonly(
+                               unwrap_ref_type(unwrap_send_sync(args[0]))))
+                           # An open-T element (`set[T]` in a generic body):
+                           # the method receiver renders bare; per-method
+                           # args and results still gate (the list family's
+                           # open-T admission, mirrored).
+                           or isinstance(unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(args[0]))), TypeParamRef))
 
 def _cpp_noncopyable_type(t: 'TpyType | None', analyzer) -> bool:
     """Mirror of the AST's `_is_cpp_noncopyable` (sema facts only): @nocopy,
@@ -6531,7 +6630,14 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             # None` on `dict[str, P | None]` -- `__getitem__` returns
             # `std::optional<P>`): the has_value test over the bare read.
             and not (isinstance(operand, TpySubscript)
-                     and reads_storage_form_optional(analyzer, operand))):
+                     and reads_storage_form_optional(analyzer, operand))
+            # A `Ptr[T]`-returning CALL rvalue subject
+            # (`_get_current_executor() is None`): the same type-agnostic
+            # pointer compare (`== nullptr`) over the bare call render --
+            # the name row's rvalue sibling.
+            and not (isinstance(operand, (TpyCall, TpyMethodCall))
+                     and _eligible_ptr_value(analyzer.get_expr_type(operand),
+                                             analyzer))):
         return None
     return operand
 
@@ -7154,6 +7260,37 @@ def _ru_wrapper_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     return at == ut and bool(_witness("arg.ru_wrapper_borrow_call"))
 
 
+def _ru_wrapper_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               analyzer) -> bool:
+    """A VALUE-returning wrapper-union call at a same-wrapper slot
+    (`leaf_count(build())` where `build() -> Own[Expr]`): the NON-generic
+    wrapper's call result types at the expanded UnionType, so
+    `_gen_union_arg`'s `already_union` verdict falls to the default bare
+    render -- no temp on either path. The non-generic twin of
+    `_ru_wrapper_own_call_arg`: a generic instance's result types at
+    `RecursiveAliasInstanceType` (NOT already_union) and hoists there."""
+    ut = _ru_wrapper_arg_slot(ptype)
+    if not isinstance(ut, UnionType):
+        return False
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    if isinstance(a, TpyCall) and a.isinstance_var is not None:
+        return False
+    fi = getattr(a, "resolved_function_info", None)
+    if fi is None:
+        return False
+    # The borrow-returning flavor rides its own row (BORROW_BIND use).
+    if (call_returns_cpp_ref(analyzer, fi)
+            or _wrapper_borrow_return(fi.return_type, analyzer) is not None):
+        return False
+    at = analyzer.get_expr_type(a)
+    wi = ut.wrapper_info()
+    already = ((isinstance(at, UnionType) and at == ut)
+               or (isinstance(at, AliasRef) and wi is not None
+                   and wi.name == at.name))
+    return already and bool(_witness("arg.ru_wrapper_value_call"))
+
+
 def _ru_wrapper_field_arg(a: TpyExpr, ptype: 'TpyType | None',
                           locals_: dict[str, TpyType], analyzer) -> bool:
     """A same-wrapper FIELD read at a wrapper slot (`leaf_count(self.t)` /
@@ -7292,6 +7429,7 @@ def _ru_container_literal_ok(a: TpyExpr, analyzer) -> bool:
     family. Dict keys are str literals only (the owned-key `"k"` render).
     Everything else -- names, calls, f-strings, generic
     `RecursiveAliasInstanceType` elements -- stays AST."""
+    a = _peel_coerce(a)
     at = analyzer.get_expr_type(a)
     at = resolve_pending_container(at, analyzer) or at
     if isinstance(a, TpyArrayLiteral):
@@ -8266,6 +8404,10 @@ def _ctor_arg_slot_ok(ptype: TpyType | None, analyzer) -> bool:
     stub stores the generic param as `Ref(TypeParamRef)`)."""
     if _is_type_param_slot(ptype):
         return True
+    # A Char slot (`int(chr(65))` -- the int(Char) overload): the ctor's
+    # cast template consumes the char arg bare, like any scalar slot.
+    if _eligible_char(ptype):
+        return True
     return _scalar_pass_through_slot(ptype, analyzer)
 
 def _template_init_call_fi(e: TpyCall) -> 'FunctionInfo | None':
@@ -8636,8 +8778,13 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                 # (`literal_mangled_ok`, method_literal_mangled_cpp).
                 or (any(isinstance(p.type, LiteralType) for p in fi.params)
                     and not literal_mangled_ok)
+                # A generic async METHOD is admitted at factory positions:
+                # the call spells inline (member call + method targs, the
+                # sync generic-method render) and the positions that would
+                # spell the coro FRAME type gate generics themselves (the
+                # decl arm's coro_inferred_type_args check, the await
+                # gate's res.await_generic).
                 or (fi.is_async and not coro_factory_ok)
-                or (fi.is_async and fi.type_params)
                 or (fi.is_generator and not generator_ok)
                 or (fi.is_property_getter and not property_getter_ok)
                 or (fi.is_property_setter and not property_setter_ok))

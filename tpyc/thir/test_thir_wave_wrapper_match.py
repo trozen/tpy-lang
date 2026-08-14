@@ -4,9 +4,9 @@ recursive-alias wrapper NAME subject dispatches through `.value`
 wrapper member-init decl row, the wrapper container-literal element row,
 and the free-call wrapper arg rows (same-wrapper bare name / member-name
 typed temp with the `_maybe_move` mirror). Boundaries: guarded matches,
-field subjects, non-ctor decl inits, and hoisted pointer-form subjects
-keep falling back (the last is corpus-pinned by
-union/match_hoisted_wrapper_local)."""
+field subjects, and non-ctor decl inits keep falling back; hoisted
+pointer-form and borrow-returning-call subjects ROUTE (the
+TestWrapperMatchSubjectSources widenings)."""
 
 from __future__ import annotations
 
@@ -164,3 +164,120 @@ class TestWrapperDeclAndArgs:
         # The same-wrapper name passes bare -- no temp for `a`.
         assert "head(a)" in out
         _assert_byte_identical(src)
+
+
+class TestWrapperMatchSubjectSources:
+    """M4c subject widenings: a hoisted POINTER-local wrapper subject
+    derefs into the alias (`auto& __match_subject_N = (*v);`), a
+    borrow-returning CALL subject binds by reference
+    (`auto& __match_subject_N = h.get();`); field / Own-call / guarded
+    flavors keep deferring."""
+
+    _PRE = (
+        "from tpy import Int32, Own\n"
+        "type Tree[T] = T | list[Tree[T]]\n"
+        "class Holder:\n"
+        "    t: Tree[Int32]\n"
+        "    def __init__(self, xs: Tree[Int32]) -> None:\n"
+        "        self.t = xs\n"
+        "    def get(self) -> Tree[Int32]:\n"
+        "        return self.t\n"
+        "    def make(self) -> Own[Tree[Int32]]:\n"
+        "        return [1, 2]\n")
+
+    def test_pointer_local_and_borrow_call_subjects_route(self):
+        # Per-function routing: the fixture's ctor MIL (the genrec field
+        # init) and main's ctor arg are unrelated known gaps, so the
+        # whole-program claim would fail on them.
+        from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
+                               _compile, _entry)
+        from ..codegen_cpp.context import CodeGenOptions
+        src = self._PRE + (
+            "def hoisted(src: Tree[Int32], flag: bool) -> None:\n"
+            "    if flag:\n"
+            "        v = src\n"
+            "    else:\n"
+            "        v = src\n"
+            "    match v:\n"
+            "        case list() as b:\n"
+            "            b.append(9)\n"
+            "        case _:\n"
+            "            pass\n"
+            "def call_subject(h: Holder) -> None:\n"
+            "    match h.get():\n"
+            "        case list() as got:\n"
+            "            got.append(3)\n"
+            "        case _:\n"
+            "            pass\n"
+            "def main() -> None:\n"
+            "    t: Tree[Int32] = [1]\n"
+            "    hoisted(t, True)\n"
+            "    h = Holder([2])\n"
+            "    call_subject(h)\n"
+            "main()\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "hoisted") is not None
+        assert _fn(thir, "call_subject") is not None
+        c, mods = _compile(src)
+        _hpp, cpp = c.generate_code_to_strings(
+            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+        assert "auto& __match_subject_1 = (*v);" in cpp
+        assert "auto& __match_subject_1 = h.get();" in cpp
+        # The generic wrapper element-literal insert rides the widened
+        # elem row (`b.append(9)` at list[Tree[Int32]]).
+        assert "b.push_back(9);" in cpp
+
+    def test_field_own_call_and_guarded_defer(self):
+        # BOUNDARY: a FIELD wrapper subject (the `.value`-over-member
+        # composition), an Own-returning call subject (value flavor), and
+        # the guarded tier all keep deferring.
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        src = self._PRE + (
+            "def field_subject(h: Holder) -> None:\n"
+            "    match h.t:\n"
+            "        case list() as b:\n"
+            "            b.append(4)\n"
+            "        case _:\n"
+            "            pass\n"
+            "def own_call_subject(h: Holder) -> None:\n"
+            "    match h.make():\n"
+            "        case list() as b:\n"
+            "            print(len(b))\n"
+            "        case _:\n"
+            "            pass\n"
+            "def guarded_call(h: Holder, k: Int32) -> None:\n"
+            "    match h.get():\n"
+            "        case list() as b if k > 0:\n"
+            "            print(len(b))\n"
+            "        case _:\n"
+            "            pass\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "field_subject") is None
+        assert _fn(thir, "own_call_subject") is None
+        assert _fn(thir, "guarded_call") is None
+
+    def test_nongeneric_wrapper_call_subject_routes(self):
+        # The _wrapper_borrow_return disjunct's own witness: a bare
+        # `-> Expr` accessor on a NON-generic wrapper renders `Expr&`
+        # through the wrapper convention, which call_returns_cpp_ref does
+        # not see (ablation-verified load-bearing).
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        src = (
+            "type Expr = int | list[Expr]\n"
+            "class Box:\n"
+            "    e: Expr\n"
+            "    def __init__(self) -> None:\n"
+            "        self.e = 5\n"
+            "    def get(self) -> Expr:\n"
+            "        return self.e\n"
+            "def ng_call_subject(b: Box) -> None:\n"
+            "    match b.get():\n"
+            "        case list() as xs:\n"
+            "            xs.append(7)\n"
+            "        case _:\n"
+            "            pass\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "ng_call_subject") is not None

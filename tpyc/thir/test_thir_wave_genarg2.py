@@ -194,11 +194,12 @@ class TestGenFactoryCompSource:
         "main()\n")
 
     def test_value_gen_source_routes(self):
-        # The GENERIC generator's own body stays AST (sgen.generic, a
-        # separate frontier); the comp in main must route.
+        # The GENERIC generator's own body routes too since the
+        # generic-sgen cells (the T-typed param-name yield in a range
+        # loop); the comp in main routes as before.
         w, fallback = _assert_identical(self._SRC)
         assert w.get("comp.genfac_source", 0) >= 1
-        assert set(fallback) <= {"body:sgen.generic"}
+        assert not fallback, fallback
         _, _hpp, cpp = _gen(self._SRC, thir=True)
         assert "int32_t __tmp_1 = 8;" in cpp
         assert "repeat_n<int32_t>(__tmp_1, 2)" in cpp

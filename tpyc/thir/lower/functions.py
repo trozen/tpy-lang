@@ -546,10 +546,15 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue
     # (`::tpy::BigInt x = __param_x;` + signature rename). Sync bodies mirror
-    # the prologue (`_param_reassign_copies` in lower_function); resumables
-    # keep rejecting -- their params move into frame members, never renamed,
-    # so the prologue shape does not arise on that AST path.
-    if allow_resumable:
+    # the prologue (`_param_reassign_copies` in lower_function).
+    # ASYNC resumables need no gate: the frame member respells owned at the
+    # SKELETON (`std::string t;` -- gen_async owns the member spelling), no
+    # prologue arises, and the body reads ride the frame-field arms
+    # (str/bytes/BigInt flavors dualgen-verified byte-identical). GENERATOR
+    # bodies KEEP the reject: the simple-gen peephole respells the
+    # reassigned param in its lambda capture, a render the leaves do not
+    # mirror (suite-caught divergence on the while-head str flavor).
+    if allow_resumable and func.is_generator:
         scan = analyzer.function_scan_results.get(id(func))
         if scan is not None and scan.reassigned:
             for name, ptype in func.params:
@@ -792,7 +797,15 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                 continue
         gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
         if (_eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer)
-                or _value_opt_scalar(gt, analyzer) is not None):
+                or _value_opt_scalar(gt, analyzer) is not None
+                # A str global writes the plain owned assign
+                # (`label = "longer";`) and reads through the same
+                # view/owned duality as a str LOCAL's binding. NATIVE-
+                # linkage str globals stay out: THIRStrAppend spells the
+                # bare TPy name, not the C spelling the aug-assign would
+                # need there.
+                or (_resolved_str_value(gt, analyzer) is not None
+                    and n not in native_globals)):
             params_set[n] = gt
             global_seeded.add(n)
             if _value_opt_scalar(gt, analyzer) is not None:
@@ -2369,6 +2382,13 @@ def _rejects_global_slot(node) -> bool:
     predicate needs maintaining; inverting it to an allowlist would make the
     failure mode a spurious fallback instead of a dangling pointer."""
     if isinstance(node, THIRPtrLocalDecl):
+        # RECORD_HOISTED joins GLOBAL_RVALUE: its slot rides the hoist
+        # lines, which spell `static __global_slot_N` at module scope
+        # (state.slot_static + slot_prefix), so nothing block-scoped
+        # outlives __tpy_init.
+        if (node.kind is PtrSlotKind.RECORD_HOISTED
+                and not node.needs_rebind_slot):
+            return False
         return node.kind is not PtrSlotKind.GLOBAL_RVALUE
     if isinstance(node, THIRPtrLocalRebind):
         return node.kind not in (PtrSlotKind.GLOBAL_REBIND,

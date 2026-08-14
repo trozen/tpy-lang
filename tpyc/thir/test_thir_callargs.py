@@ -3282,3 +3282,102 @@ class TestStrViewSetitemBoundaries:
         thir = _lower(src)
         assert _fn(thir, "f") is None
         _assert_byte_identical(src)
+
+
+class TestCharScalarCtorArgs:
+    """Char args at scalar type-ctors: `int(chr(65))` / `int(c)` route
+    (the Char slot + Char arg widenings, both ablation-live); the
+    Int32(chr) overload flavor keeps deferring."""
+
+    def test_char_args_route_int32_defers(self):
+        from .testutil import (_assert_byte_identical, _fn, _lower_ctx)
+        src = (
+            "from tpy import Int32, Char\n"
+            "def a() -> None:\n"
+            "    print(int(chr(65)))\n"
+            "def b() -> None:\n"
+            "    c: Char = chr(66)\n"
+            "    print(int(c))\n"
+            "def c2() -> None:\n"
+            "    print(Int32(chr(67)))\n"
+            "def main() -> None:\n"
+            "    a()\n"
+            "    b()\n"
+            "    c2()\n"
+            "main()\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "a") is not None
+        assert _fn(thir, "b") is not None
+        assert _fn(thir, "c2") is None
+
+
+class TestNativeProtocolBytesArg:
+    """The bytes family at a native callee's protocol slot (`hash(b"x")`
+    -> `::tpy::__hash__(::tpy::bytes_literal_owned("x", 1))`; a BytesView
+    name renders bare)."""
+
+    def test_bytes_hash_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import BytesView\n"
+            "def main() -> None:\n"
+            "    h1 = hash(b\"hello\")\n"
+            "    v: BytesView = b\"hello\"\n"
+            "    h2 = hash(v)\n"
+            "    print(h1 == h2)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("arg.native_protocol_value", 0) >= 1
+        assert ('::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5))'
+                in cpp)
+        assert "::tpy::__hash__(v)" in cpp
+
+
+class TestVarargSubscriptElem:
+    """A record-element SUBSCRIPT in a REF vararg pack: the element lvalue
+    takes its address in the std::array temp
+    (`std::array<const Box*, 2>{&::tpy::__getitem__(items, 0), ...}`)."""
+
+    def test_subscript_pack_elem_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def sum_all(*boxes: Box) -> Int32:\n"
+            "    t: Int32 = 0\n"
+            "    for b in boxes:\n"
+            "        t += b.n\n"
+            "    return t\n"
+            "def main() -> None:\n"
+            "    items = [Box(1), Box(2)]\n"
+            "    print(sum_all(items[0], items[1]))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)}" in cpp
+
+
+class TestOptViewCtorReturn:
+    """`return StrView("opt-view")` at an Optional[StrView] slot folds to
+    the source render (`return "opt-view";` -- the view_ctor fold
+    implicit-converting into the value optional)."""
+
+    def test_opt_view_ctor_return_routes(self):
+        from .testutil import (_lower_ctx_witnessed, _fn as _fn_l)
+        src = (
+            "from tpy import StrView\n"
+            "def returns_view_opt() -> StrView | None:\n"
+            "    return StrView(\"opt-view\")\n"
+            "def main() -> None:\n"
+            "    v = returns_view_opt()\n"
+            "    if v is not None:\n"
+            "        print(v)\n"
+            "main()\n")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn_l(thir, "returns_view_opt") is not None
+        assert wit.get("ret.value_opt_view_ctor", 0) >= 1

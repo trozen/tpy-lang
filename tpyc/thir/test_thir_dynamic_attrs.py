@@ -12,7 +12,8 @@ from .nodes import (
     THIRStrLiteral, THIRSubscript,
 )
 from .testutil import (
-    _fn, _lower_ctx, _lower_ctx_witnessed, _lower_ctor,
+    _assert_routes_byte_identical, _fn, _lower_ctx, _lower_ctx_witnessed,
+    _lower_ctor,
 )
 
 # The dynamic-attrs fixture: a dict[str, Any] store behind the three dunders
@@ -243,6 +244,59 @@ class TestAnyValueDictPositions:
             conv = assign.value
             assert isinstance(conv, THIRFormConvert), ann
             assert conv.form is Form.STORAGE and conv.move, ann
+
+
+_DYN_HEADERS = (
+    "class Headers:\n"
+    "    _store: dict[str, str]\n"
+    "    def __init__(self, store: dict[str, str]) -> None:\n"
+    "        self._store = store\n"
+    "    def __getattr__(self, name: str) -> str:\n"
+    "        return self._store[name]\n"
+)
+
+
+class TestDynViewFieldReceiver:
+    def test_str_dyn_getattr_receiver_routes(self):
+        # `h.a.upper()` -> `::tpy::str_upper(h.__getattr__("a"))`: the
+        # synthesized read composes as the view family's receiver.
+        source = (
+            _DYN_HEADERS
+            + "def f() -> None:\n"
+            + "    h = Headers({\"a\": \"x\"})\n"
+            + "    print(h.a.upper())\n"
+            + "f()\n")
+        _assert_routes_byte_identical(source)
+        _, faces = _lower_ctx_witnessed(source)
+        assert faces.get("method.recv.dyn_view_field", 0) >= 1
+
+    def test_bytes_dyn_getattr_receiver_routes(self):
+        # The bytes twin (`b.p.decode()` composes the same way).
+        _assert_routes_byte_identical(
+            "class Blobs:\n"
+            "    _store: dict[str, bytes]\n"
+            "    def __init__(self, store: dict[str, bytes]) -> None:\n"
+            "        self._store = store\n"
+            "    def __getattr__(self, name: str) -> bytes:\n"
+            "        return self._store[name]\n"
+            "def f() -> None:\n"
+            "    b = Blobs({\"p\": b\"hi\"})\n"
+            "    print(b.p.decode())\n"
+            "f()\n")
+
+    def test_scalar_dyn_getattr_receiver_still_defers(self):
+        # An int-valued dyn read as a method receiver is outside the view
+        # slice -- the body keeps the AST path (method.recv.field_parent).
+        thir = _lower_ctx(
+            "class Counts:\n"
+            "    _store: dict[str, int]\n"
+            "    def __init__(self, store: dict[str, int]) -> None:\n"
+            "        self._store = store\n"
+            "    def __getattr__(self, name: str) -> int:\n"
+            "        return self._store[name]\n"
+            "def f(c: Counts) -> None:\n"
+            "    print(c.n.bit_length())\n")
+        assert _fn(thir, "f") is None
 
 
 class TestScalarDictRegression:

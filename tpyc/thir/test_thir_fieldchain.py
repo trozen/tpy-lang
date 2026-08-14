@@ -207,10 +207,10 @@ class TestFieldOverTemplateCallRead:
         assert outs[0] == outs[1]
         assert "(Temp(-7)).__abs__().v" in outs[0][1]
 
-    def test_borrow_call_receiver_still_defers(self):
-        # A borrow-returning free call under a field read stays AST: the
-        # REF_ALIAS place/loan frontier (the addr_call carve-out is the
-        # only admitted borrow-call consumer).
+    def test_borrow_call_receiver_routes(self):
+        # A borrow-returning free call under a field read composes bare via
+        # the dedicated field-recv flag (`pick(a, b).x` -- transient,
+        # nothing binds; decl binds keep the REF_ALIAS frontier).
         src = (
             "from tpy import Int32\n"
             "class P:\n"
@@ -222,8 +222,9 @@ class TestFieldOverTemplateCallRead:
             "def probe(a: P, b: P) -> Int32:\n"
             "    return pick(a, b).x\n"
             "print(probe(P(1), P(2)))\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is not None
+        assert wit.get("call.field_recv_borrow_ret", 0) >= 1
 
 
 class TestPtrChainNoneSubject:

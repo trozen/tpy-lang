@@ -1794,18 +1794,22 @@ class TestContainerStorageReturn:
 
 class TestRecordBorrowCallReturnDesignStop:
     # A call returning `T&` (a borrow record) read through a field
-    # (`shared(a).x`) is the REF_ALIAS place/loan frontier: it needs
-    # borrow/place reasoning, not a value-position emit arm. It stays on the
-    # AST path with a precise `call.ret_type.record_borrow` reject. The
-    # container-return widening must NOT open it.
-    def test_borrow_record_call_field_read_stays_ast(self):
-        thir = _lower_ctx(
+    # (`shared(a).x`) composes TRANSIENTLY -- the temp lives to the end of
+    # the full expression and nothing binds, so no place/loan reasoning
+    # arises. It routes via the DEDICATED field-recv flag (never a blanket
+    # record-at-RECEIVER row -- that stays reverted); BINDING the same
+    # result (a decl) remains the REF_ALIAS frontier and keeps rejecting.
+    def test_borrow_record_call_field_read_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
             "from tpy import Int32\n"
             "class Rec:\n    x: Int32\n"
             "    def __init__(self, x: Int32):\n        self.x = x\n"
             "def shared(a: Rec) -> Rec:\n    return a\n"
-            "def use(a: Rec) -> Int32:\n    return shared(a).x\n")
-        assert _fn(thir, "use") is None
+            "def use(a: Rec) -> Int32:\n    return shared(a).x\n"
+            "def main() -> None:\n    print(use(Rec(4)))\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return shared(a).x;" in cpp
 
 
 class TestOwnViewFamReturn:
@@ -3133,14 +3137,21 @@ class TestMembership:
             + "def f(d: dict[str, Int32], k: str) -> bool:\n    return k in d\n")
         assert _fn(thir, "f") is not None
 
-    def test_view_keyed_needle_rejects(self):
-        # A VIEW-keyed container threads view_key_target into the needle's
-        # literal render (static-storage pin) -- not mirrored, so the body
-        # stays AST.
-        thir = _lower_ctx(
+    def test_view_keyed_needle_routes(self):
+        # A VIEW-keyed container's membership now routes (the view-key
+        # family): the str literal needle renders bare either way, so the
+        # static-storage pin is a no-op for the str family.
+        from .testutil import _assert_routes_byte_identical
+        src = (
             "from tpy import StrView\n"
-            "def f(xs: set[StrView]) -> bool:\n    return \"a\" in xs\n")
-        assert _fn(thir, "f") is None
+            "def f(xs: set[StrView]) -> bool:\n    return \"a\" in xs\n"
+            "def main() -> None:\n"
+            "    xs: set[StrView] = set()\n"
+            "    xs.add(\"a\")\n"
+            "    print(f(xs))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert '(xs.contains("a"))' in cpp
 
     def test_set_mutation_routes(self):
         # `.add()` routes through the set-receiver method arm; membership
@@ -3272,18 +3283,17 @@ class TestCompositionalContainerParam:
             "from tpy import Int32, Char\n"
             "def f(d: dict[Char, Int32]) -> Int32:\n    return len(d)\n")
 
-    def test_view_keyed_dict_len_routes_subscript_rejects(self):
-        # The compositional split: a StrView-keyed dict param is admitted (its
-        # signature renders identically), so a `len(d)` body routes -- while a
-        # `d["a"]` subscript body stays AST (the body subscript gate rejects the
-        # view-keyed static-storage pin). Widening the param gate never routes
-        # the divergent read.
+    def test_view_keyed_dict_len_and_subscript_route(self):
+        # A StrView-keyed dict param: `len(d)` routes, and since the
+        # view-key family landed the `d["a"]` subscript read routes too
+        # (the str literal key renders bare at the view target -- the
+        # static-storage pin is a no-op for the str family).
         ok = ("from tpy import Int32, StrView\n"
               "def f(d: dict[StrView, Int32]) -> Int32:\n    return len(d)\n")
         self._routes_identical(ok)
         sub = ("from tpy import Int32, StrView\n"
                "def f(d: dict[StrView, Int32]) -> Int32:\n    return d[\"a\"]\n")
-        assert _fn(_lower_ctx(sub), "f") is None
+        self._routes_identical(sub)
 
     def test_generic_list_param_len_routes(self):
         # The signature renders the generic parameter; len() lowering consumes
@@ -3408,18 +3418,22 @@ class TestContainerFromCallDecl:
             decl.init, THIRMethodCall)
         assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
 
-    def test_borrow_free_call_container_decl_ineligible(self):
-        # The free-call sibling: a borrow container return at a decl is the
-        # AST's `T&` alias, not a copy (regression pin for the storage_call
-        # arm's rvalue guard).
-        thir = _lower(
+    def test_borrow_free_call_container_decl_routes(self):
+        # The free-call sibling ROUTES since the container
+        # borrow-call cell: the `T&` alias decl (formerly the
+        # rvalue-guard fence).
+        src = (
             "from tpy import Int32\n"
             "def pick(a: list[Int32]) -> list[Int32]:\n"
             "    return a\n"
             "def f(a: list[Int32]) -> Int32:\n"
             "    xs = pick(a)\n"
-            "    return len(xs)\n")
-        assert _fn(thir, "f") is None
+            "    return len(xs)\n"
+        )
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        from .testutil import _assert_byte_identical
+        _assert_byte_identical(src)
 
     def test_reassigned_method_container_decl_ineligible(self):
         # A reassigned container local takes the AST's pointer-local
@@ -4966,3 +4980,193 @@ class TestElemFieldChainSetitem:
         thir = _lower_ctx(src)
         assert _fn(thir, "put") is None
         _assert_byte_identical(src)
+
+
+class TestContainerBorrowCallDecl:
+    """A BORROW container return binds a `T&` alias at its decl
+    (`std::vector<int32_t>& items = identity<...>(t);` -- the record
+    borrow-call row's container twin); mutation through the alias
+    reaches the source, and a reassigned alias keeps the pre-existing
+    reassigned fence."""
+
+    def test_alias_decl_routes_and_aliases(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from typing import Sized\n"
+            "from tpy import Int32\n"
+            "def identity[T: Sized](x: T) -> T:\n"
+            "    return x\n"
+            "def mutate_through() -> None:\n"
+            "    xs: list[Int32] = [1, 2]\n"
+            "    ys = identity(xs)\n"
+            "    ys.append(9)\n"
+            "    print(len(xs))\n"
+            "def main() -> None:\n"
+            "    mutate_through()\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("decl.container_borrow_call", 0) >= 1
+        assert "std::vector<int32_t>& ys = identity<std::vector<int32_t>>(xs);" in cpp
+
+    def test_reassigned_alias_defers(self):
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        src = (
+            "from typing import Sized\n"
+            "from tpy import Int32\n"
+            "def identity[T: Sized](x: T) -> T:\n"
+            "    return x\n"
+            "def reassigned() -> None:\n"
+            "    xs: list[Int32] = [1]\n"
+            "    zs = identity(xs)\n"
+            "    zs = identity(xs)\n"
+            "    print(len(zs))\n"
+            "reassigned()\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "reassigned") is None
+
+    def test_readonly_callee_defers(self):
+        # BOUNDARY: a readonly-wrapped borrow return keeps the reject --
+        # the const spelling (`const T&`) is unverified at this arm.
+        from .testutil import _assert_byte_identical, _fn, _lower_ctx
+        src = (
+            "from tpy import Int32, readonly\n"
+            "def pick_ro(a: readonly[list[Int32]])"
+            " -> readonly[list[Int32]]:\n"
+            "    return a\n"
+            "def f(a: readonly[list[Int32]]) -> Int32:\n"
+            "    xs = pick_ro(a)\n"
+            "    return len(xs)\n"
+            "f([1])\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestReturnListRepeat:
+    """`return [label] * 3` at an Own[list[str]] storage return: the repeat
+    build renders target-typed by the slot (`::tpy::from_range<...>(
+    ::tpy::repeat_range<...>(3, {std::string(label)}))`) -- untargeted
+    resolve would demote to the Array flavor."""
+
+    def test_return_repeat_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import Own\n"
+            "def in_list_repeat() -> Own[list[str]]:\n"
+            "    label: str = \"no\"\n"
+            "    return [label] * 3\n"
+            "def main() -> None:\n"
+            "    print(in_list_repeat())\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("ret.container_repeat", 0) >= 1
+        assert ("return ::tpy::from_range<std::vector<std::string>>"
+                "(::tpy::repeat_range<std::string>(3, {std::string(label)}))"
+                in cpp)
+
+
+class TestViewKeyFamily:
+    """View-keyed sets/dicts (`set[StrView]`, `dict[BytesView, T]`): key
+    positions thread the view target -- str literals land bare, bytes
+    literals take the static view spelling; owned-bytes keys keep the
+    owned spelling. Own[view] insert slots admit LITERALS only."""
+
+    def test_strview_set_and_dict_route(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import StrView, Int32\n"
+            "def main() -> None:\n"
+            "    s: set[StrView] = set()\n"
+            "    s.add(\"hello\")\n"
+            "    print(\"hello\" in s)\n"
+            "    d: dict[StrView, Int32] = {}\n"
+            "    d[\"k\"] = 1\n"
+            "    print(d[\"k\"])\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("binop.contains_view_key", 0) >= 1
+        assert 's.insert("hello");' in cpp
+        assert '(s.contains("hello"))' in cpp
+
+    def test_bytesview_static_spelling_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (
+            "from tpy import BytesView, Int32\n"
+            "def main() -> None:\n"
+            "    s: set[BytesView] = set()\n"
+            "    s.add(b\"hi\")\n"
+            "    print(b\"hi\" in s)\n"
+            "    d: dict[BytesView, Int32] = {}\n"
+            "    d[b\"k\"] = 1\n"
+            "    print(d[b\"k\"])\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("arg.bytes_view_literal", 0) >= 1
+        assert 's.insert(::tpy::bytes_literal("hi", 2));' in cpp
+        assert '::tpy::__setitem__(d, ::tpy::bytes_literal("k", 1)' in cpp
+
+    def test_owned_bytes_key_keeps_owned_spelling(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "def main() -> None:\n"
+            "    d: dict[bytes, Int32] = {}\n"
+            "    d[b\"k\"] = 1\n"
+            "    print(d[b\"k\"])\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "bytes_literal_owned(\"k\", 1)" in cpp
+
+    def test_view_insert_name_arg_still_defers(self):
+        # A NAME arg at the Own[view] insert slot takes the AST's copy+move
+        # view temp (unmirrored) -- the body keeps the AST path.
+        from .testutil import _fn as _fn_l, _lower_ctx
+        src = (
+            "from tpy import StrView\n"
+            "def f() -> None:\n"
+            "    s: set[StrView] = set()\n"
+            "    name = \"dyn\"\n"
+            "    s.add(name)\n"
+            "    print(len(s))\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "f") is None
+
+    def test_name_keyed_bytes_dict_reads_route(self):
+        # NAME-keyed subscript reads over owned-bytes and BytesView-keyed
+        # dicts: the retag is a no-op for non-literal keys and the name
+        # renders bare on both paths.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32, BytesView\n"
+            "def rb(d: dict[bytes, Int32], k: bytes) -> Int32:\n"
+            "    return d[k]\n"
+            "def rv(d: dict[BytesView, Int32], k: BytesView) -> Int32:\n"
+            "    return d[k]\n"
+            "def main() -> None:\n"
+            "    d: dict[bytes, Int32] = {}\n"
+            "    d[b\"a\"] = 1\n"
+            "    print(rb(d, b\"a\"))\n"
+            "    v: dict[BytesView, Int32] = {}\n"
+            "    v[b\"x\"] = 2\n"
+            "    print(rv(v, b\"x\"))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_bytesview_insert_name_arg_still_defers(self):
+        # The BytesView twin of the Own[view] name-arg boundary.
+        from .testutil import _fn as _fn_l, _lower_ctx
+        src = (
+            "from tpy import BytesView\n"
+            "def f(k: BytesView) -> None:\n"
+            "    s: set[BytesView] = set()\n"
+            "    s.add(k)\n"
+            "    print(len(s))\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "f") is None

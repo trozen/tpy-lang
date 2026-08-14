@@ -125,3 +125,63 @@ class TestTryHoistNonValueBoundaries:
                "    yield len(items)\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "gen") is None
+
+
+class TestIfHoistConstPointer:
+    """The if-cascade's CONST borrow-decl hoist rung (`const Reg* v;` --
+    sema's stmt-borrow const bit; the with/try const_pointer flavor
+    mirrored into `_lower_if_hoist_predecls`)."""
+
+    _SRC = (
+        "from tpy import Int32, readonly\n"
+        "class Reg:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    @readonly\n"
+        "    def view(self) -> Reg:\n"
+        "        return self\n"
+        "def probe(flag: bool) -> Int32:\n"
+        "    r = Reg(1)\n"
+        "    if flag:\n"
+        "        v = r.view()\n"
+        "    else:\n"
+        "        v = r.view()\n"
+        "    return v.n\n"
+        "def main() -> None:\n"
+        "    print(probe(True))\n"
+        "main()\n")
+
+    def test_const_ptr_hoist_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("if.hoist_const_ptr", 0) >= 1
+        assert "const Reg* v;" in cpp
+
+    def test_optional_readonly_inner_still_defers(self):
+        # The Optional[readonly[T]]-inner hoist is the const-INDIRECT
+        # Optional rung, still outside the slice.
+        from .testutil import _fn, _lower_ctx
+        src = (
+            "from tpy import Int32, readonly\n"
+            "from typing import Optional\n"
+            "class Reg:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "def find(r: readonly[Reg], want: bool) -> Optional[readonly[Reg]]:\n"
+            "    if want:\n"
+            "        return r\n"
+            "    return None\n"
+            "def pick(r: readonly[Reg], flag: bool) -> Int32:\n"
+            "    if flag:\n"
+            "        v = find(r, True)\n"
+            "    else:\n"
+            "        v = find(r, False)\n"
+            "    if v is not None:\n"
+            "        return v.n\n"
+            "    return 0\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None

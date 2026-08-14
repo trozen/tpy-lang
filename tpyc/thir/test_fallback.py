@@ -288,7 +288,7 @@ def test_base_init_arg_lowering_reject_falls_back():
 def test_global_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "message = 'before'\n"
+        "message = b'before'\n"
         "def rejected(n: Int32) -> Int32:\n"
         "    global message\n"
         "    return n\n"
@@ -313,7 +313,7 @@ def test_global_lowering_reject_falls_back_at_sync_boundary():
 def test_global_lowering_reject_falls_back_at_constructor_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
-        "message = 'before'\n"
+        "message = b'before'\n"
         "class R:\n"
         "    n: Int32\n"
         "    def __init__(self, n: Int32):\n"
@@ -1510,16 +1510,21 @@ def test_print_arg_reports_the_inner_reject_not_its_own_shape():
     # The print arm's own shape tag is composed AFTER the inner lowering
     # rejects; since the detail slot is first-wins, a tag composed here would
     # win by default and bury the reason that actually blocked the body.
-    # The inner shape must still reject: a VIEW-keyed set haystack
-    # (`set[StrView]`) threads view_key_target into the needle render,
-    # unmirrored (the owned-str field haystack routes since the
-    # container-field membership row).
-    src = ("from tpy import Int32, StrView\n"
+    # The inner shape must still reject: a RECORD-name needle over a LIST
+    # haystack rides the ranges_contains arm, whose needle set is
+    # scalar/str/ptr-tuple only. (The previous fixture -- a view-keyed set
+    # membership -- routed when the view-key family landed.)
+    src = ("from tpy import Int32\n"
+           "class Point:\n"
+           "    x: Int32\n"
+           "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+           "    def __eq__(self, other: Point) -> bool:\n"
+           "        return self.x == other.x\n"
            "class Item:\n"
-           "    tags: set[StrView]\n"
-           "    def __init__(self) -> None:\n        self.tags = set()\n"
-           "def f(item: Item) -> None:\n"
-           "    print(\"fruit\" in item.tags)\n"
+           "    pts: list[Point]\n"
+           "    def __init__(self) -> None:\n        self.pts = []\n"
+           "def f(item: Item, p: Point) -> None:\n"
+           "    print(p in item.pts)\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
     assert any("binop.shape.in" in k for k in reasons), reasons

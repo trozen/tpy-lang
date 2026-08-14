@@ -35,6 +35,22 @@ from .testutil import (
     _assert_routes_byte_identical, _PRELUDE, _F1_RECORDS,
 )
 
+class TestExprUseFlagCeiling:
+    def test_expr_use_boolean_flag_count_is_capped(self):
+        # The debt ceiling with TEETH (TODO.md's _ExprUse entry, violated
+        # once mid-branch): _ExprUse must not grow past 18 single-sink
+        # boolean flags. A 19th flag fails here by design -- fold the
+        # booleans into a sink-kind enum instead of raising the cap.
+        import dataclasses
+        from .lower.context import _ExprUse
+        flags = [f.name for f in dataclasses.fields(_ExprUse)
+                 if f.type == "bool"]
+        assert len(flags) <= 18, (
+            f"_ExprUse grew to {len(flags)} boolean flags: {flags}. "
+            "Consolidate into a sink-kind enum (TODO.md debt-ceiling "
+            "entry) instead of adding flag #19.")
+
+
 class TestEligibility:
     def test_simple_function_is_eligible(self):
         thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    b = a\n    return b\n")
@@ -5325,12 +5341,14 @@ class TestCallResultCompositionRows:
     scalar in every sink); a plain call rvalue at a STRUCTURAL protocol
     slot (the un-spelled `auto __tmp_N` hoist)."""
 
-    def test_borrow_call_member_receiver_stays_ast(self):
-        # A borrow-returning call's field read is the PARKED REF_ALIAS
-        # place/loan frontier (TestRecordBorrowCallReturnDesignStop): a
-        # coarse record-at-RECEIVER row landed here briefly and was
-        # REVERTED -- it shadowed the er-unwrap / template-call /
-        # native-iter arms and opened the design stop.
+    def test_borrow_call_member_receiver_routes(self):
+        # A borrow-returning call's TRANSIENT field read routes via the
+        # DEDICATED field-recv flag. History: a coarse record-at-RECEIVER
+        # row landed here briefly and was REVERTED (it shadowed the
+        # er-unwrap / template-call / native-iter arms); the dedicated flag
+        # never leaves the field-read receiver slot, and the er-callee
+        # flavor is byte-verified (the call lowering renders er/template
+        # internals use-independently).
         src = ("from tpy import Int32\n"
                "class Box:\n"
                "    n: Int32\n"
@@ -5342,9 +5360,9 @@ class TestCallResultCompositionRows:
                "    shared = Box()\n"
                "    print(ret_param_ref(shared).n, shared.n)\n"
                "f()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "ret_param_ref(shared).n" in cpp
 
     def test_readonly_scalar_ret_routes(self):
         src = ("from tpy import Int32, Ptr, deref, readonly, take_ptr\n"

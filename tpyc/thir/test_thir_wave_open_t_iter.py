@@ -96,10 +96,57 @@ class TestOpenTIterableField:
         assert witnesses.get("foreach.native_bound_field", 0) >= 1
         _assert_byte_identical(_NATIVE)
 
-    def test_generator_over_the_same_field_still_defers(self):
-        # The generator sibling never even reaches the for-head gate: a
-        # simple generator on a GENERIC record rejects first. The resumable
-        # for-head family is closed independently (protocol_param_ok is
-        # threaded False there), which the corpus witnesses -- the point
-        # here is only that admitting the sync row left the generator out.
-        assert _fallback(_SUMMER) == {"body:sgen.generic_record": 1}
+    def test_generator_over_the_same_field_routes(self):
+        # The generator sibling rides since the generic-sgen cell (the
+        # bounded-T iterable field's for-head admits like the sync row);
+        # byte-identical -- formerly fenced on the generic-record reject.
+        assert _fallback(_SUMMER) == {}
+        _assert_byte_identical(_SUMMER)
+
+
+class TestOwnIterNameLoop:
+    """`oi = own_iter(src)` + `for x in oi:` -- the OwnIter decl slot spells
+    `auto` (the TypeDef formatter) and the NAME iterable takes the AST's
+    is_own_iter arm: plain lvalue capture + consuming `auto&&` elem."""
+
+    _SRC = (
+        "from tpy import Int32, own_iter\n"
+        "class Node:\n"
+        "    val: Int32\n"
+        "    def __init__(self, val: Int32) -> None:\n"
+        "        self.val = val\n"
+        "def run() -> None:\n"
+        "    src: list[Node] = [Node(1), Node(2)]\n"
+        "    oi = own_iter(src)\n"
+        "    total = 0\n"
+        "    for x in oi:\n"
+        "        total += x.val\n"
+        "    print(total)\n"
+        "run()\n")
+
+    def test_own_iter_name_loop_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("decl.own_copy_iter_slot", 0) >= 1
+        assert wit.get("foreach.own_iter_name", 0) >= 1
+        assert "auto oi = ::tpy::own_iter(std::move(src));" in cpp
+        assert "auto& __obj_0 = oi;" in cpp
+        assert "auto&& x = *__beg_0;" in cpp
+
+    def test_copy_iter_name_loop_still_defers(self):
+        # The CopyIter sibling binds NON-consuming on the AST path -- the
+        # name-iterable arm stays OwnIter-only, so the body keeps the AST.
+        from .testutil import _fn, _lower_ctx
+        src = (
+            "from tpy import Int32, copy_iter\n"
+            "def run() -> None:\n"
+            "    src: list[Int32] = [1, 2, 3]\n"
+            "    ci = copy_iter(src)\n"
+            "    total = 0\n"
+            "    for x in ci:\n"
+            "        total += x\n"
+            "    print(total, len(src))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "run") is None

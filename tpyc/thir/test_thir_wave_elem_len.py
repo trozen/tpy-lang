@@ -235,3 +235,57 @@ class TestElemRowsDictSetFlavors:
                "        print(c)\n"
                "main()\n")
         _assert_byte_identical(src)
+
+
+class TestLenCallArg:
+    """`len(<str-returning call>)`: the call result is an rvalue rendered
+    in place -- never a pointer-local, so the family restriction's
+    pointer-local concern does not apply."""
+
+    def test_str_call_args_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = ("from tpy import Int32\n"
+               "def make_tag() -> str:\n"
+               "    return \"hello\"\n"
+               "class Dog:\n"
+               "    name: str\n"
+               "    def __init__(self, name: str) -> None:\n"
+               "        self.name = name\n"
+               "    def bark(self) -> str:\n"
+               "        return self.name + \"!\"\n"
+               "def f(d: Dog) -> Int32:\n"
+               "    return len(d.bark()) + len(make_tag())\n"
+               "def main() -> None:\n"
+               "    print(f(Dog(\"rex\")))\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__len__(d.bark())" in cpp
+        assert "::tpy::__len__(make_tag())" in cpp
+
+    def test_record_call_arg_rides_the_dunder_lane(self):
+        # BOUNDARY: a non-str-family call result (a record with __len__)
+        # is not this leg's family -- _is_len_call rejects it and the
+        # shape rides the sema-resolved __len__ method-call lane instead.
+        from ..compilation_context import activate_compiler
+        from .lower import lower_module
+        from .testutil import _compile, _entry
+        src = ("from tpy import Int32, Own\n"
+               "class Box:\n"
+               "    def __init__(self) -> None:\n"
+               "        pass\n"
+               "    def __len__(self) -> Int32:\n"
+               "        return 3\n"
+               "def make_box() -> Own[Box]:\n"
+               "    return Box()\n"
+               "def f() -> Int32:\n"
+               "    return len(make_box())\n"
+               "f()\n")
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        from .lower.checks import _is_len_call
+        import tpyc.parse.nodes as N
+        fn = [x for x in entry.ast.functions if x.name == "f"][0]
+        ret = fn.body[0]
+        with activate_compiler(compiler):
+            assert not _is_len_call(ret.value, {}, entry.analyzer)

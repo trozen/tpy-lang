@@ -90,10 +90,11 @@ class TestGenericOverloadCallee:
         assert "gen_ov<int32_t>(n)" in _body(thir, "g")
         _assert_byte_identical(src)
 
-    def test_container_param_lambda_still_defers(self):
-        # The lambda gate admits only scalar/char/enum/str/bytes/F1-record
-        # param families -- a container param is a separate rung, and the
-        # generic tail must not widen past it.
+    def test_container_param_lambda_routes(self):
+        # The container-borrow-return call passthrough opened this shape:
+        # `return fold(lambda..., xs, seed)` routes end to end
+        # (byte-verified; the lambda + container args re-validate in their
+        # own arms).
         src = ("from typing import overload\n"
                "from tpy import Fn, Int32\n"
                "@overload\n"
@@ -104,4 +105,6 @@ class TestGenericOverloadCallee:
                "    return a[0]\n"
                "def f(xs: list[Int32], seed: list[Int32]) -> list[Int32]:\n"
                "    return fold(lambda acc, x: acc + [x], xs, seed)\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)

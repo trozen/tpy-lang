@@ -2280,9 +2280,9 @@ class TestCopyPtrVariant:
         assert w.get("decl.copy_record", 0) >= 1
         assert w.get("call.copy_ptr_variant", 0) == 0
 
-    def test_narrowed_branch_copy_stays_ast(self):
-        # BOUNDARY: an isinstance-narrowed source's copy decl sits in a
-        # branch -- the branch ptr-union decl family keeps deferring.
+    def test_narrowed_branch_copy_routes(self):
+        # An isinstance-narrowed source's copy decl in a branch: the copy
+        # reads the pre-narrow union binding, not the branch-retyped one.
         src = (self._BASE
                + "def use(pet: Dog | Cat) -> None:\n"
                + "    if isinstance(pet, Dog):\n"
@@ -2292,8 +2292,9 @@ class TestCopyPtrVariant:
                + "def main() -> None:\n"
                + "    use(Dog(\"B\"))\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
-        assert fallback, "expected the narrowed branch copy to fall back"
+        w, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert w.get("call.copy_ptr_variant", 0) >= 1
 
 
 class TestOwnStorageTupleNameReturn:
@@ -2881,3 +2882,44 @@ class TestOwnTupleParamReturn:
             _entry(modules2), options=CodeGenOptions(
                 emit_source_comments=True, thir_codegen=True))
         assert "    return p;" in cpp
+
+
+class TestRecordGetitemGlobalSlotReceiver:
+    """A pointer-slot GLOBAL receiver at a record __getitem__ derefs
+    (`(*g)[1]` -- the name arm's pointer render) at top level and in
+    function bodies alike; a branch-hoisted pointer LOCAL receiver keeps
+    the exclusion."""
+
+    _PRE = (
+        "from tpy import Int32\n"
+        "class Grid:\n"
+        "    base: Int32\n"
+        "    def __init__(self, base: Int32) -> None:\n"
+        "        self.base = base\n"
+        "    def __getitem__(self, i: Int32) -> Int32:\n"
+        "        return self.base + i\n")
+
+    def test_global_slot_receiver_routes(self):
+        src = self._PRE + (
+            "g = Grid(10)\n"
+            "print(g[1])\n"
+            "def fn_body() -> None:\n"
+            "    print(g[2])\n"
+            "fn_body()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "(*g)[1]" in cpp
+        assert "(*g)[2]" in cpp
+
+    def test_pointer_local_receiver_defers(self):
+        from .testutil import _assert_byte_identical, _lower_ctx
+        src = self._PRE + (
+            "def ptr_local(flag: bool) -> None:\n"
+            "    if flag:\n"
+            "        h = Grid(1)\n"
+            "    else:\n"
+            "        h = Grid(2)\n"
+            "    print(h[3])\n"
+            "ptr_local(True)\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "ptr_local") is None

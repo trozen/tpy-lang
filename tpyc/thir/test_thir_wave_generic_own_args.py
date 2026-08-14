@@ -11,8 +11,8 @@ BigInt slots need. Rows pinned here:
    concrete alike;
  * `None` into a substituted unit slot renders the bare `std::monostate{}`;
  * a tuple literal into a substituted `Own[value-tuple]` slot takes the
-   spelled value render; a pointer-repr element keeps the body on AST
-   (boundary);
+   spelled value render; a pointer-repr element takes the CONSUMING
+   storage lift (tuple_to_storage_move over the borrow build);
  * a str literal into a substituted `Own[str]` slot binds bare; an owned
    str NAME stays AST (boundary);
  * the `Own[@dynamic P]` erasure rows fire on generic callees too -- the
@@ -137,9 +137,11 @@ class TestGenericOwnTupleSlot:
         assert faces["btuple.value_arg"] >= 1
         _assert_byte_identical(src)
 
-    def test_pointer_repr_tuple_literal_stays_ast(self):
-        # A record element makes the tuple pointer-repr: the storage lift
-        # is a different render, so the body must fall back whole.
+    def test_pointer_repr_tuple_literal_routes_storage_lift(self):
+        # A record element makes the tuple pointer-repr: the CONSUMING
+        # storage lift (borrow build with per-element moves +
+        # tuple_to_storage_move) now routes it -- the fence's
+        # "different render" is the render the gate admission mirrors.
         src = (
             "from tpy import Own, Int32\n"
             "class Node:\n"
@@ -152,7 +154,9 @@ class TestGenericOwnTupleSlot:
             "    m = Node(3)\n"
             "    gen_take((m, 4))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.own_btuple_literal", 0) >= 1
         _assert_byte_identical(src)
 
 

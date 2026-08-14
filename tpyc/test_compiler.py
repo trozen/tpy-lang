@@ -197,12 +197,33 @@ class TestThirScoping:
         it trips the comp-phase ratchet. Pins the >0 side (the pass side is
         test_clean_body_has_zero_fallback) so an inverted/broken fallback counter
         can't slip through -- no corpus case can exercise the fire side, since
-        unmarked <=> already clean. Uses an async def (the resumable frontier,
-        deferred last); if resumable is ever migrated, swap in another
+        unmarked <=> already clean. Uses a nested-def rebind-slot shape (an
+        emit-architecture park); if that ever migrates, swap in another
         un-migrated construct."""
         src_file = tmp_path / "main.py"
+        # An ENCLOSING body whose own branch rebind slot coexists with a
+        # nested def: parked on the emit architecture (the slot placement
+        # interacts with the lambda emit), so it stays un-migrated until
+        # the nested-def emit model changes. (Two earlier fixtures --
+        # `async def f(): return None`, then a nested-def-only rebind --
+        # both migrated.)
         src_file.write_text(
-            "async def f() -> None:\n    return None\n\nprint('x')\n")
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "def f(flag: Int32) -> Int32:\n"
+            "    def g(k: Int32) -> Int32:\n"
+            "        p = P(k)\n"
+            "        if k > 0:\n"
+            "            p = P(k * 10)\n"
+            "        return p.v\n"
+            "    p = P(1)\n"
+            "    if flag > 0:\n"
+            "        p = P(99)\n"
+            "    return p.v + g(flag)\n"
+            "print(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
@@ -211,8 +232,8 @@ class TestThirScoping:
                                    entry_module_name=entry.name,
                                    options=CodeGenOptions(thir_codegen=True))
         assert sum(compiler._thir_fallback.values()) > 0, (
-            "un-migrated (async) body recorded no fallback -- either resumable "
-            "was migrated (swap the construct) or the fallback counter broke")
+            "un-migrated body recorded no fallback -- either the construct "
+            "was migrated (swap in another) or the fallback counter broke")
 
 
 class TestCodegenStateIsolation:

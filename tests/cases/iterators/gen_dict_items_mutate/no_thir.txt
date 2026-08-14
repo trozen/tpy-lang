@@ -1,4 +1,0 @@
-pairs() takes the simple-generator peephole, whose loop element binds
-a reference-element tuple (std::tuple<int32_t, C&>, dot-access
-std::get reads) -- a subscript render family THIR does not mirror
-yet (sgen.loop_var_type). bump()'s resumable half routes.

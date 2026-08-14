@@ -300,12 +300,11 @@ class TestSlicedOutShapes:
                + "    for n in lens(ws):\n        print(n)\nmain()\n")
         assert _sgen_fallback(src).get("sgen.loop_var_type") == 1
 
-    def test_generic_defers(self):
-        # The generic DEF still rejects at the sgen gate (a template frame is
-        # not the sliced lambda peephole). The CALLER's foreach over that
-        # factory now ROUTES: the iterable position spells the generic call
-        # exactly like any other generic free call (`rep<int32_t>(...)`), so
-        # only the DEF stays on the AST path -- byte-identical either way.
+    def test_generic_routes(self):
+        # The generic DEF routes since the generic-sgen cells (the
+        # template header is skeleton; a bare T-param yield is the
+        # type-neutral `auto __val = v;`) -- formerly the sgen.generic
+        # fence.
         src = (_ITER
                + "def rep[T](v: T, n: Int32) -> Iterator[T]:\n"
                + "    for _i in range(n):\n"
@@ -314,13 +313,13 @@ class TestSlicedOutShapes:
                + "    for x in rep(5, 2):\n        print(x)\nmain()\n")
         _assert_identical(src)
         fb = _sgen_fallback(src)
-        assert fb.get("sgen.generic") == 1
+        assert not fb, fb
         assert fb.get("expr.call") is None
 
-    def test_generic_record_method_defers(self):
-        # The generator METHOD on a generic record rejects (template frame);
-        # the CALLER's member-call foreach still routes (monomorphized
-        # spelling).
+    def test_generic_record_method_routes(self):
+        # The generator METHOD on a generic record routes since the
+        # generic-sgen cell (the template header is skeleton; leaf renders
+        # are type-param-neutral) -- formerly the template-frame fence.
         src = (_ITER
                + "class Box[T]:\n"
                + "    v: T\n"
@@ -335,7 +334,7 @@ class TestSlicedOutShapes:
                + "    b = Box(7)\n"
                + "    for x in b.rep(2):\n        print(x)\nmain()\n")
         witnesses, fallback = _assert_identical(src)
-        assert fallback.get("body:sgen.generic_record") == 1
+        assert not fallback, fallback
         assert witnesses.get("foreach.iter_proto") == 1
 
     def test_property_generator_defers(self):
@@ -746,3 +745,267 @@ class TestSelfAndElementIterables:
         witnesses, fallback = _assert_identical(src)
         assert not fallback
         assert witnesses.get("foreach.iter_proto", 0) >= 1
+
+
+class TestSgenPtrTupleLoopVar:
+    """A pointer-repr tuple loop element in a simple generator: container
+    / dict-view elements bind proxy/stored tuples (dot member reads --
+    the binding registers in storage_tuple_locals), Iterator-protocol
+    sources yield the BORROW tuple whole (`yield pair` -- the bare-name
+    tuple yield)."""
+
+    _PRE = (
+        "from typing import Iterator\n"
+        "from tpy import Int32\n"
+        "class C:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32):\n"
+        "        self.v = v\n")
+
+    def test_dict_items_and_list_elements_route(self):
+        src = self._PRE + (
+            "def bump(d: dict[Int32, C]) -> Iterator[Int32]:\n"
+            "    for k, c in d.items():\n"
+            "        c.v = c.v + 1\n"
+            "        yield k\n"
+            "def over_list(items: list[tuple[Int32, C]]) -> Iterator[Int32]:\n"
+            "    for pair in items:\n"
+            "        pair[1].v = pair[1].v + 1\n"
+            "        yield pair[0]\n"
+            "def main() -> None:\n"
+            "    d: dict[Int32, C] = {1: C(5)}\n"
+            "    for k in bump(d):\n"
+            "        print(k)\n"
+            "    xs: list[tuple[Int32, C]] = [(1, C(5))]\n"
+            "    for k2 in over_list(xs):\n"
+            "        print(k2)\n"
+            "    print(d[1].v)\n"
+            "    print(xs[0][1].v)\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        # The element member reads render VALUE-form (dot, not arrow).
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<1>(pair).v" in (cpp + _hpp)
+
+    def test_iterator_relay_yields_bare_name(self):
+        src = self._PRE + (
+            "def first(items: list[C]) -> Iterator[tuple[C | None, C | None]]:\n"
+            "    for it in items:\n"
+            "        yield (it, None)\n"
+            "def relay(src: Iterator[tuple[C | None, C | None]])"
+            " -> Iterator[tuple[C | None, C | None]]:\n"
+            "    for pair in src:\n"
+            "        yield pair\n"
+            "def main() -> None:\n"
+            "    xs: list[C] = [C(3)]\n"
+            "    for a, b in relay(first(xs)):\n"
+            "        if a is not None:\n"
+            "            a.v = 9\n"
+            "    print(xs[0].v)\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert witnesses.get("sgen.tuple_yield_name", 0) >= 1
+
+    def test_storage_form_relay_stays_out(self):
+        # BOUNDARY: a container-element (storage-registered) tuple relayed
+        # whole is not the borrow-name yield; the body stays AST.
+        src = self._PRE + (
+            "def storage_relay(items: list[tuple[Int32, C]])"
+            " -> Iterator[tuple[Int32, C]]:\n"
+            "    for pair in items:\n"
+            "        yield pair\n"
+            "def main() -> None:\n"
+            "    xs: list[tuple[Int32, C]] = [(1, C(5))]\n"
+            "    for t in storage_relay(xs):\n"
+            "        print(t[0])\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert any("sgen.tuple_yield_source" in k for k in fallback), fallback
+
+    def test_span_source_registers_storage_form(self):
+        # The registration keys the AST's builtin-NativeIterable predicate
+        # (Span/Array included), not a 4-container whitelist -- the Span
+        # flavor renders dot-form member reads like the list flavor.
+        src = self._PRE + (
+            "from tpy import Span\n"
+            "def over_span(sp: Span[tuple[Int32, C]]) -> Iterator[Int32]:\n"
+            "    for pair in sp:\n"
+            "        pair[1].v = pair[1].v + 1\n"
+            "        yield pair[0]\n"
+            "def main() -> None:\n"
+            "    xs: list[tuple[Int32, C]] = [(1, C(5))]\n"
+            "    sp: Span[tuple[Int32, C]] = xs\n"
+            "    for k in over_span(sp):\n"
+            "        print(k)\n"
+            "    print(xs[0][1].v)\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        # over_span itself must route: no sgen-tagged fallback (main's
+        # Span decl is an unrelated deferral).
+        assert not any("sgen" in k for k in fallback), fallback
+        assert witnesses.get("sgen.body", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::get<1>(pair).v" in (cpp + _hpp)
+
+
+class TestGenericRecordSgen:
+    """Generator methods on GENERIC records: the template header is
+    skeleton and the leaf renders are type-param-neutral (`auto __val =
+    (*this).v;`, `auto&& x = *__beg++;`), so T-typed yield slots and
+    loop elements admit -- the source arms decide the rest."""
+
+    def test_generic_method_flavors_route(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32, Own\n"
+            "class Pair[K, V]:\n"
+            "    k: K\n"
+            "    v: V\n"
+            "    def __init__(self, k: K, v: V) -> None:\n"
+            "        self.k = k\n"
+            "        self.v = v\n"
+            "    def stream(self, n: int) -> Iterator[V]:\n"
+            "        i = 0\n"
+            "        while i < n:\n"
+            "            yield self.v\n"
+            "            i += 1\n"
+            "class Holder[T]:\n"
+            "    items: list[T]\n"
+            "    def __init__(self, items: Own[list[T]]) -> None:\n"
+            "        self.items = items\n"
+            "    def walk(self) -> Iterator[T]:\n"
+            "        for x in self.items:\n"
+            "            yield x\n"
+            "def main() -> None:\n"
+            "    for a in Pair(\"hi\", 100).stream(2):\n"
+            "        print(a)\n"
+            "    for b in Holder([1, 2]).walk():\n"
+            "        print(b)\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __val = (*this).v;" in (_hpp + cpp)
+        assert "auto&& x = *__beg++;" in (_hpp + cpp)
+
+
+class TestGenericFunctionSgen:
+    """Generic FUNCTION simple generators: the template header is
+    skeleton; a generic tuple yield takes the to_val_or_ptr brace-init
+    (the resumable generic-tuple builder)."""
+
+    def test_generic_tuple_yield_routes(self):
+        src = (
+            "from typing import Iterator, Iterable\n"
+            "from tpy import Int32\n"
+            "def pairs[T](it: Iterable[T]) -> Iterator[tuple[Int32, T]]:\n"
+            "    i: Int32 = 0\n"
+            "    for x in it:\n"
+            "        yield (i, x)\n"
+            "        i += 1\n"
+            "def main() -> None:\n"
+            "    xs: list[Int32] = [7, 8]\n"
+            "    for i, v in pairs(xs):\n"
+            "        print(i, v)\n"
+            "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert witnesses.get("sgen.tuple_yield_generic", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)" in (
+            _hpp + cpp)
+
+    def test_generic_yield_boundaries_defer(self):
+        # BOUNDARY: a generic tuple NAME yield, an Own[T] yield, and a
+        # readonly[T] yield are outside the admitted legs -- each body
+        # stays AST.
+        src = (
+            "from typing import Iterator, Iterable\n"
+            "from tpy import Int32, Own, readonly\n"
+            "def name_relay[T](it: Iterable[tuple[Int32, T]])"
+            " -> Iterator[tuple[Int32, T]]:\n"
+            "    for pair in it:\n"
+            "        yield pair\n"
+            "def own_yield[T](v: Own[T], n: Int32) -> Iterator[Own[T]]:\n"
+            "    i = 0\n"
+            "    while i < n:\n"
+            "        yield v\n"
+            "        i += 1\n")
+        from .testutil import _compile as _c
+        fb = _sgen_fallback(src)
+        assert fb, fb
+
+
+class TestTupleYieldSources:
+    """The two non-literal tuple-yield sources: a container-ELEMENT source
+    lifts to the slot's borrow form (`tuple_to_pointer<...>(
+    ::tpy::__getitem__(items, 0))`), and a STORAGE-form Own-element tuple
+    NAME passes bare (`auto __val = t;`)."""
+
+    def test_container_elem_source_lifts(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n"
+            "def gen() -> Iterator[tuple[Int32, Box]]:\n"
+            "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+            "    for _ in range(2):\n"
+            "        yield items[0]\n"
+            "def main() -> None:\n"
+            "    for pair in gen():\n"
+            "        print(pair[0], pair[1].val)\n"
+            "main()\n")
+        wit, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert wit.get("sgen.tuple_yield_elem_lift", 0) >= 1
+        _c, _hpp, cpp = _gen(src, thir=True)
+        joined = _hpp + cpp
+        assert ("::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(::tpy::__getitem__(items, 0))") in joined
+
+    def test_storage_tuple_name_source_bare(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n"
+            "def gen(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:\n"
+            "    i = Int32(0)\n"
+            "    while i < n:\n"
+            "        t = (i, Box(i * 10))\n"
+            "        yield t\n"
+            "        i += 1\n"
+            "def main() -> None:\n"
+            "    for pair in gen(2):\n"
+            "        print(pair[0], pair[1].val)\n"
+            "main()\n")
+        wit, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert wit.get("sgen.tuple_yield_storage_name", 0) >= 1
+        _c, _hpp, cpp = _gen(src, thir=True)
+        assert "auto __val = t;" in (_hpp + cpp)
+
+    def test_dict_elem_source_still_defers(self):
+        # The subscript rung is LIST-keyed; a dict-element source keeps
+        # the AST path.
+        from .testutil import _fn, _lower_ctx
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n"
+            "def gen() -> Iterator[tuple[Int32, Box]]:\n"
+            "    d: dict[str, tuple[Int32, Box]] = {\"a\": (1, Box(5))}\n"
+            "    for _ in range(2):\n"
+            "        yield d[\"a\"]\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "gen") is None

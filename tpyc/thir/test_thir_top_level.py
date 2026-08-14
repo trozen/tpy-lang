@@ -99,8 +99,9 @@ class TestGlobalSlotBoundaries:
         ))
 
     def test_branch_write_rejects(self):
-        # A slot declared inside a branch is block-scoped where the AST gives
-        # it namespace lifetime.
+        # An IF-scoped slot write keeps `static` on the AST (no namespace
+        # push outside for-each bodies) -- an unmirrored flavor, fenced.
+        # Only FOR-body writes route (TestGlobalSlotBranchWrites).
         self._rejects(PRELUDE + (
             "flag = True\n"
             "xs: list[Int32] = [0]\n"
@@ -840,3 +841,336 @@ class TestGlobalContainerPrint:
                                    thir_codegen=True))
         assert not compiler._thir_face_witnesses.get(
             "print.hoisted_container_arg")
+
+
+class TestGlobalAddrLocal:
+    """The address-of catch-all for a plain LOCAL lvalue at a global slot
+    write -- the desugared top-level tuple unpack (`a = &(__unpack_0_0);`);
+    a SUBCLASS-typed local keeps the same-type reject (the polymorphic
+    arm's business)."""
+
+    def test_unpack_alias_routes(self):
+        src = (
+            "from tpy import Int32\n"
+            "class Outer:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "a, b = Outer(1), Outer(2)\n"
+            "print(a.n + b.n)\n")
+        top, wit, _fb = _top_level(src)
+        assert top is not None
+        assert wit.get("top_level.global_addr_local", 0) >= 2
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "a = &(__unpack_0_0);" in cpp
+
+    def test_subclass_source_defers(self):
+        src = (
+            "from tpy import Int32\n"
+            "class Base:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "class Sub(Base):\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        super().__init__(n)\n"
+            "s0 = Sub(1)\n"
+            "g: Base = s0\n"
+            "print(g.n)\n")
+        _assert_byte_identical(src)
+        top, _wit, fb = _top_level(src)
+        assert top is None
+        assert any("global_slot_shape" in k for k in fb), fb
+
+
+class TestGlobalSlotBranchWrites:
+    """In-branch top-level global-slot writes: the first RVALUE write's
+    in-place slot drops `static` (current_ns leaves global_ns inside the
+    branch), a pointer-NAME source copies bare (`saved = p;`), and a
+    branch-hoisted record local's slot hoists as
+    `static __global_slot_N` (the RECORD_HOISTED module flavor). An
+    rvalue-REASSIGNED hoisted local keeps the slot_alloc fence."""
+
+    def test_loop_rvalue_and_ptr_copy_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "x = None\n"
+            "for i in range(0, 2):\n"
+            "    x = P(i)\n"
+            "if x is not None:\n"
+            "    print(x.n)\n"
+            "saved: P = P(0)\n"
+            "for j in range(3):\n"
+            "    p: P = P(j)\n"
+            "    saved = p\n"
+            "print(saved.n)\n")
+        top, wit, _fb = _top_level(src)
+        assert top is not None
+        _hpp, cpp = _assert_byte_identical(src)
+        # The in-loop first-rvalue slot has NO static.
+        assert "        P __global_slot_" in cpp
+        # The hoisted record local's slot is static at init top.
+        assert "static std::optional<P> __global_slot_" in cpp
+        assert "saved = p;" in cpp
+
+    def test_rvalue_reassigned_hoisted_local_defers(self):
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "g: P = P(0)\n"
+            "for i in range(2):\n"
+            "    q: P = P(i)\n"
+            "    q = P(i + 10)\n"
+            "    g = q\n"
+            "print(g.n)\n")
+        _assert_byte_identical(src)
+        top, _wit, fb = _top_level(src)
+        assert top is None
+        assert any("slot_alloc" in k for k in fb), fb
+
+
+class TestGlobalSlotBranchBoundaries:
+    """The for-body-only key: if/while-scoped first rvalue writes keep
+    `static` on the AST (no namespace push there) and stay fenced; an
+    IMPORTED pointer-global source stays out of the bare-copy row (the
+    AST qualifies its spelling)."""
+
+    _P = (
+        "from tpy import Int32\n"
+        "class P:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n")
+
+    def test_if_scoped_rvalue_write_defers(self):
+        src = self._P + (
+            "flag = True\n"
+            "g: P = P(0)\n"
+            "if flag:\n"
+            "    g = P(7)\n"
+            "print(g.n)\n")
+        _assert_byte_identical(src)
+        top, _w, fb = _top_level(src)
+        assert top is None
+        assert any("global_slot_branch" in k for k in fb), fb
+
+    def test_imported_pointer_global_copy_defers(self, tmp_path):
+        (tmp_path / "othermod.py").write_text(self._P + "gp: P = P(3)\n")
+        src = (
+            "from othermod import gp, P\n"
+            "saved: P = P(0)\n"
+            "saved = gp\n"
+            "print(saved.n)\n")
+        _assert_byte_identical(src, extra_lib_dirs=[tmp_path])
+        top, _w, fb = _top_level(src, extra_lib_dirs=[tmp_path])
+        assert top is None
+
+
+class TestOptionalPtrGlobalReads:
+    """A ptr-repr Optional GLOBAL seeds as the same `T* g{};` slot as its
+    plain sibling: bare pointer copies (`q = g;`), null tests, and
+    narrowed derefs all ride the seeded pointer binding."""
+
+    def test_reads_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.x = 1\n"
+            "g: P | None = P()\n"
+            "def null_test() -> Int32:\n"
+            "    if g is None:\n"
+            "        return 0\n"
+            "    return 1\n"
+            "def copy_read() -> Int32:\n"
+            "    q: P | None\n"
+            "    q = g\n"
+            "    if q is not None:\n"
+            "        return q.x\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    print(null_test())\n"
+            "    print(copy_read())\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "q = g;" in cpp
+
+    def test_direct_narrowed_deref_and_imported_route(self, tmp_path):
+        # The review-flagged flavors: a DIRECT narrowed deref of the
+        # global (`if g is not None: g.x`) and an IMPORTED Optional
+        # global's read -- both ride the seeded (qualified) binding.
+        from .testutil import _assert_routes_byte_identical
+        pre = (
+            "from tpy import Int32\n"
+            "class P:\n"
+            "    x: Int32\n"
+            "    def __init__(self) -> None:\n"
+            "        self.x = 1\n")
+        src = pre + (
+            "g: P | None = P()\n"
+            "def direct_narrow() -> Int32:\n"
+            "    if g is not None:\n"
+            "        return g.x\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    print(direct_narrow())\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        (tmp_path / "othermod.py").write_text(pre + "gp: P | None = P()\n")
+        src2 = (
+            "from tpy import Int32\n"
+            "from othermod import gp\n"
+            "def read_it() -> Int32:\n"
+            "    if gp is not None:\n"
+            "        return gp.x\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    print(read_it())\n"
+            "main()\n")
+        from .testutil import _assert_byte_identical
+        _assert_byte_identical(src2, extra_lib_dirs=[tmp_path])
+
+
+class TestGlobalSlotCompInit:
+    """A comprehension init at a container global slot renders its
+    stmt-expr inside the static slot line (the frame-emplace comp
+    branch's top-level twin); unrouted comp SHAPES still gate inside
+    the comp machinery."""
+
+    def test_scalar_comp_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "r2 = [i * 2 for i in range(3)]\n"
+            "print(r2)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "static std::vector<int32_t> __global_slot_" in cpp
+
+    def test_str_elem_comp_defers(self):
+        # The str-element literal-iterable comp is an unrouted comp
+        # SHAPE (defers in function bodies too) -- the slot branch
+        # forwards and the comp machinery gates.
+        src = (
+            "r1 = [len(x) for x in [\"a\", \"bb\"]]\n"
+            "print(r1)\n")
+        _assert_byte_identical(src)
+        top, _w, fb = _top_level(src)
+        assert top is None
+
+
+class TestStrGlobalWrites:
+    """Write-seeded STR globals: `global label` + literal rebinds and
+    view reads ride the str-local arms; the `x = x + y` self-append
+    peephole is LOCAL-keyed on the AST side (the global write renders
+    the plain concat-assign), so seeded globals must not fold; a bytes
+    global stays unseeded (deferring)."""
+
+    def test_str_global_writes_route(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "label = \"start\"\n"
+            "def rewrite() -> int:\n"
+            "    global label\n"
+            "    label = \"changed\"\n"
+            "    return len(label)\n"
+            "def concat() -> int:\n"
+            "    global label\n"
+            "    label = label + \"!\"\n"
+            "    return len(label)\n"
+            "def main() -> None:\n"
+            "    print(rewrite())\n"
+            "    print(concat())\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # The concat is the PLAIN assign, never the local += fold.
+        assert "label = (::tpy::str_concat(label, \"!\"));" in cpp
+        assert "label += " not in cpp
+
+    def test_bytes_global_write_defers(self):
+        from .testutil import _fn, _lower_ctx
+        src = (
+            "data = b\"raw\"\n"
+            "def bw() -> int:\n"
+            "    global data\n"
+            "    data = b\"new\"\n"
+            "    return len(data)\n"
+            "print(bw())\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "bw") is None
+
+    def test_string_global_aug_and_dict_comp_route(self):
+        # Review flavors: a String-typed global write, its aug-assign
+        # (the += arm's seeded-global flavor), and a dict comp at a
+        # global slot -- all byte-identical.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import String\n"
+            "s2: String = String(\"a\")\n"
+            "d1 = {k: k * 2 for k in range(3)}\n"
+            "def sw() -> int:\n"
+            "    global s2\n"
+            "    s2 = String(\"bb\")\n"
+            "    return len(s2)\n"
+            "def aug() -> int:\n"
+            "    global s2\n"
+            "    s2 += String(\"!\")\n"
+            "    return len(s2)\n"
+            "def main() -> None:\n"
+            "    print(sw())\n"
+            "    print(aug())\n"
+            "    print(len(d1))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+
+class TestListFromArrayGlobal:
+    """`list(arr)` over an Array pointer-slot global at a top-level slot:
+    the construct<...> wrap over the deref'd name; the function-body
+    flavor defers downstream (honest)."""
+
+    def test_top_level_routes_fn_body_defers(self):
+        from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
+                               _assert_routes_byte_identical)
+        src = (
+            "from tpy import Int32, Array\n"
+            "arr: Array[Int32, 3] = [5, 6, 7]\n"
+            "from_arr = list(arr)\n"
+            "print(from_arr)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::construct<std::vector<int32_t>>((*arr))"
+                in cpp)
+        src2 = (
+            "from tpy import Int32, Array\n"
+            "def fn_body() -> None:\n"
+            "    arr: Array[Int32, 3] = [1, 2, 3]\n"
+            "    xs = list(arr)\n"
+            "    print(len(xs))\n"
+            "fn_body()\n")
+        _assert_byte_identical(src2)
+        assert _fn(_lower_ctx(src2), "fn_body") is None
+        from .testutil import _compile, _entry
+        from ..codegen_cpp.context import CodeGenOptions
+        c, mods = _compile(src2)
+        c.generate_code_to_strings(
+            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+        # The defer's tag stays pinned so a moved reject site is visible.
+        assert any("expr.call" in k for k in c._thir_fallback), \
+            c._thir_fallback
+
+    def test_set_from_array_routes(self):
+        # The set(arr) sibling of the list(arr) admission.
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            "from tpy import Int32, Array\n"
+            "arr: Array[Int32, 3] = [5, 6, 7]\n"
+            "from_arr = set(arr)\n"
+            "print(len(from_arr))\n")
+        _assert_routes_byte_identical(src)

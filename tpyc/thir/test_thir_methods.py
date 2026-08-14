@@ -2665,10 +2665,12 @@ class TestAsyncioRunDriverCall:
         assert isinstance(decl.init, THIRCall)
         assert decl.init.template_args_cpp == ("int32_t",)
 
-    def test_bound_handle_arg_stays_ast(self):
-        # `c = work(); asyncio.run(c)` takes the `std::move(*(c))`
-        # optional-slot unwrap -- a different render, not mirrored.
-        thir = _lower_ctx(
+    def test_bound_handle_arg_routes(self):
+        # `c = work(); asyncio.run(c)` now routes: the coro-frame local
+        # holds the concrete frame in optional storage and the run arg
+        # takes the `std::move(*(c))` erasure (async sink cell 1).
+        from .testutil import _assert_routes_byte_identical
+        src = (
             "import asyncio\n"
             "async def work() -> None:\n"
             "    print(\"w\")\n"
@@ -2676,7 +2678,8 @@ class TestAsyncioRunDriverCall:
             "    c = work()\n"
             "    asyncio.run(c)\n"
             "main()\n")
-        assert _fn(thir, "main") is None
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::move(*(c))" in cpp
 
     def test_method_coro_arg_routes(self):
         # RE-PINNED ROUTED (thir-wave-next5): a MEMBER async-method factory
@@ -3236,6 +3239,83 @@ class TestConsumingMethodBody:
         assert "return std::move(this->hue);" in both
         _assert_byte_identical(src)
 
+    _POLL_SRC = (
+        "from typing import Self\n"
+        "from tpy import Own, Int32, nocopy\n"
+        "from tpy.coro import Poll\n"
+        "@nocopy\n"
+        "class Holder:\n"
+        "    _slot: Poll[Int32]\n"
+        "    def __init__(self, p: Own[Poll[Int32]]) -> None:\n"
+        "        self._slot = p\n")
+
+    def test_builtin_record_identity_pair_moves(self):
+        # A BUILTIN-record field at an Own[same-type] return slot (the Poll
+        # flavor): the identity pair renders the same bare move as a scalar.
+        src = (self._POLL_SRC
+               + "    def take(self: Own[Self]) -> Own[Poll[Int32]]:\n"
+               + "        return self._slot\n"
+               + "def main() -> None:\n"
+               + "    p = Holder(Poll[Int32].ready(42)).take()\n"
+               + "    print(p.is_ready())\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is not None
+        assert faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_user_record_field_still_defers(self):
+        # BOUNDARY: a USER-record field is outside the identity-pair leg --
+        # its consuming return is not pinned to the bare-move render.
+        src = (
+            "from typing import Self\n"
+            "from tpy import Own, Int32, nocopy\n"
+            "@nocopy\n"
+            "class Inner:\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "@nocopy\n"
+            "class Outer:\n"
+            "    inner: Inner\n"
+            "    def __init__(self, i: Own[Inner]) -> None:\n"
+            "        self.inner = i\n"
+            "    def take(self: Own[Self]) -> Own[Inner]:\n"
+            "        return self.inner\n"
+            "print(Outer(Inner(3)).take().v)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_bytes_field_still_defers(self):
+        # BOUNDARY: the bytes family is excluded from the identity pair like
+        # its str sibling -- only the named families are threaded through.
+        src = (self._SRC
+               + "    def take_bytes(self: Own[Self]) -> Own[bytes]:\n"
+               + "        return self.raw\n")
+        src = src.replace("    n: Int32\n", "    n: Int32\n    raw: bytes\n")
+        src = src.replace("        self.n = n\n",
+                          "        self.n = n\n        self.raw = b\"x\"\n")
+        src += "print(Plain(1).take_bytes())\n"
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_bytes") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
+    def test_container_field_still_defers(self):
+        # BOUNDARY: container families are excluded from the identity pair
+        # (their consuming renders differ from the bare field move).
+        src = (self._SRC
+               + "    def take_list(self: Own[Self]) -> Own[list[Int32]]:\n"
+               + "        return self.xs\n")
+        src = src.replace("    n: Int32\n", "    n: Int32\n    xs: list[Int32]\n")
+        src = src.replace("        self.n = n\n", "        self.n = n\n        self.xs = [n]\n")
+        src += "print(Plain(1).take_list())\n"
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "take_list") is None
+        assert not faces.get("ret.consuming_self_field")
+        _assert_byte_identical(src)
+
     def test_optional_return_slot_still_defers(self):
         # BOUNDARY, and the one this cell originally got wrong: the FIELD type
         # and the RETURN SLOT are different axes. The AST's `_gen_return` exits
@@ -3444,3 +3524,195 @@ class TestOwnBoundedTparamReceiver:
                "    print(read(Token(3)))\n"
                "main()\n")
         _assert_routes_byte_identical(src)
+
+
+class TestFieldRecvBorrowCall:
+    """A T&-returning record call composing transiently under a member read
+    (`pick(shared).n` -- the field-recv dedicated flag; nothing binds)."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 5\n"
+        "def pick(b: Box) -> Box:\n"
+        "    return b\n"
+        "def main() -> None:\n"
+        "    shared = Box()\n"
+        "    print(pick(shared).n)\n"
+        "    shared.n = 9\n"
+        "    print(pick(shared).n)\n"
+        "main()\n")
+
+    def test_borrow_call_field_read_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("call.field_recv_borrow_ret", 0) >= 1
+        assert "pick(shared).n" in cpp
+
+    def test_flag_is_position_scoped(self):
+        # The admission keys on the field-read receiver slot: the same call
+        # at a plain VALUE sink (a print arg with no member read) still
+        # rejects through the value-position set, keeping the REF_ALIAS
+        # decl frontier untouched.
+        src = self._SRC.replace("print(pick(shared).n)",
+                                "print(pick(shared))")
+        from .testutil import _lower_ctx
+        from .testutil import _fn as _fn_lookup
+        thir = _lower_ctx(src)
+        assert _fn_lookup(thir, "main") is None
+
+
+_NOFI_MACRO_MOD = '''# tpy: macro_module
+"""Post-sema macro: rewrites `sentinel(c)` -> `c.bump()` (a member call
+with no resolved FunctionInfo)."""
+from tpyc.macro_api import (
+    function_macro, FunctionMacroContext, ast, TpyCall, TpyName,
+)
+
+
+def _sentinel_calls(body):
+    out = []
+    for stmt in body:
+        for expr in stmt.exprs():
+            if (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
+                    and expr.func.name == "sentinel"):
+                out.append(expr)
+    return out
+
+
+@function_macro
+def resolve_bump(ctx: FunctionMacroContext) -> None:
+    if _sentinel_calls(ctx.body):
+        ctx.defer_until_sema_complete(_resolve)
+
+
+def _resolve(ctx) -> None:
+    int32 = ctx.resolve_type("Int32")
+    param_names = [n for n, _ in ctx.params]
+    for call in _sentinel_calls(ctx.body):
+        recv = call.args[0]
+        bumped = ast.method_call(recv, "bump", [])
+        ctx.set_expr_type(bumped, int32)
+        ctx.replace_expr(call, bumped)
+        if isinstance(recv, TpyName) and recv.name in param_names:
+            ctx.note_param_mutated(param_names.index(recv.name))
+'''
+
+_NOFI_SRC = (
+    "from nofimod import resolve_bump\n"
+    "from tpy import Int32\n"
+    "class Counter:\n"
+    "    n: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.n = 0\n"
+    "    def bump(self) -> Int32:\n"
+    "        self.n += 1\n"
+    "        return self.n\n"
+    "def sentinel(c: Counter) -> Int32:\n"
+    "    return 0\n"
+    "@resolve_bump\n"
+    "def poke(c: Counter) -> Int32:\n"
+    "    return sentinel(c)\n"
+    "def main() -> None:\n"
+    "    c = Counter()\n"
+    "    print(poke(c))\n"
+    "main()\n")
+
+
+class TestNoFiMemberCall:
+    """A post-sema macro-synthesized member call carries no FunctionInfo;
+    the fact-free plain member tail (`c.bump()`) routes for the arg-free
+    scalar-result F1-record-name slice."""
+
+    def _lower(self, tmp_path):
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import lower_module
+        (tmp_path / "nofimod.py").write_text(_NOFI_MACRO_MOD)
+        compiler, modules = _compile(_NOFI_SRC, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        return compiler, entry, thir
+
+    def test_no_fi_member_call_routes_byte_identical(self, tmp_path):
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, entry, thir = self._lower(tmp_path)
+        assert _fn(thir, "poke") is not None
+        _, cpp_t = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        _, cpp_a = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))
+        assert cpp_t == cpp_a
+        assert "return c.bump();" in cpp_t
+
+    def test_no_fi_member_call_with_args_still_defers(self, tmp_path):
+        # An fi-less member call WITH an arg is outside the slice (no param
+        # slots to type the arg against) -- the body keeps the AST path.
+        global _NOFI_MACRO_MOD, _NOFI_SRC
+        mod = _NOFI_MACRO_MOD.replace(
+            'ast.method_call(recv, "bump", [])',
+            'ast.method_call(recv, "bump", [ast.int_lit(2)])')
+        src = _NOFI_SRC.replace(
+            "    def bump(self) -> Int32:\n"
+            "        self.n += 1\n",
+            "    def bump(self, k: Int32) -> Int32:\n"
+            "        self.n += k\n")
+        from .testutil import _compile, _entry
+        from ..compilation_context import activate_compiler
+        from .lower import lower_module
+        (tmp_path / "nofimod.py").write_text(mod)
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            thir = lower_module(entry.ast, entry.analyzer)
+        assert _fn(thir, "poke") is None
+
+
+class TestProtocolNameAtStubArg:
+    """A structural-protocol param NAME at a builtin-stub arg slot binds
+    bare (`sep.join(items)` -> `::tpy::str_join(sep, items)` on
+    `items: Iterable[str]`) -- the _protocol_bare_name_arg row added to
+    the view and container family gates."""
+
+    def test_join_iterable_param_routes(self):
+        from .testutil import _lower_ctx, _fn as _fn_l
+        src = (
+            "from typing import Iterable\n"
+            "def join_from(sep: str, items: Iterable[str]) -> str:\n"
+            "    return sep.join(items)\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "join_from") is not None
+
+    def test_extend_own_elem_iterable_routes(self):
+        # The Own-element Iterable slot with a PROTOCOL-TYPED arg binds
+        # bare (`::tpy::list_extend(target, items)` -- the own_iter
+        # last-use rewrite never applies to a protocol binding).
+        from .testutil import (_lower_ctx_witnessed, _fn as _fn_l)
+        src = (
+            "from typing import Iterable\n"
+            "from tpy import Int32\n"
+            "def extend_from(target: list[Int32],"
+            " items: Iterable[Int32]) -> None:\n"
+            "    target.extend(items)\n")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn_l(thir, "extend_from") is not None
+        assert wit.get("protoarg.own_elem_proto_name", 0) >= 1
+
+    def test_inst_proto_name_arg_routes(self):
+        # `list(items)` on the protocol param renders bare in construct<>.
+        from .testutil import _lower_ctx_witnessed, _fn as _fn_l
+        src = (
+            "from typing import Iterable\n"
+            "from tpy import Int32, Own\n"
+            "def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:\n"
+            "    return list(items)\n")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn_l(thir, "list_from") is not None
+        assert wit.get("call.inst_proto_name_arg", 0) >= 1

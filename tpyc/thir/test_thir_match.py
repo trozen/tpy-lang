@@ -23,8 +23,9 @@ import pytest
 from ..codegen_cpp.context import CodeGenOptions
 from ..diagnostics import SemanticError
 from .nodes import THIRMatch
-from .testutil import (_compile, _entry, _fn, _lower_ctx,
-                       _lower_ctx_witnessed, _assert_routes_byte_identical)
+from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
+                       _lower_ctx, _lower_ctx_witnessed,
+                       _assert_routes_byte_identical)
 
 
 def _cpp(src: str, thir: bool):
@@ -2939,8 +2940,10 @@ class TestMatchStorageFormSubjects:
         with pytest.raises(SemanticError, match="aliases the matched object"):
             _compile(src)
 
-    def test_scalar_tier_field_subject_rejects(self):
-        # The scalar tiers stay name-only.
+    def test_scalar_tier_field_subject_routes(self):
+        # The scalar tiers admit field-chain subjects since the
+        # field-subject cell (`auto& __match_subject_N = h.n;` -- the
+        # same bind form as a name); formerly a name-only fence.
         src = (
             "from tpy import Int32\n"
             "class Holder:\n"
@@ -2953,7 +2956,8 @@ class TestMatchStorageFormSubjects:
             "        case _:\n"
             "            print(1)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
+        _assert_byte_identical(src)
 
 
 class TestMatchStorageFormSubjectRungs:
@@ -3518,3 +3522,134 @@ class TestMatchIsinstanceGuard:
             "    return \"not-a\"\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+
+
+class TestScalarFieldSubjectResumable:
+    """A scalar FIELD subject in a resumable method generator
+    (`match self.n:` -- the hook-mode dispatch binds
+    `auto& __match_subject_N = __self.n;` and the chain compares)."""
+
+    def test_self_field_subject_routes(self):
+        src = (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "class Counter:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def items(self) -> Iterator[Int32]:\n"
+            "        match self.n:\n"
+            "            case 0:\n"
+            "                yield 10\n"
+            "                yield 20\n"
+            "            case _:\n"
+            "                yield 30\n"
+            "def main() -> None:\n"
+            "    for v in Counter(0).items():\n"
+            "        print(v)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __match_subject_1 = __self.n;" in cpp + _hpp
+
+
+class TestOptPtrFrameFieldCapture:
+    """H1: a pointer-repr Optional FIELD captured in a resumable record
+    match binds the registered P* frame member through optional_to_ptr
+    (`v = ::tpy::optional_to_ptr(__match_subject_N.maybe);`); the SYNC
+    flavor keeps its own rung (deferring)."""
+
+    _PRE = (
+        "from typing import Iterator, Optional\n"
+        "from tpy import Int32\n"
+        "class Inner:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "class Box:\n"
+        "    maybe: Optional[Inner]\n"
+        "    def __init__(self, m: Optional[Inner]) -> None:\n"
+        "        self.maybe = m\n")
+
+    def test_resumable_capture_routes(self):
+        src = self._PRE + (
+            "def gen(b: Box) -> Iterator[Int32]:\n"
+            "    match b:\n"
+            "        case Box(maybe=v):\n"
+            "            yield 1\n"
+            "            if v is not None:\n"
+            "                yield v.n\n"
+            "def main() -> None:\n"
+            "    for x in gen(Box(Inner(3))):\n"
+            "        print(x)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        out = cpp + _hpp
+        assert "v = ::tpy::optional_to_ptr(__match_subject_1.maybe);" in out
+
+    def test_sync_capture_defers(self):
+        src = self._PRE + (
+            "def sync_cap(b: Box) -> None:\n"
+            "    match b:\n"
+            "        case Box(maybe=v):\n"
+            "            if v is not None:\n"
+            "                print(v.n)\n"
+            "sync_cap(Box(Inner(3)))\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "sync_cap") is None
+
+    def test_rvalue_subject_capture_defers(self):
+        # BOUNDARY (UAF guard): a call-RVALUE subject with a ptr-Optional
+        # field capture and a suspension in the arm would dangle -- the
+        # AST raises a deliberate diagnostic there, so the exemption is
+        # withheld and the body falls back (the AST error then surfaces
+        # on both paths).
+        src = self._PRE.replace(
+            "from typing import Iterator, Optional\n",
+            "from typing import Iterator, Optional\nfrom tpy import Own\n"
+        ) + (
+            "def make() -> Own[Box]:\n"
+            "    return Box(Inner(3))\n"
+            "def gen() -> Iterator[Int32]:\n"
+            "    match make():\n"
+            "        case Box(maybe=v):\n"
+            "            yield 1\n"
+            "            if v is not None:\n"
+            "                yield v.n\n")
+        assert _fn(_lower_ctx(src), "gen") is None
+
+
+class TestScalarFieldSubjectFlavors:
+    """The kind-gate widening's other flavors: a GUARDED switch-kind
+    field subject (guards never demote fixed-int subjects out of the
+    switch kinds) and a subscript-chain subject."""
+
+    def test_guarded_switch_and_subscript_subjects_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "class H:\n"
+            "    n: Int32\n"
+            "    items: list[Int32]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.n = 1\n"
+            "        self.items = [4, 5]\n"
+            "def guarded(h: H, k: Int32) -> None:\n"
+            "    match h.n:\n"
+            "        case 0 if k > 0:\n"
+            "            print(0)\n"
+            "        case _:\n"
+            "            print(1)\n"
+            "def subscript(h: H) -> None:\n"
+            "    match h.items[0]:\n"
+            "        case 4:\n"
+            "            print(4)\n"
+            "        case _:\n"
+            "            print(9)\n"
+            "def main() -> None:\n"
+            "    h = H()\n"
+            "    guarded(h, 1)\n"
+            "    subscript(h)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __match_subject_1 = h.n;" in cpp
+        assert ("auto& __match_subject_1 = "
+                "::tpy::__getitem__(h.items, 0);") in cpp

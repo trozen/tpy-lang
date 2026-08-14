@@ -139,8 +139,8 @@ def test_dump_names_fallback_bodies():
         "class R:\n    n: Int32\n"
         "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
         "def pick(a: R, b: R) -> R:\n    return a\n\n"
-        "def f(a: R, b: R) -> Int32:\n"
-        "    return pick(a, b).n\n\n"
+        "def f(a: R, b: R) -> None:\n"
+        "    print(pick(a, b))\n\n"
         "def main() -> None:\n    pass\nmain()\n")
     # The first-reject reason rides along, so the dump answers WHY. Matched
     # loosely: the exact tag moves as constructs migrate, and this test is
@@ -234,15 +234,18 @@ def test_bodyless_binding_is_not_called_a_fallback():
 def test_resumable_fallback_records_its_reason():
     # gen_async's fold site is a THIRD call of the node-carrying fold_attempt
     # (alongside body/ctor); without this, only the sync path was covered.
+    # The mixed own+borrow tuple frame local is a reliably-fenced
+    # resumable shape (res.local_storage -- the MIXED_TUPLE_SLOT kind).
     out = _dump(
-        "import asyncio\nfrom tpy import Int32\n\n"
-        "class Holder:\n    items: list[Int32]\n"
-        "    def __init__(self) -> None:\n        self.items = [1, 2]\n\n"
-        "async def f(h: Holder) -> Int32:\n"
+        "import asyncio\nfrom tpy import Int32, Own\n\n"
+        "class Box:\n    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n\n"
+        "def make(b: Box) -> tuple[Own[Box], Box]:\n"
+        "    return (Box(1), b)\n\n"
+        "async def f(b: Box) -> Int32:\n"
+        "    t = make(b)\n"
         "    await asyncio.sleep(0)\n"
-        "    match h.items[0]:\n"
-        "        case 1:\n            return 10\n"
-        "        case _:\n            return 20\n\n"
+        "    return t[0].val\n\n"
         "def main() -> None:\n    pass\nmain()\n")
     import re
     m = re.search(r"fn f: <fell back to AST: (\S+)>", out)

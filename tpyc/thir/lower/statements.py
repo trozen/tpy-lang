@@ -86,6 +86,7 @@ from ...typesys import (
     OwnType,
     PendingListType,
     PendingViewType,
+    ConcreteCoroType,
     ReadonlyType,
     TpyType,
     TypeParamRef,
@@ -120,10 +121,12 @@ from ...type_def_registry import (
     is_list,
     is_set,
     is_str_type,
+    is_str_view_type,
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.expressions import (_check_literal_chain,
                                         _check_literal_in)
+from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
 from ...codegen_cpp.forms import (
@@ -208,6 +211,7 @@ from ..nodes import (
     THIRFoldedIfChain,
     THIRFrameNestedDef,
     THIRFrameSlotWrite,
+    THIRCoroHandleMove,
     THIRImportInit,
     THIRNoOpStmt,
     THIROptionalPtrArg,
@@ -241,6 +245,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _comp_shadow_pointers,
     _borrow_tuple_param_elem_subscript,
     _container_del_recv,
     _slot_free_ptr_reseat_ok,
@@ -381,6 +386,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _builtin_value_record,
     copy_plain_record_source,
     _print_tuple_record_elem,
     _borrow_tuple_local_type,
@@ -906,6 +912,10 @@ class _ForEachRoute:
     # iterable is wrapped in THIRConsumingIter (rvalue capture) and the loop var
     # joins movable_locals for the body.
     consuming_native_name: 'str | None' = None
+    # An OwnIter-typed NAME iterable (`for x in oi:` off `oi = own_iter(src)`):
+    # the AST's is_own_iter arm -- plain lvalue capture (`auto& __obj_N = oi;`),
+    # consuming `auto&&` elem binding, no wrap.
+    consuming_name: bool = False
 
 
 def _for_range_route(stmt: TpyForEach, analyzer,
@@ -1232,6 +1242,7 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
     loop shape (a later cell). The other richer for-shapes are excluded."""
     fi = stmt.consuming_iter_fi
     it = stmt.iterable
+    own_iter_name = False
     if fi is None:
         # The EXPLICIT `own_iter(items)` call (the not-at-last-use warn
         # case): sema sets no consuming_iter_fi, but the AST renders the
@@ -1245,6 +1256,16 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
                 and isinstance(it.args[0], TpyName)):
             native_symbol = "tpy::own_iter"
             it = it.args[0]
+        elif (isinstance(it, TpyName) and it.name in declared
+              and is_own_iter(unwrap_readonly(unwrap_ref_type(
+                  unwrap_send_sync(declared[it.name]))))):
+            # An OwnIter-typed NAME (`for x in oi:`): the AST's is_own_iter
+            # arm -- the name captures as a plain lvalue and the elem binds
+            # consuming `auto&&`; no wrap. The CopyIter sibling defers (its
+            # AST arm binds non-consuming).
+            native_symbol = None
+            own_iter_name = True
+            _witness("foreach.own_iter_name")
         else:
             return None
     elif not fi.native_name:
@@ -1252,7 +1273,13 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
     else:
         native_symbol = fi.native_name
     if (stmt.is_async or stmt.is_tuple_unpack or stmt.enum_iterable is not None
-            or stmt.hoist_loop_var or stmt.const_loop_var):
+            or stmt.hoist_loop_var
+            # A read-only body marks const_loop_var, but the shared
+            # loop_var_binding's consuming arm wins over const (`auto&&`),
+            # so the OwnIter-NAME flavor admits it; the sema-flagged
+            # flavors never co-occur with const (sema only flags a
+            # mutated loop var).
+            or (stmt.const_loop_var and not own_iter_name)):
         return None
     if analyzer.if_branch_decls.get(id(stmt)):
         return None
@@ -1261,13 +1288,18 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
     if not isinstance(it, TpyName) or it.name not in declared:
         return None
     it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[it.name])))
-    if not is_native_iterable(it_type, analyzer.registry):
+    if own_iter_name:
+        if not is_own_iter(it_type):
+            return None
+    elif not is_native_iterable(it_type, analyzer.registry):
         return None
     et = _resolved_loop_elem_type(stmt, analyzer)
     if not _for_each_elem_binding_ok(et):
         return None
-    return _ForEachRoute(route="container", elem_type=et, iterable_lvalue=False,
-                         consuming_native_name=native_symbol)
+    return _ForEachRoute(route="container", elem_type=et,
+                         iterable_lvalue=own_iter_name,
+                         consuming_native_name=native_symbol,
+                         consuming_name=own_iter_name)
 
 def _for_enum_route(stmt: TpyForEach, analyzer,
                     declared: dict[str, TpyType]) -> '_ForEachRoute | None':
@@ -2678,10 +2710,18 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             borrow_only = (name in borrow_decls and name not in ever_owned)
             if borrow_decls.get(name, False):
-                # The borrow-decl const bit makes the pointer-local
-                # const-indirect (`const T* name;`) -- the const rung.
-                note_detail("if.hoist_const")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
+                # The CONST borrow-decl flavor (`const Reg* view;` -- sema's
+                # stmt-borrow const bit): same pointer local, const spelling
+                # and registration; never movable (the with/try families'
+                # const_pointer rung, mirrored).
+                hoist_decls.append(
+                    (name, f"const {lc.render_type(resolve_type)}*"))
+                lc.pointers.add(name)
+                lc.const_locals.add(name)
+                lc.branch_hoisted.add(name)
+                declared[name] = var_type
+                _witness("if.hoist_const_ptr")
+                continue
             reassigned = name in lc.prescan.reassigned
             cpp = lc.render_type(resolve_type)
             if _opt_storage_hoist_flavor(name, var_type, lc) is None:
@@ -2795,6 +2835,47 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                 use=_ExprUse(allow_temps=True))
             return THIRErrorReturnBind(name=name, call=call_node,
                                        alias_bind=True, loc=loc)
+        # FIRST-DECL alias bind (`_error_return_decl_prefix`'s aliases arm:
+        # `T* v;` predecl + `v = &(::tpy::unwrap_ref(*tmp));`, e.g. the
+        # auto-propagate body with no try hoist). Routed slice is the
+        # provably NON-const flavor only: any `_is_const_indirect`
+        # indicator -- readonly sema/return type, readonly callee, or a
+        # method receiver beyond a plain mutable name (the
+        # `is_const_storage_source` walk) -- stays AST rather than
+        # mirroring the const-set topology.
+        bare = unwrap_readonly(unwrap_ref_type(er_fi.return_type)) \
+            if isinstance(er_fi.return_type, TpyType) else None
+        if (name not in declared and name not in lc.pointers
+                and not (lc.func.is_generator or lc.func.is_async)
+                and bare is not None and is_plain_nonvalue(bare)):
+            _sema_t = analyzer.get_expr_type(init)
+            _svt = analyzer.var_types.get(id(stmt))
+            const_like = (
+                isinstance(_sema_t, ReadonlyType)
+                or isinstance(unwrap_ref_type(er_fi.return_type),
+                              ReadonlyType)
+                or (isinstance(_svt, OptionalType)
+                    and isinstance(_svt.inner, ReadonlyType))
+                or getattr(er_fi, "is_readonly", False))
+            if not const_like and isinstance(init, TpyMethodCall):
+                recv = init.obj
+                const_like = not (
+                    isinstance(recv, TpyName)
+                    and recv.name not in lc.const_locals
+                    and recv.name not in lc.const_storage_tuple_locals
+                    and not _param_is_const(recv.name, lc.func, analyzer,
+                                            lc.record_name))
+            if not const_like:
+                call_node = _lower_expr(
+                    init, lc, declared, error_return_raw=True,
+                    use=_ExprUse(allow_temps=True))
+                lc.pointers.add(name)
+                declared[name] = vtype if vtype is not None \
+                    else er_fi.return_type
+                _witness("er.alias_first_decl")
+                return THIRErrorReturnBind(
+                    name=name, call=call_node,
+                    decl_cpp=f"{bare.to_cpp()}*", alias_bind=True, loc=loc)
         note_detail("error_return.alias_bind")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # A rebind-slot pointer local reseats through its own optional slot --
@@ -3499,7 +3580,7 @@ def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
 
 def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                              declared: dict[str, TpyType],
-                             loc) -> THIRStmt:
+                             loc, *, in_branch: bool = False) -> THIRStmt:
     """Module-init write of a NON-VALUE global -- the module-scope faces of
     `_gen_pointer_local_rebind`. The global is already declared at namespace
     scope, so every write is a REASSIGN in codegen's eyes (pre-seeded
@@ -3617,12 +3698,38 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         if not isinstance(stmt.init, TpyName):
             note_detail("top_level.global_slot_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        if stmt.init.name in lc.global_ptr_slots:
+        if (stmt.init.name in lc.global_ptr_slots
+                or (stmt.init.name in lc.pointers
+                    and stmt.init.name not in lc.prescan.global_cpp)):
+            # Pointer-slot globals AND locally-declared pointer LOCALS
+            # (`saved = p;` in a top-level loop) are already `T*`: the
+            # AST renders both as the bare copy. An IMPORTED pointer
+            # global (spelled via global_cpp) stays out -- the AST
+            # qualifies its spelling, which this bare-name emit cannot.
             _witness("top_level.global_ptr_copy")
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.GLOBAL_PTR_COPY,
                 value=THIRName(result_type=vtype, name=stmt.init.name,
                                form=Form.BORROW, loc=loc),
+                loc=loc)
+        _gsw_it = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                       declared[stmt.init.name])))
+                   if (stmt.init.name in declared
+                       # An IMPORTED pointer-slot global sits in lc.pointers
+                       # (not global_ptr_slots) and the AST copies its bare
+                       # pointer -- not the address-of; keep it out until a
+                       # witness lands the copy render.
+                       and stmt.init.name not in lc.pointers) else None)
+        if _gsw_it is not None and _gsw_it == slot_t:
+            # The address-of catch-all for a plain LOCAL lvalue -- the
+            # desugared unpack alias (`a = &(__unpack_0_0);`): the local
+            # owns (or aliases) the storage, the slot points AT it.
+            _witness("top_level.global_addr_local")
+            return THIRPtrLocalRebind(
+                name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                value=THIRName(result_type=declared[stmt.init.name],
+                               name=stmt.init.name, form=Form.BORROW,
+                               loc=loc),
                 loc=loc)
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -3650,9 +3757,18 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # `gen_expr(init, target_type)` for any rvalue, and the lowering of
         # the init gates its own shape. The local sibling is the one that
         # should eventually lose its list, not this one gain one.
-        init = _lower_expr(stmt.init, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE),
-                           target_type=slot_t)
+        if type(stmt.init) in _comprehensions._COMP_KINDS:
+            # A comprehension init renders its stmt-expr inside the static
+            # slot line (`static std::vector<T> __global_slot_N = ({...});`)
+            # -- the frame-emplace comp branch's top-level twin.
+            init = _comprehensions._lower_comprehension(
+                stmt.init, slot_t, lc, declared,
+                _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
+            _witness("top_level.global_slot_comp")
+        else:
+            init = _lower_expr(stmt.init, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.STORAGE),
+                               target_type=slot_t)
     elif isinstance(slot_t, NominalType):
         if init_bare != slot_t:
             # A subclass rvalue retypes the slot (the polymorphic arm).
@@ -3679,7 +3795,43 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype,
         kind=PtrSlotKind.GLOBAL_RVALUE, init=init,
-        cpp_type=lc.render_type(slot_t), loc=loc)
+        cpp_type=lc.render_type(slot_t), branch_scope=in_branch, loc=loc)
+
+
+def _lower_dyn_own_erased_call_decl(stmt: TpyVarDecl, lc: _LowerCtx,
+                                    declared: dict[str, TpyType],
+                                    loc) -> 'THIRVarDecl | None':
+    """An ALREADY-ERASED Own[dyn] call init (`c = make(41)` where make
+    returns Own[Cancellable[T]] -- the 'forward' verdict): the plain
+    spelled VALUE decl (`std::unique_ptr<Base> c = make(41);`); reads move
+    at last use through the Own-slot arg rows, so the name must NOT join
+    lc.pointers (the Base* slot registration is for the borrowing decl
+    forms). Fresh un-hoisted un-reassigned sync names only; the frame
+    flavor stays on the resumable's erased_handle_locals arm."""
+    analyzer = lc.analyzer
+    sema_var_t = analyzer.var_types.get(id(stmt))
+    if sema_var_t is None or not isinstance(
+            unwrap_readonly(unwrap_send_sync(sema_var_t)), OwnType):
+        return None
+    if not (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+            and not (lc.func.is_generator or lc.func.is_async)
+            and stmt.name not in lc.prescan.hoisted
+            and stmt.name not in lc.prescan.reassigned
+            and stmt.name not in lc.prescan.rvalue_reassigned
+            and _dyn_own_forward_call_arg(stmt.init, sema_var_t,
+                                          analyzer) is not None):
+        return None
+    init_node = _lower_expr(
+        stmt.init, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
+    declared[stmt.name] = sema_var_t
+    lc.promote_movable(stmt.name)
+    _witness("decl.dyn_own_erased_call")
+    _dyn_base = dynamic_base_name(
+        unwrap_readonly(unwrap_send_sync(sema_var_t)).wrapped, analyzer)
+    return THIRVarDecl(
+        name=stmt.name, resolved_type=sema_var_t, init=init_node,
+        cpp_type=f"std::unique_ptr<{_dyn_base}>", loc=loc)
 
 
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
@@ -3704,6 +3856,48 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
     sema_var_t = analyzer.var_types.get(id(stmt))
     if sema_var_t is not None and isinstance(
             unwrap_readonly(unwrap_send_sync(sema_var_t)), OwnType):
+        # An ASYNC-FACTORY init (`c = add_one(41)` at Own[Cancellable[T]]):
+        # the AST DEFERS erasure -- the local holds the CONCRETE frame in
+        # optional storage (`std::optional<__coro_add_one> c = add_one(41);`)
+        # and the Own[dyn] CONSUMER arg erases (`make_adapter<Base>(
+        # std::move(*(c)))`). Slice: a plain free async-def call bound to a
+        # fresh un-hoisted, un-reassigned name.
+        _af_fi = (stmt.init.resolved_function_info
+                  if isinstance(stmt.init, TpyCall) else None)
+        _own_wrapped = unwrap_readonly(unwrap_send_sync(sema_var_t)).wrapped
+        if (_af_fi is not None and _af_fi.is_async
+                and not _af_fi.is_method and not _af_fi.is_staticmethod
+                and isinstance(stmt.init, TpyCall)
+                and isinstance(stmt.init.func, TpyName)
+                and not stmt.init.kwargs
+                # The DEFERRED-erasure shape ONLY: sema types the binding
+                # Own[ConcreteCoroType]. An erased Own[Cancellable[T]]
+                # binding (a protocol-param callee) takes the AST's
+                # make_adapter/unique_ptr decl -- a different render.
+                and isinstance(unwrap_readonly(_own_wrapped),
+                               ConcreteCoroType)
+                # The renderer-free spelling slice: no owner record and no
+                # generic targs (both need the codegen TypeResolver).
+                and unwrap_readonly(_own_wrapped).coro_owner is None
+                and not unwrap_readonly(_own_wrapped).coro_inferred_type_args
+                and stmt.name not in lc.prescan.hoisted
+                and not (lc.func.is_generator or lc.func.is_async)):
+            init_node = _lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(coro_factory=True))
+            lc.coro_frame_locals[stmt.name] = vtype
+            declared[stmt.name] = sema_var_t
+            _witness("decl.coro_frame_local")
+            _cct = unwrap_readonly(_own_wrapped)
+            _frame_cpp = sub_struct_qualname(
+                None, None, _cct.coro_func_name,
+                module_qual=_cct.coro_module_qual)
+            return THIRVarDecl(
+                name=stmt.name, resolved_type=sema_var_t, init=init_node,
+                # The SHARED naming helper (cross-module qualification via
+                # coro_module_qual); the owner/targ flavors -- which need
+                # the codegen TypeResolver -- are gate-excluded above.
+                cpp_type=f"std::optional<{_frame_cpp}>", loc=loc)
         note_detail("decl.dyn_protocol_own")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     if stmt.init is None:
@@ -4759,8 +4953,9 @@ def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
              or _poly_subject_readonly(declared.get(var)))
     const_pfx = "const " if const else ""
     ptr_local = f"__{var}_ptr"
-    cast_arg = ("&(" + escape_cpp_name(var)
-                + ".__deref__()" * depth + ")")
+    _dv_base = (f"(*{escape_cpp_name(var)})" if var in lc.pointers
+                else escape_cpp_name(var))
+    cast_arg = "&(" + _dv_base + ".__deref__()" * depth + ")"
     cast_rhs = narrow_cast_rhs(cpp_type, member, dispatch_inner, cast_arg,
                                is_const=const, analyzer=analyzer)
     inner = stmt.condition
@@ -5442,6 +5637,15 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
     elif (isinstance(init, TpyFieldAccess)
             and _f2_reseat_ok(init, declared, analyzer)):
         src = _lower_field_source(init, lc, declared)
+    elif (isinstance(init, TpyName)
+            and (init.name in lc.pointers or init.name in lc.frame_slots)
+            and init.name not in lc.narrow.narrowed):
+        # A POINTER-local or FRAME-SLOT source (`ys = xs` off an owned
+        # container held as `T*` / `frame_slot<T>`): the alias re-addresses
+        # the deref (`ys = &((*xs));`) -- the same live-lvalue contract as
+        # the subscript arm.
+        src = _lower_expr(init, lc, declared,
+                          use=_ExprUse(indirect_read=True))
     else:
         note_detail("alias.bind_source")
         raise ThirUnsupported("res.alias_bind")
@@ -5469,6 +5673,26 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     (a frame_slot with emplace renders) -- both named rungs. Shared by the
     top-level leaf decl arm and the branch-nested decl arm."""
     analyzer = lc.analyzer
+    if (isinstance(stmt.init, TpySubscript)
+            and isinstance(stmt.init.obj, TpyName)
+            and not isinstance(analyzer.get_expr_type(stmt.init.obj),
+                               ReadonlyType)):
+        # A container-element storage-tuple lvalue: the F3 lift wraps the
+        # bare element read (`t = tuple_to_pointer<..>(__getitem__((*items),
+        # 0));`) -- the non-resumable reseat_lift's frame twin.
+        _sub_src = _lower_expr(stmt.init, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
+                               subscript_prechecked=True)
+        _witness("res.btuple_write")
+        return THIRAssign(
+            target=THIRName(name=stmt.name,
+                            result_type=declared[stmt.name], loc=stmt.loc),
+            value=THIRFormConvert(
+                result_type=unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared[stmt.name]))),
+                value=_sub_src, form=Form.BORROW, loc=stmt.loc),
+            loc=stmt.loc,
+            no_source_comment=getattr(stmt, "no_source_comment", False))
     if isinstance(stmt.init, TpyTupleLiteral):
         value = _lower_borrow_tuple_literal(
             stmt.init, declared[stmt.name], lc, declared)
@@ -5522,11 +5746,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
             raise ThirUnsupported(stmt_reject_reason(stmt))
         value = _comprehensions._lower_comprehension(
             init, declared[stmt.name], lc, declared,
-            # The shadow-check pointer set filters Optional-ptr-borrow
-            # names like every other comprehension call site.
-            frozenset(n for n in lc.pointers
-                      if _optional_ptr_borrow(declared.get(n),
-                                              lc.analyzer) is None))
+            _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
         _witness("res.frame_comp_write")
     else:
         value = _lower_expr(init, lc, declared,
@@ -6364,11 +6584,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _gvt = declared.get(stmt.name)
                 _gvu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     _gvt))) if _gvt is not None else None)
-                if not (isinstance(_gvu, NominalType)
-                        and is_dyn_protocol(_gvu)):
+                # In-branch flavors with mirrored renders: the @dynamic
+                # rebind (static slot hoists, emplace inline), a first
+                # RVALUE write inside a FOR body (only there does the
+                # AST's current_ns leave global_ns and drop `static`;
+                # if/while/with/try bodies KEEP it -- an unmirrored
+                # static flavor, so those reject), and a pointer-NAME
+                # source (the bare `g = p;` copy).
+                if not (
+                        (isinstance(_gvu, NominalType)
+                         and is_dyn_protocol(_gvu))
+                        or (lc.in_for_body
+                            and stmt.init is not None
+                            and is_rvalue_source(lc.analyzer, stmt.init))
+                        or (isinstance(stmt.init, TpyName)
+                            and (stmt.init.name in lc.global_ptr_slots
+                                 or (stmt.init.name in lc.pointers
+                                     and stmt.init.name
+                                     not in lc.prescan.global_cpp)))):
                     note_detail("top_level.global_slot_branch")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-            return _lower_global_slot_write(stmt, lc, declared, loc)
+            return _lower_global_slot_write(
+                stmt, lc, declared, loc,
+                in_branch=scope.in_branch and lc.in_for_body)
         is_reassign = stmt.name in declared
         in_branch_first = scope.in_branch and not is_reassign
         if in_branch_first and not scope.branch_decls_ok:
@@ -6394,6 +6632,34 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if er_fi is not None:
             return _lower_error_return_bind(
                 stmt, stmt.name, stmt.init, er_fi, vtype, lc, declared, loc)
+        if is_reassign and stmt.name in lc.coro_frame_locals:
+            # Concrete coro handle rebind (`d = value(4)` -- sema warned it
+            # drops the previous coroutine): always emplace into the
+            # `std::optional<__coro_*>` slot, mirroring
+            # `_gen_concrete_coro_write` -- optional's move-ASSIGN is
+            # deleted when the frame holds reference members. A NAME source
+            # move-constructs + resets; a self-write is a no-op render left
+            # unwitnessed here.
+            init0 = stmt.init
+            if (isinstance(init0, TpyName)
+                    and init0.name in lc.coro_frame_locals
+                    and init0.name != stmt.name):
+                _witness("decl.coro_frame_rebind")
+                return THIRCoroHandleMove(
+                    target=stmt.name, source=init0.name, loc=loc,
+                    no_source_comment=getattr(stmt, "no_source_comment",
+                                              False))
+            if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
+                note_detail("decl.coro_frame_rebind_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            value = _lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.STORAGE,
+                             coro_factory=True, allow_temps=True))
+            _witness("decl.coro_frame_rebind")
+            return THIRFrameSlotWrite(
+                name=stmt.name, value=value, cpp_type=None, loc=loc,
+                no_source_comment=getattr(stmt, "no_source_comment", False))
         # Escape-hoist record pointer-local first decls (hoisted, or
         # name-reassigned with an rvalue init -- the classifier's OTHER, the
         # AST's pointer path). Placed before the branch-scope gate: a
@@ -6427,6 +6693,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if not is_reassign:
             fn_top = not scope.in_branch
             if fn_top:
+                # The already-erased Own[dyn] VALUE decl first: it must not
+                # take the Base*-pointer registration below.
+                erased_decl = _lower_dyn_own_erased_call_decl(stmt, lc,
+                                                              declared, loc)
+                if erased_decl is not None:
+                    return erased_decl
                 # @dynamic protocol local (`p: P = Concrete()`): slot + Base*
                 # pointer, its own emit form (before the borrow classifier,
                 # which has no protocol arm).
@@ -7437,7 +7709,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             declared[stmt.name] if stmt.name in declared else vtype,
             lc.analyzer)
         if ptr_u is not None and stmt.init is not None:
-            if in_branch_first:
+            if in_branch_first and stmt.name in lc.prescan.rvalue_reassigned:
+                # A branch-first decl needing the REBIND slot would hoist
+                # `std::optional<...> __slot_N;` at function scope while
+                # the decl sits in-branch -- unmirrored placement. The
+                # slotless flavors emit their pair in place, branch-safe.
                 note_detail("decl.branch_ptr_union")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             # Every arm below binds the name as `std::variant<A*, B*>` --
@@ -7459,17 +7735,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("decl.ptr_union_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 if stmt.name in declared:
-                    # Reseat: only the rvalue kind through the rebind slot
-                    # pre-declared at the decl (`.emplace` + re-lift); the
-                    # slotless inline-slot fallback and the address reseat
-                    # are later rungs.
-                    if (slot_kind is not PtrSlotKind.UNION_RVALUE
-                            or stmt.name not in lc.rebind_slot_locals):
+                    # Reseat: the rvalue kind through the rebind slot
+                    # pre-declared at the decl (`.emplace` + re-lift), or
+                    # -- when the decl had no rvalue init and so no slot
+                    # (`v: A|B|None = None; v = A(...)`) -- the slotless
+                    # inline-slot fallback (a fresh `__slot_N` declared at
+                    # the reseat). The address reseat is a later rung.
+                    if slot_kind is not PtrSlotKind.UNION_RVALUE:
                         note_detail("decl.union_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
-                    _witness("reseat.union_rvalue")
+                    if stmt.name in lc.rebind_slot_locals:
+                        _witness("reseat.union_rvalue")
+                        _rk = PtrSlotKind.UNION_RVALUE
+                    else:
+                        _witness("reseat.union_inline_slot")
+                        _rk = PtrSlotKind.UNION_INLINE_SLOT
                     return THIRPtrLocalRebind(
-                        name=stmt.name, kind=PtrSlotKind.UNION_RVALUE,
+                        name=stmt.name, kind=_rk,
                         value=_lower_expr(stmt.init, lc, declared,
                                           use=_ExprUse(
                                               result=_ExprResultUse.BORROW_BIND)),
@@ -7516,8 +7798,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # `self.inner.pet`): const iff the method is readonly
                     # (`this` is const, so every member down the chain is).
                     u_const = bool(getattr(lc.func, "is_readonly", False))
+                # A PROPERTY read renders its getter CALL (`c.shape()`);
+                # the plain field keeps the raw member spelling.
+                if stmt.init.property_getter_call is not None:
+                    _u_src = _lower_expr(
+                        stmt.init, lc, declared, field_prechecked=True,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+                else:
+                    _u_src = _lower_field_source(stmt.init, lc, declared)
                 u_init = THIRFormConvert(
-                    result_type=ptr_u, value=_lower_field_source(stmt.init, lc, declared),
+                    result_type=ptr_u, value=_u_src,
                     form=Form.BORROW, is_const=u_const, loc=loc)
             elif isinstance(stmt.init, TpySubscript):
                 # A union container-element read (`pet = pets["rex"]`):
@@ -7541,12 +7831,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # A ptr-variant-returning CALL source assigns bare into the
                 # same-union slot (`got = cycle(start);`) -- STORAGE use so
                 # the call-ret union row admits it; name copies keep the
-                # default use.
+                # default use. A SAME-union NAME copy is a whole-variant
+                # assign (`pet = other;`), so an assign-narrowed divergent
+                # source read is safe at this sink (the same-union check
+                # mirrors the plain reassign arm's fence policy).
+                _rs_div = (
+                    isinstance(stmt.init, TpyName)
+                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        declared.get(stmt.init.name)))) == ptr_u)
                 u_init = _lower_expr(
                     stmt.init, lc, declared,
                     use=(_ExprUse(result=_ExprResultUse.STORAGE)
                          if isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                         else _ExprUse()))
+                         else _ExprUse()),
+                    allow_union_divergent=_rs_div)
             if stmt.name in declared:
                 return THIRAssign(
                     target=THIRName(result_type=ptr_u, name=stmt.name,
@@ -7694,14 +7992,40 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             or stmt.name in lc.prescan.move_through):
                         note_detail("decl.container_call_reassigned")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
-                    # A BORROW container return (`return self._items` -- a C++
-                    # `T&`) binds a `T&` alias on the AST path, not the plain
-                    # copy this arm emits; only rvalue (by-value / Own) returns
-                    # take the storage decl. Tuples/unions are value types --
-                    # always by-value, no alias form exists.
+                    # A BORROW container return binds a `T&` alias
+                    # (`std::vector<int32_t>& items = identity<...>(t);`)
+                    # -- the container twin of decl.record_borrow_call.
+                    # Readonly-wrapped returns keep the reject (the const
+                    # spelling is unverified).
                     if not is_rvalue_source(analyzer, stmt.init):
-                        note_detail("decl.container_call_borrow")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                        _cbc_fi = getattr(stmt.init,
+                                          "resolved_function_info", None)
+                        _cbc_rt = getattr(_cbc_fi, "return_type", None)
+                        # The const fact has TWO spellings: the declared
+                        # ReadonlyType wrap AND fi.is_readonly (the
+                        # @readonly method's implicit const twin) -- both
+                        # keep the reject (a `T&` binding a `const T&`
+                        # would be a loud divergence).
+                        if (isinstance(unwrap_ref_type(_cbc_rt)
+                                       if isinstance(_cbc_rt, TpyType)
+                                       else None, ReadonlyType)
+                                or getattr(_cbc_fi, "is_readonly", False)):
+                            note_detail("decl.container_call_borrow")
+                            raise ThirUnsupported(stmt_reject_reason(stmt))
+                        lc.ref_alias_locals.add(stmt.name)
+                        declared[stmt.name] = vtype
+                        _witness("decl.container_borrow_call")
+                        return THIRVarDecl(
+                            name=stmt.name, resolved_type=vtype,
+                            init=_lower_expr(
+                                stmt.init, lc, declared,
+                                use=_ExprUse(
+                                    result=_ExprResultUse.BORROW_BIND,
+                                    allow_temps=True)),
+                            cpp_type=lc.render_type(vtype),
+                            form=Form.BORROW,
+                            cpp_local_representation=LocalBinding.REF_ALIAS,
+                            loc=loc)
                 storage_call = True
                 _witness("decl.storage_call")
         # A @native free call returning a by-value record (`f = open(path)` ->
@@ -7760,7 +8084,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # generic emit): the RHS concat's left operand is the target itself, so
         # the whole statement emits `x += y;` (buffer reuse) instead of the
         # concat-and-assign.
-        if stmt.name in declared and _owned_str_append_target(vtype, analyzer):
+        if (stmt.name in declared
+                # The peephole is LOCAL-keyed on the AST side: the
+                # global-decl write path renders the plain concat-assign,
+                # so a write-seeded str GLOBAL must not fold.
+                and stmt.name not in lc.prescan.global_seeded
+                and _owned_str_append_target(vtype, analyzer)):
             rhs = _str_self_append_rhs(stmt.name, stmt.init)
             if rhs is not None:
                 return THIRStrAppend(target=stmt.name,
@@ -8142,7 +8471,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # structural-protocol slot (`it = iter(c)`) spells
                     # `auto` and the init render carries the type.
                     or _native_iter_value_slot(vtype, analyzer)
+                    # A BUILTIN value-record slot (`w = _make_waker(...)` --
+                    # `::tpystd::coro::Waker w = ...;`): the plain spelled
+                    # copy, `_value_record_slot`'s builtin sibling. The
+                    # record-info guard keeps TypeDef-only value types
+                    # (span projections, span-of-span) on their own gated
+                    # rows; the init and reads gate at their own arms.
+                    or (_builtin_value_record(vtype, analyzer)
+                        and _witness("decl.builtin_value_record_slot"))
                     or _protocol_auto_slot(vtype)
+                    # An OwnIter/CopyIter slot (`oi = own_iter(src)`):
+                    # the TypeDef spells `auto`, the special-builtin init
+                    # render carries the concrete type.
+                    or (isinstance(vtype, NominalType)
+                        and (is_own_iter(vtype) or is_copy_iter(vtype))
+                        and _witness("decl.own_copy_iter_slot"))
                     # A per-element-Own record tuple slot
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
                     # is the plain spelled copy like a value tuple.
@@ -8169,7 +8512,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # Whole-optional only into an optional TARGET slot; a plain-T
                 # binding reads the narrowed inner ((*p)).
                 and _value_opt_target_binding(stmt.name, lc))
-            if whole_optional_reassign:
+            ru_reassign = (
+                _eligible_wrapper_union(declared.get(stmt.name, vtype),
+                                        analyzer)
+                if (stmt.name in declared
+                    and isinstance(src, (TpyArrayLiteral, TpyDictLiteral)))
+                else None)
+            if ru_reassign is not None and _ru_container_literal_ok(
+                    src, analyzer):
+                # A container literal REASSIGNED to a wrapper-union binding
+                # (the top-level global init `g = [1, [2, 3], 4];`): the
+                # spelled container of wrapper members, absorbed by the
+                # wrapper's converting assign -- the decl arm's
+                # `decl.ru_wrapper_literal` render at the assign sink.
+                _witness("assign.ru_wrapper_literal")
+                init = _lower_ru_literal(src, ru_reassign, lc, declared)
+            elif whole_optional_reassign:
                 init = _flush_witness(
                     "flush.vardecl",
                     _lower_expr(
@@ -8201,6 +8559,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 str_field_init = (
                     isinstance(src, TpyFieldAccess)
                     and _resolved_str_value(vtype, analyzer) is not None)
+                # A same-union NAME reassign (`pet = other;`) copies the
+                # whole variant -- the AST renders both bare regardless of
+                # sema's assign-narrow on the source, so the divergent
+                # read is safe at this sink.
+                _tgt_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                              declared[stmt.name])))
+                          if stmt.name in declared else None)
+                _union_reassign_name = (
+                    isinstance(_tgt_u, UnionType)
+                    and isinstance(src, TpyName)
+                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        declared.get(src.name)))) == _tgt_u)
                 init = (_flush_witness(
                             "flush.vardecl",
                             _lower_char_targeted(
@@ -8209,7 +8579,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True),
                                 allow_whole_optional=opt_slot,
-                                field_owned_str_ok=str_field_init))
+                                field_owned_str_ok=str_field_init,
+                                allow_union_divergent=_union_reassign_name))
                         if stmt.init else None)
             init = _slot_literal_retype(
                 init, declared.get(stmt.name, vtype), lc)
@@ -8330,6 +8701,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
               # The native-iterator slot spells its generic instantiation
               # (`::tpy::SpanIter<const int32_t>`) via render_type.
               or _native_iter_value_slot(vtype, analyzer)
+              # OwnIter/CopyIter: render_type spells `auto` (the TypeDef's
+              # formatter), the init render carries the concrete type.
+              or (isinstance(vtype, NominalType)
+                  and (is_own_iter(vtype) or is_copy_iter(vtype)))
               # The owned-optional record slot spells via render_type
               # (generic instantiation + cross-module qualification --
               # `std::optional<::tpystd::tplib::rc::Rc<Cell>>`).
@@ -8348,9 +8723,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         er_fi = _error_return_stmt_fi(stmt.value, analyzer)
         if er_fi is not None:
             # A direct @error_return call RHS: the statement-level unwrap
-            # block (before target classification, like the AST). Only the
-            # declared plain-local name target routes; field/subscript
-            # targets stay AST.
+            # block (before target classification, like the AST). Declared
+            # plain-local name targets and markers-clean FIELD targets
+            # route; subscript / marked-field targets stay AST.
+            if (isinstance(stmt.target, TpyFieldAccess)
+                    and _field_markers_clean(stmt.target)):
+                # `self.p = make(n)` -- the AST's
+                # `_error_return_target_assign` non-name branch: the target
+                # renders via plain gen_expr (RECEIVER use keeps the bare
+                # lvalue) and the bind line assigns the moved unwrap into
+                # it. An unroutable target raises and falls the body back.
+                _reject_nested_error_return_arg(stmt, stmt.value, analyzer)
+                tgt = _lower_expr(stmt.target, lc, declared,
+                                  use=_ExprUse(result=_ExprResultUse.RECEIVER))
+                call_node = _lower_expr(
+                    stmt.value, lc, declared, error_return_raw=True,
+                    use=_ExprUse(allow_temps=True))
+                _witness("er.field_target_bind")
+                return THIRErrorReturnBind(name="", call=call_node,
+                                           target=tgt, loc=loc)
             if (not isinstance(stmt.target, TpyName)
                     or stmt.target.name not in declared
                     or stmt.target.name in narrowed
@@ -9138,8 +9529,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # that shape cannot reach here at all. Keeping the axes separate
             # documents which one the `Own` belongs to rather than guarding a
             # reachable case.
-            if not (_plain_value(fld_t)
-                    and (_plain_value(ret_t) or _own_type_param_slot(ret_t))):
+            # A BUILTIN-record field moving into its own Own[same-type]
+            # return (`_slot: Own[Poll[Int32]]` -> `-> Own[Poll[Int32]]`):
+            # the identity pair guarantees the bare
+            # `return std::move(this->_slot);` -- container/str families
+            # excluded (their consuming renders differ).
+            _csf_pair = (
+                isinstance(fld_t, NominalType)
+                and not fld_t.is_protocol and not fld_t.is_user_record
+                and not (is_list(fld_t) or is_dict(fld_t) or is_set(fld_t)
+                         or is_array(fld_t))
+                and _resolved_str_value(fld_t, analyzer) is None
+                and _resolved_bytes_value(fld_t, analyzer) is None
+                and fld_t == _unwrap_own(ret_t))
+            if not ((_plain_value(fld_t)
+                     and (_plain_value(ret_t) or _own_type_param_slot(ret_t)))
+                    or _csf_pair):
                 note_detail("return.consuming_self_field")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             src = _lower_field_source(stmt.value, lc, declared)
@@ -9301,6 +9706,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         loc=loc)
                 note_detail("return.dyn_own_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            # The RETURN erasure of a direct async-def factory call
+            # (`return add_one(n)` at Own[Cancellable[T]]): the same
+            # `make_adapter<Base>(factory(args))` wrap as the call-arg
+            # row, Base spelled from the SLOT protocol -- the AST return
+            # path renders through the same helper.
+            _rd_raw = (lc.func.return_type
+                       if isinstance(lc.func.return_type, TpyType) else None)
+            coro_proto = _dyn_own_coro_factory_arg(v, _rd_raw, analyzer)
+            if coro_proto is not None:
+                inner = _lower_expr(v, lc, declared,
+                                    use=_ExprUse(coro_factory=True,
+                                                 allow_temps=True))
+                _witness("ret.dyn_own_factory")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        THIRCoerce(
+                            result_type=unwrap_send_sync(_rd_raw),
+                            expr=inner, coercion_name="dyn_own_adapter",
+                            wrap=("::tpy::make_adapter<"
+                                  + dynamic_base_name(coro_proto, analyzer)
+                                  + ">({0})"),
+                            form=inner.form, loc=loc)),
+                    loc=loc)
             conf = _dyn_own_conformer_arg(v, _fn_return_type(lc), declared,
                                           analyzer)
             if conf is None:
@@ -9657,6 +10086,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRReturn(
                     value=_lower_expr(stmt.value, lc, declared,
                                       field_owned_str_ok=True), loc=loc)
+            if (isinstance(stmt.value, TpyCall)
+                    and stmt.value.call_type is not None
+                    and is_str_view_type(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(
+                            analyzer.get_expr_type(stmt.value)))))):
+                # `return StrView("opt-view")` at Optional[StrView]: the
+                # instantiation folds to its source render
+                # (`return "opt-view";` -- the view_ctor_value fold),
+                # implicit-converting into the value optional.
+                _witness("ret.value_opt_view_ctor")
+                return THIRReturn(
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
             if not isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
                 note_detail("return.opt_view_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -9745,6 +10186,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # binding, so no place reasoning arises (sema's
                 # return_borrows_from transitivity validated the chain).
                 record_ok = bool(_witness("ret.record_call_borrow"))
+            elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                  and lc.prescan.ret_record_borrow is None
+                  and stmt.value.resolved_function_info is not None
+                  and call_returns_cpp_ref(
+                      analyzer, stmt.value.resolved_function_info)):
+                # `return positive(x, y).updated()` at the Own[record]
+                # STORAGE slot: the callee's borrow return renders bare and
+                # the return slot copies from the reference (no move -- a
+                # borrowed source is never stolen from). Same lowering use
+                # as the borrow-slot passthrough arm below.
+                _witness("ret.record_ref_call_storage")
+                return THIRReturn(
+                    value=_lower_expr(
+                        stmt.value, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                     borrow_ret_passthrough=True)),
+                    loc=loc)
             elif (isinstance(stmt.value, TpyName)
                   and stmt.value.name != "self"
                   and stmt.value.name not in narrowed
@@ -9869,6 +10327,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 ft = unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(analyzer.get_expr_type(source))))
                 cb_ok = bool(ft == cb and _witness("ret.container_borrow"))
+            if (not cb_ok
+                    and isinstance(source, (TpyCall, TpyMethodCall))
+                    and source.resolved_function_info is not None
+                    and call_returns_cpp_ref(
+                        analyzer, source.resolved_function_info)):
+                # `return identity[list[T]](items);` -- the borrow-returning
+                # call's bare passthrough into the `T&` container return
+                # (the record arm's container sibling; the call re-validates
+                # itself during the value's lowering).
+                _witness("ret.container_call_borrow")
+                return THIRReturn(
+                    value=_lower_expr(
+                        source, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                     borrow_ret_passthrough=True)),
+                    loc=loc)
             if not cb_ok:
                 note_detail("return.container_borrow_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -9898,6 +10372,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and _witness("ret.container_literal"))
             elif isinstance(source, TpyCall):
                 container_ok = bool(_witness("ret.container_call"))
+            elif isinstance(source, TpyListRepeat):
+                # `return [label] * 3` -- the repeat arm renders the
+                # from_range build target-typed by the storage slot (the
+                # untargeted resolve would demote to the Array flavor).
+                _witness("ret.container_repeat")
+                return THIRReturn(
+                    value=_lower_expr(
+                        source, lc, declared,
+                        target_type=lc.prescan.ret_container_storage),
+                    loc=loc)
             elif type(source) in _comprehensions._COMP_KINDS:
                 # A comprehension source renders the same position-independent
                 # stmt-expr as the decl-init arm, target-typed by the storage
@@ -10090,6 +10574,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         analyzer.get_expr_type(source), analyzer) is not None):
                 note_detail("return.union_view_insert")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        if (lc.prescan.ret_union_borrow is not None
+                and stmt.value is not None):
+            # The Ref(union) borrow-return (a property getter's
+            # `std::variant<Circle, Square>&` slot): a bare same-union
+            # self-FIELD returns bare (`return this->_shape;`); every
+            # other source has no witnessed render.
+            _ubv = stmt.value
+            _ub_ft = (analyzer.get_expr_type(_ubv)
+                      if isinstance(_ubv, TpyFieldAccess) else None)
+            if (isinstance(_ubv, TpyFieldAccess)
+                    and isinstance(_ubv.obj, TpyName)
+                    and _ubv.obj.name == lc.self_receiver
+                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        _ub_ft))) == lc.prescan.ret_union_borrow):
+                _witness("ret.union_borrow_field")
+                return THIRReturn(
+                    value=_lower_expr(
+                        _ubv, lc, declared, field_prechecked=True,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+                    loc=loc)
+            note_detail("return.union_borrow")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         ret_pu = lc.prescan.ret_ptr_union
         member_lvalue_ret = (
             stmt.value is not None and ret_pu is not None
@@ -10528,12 +11034,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # rebind alias) keeps rejecting.
                 or (pvar in lc.pointers
                     and not polymorphic_source_is_pointer(declared.get(pvar)))
-                # `self` is admitted: `_poly_cast_context` spells its cast
-                # arg (`this` / `&__self`). A RESUMABLE self keeps rejecting
-                # -- its `__self` alias would collide with the frame field,
-                # which the AST renames (`__self_narrowed`) and no THIR
-                # alias maker reproduces.
-                or (pvar == lc.self_receiver and lc.resumable_leaf_mode)
+                # `self` is admitted, resumable included: `_poly_cast_context`
+                # spells its cast arg (`this` / `&__self`), and this arm's
+                # single-fact/then-only slice is exactly the AST's if-INIT
+                # form (`__self_ptr`, no frame-field collision). The
+                # `__self_narrowed` rename lives in `_fresh_alias_local`'s
+                # ALIAS emissions (assert / early-return), which stay gated.
                 or pvar in lc.prescan.global_seeded
                 or pvar in lc.narrow.narrowed
                 or pvar in lc.narrow.spelled
@@ -10552,7 +11058,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             dv_ok = not (
                 bool(hoists)
                 or lc.func.is_generator or lc.func.is_async
-                or dvar in lc.pointers
+                # A rebind-slot POINTER local is admitted: the cast arg
+                # derefs (`&((*b).__deref__())`), an in-branch reseat
+                # invalidates the narrow through sema's marker (reads
+                # after it carry no deref_narrowed_to), and the plain
+                # deref chain re-renders through the pointer arms.
+                or (dvar in lc.pointers
+                    and dvar not in lc.rebind_slot_locals)
                 or dvar in lc.prescan.global_seeded
                 or dvar in lc.narrow.narrowed
                 or dvar in lc.narrow.spelled
@@ -11424,10 +11936,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                  else head_bind),
                     source_wrap_cpp=head_wrap_cpp,
                     loc=getattr(up, "loc", None))
-                body = (head,) + _lower_stmts(
-                    stmt.body[1:], lc, body_declared, in_branch=True,
-                    branch_decls_ok=True,
-                    loop_depth=scope.loop_depth + 1)
+                _pfb = lc.in_for_body
+                lc.in_for_body = stmt.elem_type is not None or _pfb
+                try:
+                    body = (head,) + _lower_stmts(
+                        stmt.body[1:], lc, body_declared, in_branch=True,
+                        branch_decls_ok=True,
+                        loop_depth=scope.loop_depth + 1)
+                finally:
+                    lc.in_for_body = _pfb
             else:
                 # A value-repr Optional[scalar] loop var reads through the
                 # same binding-keyed arms as a value-opt param
@@ -11499,13 +12016,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # A native auto-consuming loop var is bound `auto&&` into the
                 # OwnIter storage and moves at its last use in the body (the
                 # AST seeds movable_locals for the loop scope only).
-                consuming_loop_var = route.consuming_native_name is not None
+                consuming_loop_var = (route.consuming_native_name
+                                      is not None or route.consuming_name)
                 if consuming_loop_var:
                     lc.movable_locals.add(stmt.var)
-                body = _lower_stmts(
-                    stmt.body, lc, body_declared, in_branch=True,
-                    branch_decls_ok=True,
-                    loop_depth=scope.loop_depth + 1)
+                _pfb = lc.in_for_body
+                lc.in_for_body = stmt.elem_type is not None or _pfb
+                try:
+                    body = _lower_stmts(
+                        stmt.body, lc, body_declared, in_branch=True,
+                        branch_decls_ok=True,
+                        loop_depth=scope.loop_depth + 1)
+                finally:
+                    lc.in_for_body = _pfb
         if route.route == "range":
             if route.bigint_counter:
                 _witness("range.bigint_counter")
@@ -11644,7 +12167,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             const_loop_var=stmt.const_loop_var,
             iterable_lvalue=route.iterable_lvalue,
             str_literal_iterable=route.str_literal_iterable,
-            consuming=route.consuming_native_name is not None,
+            consuming=(route.consuming_native_name is not None
+                       or route.consuming_name),
             hoist_loop_var=stmt.hoist_loop_var,
             hoisted_tuple_lift_cpp=(hoisted_bt.to_cpp_return()
                                     if hoisted_bt is not None else None),
@@ -12333,6 +12857,18 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # does not mirror (probe-caught: the narrowed read rendered
                 # bare).
                 arm_et = (WithTargetArm.FRAME_FIELD, resolved)
+            elif (item.target in lc.opt_ptr_frame_locals
+                    and _optional_ptr_borrow(
+                        lc.frame_local_types.get(
+                            item.target, declared.get(item.target)),
+                        lc.analyzer) is not None):
+                # An Optional-enter POINTER field (`m: Box | None` -- the
+                # `P* m;` frame member): the bind writes the bare pointer
+                # (`m = __ctx_N.__enter__();`, the FRAME_FIELD render) and
+                # reads ride the registered pointer-binding arms (null
+                # tests + deref) -- the classification already seeded
+                # lc.pointers.
+                arm_et = (WithTargetArm.FRAME_FIELD, resolved)
             else:
                 note_detail("with.frame_target_family")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -12631,10 +13167,19 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             wrap_use = _ExprUse(result=_ExprResultUse.ITERABLE)
         else:
             wrap_use = _ExprUse(indirect_read=True)
+        # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
+        # consumes the whole variant), so an assign-narrowed divergent
+        # read is safe here -- the sink never sees the member type.
+        _str_union_name = (
+            isinstance(a, TpyName) and wrap is PrintForm.STR
+            and isinstance(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared.get(a.name)))), UnionType))
         lowered = _lower_expr(
             a, lc, declared,
             use=wrap_use,
-            field_prechecked=isinstance(a, TpyFieldAccess))
+            field_prechecked=isinstance(a, TpyFieldAccess),
+            allow_union_divergent=_str_union_name)
         if isinstance(a, TpyArrayLiteral) and isinstance(
                 lowered, THIRContainerLiteral):
             # The literal wraps its typed brace-init -- ListPrinter's CTAD

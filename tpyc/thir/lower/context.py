@@ -133,10 +133,16 @@ class _ExprUse:
     # the same result and must keep rejecting.
     record_copy_sink: bool = False
     # The BORROW-record RETURN sink only: admit a T&-returning call's
-    # bare passthrough (`return get_first(items);`). A field read /
-    # decl bind off the same result is the REF_ALIAS frontier and must
-    # keep rejecting -- this flag never leaves the return arm.
+    # bare passthrough (`return get_first(items);`). A decl bind off
+    # the same result is the REF_ALIAS frontier and must keep
+    # rejecting -- this flag never leaves the return arm.
     borrow_ret_passthrough: bool = False
+    # The FIELD-READ receiver position only: admit a T&-returning record
+    # call composing transiently under the member read
+    # (`ret_param_ref(shared).n` -- the temp lives to the end of the full
+    # expression; nothing binds). Decl binds keep rejecting (REF_ALIAS
+    # frontier) -- this flag never leaves the field-read receiver slot.
+    field_recv: bool = False
     # The pointer-repr-tuple LAMBDA-return body only: admit a generic
     # call whose monomorphized val_or_ptr_t tuple IS the closure's
     # borrow-form trailing return -- the direct `return body;` needs no
@@ -217,7 +223,8 @@ class _Prescan:
                  "ret_value_tuple", "ret_generic_tuple",
                  "ret_own_storage_tuple",
                  "ret_str", "ret_bytes",
-                 "ret_char", "ret_union", "ret_ptr_union", "ret_own_union",
+                 "ret_char", "ret_union", "ret_ptr_union", "ret_union_borrow",
+                 "ret_own_union",
                  "ret_genrec", "ret_own_wrapper", "ret_wrapper_borrow",
                  "ret_dyn_borrow", "ret_dyn_own",
                  "ret_supported", "ret_callable",
@@ -411,10 +418,20 @@ class _Prescan:
         # F4 U1: a value-union return slot -- `return None` renders
         # `std::monostate{}` (target-typed); other sources return bare.
         self.ret_union = _eligible_value_union(rt)
+        # A PROPERTY GETTER's ptr-variant union return renders the STORAGE
+        # variant by reference (`std::variant<Circle, Square>&` -- the
+        # signature layer's is_property_getter arm), NOT the ptr-variant
+        # convention -- so this fact is derived first and excludes the
+        # flavor from ret_ptr_union below. A bare same-union self-FIELD
+        # returns bare (`return this->_shape;`).
+        self.ret_union_borrow = (
+            _eligible_ptr_union(rt, analyzer)
+            if getattr(func, "is_property_getter", False) else None)
         # F4 U2: a pointer-variant return slot -- only same-union borrow
         # names return bare; a MEMBER record name takes the AST's `&(...)`
         # address-of lift, which the slice does not reproduce.
-        self.ret_ptr_union = _eligible_ptr_union(rt, analyzer)
+        self.ret_ptr_union = (None if self.ret_union_borrow is not None
+                              else _eligible_ptr_union(rt, analyzer))
         # An `Own[A | B]` record-member union return slot (a by-value
         # storage `std::variant<A, B>`): a member-record ctor rvalue
         # returns bare (the converting ctor absorbs it).
@@ -479,6 +496,7 @@ class _Prescan:
             or self.ret_value_opt_view is not None
             or self.ret_borrow_tuple is not None
             or self.ret_record_borrow is not None
+            or self.ret_union_borrow is not None
             or self.ret_record_storage is not None
             or self.ret_container_storage is not None
             or self.ret_container_borrow is not None
@@ -555,7 +573,7 @@ class _NarrowScope:
 # re-adds them at the pop.
 _BRANCH_SCOPED_SETS = (
     "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
-    "dyn_protocol_locals", "opt_storage_call_locals",
+    "dyn_protocol_locals", "coro_frame_locals", "opt_storage_call_locals",
     "optional_locals", "branch_hoisted", "iterator_object_locals",
     "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
     "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
@@ -631,7 +649,8 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "const_locals",
                  "pointers", "ptr_variant_locals", "rebind_slot_locals",
-                 "dyn_protocol_locals", "opt_storage_call_locals",
+                 "dyn_protocol_locals", "coro_frame_locals",
+                 "opt_storage_call_locals",
                  "optional_locals", "branch_hoisted",
                  "iterator_object_locals",
                  "ref_alias_locals",
@@ -658,6 +677,7 @@ class _LowerCtx:
                  "overload_literal_facts",
                  "overload_terminated", "render_concept",
                  "top_level_scope", "global_ptr_slots", "global_slot_assigned",
+                 "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "binding_union",
                  "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
@@ -701,6 +721,10 @@ class _LowerCtx:
         # __global_slot_N`, and non-value globals are writable pointer slots --
         # the global variable model, not a function-local one.
         self.top_level_scope = top_level_scope
+        # Inside a for-each BODY with an element type -- the AST's sole
+        # namespace-push site, which is what drops `static` on in-branch
+        # global-slot decls (if/while/with/try bodies keep global_ns).
+        self.in_for_body = False
         # Non-value module globals (`std::vector<T>* g{}` at namespace scope):
         # their initializing write emits the static-slot pair, their reads ride
         # the pointer-local arms. Empty outside the module-init walk.
@@ -850,6 +874,10 @@ class _LowerCtx:
         self.rebind_slot_locals: set[str] = set()
         # First-declared @dynamic protocol locals that are reassigned: their
         # reseat statements take the rebind emit (hoisted optional slot).
+        # Async-factory locals holding the CONCRETE coro frame in optional
+        # storage (`std::optional<__coro_f> c = f(..);` -- erasure deferred
+        # to the Own[dyn] consumer arg). name -> the declared dyn proto.
+        self.coro_frame_locals: dict[str, object] = {}
         self.dyn_protocol_locals: set[str] = set()
         # OPT_STORAGE_CALL-declared names (an Own[P|None]-returning call
         # materialized in a `std::optional<P> __slot_N`): a reseat re-fills

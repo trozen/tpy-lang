@@ -373,18 +373,22 @@ class TestDynProtocolDecl:
         _assert_byte_identical(src)
 
 
-    def test_own_dynamic_protocol_local_defers(self):
-        # An inferred `Own[P]` local for a @dynamic P (`x = owning_call()`) is
-        # the heap-owned `unique_ptr<Base>` form, not the non-owning stack-slot
-        # `Base*` alias -- kept distinct from the plain `p: P = ...` decl and
-        # deferred. (An explicit `Own[P]` local annotation is a sema error; the
-        # inferred form is the only way an Own[dyn-protocol] local arises.)
-        thir = _lower_ctx(_src(
+    def test_own_dynamic_protocol_local_routes_erased_decl(self):
+        # An inferred `Own[P]` local for a @dynamic P (`x = owning_call()`)
+        # takes the heap-owned VALUE decl (`std::unique_ptr<Base> pet =
+        # make();` -- the erased-call arm, NOT the Base* stack-slot alias),
+        # and the unique_ptr receiver read arrows through the existing
+        # own-dyn receiver machinery.
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = _src(
             "from tpy import Own\n"
             "def make() -> Own[Pet]:\n    return Dog()\n"
             "def go() -> None:\n"
-            "    pet = make()\n    print(pet.make_noise())\n"))
-        assert _fn(thir, "go") is None
+            "    pet = make()\n    print(pet.make_noise())\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("decl.dyn_own_erased_call", 0) >= 1
 
 
 class TestDynProtocolContainerDecl:

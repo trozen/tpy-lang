@@ -29,23 +29,26 @@ from __future__ import annotations
 from ..fallback import ThirUnsupported, note
 from ..faces import witness as _witness
 from ...binding_audit import publish_thir as publish_binding_facts
-from ..nodes import THIRSimpleGenBody
+from ..nodes import Form, THIRFormConvert, THIRSimpleGenBody
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyFieldAccess,
     TpyForEach,
     TpyFunction,
     TpyName,
+    TpySubscript,
     TpyTupleLiteral,
     TpyWhile,
 )
 from ...typesys import (
     IntLiteralType,
+    collapse_tuple_own_elements,
     NominalType,
     OwnType,
     ReadonlyType,
     TpyType,
     TupleType,
+    TypeParamRef,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -60,12 +63,15 @@ from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
                           _lower_borrow_tuple_literal, _lower_tuple_literal,
-                          _lower_copy_record)
+                          _lower_generic_tuple_literal, _lower_copy_record)
 from .functions import (_check_callable_structure, _iter_thir,
                         _needs_held_back_slot, _seed_global_scope)
 from ...type_def_registry import is_dict, is_list, is_set
+from ...typesys import is_protocol_type
+from ...modules.type_resolution import is_native_iterable
 from .predicates import (
     _f1_record,
+    _generic_value_tuple_return,
     _value_tuple_nested,
     _field_receiver_ok,
     _resolved_bytes_value,
@@ -98,6 +104,12 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
     u = unwrap_ref_type(unwrap_send_sync(yt))
     if isinstance(u, TupleType):
         return True
+    if isinstance(u, TypeParamRef):
+        # A T-typed yield slot: the skeleton owns `std::optional<V>` and
+        # the leaf's `auto __val = <source>;` bind is type-neutral -- the
+        # source's own arm decides (a bare name / self-field renders
+        # position-blind).
+        return True
     if isinstance(u, OwnType):
         u = unwrap_readonly(u.wrapped)
     return _f1_record(u, analyzer)
@@ -119,6 +131,19 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     # as an F1 record, and the leaf reads it through the container-name
     # arms (`v.push_back(9)` / `len(v)`) exactly like a sync for-each var.
     if is_list(u) or is_dict(u) or is_set(u):
+        return True
+    # A POINTER-REPR tuple element (dict items / list[tuple[.., Ref]]):
+    # the skeleton advances via the tuple_to_pointer proxy-ref holder and
+    # the body reads ride the borrow-tuple/unpack arms like a sync
+    # for-each var. NB the storage_form registration below keys the RAW
+    # iterable type, so a BOUNDED-T iterable (whose bound the AST
+    # resolves at its registration site) must not reach this leg -- the
+    # caller rejects TypeParamRef iterables for the tuple flavor.
+    if isinstance(u, TupleType) and u.has_pointer_repr_element():
+        return True
+    if isinstance(u, TypeParamRef):
+        # A T-typed element binds the same type-neutral
+        # `auto&& x = *__beg++;`; the body reads gate at their own arms.
         return True
     return _f1_record(u, analyzer)
 
@@ -170,13 +195,16 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
         return _reject(ex.reason)
-    if func.type_params:
-        # Generic peephole: the template header is skeleton, but leaf slots
-        # spell TypeParamRefs -- the sync T-value arms are not proven against
-        # the lambda's capture-typed scope; a cell.
-        return _reject("sgen.generic")
-    if isinstance(self_type, NominalType) and self_type.type_args:
-        return _reject("sgen.generic_record")
+    # Generic FUNCTION peepholes admit like the generic-record flavor:
+    # the template header is skeleton, the `auto`/`auto&&` leaf binds are
+    # type-param-neutral, and each leaf's own arm gates any T-typed shape
+    # it cannot render.
+    # A GENERIC-record receiver is fine: the template header is skeleton
+    # and the leaf renders are type-param-neutral (`auto __val =
+    # (*this).v;` -- the value bind absorbs the T spelling; the yield
+    # slot's optional<V> is the skeleton's). The per-leaf arms gate any
+    # T-typed shape they cannot render, exactly like a generic FUNCTION
+    # body's leaves.
     if func.forwarded_locals:
         return _reject("sgen.forwarded_local")
     yt = func.generator_yield_type
@@ -248,6 +276,17 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         # `storage_form_tuple_locals`), str/bytes and the remaining
         # families stay their own rungs.
         return _reject("sgen.loop_var_type")
+    _ie_tup = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(iter_elem))) \
+        if isinstance(iter_elem, TpyType) else None
+    if (isinstance(_ie_tup, TupleType)
+            and _ie_tup.has_pointer_repr_element()
+            and isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                analyzer.get_expr_type(last.iterable)))), TypeParamRef)):
+        # A BOUNDED-T iterable with a pointer-repr tuple element: the AST's
+        # storage_form registration resolves the T BOUND at its site; the
+        # raw-type mirror below cannot, so the flavor stays fenced until a
+        # bound-following witness lands (dot-vs-arrow channel otherwise).
+        return _reject("sgen.loop_var_type")
     is_range = for_range_uses_counter_loop(last)
     range_args: tuple = ()
     iterable = None
@@ -286,6 +325,28 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     # excluded loop control on those shapes).
     body_declared = dict(declared)
     body_declared[last.var] = iter_elem
+    _it_t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                analyzer.get_expr_type(last.iterable))))
+             if last.iterable is not None else None)
+    _it_rec = (analyzer.registry.get_record_for_type(_it_t)
+               if _it_t is not None else None)
+    _direct_iter = (is_protocol_type(_it_t)
+                    and _it_t.qualified_name() == "typing.Iterator"
+                    if _it_t is not None else False)
+    if (isinstance(iter_elem, TupleType)
+            and iter_elem.has_pointer_repr_element()
+            and not _direct_iter
+            and _it_rec is not None and _it_rec.is_native
+            and is_native_iterable(_it_t, registry=analyzer.registry)):
+        # The skeleton registers storage_form_tuple_locals in its
+        # builtin-NativeIterable branch (list/dict/set/views AND
+        # Span/Array/varargs): the element binds a proxy-ref or stored
+        # tuple, so member reads render value-form (`std::get<1>(kv).v`,
+        # dot not arrow). Direct-iterator sources yield the BORROW tuple
+        # (pointer elements, arrow reads) and stay out -- the same two
+        # branch predicates the AST dispatches on, checked on the RAW
+        # element like the AST's registration site.
+        lc.storage_tuple_locals.add(last.var)
     pre_l, yv, post_l = _lower_loop_body(last, lc, body_declared,
                                          loop_depth=1 if is_range else 0)
     _witness("sgen.body")
@@ -321,9 +382,63 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
             # element forms; other sources (storage lifts, names) stay
             # their own rung.
             yv_src = yield_stmt.value
-            if not isinstance(yv_src, TpyTupleLiteral):
+            if (isinstance(yv_src, TpyName)
+                    and yt_bare.has_pointer_repr_element()
+                    and yv_src.name not in lc.storage_tuple_locals
+                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        body_declared.get(yv_src.name)))) == yt_bare):
+                # A BORROW-form tuple NAME (the loop var relayed whole,
+                # `yield pair`): the pointer tuple copies by value into
+                # the skeleton's `__val` slot -- the bare name render.
+                yv = _lower_expr(yv_src, lc, body_declared)
+                _witness("sgen.tuple_yield_name")
+            elif (isinstance(yv_src, TpyName)
+                  and yv_src.name in lc.storage_tuple_locals
+                  # STORAGE yield slots only: a ptr-repr slot needs the
+                  # storage->borrow lift a bare name cannot carry (the
+                  # loop-var relay fences pin that boundary).
+                  and not yt_bare.has_pointer_repr_element()
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      body_declared.get(yv_src.name))))
+                  == collapse_tuple_own_elements(yt_bare)):
+                # A STORAGE-form Own-element tuple NAME (`yield t` off
+                # `t = (i, Box(...))`) at the matching STORAGE slot: the
+                # binding already holds the form the slot spells -- the
+                # bare name render (`auto __val = t;`).
+                yv = _lower_expr(yv_src, lc, body_declared)
+                _witness("sgen.tuple_yield_storage_name")
+            elif (isinstance(yv_src, TpySubscript)
+                  and yt_bare.has_pointer_repr_element()
+                  and isinstance(yv_src.obj, TpyName)
+                  and yv_src.obj.name in body_declared
+                  and is_list(_sub_ct := unwrap_readonly(unwrap_ref_type(
+                      unwrap_send_sync(
+                          body_declared[yv_src.obj.name]))))
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      _sub_ct.type_args[0]))) == yt_bare):
+                # A container-ELEMENT source (`yield items[0]`): the
+                # storage element lifts to the slot's borrow form --
+                # `tuple_to_pointer<std::tuple<int32_t, Box*>>(
+                # ::tpy::__getitem__(items, 0))` (the F3 BORROW convert).
+                yv = THIRFormConvert(
+                    result_type=yt_bare,
+                    value=_lower_expr(yv_src, lc, body_declared,
+                                      subscript_prechecked=True),
+                    form=Form.BORROW, move=False,
+                    loc=getattr(yv_src, "loc", None))
+                _witness("sgen.tuple_yield_elem_lift")
+            elif not isinstance(yv_src, TpyTupleLiteral):
                 raise ThirUnsupported("sgen.tuple_yield_source")
-            if yt_bare.has_pointer_repr_element():
+            elif _generic_value_tuple_return(yt_bare,
+                                             lc.analyzer) is not None:
+                # A GENERIC tuple yield (`yield (i, x)` at
+                # `tuple[Int32, T]`): the spelled brace-init with
+                # per-element to_val_or_ptr wraps -- the resumable
+                # generic-tuple return's exact builder.
+                yv = _lower_generic_tuple_literal(
+                    yv_src, yt_bare, lc, body_declared)
+                _witness("sgen.tuple_yield_generic")
+            elif yt_bare.has_pointer_repr_element():
                 yv = _lower_borrow_tuple_literal(
                     yv_src, yt_bare, lc, body_declared)
             else:

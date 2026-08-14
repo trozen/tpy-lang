@@ -587,3 +587,53 @@ class TestInplaceDunderAug:
         assert _fn(thir, "f") is not None
         assert w.get("aug.inplace_dunder", 0) >= 1
         _assert_byte_identical(src)
+
+
+class TestNestedTupleElement:
+    """A nested-tuple LITERAL member inside a container-element tuple: the
+    wrap decision replays per level -- the outer slot (no pointer-repr
+    element) stores its bare brace, the record-bearing inner takes
+    `tuple_to_storage<S2>(S2{...})`."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Node:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "def take(xs: list[tuple[str, tuple[str, Node]]]) -> Int32:\n"
+        "    return len(xs)\n"
+        "def main() -> None:\n"
+        "    print(take([(\"a\", (\"b\", Node(1)))]))\n"
+        "main()\n")
+
+    def test_nested_tuple_elem_routes(self):
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("containerlit.tuple_storage_bare", 0) >= 1
+        assert wit.get("containerlit.tuple_storage", 0) >= 1
+        assert ("{\"a\", ::tpy::tuple_to_storage<std::tuple<std::string, "
+                "Node>>(") in cpp
+
+    def test_three_level_nesting_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self._SRC.replace(
+            "def take(xs: list[tuple[str, tuple[str, Node]]]) -> Int32:",
+            "def take(xs: list[tuple[str, tuple[str, tuple[str, Node]]]])"
+            " -> Int32:").replace(
+            "print(take([(\"a\", (\"b\", Node(1)))]))",
+            "print(take([(\"a\", (\"b\", (\"c\", Node(1))))]))")
+        _assert_routes_byte_identical(src)
+
+    def test_nested_name_member_still_defers(self):
+        # A nested-tuple NAME member is the borrow-intermediate frontier --
+        # the body keeps the AST path.
+        from .testutil import _fn, _lower_ctx
+        src = self._SRC.replace(
+            "    print(take([(\"a\", (\"b\", Node(1)))]))\n",
+            "    inner = (\"b\", Node(1))\n"
+            "    print(take([(\"a\", inner)]))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None

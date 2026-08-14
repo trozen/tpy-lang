@@ -13,8 +13,8 @@ from .nodes import (
     THIRArgTemp, THIRCall, THIRContainerLiteral, THIRExprStmt, THIRLiteral,
     THIROptionalPtrArg, THIRPrint, THIRUnionArgLift,
 )
-from .testutil import (_assert_byte_identical, _fn, _lower, _lower_ctx,
-                       _lower_ctx_witnessed)
+from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
+                       _fn, _lower, _lower_ctx, _lower_ctx_witnessed)
 
 _PRELUDE = "from tpy import Int32\nfrom typing import Optional\n"
 
@@ -370,3 +370,69 @@ class TestValueOptReturnPosition:
             "def classify(x: Optional[Int32]) -> Int32:\n    return 1\n"
             "def f() -> Int32:\n    return classify(42)\n"))
         assert _body(thir, "f") == "    return classify(42);\n"
+
+
+class TestRuWrapperFreeCallArgs:
+    """The plain free-call ladder's wrapper-slot literal rows: the
+    container literal hoists the typed temp (the marker ladder's row,
+    coerce-peeled), and a coerced INT literal passes bare (the wrapper's
+    converting ctor absorbs it -- no temp)."""
+
+    PRE = ("from tpy import Int32\n"
+           "type Expr = Int32 | str | list[Expr]\n"
+           "def eval_len(e: Expr) -> Int32:\n"
+           "    if isinstance(e, Int32):\n"
+           "        return 1\n"
+           "    if isinstance(e, str):\n"
+           "        return len(e)\n"
+           "    total: Int32 = 0\n"
+           "    for c in e:\n"
+           "        total += eval_len(c)\n"
+           "    return total\n")
+
+    def test_container_literal_arg_hoists(self):
+        src = self.PRE + (
+            "def main() -> None:\n"
+            "    print(eval_len([1, \"two\", [3]]))\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("argtemp.recursive_union_literal", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_coerced_int_literal_passes_bare(self):
+        src = self.PRE + (
+            "def main() -> None:\n"
+            "    print(eval_len(42))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "eval_len(42)" in cpp
+
+    def test_qualified_wrapper_literal_args_route(self, tmp_path):
+        # The MARKER ladder's wrapper rows: a module-qualified call reaches
+        # the same predicates through _marker_call_arg_ok, so both flavors
+        # (coerced int bare, container literal hoisted) must route there too.
+        (tmp_path / "exprmod.py").write_text(self.PRE)
+        src = ("import exprmod\n"
+               "def main() -> None:\n"
+               "    print(exprmod.eval_len(42))\n"
+               "    print(exprmod.eval_len([1, \"two\", [3]]))\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(
+            src, extra_lib_dirs=[tmp_path])
+        assert "eval_len(42)" in cpp
+
+    def test_float_literal_at_wrapper_slot_defers(self):
+        # BOUNDARY: a non-int literal types at the MEMBER, never arriving
+        # coerced-to-union -- the arg ladder has no row for it, so the body
+        # falls back (byte-identically) rather than mis-rendering.
+        src = ("from tpy import Int32, Float64\n"
+               "type W = Float64 | str | list[W]\n"
+               "def leaves(w: W) -> Int32:\n"
+               "    if isinstance(w, list):\n"
+               "        return len(w)\n"
+               "    return 1\n"
+               "def main() -> None:\n"
+               "    print(leaves(2.5))\n"
+               "main()\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "main") is None

@@ -28,7 +28,10 @@ TestFlatAssertNarrowScoping in test_thir_resumable).
 from .testutil import (
     _assert_byte_identical,
     _assert_routes_byte_identical,
+    _fn,
+    _lower_ctx,
     _lower_ctx_witnessed,
+    _top_level,
 )
 
 
@@ -131,6 +134,92 @@ class TestWrapperBorrowReturn:
                 "std::vector<Expr>{2, 3}, 4};") in cpp
         # The borrow-returning call composes bare at the wrapper slot.
         assert "count(passthru(tree))" in cpp
+
+
+class TestWrapperValueCallAndGlobal:
+    """The union_recursive_ref_return chain: an Own[Expr]-returning call
+    composes bare in a VALUE position, a direct-storage wrapper GLOBAL
+    seeds read-only (reads render bare like a wrapper local's), and the
+    top-level literal init takes the assign-sink ru-literal render."""
+
+    SRC = (
+        "from tpy import Int32, Own, readonly\n"
+        "type Expr = int | list[Expr]\n"
+        "g: Expr = [1, [2, 3], 4]\n"
+        "def count(e: readonly[Expr]) -> Int32:\n"
+        "    if isinstance(e, int):\n"
+        "        return 1\n"
+        "    n = 0\n"
+        "    for sub in e:\n"
+        "        n += count(sub)\n"
+        "    return n\n"
+        "def get_global() -> Expr:\n"
+        "    return g\n"
+        "def build() -> Own[Expr]:\n"
+        "    return [5, 6]\n"
+        "def main() -> None:\n"
+        "    print(count(build()))\n"
+        "    print(count(get_global()))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        thir, wit = _lower_ctx_witnessed(self.SRC)
+        assert wit.get("arg.ru_wrapper_value_call", 0) >= 1
+        assert wit.get("call.wrapper_value_ret", 0) >= 1
+        # The top-level init routes with the assign-sink face (the
+        # function-only lowering above never reaches __tpy_init).
+        top, top_wit, _fb = _top_level(self.SRC)
+        assert top is not None
+        assert top_wit.get("assign.ru_wrapper_literal", 0) >= 1
+        # The value-returning call composes bare at the const-ref slot.
+        assert "count(build())" in cpp
+        # The seeded global reads bare at the Expr& return.
+        assert "return g;" in cpp
+        # The top-level init is the assign-sink ru-literal render.
+        assert ("g = std::vector<Expr>{1, "
+                "std::vector<Expr>{2, 3}, 4};") in cpp
+
+    def test_storage_sink_routes_discard_defers(self):
+        # BOUNDARY: the STORAGE decl sink rides its own pre-existing arms
+        # (routes); the DISCARD statement has no rung and keeps deferring.
+        src = (
+            "from tpy import Int32, Own\n"
+            "type Expr = int | list[Expr]\n"
+            "def build() -> Own[Expr]:\n"
+            "    return [5, 6]\n"
+            "def storage_sink() -> None:\n"
+            "    x: Expr = build()\n"
+            "    print(isinstance(x, int))\n"
+            "def discard_sink() -> None:\n"
+            "    build()\n"
+            "def main() -> None:\n"
+            "    storage_sink()\n"
+            "    discard_sink()\n"
+            "main()\n"
+        )
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "storage_sink") is not None
+        assert _fn(thir, "discard_sink") is None
+
+    def test_reassigned_wrapper_literal_decl_defers(self):
+        # BOUNDARY: the wrapper-literal DECL arm excludes reassigned names
+        # (rebind guard), so the whole body stays AST; the assign-sink arm
+        # alone cannot rescue it (its decl never routes).
+        src = (
+            "from tpy import Int32\n"
+            "type Expr = int | list[Expr]\n"
+            "def f() -> None:\n"
+            "    seed: Expr = [1, 2]\n"
+            "    seed = [3, [4]]\n"
+            "    print(isinstance(seed, int))\n"
+            "f()\n"
+        )
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
 
 
 class TestUnionReturnsBoundaries:

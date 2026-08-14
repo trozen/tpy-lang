@@ -212,6 +212,190 @@ class TestValueUnionEligibility:
         assert _fn(local, "f") is None
 
 
+class TestDivergentReadWholeVariantSinks:
+    """Assign-narrowed (divergent) union reads at WHOLE-VARIANT sinks:
+    the print STR row, the str() template (T deduces from the argument),
+    and a same-union name reassign all consume the whole variant, so the
+    AST's bare-name render is valid and mirrored. The member-typed sink
+    stays fenced (the BUGS.md miscompile family) -- see
+    test_narrowing_divergent_read_rejected."""
+
+    def test_print_str_and_reassign_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "class Counter:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def __repr__(self) -> str:\n"
+            "        return \"C(\" + str(self.n) + \")\"\n"
+            "def print_sink() -> None:\n"
+            "    a: Int32 | str = 5\n"
+            "    print(a)\n"
+            "    print(str(a))\n"
+            "def reassign_sink() -> None:\n"
+            "    p: Counter | str = Counter(1)\n"
+            "    q: Counter | str = Counter(2)\n"
+            "    p = q\n"
+            "    if isinstance(p, Counter):\n"
+            "        p.n = 9\n"
+            "        print(p.n)\n"
+            "def main() -> None:\n"
+            "    print_sink()\n"
+            "    reassign_sink()\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # The whole-variant renders: bare name into __str__, bare assign.
+        assert "::tpy::__str__(a)" in cpp
+        assert "p = q;" in cpp
+
+    def test_scalar_ctor_divergent_arg_stays_fenced(self):
+        # BOUNDARY: `Int32(x)` on a divergent union name would render the
+        # bare variant into the member-typed template (the miscompile
+        # family) -- the type-ctor allowance is str/view-family only.
+        src = _PRELUDE + (
+            "def m(k: Int32) -> Int32:\n"
+            "    x: Int32 | Float64 = k\n"
+            "    return Int32(x)\n")
+        thir = _lower(src)
+        assert _fn(thir, "m") is None
+
+
+class TestUnionReviewRoundPins:
+    """Review-round witnesses for the union-splits legs: the plain-arm
+    same-union divergent reassign and the in-branch slotless reseat
+    route; the method-call wrapper value arg and the branch-first ADDR
+    decl defer honestly; a String-member union stays OUT of the
+    builtin-value member family (the STR type-class exclusion)."""
+
+    def test_value_union_reassign_and_branch_reseat_route(self):
+        src = (
+            "from tpy import Int32\n"
+            "def value_union_reassign(k: Int32) -> None:\n"
+            "    a: Int32 | str = k\n"
+            "    b: Int32 | str = \"x\"\n"
+            "    b = a\n"
+            "    if isinstance(b, Int32):\n"
+            "        print(b)\n"
+            "def branch_reseat(flag: bool) -> None:\n"
+            "    v: Int32 | str | None = None\n"
+            "    if flag:\n"
+            "        v = 7\n"
+            "    if v is not None and isinstance(v, Int32):\n"
+            "        print(v)\n"
+            "def main() -> None:\n"
+            "    value_union_reassign(4)\n"
+            "    branch_reseat(True)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "b = a;" in cpp
+
+    def test_method_wrapper_arg_and_branch_addr_defer(self):
+        # BOUNDARY: the wrapper value-call arg row admits a method call,
+        # but the nested method-call result gate rejects the Own[wrapper]
+        # return (method.ret_type) -- the body defers byte-identically.
+        # The branch-first ADDR-flavor union decl also keeps deferring.
+        src = (
+            "from tpy import Int32, Own, readonly\n"
+            "type Expr = int | list[Expr]\n"
+            "class Maker:\n"
+            "    seed: Int32\n"
+            "    def __init__(self, seed: Int32) -> None:\n"
+            "        self.seed = seed\n"
+            "    def build(self) -> Own[Expr]:\n"
+            "        return [5, 6]\n"
+            "class Dog:\n"
+            "    name: str\n"
+            "    def __init__(self, name: str) -> None:\n"
+            "        self.name = name\n"
+            "def count(e: readonly[Expr]) -> int:\n"
+            "    if isinstance(e, int):\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def method_arg(m: Maker) -> None:\n"
+            "    print(count(m.build()))\n"
+            "def branch_addr(flag: bool, d: Dog) -> None:\n"
+            "    if flag:\n"
+            "        w: Dog | None = None\n"
+            "        w = d\n"
+            "        if w is not None:\n"
+            "            print(w.name)\n"
+            "def main() -> None:\n"
+            "    method_arg(Maker(1))\n"
+            "    branch_addr(True, Dog(\"rex\"))\n"
+            "main()\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "method_arg") is None
+        assert _fn(thir, "branch_addr") is None
+        assert _fn(thir, "main") is not None
+
+    def test_string_member_union_stays_out(self):
+        # BOUNDARY: tpy.String is STR-class -- the builtin-value member
+        # rung must not admit it (the owned-buffer insert/extract renders
+        # belong to the str-family rungs).
+        src = (
+            "from tpy import Int32, String\n"
+            "def f(v: Int32 | String) -> Int32:\n"
+            "    if isinstance(v, Int32):\n"
+            "        return v\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(f(3))\n"
+            "main()\n")
+        _assert_byte_identical(src)
+
+
+class TestBuiltinValueMemberUnion:
+    """The `_builtin_value_member` rung: a builtin value nominal
+    (`basic_slice`) as a value-union member -- same by-value variant as a
+    user value record, `std::variant<int32_t, ::tpy::BasicSlice>`."""
+
+    PRE = (
+        "from tpy import Int32, Span, basic_slice\n"
+        "def pick(index: Int32 | basic_slice, items: list[Int32]) -> Int32:\n"
+        "    items.append(0)\n"
+        "    items.pop()\n"
+        "    if isinstance(index, basic_slice):\n"
+        "        s: Span[Int32] = items[index]\n"
+        "        return s[0]\n"
+        "    return items[index]\n")
+
+    def test_isinstance_and_coerced_literal_route(self):
+        src = self.PRE + (
+            "def main() -> None:\n"
+            "    items: list[Int32] = [10, 20, 30]\n"
+            "    print(pick(0, items))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::holds_alternative<::tpy::BasicSlice>(index)" in cpp
+        assert ("const auto& __index = "
+                "std::get<::tpy::BasicSlice>(index);") in cpp
+        # The coerced int literal passes bare into the variant slot.
+        assert "pick(0, items)" in cpp
+
+    def test_builtin_member_ctor_arg_defers(self):
+        # BOUNDARY: a builtin-member CTOR rvalue at the union slot is not
+        # the literal row, and the member-NAME temp row keys user shapes
+        # only -- both caller bodies stay AST. The union decl+reassign
+        # (whole-variant positions) still routes.
+        src = self.PRE + (
+            "def ctor_arg(items: list[Int32]) -> Int32:\n"
+            "    return pick(basic_slice(1, 4), items)\n"
+            "def member_name(items: list[Int32]) -> Int32:\n"
+            "    b = basic_slice(0, 2)\n"
+            "    return pick(b, items)\n"
+            "def union_decl(items: list[Int32]) -> Int32:\n"
+            "    u: Int32 | basic_slice = 3\n"
+            "    u = basic_slice(1, 3)\n"
+            "    return pick(u, items)\n")
+        _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "ctor_arg") is None
+        assert _fn(thir, "member_name") is None
+        assert _fn(thir, "union_decl") is not None
+
+
 class TestValueUnionEmit:
     def _cpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -2700,3 +2884,143 @@ class TestPtrUnionViewMembers:
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
         _assert_byte_identical(src)
+
+
+class TestPropertyUnionBorrow:
+    """A @property getter's ptr-variant union: the signature renders the
+    STORAGE variant by reference, so the return is the bare self-field
+    read and the consuming decl lifts via to_[const_]ptr_variant."""
+
+    PRE = (
+        "from tpy import Int32\n"
+        "class Circle:\n    radius: Int32\n"
+        "    def __init__(self, radius: Int32) -> None:\n"
+        "        self.radius = radius\n"
+        "class Square:\n    side: Int32\n"
+        "    def __init__(self, side: Int32) -> None:\n"
+        "        self.side = side\n"
+        "class Canvas:\n"
+        "    _shape: Circle | Square\n"
+        "    def __init__(self, s: Circle | Square) -> None:\n"
+        "        self._shape = s\n"
+        "    @property\n"
+        "    def shape(self) -> Circle | Square:\n"
+        "        return self._shape\n")
+
+    def test_property_union_routes(self):
+        src = self.PRE + (
+            "def describe(c: Canvas) -> None:\n"
+            "    s = c.shape\n"
+            "    if isinstance(s, Circle):\n"
+            "        print(s.radius)\n"
+            "def main() -> None:\n"
+            "    describe(Canvas(Circle(5)))\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ret.union_borrow_field", 0) >= 1
+        assert w.get("method.union_property_ret", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::to_const_ptr_variant(c.shape())" in cpp
+
+    def test_property_union_mutable_receiver_routes(self):
+        # The non-const flavor: a receiver the body mutates loses the const
+        # verdict, so the decl lifts via the mutable to_ptr_variant.
+        src = self.PRE + (
+            "    def reset(self) -> None:\n"
+            "        self._shape = Square(9)\n"
+            "def describe(c: Canvas) -> None:\n"
+            "    c.reset()\n"
+            "    s = c.shape\n"
+            "    if isinstance(s, Square):\n"
+            "        print(s.side)\n"
+            "def main() -> None:\n"
+            "    describe(Canvas(Circle(5)))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::to_ptr_variant(c.shape())" in cpp
+
+    def test_property_union_chained_receiver_defers(self):
+        # BOUNDARY: the source gate admits bare-NAME receivers only -- the
+        # decl arm's const verdict reads the receiver name, so a chained
+        # receiver (`h.canvas.shape`) keeps deferring.
+        src = self.PRE + (
+            "class Holder:\n"
+            "    canvas: Canvas\n"
+            "    def __init__(self, c: Canvas) -> None:\n"
+            "        self.canvas = c\n"
+            "def f(h: Holder) -> None:\n"
+            "    s = h.canvas.shape\n"
+            "    print(isinstance(s, Circle))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+    def test_property_union_nonfield_body_defers(self):
+        # A property body that is NOT a bare self-field return has no
+        # witnessed render at the variant& slot.
+        src = self.PRE.replace("        return self._shape\n",
+                               "        s = self._shape\n"
+                               "        return s\n")
+        src += ("def f(c: Canvas) -> None:\n"
+                "    s = c.shape\n"
+                "    print(isinstance(s, Circle))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "shape") is None
+
+
+class TestUnionReseatAndBranchCopy:
+    PRE = (
+        "from tpy import Int32, copy\n"
+        "class Dog:\n    name: str\n"
+        "    def __init__(self, name: str) -> None:\n"
+        "        self.name = name\n"
+        "class Cat:\n    name: str\n"
+        "    def __init__(self, name: str) -> None:\n"
+        "        self.name = name\n")
+
+    def test_slotless_union_reseat_routes(self):
+        # `v: A|B|None = None; v = Int32(7)` -- no pre-declared rebind
+        # slot, so the reseat declares a fresh value-variant __slot_N and
+        # lifts it (the AST's inline-slot fallback).
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    v: Int32 | Dog | None = None\n"
+            "    v = Int32(7)\n"
+            "    if v is not None and isinstance(v, Int32):\n"
+            "        print(v)\n"
+            "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("reseat.union_inline_slot", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "= ::tpy::to_ptr_variant(__slot_" in cpp
+
+    def test_branch_copy_of_narrowed_union_routes(self):
+        # `pet2 = copy(pet)` inside the isinstance branch: the copy is
+        # binding-keyed -- the whole-variant to_value_variant over the
+        # ORIGINAL name, not the narrow alias; the in-branch decl emits
+        # its slot pair in place.
+        src = self.PRE + (
+            "def f() -> None:\n"
+            "    c = Cat(\"kitty\")\n"
+            "    pet: Dog | Cat = c\n"
+            "    if isinstance(pet, Cat):\n"
+            "        pet2 = copy(pet)\n"
+            "        if isinstance(pet2, Cat):\n"
+            "            print(pet2.name)\n"
+            "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("call.copy_ptr_variant", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)" in cpp
+
+    def test_branch_copy_reassigned_defers(self):
+        # A branch-first union decl LATER rvalue-reassigned needs the
+        # function-scope rebind-slot hoist -- unmirrored placement, AST.
+        src = self.PRE + (
+            "def f(c: Cat) -> None:\n"
+            "    pet: Dog | Cat = c\n"
+            "    if isinstance(pet, Cat):\n"
+            "        pet3 = copy(pet)\n"
+            "        pet3 = copy(pet)\n"
+            "        print(isinstance(pet3, Cat))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
