@@ -3889,8 +3889,14 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 # mirror.
                 or (is_param
                     and (_eligible_scalar(inner) or _eligible_char(inner)
-                         or _eligible_enum(inner, analyzer) is not None))):
+                         or _eligible_enum(inner, analyzer) is not None))
+                ):
             return None
+        # NB an Own[str]/Own[bytes] PARAM stays here BY DESIGN: admitting
+        # the bare read requires mirroring the AST's movable seed for these
+        # params first (last-use reads at owning sinks render std::move /
+        # the argtemp row) -- a widening without it byte-diverges (caught
+        # by test_own_str_arg_in_while_condition, round C waves).
         return "name.own_read"
     if isinstance(u, OptionalType) and not u.uses_pointer_repr():
         # A value-repr Optional[scalar] param routes: an un-narrowed read
@@ -4006,6 +4012,11 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
     owned `std::string` lvalue, an Any element a `const ::tpy::Any&`), so a
     subscript read of such an element needs no lift."""
     return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+            # The owned-BYTES element (`tuple[bytes, bytes]` --
+            # `std::vector<uint8_t>` storage) reads bare like the owned-str
+            # element; the round C memo's oracle table shows the owned form
+            # at every position.
+            or _owned_bytes_slot(e, analyzer)
             # A UNIT element (`tuple[None, int]`) is `std::monostate` -- a
             # value type with no storage/borrow split, read bare like a
             # scalar.
@@ -4953,6 +4964,17 @@ def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     reproduce; the bytes family rides S6."""
     st = _resolved_str_value(t, analyzer)
     return st is not None and (is_str_type(st) or is_string_type(st))
+
+def _owned_bytes_slot(t: TpyType | None, analyzer) -> bool:
+    """The owned-str slot's bytes twin (`bytes` -- `std::vector<uint8_t>`
+    storage): a value-tuple element / unpack-elem slot whose reads are the
+    bare owned vector. `BytesView` slots stay out for the same reason
+    `_owned_str_slot` excludes views (a view element would make the
+    container hold spans -- unreachable today, grep-proof in the round C
+    memo)."""
+    bt = _resolved_bytes_value(t, analyzer)
+    return bt is not None and is_bytes_type(bt)
+
 
 def _value_opt_owned_str(t: 'TpyType | None', analyzer) -> bool:
     """A value-repr `Optional[str]` FIELD slot (`std::optional<std::string>`).

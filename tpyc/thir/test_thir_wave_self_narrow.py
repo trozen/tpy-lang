@@ -106,15 +106,16 @@ class TestSelfPolymorphicNarrowing:
         assert "dynamic_cast<const Dog*>(this) != nullptr" in body
         assert "__self_ptr" not in body
 
-    def test_assert_form_and_resumable_self_still_defer(self):
-        # The assert form needs the persistent-alias maker; the RESUMABLE
-        # single-fact form needs the `__self_narrowed` rename that
-        # `_alias_frame_collision` rejects. A routed resumable never enters
-        # `thir.functions`, so its reject reads off the fallback map.
+    def test_assert_form_defers_and_resumable_single_routes(self):
+        # The assert form still needs the persistent-alias maker (defers).
+        # The RESUMABLE single-fact form now ROUTES (the round C poly-self
+        # cell: the spelled `__self_narrowed` re-extraction); only the
+        # TUPLE-form cond keeps res.cond (the sibling tripwire below).
         assert _fn(_lower_ctx(_PETS), "assert_dog") is None
         fb = _fallback(_PETS)
         assert fb.get("body:stmt.assert") == 1
-        assert fb.get("resumable:res.narrowed_resume") == 1
+        assert fb.get("resumable:res.cond") == 1
+        assert "resumable:res.narrowed_resume" not in fb
 
     def test_resumable_tuple_form_is_admitted_but_unreachable(self):
         # The TUPLE gate drops the `self` exclusion WITHOUT a resumable guard

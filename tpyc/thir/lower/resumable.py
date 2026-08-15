@@ -42,6 +42,7 @@ from ..fallback import ThirUnsupported, begin_stmt, note, stmt_reject_reason
 from ..faces import witness as _witness
 from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import (
+    THIRDynIsinstanceMulti,
     THIRAssign,
     THIRCoroHandleMove,
     THIRExpr,
@@ -111,6 +112,7 @@ from .checks import (
 )
 from .context import _ExprResultUse, _ExprUse, _LowerCtx, ValueOptKind
 from .expressions import (
+    _poly_cast_checks,
     _lower_borrow_tuple_literal,
     _lower_call_arg,
     _lower_expr,
@@ -126,8 +128,10 @@ from .functions import (
     method_self_type_by_name,
 )
 from . import match as _match
+from ...typesys import polymorphic_source_inner
 from .predicates import (
     _eligible_ptr_value,
+    _poly_narrow_info,
     _storage_optional_return_type,
     _callable_value,
     _chain_post_if_fact,
@@ -413,11 +417,23 @@ def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
     return f"__{var}" in frame_fields or var == "self"
 
 
+def _resume_alias_name(var: str, frame_fields: 'set[str]') -> str:
+    """The extraction alias the AST emits for a resume-narrowed var:
+    `__{var}`, bumped to `__{var}_narrowed` on a frame-field collision
+    (`_fresh_alias_local`'s rename -- `self`'s `__self` always collides
+    with the frame's receiver ref)."""
+    base = f"__{var}"
+    return (f"{base}_narrowed"
+            if base in frame_fields or var == "self" else base)
+
+
 def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                              param_types: 'dict[str, TpyType]',
                              gen_local_types: 'dict[str, TpyType]',
                              frame_fields: 'set[str]',
                              case_entry_ids: 'frozenset[int] | None',
+                             self_type: 'TpyType | None' = None,
+                             analyzer=None,
                              ) -> 'str | None':
     """Narrowed-BB admission: the variant-get slice only. Each fact must be
     a concrete non-protocol member narrowing a union-declared frame field --
@@ -431,6 +447,17 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
     if case_entry_ids is None:
         return "res.narrowed_resume"
     for var, fact in facts.items():
+        if (var == "self" and self_type is not None and analyzer is not None
+                and isinstance(fact, NominalType)
+                and not is_protocol_type(fact)
+                and polymorphic_source_inner(self_type, analyzer.registry)
+                is not None):
+            # The POLY-SELF fact: the skeleton re-extracts per resume case
+            # (`const Dog& __self_narrowed = *dynamic_cast<...>(&__self);`
+            # -- _emit_isinstance_extractions' poly arm with the
+            # _fresh_alias_local bump), and the leaves read the SPELLED
+            # alias -- no cross-BB state, the round C memo's finding.
+            continue
         decl = param_types.get(var, gen_local_types.get(var))
         if not isinstance(decl, TpyType):
             return "res.narrowed_resume"
@@ -483,6 +510,7 @@ def _rebinds_narrowed(stmts, names: 'frozenset[str]') -> bool:
 
 def _resume_narrow_envs(cfg: 'rcfg.CFG',
                         case_entry_ids: 'frozenset[int]',
+                        frame_fields: 'set[str]' = frozenset(),
                         ) -> 'dict[int, dict[str, tuple[TpyType, str]] | None]':
     """Per-BB narrowing environments `{var: (fact, alias)}`, mirroring the
     walker's inline emission: an extraction local stays lexically live for
@@ -518,7 +546,8 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
         bb = cfg.blocks.get(ce)
         if bb is None:
             continue
-        env = {v: (f, f"__{v}") for v, f in bb.entry_narrowings.items()}
+        env = {v: (f, _resume_alias_name(v, frame_fields))
+               for v, f in bb.entry_narrowings.items()}
         work.append((ce, env, bb.entry_narrowings))
     while work:
         bb_id, env, chain_entry = work.pop()
@@ -533,7 +562,8 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
             tb = cfg.blocks[target]
             new_env = dict(env)
             new_env.update(
-                {v: (f, f"__{v}") for v, f in tb.entry_narrowings.items()
+                {v: (f, _resume_alias_name(v, frame_fields))
+                 for v, f in tb.entry_narrowings.items()
                  if outer.get(v) is not f})
             work.append((target, new_env, tb.entry_narrowings))
 
@@ -1258,7 +1288,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if bb.entry_narrowings:
             reason = _entry_narrowings_reject(
                 bb.entry_narrowings, param_types, gen_local_types,
-                frame_fields, case_entry_ids)
+                frame_fields, case_entry_ids,
+                self_type=self_type, analyzer=analyzer)
             if reason is not None:
                 return _reject(reason)
         # AsyncForIterSetup (sync + async), AsyncWithSetup and
@@ -1615,7 +1646,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _lower_frame_field_assign(stmt, lc, declared)
         return _lower_stmt(stmt, lc, declared)
 
-    narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids)
+    narrow_envs = (_resume_narrow_envs(cfg, case_entry_ids, frame_fields)
                    if case_entry_ids is not None else {})
     # The driver's per-BB restore record, live while its _lower_bb runs;
     # _apply_leaf_post_if records the declared-types it overrides into it.
@@ -1815,10 +1846,26 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # comes from the arms' stamped entry_narrowings, not from here.
             try:
                 info = _narrow_cond_info(t.cond, declared, analyzer)
-                conds[id(t.cond)] = (
-                    _lower_narrow_cond(info, t.cond, lc, declared)
-                    if info is not None
-                    else _lower_truthy(t.cond, lc, declared))
+                pinfo = (None if info is not None
+                         else _poly_narrow_info(t.cond, declared, analyzer))
+                if info is not None:
+                    conds[id(t.cond)] = _lower_narrow_cond(info, t.cond, lc,
+                                                           declared)
+                elif (pinfo is not None
+                      and pinfo[0] not in lc.narrow.narrowed
+                      and pinfo[0] not in lc.narrow.spelled):
+                    # A POLY isinstance Branch cond renders the no-alias
+                    # check (`(dynamic_cast<const Dog*>(&__self) !=
+                    # nullptr)`) -- the extraction alias is the ARM
+                    # entry's skeleton emission, not this condition's.
+                    _witness("res.poly_cond")
+                    conds[id(t.cond)] = THIRDynIsinstanceMulti(
+                        result_type=analyzer.get_expr_type(t.cond),
+                        checks_cpp=_poly_cast_checks(
+                            pinfo[0], (pinfo[1],), lc, declared),
+                        loc=getattr(t.cond, "loc", None))
+                else:
+                    conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
             except ThirUnsupported:
                 raise ThirUnsupported("res.cond") from None
             _witness("res.branch_cond")
@@ -2068,7 +2115,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             lc.narrow = lc.narrow.snapshot()
             for var, (fact, alias) in env.items():
                 saved_decl[var] = declared.get(var)
-                lc.narrow.narrowed[var] = alias
+                if var == "self":
+                    # The poly-self alias is a SPELLED replacement (the
+                    # self read arm consults `spelled`, then falls back to
+                    # THIRSelf) -- the reads rename to `__self_narrowed`.
+                    lc.narrow.spelled[var] = alias
+                else:
+                    lc.narrow.narrowed[var] = alias
                 declared[var] = fact
             _witness("res.narrow_scope")
         # A mid-BB post-if narrowing (`_apply_leaf_post_if`) records its

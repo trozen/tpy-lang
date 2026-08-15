@@ -706,7 +706,13 @@ def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
                 unwrap_ref_type(t) if t is not None else None,
                 analyzer) is not None
             or _resolved_str_value(unwrap_ref_type(t) if t is not None else None,
-                                   analyzer) is not None)
+                                   analyzer) is not None
+            # The bytes twin: a view-form target (`std::span<const uint8_t>
+            # tail = std::get<1>(tup);`) or an owned re-bind, spelled by
+            # render_type exactly like the str flavor.
+            or _resolved_bytes_value(
+                unwrap_ref_type(t) if t is not None else None,
+                analyzer) is not None)
 
 def _unpack_target_decl(tt: TpyType, analyzer, render_type
                         ) -> 'tuple[TpyType, str]':

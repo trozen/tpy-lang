@@ -2074,10 +2074,12 @@ class TestNarrowedResume:
         assert sum(fallback.values()) >= 1
         _assert_identical(src)
 
-    def test_poly_self_narrow_defers(self):
-        # `isinstance(self, Sub)`: the dynamic_cast family (alias
-        # `__self_narrowed`, if-init locals) -- its own cell; whole-body
-        # fallback stays byte-identical.
+    def test_poly_self_narrow_routes(self):
+        # `isinstance(self, Sub)` in a resumable now ROUTES (the round C
+        # poly-self cell): the Branch cond renders the no-alias
+        # dynamic_cast check and the arm reads the SPELLED
+        # `__self_narrowed` re-extraction (skeleton emission per resume
+        # case -- no cross-BB state).
         src = ("from typing import Protocol, Iterator\n"
                + "from tpy import dynamic\n\n"
                + "@dynamic\n"
@@ -2090,7 +2092,7 @@ class TestNarrowedResume:
                + "class Dog(Pet):\n    pass\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert fallback.get("res.narrowed_resume", 0) >= 1
+        assert fallback == {}, fallback
         _assert_identical(src)
 
     def test_union_fact_defers(self):

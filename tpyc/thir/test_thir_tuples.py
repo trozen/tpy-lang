@@ -3168,6 +3168,38 @@ class TestOwnTupleDecayCopyArg:
         assert _fn(thir, "mixed_caller") is None
 
 
+class TestOwnedBytesTupleFamily:
+    """The owned-bytes tuple family (round C de-design: the 'view-tuple'
+    premise was false -- oracles spell OWNED storage everywhere): bytes
+    elements ride the value-tuple family like the str leg; view-typed
+    unpack targets bind spans; a view NAME at an Own[str/bytes] slot
+    converts inline through the owned ctor."""
+
+    # ROUTING is pinned corpus-side: the two flipped cases
+    # (tuple_unpack_bytes_reassign_owns, tuple_unpack_branch_bytes_owns)
+    # are unmarked, so the ratchet FAILS comp on any fallback and the
+    # byte-diff on any divergence. A unit routing pin is blocked by a
+    # harness wart (PendingBytesType under the pytest-session compile --
+    # filed in TODO.md). Cell 2 (unpack_view_target_owned_sinks: the
+    # Own-param bare reads + the view-conv arg row) was REVERTED pending
+    # the AST movable-seed mirror -- see the wave-cell entry in TODO.md.
+
+    def test_owned_str_name_keeps_temp_row(self):
+        # BOUNDARY: an OWNED (non-view) str name at the Own[str] slot is
+        # NOT the inline view conv -- it keeps the copy+move temp cascade
+        # (falls back where the flush is unverified).
+        from .testutil import _fn as _fn_l, _lower_ctx
+        src = (
+            "from tpy import Own\n"
+            "def take(s: Own[str]) -> int:\n"
+            "    return len(s)\n"
+            "def use() -> int:\n"
+            "    t = \"hey\" + \"!\"\n"
+            "    return take(t) + len(t)\n")
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "use") is None
+
+
 class TestGenericTupleFamily:
     """The generic-tuple val_or_ptr family: the elem_ref subscript read
     (`::tpy::tuple_elem_ref(std::get<0>(p))` on `tuple[T, T]`), the

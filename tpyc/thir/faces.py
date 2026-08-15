@@ -2191,6 +2191,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.demote_probe",             # dynamic MIL demote (AST-probe-temp class, whitelisted)
     "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
     "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
+    "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)
     "res.for_narrowed_opt_src",     # narrowed value-opt iterable, bare leaf (skeleton unwraps)
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted

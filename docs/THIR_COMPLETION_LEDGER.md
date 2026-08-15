@@ -10732,3 +10732,23 @@ borrow-return positions open as sink-specific flags with boundary
 pins, never blanket rows, never waiting on MIR. With rounds A-D
 complete the design queue is EMPTY: two READY waves (~5 flips)
 remain, then the live blocker mass and the cutover path.
+
+ROUND C WAVES (2026-08-15, thir-roundc-waves): 4 flips, dial ->
+3557/3730. (1) Owned-bytes tuple CELL 1 (2 flips): `_owned_bytes_slot`
++ the unpack-elem bytes leg; the return/decl slots cascaded free from
+the shared value-tuple family. CELL 2 ATTEMPTED AND REVERTED: the
+Own[str]/Own[bytes]-param bare-read leg byte-DIVERGED -- the fence
+test_own_str_arg_in_while_condition caught that the AST seeds those
+params MOVABLE (the leg's original exclusion reason was RIGHT); the
+inline view-conv row went with it (lost its only witness). The
+movable-seed prerequisite is recorded in TODO's wave entry. Also
+filed: the PendingBytesType-under-pytest harness wart. (2) The
+resumable poly-self cell (2 flips: isinstance_self_in_generator +
+_field): the gate's poly-self leg (`polymorphic_source_inner` over
+self_type), the `_resume_alias_name` collision bump
+(`__self_narrowed`), the BB install routing self through
+`lc.narrow.spelled`, and the poly Branch-cond leg (the no-alias
+dynamic_cast check; the extraction is the ARM's skeleton emission).
+The field-write-through-spelled-self flavor verified byte-identical
+without extra rows. Two fences converted; the tuple-form tripwire
+(res.cond for `isinstance(self, (A, B))`) still stands.
