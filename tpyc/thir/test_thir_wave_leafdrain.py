@@ -99,11 +99,13 @@ class TestCopyTempAtReturnSeamDefers:
         assert fb.get("resumable:expr.call") == 1, fb
 
 
-class TestFrameSlotEmplaceTempDefers:
-    # BOUNDARY: the frame_slot emplace write keeps allow_temps OFF (the
-    # emplace arg composes inside the skeleton's `xs.emplace(...)` line --
-    # widening it is its own rung needing an oracle). A copy-arg call as
-    # the slot init still defers.
+class TestFrameSlotEmplaceTempRoutes:
+    # The frame_slot emplace write is a flushable statement position: arg
+    # temps (`Box __tmp_N = ...;`) flush before the skeleton's
+    # `xs.emplace(...)` line, exactly where the AST flushes them (the
+    # oracle arrived with async/await_optional_field_borrow's
+    # `h.emplace(H(&(__tmp_1)))`). The former always-defers fence
+    # converted when allow_temps was threaded.
     SRC = (
         _PRE +
         "def wrap(p: Own[Payload]) -> Own[list[Int32]]:\n"
@@ -119,8 +121,8 @@ class TestFrameSlotEmplaceTempDefers:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
+    def test_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
         fb = dict(compiler._thir_fallback)
-        assert fb.get("resumable:expr.call") == 1, fb
+        assert fb == {}, fb

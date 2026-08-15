@@ -214,18 +214,21 @@ class TestDynPostIfBoundaries:
         assert _fn(thir, "check") is None
         _assert_byte_identical(src)
 
-    def test_value_position_compound_class_subject_stays_ast(self):
-        # `isinstance(p, A) and <narrowed read>` in VALUE position on a
-        # borrowed-param CLASS subject: the `&&` RHS read is sema-narrowed
-        # and the AST renders the inline `static_cast` read, which no
-        # value-position machinery mirrors -- the Ref peel must not widen
-        # `_poly_isinstance_value_info` (the short_circuit corpus
-        # divergence, caught by the whole-corpus byte-diff).
+    def test_value_position_compound_class_subject_routes(self):
+        # `isinstance(p, A) and <narrowed read>` in VALUE position now
+        # routes: the `&&` poly leaf lowers the check via the cast
+        # chokepoint and SPELLS the RHS read inline (`(*static_cast<A*>(
+        # &p))`) -- the former fence's "no value-position machinery"
+        # reason was removed by the round-C inline-narrow arm. The bare
+        # `_poly_isinstance_value_info` RefType guard stays (this arm
+        # spells, it does not widen the vinfo).
         src = _PRELUDE + (
             "def f(p: Base) -> bool:\n"
             "    return isinstance(p, A) and p.tag() > 0\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("binop.poly_inline_narrow", 0) >= 1
         _assert_byte_identical(src)
 
     def test_same_member_reassert_recasts_with_bump(self):

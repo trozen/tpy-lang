@@ -128,6 +128,7 @@ from .functions import (
 from . import match as _match
 from .predicates import (
     _eligible_ptr_value,
+    _storage_optional_return_type,
     _callable_value,
     _chain_post_if_fact,
     _eligible_char,
@@ -958,7 +959,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Bare F1-record slot (Poll<T*> pointer payload): the value
                 # tail admits only the SELF lift rung (`&(__self)`); every
                 # other source keeps the return.borrow_form fence.
-                or _f1_record(rt_inner, analyzer)):
+                or _f1_record(rt_inner, analyzer)
+                # Storage Optional[F1-record] slot (`-> Own[Box] | None` ->
+                # `Poll<std::optional<Box>>`): the sync F2c return family's
+                # async twin -- None spells nullopt at the return arm's
+                # record-opt rung, ctor rvalues ride the position-blind
+                # tail (the optional's converting ctor absorbs them).
+                or _storage_optional_return_type(rt_inner, analyzer)
+                is not None
+                # Pointer-repr Optional slot (`-> Box | None` -> Poll<Box*>,
+                # BORROW form): sources gate in the return arm's BORROW
+                # rungs (the field optional_to_ptr lift; others fence).
+                or (isinstance(rt_inner, OptionalType)
+                    and rt_inner.uses_pointer_repr())):
             return _reject("res.return_type")
     # Forwarded proto-param aliases (`xs = it`) are compile-time renames:
     # the decl emits nothing and every read renders the backing param
@@ -990,6 +1003,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # not copy them a second time (the skeleton's `owned_view_frame_params`).
     owned_view_params = owned_view_frame_params(func.params)
     ptr_frame_locals: set[str] = set()
+    value_opt_record_locals: set[str] = set()
     opt_ptr_locals: set[str] = set()
     alias_ptr_locals: set[str] = set()
     value_tuple_locals: set[str] = set()
@@ -1020,6 +1034,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # view field takes. Value types beyond the admitted families
             # (value records, Ptr, Char arrays) have unmirrored renders.
             if _res_local_ok(ltype, analyzer):
+                continue
+            # A `std::optional<Record>` VALUE frame field (the await-bind
+            # local of a storage-optional coro, `owned = await make()`):
+            # the RECORD value-opt kind -- has_value None-tests, `(*o)`
+            # narrowed derefs -- riding the same kind-tagged registration
+            # as the Own-opt storage params.
+            if _storage_optional_return_type(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
+                    if isinstance(ltype, TpyType) else None,
+                    analyzer) is not None:
+                value_opt_record_locals.add(lname)
                 continue
             # A raw `Ptr[T]` VALUE local (`h = _get_current_executor()`):
             # the frame field is the bare `T*` value (`Executor* h;`);
@@ -1297,6 +1322,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # R1c: frame_slot local reads render `(*name)` (THIRName.deref) and writes
     # `name.emplace(value)` (THIRFrameSlotWrite).
     lc.frame_slots = frame_slots
+    for _vor in value_opt_record_locals:
+        lc.value_opt_bindings[_vor] = ValueOptKind.RECORD
     # An owning tuple slot stores the STORAGE tuple, so element reads off
     # the slot deref render value-form (`std::get<1>((*t)).val`, dot not
     # arrow) -- the binding-form fact, per-binding not per-type.

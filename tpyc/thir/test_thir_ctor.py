@@ -1549,6 +1549,78 @@ class TestCtorMilSmallFamilies:
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
 
+class TestDynamicMilDemote:
+    """The DYNAMIC MIL demote (the AST's probe-registers-a-temp trigger):
+    a vararg-temp field init demotes to the ctor body, breaking the hoist
+    chain for later inits -- source order preserved, byte-identical to the
+    AST's checkpoint/rollback probe. Whitelisted reject tags only; every
+    other ThirUnsupported still falls the whole ctor back."""
+
+    _SRC = (
+        "import math\n"
+        "from tpy import Int32, Float64\n"
+        "class Tri:\n"
+        "    a: Float64\n"
+        "    b: Int32\n"
+        "    def __init__(self, x: Int32, y: Int32) -> None:\n"
+        "        self.a = math.hypot(float(x), float(y))\n"
+        "        self.b = x\n"
+        "def main() -> None:\n"
+        "    t = Tri(3, 4)\n"
+        "    print(t.a, t.b)\n"
+        "main()\n")
+
+    def test_vararg_init_demotes_and_routes(self):
+        # Full-pipeline witness read: ctors lower in the seeding pass, not
+        # lower_module, so _lower_ctx_witnessed cannot see their faces.
+        from ..codegen_cpp.context import CodeGenOptions
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        compiler, modules = _compile(self._SRC)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert compiler._thir_face_witnesses.get("mil.demote_probe", 0) >= 1
+        joined = _hpp + cpp
+        # demoted: the array temp + assign are in the BODY, not the MIL
+        assert "std::array<const double, 2> __tmp_1" in joined
+        assert "this->a = ::tpystd::math::hypot(" in joined
+
+    def test_nondef_field_demote_falls_back_whole(self):
+        # BOUNDARY: a whitelisted demote whose TARGET field is
+        # non-default-constructible falls the ctor back so the AST path
+        # still raises its CodeGenError (the demoted MIL would
+        # default-init an uncompilable state) -- the dynamic trigger
+        # takes the same guard as the static mirrors, and the ERROR is
+        # the observable contract.
+        src = (
+            "import math\n"
+            "from tpy import Int32, Float64\n"
+            "from tplib import Box\n"
+            "class Holder:\n"
+            "    b: Box[Float64]\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.b = Box(math.hypot(float(x), 3.0))\n"
+            "def main() -> None:\n"
+            "    h = Holder(4)\n"
+            "    print(h.b.get())\n"
+            "main()\n")
+        import pytest
+        from ..codegen_cpp.context import CodeGenError, CodeGenOptions
+        compiler, modules = _compile(src)
+        with pytest.raises(CodeGenError,
+                           match="non-default-constructible"):
+            compiler.generate_code_to_strings(
+                _entry(modules), options=CodeGenOptions(
+                    emit_source_comments=False, thir_codegen=True))
+
+    def test_whitelist_is_the_probe_temp_class_only(self):
+        # Change-detector: demoting a reject the AST HOISTS would emit
+        # THIR body code where the AST emits a MIL entry -- extend one
+        # oracle at a time, never wholesale.
+        from .lower.functions import _MIL_DEMOTE_TAGS
+        assert _MIL_DEMOTE_TAGS == frozenset({"call.vararg_pack_flush"})
+
+
 class TestTypedDictCtorCall:
     # The kwargs-pack rewrite: sema turns `connect(host=..., port=...)`
     # into a fi-less `Options(...)` ctor arg with field-ordered

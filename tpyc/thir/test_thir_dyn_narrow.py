@@ -404,6 +404,54 @@ class TestDerefMethodFieldReceiver:
         assert "(*this->val).__deref__().n" in (_hpp + cpp)
 
 
+class TestPolyInlineNarrowUnderAnd:
+    """Inline poly isinstance under `&&` in expression position: the LHS
+    lowers via the shared cast chokepoint and the RHS reads the SPELLED
+    static_cast (well-defined after the LHS dynamic_cast validated).
+    INHERIT conformers only; `||` spines install nothing and fall back."""
+
+    _SRC = (
+        "from typing import Protocol\n"
+        "from tpy import dynamic, Int32\n"
+        "@dynamic\n"
+        "class Tagged(Protocol):\n"
+        "    pass\n"
+        "class Pet(Tagged):\n"
+        "    def __init__(self) -> None:\n"
+        "        pass\n"
+        "    def name(self) -> str:\n"
+        "        return \"pet\"\n"
+        "class Dog(Pet):\n"
+        "    def __init__(self) -> None:\n"
+        "        super().__init__()\n"
+        "    def bark(self) -> str:\n"
+        "        return \"woof\"\n"
+        "def check_and(p: Pet, threshold: Int32) -> bool:\n"
+        "    return isinstance(p, Dog) and len(p.bark()) > threshold\n"
+        "def main() -> None:\n"
+        "    print(check_and(Dog(), 2))\n"
+        "main()\n")
+
+    def test_and_spine_routes_spelled_rhs(self):
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("binop.poly_inline_narrow", 0) >= 1
+        joined = _hpp + cpp
+        assert "(dynamic_cast<Dog*>(&p) != nullptr)" in joined
+        assert "(*static_cast<Dog*>(&p)).bark()" in joined
+
+    def test_or_spine_still_defers(self):
+        # BOUNDARY: `||` has no complement fact -- the isinstance leaf
+        # falls to the generic call gate and the body keeps the fence.
+        src = self._SRC.replace(
+            "    return isinstance(p, Dog) and len(p.bark()) > threshold\n",
+            "    return isinstance(p, Dog) or len(p.name()) > threshold\n")
+        from .testutil import _fn as _fn_l, _lower_ctx
+        thir = _lower_ctx(src)
+        assert _fn_l(thir, "check_and") is None
+
+
 class TestErasedDynOwnDecl:
     """The already-erased Own[dyn] call decl (`c = make(41)` -- the
     'forward' verdict) and the return-position async-factory erasure

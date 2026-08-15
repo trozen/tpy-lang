@@ -2186,6 +2186,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.return_generic_tuple",     # generic tuple literal at the async return slot
     "res.loop_ptr_bind",            # pointer-form loop var admitted (T* reads)
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
+    "binop.poly_inline_narrow",     # inline poly-isinstance under && (spelled static_cast RHS)
+    "truthy.optional_field_whole",  # truthy Optional field condition (is_truthy over raw storage)
+    "mil.demote_probe",             # dynamic MIL demote (AST-probe-temp class, whitelisted)
+    "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
+    "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.for_narrowed_opt_src",     # narrowed value-opt iterable, bare leaf (skeleton unwraps)
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted

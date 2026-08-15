@@ -1678,9 +1678,23 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                     stmt.value, body_written_self_fields))
             if (not chain_broken and is_own_init
                     and not reads_written_field and not ast_demotes):
-                field_inits.append(_lower_ctor_mil_init(
-                    stmt, own_param_names, own_field_names, declared,
-                    lc))
+                mil_node = _attempt_ctor_mil_init(
+                    stmt, own_param_names, own_field_names, declared, lc)
+                if mil_node is not None:
+                    field_inits.append(mil_node)
+                    continue
+                # DYNAMIC demote (the AST's probe-registers-a-temp trigger,
+                # e.g. a varargs std::array in the init): the init goes to
+                # the body like the static demotes below. The AST raises
+                # for a demoted non-default-constructible field -- keep
+                # falling back whole there so it still does.
+                if _nondef_ctor_field(analyzer.get_expr_type(stmt.target),
+                                      analyzer):
+                    note("ctor.demote_nondefault_field")
+                    return None
+                _witness("mil.demote_probe")
+                chain_broken = True
+                body_stmts.append(stmt)
                 continue
             # A demoted own-field init of a non-default-constructible field type
             # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,
@@ -1713,6 +1727,61 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     except ThirUnsupported as ex:
         note(ex.reason)
         return None
+
+_MIL_DEMOTE_TAGS = frozenset({
+    # The AST-probe-temp class ONLY: rejects the AST *hoists* must stay
+    # whole-body fallbacks (demoting one would emit THIR body code where
+    # the AST emits a MIL entry -- a guaranteed byte diff). Extend this
+    # whitelist one oracle at a time.
+    "call.vararg_pack_flush",
+})
+
+
+def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
+                           declared: dict, lc) -> 'THIRExpr | None':
+    """Try one MIL field-init lowering; None = dynamically demote (the
+    whitelisted AST-probe-temp rejects only -- every other ThirUnsupported
+    re-raises into the whole-ctor fallback). The attempt's side effects
+    roll back locally: `declared` by copy, the branch-scoped lc name-sets
+    via branch_scope, the FUNCTION-scoped walrus sets by explicit copy
+    (branch_scope deliberately skips them, and a walrus ARG can lower
+    before the whitelisted reject fires -- `f(y := g(), *rest)`), and the
+    faces / move-verdict journals by delta subtraction (the flat
+    one-window journal design forbids a nested begin/rollback here)."""
+    from ...compilation_context import get_current_compiler
+    compiler = get_current_compiler()
+    decl_snap = dict(declared)
+    walrus_pre_snap = set(lc.walrus_predeclared)
+    walrus_slot_snap = set(lc.walrus_slot_locals)
+    fw_snap = (dict(compiler._thir_face_witnesses)
+               if compiler is not None else None)
+    fj = getattr(compiler, "_thir_face_journal", None)
+    fj_snap = dict(fj) if fj is not None else None
+    mj = getattr(compiler, "_move_verdict_journal", None)
+    mj_snap = set(mj) if mj is not None else None
+    try:
+        with lc.branch_scope():
+            return _lower_ctor_mil_init(
+                stmt, own_param_names, own_field_names, declared, lc)
+    except ThirUnsupported as ex:
+        if ex.reason not in _MIL_DEMOTE_TAGS:
+            raise
+        declared.clear()
+        declared.update(decl_snap)
+        lc.walrus_predeclared.clear()
+        lc.walrus_predeclared.update(walrus_pre_snap)
+        lc.walrus_slot_locals.clear()
+        lc.walrus_slot_locals.update(walrus_slot_snap)
+        if compiler is not None:
+            compiler._thir_face_witnesses = fw_snap
+            if fj is not None:
+                compiler._thir_face_journal = fj_snap
+            if mj is not None:
+                for key in mj - mj_snap:
+                    compiler._move_verdict_thir.pop(key, None)
+                compiler._move_verdict_journal = mj_snap
+        return None
+
 
 def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
     """A `self.<field> = expr` whose field is not an own field -- an inherited-field

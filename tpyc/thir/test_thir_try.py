@@ -930,7 +930,12 @@ class TestTryHoistFlavors:
         assert faces.get("try.hoist_decl", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_rvalue_reassigned_hoist_still_defers(self):
+    def test_rvalue_reassigned_hoist_routes_lazy_slot(self):
+        # An rvalue-reassigned try hoist rides the pointer flavor: the
+        # reseats allocate the FUNCTION-TOP `__slot_N` lazily (the
+        # BRANCH_RVALUE arm), so no THIRTry field is needed -- the former
+        # fence's "if-head slot" premise was wrong (the oracle predecls
+        # the slot above the try).
         src = (self._ERR
                + "def main() -> None:\n"
                + "    h = H()\n"
@@ -942,5 +947,5 @@ class TestTryHoistFlavors:
                + "        print(\"err\")\n"
                + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
+        assert _fn(thir, "main") is not None
         _assert_byte_identical(src)

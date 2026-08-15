@@ -1797,8 +1797,11 @@ class TestRecordBorrowCallReturnDesignStop:
     # (`shared(a).x`) composes TRANSIENTLY -- the temp lives to the end of
     # the full expression and nothing binds, so no place/loan reasoning
     # arises. It routes via the DEDICATED field-recv flag (never a blanket
-    # record-at-RECEIVER row -- that stays reverted); BINDING the same
-    # result (a decl) remains the REF_ALIAS frontier and keeps rejecting.
+    # record-at-RECEIVER row -- that stays reverted). BINDING the same
+    # result also routes now (decl.record_borrow_call, the REF_ALIAS decl
+    # arm -- see TestRecordBorrowCallAlias); the former "frontier" design
+    # stop is CLOSED, and future borrow-return positions open as their
+    # own sink-specific flags.
     def test_borrow_record_call_field_read_routes(self):
         from .testutil import _assert_routes_byte_identical
         src = (

@@ -289,7 +289,11 @@ class TestStructuredTruthiness:
                 emit_source_comments=False, thir_codegen=True))
         assert thir_out == ast_out
 
-    def test_optional_field_narrowing_stays_ast(self):
+    def test_optional_field_truthy_routes_whole_read(self):
+        # A truthy Optional FIELD condition routes: `is_truthy(box.value)`
+        # over the raw declared storage; the branch's narrowed read rides
+        # sema's per-occurrence retype (no THIR-side path fact -- the
+        # registry premise dissolved in design round C).
         src = (
             "from tpy import Int32\n"
             "class Box:\n"
@@ -300,7 +304,12 @@ class TestStructuredTruthiness:
             "    if box.value:\n        return box.value\n"
             "    return 0\n"
         )
-        assert _fn(_lower_ctx(src), "probe") is None
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("truthy.optional_field_whole", 0) >= 1
+        assert "::tpy::is_truthy(box.value)" in _hpp + cpp
 
     def test_unnarrowed_optional_record_truthiness_stays_ast(self):
         # An un-narrowed pointer-repr Optional[record] with a truthiness dunder

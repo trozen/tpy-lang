@@ -1614,11 +1614,25 @@ class RecordGenerator:
                                       and fld_type.has_pointer_repr_element())
                 # A member-initializer-list expression has no place to declare
                 # temps; if `gen_expr` registers any, demote the assignment to
-                # the body where the next `temps.flush` can emit them.
-                checkpoint = self.ctx.temps.checkpoint()
+                # the body where the next `temps.flush` can emit them. The
+                # probe's discard restores the COUNTER too (rollback_discarded)
+                # so the demoted body re-emit reissues the same `__tmp_N`
+                # names instead of burning one per probe -- the elif-probe
+                # precedent. A walrus probe's NAMED pre-decl cannot roll back
+                # (registry side effects persist): that corner keeps the
+                # burned number via the counter-keeping rollback.
+                checkpoint = self.ctx.temps.probe_checkpoint()
                 value = self.expressions.gen_expr(
                     stmt.value if copy_storage_tuple else source, fld_type)
-                if self.ctx.temps.rollback_to(checkpoint):
+                _mil_probe_temps = (
+                    self.ctx.temps.has_pending_since(checkpoint)
+                    or self.ctx.temps.has_named_since(checkpoint))
+                if _mil_probe_temps:
+                    if self.ctx.temps.has_named_since(checkpoint):
+                        self.ctx.temps.rollback_to(checkpoint[:2])
+                    else:
+                        self.ctx.temps.rollback_discarded(checkpoint)
+                if _mil_probe_temps:
                     demote(field_name, stmt.loc,
                            "the initializer expression requires a codegen "
                            "temporary that cannot be declared in the member "

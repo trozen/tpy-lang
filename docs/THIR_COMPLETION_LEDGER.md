@@ -10637,3 +10637,98 @@ the real adjacent reject is the qualified NON-ctor factory call.
 The remaining sink residue (2 grindable cases) is the
 OPTIONAL-RETURN coro family -- a coordinated cell, drilled and
 parked in TODO.md's sink map.
+
+POST-SINK DESIGN ROUND A (2026-08-14, thir-post-sink): 4 flips
+(await_optional_field_borrow, async_finally_mutates_returned_local,
+coro_for_loop_post_use, list/branch_decl_pending_list), dial ->
+3549/3730 -- **the ASYNC SINK is 18/18 COMPLETE**. Round A premise
+probes dissolved ALL FOUR parks (the de-design streak): (1) the
+moved-container receiver-mismatch entry was STALE (a misattribution;
+wave 33 fixed the real blocker) -- deleted. (2) The optional-return
+coro family was the already-approved designed-queue item 6 Wave 2:
+slot admissions keyed on async_return_form, the storage None->nullopt
+rung (ret_value_opt stays scalar for the sync arm), the ptr-opt FIELD
+lift (sync ret.ptr_opt_field's async twin; NAME sources keep
+return.borrow_form), ValueOptKind.RECORD frame locals, the frame-slot
+emplace flush (allow_temps -- its always-defers fence converted), and
+the branch-nested rvalue-reseat delegation to the landed FRAME_RVALUE
+row. (3) The hoisted-loop-var family had de-designed incrementally:
+the shared _opt_storage_hoist_flavor threaded to the foreach site,
+with the RESUMABLE rung opened for leaf-mode non-frame-field names;
+NB the suspension-crossing flavor ALSO routes (the assumed frame-field
+boundary does not exist in that shape -- the exclusion stays
+defensive). (4) The try-site rvalue-reassigned hoist rode the pointer
+flavor once probed: the reseats fill the lazily-allocated FUNCTION-TOP
+__slot_N (BRANCH_RVALUE) -- the fence's "if-head slot" premise was
+wrong; two fences converted, and an ablation killed a speculative
+rebind_slot registration (the predecl entry already registers it).
+Remaining from Round A: the temp-demote cell is priced and BLOCKED
+behind the AST temp-counter fix (Round B).
+
+POST-SINK DESIGN ROUND B (2026-08-14, thir-post-sink): the approved
+AST-first temp-counter fix + the dynamic MIL demote -- 1 flip
+(records/record_ctor_field_init_varargs), dial -> 3550/3730. Two
+change-sets per the AST-first rule: (1) `codegen: MIL probe restores
+the temp counter on demote` -- probe_checkpoint + rollback_discarded
+(the elif-probe precedent), has_named_since fallback for the walrus
+corner; the enumerated snapshot churn was exactly ONE case
+corpus-wide (__tmp numbers shift down -- the burned probe numbers
+reclaimed). (2) The THIR dynamic demote: `_attempt_ctor_mil_init`
+with a whitelist (`call.vararg_pack_flush` only -- demoting a reject
+the AST HOISTS would byte-diverge; a change-detector pin freezes the
+set), local delta rollback of the faces/move-verdict journals (the
+flat one-window design forbids nested begin/rollback), branch_scope
++ declared copy, AND -- review-caught -- the FUNCTION-scoped walrus
+sets by explicit copy (branch_scope deliberately skips them; a
+walrus ARG can lower before the whitelisted reject). The nondef-ctor
+guard's observable contract is the AST's CodeGenError still firing
+(pinned). Review round: codegen-correctness traced the walrus-corner
+safety on the AST side (reset_scope wipes between passes) and the
+journal-rebind aliasing (fresh attribute reads everywhere); the
+hoist rung's frame_slots exclusion was ABLATED AS DEAD corpus-wide
+(in-loop awaits still leave the hoisted var a leaf-local) and
+deleted -- a genuine frame-field flavor would surface in the corpus
+byte-diff, not mis-render silently.
+
+POST-SINK DESIGN ROUND C (2026-08-15, thir-post-sink): ALL THREE
+remaining design memos DISSOLVED on premise verification (streak
+~29/34) -- the design queue holds NO genuine fork. (1) Field-path
+narrow facts: the registry premise was FALSE (sema keys dotted paths
+with full invalidation; both paths consume the per-occurrence retype
+statelessly; the feared silent-unwrap-drop is structurally impossible
+-- unrouted reads raise). Landed as one truthy field row, 2 flips.
+(2) The poly "spelled-install regime": the oracle RE-EXTRACTS per BB
+(no cross-BB state) and the regime the second entry wanted was built
+by the sink waves (lc.narrow.spelled + _poly_cast_context). The
+expression-position `&&` leg LANDED (binop.poly_inline_narrow --
+static_cast spell after the validated dynamic_cast, INHERIT only,
+|| and structural keep fences; 1 flip + the dynpostif value-position
+fence converted). The resumable poly-self cell is READY in TODO.md
+(bounded resumable.py extension + two verify-first rows). (3) The
+"view-tuple family" premise was FALSE -- oracles spell OWNED storage
+everywhere; re-tagged the OWNED-BYTES TUPLE wave (2 cells, 3 flips,
+READY in TODO.md). Dial -> 3553/3730 this round (5 flips across
+rounds A-C landed cells on thir-post-sink).
+
+POST-SINK DESIGN ROUND D (2026-08-15, thir-post-sink): the two
+architecture items SEQUENCED -- no design work opened. (1) The
+nested-def rebind-slot emit model stays PARKED, scheduled LAST before
+the cutover: M-cost (an _EmitState hoist-scope stack; nested-def
+first, the sgen leaf-emitter drain hook second), 3 sole-blocker
+flips, gated on the BUGS.md nonlocal-rebind slot-model decision and
+re-probed after the union rebind-kill lane; the test_compiler
+un-migrated fixture swaps to a synthetic reject in the migrating
+change-set; check the A5 stdlib breakdown for these tags before
+cutover scheduling. (2) The REF_ALIAS place/loan design stop is
+CLOSED AS DISSOLVED: the waves consumed the whole reachable family
+via sink-specific _ExprUse flags, the pinned `shared(a).x` shape and
+the decl bind both ROUTE, and the census carries zero units behind
+the reject -- the stop had conflated render mirroring with
+soundness, which is sema's job on both paths; IR_DESIGN item 9
+(resolved as the Form-tag design) was never a prerequisite, and the
+"permanent fence contradicts the cutover" tension is MOOT (nothing
+is fenced). Standing rule recorded in TODO.md: future
+borrow-return positions open as sink-specific flags with boundary
+pins, never blanket rows, never waiting on MIR. With rounds A-D
+complete the design queue is EMPTY: two READY waves (~5 flips)
+remain, then the live blocker mass and the cutover path.

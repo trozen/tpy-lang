@@ -213,6 +213,7 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    _poly_narrow_info,
     _comp_shadow_pointers,
     _btuple_owning_call_init,
     _empty_instantiation_family,
@@ -2839,6 +2840,50 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # A bool RESULT over non-bool operands takes the AST's direct
             # C++ `&&`/`||` with truthiness reasoning not carried here.
             reject()
+        if e.op == "&&":
+            _pinf = _poly_narrow_info(e.left, declared, analyzer)
+            if (_pinf is not None
+                    and _pinf[0] not in lc.narrow.narrowed
+                    and _pinf[0] not in lc.narrow.spelled
+                    and _pinf[0] not in lc.pointers
+                    and _pinf[0] != lc.self_receiver):
+                # An inline poly-isinstance LEFT under `&&`: the check
+                # lowers via the shared cast chokepoint and the subject's
+                # RHS reads SPELL the validated cast inline
+                # (`(*static_cast<const Dog*>(&p))` -- static_cast is
+                # well-defined after the LHS dynamic_cast validated; the
+                # AST's inline-fact poly arm). INHERIT conformers only:
+                # the structural flavor re-casts through the adapter (a
+                # different spell) and keeps the fence.
+                pvar, pmember, _pdecl = _pinf
+                _c_p, _cast_arg, _inner_src = _poly_cast_context(
+                    pvar, lc, declared)
+                if (isinstance(pmember, NominalType)
+                        and _inner_src is not None
+                        and not is_protocol_type(_inner_src)):
+                    _witness("binop.poly_inline_narrow")
+                    left = THIRDynIsinstanceMulti(
+                        result_type=analyzer.get_expr_type(e.left),
+                        checks_cpp=_poly_cast_checks(pvar, (pmember,), lc,
+                                                     declared),
+                        loc=getattr(e.left, "loc", None))
+                    _cpx = "const " if _c_p else ""
+                    _spell = (f"(*static_cast<{_cpx}"
+                              f"{lc.render_type(pmember)}*>({_cast_arg}))")
+                    # The guard above proved pvar is un-spelled, so the
+                    # pop is unconditional.
+                    lc.narrow.spelled[pvar] = _spell
+                    _act = dict(declared)
+                    _act[pvar] = pmember
+                    try:
+                        right = _lower_expr(e.right, lc, _act,
+                                            use=_ExprUse(
+                                                allow_temps=False))
+                    finally:
+                        lc.narrow.spelled.pop(pvar, None)
+                    return THIRBinOp(
+                        result_type=rtype, left=left, op=e.op,
+                        right=right, resolved=None, loc=loc)
     elif e.op in _IS_OPS:
         if (_is_none_compare_operand(e, declared, analyzer) is None
                 and _any_none_subject(e, declared, analyzer) is None
@@ -12728,9 +12773,23 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
     mode = _truthiness_mode(et, lc.analyzer)
     if (mode is TruthinessMode.IS_TRUTHY
             and isinstance(e, TpyFieldAccess)):
-        # A truthy Optional field narrows its dotted path for later reads. THIR
-        # does not carry that path fact yet, so routing the condition alone can
-        # drop the AST's `(*field)` unwrap in the branch.
+        # A truthy Optional FIELD condition renders `::tpy::is_truthy(f)`
+        # over the raw declared storage. The branch's narrowed reads need
+        # NO THIR-side path fact: sema keys dotted-path narrows itself and
+        # retypes each occurrence, which the stateless field-read arm
+        # (`_narrowed_opt_field_read`, declared-vs-analyzed mismatch)
+        # already consumes -- the same regime as the is-not-None field
+        # subject.
+        if (isinstance(e.obj, TpyName)
+                and _field_markers_clean(e)
+                and _field_receiver_ok(e, declared, lc.analyzer)):
+            operand = _lower_expr(e, lc, declared, field_prechecked=True,
+                                  allow_whole_optional=True)
+            _witness("truthy.optional_field_whole")
+            return THIRTruthy(
+                result_type=BOOL, mode=TruthinessMode.IS_TRUTHY,
+                operand=operand, deref=False,
+                loc=getattr(e, "loc", None))
         raise ThirUnsupported("truthy.optional_field_narrow")
     if (mode in (TruthinessMode.RECORD_BOOL, TruthinessMode.RECORD_LEN)
             and isinstance(e, TpyName)

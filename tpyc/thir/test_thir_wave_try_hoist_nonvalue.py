@@ -56,10 +56,11 @@ class TestTryHoistNonValue:
 
 
 class TestTryHoistNonValueBoundaries:
-    def test_reassigned_hoist_stays_ast(self):
-        # A reassigned non-value takes the AST's POINTER-local flavor
-        # (`T* name;` plus rebind slots), which this arm does not carry --
-        # the optional predecl would own where the AST aliases.
+    def test_reassigned_hoist_routes_pointer_flavor(self):
+        # A reassigned non-value rides the POINTER-local flavor (`T*
+        # name;`); rvalue reseats fill the lazily-allocated function-top
+        # `__slot_N` (BRANCH_RVALUE) -- the flavor the fence once said was
+        # missing landed with the try-site classifier threading.
         src = ("def use(f: bool) -> None:\n"
                "    try:\n"
                "        items = [1, 2]\n"
@@ -68,7 +69,8 @@ class TestTryHoistNonValueBoundaries:
                "    items = [3, 4]\n"
                "    print(items)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
     def test_hoist_inside_a_loop_routes(self):
         # `_gen_try` emits the predecl at the try, so the loop body IS the

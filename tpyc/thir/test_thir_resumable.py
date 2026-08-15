@@ -3794,7 +3794,11 @@ class TestFrameFamilyAdmissions:
                + "    return -1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fb = _res_fallback(src)
-        assert fb.get("res.return_type") == 1  # get only; f routes
+        # get only; f routes. The producer's fence moved from the slot gate
+        # (res.return_type) to the source rung (return.borrow_form) when
+        # the optional-return slots were admitted -- a bare NAME source at
+        # the BORROW slot stays out (only the field lift is admitted).
+        assert fb.get("stmt.return:return.borrow_form") == 1
         assert len(fb) == 1
         _assert_identical(src)
 
@@ -5107,6 +5111,131 @@ class TestResForHeadDictViewIterable:
                "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestHoistedLoopVarOptStorage:
+    """The hoisted loop-var OPTIONAL_STORAGE flavor at the for-head: the
+    shared if/try/with classifier threaded to the foreach site. Sync
+    predecls `std::optional<T> name;` + per-iteration binds + post-loop
+    deref reads; the RESUMABLE rung opens for leaf-mode non-frame-field
+    names only (the loop and post-use share one case block)."""
+
+    def test_resumable_leaf_local_routes(self):
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "class Item:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n\n"
+               + "async def scan() -> Int32:\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    items = [Item(1), Item(2)]\n"
+               + "    for it in items:\n"
+               + "        pass\n"
+               + "    return it.n\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(scan()))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "std::optional<Item> it;" in cpp
+
+    def test_in_loop_await_hoist_also_routes(self):
+        # An await INSIDE the loop body still leaves the hoisted var a
+        # leaf-local (routes byte-identically) -- a frame_slots exclusion
+        # on this rung was ablated as DEAD; a genuine frame-field flavor
+        # would surface in the corpus byte-diff.
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "class Item:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n\n"
+               + "async def scan() -> Int32:\n"
+               + "    items = [Item(1), Item(2)]\n"
+               + "    for it in items:\n"
+               + "        await asyncio.sleep(0)\n"
+               + "    return it.n\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(scan()))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+    def test_suspension_crossing_hoist_also_routes(self):
+        # The suspension-crossing flavor routes byte-identically too (the
+        # skeleton's frame planning keeps `it` out of lc.frame_slots for
+        # this shape); the classifier's frame_slots exclusion stays as the
+        # defensive fence for shapes where it does not.
+        src = (_PRE
+               + "import asyncio\n\n"
+               + "class Item:\n"
+               + "    n: Int32\n"
+               + "    def __init__(self, n: Int32) -> None:\n"
+               + "        self.n = n\n\n"
+               + "async def scan() -> Int32:\n"
+               + "    items = [Item(1), Item(2)]\n"
+               + "    for it in items:\n"
+               + "        pass\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return it.n\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(scan()))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("resumable:") for k in fallback)
+
+
+class TestOptionalReturnCoroFamily:
+    """The optional-return coro slots (designed-queue item 6 Wave 2): the
+    STORAGE `Own[Box] | None` slot (ctor rvalue rides the tail, None spells
+    nullopt) and the BORROW `Box | None` slot (the field optional_to_ptr
+    lift only -- name sources keep the return.borrow_form fence). Plus the
+    `std::optional<Record>` VALUE frame local (ValueOptKind.RECORD)."""
+
+    _SRC = (_PRE
+            + "import asyncio\n"
+            + "from tpy import Own\n\n"
+            + "class Box:\n"
+            + "    def __init__(self, v: int) -> None:\n"
+            + "        self.v = v\n\n"
+            + "class H:\n"
+            + "    opt: Box | None\n"
+            + "    def __init__(self, b: Box | None) -> None:\n"
+            + "        self.opt = b\n\n"
+            + "async def get(h: H) -> Box | None:\n"
+            + "    await asyncio.sleep(0)\n"
+            + "    return h.opt\n\n"
+            + "async def make(p: bool) -> Own[Box] | None:\n"
+            + "    await asyncio.sleep(0)\n"
+            + "    if p:\n"
+            + "        return Box(3)\n"
+            + "    return None\n\n"
+            + "async def drive() -> None:\n"
+            + "    h = H(Box(1))\n"
+            + "    t = await get(h)\n"
+            + "    print(\"got\" if t is not None else \"none\")\n"
+            + "    owned = await make(True)\n"
+            + "    print(owned.v if owned is not None else -1)\n\n"
+            + "def main() -> None:\n"
+            + "    asyncio.run(drive())\nmain()\n")
+
+    def test_both_slots_and_frame_local_route(self):
+        witnesses, fallback = _assert_identical(self._SRC)
+        assert not any(k.startswith("resumable:") for k in fallback)
+        assert witnesses.get("res.return_opt_record_none")
+        assert witnesses.get("res.return_ptr_opt_field")
+        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        assert "::tpy::optional_to_ptr(h.opt)" in cpp
+        assert "= std::nullopt;" in cpp
+
+    def test_borrow_name_source_still_defers(self):
+        # BOUNDARY: a NAME source at the BORROW slot keeps the
+        # return.borrow_form fence -- only the field lift is admitted.
+        src = self._SRC.replace(
+            "    return h.opt\n",
+            "    t = h.opt\n"
+            "    return t\n")
+        witnesses, fallback = _assert_identical(src)
+        assert any("return.borrow_form" in k for k in fallback)
 
 
 class TestXmodCtorAsyncSinks:

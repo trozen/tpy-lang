@@ -5313,6 +5313,35 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
             _witness("res.return_copy_record")
             return copy_row
     form = async_return_form(lc.func.return_type)
+    _ret_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lc.func.return_type)))
+        if isinstance(lc.func.return_type, TpyType) else None)
+    # Storage Optional[F1-record] slot: `return None` spells the STORAGE
+    # nullopt (the scalar value-opt row's record twin -- ret_value_opt
+    # itself stays scalar-keyed for the sync arm); every other source
+    # rides the position-blind tail (the optional's converting ctor).
+    _ret_sopt = _storage_optional_return_type(_ret_bare, lc.analyzer)
+    if _ret_sopt is not None and isinstance(ret.value, TpyNoneLiteral):
+        _witness("res.return_opt_record_none")
+        return THIRLiteral(result_type=_ret_sopt, value=None,
+                           form=Form.STORAGE,
+                           loc=getattr(ret.value, "loc", None))
+    # The ptr-repr Optional FIELD lift (`return h.opt` at `-> Box | None`):
+    # the whole `std::optional<T>` member lifts to the `T*` payload via
+    # optional_to_ptr -- the sync ret.ptr_opt_field row's async twin.
+    if (form is AsyncReturnForm.BORROW
+            and isinstance(_ret_bare, OptionalType)
+            and isinstance(ret.value, TpyFieldAccess)
+            and not lc.func.is_property_getter
+            and _field_receiver_ok(ret.value, declared, lc.analyzer)
+            and _optional_ptr_borrow_wide(
+                lc.analyzer.get_expr_type(ret.value), lc.analyzer)
+            is not None):
+        _witness("res.return_ptr_opt_field")
+        return THIRFormConvert(
+            result_type=_ret_bare,
+            value=_lower_field_source(ret.value, lc, declared),
+            form=Form.BORROW, loc=getattr(ret, "loc", None))
     # The self-FIELD borrow rung (`return self.inner` ->
     # `Server* __tpy_async_ret = &(__self.inner);`): the field read is a
     # borrow lvalue, so it lowers BORROW_BIND (the STORAGE use below
@@ -5731,8 +5760,9 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     """R1c frame_slot write (`xs.emplace(std::vector<int32_t>{1, 2});` --
     first init and reassign alike, emplace destroys any prior payload). The
     emplace arg is a storage sink (the owned payload constructs in place),
-    so admission matches the sync storage decl's minus the temp hoist
-    (allow_temps stays off -- leaf temp discipline is its own rung).
+    so admission matches the sync storage decl's; the emplace line is a
+    flushable statement position, so arg temps hoist before it (the
+    ptr-opt ctor arg's `Box __tmp_N = ...;`).
     Shared by the top-level leaf decl arm and the branch-nested decl arm."""
     init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
                                          lc.analyzer)
@@ -5749,8 +5779,12 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
             _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
         _witness("res.frame_comp_write")
     else:
+        # The emplace is a statement position: arg temps (the ptr-opt ctor
+        # arg's `Box __tmp_N = Box(...);`) flush before the emplace line,
+        # exactly where the AST flushes them.
         value = _lower_expr(init, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.STORAGE))
+                            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                         allow_temps=True))
     _witness("res.frame_slot_write")
     # The brace-init prefix spells the SLOT, so it reads the resolved frame
     # local type (the AST's `ctx.var_types`) -- a branch-declared container
@@ -6434,6 +6468,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         value=THIRName(result_type=_fvt,
                                        name=stmt.init.name, loc=loc),
                         loc=loc)
+                if (stmt.name in lc.pointers
+                        and stmt.name not in lc.rebind_slot_locals):
+                    # An RVALUE reseat of a FRAME pointer field renders
+                    # position-blind through the sync reseat family (the
+                    # prescanned `__ptr_slot_fN` fill, reseat.opt_frame_slot)
+                    # -- the top-level leaf arm's delegation rule; only the
+                    # sync-only `__slot_N` rebinds keep the reject.
+                    return _lower_stmt(stmt, lc, declared)
             raise ThirUnsupported("res.leaf_field_write")
         if isinstance(stmt, TpyTupleUnpack):
             return _lower_frame_tuple_unpack(stmt, scope)
@@ -11756,6 +11798,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         foreach_hoists = analyzer.if_branch_decls.get(id(stmt), {})
         borrow_tuple_hoists: set[str] = set()
         ptr_null_hoists: set[str] = set()
+        opt_storage_hoists: set[str] = set()
         for _hname, _hraw in foreach_hoists.items():
             if _hname in declared:
                 continue
@@ -11793,11 +11836,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and stmt.body[0].is_ref[_hi]):
                 ptr_null_hoists.add(_hname)
                 continue
+            # The OPTIONAL_STORAGE flavor (the if/try/with sites' shared
+            # classifier, threaded to the for-head): a hoisted non-value
+            # loop var / loop-body decl predecls `std::optional<T> name;`,
+            # binds per-iteration through the shared hoisted loop-var
+            # render, and post-loop reads deref via lc.pointers. The
+            # RESUMABLE rung opens for LEAF mode: a for-head hoisted var
+            # is a leaf-local in every constructed shape (in-loop awaits
+            # included -- ablation showed a frame_slots exclusion here is
+            # DEAD), and a frame-field flavor, should one ever arise,
+            # diverges into the corpus byte-diff rather than mis-rendering
+            # silently.
+            _osf = _opt_storage_hoist_flavor(_hname, _hbare, lc)
+            if (_osf is None
+                    or (_osf == "resumable" and lc.resumable_leaf_mode)):
+                opt_storage_hoists.add(_hname)
+                continue
             note_detail("foreach.hoist_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         foreach_hoist_decls = tuple(
             _lower_hoist_predecls(foreach_hoists, declared, lc,
                                   "foreach.hoist_decl",
+                                  opt_storage=opt_storage_hoists,
                                   borrow_tuple=borrow_tuple_hoists,
                                   ptr_null=ptr_null_hoists))
         body_declared = dict(declared)
@@ -12583,10 +12643,13 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         # Borrow-only / reassigned plain non-value hoists take the pointer
         # predecl (`std::vector<int32_t>* v;`, the body bind reseating
         # `v = &(...)`) -- the with family's pointer flavor. An
-        # rvalue-reassigned name would need the if-head rebind slot,
-        # which THIRTry has no field for -- reject.
-        if (flavor == "other" and is_plain_nonvalue(var_type)
-                and name not in lc.prescan.rvalue_reassigned):
+        # rvalue-reassigned name rides too: its reseats allocate the
+        # FUNCTION-TOP `__slot_N` lazily (the BRANCH_RVALUE arm), so no
+        # THIRTry field is needed -- the oracle predecls the slot above
+        # the try (`std::optional<std::vector<int32_t>> __slot_1;`).
+        if flavor == "other" and is_plain_nonvalue(var_type):
+            # (The pointer predecl entry registers the rebind-slot model
+            # itself -- verified by ablation.)
             pointer_hoists.add(name)
             continue
         # The CONST borrow-decl sibling (`const Tree<int32_t>* v;`).
