@@ -94,6 +94,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot -> bare render (__hash__)
     "arg.native_union_name",        # union-typed name at a native protocol
                                     # slot -> bare (repr(a) over a variant)
+    "arg.optview_identity_coerce",  # Optional view<->str identity coerce over
+                                    # a call rvalue at a plain ARG slot ->
+                                    # bare pass-through (same C++ repr)
     "arg.readonly_empty_container", # empty [] / list() at a readonly slot
                                     # -> inline typed rvalue (const-ref bind)
     "arg.ru_wrapper_elem_literal",  # scalar literal at a wrapper-union
@@ -1035,6 +1038,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the T& container return slot
     "ret.value_opt_view_ctor",      # StrView instantiation at the
                                     # Optional[view] return: the folded src
+    "btuple.elem_field",            # F1-record FIELD element in a borrow
+                                    # tuple -> `&(<member read>)` lift
+    "protoarg.copy_iter",           # CopyIter[T] value at an Iterable[Own[T]]
+                                    # slot -> bare (name lvalue / call rvalue)
     "protoarg.own_elem_proto_name",  # protocol-typed name at an
                                     # Iterable[Own[T]] slot: bare (no
                                     # own_iter rewrite for proto bindings)
@@ -1155,6 +1162,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A `T()` default filling an omitted generic param
     # (`three_params[Int32](10, c=5)` -> `int32_t{}`).
     "call.tparam_default_construct",
+    # A tuple LITERAL at a value-tuple-resolved T slot: the inline spelled
+    # brace prvalue (`push_t<...>(pq, std::tuple<...>{2, "second"})`).
+    "call.generic_tuple_literal",
     # A conformer NAME into a still-open single structural protocol slot
     # (`drive_implicit(t)` at `Awaitable[T]`): binds the template param bare.
     "call.generic_open_proto_name",

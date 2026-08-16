@@ -4986,6 +4986,48 @@ class TestWave12MoveCopyNodes:
                    for s in f.body)
         _assert_byte_identical(src)
 
+    _OWN_YIELD = (
+        "from typing import Iterator\n"
+        "from tpy import Int32, Own\n"
+        "def gen() -> Iterator[Own[Int32]]:\n"
+        "    yield 1\n    yield 2\n"
+    )
+
+    def test_own_scalar_loop_var_moves_at_owning_sink(self):
+        # An `Own[Int32]`-yielding generator's loop var is movable-seeded
+        # for the loop scope (the AST's is_consuming ORs the Own elem
+        # type): the non-last-use read renders bare, the last use at the
+        # owning element slot moves -- `push_back(std::move(x))`.
+        src = self._OWN_YIELD + (
+            "def f() -> None:\n"
+            "    out: list[Int32] = []\n"
+            "    for x in gen():\n"
+            "        print(x)\n"
+            "        out.append(x)\n"
+            "    print(len(out))\n")
+        thir, w = _lower_ctx_witnessed(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, f)
+        assert "out.push_back(std::move(x));" in buf.getvalue()
+        assert w.get("move.own_last_use", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_own_scalar_loop_var_hoisted_still_defers(self):
+        # Boundary: a loop var read AFTER the loop is hoisted -- the
+        # movable seed must not apply (the AST guards on hoist_loop_var),
+        # and the body keeps its foreach.hoist_loop_var reject.
+        src = self._OWN_YIELD + (
+            "def f() -> None:\n"
+            "    out: list[Int32] = []\n"
+            "    for x in gen():\n"
+            "        out.append(x)\n"
+            "    print(x)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
     def test_method_recv_field_write_routes(self):
         # `b.get().x = v` -- a scalar field write whose receiver is a method
         # call returning a mutable record ref. Routes byte-identically.

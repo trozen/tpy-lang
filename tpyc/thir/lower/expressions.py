@@ -4044,7 +4044,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if binding_type is None:
             binding_type = declared.get(e.name)
         unrouted = _unrouted_binding_read(binding_type, analyzer,
-                                          is_param=_bt_is_param)
+                                          is_param=_bt_is_param,
+                                          movable_local=(
+                                              e.name in lc.movable_locals))
         if (unrouted is not None and not allow_unrouted_name
                 # A REGISTERED owned-optional record local has a routed read
                 # arm (the RECORD-kind branch below), and a storage-optional
@@ -4246,7 +4248,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if str_t is not None:
             return THIRName(result_type=str_t, name=e.name, cpp=gcpp,
                             form=_str_name_form(e.name, str_t,
-                                                lc.prescan.param_names),
+                                                lc.prescan.param_names,
+                                                lc.prescan.owned_viewfam_params),
                             loc=loc)
         # A bytes-slice name carries the same load-bearing view/owned form tag
         # as str: BORROW (span param / view local) drives the owned-sink
@@ -4255,7 +4258,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         if bytes_t is not None:
             return THIRName(result_type=bytes_t, name=e.name, cpp=gcpp,
                             form=_bytes_name_form(e.name, bytes_t,
-                                                  lc.prescan.param_names),
+                                                  lc.prescan.param_names,
+                                                  lc.prescan.owned_viewfam_params),
                             loc=loc)
         if _is_string_owned(rtype):
             # A String local (a concat-result binding): an owned std::string
@@ -6510,7 +6514,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     # member-NAME union) whose ctor renders are BARE on the AST
                     # path.
                     flush_slot = (
-                        _own_lvalue_temp_slot(a, p.type, lc.analyzer) is not None
+                        _own_lvalue_temp_slot(a, p.type, lc.analyzer,
+                                              declared) is not None
                         or _union_ctor_temp_arg(a, p.type, lc.analyzer)
                         or _protocol_arg_slot(p.type) is not None
                         # The member-valued VALUE-union temp (`std::variant
@@ -8176,7 +8181,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # receiver admits no Own slots). A blanket temp_args would
             # re-shape the record-rvalue / union temp rows, whose method
             # renders are BARE on the AST path.
-            own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
+            own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer, declared)
             own_flush = (temp_args and not proto_recv
                          and ((own_slot_w is not None
                                # A cpp_template stub binds lvalues natively
@@ -8455,6 +8460,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 # arm), so their inner is an indirect_read position.
                 use=_ExprUse(indirect_read=(
                     e.coercion.name in _INDIRECT_DEREF_COERCIONS)),
+                # The Optional view<->str identity coerce consumes the WHOLE
+                # optional (bare pass-through, no deref), so its value-opt
+                # call-rvalue inner is a whole-optional read.
+                allow_whole_optional=(
+                    e.coercion.name in ("optional_strview_to_str",
+                                        "optional_str_to_strview")),
                 # Whatever the str-family coerce does with it, the member read
                 # itself renders bare -- the wrap (materializing copy or
                 # nothing) composes around it. Typed on the DECLARED field
@@ -9793,6 +9804,26 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # `&(this)` is ill-formed; a resumable method's `__self` is a
             # `Record&` field and DOES lift). A plain lvalue takes `&(...)`.
             lift = not _already_pointer_source(elem, lc)
+        elif isinstance(elem, TpyFieldAccess):
+            # An F1-record FIELD element lifts `&(<member read>)` -- the
+            # AST's _borrow_ptr_form_value over the bare member render
+            # (`&(this->inner)` at a @readonly borrow-tuple return);
+            # markers-clean + admitted receiver like every field consumer.
+            # An Optional-DECLARED field stays out: the AST emits the
+            # un-deref'd `&(this->maybe)` there (an optional<T>* into the
+            # T* slot -- ill-formed, g++-verified; BUGS.md), so the shape
+            # must defer until the AST is fixed, per the broken-oracle rule.
+            if not (_field_markers_clean(elem)
+                    and _field_receiver_ok(elem, declared, lc.analyzer)
+                    and not isinstance(
+                        unwrap_readonly(unwrap_send_sync(
+                            _field_decl_type(elem, declared, lc.analyzer)
+                            or et_bare)),
+                        OptionalType)):
+                note_detail("btuple.elem_source")
+                raise ThirUnsupported("expr.tuple_literal")
+            _witness("btuple.elem_field")
+            lift = not _already_pointer_source(elem, lc)
         elif isinstance(elem, TpySubscript):
             # A container-element lvalue subscript lifts `&(<row render>)`
             # (`&(::tpy::__getitem__(items, i))`). A subscript whose OBJECT
@@ -10162,6 +10193,17 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             _ref_slot_temp(_lower_expr(a, lc, declared, target_type=resolved,
                                        use=_ExprUse(
                                            result=_ExprResultUse.STORAGE)))
+        elif (isinstance(ptype, TypeParamRef)
+              and isinstance(a, TpyTupleLiteral)
+              and (vt_slot := (_value_tuple(resolved, lc.analyzer)
+                               or _value_tuple_nested(resolved, lc.analyzer)))
+              is not None):
+            # The inline spelled brace prvalue (`std::tuple<int32_t,
+            # std::string>{2, "second"}`): unlike the str/list ref-slot
+            # temps, the AST passes the target-typed render straight
+            # through -- the const-ref template param binds it.
+            _witness("call.generic_tuple_literal")
+            args.append(_lower_tuple_literal(a, vt_slot, lc, declared))
         elif (isinstance(peeled, TpyArrayLiteral) and is_list(resolved)
               and temp_args
               and _container_literal_arg(peeled, resolved, lc.analyzer)):
@@ -10329,6 +10371,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
+                param_names=lc.prescan.param_names,
                 self_this=_self_captures_this(lc))
             if not ok and _borrow_tuple_name_arg(
                     a, ptype, declared, _borrow_tuple_bare_names(lc, declared),
@@ -11788,7 +11831,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # retag below. The MOVE half is position-independent (no flush needed),
     # so it runs outside `temp_args` too -- the `heap_take(value)` ctor-MIL
     # shape; the copy half still needs the flush (gate-enforced).
-    ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer)
+    ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer, declared)
     if ow is None:
         # The MOVE-ONLY bytes-identity coerce slot (bytearray->bytes over a
         # name): serves the last-use move arm below exclusively -- the
@@ -12360,7 +12403,8 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                 loc=getattr(a, "loc", None)))
         else:
             flush_slot = (
-                _own_lvalue_temp_slot(a, p.type, analyzer) is not None
+                _own_lvalue_temp_slot(a, p.type, analyzer,
+                                      declared) is not None
                 or _union_ctor_temp_arg(a, p.type, analyzer)
                 or _protocol_arg_slot(p.type) is not None
                 # The optional-ptr 'ctor' face's ArgTemp, gate-admitted

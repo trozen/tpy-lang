@@ -252,10 +252,10 @@ class TestDynPostIfBoundaries:
         assert "A& __p_2 = *dynamic_cast<A*>(&p);" in out
         assert "return __p_2.tag();" in out
 
-    def test_self_subject_assert_stays_ast(self):
-        # The assert-gate twin of the negated-guard self fence: a poly
-        # narrowing assert on `self` would need the receiver-arm rename
-        # the narrow map does not reach.
+    def test_self_subject_assert_routes(self):
+        # Converted fence: the assert-self leg landed -- reads rename through
+        # the SPELLED map (the receiver arm's substitution), so the poly
+        # narrowing assert on `self` routes with the `__self` alias.
         src = _PRELUDE + (
             "class Widened(Base):\n"
             "    def __init__(self) -> None:\n"
@@ -268,7 +268,7 @@ class TestDynPostIfBoundaries:
             "        pass\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "check") is None
+        assert _fn(thir, "check") is not None
         _assert_byte_identical(src)
 
     def test_resumable_guard_stays_ast(self):

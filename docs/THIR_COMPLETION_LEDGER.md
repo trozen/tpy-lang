@@ -10752,3 +10752,94 @@ dynamic_cast check; the extraction is the ARM's skeleton emission).
 The field-write-through-spelled-self flavor verified byte-identical
 without extra rows. Two fences converted; the tuple-form tripwire
 (res.cond for `isinstance(self, (A, B))`) still stands.
+
+GRIND WAVES (2026-08-15, thir-grind-waves): 4 cells, 5 flips, dial ->
+3562/3730. (1) The Own[str/bytes]-param bare-read cell (1 flip:
+tuple/unpack_view_target_owned_sinks, closing bytes cell 2): round C's
+"movable-seed" prerequisite DISSOLVED on probing -- the AST never seeds
+value-payload Own params movable (seed_param_locals is non-value only;
+no sink renders std::move(v), probed across return/decl/field/setitem/
+forward). The real blocker was a FORM conflation: the param-implies-view
+verdicts (_str_name_form/_bytes_name_form, the S1/S6 rows' param faces)
+read every param as BORROW, so an admitted Own[str] param took the
+inline std::string(v) convert where the AST hoists the copy+move temp.
+The mirror: _own_viewfam_param + prescan.owned_viewfam_params carve the
+owned-form params out of every view verdict; _own_lvalue_temp_slot
+admits the Own[str]-param NAME (argtemp.own_str, ablation-verified);
+the free-call ladder gains the S1/S6 view->owned rows (re-landing the
+inline view-conv arg row); the self-append fold excludes Own[str]
+params (the AST peephole checks the DECLARED type -- divergence caught
+by adversarial dualgen, v = v + "x" folded to += where the AST spells
+the plain concat-assign). Three fences converted, three boundary pins
+added (Own[bytes]-param argtemp, Own[StrView] reads, reassigned param).
+LESSON RE-PAID: the reverted attempt's recorded diagnosis was a
+HYPOTHESIS -- probing the oracle five ways found a different mechanism
+than the fence comment asserted. (2) The Optional view<->str identity
+coerce at ARG slots (1 flip: str/optional_str_strview_arg): the
+coercion lambda is identity exactly at the plain non-Own ARG slot (both
+sides optional<string_view>); disposition arm + free-ladder row (CALL
+rvalue inners only) + allow_whole_optional threaded to the inner call's
+result gate. Boundaries: decl-init/return rebuilds and NAME sources
+defer. (3) The generic value-tuple literal (1 flip:
+generics/generic_infer_compound_t_literal_coerce): a bare tuple LITERAL
+at a value-tuple-resolved T slot renders the inline spelled brace
+prvalue via _lower_tuple_literal -- no ref-slot temp, unlike the
+str/list literal rows. Nested flavor included; the genarg2 stays-AST
+fence converted (caught by the harvest run's pin failure, not my pin
+grep -- grep for the SHAPE, not the tag, when hunting fences).
+Boundary: record-element tuples defer. (4) The Own[scalar] loop-var
+movable seed (2 flips: stdlib/heapq_merge +
+tplib/requests_redirect_method, the latter cleared by cell 1): the
+for-each seed gains the AST is_consuming test's Own-elem-type half
+(hoist-guarded, loop-scoped); name.own_read admits movable-seeded
+Own[value-scalar] LOCALS beside params, the move-source rows rendering
+push_back(std::move(x)) off the same working set. Boundary: the
+hoisted read-after-loop flavor keeps its reject. The expr.call
+sole-blocker tail is EMPTY after this wave; the remaining mass is
+multi-blocker set-cover plus a ~35-tag 1:1 singles tail.
+
+GRIND WAVES 2 (2026-08-15, thir-grind-waves cont.): 3 cells, 3 flips,
+dial -> 3565/3730. (1) CopyIter at Iterable[Own[T]] slots (1 flip:
+list/copy_iter): the copy-suppressing adapter binds the monomorphized
+template param bare (NAME lvalue / copy_iter(..) rvalue through its
+special-builtin arm); qname-keyed, disjoint from the movable OwnIter
+sibling (boundary-pinned NAME flavor). (2) Borrow-tuple FIELD elements
+(1 flip: tuple/tuple_ref_readonly): the `&(<member read>)` lift beside
+the NAME/subscript branches, RECEIVER use. The leg's adversarial
+dualgen caught a PRE-EXISTING AST miscompile -- a narrowed-Optional
+field element renders the un-deref'd `&(this->maybe)` (optional<T>*
+into the T* slot, g++-verified ill-formed) -- filed in BUGS.md; the
+leg excludes Optional-declared fields so the shape defers on both
+paths. (3) assert isinstance(self, Sub) (1 flip:
+protocols/isinstance_self_method): the poly assert's self exclusion
+lifted -- the persistent `const Dog& __self = *dynamic_cast<..>(this)`
+alias via _poly_cast_context's existing self arm, reads renaming
+through the SPELLED map (the receiver arm never consults `narrowed` --
+the naive _register_dyn_narrow left reads at `this->`, caught by the
+first probe). Delta review (safety-model clean; test-coverage found
+the face-count-only routing pin and two missing boundary pins, all
+applied). THREE stale fences caught by corpus/suite runs rather than
+the pre-widening pin grep -- third occurrence this session: grep for
+the SHAPE across tests, not the tag, before widening an arm.
+
+GRIND WAVES 3 (2026-08-16, thir-grind-waves cont.): 1 cell, 1 flip,
+dial -> 3566/3730. The wrapper member-container NAME element
+(union/union_recursive_alias -- the last union-family sole blocker):
+one gate leg in _container_lit_elem_ok's wrapper rows sufficed; the
+make/move switch and element move mirror rendered
+`make_vector<Tree>(1, std::move(inner))` with no emit work. The member
+spells `list[AliasRef]` vs the binding's one-level expansion, so the
+gate's equality goes through the binding's ELEMENT (== the wrapper) +
+the unique-list-member shape; a non-member container name at the slot
+is a sema type error, so element-equality is the structural guard.
+Copy flavor + dict-value flavor pinned. REVIEWED at the merge cycle
+(2026-08-16, safety-model + docs-sync): sound; the pins tightened to
+_assert_routes_byte_identical (they were fallback-satisfiable) and
+the structural-equality dependency noted at the gate leg.
+SCOUTED AND FENCED: the generic-overload emission pair
+(sig.overload_set.generic_stub) splits into a moderate
+single-emission-with-defaults cell (overload_generator) and a per-stub
+template-emission TRACK (overload_generic_mixed, skeleton-seam) --
+decomposition in TODO.md. Session close: the remaining sole tail is
+scout-sized-or-bigger items (parked rebind hoists, walrus design
+family, resumable flavors, the overload track).

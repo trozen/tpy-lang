@@ -612,10 +612,11 @@ class TestOwnValueParamRead:
         _hpp, cpp = _assert_routes_byte_identical(self._SRC)
         assert "int32_t use_int(int32_t x)" in (_hpp + cpp)
 
-    def test_own_value_local_stays_rejected(self):
-        # The LOCAL flavor keeps the reject: an Own[Int32]-typed loop var
-        # (heapq.merge yields Own elements) carries the AST's harmless
-        # `std::move(x)` last-use render this slice does not mirror.
+    def test_own_value_loop_var_routes_with_move(self):
+        # Converted fence: the Own[scalar] loop-var movable seed now mirrors
+        # the AST's harmless `std::move(x)` last-use render (the for-each
+        # seed's Own-elem-type half + the movable_local read leg), so the
+        # heapq.merge loop-var flavor routes byte-identically.
         src = (
             "import heapq\n"
             "from tpy import Int32\n"
@@ -628,7 +629,8 @@ class TestOwnValueParamRead:
             "    f([1, 3], [2, 4])\n"
             "main()\n")
         w, fallback = _assert_identical(src)
-        assert any("own_read" in k for k in fallback), fallback
+        assert not fallback, fallback
+        assert w.get("move.own_last_use", 0) >= 1
 
 
 class TestFrameSlotDel:

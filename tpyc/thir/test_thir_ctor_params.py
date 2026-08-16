@@ -171,14 +171,16 @@ class TestOwnParams:
         assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_own_str_body_read_stays_ast(self):
-        # An Own[str] name read has no arm (the AST may move a movable
-        # own-param at last use) -- the name-read guard rejects it.
+    def test_own_str_body_read_routes(self):
+        # An Own[str] param's bare read is STORAGE (the signature spells the
+        # owned `std::string` by value -- `_own_viewfam_param`): the decl init
+        # and print render the plain name, no view->owned wrap, no move
+        # (`seed_param_locals` never seeds value payloads movable).
         src = _ctor_src("Own[str]",
                         "        x = p\n        print(x)\n",
                         prelude=self._PRE)
         ctor, _ = _lower_ctor_reason(src, "C")
-        assert ctor is None
+        assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_str_mil_use_stays_ast(self):

@@ -3,6 +3,9 @@ method calls dispatched on a protocol receiver."""
 
 from __future__ import annotations
 
+import io
+
+from .emit import emit_thir_body
 from .nodes import (
     PtrSlotKind,
     THIRExprStmt,
@@ -495,3 +498,138 @@ class TestBoundedTypeParamFieldRead:
         from .lower.predicates import _bounded_tparam_protocol
         from ..typesys import TypeParamRef
         assert _bounded_tparam_protocol(TypeParamRef("T"), {}) is None
+
+
+class TestCopyIterOwnElemArg:
+    """A CopyIter[T] value at the stub's Iterable[Own[T]] slot binds the
+    monomorphized template param bare -- a NAME as an lvalue, a
+    copy_iter(..) rvalue inline through its special-builtin arm."""
+
+    _SRC = (
+        "from tpy import Int32, copy_iter\n"
+        "class Node:\n"
+        "    val: Int32\n"
+        "    def __init__(self, val: Int32) -> None:\n        self.val = val\n"
+    )
+
+    def test_copy_iter_name_and_rvalue_route(self):
+        src = self._SRC + (
+            "def f() -> None:\n"
+            "    a: list[Node] = []\n"
+            "    b: list[Node] = [Node(1)]\n"
+            "    ci = copy_iter(b)\n"
+            "    a.extend(ci)\n"
+            "    a.extend(copy_iter(b))\n"
+            "    print(len(a))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("protoarg.copy_iter", 0) >= 2
+        _assert_byte_identical(src)
+
+    def test_own_iter_name_at_own_elem_slot_still_defers(self):
+        # Boundary: the SIBLING adapter -- an own_iter-bound NAME at the
+        # same slot must not be swept in by the CopyIter qname check (the
+        # OwnIter flavor moves via the consuming rewrite, never binds bare).
+        src = (
+            "from tpy import Int32, own_iter\n"
+            "class Node:\n"
+            "    val: Int32\n"
+            "    def __init__(self, val: Int32) -> None:\n        self.val = val\n"
+            "def f() -> None:\n"
+            "    a: list[Node] = []\n"
+            "    b: list[Node] = [Node(1)]\n"
+            "    oi = own_iter(b)\n"
+            "    a.extend(oi)\n"
+            "    print(len(a))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_user_conformer_at_own_elem_slot_still_defers(self):
+        # Boundary: a USER iterator record at the same slot is not the
+        # CopyIter adapter -- the body keeps its existing fallback.
+        src = (
+            "from tpy import Int32\n"
+            "from typing import Iterator\n"
+            "class Gen3:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 0\n"
+            "    def __iter__(self) -> Iterator[Int32]:\n"
+            "        i = 0\n"
+            "        while i < 3:\n"
+            "            yield i\n"
+            "            i += 1\n"
+            "def f() -> None:\n"
+            "    a: list[Int32] = []\n"
+            "    g = Gen3()\n"
+            "    a.extend(g)\n"
+            "    print(len(a))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestAssertIsinstanceSelf:
+    """`assert isinstance(self, Dog)` -- the fresh-cast reference-local path:
+    the negated null-check + a persistent `const Dog& __self = *dynamic_cast
+    <const Dog*>(this);` alias, self reads renaming through the spelled map
+    (`__self.bark()`)."""
+
+    _SRC = (
+        "from typing import Protocol\n"
+        "from tpy import Int32, dynamic, readonly\n"
+        "@dynamic\n"
+        "class Tagged(Protocol):\n    pass\n"
+        "class Pet(Tagged):\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "    @readonly\n"
+        "    def assert_dog(self) -> Int32:\n"
+        "        assert isinstance(self, Dog)\n"
+        "        return self.bark()\n"
+        "class Dog(Pet):\n"
+        "    def __init__(self, n: Int32) -> None:\n        super().__init__(n)\n"
+        "    @readonly\n"
+        "    def bark(self) -> Int32:\n        return self.n + 100\n"
+        "def main() -> None:\n"
+        "    print(Dog(1).assert_dog())\n"
+        "main()\n")
+
+    def test_assert_self_narrows_with_spelled_alias(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        f = _fn(thir, "assert_dog")
+        assert f is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, f)
+        body = buf.getvalue()
+        assert ("const Dog& __self = *dynamic_cast<const Dog*>(this);"
+                in body)
+        assert "__self.bark()" in body
+        assert faces.get("narrow.dyn_assert", 0) >= 1
+        _assert_byte_identical(self._SRC)
+
+    def test_assert_self_in_generator_still_defers(self):
+        # Boundary: the resumable flavor stays out (the leaf-mode guard --
+        # a frame's alias would need the frame-field rename); the assert
+        # body falls back whole.
+        src = (
+            "from typing import Iterator, Protocol\n"
+            "from tpy import Int32, dynamic, readonly\n"
+            "@dynamic\n"
+            "class Tagged(Protocol):\n    pass\n"
+            "class Pet(Tagged):\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+            "    def gen_assert(self) -> Iterator[Int32]:\n"
+            "        assert isinstance(self, Dog)\n"
+            "        yield self.bark()\n"
+            "class Dog(Pet):\n"
+            "    def __init__(self, n: Int32) -> None:\n        super().__init__(n)\n"
+            "    @readonly\n"
+            "    def bark(self) -> Int32:\n        return self.n + 100\n"
+            "def main() -> None:\n"
+            "    for v in Dog(1).gen_assert():\n        print(v)\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "gen_assert") is None
+        _assert_byte_identical(src)

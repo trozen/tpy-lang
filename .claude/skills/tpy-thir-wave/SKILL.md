@@ -35,8 +35,12 @@ improvise.
 1. **Pick the site.** `probe_sites.py "<tag>"`; take the top row. Open two or
    three of its cases AND their `expected/*.cpp` oracle before writing code.
 2. **Read the AST arm you are mirroring**, and grep the THIR tests for pins on
-   that boundary (`stays_ast`, `still_defers`, `ineligible`, and corpus cases
-   the widened gate could newly capture). A pin encodes a known render split
+   that boundary. Grep by the construct/type SHAPE (the source pattern, the
+   payload type, the callee name), NOT just the boundary-marker tags
+   (`stays_ast`, `still_defers`, `ineligible`) -- fences live under names
+   like `own_value_local` / `self_subject` / `field_element` that tag-greps
+   miss (three late catches in one session). Include corpus cases
+   the widened gate could newly capture. A pin encodes a known render split
    -- if its stated reason is what your change removes, convert it; if not,
    respect it. **Re-run every pin whose reason your widening touches BEFORE
    the corpus run** -- three de-routings in one wave (a delegation

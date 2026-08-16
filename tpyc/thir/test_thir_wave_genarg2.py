@@ -132,7 +132,10 @@ class TestNestedTupleNameAtTSlot:
         assert w.get("call.generic_nested_tuple_name", 0) >= 1
         _assert_routes_byte_identical(self._SRC)
 
-    def test_nested_tuple_literal_stays_ast(self):
+    def test_nested_tuple_literal_routes_inline(self):
+        # Converted fence: the generic value-tuple-literal row admits the
+        # nested flavor too -- the inline spelled brace prvalue
+        # (`less<std::tuple<...>>(std::tuple<...>{...}, ...)`).
         src = (
             "from tpy import Comparable\n"
             "def less[T: Comparable](a: T, b: T) -> bool:\n"
@@ -143,7 +146,7 @@ class TestNestedTupleNameAtTSlot:
         _, _hpp_a, cpp_a = _gen(src, thir=False)
         c, _hpp_t, cpp_t = _gen(src, thir=True)
         assert cpp_a == cpp_t
-        assert c._thir_fallback
+        assert not c._thir_fallback
 
 
 class TestNarrowedOptWrapperArg:

@@ -2485,9 +2485,9 @@ class TestBorrowTupleLiteralReturn:
         assert "std::tuple<const P*, const P*>{" in self._cpp(src, thir=True)
         _assert_byte_identical(src)
 
-    def test_field_element_still_defers(self):
-        # BOUNDARY: the literal builder admits NAME and SUBSCRIPT elements
-        # only; a FIELD element is a later rung and must keep rejecting.
+    def test_field_element_routes(self):
+        # Converted fence: the FIELD-element rung landed (btuple.elem_field,
+        # the `&(this->inner)` lift), so the mixed field+name literal routes.
         src = (self._SRC
                + "class H:\n"
                + "    inner: P\n"
@@ -2501,8 +2501,8 @@ class TestBorrowTupleLiteralReturn:
                + "    print(t[0].x, t[1].x)\n"
                + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "pair") is None
-        assert not faces.get("ret.btuple_literal")
+        assert _fn(thir, "pair") is not None
+        assert faces.get("btuple.elem_field", 0) >= 1
         _assert_byte_identical(src)
 
     def test_optional_record_element_routes_as_borrow_tuple(self):
@@ -3180,9 +3180,9 @@ class TestOwnedBytesTupleFamily:
     # are unmarked, so the ratchet FAILS comp on any fallback and the
     # byte-diff on any divergence. A unit routing pin is blocked by a
     # harness wart (PendingBytesType under the pytest-session compile --
-    # filed in TODO.md). Cell 2 (unpack_view_target_owned_sinks: the
-    # Own-param bare reads + the view-conv arg row) was REVERTED pending
-    # the AST movable-seed mirror -- see the wave-cell entry in TODO.md.
+    # filed in TODO.md). Cell 2 (unpack_view_target_owned_sinks) landed
+    # with the Own[str/bytes]-param owned-form mirror -- its pins live in
+    # test_thir_wave_needs_copy.py (TestOwnViewfamParamReads).
 
     def test_owned_str_name_keeps_temp_row(self):
         # BOUNDARY: an OWNED (non-view) str name at the Own[str] slot is
@@ -3318,3 +3318,61 @@ class TestOwnElementTupleReads:
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "return std::tuple<int32_t, Point>{42, Point(p)};" in cpp
         assert "std::get<1>(t2)" in cpp
+
+
+class TestBorrowTupleFieldElem:
+    """An F1-record FIELD element in a borrow-tuple literal lifts
+    `&(<member read>)` (`&(this->inner)` at a @readonly borrow-tuple
+    return) -- the AST's _borrow_ptr_form_value over the bare member."""
+
+    _SRC = (
+        "from tpy import Int32, readonly\n"
+        "class Inner:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+        "class Outer:\n"
+        "    a: Inner\n"
+        "    def __init__(self) -> None:\n        self.a = Inner(1)\n"
+    )
+
+    def test_field_elem_lifts_member_address(self):
+        src = self._SRC + (
+            "    @readonly\n"
+            "    def pair(self) -> tuple[Inner, Int32]:\n"
+            "        return (self.a, self.a.v)\n"
+            "def main() -> None:\n"
+            "    o = Outer()\n    print(o.pair()[1])\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        # `pair` holds the arm under test; `main` (the borrow-tuple call
+        # subscript consumer) falls back for its own unrelated reason.
+        assert _fn(thir, "pair") is not None
+        assert faces.get("btuple.elem_field", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_narrowed_optional_field_elem_still_defers(self):
+        # Boundary: an Optional-DECLARED field element stays out -- the AST
+        # renders the un-deref'd `&(this->maybe)` there (ill-formed C++,
+        # g++-verified; BUGS.md), so the shape must defer on both paths.
+        src = (
+            "from tpy import Int32, readonly\n"
+            "from typing import Optional\n"
+            "class Inner:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+            "class Outer:\n"
+            "    a: Inner\n"
+            "    maybe: Optional[Inner]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.a = Inner(1)\n        self.maybe = None\n"
+            "    @readonly\n"
+            "    def pair(self) -> tuple[Inner, Int32]:\n"
+            "        if self.maybe is not None:\n"
+            "            return (self.maybe, 1)\n"
+            "        return (self.a, 0)\n"
+            "def main() -> None:\n"
+            "    o = Outer()\n    print(o.pair()[1])\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pair") is None
+        _assert_byte_identical(src)

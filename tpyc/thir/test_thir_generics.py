@@ -1551,3 +1551,53 @@ class TestOpenTOwnReturnValidation:
         u = UnionType(members=(NominalType("A", ()), NominalType("B", ())))
         assert OwnType(wrapped=u).is_value_type() is True
         assert _borrow_legal_return(OwnType(wrapped=u)) is True
+
+
+class TestGenericTupleLiteralArg:
+    """A tuple LITERAL at a value-tuple-resolved T slot renders the spelled
+    brace prvalue INLINE (`push_t<...>(pq, std::tuple<...>{2, "second"})`)
+    -- no ref-slot temp, unlike the str/list literal rows."""
+
+    _PUSH = (
+        "from tpy import Int32\n"
+        "def push_t[T](xs: list[T], item: T) -> None:\n"
+        "    xs.append(item)\n"
+    )
+
+    def test_value_tuple_literal_routes_inline(self):
+        src = (self._PUSH
+               + "def use() -> None:\n"
+               + "    pq: list[tuple[Int32, str]] = []\n"
+               + '    push_t(pq, (2, "second"))\n'
+               + "    print(len(pq))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("call.generic_tuple_literal", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_nested_value_tuple_literal_routes(self):
+        src = (self._PUSH
+               + "def use() -> None:\n"
+               + "    nested: list[tuple[tuple[Int32, Int32], str]] = []\n"
+               + '    push_t(nested, ((1, 2), "x"))\n'
+               + "    print(len(nested))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("call.generic_tuple_literal", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_record_element_tuple_literal_still_defers(self):
+        # Boundary: a record element gives the tuple pointer-repr storage --
+        # outside the value family, the body falls back whole.
+        src = (
+            "from tpy import Int32\n"
+            "class Box:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+            "def take_any[T](x: T) -> None:\n    pass\n"
+            "def use() -> None:\n"
+            "    b = Box(1)\n"
+            '    take_any((b, "x"))\n')
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)

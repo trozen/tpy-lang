@@ -48,6 +48,7 @@ from .predicates import (
     _nullable_static_protocol_param,
     _storage_optional_return_wide,
     _own_opt_storage_binding,
+    _own_viewfam_param,
     _param_is_const,
     _protocol_auto_slot,
     _dyn_borrow_return,
@@ -215,7 +216,7 @@ class _Prescan:
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
-                 "alias_sources", "alias_born",
+                 "alias_sources", "alias_born", "owned_viewfam_params",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
                  "ret_container_storage", "ret_container_borrow",
@@ -246,6 +247,11 @@ class _Prescan:
         # param's aug-assign would need the owned-copy prologue -- see
         # _str_aug_append_ok).
         self.param_names = {n for n, _t in src_params}
+        # Own[str]/Own[bytes] params: the signature spells the OWNED type by
+        # value, so their name reads are STORAGE -- carved out of the
+        # param-implies-view verdicts (`_str_name_form`/`_bytes_name_form`).
+        self.owned_viewfam_params = {
+            n for n, t in src_params if _own_viewfam_param(t) is not None}
         # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
         # `return <param>` into a value-optional return slot passes the WHOLE
         # optional bare (deref-on-narrow stripped), so return lowering keys on

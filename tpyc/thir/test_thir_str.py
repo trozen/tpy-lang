@@ -3,7 +3,10 @@ subscript/slice/iteration, cross-type coercions, dict[str]/container-of-str."""
 
 from __future__ import annotations
 
+import io
+
 from ..codegen_cpp.context import CodeGenOptions
+from .emit import emit_thir_body
 from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
@@ -1605,14 +1608,34 @@ class TestStrCrossTypeCoercions:
         assert cpp == cpp_for(False)
         assert "std::string_view label = sv;" in cpp
 
-    def test_own_slot_coerce_ineligible(self):
-        # An Own[str] ARG slot crosses the gen_call_arg auto-move cascade (its
-        # own deferred frontier) -> the coerce is rejected, the caller stays AST.
-        thir = _lower(
+    def test_own_slot_view_param_materializes(self):
+        # A plain str PARAM name (view form -- `std::string_view` in the
+        # signature) at a FREE call's Own[str] slot materializes the owned
+        # copy inline (`take(std::string(s))` -- the S1 convert row's
+        # param_names-gated NAME face, str twin of the bytes pin).
+        src = (
+            "from tpy import Own\n"
+            "def take(p: Own[str]) -> None:\n    print(p)\n"
+            "def f(s: str) -> None:\n    take(s)\n")
+        thir = _lower(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, f)
+        assert "take(std::string(s));" in buf.getvalue()
+        _assert_byte_identical(src)
+
+    def test_own_slot_slice_rvalue_materializes(self):
+        # A str SLICE rvalue at a FREE call's Own[str] slot materializes the
+        # owned copy inline (`take(std::string(::tpy::str_slice(...)))` --
+        # the S1 convert row on the free-call ladder, rvalue-tail face).
+        src = (
             "from tpy import Own\n"
             "def take(p: Own[str]) -> None:\n    print(p)\n"
             "def f(s: str) -> None:\n    take(s[1:])\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_coerced_literal_multi_overload_pin_routes(self):
         # A str literal (COERCE-PEELED) into a multi-overload callee's view

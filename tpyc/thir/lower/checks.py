@@ -269,6 +269,8 @@ from .predicates import (
     _ru_wrapper_name_arg,
     _ru_wrapper_value_call_arg,
     _ru_wrapper_scalar_literal_arg,
+    _opt_view_identity_coerce_arg,
+    _own_viewfam_param,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -854,6 +856,24 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                       analyzer)
                   if bt is not None else None)
             if isinstance(bu, UnionType) and bu == _wl_su:
+                return True
+            # ... and the member-CONTAINER-typed NAME (`[1, inner]` at
+            # `list[Tree]`, inner: `list[Tree]` -- the wrapper's unique
+            # list member): the converting ctor absorbs it; the make/move
+            # switch rides the shared move facts, so a movable last use
+            # renders `make_vector<Tree>(1, std::move(inner))`. The member
+            # spells `list[AliasRef]` while the binding is the one-level
+            # expansion `list[<wrapper union>]`, so equality goes through
+            # the binding's ELEMENT (== the wrapper) + the unique-list-
+            # member shape, like the non-wrapper nested-list rows. The
+            # `==` is STRUCTURAL (wrapper_info's dedup convention): two
+            # source aliases with identical recursive member shapes
+            # deliberately collapse to one wrapper on both paths.
+            if (isinstance(bu, NominalType) and is_list(bu)
+                    and getattr(bu, "type_args", None)
+                    and unwrap_readonly(bu.type_args[0]) == _wl_su
+                    and len([m for m in _wl_su.members
+                             if is_list(unwrap_readonly(m))]) == 1):
                 return True
         # The plain-union twin: a member-record ctor rvalue into an
         # all-record value-variant element slot (`{Dog("Rex"), Cat("W")}`).
@@ -3919,6 +3939,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
                        temps_ok: bool,
                        narrowed: 'set[str] | frozenset[str]',
+                       param_names: 'set[str] | frozenset[str]' = frozenset(),
                        self_this: bool = False) -> bool:
     return (_lambda_routable(a, analyzer, self_this=self_this)
             or _func_ref_routable(a, analyzer)
@@ -3937,6 +3958,14 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                 a, ptype, locals_, narrowed, analyzer))
             or (temps_ok and _record_rvalue_temp_arg(
                 a, ptype, locals_, analyzer, upcast_ok=True))
+            # The S1/S6 view->owned convert rows, free-call twins of the
+            # method ladder's: a VIEW-form str/bytes source at an `Own[str]`
+            # / `Own[bytes]` slot materializes the inline owned copy
+            # (`take(std::string(x))` / `take_bytes(::tpy::bytes_copy(y))`)
+            # -- the AST's `_view_source_to_owned`, which runs BEFORE the
+            # move/copy-temp cascade, so these rows sit above it too.
+            or _str_owned_slot_arg(a, ptype, locals_, param_names, analyzer)
+            or _bytes_owned_slot_arg(a, ptype, locals_, param_names, analyzer)
             or _own_move_arg(a, ptype, locals_, analyzer)
             or _own_coerce_cast_arg(a, ptype, locals_)
             or (temps_ok and _own_lvalue_arg(
@@ -3998,6 +4027,12 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             or _value_opt_pass_through_arg(a, ptype, locals_,
                                            narrowed, analyzer)
+            # The Optional view<->str identity coerce over a CALL rvalue
+            # (`takes_str_opt(returns_view_opt())`): both sides spell
+            # `optional<string_view>`, bare pass-through in exactly the
+            # non-Own ARG position (the coercion lambda's identity face).
+            or (_opt_view_identity_coerce_arg(a, ptype)
+                and _witness("arg.optview_identity_coerce"))
             # The callable twin of the row above (`takes_opt(cb)` at a
             # `Callable[..] | None` slot) -- bare on both paths.
             or _value_opt_callable_pass_arg(a, ptype, locals_, narrowed,
@@ -4571,6 +4606,17 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                 and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(lit)))) == resolved):
             return temps_ok or note_detail("call.generic_arg_shape")
+        # A tuple LITERAL into a value-tuple-resolved T slot renders the
+        # spelled brace prvalue INLINE (`push_t<...>(pq, std::tuple<...>{2,
+        # "second"})`) -- unlike the str/list rows, no ref-slot temp: the
+        # const-ref template param binds the prvalue for the full expression
+        # on both paths. The recursive value family covers nested tuple
+        # elements; pointer-repr elements keep rejecting. Bare literals only
+        # (no outer coerce -- unwitnessed).
+        if (isinstance(a, TpyTupleLiteral)
+                and (_value_tuple(resolved, analyzer) is not None
+                     or _value_tuple_nested(resolved, analyzer) is not None)):
+            return True
         return note_detail("call.generic_arg_slot")
     if (isinstance(ptype, TupleType)
             and all(isinstance(unwrap_readonly(unwrap_ref_type(_pt)),
@@ -5383,6 +5429,37 @@ def _protocol_bare_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     return (_protocol_arg_temp(proto, at, "", analyzer, rvalue=False) is None
             and _witness("protoarg.bare"))
 
+def _copy_iter_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
+                            locals_: dict[str, TpyType], analyzer) -> bool:
+    """A `CopyIter[T]` value at the stub's `Iterable[Own[T]]` slot
+    (`a.extend(ci)` / `a.extend(copy_iter(b))`): the copy-suppressing
+    adapter conforms structurally and binds the monomorphized template
+    param bare -- a NAME as an lvalue, a `copy_iter(..)` rvalue inline
+    (the call renders through its special-builtin arm). The slot shape
+    mirrors `_protocol_bare_name_arg`'s Iterable[Own[T]] branch: the
+    Own-elem slot rejects at the protocol-slot recognizer, but a CopyIter
+    arg can never take the own_iter last-use rewrite (only movable
+    container bindings do)."""
+    pu = (unwrap_readonly(unwrap_send_sync(ptype))
+          if isinstance(ptype, TpyType) else None)
+    if not (pu is not None and not isinstance(pu, OwnType)
+            and is_protocol_type(pu)
+            and any(isinstance(t, OwnType)
+                    for t in getattr(pu, "type_args", ()))):
+        return False
+    if isinstance(a, TpyName):
+        if a.name not in locals_:
+            return False
+    elif not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    return (isinstance(atu, NominalType)
+            and atu._module_qname == "tpy.CopyIter"
+            and _witness("protoarg.copy_iter"))
+
+
 def _typed_dict_ctor_call(e: TpyExpr, analyzer) -> 'RecordInfo | None':
     """A TypedDict constructor call (`Options("localhost", 8080)` -- sema's
     kwargs-pack rewrite leaves field-ordered positionals and NO synthetic
@@ -5932,7 +6009,7 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
     wholesale under `temps_ok` and lowering picks; restricting the temp-free
     move to the flushable positions is gate-narrowing only (a move arg in a
     condition stays AST -- deferred)."""
-    if _own_lvalue_temp_slot(a, ptype, analyzer) is None:
+    if _own_lvalue_temp_slot(a, ptype, analyzer, locals_) is None:
         return False
     bare = _peel_coerce(a)
     if isinstance(bare, TpyName):
@@ -6543,11 +6620,15 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     if is_str_view_type(at):
         return True
-    # An owned-`str`-typed source is STORAGE unless it is a str PARAM (BORROW --
-    # `std::string_view` in the signature). A reassigned str param is already
-    # whole-body-rejected, so the view form is stable at every use here.
+    # An owned-`str`-typed source is STORAGE unless it is a plain-str PARAM
+    # (BORROW -- `std::string_view` in the signature). A reassigned str param
+    # is already whole-body-rejected, so the view form is stable at every use
+    # here. An `Own[str]` param is carved out: its signature spells the OWNED
+    # `std::string` by value, so it is STORAGE like any owned local and rides
+    # the copy+move temp cascade, not this inline convert.
     if isinstance(a, TpyName):
-        return a.name in param_names
+        return (a.name in param_names
+                and _own_viewfam_param(locals_.get(a.name)) is None)
     # A container-ELEMENT owned-str read (`tag.append(argv[i])`): the element
     # lvalue lands bare in the element slot (`push_back(__getitem__(argv, i))`
     # -- the vector copies on insert), no cascade on either path.
@@ -6588,7 +6669,11 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
         at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
         if at is None:
             return False
-        return is_bytes_view_type(at) or src.name in param_names
+        # The `Own[bytes]`-param carve-out mirrors the str twin: owned
+        # `std::vector<uint8_t>` by value, STORAGE -- not this view convert.
+        return is_bytes_view_type(at) or (
+            src.name in param_names
+            and _own_viewfam_param(locals_.get(src.name)) is None)
     if isinstance(src, TpySubscript) and isinstance(src.index, TpySlice):
         return _resolved_bytes_value(analyzer.get_expr_type(src),
                                      analyzer) is not None
@@ -8453,6 +8538,9 @@ def _container_method_arg_ok(
             # (`target.extend(items)` -> `::tpy::list_extend(target,
             # items)`): the monomorphized lvalue binds bare.
             or _protocol_bare_name_arg(a, ptype, locals_, analyzer)
+            # ... and the CopyIter conformer at the Iterable[Own[T]] slot
+            # (`a.extend(copy_iter(b))` / a CopyIter NAME): binds bare too.
+            or _copy_iter_own_elem_arg(a, ptype, locals_, analyzer)
             or _str_pass_through_arg(a, ptype, locals_, analyzer)
             or _str_owned_slot_arg(
                 a, ptype, locals_, param_names, analyzer)

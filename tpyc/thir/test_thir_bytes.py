@@ -3,7 +3,10 @@ iteration / concat / aug-assign, increment 46)."""
 
 from __future__ import annotations
 
+import io
+
 from ..codegen_cpp.context import CodeGenOptions
+from .emit import emit_thir_body
 from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRBytesLiteral, THIRCall,
@@ -134,13 +137,21 @@ class TestBytesValues:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_own_bytes_slot_ineligible(self):
-        # An Own[bytes] slot materializes an owned copy at the call boundary.
-        thir = _lower(
+    def test_own_bytes_slot_view_param_materializes(self):
+        # An Own[bytes] slot at a FREE call materializes the owned copy from
+        # a view-form bytes param (`sink(::tpy::bytes_copy(a))` -- the S6
+        # convert row, the free-call twin of the method ladder's).
+        src = (
             "from tpy import Own\n"
             "def sink(b: Own[bytes]) -> None:\n    print(b)\n"
             "def f(a: bytes) -> None:\n    sink(a)\n")
-        assert _fn(thir, "f") is None
+        thir = _lower(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        buf = io.StringIO()
+        emit_thir_body(buf, f)
+        assert "sink(::tpy::bytes_copy(a))" in buf.getvalue()
+        _assert_byte_identical(src)
 
 
 

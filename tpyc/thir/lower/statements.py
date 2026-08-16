@@ -4355,7 +4355,18 @@ def _append_assert_narrow(stmt: TpyAssert, out: 'list[THIRStmt]',
     var, member = pai
     alias = _persistent_alias_name(var, lc)
     out.append(_make_dyn_narrow_alias(alias, var, member, lc, declared, loc))
-    _register_dyn_narrow(alias, var, member, lc, declared)
+    if var == lc.self_receiver:
+        # The SELF subject's reads route through the spelled map (the same
+        # substitution the if-init `(*__self_ptr)` install uses -- the
+        # receiver arm never consults `narrowed`): `__self.bark()` off the
+        # `const Dog& __self` reference alias. poly_source anchors a
+        # re-narrowing chain to the ORIGINAL receiver type.
+        lc.narrow.persistent_aliases.add(alias)
+        lc.narrow.spelled[var] = alias
+        lc.narrow.poly_source.setdefault(var, declared[var])
+        declared[var] = member
+    else:
+        _register_dyn_narrow(alias, var, member, lc, declared)
     _witness("narrow.dyn_assert")
 
 def _poly_assert_narrow_info(
@@ -4380,9 +4391,8 @@ def _poly_assert_narrow_info(
     facts = stmt.then_type_facts
     if list(facts) != [var] or facts[var] != member:
         return None
-    if (var == lc.self_receiver
-            or (var in lc.pointers
-                and not polymorphic_source_is_pointer(anchored.get(var)))
+    if ((var in lc.pointers
+         and not polymorphic_source_is_pointer(anchored.get(var)))
             or var in lc.prescan.global_seeded
             or var in lc.narrow.spelled):
         return None
@@ -8135,8 +8145,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if (stmt.name in declared
                 # The peephole is LOCAL-keyed on the AST side: the
                 # global-decl write path renders the plain concat-assign,
-                # so a write-seeded str GLOBAL must not fold.
+                # so a write-seeded str GLOBAL must not fold. An Own[str]
+                # PARAM must not fold either -- the AST checks the DECLARED
+                # type, and the Own wrapper fails its is_str_type test, so
+                # the oracle renders the plain concat-assign there.
                 and stmt.name not in lc.prescan.global_seeded
+                and stmt.name not in lc.prescan.owned_viewfam_params
                 and _owned_str_append_target(vtype, analyzer)):
             rhs = _str_self_append_rhs(stmt.name, stmt.init)
             if rhs is not None:
@@ -12081,9 +12095,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         lc.const_storage_tuple_locals.add(stmt.var)
                 # A native auto-consuming loop var is bound `auto&&` into the
                 # OwnIter storage and moves at its last use in the body (the
-                # AST seeds movable_locals for the loop scope only).
+                # AST seeds movable_locals for the loop scope only). The
+                # `Own[T]`-elem flavor is the same seed (`for x in merge(..)`
+                # over an Own-yielding generator: the AST's is_consuming
+                # test ORs `isinstance(stmt.elem_type, OwnType)`), so a
+                # last-use read at an owning sink moves -- even a harmless
+                # scalar `push_back(std::move(x))`.
                 consuming_loop_var = (route.consuming_native_name
-                                      is not None or route.consuming_name)
+                                      is not None or route.consuming_name
+                                      or (isinstance(stmt.elem_type, OwnType)
+                                          and not stmt.hoist_loop_var))
                 if consuming_loop_var:
                     lc.movable_locals.add(stmt.var)
                 _pfb = lc.in_for_body

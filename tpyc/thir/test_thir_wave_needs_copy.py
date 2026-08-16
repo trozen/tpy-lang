@@ -140,6 +140,98 @@ class TestOwnStrTemp:
         _assert_byte_identical(src)
 
 
+_OWN_STR_PARAM = (
+    "from tpy import Own\n"
+    "class S:\n"
+    "    kept: list[str]\n"
+    "    def __init__(self) -> None:\n        self.kept = []\n"
+    "    def check(self, v: Own[str]) -> bool:\n"
+    "        self.kept.append(v)\n"
+    "        return len(self.kept) < 2\n"
+)
+
+
+class TestOwnViewfamParamReads:
+    """The Own[str]/Own[bytes]-PARAM bare-read cell: the signature spells the
+    OWNED type by value (`_own_viewfam_param`), so the name reads are STORAGE
+    -- the owned-sink view->owned copy never fires, and an owning arg slot
+    hoists the same typed copy temp + move the AST's needs_copy cascade
+    renders. Not movable on either path (value payload)."""
+
+    def test_own_str_param_at_owned_elem_slot_hoists_the_copy_temp(self):
+        # The callee half of the while-condition fence above: the Own[str]
+        # param at the `Own[str]` element slot takes the copy+move temp
+        # (`std::string __tmp_1{v};` -- NOT the inline `std::string(v)`
+        # view convert, which is what the naive param-implies-view verdict
+        # rendered and the corpus fence caught byte-diverging).
+        thir, faces = _lower_ctx_witnessed(_OWN_STR_PARAM)
+        body = _body(thir, "check")
+        assert "std::string __tmp_1{v};" in body
+        assert "this->kept.push_back(std::move(__tmp_1))" in body
+        assert faces["argtemp.own_str"] >= 1
+        _assert_byte_identical(_OWN_STR_PARAM)
+
+    def test_own_str_param_storage_reads_render_bare(self):
+        # STORAGE reads: return / decl init / setitem key render the plain
+        # name -- no view->owned wrap, no move.
+        src = (
+            "from tpy import Own\n"
+            "def ret(v: Own[str]) -> str:\n    return v\n"
+            "def decl(v: Own[str]) -> int:\n"
+            "    s = v\n    return len(s)\n"
+            "def key(v: Own[str]) -> None:\n"
+            "    d: dict[str, int] = {}\n    d[v] = 1\n"
+        )
+        thir, _ = _lower_ctx_witnessed(src)
+        assert "return v;" in _body(thir, "ret")
+        assert "std::string s = v;" in _body(thir, "decl")
+        assert "::tpy::__setitem__(d, v" in _body(thir, "key")
+        _assert_byte_identical(src)
+
+    def test_own_bytes_param_at_owned_elem_slot_still_defers(self):
+        # Boundary: the bytes twin of the copy-temp leg has no witness (the
+        # AST hoists `auto __tmp_N = v;` -- the plain-auto copy, not the
+        # brace-init conversion) -- the leg admits str only, the body
+        # falls back whole.
+        src = (
+            "from tpy import Own\n"
+            "def f(v: Own[bytes]) -> None:\n"
+            "    xs: list[bytes] = []\n"
+            "    xs.append(v)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_own_strview_param_read_still_defers(self):
+        # Boundary: Own[StrView] is the no-op Own spelling over a value VIEW
+        # (`std::string_view` by value) -- outside `_own_viewfam_param`, and
+        # its bare read keeps the name.own_read reject.
+        src = (
+            "from tpy import Own, StrView\n"
+            "def f(v: Own[StrView]) -> None:\n"
+            "    xs: list[str] = []\n"
+            "    xs.append(v)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_reassigned_own_str_param_still_defers(self):
+        # Boundary: a reassigned Own[str] param stays out -- the AST renders
+        # the plain concat-assign (`v = str_concat(v, "x")`; its inplace
+        # peephole checks the DECLARED type, which the Own wrapper fails),
+        # so THIR's self-append fold must not fire on it. The reassign arm
+        # rejects the shape whole today.
+        src = (
+            "from tpy import Own\n"
+            'def f(v: Own[str]) -> str:\n    v = v + "x"\n    return v\n'
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
 class TestOwnCoerceFieldBoundary:
     def test_wrapping_coerce_field_at_scalar_slot_routes(self):
         # A widening coerce over an Int8 field at an Own[Int32] slot: the

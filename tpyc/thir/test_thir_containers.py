@@ -5173,3 +5173,53 @@ class TestViewKeyFamily:
             "    print(len(s))\n")
         thir = _lower_ctx(src)
         assert _fn_l(thir, "f") is None
+
+
+class TestWrapperMemberContainerNameElem:
+    """A member-container-typed NAME element at a recursive-union WRAPPER
+    slot (`[1, inner]` at `list[Tree]`, inner: `list[Tree]`): the converting
+    ctor absorbs it; a movable last use forces the make_vector switch
+    (`::tpy::make_vector<Tree>(1, std::move(inner))`), a non-last-use copy
+    keeps the plain brace."""
+
+    _TREE = (
+        "type Tree = int | list[Tree]\n"
+        "def depth(t: Tree) -> int:\n"
+        "    if isinstance(t, int):\n        return 0\n"
+        "    return 1\n"
+    )
+
+    def test_moved_name_takes_make_vector(self):
+        src = self._TREE + (
+            "def f() -> None:\n"
+            "    inner: list[Tree] = [3, 4]\n"
+            "    nested: list[Tree] = [1, inner]\n"
+            "    print(len(nested))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        f = _fn(thir, "f")
+        assert f is not None
+        assert faces.get("containerlit.make", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_copied_name_keeps_brace(self):
+        # Non-last-use: the shared move facts decline, no make switch --
+        # the brace init copies the name.
+        src = self._TREE + (
+            "def f() -> None:\n"
+            "    inner: list[Tree] = [3, 4]\n"
+            "    nested: list[Tree] = [1, inner]\n"
+            "    print(len(nested))\n"
+            "    print(len(inner))\n")
+        _assert_routes_byte_identical(src)
+
+    def test_dict_value_flavor_routes(self):
+        # The dict-VALUE sibling ({"b": inner} at dict[str, Tree]) rides the
+        # same leg through the dict elem gate. (A NON-member container name
+        # at the slot is a sema type error, so no reject boundary exists on
+        # that axis; the leg's element-equality is the structural guard.)
+        src = self._TREE + (
+            "def f() -> None:\n"
+            "    inner: list[Tree] = [5]\n"
+            '    d: dict[str, Tree] = {"a": 1, "b": inner}\n'
+            "    print(len(d))\n")
+        _assert_routes_byte_identical(src)

@@ -432,6 +432,15 @@ def _coerce_disposition(e: TpyCoerce, *,
     if name == "strview_to_str":
         return ("identity" if e.context_kind == CoercionContext.ARG
                 else "materialize")
+    if name in ("optional_strview_to_str", "optional_str_to_strview"):
+        # Identity at a plain ARG slot -- both sides spell
+        # `std::optional<std::string_view>`, and the coercion lambda passes
+        # the expression through bare exactly there. Every other position
+        # rebuilds via the `__ov` statement expression (unmirrored -> AST);
+        # the Own-slot face returns None from the Own branch above, same as
+        # the lambda's else.
+        return ("identity" if e.context_kind == CoercionContext.ARG
+                else None)
     if name == "str_to_string":
         if e.context_kind != CoercionContext.ARG:
             return "identity"
@@ -1745,6 +1754,27 @@ def _resolved_viewfam_value(t: TpyType | None, analyzer) -> TpyType | None:
     st = _resolved_str_value(t, analyzer)
     return st if st is not None else _resolved_bytes_value(t, analyzer)
 
+def _own_viewfam_param(t: TpyType | None) -> 'TpyType | None':
+    """The owned buffer type behind an `Own[str]` / `Own[bytes]` PARAM
+    declaration, or None. Such a param's C++ signature spells the OWNED type
+    by value (`std::string` / `std::vector<uint8_t>`), so its name reads are
+    STORAGE form -- unlike a plain `str`/`bytes` param, whose signature is the
+    view (`std::string_view` / `std::span<const uint8_t>`) and whose reads are
+    BORROW. Mirrors the AST's `_is_str_view_at_runtime` name arm, which keys
+    view-ness on `is_str_type(<declared param type>)` -- False for the Own
+    wrapper. (`Own[StrView]` / `Own[BytesView]` params are the no-op Own
+    spelling over a value view -- still view-form, excluded here.)"""
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_send_sync(t))
+    if not isinstance(u, OwnType):
+        return None
+    inner = unwrap_readonly(u.wrapped)
+    if isinstance(inner, NominalType) and (is_str_type(inner)
+                                           or is_bytes_type(inner)):
+        return inner
+    return None
+
 def _bytes_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     """A bytes-slice comparison operand: a bytes literal (rendered OWNED --
     `_comparison_targets` threads no target for bytes, so the AST's
@@ -1837,7 +1867,9 @@ def _owned_str_append_target(t: TpyType | None, analyzer) -> bool:
     # target reads as a view and loses the in-place append.
     return _is_string_owned(st if st is not None else t)
 
-def _str_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
+def _str_name_form(name: str, resolved: TpyType, param_names: set[str],
+                   owned_params: 'set[str] | frozenset[str]' = frozenset()
+                   ) -> Form:
     """The C++ shape of a str-slice NAME read -- mirrors the AST's
     `_is_str_view_source`: a `StrView`-resolved binding and a `str`-typed param
     (the signature spells `std::string_view`) are view/BORROW; an owned local is
@@ -1845,20 +1877,31 @@ def _str_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
     init / return) fires only on a BORROW source; a str literal is const
     char[N] (implicitly convertible both ways) and stays VALUE, never wrapped.
     A `String` binding is owned in EVERY position -- its param slot is
-    `const std::string&`, so the param arm must not read it as a view."""
+    `const std::string&`, so the param arm must not read it as a view.
+    `owned_params` (prescan's `owned_viewfam_params`) carves the `Own[str]`
+    params out of the param arm: their signature spells the OWNED type by
+    value, so their reads are STORAGE like any owned local (the AST's
+    view-at-runtime test keys on the declared type, which the Own wrapper
+    fails)."""
     if is_string_type(resolved):
         return Form.STORAGE
-    if is_str_view_type(resolved) or name in param_names:
+    if is_str_view_type(resolved) or (name in param_names
+                                      and name not in owned_params):
         return Form.BORROW
     return Form.STORAGE
 
-def _bytes_name_form(name: str, resolved: TpyType, param_names: set[str]) -> Form:
+def _bytes_name_form(name: str, resolved: TpyType, param_names: set[str],
+                     owned_params: 'set[str] | frozenset[str]' = frozenset()
+                     ) -> Form:
     """The bytes twin of `_str_name_form`, mirroring the AST's
     `_is_bytes_view_source`: a `BytesView`-resolved binding and a `bytes`-typed
     param (the signature spells `std::span<const uint8_t>`) are view/BORROW --
     they drive the owned-sink `::tpy::bytes_copy(x)` -- while an owned local is
-    `std::vector<uint8_t>` (STORAGE)."""
-    if is_bytes_view_type(resolved) or name in param_names:
+    `std::vector<uint8_t>` (STORAGE). `owned_params` carves out the
+    `Own[bytes]` params (owned `std::vector<uint8_t>` by value -- STORAGE),
+    exactly like the str twin."""
+    if is_bytes_view_type(resolved) or (name in param_names
+                                        and name not in owned_params):
         return Form.BORROW
     return Form.STORAGE
 
@@ -3682,6 +3725,23 @@ def _value_opt_call_ret_arg(a: TpyExpr, ptype: 'TpyType | None',
     return at_u == pt
 
 
+def _opt_view_identity_coerce_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
+    """The Optional view<->str identity coerce at a plain ARG slot
+    (`takes_str_opt(returns_view_opt())` -- `str | None` and `StrView | None`
+    both spell `std::optional<std::string_view>`, and the coercion lambda
+    passes the expression through bare exactly in the non-Own ARG position).
+    CALL rvalue inners only -- the witnessed shape; a NAME inner stays out
+    until witnessed."""
+    if not (isinstance(a, TpyCoerce)
+            and a.coercion.name in ("optional_strview_to_str",
+                                    "optional_str_to_strview")
+            and a.context_kind == CoercionContext.ARG):
+        return False
+    if isinstance(a.expected_type, OwnType):
+        return False
+    return isinstance(a.expr, (TpyCall, TpyMethodCall))
+
+
 def _value_opt_callable(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[Callable]` binding type -- a
     `Callable[...] | None` param bound `std::optional<std::function<...>>`
@@ -3837,11 +3897,14 @@ def _str_literal_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     return isinstance(inner, NominalType) and is_str_type(inner)
 
 def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
-                           is_param: bool = False) -> 'str | None':
+                           is_param: bool = False,
+                           movable_local: bool = False) -> 'str | None':
     """A declared binding kind whose bare NAME read has no THIR arm -- reachable
     through function and constructor parameters (no local-decl arm produces such
-    a binding). Actual uses decide whether the body routes. Returns the reject
-    detail, or None for every binding the slice routes today:
+    a binding), and through the Own-typed loop var (`movable_local`: the name
+    sits in the working movable set). Actual uses decide whether the body
+    routes. Returns the reject detail, or None for every binding the slice
+    routes today:
 
     - a VALUE-repr Optional whose inner the scalar slice does not admit (a
       str/bytes view -- the `optional<string_view>`/`optional<string>` ARG
@@ -3883,20 +3946,25 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                     and is_dyn_protocol(inner))
                 # Own on a VALUE type is the no-op spelling (`Own[Int32]`
                 # -> `int32_t x` by value): a PARAM's reads render the
-                # bare name. LOCALS stay out -- the AST registers an
-                # Own-typed loop var movable, so its last-use read renders
-                # the (harmless) `std::move(x)` this predicate does not
-                # mirror.
-                or (is_param
+                # bare name. A LOCAL routes only when MOVABLE-SEEDED (an
+                # Own-typed loop var): the AST moves its last-use read at
+                # owning sinks (the harmless `std::move(x)`), which the
+                # move-source rows mirror off the same working set.
+                or ((is_param or movable_local)
                     and (_eligible_scalar(inner) or _eligible_char(inner)
                          or _eligible_enum(inner, analyzer) is not None))
+                # An Own[str]/Own[bytes] PARAM: the signature spells the
+                # OWNED type by value, so the name reads are STORAGE
+                # (`_own_viewfam_param` -- the owned-sink view->owned copy
+                # never fires, and an owning sink hoists the copy+move temp
+                # exactly like the AST's needs_copy cascade). Not movable on
+                # either path: `seed_param_locals` seeds only non-value Own
+                # payloads, and str/bytes are value types.
+                or (is_param
+                    and isinstance(inner, NominalType)
+                    and (is_str_type(inner) or is_bytes_type(inner)))
                 ):
             return None
-        # NB an Own[str]/Own[bytes] PARAM stays here BY DESIGN: admitting
-        # the bare read requires mirroring the AST's movable seed for these
-        # params first (last-use reads at owning sinks render std::move /
-        # the argtemp row) -- a widening without it byte-diverges (caught
-        # by test_own_str_arg_in_while_condition, round C waves).
         return "name.own_read"
     if isinstance(u, OptionalType) and not u.uses_pointer_repr():
         # A value-repr Optional[scalar] param routes: an un-narrowed read
@@ -7730,7 +7798,9 @@ def _own_bytes_identity_move_slot(a: TpyExpr, ptype: TpyType | None,
 
 
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
-                          analyzer) -> TpyType | None:
+                          analyzer,
+                          locals_: 'dict[str, TpyType] | None' = None
+                          ) -> TpyType | None:
     """Slot/shape verdict for the Own-slot copy+move row -- a NAME / eligible
     field read (possibly coerce-wrapped, see below) into a plain `Own[T]`
     slot of eligible-scalar, str, or same-nominal F1-record payload. Renders
@@ -7810,10 +7880,18 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # An owned-str slot fed by a str-family FIELD read
         # (`dropped.append(self.label)`): the copy temp declares the owned
         # type (`std::string __tmp_N{this->label};`) -- the view->owned
-        # conversion the AST's `is_any_str_type` branch spells. A str NAME
-        # stays out: no witness, and its local view/owned form split is a
-        # separate render axis.
+        # conversion the AST's `is_any_str_type` branch spells. Of the str
+        # NAMES only the `Own[str]` PARAM is admitted (an owned
+        # `std::string` lvalue whose binding form is position-independent:
+        # `kept.append(v)` hoists the same typed copy temp + move); other
+        # str names stay out -- their local view/owned form split is a
+        # separate render axis (view names take the S1 inline convert row).
         if not isinstance(a, TpyFieldAccess):
+            if (locals_ is not None and isinstance(a, TpyName)
+                    and (ovp := _own_viewfam_param(
+                        locals_.get(a.name))) is not None
+                    and is_str_type(ovp)):
+                return w
             return None
         return w if (isinstance(at, NominalType)
                      and (is_str_type(at) or is_str_view_type(at)

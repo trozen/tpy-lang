@@ -372,6 +372,55 @@ class TestValueOptReturnPosition:
         assert _body(thir, "f") == "    return classify(42);\n"
 
 
+_OPTVIEW = (
+    "from tpy import StrView\n"
+    "def takes_str_opt(s: str | None) -> None:\n"
+    "    if s is None:\n        print(\"(none)\")\n"
+    "    else:\n        print(s)\n"
+    "def returns_view_opt() -> StrView | None:\n"
+    "    return StrView(\"v\")\n"
+)
+
+
+class TestOptViewIdentityCoerceArg:
+    """The Optional view<->str identity coerce at a plain ARG slot: both
+    sides spell `std::optional<std::string_view>`, and the coercion lambda
+    passes the expression through bare exactly there (every other position
+    rebuilds via the `__ov` statement expression -- deferred)."""
+
+    def test_call_rvalue_at_coerced_opt_slot_passes_bare(self):
+        src = _OPTVIEW + (
+            "def f() -> None:\n"
+            "    takes_str_opt(returns_view_opt())\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        body = io.StringIO()
+        emit_thir_body(body, _fn(thir, "f"))
+        assert "takes_str_opt(returns_view_opt());" in body.getvalue()
+        assert faces["arg.optview_identity_coerce"] >= 1
+        _assert_byte_identical(src)
+
+    def test_decl_init_rebuild_still_defers(self):
+        # Boundary: the INIT position takes the `__ov` statement-expression
+        # rebuild -- unmirrored, the body falls back whole.
+        src = _OPTVIEW + (
+            "def f() -> None:\n"
+            "    x: str | None = returns_view_opt()\n"
+            "    takes_str_opt(x)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_name_source_still_defers(self):
+        # Boundary: a NAME inner has no witness -- the coerce row admits
+        # CALL rvalues only.
+        src = _OPTVIEW + (
+            "def f(v: StrView | None) -> None:\n"
+            "    takes_str_opt(v)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
 class TestRuWrapperFreeCallArgs:
     """The plain free-call ladder's wrapper-slot literal rows: the
     container literal hoists the typed temp (the marker ladder's row,
