@@ -788,7 +788,16 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 and isinstance(e, TpyFieldAccess)
                 and ((_clfe := analyzer.get_expr_type(e)) is not None)
                 and (_resolved_scalar(_clfe, analyzer)
-                     or _owned_str_slot(_clfe, analyzer))
+                     or _owned_str_slot(_clfe, analyzer)
+                     # A CONTAINER field read matching a container MEMBER
+                     # copies bare into the value variant the same way
+                     # (`{"labels", ml.labels}` -- the converting ctor).
+                     or ((_clfu := unwrap_readonly(unwrap_ref_type(
+                         unwrap_send_sync(_clfe)))) is not None
+                         and (is_list(_clfu) or is_dict(_clfu)
+                              or is_set(_clfu))
+                         and any(unwrap_readonly(m) == _clfu
+                                 for m in su.members)))
                 and _witness("containerlit.union_field_elem")):
             return True
         # A MIXED (non-value) union stores a value variant at element
@@ -823,14 +832,22 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 and len([m for m in su.members
                          if is_dict(unwrap_readonly(m))]) == 1):
             return True
-        # The COMP sibling: a list comprehension at the unique-list-member
-        # slot lowers against the member (the `({...})` stmt-expr renders
-        # inline; the variant converts) -- the asdict list recursion.
+        # The COMP sibling: a list comprehension at a list-member slot
+        # lowers against the member (the `({...})` stmt-expr renders
+        # inline; the variant converts) -- the asdict list recursion. A
+        # multi-list-member union disambiguates by the comp's OWN sema
+        # type (the AST resolves the comp against it, member-blind).
         if (isinstance(su, UnionType) and not su.needs_wrapper()
-                and isinstance(e, TpyListComprehension)
-                and len([m for m in su.members
-                         if is_list(unwrap_readonly(m))]) == 1):
-            return True
+                and isinstance(e, TpyListComprehension)):
+            _clms = [m for m in su.members if is_list(unwrap_readonly(m))]
+            if len(_clms) == 1:
+                return True
+            _clet = analyzer.get_expr_type(e)
+            _cletu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                _clet))) if _clet is not None else None)
+            if _cletu is not None and any(
+                    unwrap_readonly(m) == _cletu for m in _clms):
+                return True
         # M4c: a wrapper element slot absorbs a member-record ctor rvalue
         # via the wrapper's template converting ctor -- bare render on both
         # paths (`{Leaf(1), Leaf(2)}` into `std::vector<Tree>`).
@@ -951,10 +968,27 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             mfam = _container_lit_slot_family(mbare, analyzer)
             if mfam == "container":
                 # A nested list LITERAL member renders its bare brace inside
-                # the storage tuple (`S{1, {2, 3}}` -- the jagged-list shape);
-                # container NAMES / dict / set literals defer.
-                if not (isinstance(sub, TpyArrayLiteral)
-                        and (is_list(mbare) or is_array(mbare))):
+                # the storage tuple (`S{1, {2, 3}}` -- the jagged-list shape),
+                # and a dict-CONSTRUCTION call member (`dict({...})`, the
+                # asdict tuple recursion) its spelled instantiation rvalue;
+                # container NAMES / bare dict / set literals defer.
+                if not ((isinstance(sub, TpyArrayLiteral)
+                         and (is_list(mbare) or is_array(mbare)))
+                        # A nested DICT literal member renders its
+                        # self-describing spelled form inline in the
+                        # storage tuple (`S{ordered_map<..>({{..}}), ..}`
+                        # -- the asdict tuple recursion); set literals and
+                        # container NAMES keep deferring.
+                        or (isinstance(sub, TpyDictLiteral)
+                            and is_dict(mbare))
+                        or (isinstance(sub, TpyCall)
+                            and is_dict(mbare)
+                            and sub.call_type is not None
+                            and isinstance(sub.call_type, TpyType)
+                            and unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(sub.call_type))) == mbare
+                            and len(sub.args) == 1 and not sub.kwargs
+                            and isinstance(sub.args[0], TpyDictLiteral))):
                     return (note_detail("container_lit.elem.tuple")
                             if note else False)
             elif mfam == "tuple":
@@ -1015,6 +1049,31 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                         or (is_dict(su) and is_dict(bu))
                         or (is_set(su) and is_set(bu))):
                     return True
+        # A dict-CONSTRUCTION call element (`dict({...})` -- the asdict
+        # macro's top expansion) at the SAME-type dict slot: the spelled
+        # instantiation render (`ordered_map<..>(<literal>)`, the
+        # dict_literal_instantiation arm); the call's own lowering
+        # re-validates the literal.
+        if (allow_nested and isinstance(e, TpyCall)
+                and is_dict(su)
+                and e.call_type is not None
+                and isinstance(e.call_type, TpyType)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    e.call_type))) == su
+                and len(e.args) == 1 and not e.kwargs
+                and isinstance(e.args[0], TpyDictLiteral)):
+            return True
+        # The COMP sibling of the nested-literal rows (the asdict
+        # recursion: `{"vertices": [<expansion> for p in ..]}`): the
+        # `({...})` stmt-expr renders inline, target-typed by the slot --
+        # the render arm already dispatches it; the comp's own lowering
+        # re-validates its pieces. List/dict comps only (the witnessed
+        # kinds); a set comp keeps rejecting.
+        if (allow_nested
+                and ((is_list(su) and isinstance(e, TpyListComprehension))
+                     or (is_dict(su)
+                         and isinstance(e, TpyDictComprehension)))):
+            return True
         if not (allow_nested and (is_list(su) or is_array(su))
                 and isinstance(e, TpyArrayLiteral)):
             return note_detail("container_lit.elem.container") if note else False
@@ -3575,6 +3634,14 @@ def _native_protocol_field_arg(a: TpyExpr, ptype: 'TpyType | None',
             _eligible_scalar(unwrap_readonly(x))
             or _owned_str_slot(unwrap_readonly(x), analyzer) is not None
             for x in args if isinstance(x, TpyType))
+    if isinstance(t, TupleType):
+        # A VALUE-tuple field passed WHOLE (`repr(self.pair)` at
+        # `tuple[Int32, str]` -> `::tpy::tuple_to_str(this->pair)`): borrow
+        # and storage forms coincide, so the bare member read binds the slot
+        # directly. The pointer-repr (F3) sibling lifts via the
+        # borrow-tuple FIELD row above instead.
+        return bool(_value_tuple(t, analyzer) is not None
+                    and _witness("arg.native_value_tuple_field"))
     return _f1_record(t, analyzer)
 
 
@@ -3653,6 +3720,11 @@ def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             # the lift wraps the read, so it is position-independent.
             or _borrow_tuple_storage_name_arg(
                 a, ptype, locals_, storage_tuple_locals, analyzer) is not None
+            # An F3-tuple FIELD read at the native/template tuple slot takes
+            # the same kind-blind `tuple_to_pointer` lift as the NAME row
+            # (`repr(self.pair)` -> `::tpy::tuple_to_str(tuple_to_pointer<
+            # std::tuple<const Point*, ..>>(this->pair))`).
+            or _borrow_tuple_field_arg(a, ptype, analyzer) is not None
             or note_detail(_native_arg_reject(a, ptype, analyzer)))
 
 
@@ -4746,7 +4818,7 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
             or note_detail("call.generic_arg_shape"))
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
-                           analyzer) -> bool:
+                           analyzer, *, frame_capturing: bool = False) -> bool:
     """A LIST literal into a same-family NON-mutated list slot at a CTOR call
     (`Numbers([1, 2, 3])` -> `Numbers({1, 2, 3});`): the AST renders the bare
     brace-init in place (probe-verified for scalar, str, and record-rvalue
@@ -4764,9 +4836,12 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     ctor-arg render is unverified). A DECLARED-readonly slot binds the
     literal INLINE on the AST path (dualgen-verified `take_ro({1, 2, 3})`),
     so it must not ride the temp arms -- only the empty rvalue is mirrored
-    (`_readonly_container_rvalue_arg`); non-empty stays AST."""
-    if isinstance(ptype, TpyType) and isinstance(
-            unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType):
+    (`_readonly_container_rvalue_arg`); non-empty stays AST. EXCEPT for a
+    FRAME-CAPTURING callee (`frame_capturing`): there the statement-scoped
+    inline `const T&` bind would dangle, so the AST hoists the readonly
+    slot's literal like a mutable one (`_container_call_temp_arg`'s rule)."""
+    if (not frame_capturing and isinstance(ptype, TpyType) and isinstance(
+            unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType)):
         return False
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if ptype is not None else None)
@@ -10655,6 +10730,14 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         if is_list(rt) or is_array(rt):
             return PrintForm.LIST
         return None
+    if isinstance(a, TpyDictLiteral):
+        # A dict LITERAL print arg (`print(asdict(..))`'s expansion) wraps
+        # its self-describing ordered_map render in DictPrinter.
+        rt = unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(analyzer.get_expr_type(a))))
+        if is_dict(rt):
+            return PrintForm.DICT
+        return None
     if isinstance(a, TpyBinOp):
         # A container-result BINOP arg (`print(a | b)` ->
         # `SetPrinter((::tpy::set_union(a, b)))`): the kind-keyed wrap
@@ -10671,10 +10754,14 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
     if isinstance(a, TpyTupleLiteral):
         # A pointer-repr tuple LITERAL wraps its borrow-form render
         # (`TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)})`);
-        # the lowering keys the borrow builder on the element repr.
+        # the lowering keys the borrow builder on the element repr. A
+        # VALUE tuple literal (the all-value astuple expansion) wraps its
+        # spelled brace render the same way.
         rt = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(analyzer.get_expr_type(a))))
         if isinstance(rt, TupleType) and rt.has_pointer_repr_element():
+            return PrintForm.TUPLE
+        if _value_tuple_nested(rt, analyzer) is not None:
             return PrintForm.TUPLE
         return None
     if isinstance(a, TpySubscript):

@@ -2326,12 +2326,13 @@ class TestFieldReceiverSubscript:
             "        self.inner.ys[i] = 1\n")
         assert _fn(thir, "deep") is None and _fn(thir, "deep_put") is None
 
-    def test_narrowed_optional_field_ineligible(self):
-        # A narrowed Optional[list] FIELD receiver renders `(*this->maybe)` on
-        # the AST path; the gates type at the DECLARED field type (Optional ->
-        # family reject) and the narrowing condition itself is unrouted, so
-        # the body stays AST.
-        thir = _lower_ctx(
+    def test_narrowed_optional_field_read_routes_write_defers(self):
+        # The READ half now routes: the receiver resolver's narrowed_ok
+        # types the narrowed Optional[list] FIELD at its inner and the
+        # read renders `(*this->maybe)[..]` byte-identically (this pin
+        # used to record both halves deferring). The WRITE half keeps the
+        # declared slice (narrowed_ok is READ-site-only).
+        src = (
             _CONTAINER_FIELDS
             + "    def read(self) -> Int32:\n"
             + "        if self.maybe is not None:\n"
@@ -2340,7 +2341,10 @@ class TestFieldReceiverSubscript:
             + "    def put(self, v: Int32) -> None:\n"
             + "        if self.maybe is not None:\n"
             + "            self.maybe[0] = v\n")
-        assert _fn(thir, "read") is None and _fn(thir, "put") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read") is not None
+        assert _fn(thir, "put") is None
+        _assert_byte_identical(src)
 
     def test_checked_optional_field_ineligible(self):
         # An UNPROVEN Optional[list] field receiver takes the AST's

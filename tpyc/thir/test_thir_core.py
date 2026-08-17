@@ -1697,12 +1697,15 @@ class TestBool:
         assert fn.body[0].resolved_type.to_cpp() == "bool"
         assert isinstance(fn.body[0].init, THIRBinOp) and fn.body[0].init.op == "<"
 
-    def test_mixed_sign_comparison_is_ineligible(self):
-        # A signed-vs-unsigned comparison emits std::cmp_* (not a bare operator),
-        # so it stays on the AST path -- as a value and as a condition.
-        thir = _lower(_PRELUDE + "from tpy import UInt32\n"
-                      "def f(a: Int32, b: UInt32) -> bool:\n    return a < b\n")
-        assert _fn(thir, "f") is None
+    def test_mixed_sign_comparison_routes_via_cmp_helper(self):
+        # A signed-vs-unsigned comparison emits std::cmp_* -- now mirrored
+        # via THIRBinOp's template_override (the spelling imported from
+        # codegen's _CMP_HELPER); this pin used to record it deferring.
+        src = (_PRELUDE + "from tpy import UInt32\n"
+               "def f(a: Int32, b: UInt32) -> bool:\n    return a < b\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_retro_widened_seed_compare_routes(self):
         # `offset = 0` retro-widens to UInt64 from the take_u64 arg slot; the
@@ -1832,13 +1835,16 @@ class TestBoolOps:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_mixed_sign_compare_operand_is_ineligible(self):
-        # The mixed-sign gate applies inside a logical operand too (the pair
-        # would emit std::cmp_*, not the bare operator).
-        thir = _lower(_PRELUDE + "from tpy import UInt32\n"
-                      "def f(a: Int32, b: UInt32, flag: bool) -> bool:\n"
-                      "    return flag and a < b\n")
-        assert _fn(thir, "f") is None
+    def test_mixed_sign_compare_operand_routes(self):
+        # The cmp_* row is position-independent (the template wraps the
+        # operands), so a logical operand takes it too; this pin used to
+        # record the shape deferring.
+        src = (_PRELUDE + "from tpy import UInt32\n"
+               "def f(a: Int32, b: UInt32, flag: bool) -> bool:\n"
+               "    return flag and a < b\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_record_operand_compare_routes(self):
         # A record compare reaches the rb=None bare-operator arm (a user dunder
@@ -1954,12 +1960,16 @@ class TestChainedCompare:
         assert isinstance(v, THIRChainedCompareStmtExpr)
         assert v.bound == (False, True, False)
 
-    def test_mixed_sign_pair_is_ineligible(self):
-        # Each pair gets the single-comparison gates (mixed-sign -> std::cmp_*).
-        thir = _lower(_PRELUDE + "from tpy import UInt32\n"
-                      "def f(a: Int32, b: UInt32, c: UInt32) -> bool:\n"
-                      "    return a < b < c\n")
-        assert _fn(thir, "f") is None
+    def test_mixed_sign_pair_routes(self):
+        # Each chained pair gets the single-comparison gates, so both
+        # pairs take the cmp_* template; this pin used to record the
+        # chain deferring.
+        src = (_PRELUDE + "from tpy import UInt32\n"
+               "def f(a: Int32, b: UInt32, c: UInt32) -> bool:\n"
+               "    return a < b < c\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_chain_condition_routes(self):
         thir = _lower(_PRELUDE + "def f(i: Int32, n: Int32) -> Int32:\n"

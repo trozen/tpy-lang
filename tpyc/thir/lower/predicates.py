@@ -994,7 +994,9 @@ def _ptr_union_view_member_ok(m: 'TpyType', analyzer) -> bool:
     ELEMENT args recurse through the F1 type-arg slice so a divergently
     spelled element keeps the union out."""
     u = unwrap_readonly(m)
-    if isinstance(u, NominalType) and is_str_type(u):
+    if isinstance(u, NominalType) and (is_str_type(u) or is_bytes_type(u)):
+        # bytes spells `std::vector<uint8_t>` storage / `...*` borrow --
+        # concrete and position-uniform like str, no type-arg recursion.
         return True
     if (isinstance(u, NominalType) and (is_list(u) or is_dict(u)
                                         or is_set(u))):
@@ -4493,6 +4495,39 @@ def _ptr_tuple_literal_compare_pair(
     return (_resolve_pending_tuple_elems(ltu, analyzer),
             _resolve_pending_tuple_elems(rtu, analyzer))
 
+def _ptr_tuple_field_compare_pair(
+        e: TpyBinOp, locals_: dict[str, TpyType],
+        analyzer) -> 'tuple[TupleType, TupleType] | None':
+    """Both compare operands are FIELD reads of pointer-repr tuples
+    (`this->pair == other.pair`, the dataclass __eq__ chain): the same
+    deref-aware `tuple_eq` / `tuple_lt` composition, over the BARE member
+    reads (the helpers bridge the storage form -- gen_expr_deref renders
+    the member with no lift). DECLARED-type keyed: a narrowed
+    Optional-declared field reads with an unwrap this pair does not
+    mirror, and a property read is a call in disguise -- both stay out."""
+    if not (isinstance(e.left, TpyFieldAccess)
+            and isinstance(e.right, TpyFieldAccess)):
+        return None
+    if (e.left.property_getter_call is not None
+            or e.right.property_getter_call is not None):
+        return None
+    pair = []
+    for side in (e.left, e.right):
+        at = analyzer.get_expr_type(side)
+        atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+               if at is not None else None)
+        if not (isinstance(atu, TupleType)
+                and atu.has_pointer_repr_element()):
+            return None
+        ft = _field_decl_type(side, locals_, analyzer)
+        ftu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
+               if ft is not None else None)
+        if ftu != atu:
+            return None
+        pair.append(atu)
+    return (pair[0], pair[1])
+
+
 def _const_index(index: TpyExpr) -> 'int | None':
     """The compile-time integer index of a tuple subscript, mirroring the AST's
     `_extract_compile_time_index`: a bare int literal or a negated int literal. A
@@ -5775,7 +5810,9 @@ def _method_member_cpp(fi, name: str) -> str:
             else escape_cpp_name(name))
 
 def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
-                                   analyzer) -> 'TpyType | None':
+                                   analyzer,
+                                   narrowed_ok: bool = False
+                                   ) -> 'TpyType | None':
     """The receiver binding type for a container subscript read/write/del: a
     bare in-scope NAME (the DECLARED binding -- a literal-seeded local's use
     sites carry the pre-resolution pending type) or a one-level field access
@@ -5801,6 +5838,22 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
             # preserves.
             et = analyzer.get_expr_type(recv)
             if et is not None:
+                return et
+        dtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+               if isinstance(dt, TpyType) else None)
+        if (narrowed_ok and isinstance(dtu, OptionalType)
+                and dtu.uses_pointer_repr()):
+            # A sema-NARROWED Optional[container] field receiver
+            # (`a2.coord[0]` after the assert-narrow): the receiver read
+            # renders the `(*recv.field)` deref (the narrowed-field arm),
+            # so it types at the narrowed INNER. READ positions only
+            # (`narrowed_ok` -- the setitem/del gates keep the declared
+            # slice; their narrowed renders are unwitnessed).
+            et = analyzer.get_expr_type(recv)
+            etu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+                   if et is not None else None)
+            if (etu is not None and not isinstance(etu, OptionalType)
+                    and etu == unwrap_readonly(dtu.inner)):
                 return et
         return dt
     if _module_var_recv(recv, locals_, analyzer):
@@ -6024,6 +6077,31 @@ def _tuple_elem_slots_ptr_optional(slot: 'TupleType') -> bool:
         return isinstance(bare, OptionalType) and bare.uses_pointer_repr()
 
     return all(elem_ok(t) for t in slot.element_types)
+
+
+def _mixed_own_borrow_tuple(t: 'TpyType | None',
+                            analyzer) -> 'TupleType | None':
+    """The mixed own/borrow F1 tuple, or None: a pointer-repr TupleType
+    whose every element is a value type, an `Own[F1-record]` (storage by
+    value), a bare F1-record (the borrow `T*` element), or a pointer-repr
+    `Optional[F1-record]`. The shape key of the `tuple[Own[Box], Box]`
+    param family -- a matching call rvalue binds the slot BARE (the
+    element-blind pass), same render as the all-Optional
+    `_ptr_optional_tuple` family."""
+    if not isinstance(t, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (isinstance(u, TupleType) and u.has_pointer_repr_element()):
+        return None
+    for e in u.element_types:
+        eu = unwrap_readonly(unwrap_send_sync(e))
+        if isinstance(eu, OwnType):
+            if not _f1_record(unwrap_readonly(eu.wrapped), analyzer):
+                return None
+            continue
+        if not _f1_tuple_element_ok(e, analyzer):
+            return None
+    return u
 
 
 def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
@@ -6797,6 +6875,19 @@ def _any_none_subject(e: TpyBinOp, locals_: dict[str, TpyType],
         return operand
     return None
 
+def _plain_record_field_link(link: 'TpyFieldAccess',
+                             locals_: dict[str, TpyType], analyzer) -> bool:
+    """A chain's INTERMEDIATE field link (`o.inner` in `o.inner.value`):
+    its DECLARED type must be a plain (non-Optional) user record so the
+    read carries no unwrap. Shared by the None-subject and truthy chain
+    admissions so the two cannot drift."""
+    idt = _field_decl_type(link, locals_, analyzer)
+    idtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(idt)))
+            if idt is not None else None)
+    return (isinstance(idtu, NominalType)
+            and analyzer.registry.get_record_for_type(idtu) is not None)
+
+
 def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
                                  analyzer) -> bool:
     """A one-level Optional FIELD subject of an `is [not] None` test
@@ -6807,9 +6898,21 @@ def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
     renders the identical bare-member `.has_value()` -- the AST's
     narrowed-field recovery arm in `_gen_binop` -- so it is admitted the
     same way. Same receiver/marker shape as the plain field arm."""
-    if not (isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName)
-            and _field_markers_clean(e)
-            and _field_receiver_ok(e, locals_, analyzer)):
+    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)):
+        return False
+    if isinstance(e.obj, TpyName):
+        if not _field_receiver_ok(e, locals_, analyzer):
+            return False
+    elif (isinstance(e.obj, TpyFieldAccess)
+          and isinstance(e.obj.obj, TpyName)
+          and _field_markers_clean(e.obj)
+          and _field_receiver_ok(e.obj, locals_, analyzer)):
+        # ONE chain link (`o.inner.value is not None`): the same bare-read
+        # `.has_value()` over the chain; the shared link rule keeps the
+        # intermediate read unwrap-free.
+        if not _plain_record_field_link(e.obj, locals_, analyzer):
+            return False
+    else:
         return False
     fdt = _field_decl_type(e, locals_, analyzer)
     return fdt is not None and isinstance(
@@ -6841,8 +6944,20 @@ def _narrowed_opt_field_read(e: TpyFieldAccess, rtype: 'TpyType | None',
     Optional but the analyzed read type is not (the flow proof), so a value
     position unwraps `(*recv.field)` -- gen_expr_deref's
     is_narrowed_optional_field arm. Stateless like the AST's: keyed on the
-    declared-vs-analyzed type mismatch, no narrowing scope involved."""
-    if not isinstance(e.obj, TpyName):
+    declared-vs-analyzed type mismatch, no narrowing scope involved. A
+    one-link CHAIN receiver (`o.inner.value`) carries the same verdict --
+    the AST arm is receiver-shape-blind AND link-type-blind, so this READ
+    predicate must NOT carry the subject gates' _plain_record_field_link
+    rule: a macro-generated chain read (dataclass_asdict_mixed's
+    Optional-field expansion, whose link receiver is a macro temp outside
+    `locals_`) is legitimately narrowed by sema and the AST derefs it on
+    the leaf mismatch alone -- adding the link rule here DE-ROUTED that
+    case (ratchet catch). The link rule belongs to the SUBJECT gates
+    (which render has_value over the link read) only."""
+    if isinstance(e.obj, TpyFieldAccess):
+        if not isinstance(e.obj.obj, TpyName):
+            return False
+    elif not isinstance(e.obj, TpyName):
         return False
     if rtype is None or isinstance(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype))),
@@ -8133,19 +8248,15 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         return 'adapter_name'
     return None
 
-def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
-                                  analyzer) -> 'UnionType | None':
-    """A bytes LITERAL at a pointer-variant union slot with a matching
-    `bytes` member (`s.post(url, b"payload")` at `bytes | dict | None`).
-    The union sits OUTSIDE the F4 U2 record/scalar slice
-    (`_eligible_ptr_union` -- widening that would open every narrowing /
-    extraction consumer), so this one rvalue shape carries its own slot
-    check: `_gen_union_arg`'s member-shape-blind rvalue branch hoists the
-    owned-bytes temp and lifts its address
-    (`std::vector<uint8_t> __tmp_N = ::tpy::bytes_literal_owned(..);` +
-    `pv{&__tmp_N}`). Readonly/Own slots stay out (their spellings are
-    unwitnessed). Returns the union or None."""
-    if not isinstance(a, TpyBytesLiteral):
+def _union_literal_temp_arg(a: TpyExpr, ptype: TpyType | None, analyzer,
+                            *, literal_type) -> 'UnionType | None':
+    """The shared body of the union literal-temp ARG rows (the
+    `_borrow_tuple_arg` factoring): a LITERAL of `literal_type` at a
+    pointer-variant union slot with a matching member. `_gen_union_arg`'s
+    member-shape-blind rvalue branch hoists the typed temp and lifts its
+    address (`pv{&__tmp_N}`). Readonly/Own slots stay out (their
+    spellings are unwitnessed). Returns the union or None."""
+    if not isinstance(a, literal_type):
         return None
     pt = unwrap_send_sync(ptype) if isinstance(ptype, TpyType) else None
     if pt is None or isinstance(pt, ReadonlyType):
@@ -8157,6 +8268,24 @@ def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
     if not any(at == m for m in ut.members if not is_void_like_type(m)):
         return None
     return ut
+
+def _union_dict_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
+                                 analyzer) -> 'UnionType | None':
+    """The dict flavor (`send(url, {"user": "ann"})` at
+    `bytes | dict[str, str] | None` -> `::tpy::ordered_map<..> __tmp_N =
+    ..;` + `pv{&__tmp_N}`); the dict literal's render self-describes, so
+    the temp init is the ordinary literal lowering. Other literal kinds
+    stay unwitnessed."""
+    return _union_literal_temp_arg(a, ptype, analyzer,
+                                   literal_type=TpyDictLiteral)
+
+def _union_bytes_literal_temp_arg(a: TpyExpr, ptype: TpyType | None,
+                                  analyzer) -> 'UnionType | None':
+    """The bytes flavor (`s.post(url, b"payload")` at `bytes | dict |
+    None` -> `std::vector<uint8_t> __tmp_N =
+    ::tpy::bytes_literal_owned(..);` + `pv{&__tmp_N}`)."""
+    return _union_literal_temp_arg(a, ptype, analyzer,
+                                   literal_type=TpyBytesLiteral)
 
 
 def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
@@ -8891,7 +9020,8 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
 
 def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                            analyzer,
-                           methods: tuple[str, ...] = ("values", "keys")) -> bool:
+                           methods: tuple[str, ...] = ("values", "keys"),
+                           field_recv_ok: bool = False) -> bool:
     """`d.values()` / `d.keys()` as a for-loop iterable: a zero-arg dict-view
     method on a bare-name eligible dict binding. The view result is an rvalue
     (the owning `auto __obj_N = ::tpy::dict_values(d);` capture); the loop var
@@ -8899,7 +9029,26 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     `.items()` yields tuples -- the tuple-unpack gate passes it explicitly."""
     if e.method not in methods or e.args:
         return False
-    if not isinstance(e.obj, TpyName) or e.obj.name not in locals_:
+    if isinstance(e.obj, TpyName):
+        if e.obj.name not in locals_:
+            return False
+        recv_t = locals_[e.obj.name]
+    elif field_recv_ok and isinstance(e.obj, TpyFieldAccess):
+        # The FIELD-receiver flavor (`::tpy::dict_items(d.items)` -- the
+        # asdict dict recursion), DECLARED-type keyed like the C3 field
+        # iterable. ON at the COMP callers (the comp route and the
+        # method-call arm's `iterable_override`, which must agree); OFF at
+        # the FOR-HEAD callers, whose storage-tuple loop-var registration
+        # is name-receiver-keyed -- routing there without it surfaced as a
+        # binding-fact join failure in tplib/json_model_nested's
+        # __json_encode__. Opening the for-head needs that registration
+        # widened with this flag, together.
+        if not _field_receiver_ok(e.obj, locals_, analyzer):
+            return False
+        recv_t = _field_decl_type(e.obj, locals_, analyzer)
+        if recv_t is None:
+            return False
+    else:
         return False
     # An Optional-checked receiver (`d.values()` on a narrowable Optional
     # dict) takes the deref_check method face, not the bare view call.
@@ -8913,18 +9062,17 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     # bind; the view call render is value-family-blind. Optional-record
     # and CONTAINER values (`dict[str, list[Int32]]` -- the items/values
     # element aliases the live container) ride the same blind render.
-    return (_container_scalar_read(locals_[e.obj.name], analyzer)
-            or _container_record_elem(locals_[e.obj.name], analyzer)
-            or _container_opt_record_elem(locals_[e.obj.name], analyzer)
-            or _container_ref_alias_elem(locals_[e.obj.name], analyzer)
+    return (_container_scalar_read(recv_t, analyzer)
+            or _container_record_elem(recv_t, analyzer)
+            or _container_opt_record_elem(recv_t, analyzer)
+            or _container_ref_alias_elem(recv_t, analyzer)
             # A genrec-element dict (`dict[K, DictTree[K, V]]`): the view
             # render is element-family-blind; the loop var binds `auto&&`.
-            or _container_genrec_elem(locals_[e.obj.name], analyzer)
+            or _container_genrec_elem(recv_t, analyzer)
             # A value-opt-scalar-valued dict (`dict[str, Int32 | None]`):
             # the loop var binds the storage optional by value
             # (`std::optional<int32_t> val = *__beg_N;`).
-            or _container_value_opt_scalar_elem(
-                locals_[e.obj.name], analyzer))
+            or _container_value_opt_scalar_elem(recv_t, analyzer))
 
 def _plain_scalar_slot(ptype: TpyType | None, analyzer) -> bool:
     """A NON-Own value-scalar param slot. The user-record sibling of

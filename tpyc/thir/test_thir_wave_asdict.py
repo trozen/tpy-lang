@@ -845,7 +845,10 @@ class TestCompAtUnionSlot:
         assert w.get("comp.union_member_source", 0) >= 1
         _assert_routes_byte_identical(self._SRC)
 
-    def test_two_list_members_stays_ast(self):
+    def test_two_list_members_routes_by_comp_type(self):
+        # A TWO-list-member union slot now disambiguates by the comp's OWN
+        # sema type (the multi-mass widening for the fuzz asdict shape);
+        # this pin used to record the shape deferring on member ambiguity.
         src = (
             "from tpy import Int32, Int64\n"
             "def build(xs: list[Int32]) -> None:\n"
@@ -857,7 +860,8 @@ class TestCompAtUnionSlot:
             "    build([1])\n"
             "main()\n")
         w, fallback = _assert_identical(src)
-        assert fallback
+        assert not fallback
+        assert w.get("comp.union_member_source", 0) >= 1
 
 
 class TestUnionDictMemberLiteral:

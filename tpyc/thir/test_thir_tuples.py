@@ -3133,8 +3133,11 @@ class TestOwnTupleDecayCopyArg:
         thir2 = _lower_ctx(src)
         assert _fn(thir2, "still_live") is not None
         assert _fn(thir2, "last_use") is not None
-        # main's tuple-returning CALL arg flavor keeps deferring.
-        assert _fn(thir2, "main") is None
+        # main's tuple-returning CALL arg flavor now routes -- the
+        # owned-movable rvalue binds the `&&` slot bare
+        # (call.own_tuple_pass); this pin used to record it deferring.
+        assert _fn(thir2, "main") is not None
+        assert wit.get("call.own_tuple_pass", 0) >= 1
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         c, mods = _compile(src)

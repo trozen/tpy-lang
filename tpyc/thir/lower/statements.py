@@ -3262,6 +3262,13 @@ def _opt_slot_rvalue_shape(init: TpyExpr, inner: TpyType, analyzer) -> bool:
     return (_record_rvalue_source_shape(init, analyzer)
             or (isinstance(init, TpyMethodCall)
                 and _f1_record(it_u, analyzer)
+                and is_rvalue_source(analyzer, init))
+            # A CONTAINER-returning by-value method call at an
+            # Optional[container] slot (the argparse builder's accumulator
+            # reseat): the same `p = &*(__slot_N = <rvalue>);` rebind
+            # render, type-blind past the exact-inner equality above.
+            or (isinstance(init, (TpyCall, TpyMethodCall))
+                and (is_list(it_u) or is_dict(it_u) or is_set(it_u))
                 and is_rvalue_source(analyzer, init)))
 
 
@@ -12349,6 +12356,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     _witness("print.file_sink")
             lowered_args = []
             for arg in e.args:
+                if (isinstance(arg, (TpyCall, TpyMethodCall))
+                        and isinstance(getattr(arg, "macro_expansion", None),
+                                       TpyTupleLiteral)
+                        and _wrap_print_form(arg, declared, analyzer)
+                        is None):
+                    # A TUPLE-producing call-macro arg (`print(astuple(x))`)
+                    # whose CALL node does not classify (`_wrap_print_form`
+                    # None -- e.g. a non-value tuple result outside
+                    # `_value_tuple_nested`): the AST's gen_expr renders
+                    # the sema-synthesized expansion in place and gen_print
+                    # classifies by TYPE, so fall through to the EXPANSION.
+                    # When the call node DOES classify, keep the call path
+                    # -- it lowers the expansion as an expression and its
+                    # element admissions differ (a swap here DE-ROUTED
+                    # dataclass_asdict_mixed's str-field elements, ratchet
+                    # catch). Tuple literals ONLY: other expansion kinds
+                    # (hasattr's probe synth, getattr) already ride the
+                    # call-typed rows.
+                    arg = arg.macro_expansion
                 if isinstance(arg, TpyName) and arg.name in narrowed:
                     if arg.name in lc.narrow.any_narrowed:
                         # An Any-narrowed alias: the AST classifies print args
@@ -12484,11 +12510,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                               and _witness("print.container_call_arg"))
                           # A list/Array LITERAL arg (the typed brace-init
                           # inside ListPrinter -- CTAD needs the type), a
+                          # DICT literal (self-describing ordered_map render
+                          # inside DictPrinter -- the asdict expansion), a
                           # pointer-repr tuple LITERAL (the borrow-form
                           # render inside TuplePrinter), or a
                           # container-result BINOP (the kind wrap over the
                           # operator render).
                           or (isinstance(arg, (TpyArrayLiteral,
+                                               TpyDictLiteral,
                                                TpyTupleLiteral, TpyBinOp))
                               and _wrap_print_form(
                                   arg, declared, analyzer) is not None)

@@ -1054,16 +1054,17 @@ class TestGlobalSlotCompInit:
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "static std::vector<int32_t> __global_slot_" in cpp
 
-    def test_str_elem_comp_defers(self):
-        # The str-element literal-iterable comp is an unrouted comp
-        # SHAPE (defers in function bodies too) -- the slot branch
-        # forwards and the comp machinery gates.
+    def test_str_elem_comp_routes(self):
+        # The str-element literal-iterable comp now routes (the
+        # list-literal comp-route row: the braced init-list capture);
+        # this pin used to record the shape deferring, in bodies and at
+        # the global slot alike.
         src = (
             "r1 = [len(x) for x in [\"a\", \"bb\"]]\n"
             "print(r1)\n")
         _assert_byte_identical(src)
         top, _w, fb = _top_level(src)
-        assert top is None
+        assert top is not None
 
 
 class TestStrGlobalWrites:

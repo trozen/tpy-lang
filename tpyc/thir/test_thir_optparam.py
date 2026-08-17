@@ -1358,17 +1358,20 @@ class TestNarrowedOptionalFieldFaces:
         assert "if ((!h.f.has_value())) {" in cpp
         assert "return (*h.f).x;" in cpp
 
-    def test_deep_chain_subject_rejects(self):
-        # A two-level None subject (`h.f.x is None` shape analog) stays AST:
-        # only a NAME-receiver field subject is admitted.
-        thir = _lower_ctx(
+    def test_one_link_chain_subject_routes(self):
+        # A one-link chain None subject (`g.h.f is None`) now routes via
+        # the chain-None family (the plain-record link rule); this pin
+        # used to record only NAME receivers admitted.
+        src = (
             _PRELUDE
             + "class G:\n"
             + "    h: H\n"
             + "    def __init__(self):\n        self.h = H()\n"
             + "def use(g: G) -> bool:\n"
             + "    return g.h.f is None\n")
-        assert _fn(thir, "use") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
 
 class TestOptionalScalarEq:

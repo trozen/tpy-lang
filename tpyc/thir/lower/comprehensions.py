@@ -47,6 +47,7 @@ from ...type_def_registry import (
 from ...modules.type_resolution import get_iterable_element_type, is_native_iterable
 from ...codegen_cpp.context import (
     escape_cpp_name, is_lvalue_iterable, loop_var_binding)
+from ...codegen_cpp.types import resolve_pending_container
 from ..fallback import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
@@ -179,7 +180,15 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     if isinstance(it, TpyMethodCall):
         methods = (("items",) if gen.unpack_vars is not None
                    else ("values", "keys"))
-        if _dict_view_iterable_ok(it, declared, analyzer, methods=methods):
+        # field_recv_ok: the FIELD-receiver flavor (`dict_items(h.m)`)
+        # is admitted HERE and at the method-call arm's iterable_override
+        # (both needed; the render is receiver-blind past admission). The
+        # for-head call sites keep the False default -- their
+        # storage-tuple loop-var registration is name-keyed, and routing
+        # without it was caught by the binding-fact join
+        # (tplib/json_model_nested).
+        if _dict_view_iterable_ok(it, declared, analyzer,
+                                  methods=methods, field_recv_ok=True):
             it_type = analyzer.get_expr_type(it)
             lvalue = False  # a view call result is an rvalue (owning capture)
         elif gen.unpack_vars is None and not owns:
@@ -245,6 +254,18 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         # A name is an lvalue; a field chain off one inherits it
         # (is_lvalue_iterable recurses to the Name arm).
         lvalue = True
+    elif (isinstance(it, TpyArrayLiteral) and not owns
+          and gen.unpack_vars is None and it.elements):
+        # A LIST-LITERAL iterable (`[len(x) for x in ["a", "bb"]]`): the
+        # AST captures the BRACED init-list itself
+        # (`auto __obj_N = {"a", "bb"};` -- no container spelling, so the
+        # element type comes from sema) and iterates begin/end; the
+        # init-list is sized, so the reserve fires like a container's.
+        it_type = analyzer.get_expr_type(it)
+        it_type = resolve_pending_container(it_type, analyzer) or it_type
+        if it_type is None:
+            return None
+        lvalue = False
     elif isinstance(it, TpyCall) and not owns:
         # A plain container-returning CALL iterable (`[n for n in
         # os.listdir(tmp) if ..]`): the for-each TpyCall arm's comp twin.

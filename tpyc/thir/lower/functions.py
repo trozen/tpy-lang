@@ -1526,6 +1526,16 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             return False
         dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
         return _callable_value(dt) and dt == ft_bare
+    if (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
+            and _mil_container_field(unwrap_readonly(ftype.inner))):
+        # An Optional[CONTAINER] field (storage `std::optional<vector<T>>`,
+        # the argparse action="append" result records): an OWN param -- the
+        # same storage optional by rvalue-ref -- MOVES bare
+        # (`tag(std::move(tag))`, the type-agnostic M3b-move arm). Move
+        # sources only; borrow lifts / literals keep their own renders
+        # unwitnessed.
+        source = _unwrap_copy(stmt.value, analyzer)
+        return _is_move_source(source, lc, own_param_names)
     is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
               and _f1_record(ftype.inner, analyzer))
     if not (is_opt or _f1_record(ftype, analyzer)):

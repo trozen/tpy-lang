@@ -96,12 +96,16 @@ class TestJaggedTupleMember:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
-    def test_dict_member_stays_ast(self):
-        # A dict literal member is not the admitted nested shape.
+    def test_dict_member_routes(self):
+        # A dict LITERAL tuple member now renders its self-describing
+        # spelled form inline in the storage tuple (the asdict-arms
+        # widening); this pin used to record the shape deferring.
         src = ("def f() -> None:\n"
                "    xs = [(1, {2: 3})]\n"
                "    print(xs)\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(src)
 
     def test_tuple_elem_subscript_receiver_routes(self):
         # `xs[1][1].append(9)` -> `std::get<1>(::tpy::__getitem__(xs,

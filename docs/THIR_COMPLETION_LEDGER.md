@@ -10843,3 +10843,209 @@ template-emission TRACK (overload_generic_mixed, skeleton-seam) --
 decomposition in TODO.md. Session close: the remaining sole tail is
 scout-sized-or-bigger items (parked rebind hoists, walrus design
 family, resumable flavors, the overload track).
+
+MULTI-BLOCKER MASS 1 (2026-08-16, thir-multi-mass): 4 cells + a review
+round, 2 flips (tplib/requests_form_data,
+tuple/mixed_own_tuple_param_from_call), dial -> 3568/3730. First wave
+against the multi-blocker set-cover mass. NEW MEASUREMENT: full
+per-case raise-site SETS over all 170 blocked cases
+(/tmp/agents/thir-wave/sites_multi.py -- the sole-only histograms hid
+where the multis converge); expressions.py's free-call arg-ladder
+terminal touches 33 of them and was the wave's site. Cells: (1) tuple
+FIELD reads at native/template tuple slots -- the F3 lift row went
+kind-blind (gate row + plain_kind dropped, mirroring the NAME row) and
+a VALUE-tuple regime landed in _native_protocol_field_arg + the field
+result gate (arg.native_value_tuple_field / field.value_tuple); clears
+the five tuple_to_str dataclass-__repr__ cases. (2) Bytes-member
+ptr-variant unions: _ptr_union_view_member_ok admits owned bytes -- the
+bytes-literal side-row's recorded "do not widen" fear was probed with
+an adversarial consumer sweep (narrowing/extraction/decl/field/return:
+every routed body byte-identical, the rest keep their own gates); free
+gate rows for the bytes-literal temp + the NEW dict-literal typed temp
+(unionlift.dict_literal_temp; predicates folded into
+_union_literal_temp_arg at review). (3) Frame-capturing
+container-literal ArgTemps: the plain generator-factory instantiation
+arm threads allow_temps like its qualified sibling;
+_container_literal_arg gains frame_capturing (readonly LIST literal
+hoists at a generator callee); the empty readonly-rvalue INLINE arm
+declines frame callees (dualgen-proven load-bearing). (4) Mixed
+own/borrow + owned-movable tuple call-pass: _mixed_own_borrow_tuple
+widens _btuple_pass_arg (the free-call gate leg refactored to call the
+SAME predicate -- no drift), call.own_tuple_pass binds the
+owned-movable prvalue bare; converts test_thir_tuples' stale
+still-defers pin. REVIEW ROUND (7 specialists; 4 clean): safety-model
+found a REAL Critical -- the frame gate row admitted dict/set literals
+whose render arm is not frame-aware, falling through to the INLINE bind
+the frame borrows past (dualgen-confirmed DIVERGENT, zero corpus
+witness -- the byte-diff was green throughout); fixed by restricting
+the gate to ArrayLiteral + boundary pin. That is the SECOND consecutive
+wave where a gate/render pair split across two predicates hid a drift
+the corpus could not see: when gate and render cannot key one
+predicate, the unpaired slice needs an explicit reject or a dualgen
+probe per literal kind. LESSON RE-PAID: `git checkout <path>` during a
+disable-probe wiped the cell's uncommitted edits -- disable-probes
+revert by re-edit, never by checkout. Site residue (chains moved):
+Iterable[Own[T]] args need the consuming own_iter move mirror + auto
+ArgTemp (move-audit-sensitive; those cases also block at for_each
+1854 / sgen.yield_type), Sized-at-len subscript/comp args, the
+tuple-optional literal family (tuple_optional_own_param),
+ptr_optional_collapse, and singles. Next sites by touched-case count:
+functions.py:2029 ctor.mil mass (27), expressions.py:2430 binop.shape
+(28), statements.py:8561 decl.slot_type (24), expressions.py:5397
+subscript.recv_type (22).
+
+MULTI-BLOCKER MASS 2 (2026-08-16, thir-multi-mass cont.): 1 cell + a
+delta-review round, 2 more flips (int/warn_mixed_sign_compare,
+tuple/tuple_user_record_field), dial -> 3570/3730. The binop terminal
+(the fresh census's top greedy pick): (1) the mixed-sign fixed-int
+compare fence became a lowering -- THIRBinOp template_override spelled
+from codegen's _CMP_HELPER (imported, one table, no drift); converts
+THREE stale test_thir_core ineligible-pins (value / logical-operand /
+chained-pair flavors, all byte-identical). (2)
+_ptr_tuple_field_compare_pair: both-FIELD ptr-repr tuple pairs take
+tuple_eq/tuple_lt over BARE member reads (the dataclass __eq__ chain);
+declared-type keyed. DELTA REVIEW (safety-model + test-coverage):
+safety-model found a compile-verified DIVERGENT Critical -- a
+PROVEN-narrowed value-opt operand reads its inner fixed int in THIR's
+gate while the AST's raw resolved type stays the Optional (target
+suppresses cmp_*), so the row emitted cmp_less((*a), b) vs the AST's
+bare ((*a) < b) -- a different BOOLEAN for negatives, zero corpus
+witness. Fixed with the narrowed-unwrap identity guard; five guard
+boundary pins added. THAT IS THE THIRD gate-vs-AST fact-derivation
+drift in three consecutive review rounds: whenever a THIR gate consumes
+a MUNGED operand fact (narrowed inner, unwrapped optional, split
+predicate), the AST's corresponding arm must be checked for which RAW
+fact it keys on -- and the divergence class is corpus-invisible by
+construction, so the check is a review/dualgen obligation, not a
+byte-diff hope. Residue at the site: the is/is-not None families
+(optional_other_nonetype x3, union_other_nonetype x3 -- coherent next
+cells), readonly_dict_reads' `in`-tparam pair, op_own_return_fresh's
+`+`. The dataclass_asdict pair moved to the asdict macro-expansion
+comps (site expressions.py:9136, greedy #2 -- the comp-element
+container-literal family).
+
+MULTI-BLOCKER MASS 7 (2026-08-17, thir-multi-mass cont.): 2 cells + a
+review round, routing-only (no flips), dial holds 3576/3730. (1)
+FIELD-receiver dict views in COMP sources. THE PRIOR BATCH'S RECORDED
+SEAM WAS WRONG: it claimed the method-family dispatch returns fam=None
+for field receivers -- spying shows the container family IS found; the
+actual gate is the ITERABLE override in the method-call arm
+(`iterable_override`), which called `_dict_view_iterable_ok` with the
+default `field_recv_ok=False`. Threading it there + at the comp route
+admits the flavor (render is receiver-blind past admission). The
+for-head call sites keep the default: their storage-tuple loop-var
+registration is name-receiver-keyed (the json_model_nested
+binding-gap catch), now BOUNDARY-PINNED rather than prose-only. A
+FENCE REASON RECORDED FROM INFERENCE IS A HYPOTHESIS -- this one was
+committed as fact in a commit message and cost a re-derivation.
+(2) List-literal comp iterables: the AST captures the braced init-list
+itself (`auto __obj_N = {"a", "bb"};`) and iterates begin/end with the
+sized reserve -- a route row, no new render; non-empty, unpack-less,
+non-consuming. REVIEW (safety-model): no Criticals; it independently
+verified the widened override is unreachable from the sync for-head
+AND the resumable/async for paths (tested plain/async/generator/
+readonly receivers). Two findings applied: a stale comment that
+contradicted its own commit's code, and the container-literal
+`resolve_pending_container` invariant made explicit. STILL DEFERRED,
+each pinned: list_comp_global_shadow (loop var shadows a pointer-slot
+GLOBAL -- needs the comp's render-state scoping, a design question);
+the dataclass_asdict pair (rvalue-into-borrow at a non-arg tuple sink
+-- the astuple ptr-repr family).
+
+MULTI-BLOCKER MASS 6 (2026-08-16, thir-multi-mass cont.): 3 cells + a
+batch review, 5 FLIPS (argparse help_basic, metavar, nargs,
+optional_list_absent, list_and_const_actions), dial -> 3576/3730. The
+argparse Own[Optional[container]] chain, ground end to end: (1) MIL --
+an Optional[CONTAINER] field takes the type-agnostic M3b-move from its
+Own storage-optional param (the is_opt row was F1-pointee-only);
+(2) OPT_PTR_SLOT reseats from container-returning by-value call
+rvalues (the accumulator copy); (3) the ctor-arg inline
+materialization (`std::move(p ? std::optional<V>(std::move(*p)) :
+std::nullopt)` -- gen_expr_deref's Own[Optional] arm); (4) the
+subscript receiver resolver's narrowed_ok (READ-only): a sema-narrowed
+Optional[container] FIELD receiver types at its inner
+(`(*a2.coord)[0]`), SETITEM keeps the declared slice; (5) the
+container copy tail admits pointer-local sources (OPT_PTR + REBIND
+flavors, `V((*acc))`). Converted fences: test_thir_containers'
+narrowed-field pin (read-routes/write-defers). BATCH REVIEW
+(safety-model, compile-verifying): CRITICAL -- the ctor-arg
+materialization is gen_call_arg's LAST-USE routing; a still-live
+source hoists a temp (unmirrored). Fixed with the _is_move_source gate
+(which also records to move_audit, closing the join blindness);
+boundary-pinned; all five flips stay CLEAN. The durable witness for
+the macro-shaped copy row is the flipped nargs/optional_list_absent
+pair (no synthetic fixture reaches the macro shape).
+
+MULTI-BLOCKER MASS 5 (2026-08-16, thir-multi-mass cont.): 2 cells + a
+batch review, 1 flip (none_safety/nested_field_narrowing), dial ->
+3571/3730. (1) Macro-transparent print args: the print-arg gate treats
+a TUPLE-LITERAL-producing call-macro arg as its expansion (the AST
+classifies by TYPE; the broad first cut regressed hasattr/isinstance
+bool-macro args and was restricted -- their call-typed rows already
+classify by result type); the wrap arm classifies VALUE tuple literals
+TUPLE (a GENERAL admission, plain print((x, y)) pinned at review); the
+all-value astuple expansion routes, the pointer-repr flavor stays
+pinned on the unmirrored spelled storage-tuple print render. (2) The
+one-link chain Optional-field family: None-test subject, the stateless
+narrowed chain READ, and the truthy flavor, all sharing
+_plain_record_field_link (the intermediate link must be a plain
+DECLARED record); two-link chains + Optional links boundary-pinned.
+BATCH REVIEW (safety-model + test-coverage over five cells): NO
+Criticals -- first clean-of-Criticals round this branch; safety-model
+still found the read predicate relying INCIDENTALLY on subject-gate
+ordering for its link guard (now carried in the predicate itself,
+unit-checked on the real compile). Residue: the other three
+optional_other_nonetype cases are distinct subject flavors
+(Optional[String] param + return.record_source; tuple-element
+subscript with runtime-check marker; Span|None coercion) each with
+additional other-site blockers.
+RATCHET-CATCH CODA (same day): the post-review full suite caught TWO
+de-routings the targeted runs missed. (a) The review round's link
+guard on _narrowed_opt_field_read over-restricted: the AST's read arm
+derefs on the leaf declared-vs-analyzed mismatch ALONE
+(link-type-blind), and dataclass_asdict_mixed's macro chain read (link
+receiver a macro temp outside locals_) is a live witness -- REVERTED;
+the read predicate's pin now asserts link-blindness. A REVIEWER'S
+RECOMMENDATION IS A HYPOTHESIS TOO: this one shipped a regression only
+the ratchet could see. (b) The macro print substitution had to become
+CONDITIONAL on the call node failing _wrap_print_form -- when the call
+classifies, its path lowers the expansion as an expression whose
+element admissions differ. Also converts the stale deep-chain-subject
+fence (one-link chains route). Suite green 11769, joins clean.
+
+MULTI-BLOCKER MASS 4 (2026-08-16, thir-multi-mass cont.): 1 cell (five
+asdict-expansion arms), no flips yet, dial holds 3570/3730. Landed: the
+dict-CONSTRUCTION call element (dict({...}) at a same-type dict slot),
+multi-list-member union comp disambiguation by the comp's OWN sema type
+(converts the two-list-members stays-AST fence), container FIELD reads
+at union element slots (bare variant copy, BORROW_BIND), dict-LITERAL
+storage-tuple members (self-describing inline), and
+_dict_view_iterable_ok FIELD receivers (declared-type keyed;
+len/print/list()/for-head consumers dualgen-verified) + the
+dict-literal print-arg row. PINS ARE MACRO-DRIVEN: hand-spelled
+`dict({...})` / mixed-value dict literals resolve through different
+sema paths than the macro's stamped nodes, so the fixtures invoke
+asdict itself. THE REMAINING BLOCKER FOR BOTH dataclass_asdict FLIPS,
+spied precisely: `print(astuple(x))` arrives at the print-arg gate as
+the UNEXPANDED macro call (func=astuple, call_type=None) -- the gate
+must consult `e.macro_expansion` (the free-call arm at
+call.macro_expansion already does) and the expansion needs the SPELLED
+storage-tuple-literal print render
+(`TuplePrinter(std::tuple<ordered_map<..>>(<stmt-expr>))`). One cell:
+macro-consult at the print gate + wrap classification over the
+expansion + the spelled tuple render. Two flips behind it.
+
+MULTI-BLOCKER MASS 3 (2026-08-16, thir-multi-mass cont.): 1 cell, no
+flips, dial holds 3570/3730. The comp-element arm of the
+container-literal gate (the asdict recursion's dict-value comps): a
+list/dict comp at a matching container element slot gate-admits -- the
+RENDER arm already dispatched the target-typed `({...})` stmt-expr
+(previously reachable only via the dict-comp VALUE widening), so the
+cell is one gate arm + pins (set comps boundary-pinned). Both
+dataclass_asdict cases advance byte-identically; their remaining
+blockers, spied precisely: dataclass_asdict_fuzz needs a CALL rvalue at
+a `str | dict[str, Int32]` union ELEMENT slot (the nested asdict
+sub-expansion -- the variant ctor-temp flavor of the element gate);
+dataclass_asdict_dict_tuple needs `_comp_lowering_route` to admit the
+dict-comp-over-`.items()` shape (comp.route None). Two flips waiting
+behind those two arms.

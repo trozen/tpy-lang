@@ -290,6 +290,16 @@ THIR_FACES: frozenset[str] = frozenset({
     "unionlift.member",             # `pv{&(name)}`
     "unionlift.ctor_temp",          # ctor rvalue temp + `pv{&__tmp_N}`
     "unionlift.bytes_literal_temp", # owned-bytes literal temp + `pv{&__tmp_N}`
+    "unionlift.dict_literal_temp",  # dict-literal typed temp + `pv{&__tmp_N}`
+    "call.own_tuple_pass",          # owned-movable tuple call rvalue bare at
+                                    # the matching && slot
+    "binop.mixed_sign_cmp",         # mixed-sign fixed-int compare via
+                                    # ::std::cmp_* (target-less slice)
+    "binop.tuple_field_compare",    # ptr-repr tuple FIELD pair via
+                                    # tuple_eq/tuple_lt over bare members
+    "arg.own_opt_container_move",   # ptr-Optional[container] local at an
+                                    # Own[Optional[..]] ctor slot: the
+                                    # inline move materialization
     "arg.own_bytes_slot",           # view-form bytes at Own[bytes] elem slot
                                     # -> `::tpy::bytes_copy(x)`
     "call.isinstance_static_value", # tparam isinstance trait disjunction at
@@ -1950,6 +1960,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
+    "arg.native_value_tuple_field",  # value-tuple field passed whole at a
+                                    # native tuple slot (tuple_to_str(f))
+    "field.value_tuple",            # value-tuple field read consumed whole:
+                                    # bare member, forms coincide
     "call.native_range_arg",        # range(...) rvalue bare at a native
                                     # builtin's Iterable slot (zip(range..))
     "call.native_iter_call_arg",    # nested combinator / gen-factory rvalue
