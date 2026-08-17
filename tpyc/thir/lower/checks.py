@@ -5437,6 +5437,15 @@ def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
         # un-spelled auto temp; the genexpr's own lowering gates the
         # source/element shapes (a reject there falls the body back).
         return temps_ok
+    elif isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
+        # A str LITERAL at a STRUCTURAL slot (`count_chars("hello")` at
+        # `Iterable[Char]`): the same un-spelled auto temp, binding the raw
+        # `const char[N]` the protocol deduces on -- NOT the string_view the
+        # spelled temp would give, so it takes the direct row rather than
+        # `_protocol_arg_temp`. The @dynamic exclusion matches the sibling
+        # arms but has no constructible witness: sema rejects a str at a
+        # @dynamic slot for non-conformance before lowering sees it.
+        return temps_ok and _witness("argtemp.protocol")
     elif (isinstance(a, TpySubscript) and not is_dyn_protocol(proto)
           and _record_getitem_rvalue_arg(a, analyzer)):
         # A by-value record-getitem subscript rvalue at a STRUCTURAL slot
@@ -8967,7 +8976,7 @@ def _method_call_arg_ok(
                     temps_ok=temps_ok, narrowed=narrowed))
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
-    fam = _method_recv_family(recv_type, analyzer, tparam_bounds)
+    fam = _method_recv_family(recv_type, analyzer, tparam_bounds, e.method)
     if fam is not None:
         return fam.arg_ok(a, ptype, locals_, analyzer,
                           param_names=param_names, narrowed=narrowed)
@@ -10073,15 +10082,58 @@ def _container_method_elem(t: 'TpyType | None', analyzer) -> bool:
     return _container_elem_family(t, analyzer, elem_ok)
 
 
+def _builtin_container_type(t: 'TpyType | None', analyzer) -> bool:
+    """A builtin container / set type -- the receiver family's own membership
+    test, shared with the base-class check so the two cannot drift."""
+    return bool(_container_elem_family(t, analyzer, lambda _a: True,
+                                       span_elem_ok=lambda _a: True)
+                or _set_method_recv(t, analyzer))
+
+
+def _inherited_container_base(recv_type: 'TpyType | None',
+                              method: 'str | None',
+                              analyzer) -> 'TpyType | None':
+    """The builtin-container base a user record INHERITS `method` from, or
+    None. The AST's `_gen_method_call` forks on `record_info.get_method(
+    method) is None`: a method the record does not DECLARE falls past its
+    user-record arm into the same builtin-stub branches a plain container
+    receiver takes (`ml.append(10)` -> `ml->push_back(10)`, the identical
+    render a `list` binding gets), while an OVERRIDE takes the user-record
+    arm (`o.append(3)`). Keying on that raw fact rather than on the receiver
+    type alone is what keeps this row paired with the render it claims.
+
+    `method=None` (the chained-result callers, which ask only "is this a
+    container") never matches: without a name there is no declared-method
+    fork to mirror."""
+    if method is None:
+        return None
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
+         if isinstance(recv_type, TpyType) else None)
+    if not (isinstance(t, NominalType) and t.is_user_record):
+        return None
+    ri = analyzer.registry.get_record_for_type(t)
+    if ri is None or ri.get_method(method) is not None:
+        return None
+    for p in ri.parents:
+        if _builtin_container_type(p, analyzer):
+            return p
+    return None
+
+
 def _container_method_recv(recv_type: 'TpyType | None', analyzer,
-                           tparam_bounds: 'dict | None') -> bool:
-    return (_container_elem_family(recv_type, analyzer, lambda _a: True,
-                                   span_elem_ok=lambda _a: True)
-            or _set_method_recv(recv_type, analyzer))
+                           tparam_bounds: 'dict | None',
+                           method: 'str | None' = None) -> bool:
+    # No face here: a classification predicate runs BEFORE the family's shape
+    # gate can still reject, so a witness at this point would read as routed
+    # for a body that falls back. The routing pin carries the claim instead.
+    if _inherited_container_base(recv_type, method, analyzer) is not None:
+        return True
+    return _builtin_container_type(recv_type, analyzer)
 
 
 def _protocol_method_recv(recv_type: 'TpyType | None', analyzer,
-                          tparam_bounds: 'dict | None') -> bool:
+                          tparam_bounds: 'dict | None',
+                          method: 'str | None' = None) -> bool:
     if (_protocol_binding(recv_type) is not None
             or _bounded_tparam_protocol(recv_type, tparam_bounds) is not None):
         return True
@@ -10102,7 +10154,8 @@ def _protocol_method_recv(recv_type: 'TpyType | None', analyzer,
 
 
 def _own_dyn_method_recv(recv_type: 'TpyType | None', analyzer,
-                         tparam_bounds: 'dict | None') -> bool:
+                         tparam_bounds: 'dict | None',
+                         method: 'str | None' = None) -> bool:
     """An `Own[@dynamic P]` receiver (`std::unique_ptr<P>`): the member
     access spells `->` (the emit node's `_recv_own_dyn` mirror); shape and
     args share the protocol family's gates -- the AST's user-record guard
@@ -10117,12 +10170,14 @@ def _own_dyn_method_recv(recv_type: 'TpyType | None', analyzer,
 
 
 def _bytearray_method_recv(recv_type: 'TpyType | None', analyzer,
-                           tparam_bounds: 'dict | None') -> bool:
+                           tparam_bounds: 'dict | None',
+                           method: 'str | None' = None) -> bool:
     return _bytearray_recv(recv_type)
 
 
 def _scalar_method_recv(recv_type: 'TpyType | None', analyzer,
-                        tparam_bounds: 'dict | None') -> bool:
+                        tparam_bounds: 'dict | None',
+                        method: 'str | None' = None) -> bool:
     """A SCALAR value receiver's builtin method call (`v.as_integer_ratio()`,
     `n.bit_length()`): every stub is @native(function=True) / @cpp_template,
     rendered by the general THIRMethodCall arm exactly like the view
@@ -10155,7 +10210,8 @@ def _scalar_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
 
 
 def _view_method_recv(recv_type: 'TpyType | None', analyzer,
-                      tparam_bounds: 'dict | None') -> bool:
+                      tparam_bounds: 'dict | None',
+                      method: 'str | None' = None) -> bool:
     """A str/StrView or bytes/BytesView value receiver: both render args
     through the same builtin-stub loop, so they share the view rows. A
     None-NARROWED `Optional[view]` binding joins: its read is the `(*s)`
@@ -10201,14 +10257,20 @@ _METHOD_RECV_FAMILY_TABLE: tuple = (
 
 
 def _method_recv_family(recv_type: 'TpyType | None', analyzer,
-                        tparam_bounds: 'dict | None') -> '_MethodRecvFamily | None':
+                        tparam_bounds: 'dict | None',
+                        method: 'str | None' = None) -> '_MethodRecvFamily | None':
     """Classify a plain method call's receiver into its stub/protocol family
     -- the ONE family list both method gates consult. None -> the residual
     dispatch (the ptr-template arm at the shape gate, the user-record path at
     the arg gate; a routed ptr-template call admits no args, so the record
-    fallback never fires for one)."""
+    fallback never fires for one).
+
+    `method` is the called name, which the container row needs to mirror the
+    AST's declared-vs-inherited fork (`_inherited_container_base`); families
+    keying on the receiver type alone ignore it. Both gates must pass the
+    SAME name, or the pairing the table exists to guarantee breaks."""
     for pred, family in _METHOD_RECV_FAMILY_TABLE:
-        if pred(recv_type, analyzer, tparam_bounds):
+        if pred(recv_type, analyzer, tparam_bounds, method):
             return family
     return None
 

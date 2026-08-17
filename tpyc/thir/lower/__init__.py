@@ -17,6 +17,7 @@ from .context import _LowerCtx, _LowerScope, _Prescan
 from .checks import _is_len_native
 from .functions import (
     iter_module_callables,
+    unemitted_overload_clones,
     iter_module_constructors,
     lower_constructor,
     lower_function,
@@ -30,6 +31,7 @@ from .statements import _persistent_alias_name
 
 __all__ = [
     "iter_module_callables",
+    "unemitted_overload_clones",
     "iter_module_constructors",
     "lower_constructor",
     "lower_function",

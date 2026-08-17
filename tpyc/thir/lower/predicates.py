@@ -3106,6 +3106,40 @@ def _chained_field_read_ok(e: TpyExpr, analyzer) -> bool:
         ft = unwrap_readonly(ft.wrapped)
     return isinstance(ft, NominalType) and _f1_record(ft, analyzer)
 
+def _subscript_field_recv_ok(e: TpyExpr, analyzer) -> bool:
+    """A `.field` access whose receiver is a SUBSCRIPT (`pp[0][0].fd`,
+    `h.pair[0].v`, `xs[0].v`, `make_pair(a, b)[1].v`): _gen_field_access
+    renders the receiver and appends `.field`, so the row is the composition
+    of the subscript's own render with the member tail -- the subscript arm
+    gates its own shapes, and an unsupported one falls the body back there.
+
+    Admitted only when the element resolves to an F1 record. A `Ptr` element
+    takes `::tpy::deref_check(<recv>).f` (the sibling Ptr arm's wrap) and an
+    Optional one its own check; neither is spelled here, and a blanket
+    subscript admission was measured to DROP the deref_check on a
+    `tuple[P | None, Ptr[Tag]]` element -- a missing null check, not merely a
+    byte divergence.
+
+    Marker-clean like every sibling subscript row. Four of the nine markers
+    (property getter, dyn getattr, module var, class constant) early-return
+    further up the field arm and could not reach here anyway, but
+    `deref_depth` / `deref_narrowed_to` DO reach it, and the render tail
+    drops the `__deref__()` hops for a non-NAME receiver -- measured, on a
+    shape no corpus case reaches."""
+    if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
+        return False
+    if not isinstance(e.obj, TpySubscript):
+        return False
+    if e.needs_optional_runtime_check:
+        return False
+    t = analyzer.get_expr_type(e.obj)
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if t is not None else None)
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return _f1_record(t, analyzer) and bool(_witness("field.subscript_recv"))
+
+
 def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
                              analyzer) -> bool:
     """A `.field` access whose receiver evaluates to an explicit `Ptr[record]`

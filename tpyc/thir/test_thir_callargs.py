@@ -3381,3 +3381,46 @@ class TestOptViewCtorReturn:
         thir, wit = _lower_ctx_witnessed(src)
         assert _fn_l(thir, "returns_view_opt") is not None
         assert wit.get("ret.value_opt_view_ctor", 0) >= 1
+
+
+class TestStrLiteralProtocolArgTemp:
+    """A str LITERAL at a STRUCTURAL protocol slot hoists the un-spelled
+    `auto __tmp_N = "hi";` temp -- the raw `const char[N]` the protocol
+    deduces on, not the string_view a spelled temp would give."""
+
+    _SRC = (
+        "from typing import Iterable\n"
+        "from tpy import Int32, Char\n"
+        "def count_chars(cs: Iterable[Char]) -> Int32:\n"
+        "    n = 0\n"
+        "    for _c in cs:\n"
+        "        n += 1\n"
+        "    return n\n"
+        "def main() -> None:\n"
+        "    print(count_chars('hello'))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        _assert_routes_byte_identical(self._SRC)
+
+    def test_arg_is_an_unspelled_temp(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert faces.get("argtemp.protocol")
+        main = _fn(thir, "main")
+        assert main is not None
+
+    def test_unflushable_position_stays_ast(self):
+        """BOUNDARY: a while condition has no flush point, so the temp row
+        must reject there rather than hoist a stale snapshot."""
+        src = (
+            "from typing import Iterable\n"
+            "from tpy import Int32, Char\n"
+            "def count_chars(cs: Iterable[Char]) -> Int32:\n"
+            "    return 1\n"
+            "def main() -> None:\n"
+            "    while count_chars('hi') > 5:\n"
+            "        break\n"
+            "main()\n"
+        )
+        _assert_byte_identical(src)

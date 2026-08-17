@@ -2485,7 +2485,8 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
             if isinstance(analyzer.get_expr_type(elem), ReadonlyType):
                 return False
         return True
-    if isinstance(src, TpySubscript) and isinstance(src.obj, TpyName):
+    if (isinstance(src, TpySubscript)
+            and isinstance(src.obj, (TpyName, TpyFieldAccess))):
         return not isinstance(analyzer.get_expr_type(src.obj), ReadonlyType)
     if (isinstance(src, TpyFieldAccess)
             and isinstance(src.obj, TpyName)):

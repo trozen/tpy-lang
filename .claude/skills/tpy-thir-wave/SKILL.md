@@ -26,6 +26,7 @@ improvise.
 |---|---|
 | `probe_corpus.py` | per-case blocker map -> `blockers.json`. ~5 min. Once per session. |
 | `probe_sites.py "<tag>"` | **where** that tag's sole-blocker cases actually reject, ranked. ~4 min. This picks the work. |
+| `sites_multi.py [prefix]` | per-case raise-site SETS over every marked case (soles AND multis) + a greedy set-cover ranking. The paying view when cases have several blockers; `probe_sites.py` only sees sole-blockers. |
 | `probe_one.py <case>...` | per-case fallback reasons + snapshot byte-diff. The per-edit smoke: a flip candidate prints CLEAN and IDENTICAL. |
 | `probe_loc.py <case>...` | every `ThirUnsupported` raised, with reason + source line. Decodes a lossy tag. |
 | `dualgen.py <file.py>` | THIR-vs-AST diff over a scratch program. The only check for an admitted shape with no corpus witness. |

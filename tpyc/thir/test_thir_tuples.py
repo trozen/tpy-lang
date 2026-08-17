@@ -2116,10 +2116,10 @@ class TestBorrowTupleHoistRejects:
         assert _borrow_tuple_binding_sources("t", lc) is None
         assert _borrow_tuple_binding_sources("y", lc) is not None
 
-    def test_tuple_over_tuple_chain_rejects(self):
-        # items[i][N].field admits CONTAINER-element receivers only; a
-        # tuple-over-tuple chain (t[0][1].val off a nested tuple name) is an
-        # unverified render and must fall back.
+    def test_tuple_over_tuple_chain_routes(self):
+        # A tuple-over-tuple chain (`t[0][1].val`) composes the subscript
+        # renders with the member tail -- the same shape the nested-inline
+        # corpus case emits.
         src = (
             _BT_RECORDS
             + "def f(b: Box2) -> Int32:\n"
@@ -2127,7 +2127,7 @@ class TestBorrowTupleHoistRejects:
             + "    return t[0][1].val\n"
             + "f(Box2(3))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
         _both_cpp(src)
 
 

@@ -80,6 +80,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.opt_record_recv",        # narrowed owned-optional record name
                                     # receiver derefs -- (*r).field
     "field.slice_recv",             # slice-object name: index.start bare
+    "field.subscript_recv",         # subscript receiver: std::get<0>(t).f
     "field.storage_opt_recv",       # narrowed storage-opt local receiver
                                     # derefs at the access -- (*item).field
     "arg.storage_opt_whole",        # narrowed storage-opt local at a

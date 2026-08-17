@@ -45,9 +45,10 @@ class TestTupleFieldSubscript:
         assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
 
-    def test_chain_rooted_receiver_stays_ast(self):
-        # The tuple field's OWN receiver must be ladder-clean: a
-        # field-over-field root is outside `_field_receiver_ok`'s slice.
+    def test_chain_rooted_receiver_routes(self):
+        # A field-over-field ROOT under the subscript is fine: the field row
+        # keys the subscript's ELEMENT type and the subscript arm gates its
+        # own receiver, so the two compose.
         src = (self._SRC
                + "class Outer:\n"
                + "    c: Container\n"
@@ -56,7 +57,8 @@ class TestTupleFieldSubscript:
                + "def use(o: Outer) -> None:\n"
                + "    print(o.c.data[0].x)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
 
 
 class TestRecordGetitemReceiver:

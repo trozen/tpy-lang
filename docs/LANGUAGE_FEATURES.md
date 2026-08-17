@@ -4732,19 +4732,31 @@ def main() -> Int32:
 
 **Supported builtin parents:**
 - `list[T]` - dynamic list
+- `dict[K, V]` - mapping
+- `set[T]` - set
 - `Array[T, N]` - fixed-size array (planned)
 
 **Key points:**
 - Inherited methods from builtins work automatically (e.g., `append`, `__getitem__`, `__len__`)
 - Type parameters are substituted with concrete types (e.g., `T` -> `Int32`)
-- No `super().__init__()` needed - C++ base class default constructor is called automatically
+- No `super().__init__()` needed - the C++ base default constructor runs automatically.
+  Calling it explicitly to seed the base also works (`super().__init__([1, 2, 3])`)
 - Can add custom fields and methods to the child class
 - Subscript (`stack[i]`) and `len(stack)` work on child types
+- A generic child forwarding its parameter works (`class Bag[T](list[T])`,
+  instantiated as `Bag[Int32]()`)
 
 **Limitations:**
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
-- No `super()` calls - child must initialize parent fields directly
-- Cannot inherit from builtins with forwarded type parameters (`class Child[T](list[T])`)
+- The child must declare an `__init__`. A bodyless child (`class Child(list[Int32]): pass`)
+  emits an inherited-constructor declaration spelled with the TPy type name and fails to
+  compile
+- `super().<method>()` into a builtin base does not compile: the call spells the TPy method
+  name against the C++ base type, ignoring the stub's native rename. Call the method on
+  `self` instead, or rename the override
+- Operator protocols do not walk to the builtin base: `x in child` is rejected on a `set`-
+  or `dict`-inheriting child (and iteration behaves the same way) even though the plain
+  method forms (`.add()`, `.discard()`, `.get()`) resolve correctly
 
 #### `@override` Decorator
 

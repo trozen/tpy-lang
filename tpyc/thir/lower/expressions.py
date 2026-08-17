@@ -300,6 +300,7 @@ from .predicates import (
     _ptr_optional_tuple,
     _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
+    _subscript_field_recv_ok,
     _ptr_value_none_field,
     _user_deref_field_recv_ok,
     _user_deref_method_call_ok,
@@ -4519,7 +4520,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 if not result_ok:
                     raise ThirUnsupported("field.result_type", detail=True)
                 if not (
-                        _field_receiver_or_unbound_self_ok(
+                        _subscript_field_recv_ok(e, analyzer)
+                        or _field_receiver_or_unbound_self_ok(
                             e, declared, analyzer)
                         or _ptr_value_field_recv_ok(e, declared, analyzer)
                         or _user_deref_field_recv_ok(
@@ -8037,7 +8039,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # param type into literal renders; user-record methods pass
             # target_type=None (target-less literals). The flag picks the
             # literal render in _lower_call_arg.
-            fam = _method_recv_family(recv_type, analyzer, lc.tparam_bounds)
+            fam = _method_recv_family(recv_type, analyzer, lc.tparam_bounds,
+                                      e.method)
             if fam is not None and lit_member is not None:
                 # A literal-overloaded member on a builtin-family receiver:
                 # only the record arm carries the mangled spelling.
@@ -11690,6 +11693,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 init=_lower_expr(
                     a, lc, declared,
                     use=replace(_NESTED_ARG_USE, coro_factory=True)),
+                form=Form.BORROW, loc=getattr(a, "loc", None))
+        if isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
+            # The str-literal structural temp (`auto __tmp_N = "hello";`):
+            # un-spelled, so the protocol deduces on the raw char array.
+            if not temp_args:
+                raise ThirUnsupported(
+                    "protocol arg-temp outside a flush position")
+            _witness("argtemp.protocol")
+            return THIRArgTemp(
+                result_type=proto, cpp_type=None,
+                init=_lower_expr(a, lc, declared),
                 form=Form.BORROW, loc=getattr(a, "loc", None))
         if _iter_rvalue_structural_arg(a, proto, declared, lc.analyzer):
             # The iterator sibling (gen-factory / iter() / dict-view

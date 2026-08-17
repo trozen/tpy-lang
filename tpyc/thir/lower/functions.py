@@ -164,6 +164,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _builtin_container_type,
     _container_literal_shape_ok,
     _ctor_shape_ok,
     _storage_form_tuple_return,
@@ -1588,8 +1589,20 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         note("ctor.unregistered")
         return None
     if any(not _f1_record(p, analyzer) for p in ri.parents):
-        note("ctor.non_f1_base")
-        return None
+        # A builtin-CONTAINER base (`class MyList(list[Int32])`) is not F1 --
+        # its `to_cpp()` is the formatter spelling -- but it only ever reaches
+        # the emitted ctor through a base initializer, and the struct header
+        # naming it belongs to the printer layer. With no base-init call in the
+        # body there is nothing for the MIL to spell, so the tail emits
+        # identically. `super().__init__([1, 2, 3])` DOES reach one (the
+        # element-seeding spelling compiles and runs), so the base-init reject
+        # is load-bearing, not defensive: the MIL would have to spell the
+        # container base's own initializer, which the tail cannot render.
+        if (any(not _builtin_container_type(p, analyzer)
+                and not _f1_record(p, analyzer) for p in ri.parents)
+                or any(is_base_init_call(s) for s in init_method.body)):
+            note("ctor.non_f1_base")
+            return None
     if (init_method.is_overload_stub or init_method.native_function
             or init_method.is_async or init_method.is_generator
             or init_method.type_params):
@@ -2330,6 +2343,34 @@ def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
                            _module_qname=ri.qualified_name())
     return NominalType(record_name, _module_qname=ri.qualified_name())
 
+def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
+    """ids of the auto_readonly / auto_own CLONE of an @overload impl whose
+    body the AST never emits.
+
+    `_collect_method_overload_groups` hands a name's stubs to the FIRST
+    non-stub method it sees (`pending_stubs.pop`), and method expansion has
+    already split the impl into a mutable and a const clone -- so only one of
+    the two is registered. The AST emits THAT one once per stub, taking each
+    specialization's const-ness from the stub, and never names the twin: every
+    `thir_overload_key` for the group points at the registered impl. Attempting
+    the twin would tally a fallback for a body that does not exist, gating the
+    ratchet on a phantom."""
+    out: set[int] = set()
+    for record in module.records:
+        registered = {m.name for m in record.methods
+                      if analyzer.overload_groups.get(id(m))}
+        if not registered:
+            continue
+        for m in record.methods:
+            if (m.name in registered and not m.is_overload_stub
+                    and not analyzer.overload_groups.get(id(m))
+                    and (m.auto_readonly_params_resolved
+                         or m.is_auto_own_borrowing_clone
+                         or m.is_auto_own_consuming_clone)):
+                out.add(id(m))
+    return out
+
+
 def iter_module_callables(module: TpyModule, analyzer):
     """Yield `(callable, self_type)` for every function / method the slice may
     admit -- the single feed list shared by `lower_module` and codegen so the
@@ -2338,7 +2379,10 @@ def iter_module_callables(module: TpyModule, analyzer):
     (instance / static / property / dunder) yield the owning record's type
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
-    gen_method_def."""
+    gen_method_def; so is the unemitted @overload clone, which has no body on
+    either path. Excluding it HERE rather than at each driver is what keeps a
+    third consumer (the dump) from reporting it as un-routed."""
+    dead_clones = unemitted_overload_clones(module, analyzer)
     for func in module.functions:
         yield func, None
     for record in module.records:
@@ -2347,7 +2391,7 @@ def iter_module_callables(module: TpyModule, analyzer):
             continue
         init = record.init_method
         for method in record.methods:
-            if method is not init:
+            if method is not init and id(method) not in dead_clones:
                 yield method, self_type
 
 def iter_module_constructors(module: TpyModule, analyzer):

@@ -3380,9 +3380,10 @@ class TestAutoOwnConsumingClone:
         assert "return std::move(this->a);" in both
         _assert_byte_identical(src)
 
-    def test_composed_overload_set_still_defers(self):
-        # BOUNDARY: the carve-out is for a 2-entry CLONE pair. A clone pair
-        # layered over genuine @overload stubs (4+ entries) keeps rejecting.
+    def test_composed_overload_set_routes(self):
+        # A clone pair layered over genuine @overload stubs: the AST emits
+        # every specialization from the ONE registered impl and never names
+        # the unregistered twin, so the twin has no body to route.
         src = ("from typing import Self, overload\n"
                "from tpy import Int32, auto_own\n"
                "class W:\n"
@@ -3400,9 +3401,17 @@ class TestAutoOwnConsumingClone:
         compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
                 emit_source_comments=False, thir_codegen=True))
-        ov = {k: v for k, v in compiler._thir_fallback.items()
-              if 'overload_set' in k}
-        assert ov, "a composed set must still fold at the overload gate"
+        assert not compiler._thir_fallback, compiler._thir_fallback
+        # Zero fallback alone cannot tell "twin skipped, the rest routed" from
+        # "the whole group over-skipped so nothing was attempted": assert the
+        # skip set names exactly the twin, leaving the registered impl live.
+        from .lower import unemitted_overload_clones
+        entry = _entry(modules)
+        dead = unemitted_overload_clones(entry.ast, entry.analyzer)
+        impls = [m for r in entry.ast.records for m in r.methods
+                 if m.name == "m" and not m.is_overload_stub]
+        assert len(impls) == 2
+        assert len([m for m in impls if id(m) in dead]) == 1
         _assert_byte_identical(src)
 
     def test_record_typed_T_routes(self):

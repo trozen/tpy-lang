@@ -11049,3 +11049,238 @@ sub-expansion -- the variant ctor-temp flavor of the element gate);
 dataclass_asdict_dict_tuple needs `_comp_lowering_route` to admit the
 dict-comp-over-`.items()` shape (comp.route None). Two flips waiting
 behind those two arms.
+
+### The inherited-builtin-container receiver row (2026-08-17)
+
+One cell, dial 3576 -> 3578/3731 (1 flip,
+`inheritance/inheritance_builtin_overloads`, plus one new case). A user
+record inheriting a builtin container (`class MyList(list[Int32])`)
+now routes both its inherited method calls and its constructor.
+
+THE PARKED DESIGN PREMISE WAS FALSE, and verifying it first is what
+made this a row instead of a concept. TODO.md had this parked as
+needing a new concept -- resolve a record receiver to its inherited
+container type, thread it through the container family's shape/arg
+gates "which key on `is_list(recv_t)`" -- plus an arrow-vs-dot receiver
+form. Measured: `_container_method_call_supported` and
+`_container_method_arg_ok` key on the RESULT type and the fi and never
+touch `recv_type`; only the family PREDICATE looks at the receiver.
+And the receiver render needed nothing at all -- `ml->push_back(10)` is
+the same arrow a `list` pointer binding already gets. A disposable
+probe (predicate widened, nothing else) took the case straight to
+CLEAN + IDENTICAL before any design was written.
+
+WHAT IT ACTUALLY NEEDED was the AST's own fork, not a derived fact.
+`_gen_method_call` falls past its user-record arm exactly when
+`record_info.get_method(name)` is None, so an INHERITED method lands in
+the same builtin-stub branches a plain container receiver takes while
+an OVERRIDE takes the record arm (`o.append(3)` vs `p.push_back(3)`,
+spy-confirmed on both). The method name is therefore threaded into
+`_method_recv_family` and every table predicate, and
+`_inherited_container_base` mirrors that raw call. Keying the row on
+the receiver TYPE alone -- the obvious shape, and the one the park
+described -- would have gate-admitted the override into a family whose
+render is wrong: the same gate/render split that produced the last
+three review Criticals, caught here at design time by asking what the
+AST keys rather than what the shape looks like.
+
+No face on the new row. A classification predicate runs before the
+family's shape gate can still reject, so a witness there would read as
+routed for a body that falls back; the routing pin carries the claim.
+
+The ctor's non-F1-base reject admits a builtin-container parent when
+the body has no base-init call (the base never reaches the MIL then).
+THE BASE-INIT REJECT IS LOAD-BEARING, and the first draft of this entry
+said the opposite. Two arity-error probes (`super().__init__()`,
+`list.__init__(self, ...)`) were generalized into "sema rejects every
+spelling, so the guard has no witness" -- but `super().__init__([1, 2,
+3])` seeds the base's elements, compiles, and runs. The review caught
+the claim; the CODE was right either way, only the reasoning behind it
+was invented. Pinned now by `test_base_init_ctor_stays_ast`. A fence
+reason derived from a probe covers exactly the spellings probed.
+
+Sliced scope: `str`/`bytes`/`bytearray`/scalar bases are NOT covered
+(only `_container_elem_family` + set); bytearray and the generic
+`class Bag[T](list[T])` shape are boundary-pinned. Dict and set
+inheritance are admitted and carry an executed case
+(`inheritance_builtin_dict_set`) that mutates through a call boundary,
+not just unit byte-identity -- the review's point that a unit pin never
+builds the C++ it asserts about.
+
+Three adjacent pre-existing bugs found and filed, all AST-side: a
+`super().<method>()` call on a builtin base spells the TPy method name
+against the C++ base type (uncompilable); a container-inheriting record
+with no explicit `__init__` emits `using std::vector<int32_t>::list;`
+(uncompilable -- the injected-class-name is `vector`, not `list`); and
+`x in t` is rejected on a set-inheriting record, because membership
+resolves dunders against the record alone while the method-call path
+walks to the builtin base.
+
+### The unemitted @overload clone (2026-08-17)
+
+One cell, 2 flips (`calls/overload_getitem_slice_generic`,
+`readonly/auto_readonly_overload_const`), dial 3578 -> 3580/3731.
+
+THE REJECT WAS A PHANTOM. `_collect_method_overload_groups` hands a
+name's stubs to the FIRST non-stub method (`pending_stubs.pop`), and
+method expansion has already split an `@auto_readonly` / `auto_own`
+impl into two clones -- so only one is registered. The AST emits THAT
+one once per stub, taking each specialization's const-ness or move-ness
+from the stub, and never names the twin. THIR was attempting the twin,
+failing, and tallying a fallback for a body that does not exist.
+
+The approved design was to PAIR the twin with its polarity-matching
+stub. That was wrong and the spy said so: the lookup key is minted by
+the AST emitter (`thir_overload_key`), which has no group for the twin
+either, so a paired entry would have had no consumer. Printing
+`key[0]` against the record's methods in ONE process showed every
+specialization keying off the single registered impl -- ids are not
+comparable across processes, and an earlier cross-process comparison
+had made the pairing look plausible.
+
+The fix is therefore a SKIP, not a lowering. `unemitted_overload_clones`
+computes the dead ids once per module (not per callable -- the naive
+form is quadratic in a record's method count).
+
+THE OVER-SKIP DIRECTION IS THE DANGEROUS ONE and has no automatic
+detector: skipping a live body tallies NO fallback, so the ratchet
+cannot see it, and the AST re-emits byte-identically, so the byte-diff
+cannot either. Both directions are pinned explicitly -- an ordinary
+auto_readonly pair and a plain @overload set keep every half attempted.
+
+Converted `test_composed_overload_set_still_defers`, whose fence ("4+
+entries keeps rejecting") described the same phantom; the composed
+auto_own shape now routes with zero fallback.
+
+Also lands one protocol-arg row: a str LITERAL at a structural slot
+hoists the un-spelled `auto __tmp_N = "hello";` temp (the raw
+`const char[N]` the protocol deduces on -- a spelled temp would give a
+string_view). Advances `iterators/iterable_builtin_types`; no flip.
+
+SCOPE CORRECTION worth recording: the two remaining parked sites were
+scoped as one cell each. They are not. The protocol-arg family is N
+narrow rows across DIFFERENT gates, and no single row flips a case --
+`iterable_builtin_types` still needs the view family's Iterator-protocol
+return (`str.__iter__` is @cpp_template, so it misses the
+native-function form), while `own_iter_to_iterable` and
+`overload_template_stub_cross_module` never reach the protocol-arg gate
+at all. Scope a family by probing every member's reject SITE, not by
+the shared tag.
+
+Review round on the above (2026-08-17). The skip moved from the two
+driver loops into `iter_module_callables` itself -- the feed list whose
+whole purpose is that the drivers "never drift", and which a third
+consumer (`thir/dump.py`) reads without any skip, so it would have
+reported the dead clone as un-routed. Excluding it at the source is what
+makes that correct by construction rather than by convention.
+
+The composed-set pin was strengthened: zero-fallback plus byte-identity
+cannot distinguish "twin skipped, rest routed" from "whole group
+over-skipped so nothing was attempted" -- both are silent. It now asserts
+the skip set names exactly one of the two impls.
+
+A boundary pin for the str-literal row at a @dynamic slot was written and
+then DELETED: sema rejects a str at a @dynamic slot for non-conformance,
+so the pin could never fail. An unfalsifiable pin is worse than none --
+the reason lives at the guard instead.
+
+The review also surfaced a pre-existing AST bug, filed: `auto_own[Self]`
+composed with `@overload` emits every specialization twice with identical
+signatures (`is_readonly` comes from the stub, `is_consuming` from the
+impl), which g++ rejects. Reported as a silent polarity collapse;
+building the repro showed it is a hard compile error.
+
+### The subscript field-receiver row (2026-08-17)
+
+One cell, 1 flip (`tuple/tuple_own_nested_inline`), dial 3580 ->
+3581/3731. A `.field` read whose receiver is a SUBSCRIPT --
+`pp[0][0].fd`, `h.pair[0].v`, `xs[0].v`, borrow tuples of reference
+elements, list and dict subscripts -- composes the subscript's own
+render with the member tail. Three more tuple cases advanced past the
+site, and two stale fences converted (`test_chain_rooted_receiver_*`,
+`test_tuple_over_tuple_chain_*`, both dualgen-proven identical).
+
+THE BOUNDARY WAS MEASURED, NOT REASONED. A blanket subscript admission
+DIVERGED: THIR dropped `::tpy::deref_check(...)` on a
+`tuple[P | None, Ptr[Tag]]` element -- a missing NULL CHECK, not a byte
+nit. The predicate keys the element resolving to an F1 record; the
+reject-unit asserts the AST still emits the check. This is the value of
+probing an over-broad admission first and reading the diff, rather than
+shipping the narrow guess: the narrow guess would have been "exclude
+needs_optional_runtime_check", which was measured NOT to be the driving
+fact (the element is a Ptr, not an unproven Optional).
+
+SITE STATUS, precisely: the SUBSCRIPT shape is zero corpus-wide bar the
+deliberate Ptr fence. Two cases keep the `field.receiver_shape` tag but
+are unrelated shapes -- a Ptr-returning METHOD CALL receiver
+(`h.get_node().value`) and a deep NATIVE field chain (`self.s.a.q.flag`).
+Reject tags are lossy; the shape is done, the tag is not.
+
+TWO CENSUS-TOOL BUGS FOUND AND FIXED, both of which INFLATE progress:
+`sites_multi.py` (and the group variant) counted (site, reason) PAIRS as
+touched cases, so a case with three reasons at one site counted three
+times -- the site that motivated this cell read as 13 cases and is 6,
+and every earlier session's ranking was inflated the same way. And a
+case with no `src/main.py` (a frontend-plugin `pascal/` case) returned
+an empty raise list, i.e. read as a FLIP CANDIDATE; of seven such
+"raised nothing" cases, four were unprobed and three block in the
+RESUMABLE path the prober never reaches. Zero were real.
+
+A NEAR-MISS worth recording: converting one stale fence with an
+unanchored `str.replace` rewrote EVERY `assert _fn(...) is None` in the
+file, turning five unrelated reject-pins into routing-pins. The targeted
+run caught it; the files were restored and the conversions redone
+anchored. On a test file full of near-identical assertions, an
+unanchored replace silently deletes exactly the boundary coverage that
+catches over-admission.
+
+### Borrow-tuple source: field-rooted subscript (2026-08-17)
+
+Routing-only, NO flip; dial holds 3581/3731. `_borrow_tuple_source_ok`
+admitted a subscript over a NAME (`rows[0]`) but not over a FIELD
+(`self.store[k]`), though the row directly below it already admits
+field-rooted sources. One-line widening, byte-identical, pinned with the
+readonly-root boundary.
+
+THE CELL STOPPED SHORT OF THE SITE, deliberately and with the reason
+recorded. `statements.py`'s decl.slot_type is the biggest remaining site
+(24 cases, 2 sole-site flips) but the rejecting SLOT TYPES are a long
+tail of ~20 families -- no dominant shape. The two coherent clusters are
+pointer-repr Optional slots (~10 cases, holding the other sole-site flip
+`argparse/custom_type_list`, shape: the `optional_to_ptr` lift) and
+borrow tuples (~7). This cell took the tuple cluster's source row;
+`tuple_borrow_const_deep_source` went 3 rejects -> 2 and did NOT flip,
+because its remaining decls reject BEFORE the borrow-tuple cascade at a
+different guard, and following them leads into the borrow-tuple const
+fixpoint -- which already carries a BUGS entry for emitting ill-formed
+C++. Not a design fork, just work that wants its own session.
+
+Method note for the next reader: the slot histogram (spy the reject and
+bucket by `vtype`) is what showed there was no dominant family. Site
+size alone would have suggested a single big arm; there isn't one.
+
+Merge review of the whole branch (2026-08-17). No Criticals from seven
+specialists; codegen-correctness, safety-model and cpython-parity clean.
+
+The finding that mattered was NOT about THIR: `docs/LANGUAGE_FEATURES.md`
+presents builtin-container inheritance as working while this branch filed
+two bugs against exactly the documented pattern -- a bodyless child
+(`class Child(list[Int32]): pass`) does not compile, and `x in child` is
+rejected on a set/dict-inheriting child. Both are now Limitations there,
+along with the `super().<method>()` miscompile. `dict`/`set` were also
+missing from "Supported builtin parents" though this branch's own case
+proves them.
+
+A THIRD doc claim there was measured STALE and removed: "Cannot inherit
+from builtins with forwarded type parameters (`class Child[T](list[T])`)"
+-- that compiles and runs (`Bag[Int32]()` -> `2 5 6`). Nobody reported it;
+it turned up because the reviewer's finding sent us to read the section.
+
+A reviewer flagged the new `_subscript_field_recv_ok` as possibly making
+the tuple-scoped `_field_over_subscript_ok` dead. It does not: that
+predicate stays live for WRITE targets, where this row is not consulted.
+The real asymmetry is that the sibling carries `_field_markers_clean` and
+this row does not -- correct, because the marker-bearing field shapes take
+early returns further up the field arm and never reach the receiver gate.
+Probed (a property getter off a subscript routes byte-identically) and
+recorded at the predicate, so the next reader does not redo it.
