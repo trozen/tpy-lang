@@ -1,0 +1,15 @@
+and_skips_rhs False 0
+and_runs_rhs True 1
+or_skips_rhs True 0
+or_runs_rhs True 1
+ternary_skips_else True 0
+ternary_then_skipped False 0
+ternary_then_taken True 1
+nested_and_skipped False 0
+nested_and_taken True 1
+nested_mixed_or_short True 1
+nested_mixed_shallow False 1
+nested_mixed_deep True 2
+nested_ternary_skipped False 0
+nested_ternary_taken True 1
+unconditional True 1

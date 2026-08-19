@@ -1897,7 +1897,11 @@ class ExpressionGenerator:
         for var_name, inline_expr in inline_facts.items():
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = inline_expr
-        right = self.gen_expr_deref(expr.right)
+        # The RHS is evaluated only in its own branch of the ternary below, so
+        # a temp it hoists has to materialize there rather than at the
+        # enclosing statement.
+        with self.ctx.temps.conditional_region() as rhs_region:
+            right = self.gen_expr_deref(expr.right)
         for var_name, prev in saved.items():
             if prev is not None:
                 self.ctx.narrowed_vars[var_name] = prev
@@ -1925,7 +1929,7 @@ class ExpressionGenerator:
             slot = self.ctx.temps.declare_named_auto(
                 "__logical_slot", f"std::optional<{self.types.type_to_cpp(result_type)}>")
             lhs_ptr = f"&({lhs_ref})"
-            rhs_ptr = f"({slot}.emplace({right}), &*{slot})"
+            rhs_ptr = f"({rhs_region.prefix}{slot}.emplace({right}), &*{slot})"
             if expr.op == "||":
                 return f"(*({truthy} ? {lhs_ptr} : {rhs_ptr}))"
             return f"(*({truthy} ? {rhs_ptr} : {lhs_ptr}))"
@@ -1959,6 +1963,8 @@ class ExpressionGenerator:
                 lhs_branch = f"{cpp_result}({lhs_branch})"
             if cpp_result != rhs_cpp_cmp:
                 rhs_branch = f"{cpp_result}({rhs_branch})"
+        if rhs_region.prefix:
+            rhs_branch = f"({rhs_region.prefix}{rhs_branch})"
         if expr.op == "||":
             return f"({truthy} ? {lhs_branch} : {rhs_branch})"
         else:
@@ -2251,12 +2257,18 @@ class ExpressionGenerator:
             for var_name, inline_expr in inline_facts.items():
                 saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                 self.ctx.narrowed_vars[var_name] = inline_expr
-            right = self.gen_expr_deref(expr.right)
+            # The RHS runs only when the LHS doesn't short-circuit, so any temp
+            # it hoists must materialize inside the operand, not at the
+            # enclosing statement.
+            with self.ctx.temps.conditional_region() as region:
+                right = self.gen_expr_deref(expr.right)
             for var_name, prev in saved.items():
                 if prev is not None:
                     self.ctx.narrowed_vars[var_name] = prev
                 else:
                     self.ctx.narrowed_vars.pop(var_name, None)
+            if region.prefix:
+                right = f"({region.prefix}{right})"
             return f"({left} {expr.op} {right})"
 
         # Comparison operators - generate C++ directly.
@@ -2548,7 +2560,13 @@ class ExpressionGenerator:
         """Inline path: every intermediate is duplicable, so desugar to an &&
         chain that renders each one into both of the pairs it joins."""
         assert expr.pairs is not None
-        parts = [self._gen_binop(pair, None) for pair in expr.pairs]
+        # Only the first pair always runs; each later one sits behind an && and
+        # must materialize its temps there, not at the enclosing statement.
+        parts = [self._gen_binop(expr.pairs[0], None)]
+        for pair in expr.pairs[1:]:
+            with self.ctx.temps.conditional_region() as region:
+                part = self._gen_binop(pair, None)
+            parts.append(f"({region.prefix}{part})" if region.prefix else part)
         result = parts[0]
         for part in parts[1:]:
             result = f"({result} && {part})"
@@ -2698,7 +2716,17 @@ class ExpressionGenerator:
         reprs: list[str] = []
         bindings: list[str | None] = []
         for i in range(n + 1):
-            code = operand_code(i)
+            # Operands 0 and 1 both feed the first comparison and always run.
+            # Every later operand is reached only once the preceding compare
+            # passed, so a temp hoisted for it must materialize at the operand
+            # rather than at the enclosing statement.
+            if i >= 2:
+                with self.ctx.temps.conditional_region() as region:
+                    code = operand_code(i)
+                prefix = region.prefix
+            else:
+                code = operand_code(i)
+                prefix = ""
             if 0 < i < n:
                 must_bind = True
             elif i == 0:
@@ -2707,9 +2735,10 @@ class ExpressionGenerator:
                 must_bind = False  # last operand always inlined
             if must_bind:
                 reprs.append(f"_cmp{i}")
-                bindings.append(f"auto&& _cmp{i} = {code};")
+                init = f"({prefix}{code})" if prefix else code
+                bindings.append(f"auto&& _cmp{i} = {init};")
             else:
-                reprs.append(code)
+                reprs.append(f"({prefix}{code})" if prefix else code)
                 bindings.append(None)
 
         # Innermost compare (last operand inlined, no wrapper needed).
@@ -6971,7 +7000,10 @@ class ExpressionGenerator:
         for var_name, inline_expr in then_facts.items():
             saved_then[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = inline_expr
-        then_code = gen_branch(expr.then_expr, branch_target)
+        # Each arm runs only when its branch is chosen, so temps hoisted for it
+        # must materialize in that arm rather than at the enclosing statement.
+        with self.ctx.temps.conditional_region() as then_region:
+            then_code = gen_branch(expr.then_expr, branch_target)
         for var_name, prev in saved_then.items():
             if prev is not None:
                 self.ctx.narrowed_vars[var_name] = prev
@@ -6985,7 +7017,8 @@ class ExpressionGenerator:
         for var_name, inline_expr in else_facts.items():
             saved_else[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = inline_expr
-        else_code = gen_branch(expr.else_expr, branch_target)
+        with self.ctx.temps.conditional_region() as else_region:
+            else_code = gen_branch(expr.else_expr, branch_target)
         for var_name, prev in saved_else.items():
             if prev is not None:
                 self.ctx.narrowed_vars[var_name] = prev
@@ -7042,7 +7075,8 @@ class ExpressionGenerator:
             then_code = self._ptr_variant_branch(expr.then_expr, then_code)
             else_code = self._ptr_variant_branch(expr.else_expr, else_code)
 
-        return f"(({cond}) ? ({then_code}) : ({else_code}))"
+        return (f"(({cond}) ? ({then_region.prefix}{then_code})"
+                f" : ({else_region.prefix}{else_code}))")
 
     def _ptr_variant_branch(self, branch_expr: TpyExpr, code: str) -> str:
         """Normalize a ternary arm to pointer-variant form for a ptr-variant

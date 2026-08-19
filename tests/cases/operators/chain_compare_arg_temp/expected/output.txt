@@ -1,0 +1,7 @@
+inline_skipped False 0
+inline_taken False 1
+stmtexpr_skipped False 0
+stmtexpr_taken False 1
+long_skip_first False 0
+long_skip_mid False 0
+long_taken False 1

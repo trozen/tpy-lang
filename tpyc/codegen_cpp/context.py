@@ -5,6 +5,7 @@ Shared state and utilities for C++ code generation.
 """
 
 from __future__ import annotations
+import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -780,13 +781,98 @@ class SlotState:
         self._prefix = "__global_slot" if global_scope else "__slot"
 
 
+class CondRegion:
+    """One open conditional-operand region (see `TempState.conditional_region`).
+
+    `prefix` is empty until the region closes; the emit site appends it in
+    front of the operand render.
+    """
+
+    def __init__(self):
+        self.prefix: str = ""
+        self._slots: list[tuple[int, str, str]] = []
+
+    def bank(self, index: int, name: str, emplace_arg: str) -> None:
+        self._slots.append((index, name, emplace_arg))
+
+
+def _slot_spellable(cpp_type: str) -> bool:
+    """True if `std::optional<cpp_type>` is a legal spelling.
+
+    `auto` cannot appear in a template argument list, and `std::optional` of a
+    reference is ill-formed before C++26 -- such temps stay eager.
+    """
+    stripped = cpp_type.strip()
+    if stripped.endswith("&"):
+        return False
+    return not re.match(r"^(const\s+)?auto\b", stripped)
+
+
 class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
     def __init__(self):
-        self._pending: list[tuple[str, str, str, bool]] = []
+        self._pending: list[tuple[str, str, str | None, bool]] = []
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
+        self._regions: list[CondRegion] = []
+
+    @contextmanager
+    def conditional_region(self) -> Iterator[CondRegion]:
+        """Defer temps created inside to the operand instead of the statement.
+
+        A temp hoisted for a conditionally-evaluated operand (an `and`/`or`
+        RHS, a ternary arm, a later chained-comparison comparator) would
+        otherwise be initialized at the enclosing statement, running work
+        Python skips. Inside a region a temp is declared as an uninitialized
+        `std::optional<T>` and its initializer is banked as
+        `__tmp_N.emplace(init)` for the emit site to splice in front of the
+        operand, so it runs only when the branch is taken. Block-scope
+        lifetime is preserved (unlike a statement expression, which would end
+        the temp's life at the operand and dangle any view taken of it).
+
+        Regions nest: a temp banks to the innermost open region, which sits
+        inside any enclosing one, so a nested `a and (b and c)` chain defers
+        at each level.
+        """
+        region = CondRegion()
+        self._regions.append(region)
+        try:
+            yield region
+        finally:
+            self._regions.pop()
+            self._close_region(region)
+
+    def _close_region(self, region: CondRegion) -> None:
+        parts = []
+        for index, name, emplace_arg in region._slots:
+            if index >= len(self._pending) or self._pending[index][0] != name:
+                # An intervening flush relocated the decl into a nested scope
+                # that is itself inside the conditional (a comprehension loop
+                # body), or a rollback discarded the render. Leaving the entry
+                # untouched keeps its eager `std::optional<T> t = init;` form,
+                # which is correct in that position and still derefs as
+                # `(*t)`.
+                continue
+            _, cpp_type, _, brace_init = self._pending[index]
+            self._pending[index] = (name, cpp_type, None, brace_init)
+            parts.append(f"{name}.emplace({emplace_arg})")
+        region.prefix = "".join(f"{p}, " for p in parts)
+
+    def _register(self, temp_name: str, type_cpp: str,
+                  init_expr: str, brace_init: bool, movable: bool) -> str:
+        """Queue a temp decl and return the expression that reads it."""
+        region = self._regions[-1] if self._regions else None
+        if region is None or not movable or not _slot_spellable(type_cpp):
+            self._pending.append((temp_name, type_cpp, init_expr, brace_init))
+            return temp_name
+        # A braced init is not an expression on its own; name the type so the
+        # emplace argument (and the relocated-decl fallback) stays well-formed.
+        emplace_arg = f"{type_cpp}{{{init_expr}}}" if brace_init else init_expr
+        region.bank(len(self._pending), temp_name, emplace_arg)
+        self._pending.append(
+            (temp_name, f"std::optional<{type_cpp}>", emplace_arg, False))
+        return f"(*{temp_name})"
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
@@ -795,15 +881,23 @@ class TempState:
         temp_name = f"__tmp_{self._counter}"
         is_protocol = is_protocol_type(param_type)
         type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
-        self._pending.append((temp_name, type_cpp, init_expr, False))
-        return temp_name
+        return self._register(temp_name, type_cpp, init_expr, False,
+                              param_type.is_movable())
 
-    def create_typed(self, cpp_type: str, init_expr: str, *, brace_init: bool = False) -> str:
-        """Create a temp variable with an explicit C++ type."""
+    def create_typed(self, cpp_type: str, init_expr: str, *,
+                     brace_init: bool = False, movable: bool = False) -> str:
+        """Create a temp variable with an explicit C++ type.
+
+        `movable` gates deferral into an open conditional region and defaults
+        to False because a C++ spelling alone does not answer it: deferring
+        emplaces the temp, and `emplace(T(...))` needs a move ctor that the
+        eager `T t = T(...);` form does not (it gets guaranteed elision). A
+        caller holding the TpyType can opt back in with `type.is_movable()`.
+        """
         self._counter += 1
         temp_name = f"__tmp_{self._counter}"
-        self._pending.append((temp_name, cpp_type, init_expr, brace_init))
-        return temp_name
+        return self._register(temp_name, cpp_type, init_expr, brace_init,
+                              movable)
 
     def declare_named_auto(self, prefix: str, cpp_type: str, *, init: str | None = None) -> str:
         """Register a uniquely-named hoisted declaration and return its name.
@@ -910,7 +1004,7 @@ class TempState:
     @staticmethod
     def _render(out: TextIO, indent: str,
                 named: list[tuple[str, str, str | None, bool]],
-                pending: list[tuple[str, str, str, bool]]) -> None:
+                pending: list[tuple[str, str, str | None, bool]]) -> None:
         for name, cpp_type, init_val, brace_init in named:
             if init_val is not None:
                 out.write(f"{indent}{cpp_type} {name} = {init_val};\n")
@@ -919,7 +1013,11 @@ class TempState:
             else:
                 out.write(f"{indent}{cpp_type} {name};\n")
         for temp_name, type_cpp, init_expr, brace_init in pending:
-            if brace_init:
+            if init_expr is None:
+                # A conditional-region slot: the initializer moved into the
+                # operand as an emplace, so only the empty slot is declared.
+                out.write(f"{indent}{type_cpp} {temp_name};\n")
+            elif brace_init:
                 out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
             else:
                 out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")

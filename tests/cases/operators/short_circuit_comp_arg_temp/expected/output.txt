@@ -1,0 +1,4 @@
+ternary_skipped 1 0
+ternary_taken 2 2
+and_skipped False 0
+and_taken True 2
