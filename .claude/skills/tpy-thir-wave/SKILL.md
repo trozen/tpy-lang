@@ -31,6 +31,54 @@ improvise.
 | `probe_loc.py <case>...` | every `ThirUnsupported` raised, with reason + source line. Decodes a lossy tag. |
 | `dualgen.py <file.py>` | THIR-vs-AST diff over a scratch program. The only check for an admitted shape with no corpus witness. |
 
+## The instruments lie in four known ways
+
+Each was found mid-session by an agent measuring something it had been told.
+Two of them read a REAL flip as a fallback, so a wave that trusts them
+discards its own work.
+
+1. **`Compiler._thir_routed_bodies` cannot see resumable frames or simple
+   generators.** It sums `thir_functions + thir_constructors` only
+   (`compiler.py`), so a generator/async flip leaves the count UNCHANGED.
+   Wrap `lower_resumable` / `lower_simple_generator` and report
+   `res_routed=N/M` instead. When you patch `lower_simple_generator`, patch it
+   at BOTH the submodule and the PACKAGE attribute -- the call site imports
+   from the package at call time, so patching only the submodule silently
+   reads `0/0`.
+2. **The census cannot see resumable frame-gate rejects at all.**
+   `resumable.py`'s `_reject` does `note(reason); return None` and never
+   constructs a `ThirUnsupported`, which is what `sites_multi.py` hooks. Every
+   generator/async case's site set is a LOWER BOUND missing a whole class.
+3. **`move_audit` is structurally blind at copy/alias-position arms and at the
+   ctor MIL** (`joined=0` / the join count does not move when those bodies
+   start routing) -- the AST asks no move question there, so the join
+   denominator is empty and it reports green regardless. Never cite it at
+   either. (It is not a coverage HOLE at the MIL: a wrong move/copy verdict
+   still changes emitted text, which the byte-diff catches.)
+4. **A byte-diff harness must be self-checking.** One scout's harness mapped
+   `<out>/<case>/main.d/{include,src}/...` onto `expected/main.d/...`, found
+   no counterpart, silently skipped, and printed IDENTICAL having compared
+   ZERO files -- voiding its whole brief. Strip the `.d` component and print
+   an explicit `cmp=N`.
+
+## Picking work
+
+- **Rank by ABLATION, never by census count.** The sole-site label is a
+  HYPOTHESIS: lowering aborts at the first `ThirUnsupported`, so a second
+  blocker in the SAME STATEMENT is invisible, and some "sites" are one shared
+  raise for a whole dispatch ladder. It was wrong nine times in one session.
+- **The three largest sites by touched-case count were proven ZERO-flip dead
+  ends.** Size does not predict yield; paired small sites do.
+- **Cost labels from triage are systematically too pessimistic.** Six of
+  eleven cases triaged as "needs a new render arm" turned out SMALL and
+  proven to flip alone, all reusing existing nodes. Probe before pronouncing.
+- **Look for the already-landed SIBLING row before designing anything.** Nine
+  rows in one session were verbatim siblings one sink over. No histogram
+  surfaces those; only reading the sibling gate does.
+- **Stub the rejecting node to see past it.** Replacing it with a dummy
+  answers "is anything hiding behind this?" in one run (output is garbage by
+  construction -- it measures remaining work, it is not a flip claim).
+
 ## Loop
 
 1. **Pick the site.** `probe_sites.py "<tag>"`; take the top row. Open two or
@@ -50,22 +98,55 @@ improvise.
 3. **Widen the arm.** Register any new face in `tpyc/thir/faces.py`.
 4. **Smoke:** `probe_one.py` every case at the site, then `dualgen.py` on
    adversarial inputs around the new boundary. Byte-identity via FALLBACK is
-   not routing -- check the fallback line. **Disable-and-dualgen every NEW
+   not routing -- check the fallback line, with the RIGHT counter for the
+   shape (see "The instruments lie"). **Disable-and-dualgen every NEW
    admission leg before the cell commit**: temporarily disable the leg and
    re-probe the drilled case -- if it still routes byte-identically, the leg
    is dead code; drop it (a dead for-head leg once survived to the next
-   review round because only the drilled case was probed).
+   review round because only the drilled case was probed). **Disable by
+   RE-EDITING, never by `git checkout <path>`** -- that has wiped uncommitted
+   cell work twice. And before dropping a leg that looks dead, try to build a
+   DISCRIMINATING case: one implementer did and found the leg load-bearing,
+   saving a real safety property from deletion.
+4b. **BLAST-SWEEP 3-4 neighbour cases sharing the mechanism.** This -- not the
+   flip proof -- is what validates a gate's KEY. Three rows in one session
+   were byte-identical on their OWN flip case with a WRONG key, each exposed
+   only by a neighbour (one turned a record alias into a copy; one was placed
+   in a predicate shared with the free-call loop, which hoists a temp where
+   the ctor passes bare).
 5. **Chain-walk.** Clearing one blocker promotes the next; keep going on the
    same cases until CLEAN or the chain leaves this site.
 6. **Pin:** routing + byte-identity + boundary units for every new arm.
    Every dualgen boundary probe becomes a COMMITTED pin before the cell
    commit -- probe-only boundary evidence has slipped through three review
    rounds in a row; the probe file is the pin's draft, convert it.
-7. **Commit the cell.** Auto-commit on the working branch. Before the
-   commit: `grep -rn DBG tpyc/` must be empty (two committed spy prints
-   each cost a review-round catch).
+   A routing pin must assert routing MECHANICALLY (`_assert_routes_byte_identical`,
+   THIR-node assertions, or an EXACT fallback-dict check). Plain
+   `_assert_byte_identical`, render-string assertions and PREFIX-FILTERED
+   fallback checks are all satisfied by a whole-body fallback -- one pin
+   filtered `resumable:`-prefixed keys and let a `body:` key through, the exact
+   shape its own boundary sibling asserted. Pin the WHOLE dict, or the EXACT
+   dict when the fixture legitimately carries a deliberate boundary reject.
+   **Confirm a boundary shape is CONSTRUCTIBLE before pinning it** -- sema
+   rejects more shapes than you expect, and an unfalsifiable pin cannot fail.
+7. **Commit the cell.** Auto-commit on the working branch, ONE COMMIT PER CELL
+   as soon as it verifies -- an agent died mid-batch and per-cell commits are
+   what made the work recoverable. Before the commit: `grep -rn DBG tpyc/`
+   must be empty (two committed spy prints each cost a review-round catch).
 
 Repeat 3-7 until the site is empty.
+
+## Two rules that outrank a green suite
+
+- **If the AST's render is an ACCIDENT, do not mirror it -- STOP.** One case
+  looked like a proven SMALL flip; its oracle carried a frame member that was
+  never referenced, shadowed by a same-named local. Mirroring would have
+  planted the accident permanently. It turned out to be the benign face of a
+  HIGH wrong-code family. Read the oracle, not just the brief.
+- **The fence sweep is NOT a substitute for the full suite.** Three times in
+  one session a pin needing conversion was found only by the suite -- once a
+  compiler test using a cell's exact shape as its "un-migrated" fixture.
+  Shape-grepping the obviously-related test files missed all three.
 
 ## Finish
 
