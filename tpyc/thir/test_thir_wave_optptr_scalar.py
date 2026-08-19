@@ -6,7 +6,6 @@ ill-formed `Container<int32_t>(42)` the render used to emit there."""
 
 import pytest
 
-from .fallback import ThirUnsupported
 from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
                        _compile, _entry, _fn, _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -190,12 +189,12 @@ class TestScalarTempBoundaries:
 
 
 class TestScalarTempShortCircuit:
-    """A hoisting arg face inside an `and`/`or` RHS is a pre-existing,
-    face-wide THIR defect (BUGS.md: `THIRArgTemp under a non-flushable
-    statement position`) -- the ternary form is fenced, the short circuit is
-    not. This face inherits exactly that exposure. The pin does not encode
-    WHICH way it fails: it fails loudly today and must emit byte-identical
-    output once the flush fact is threaded -- never silently divergent."""
+    """This face inside an `and`/`or` RHS falls back rather than hoisting: a
+    short-circuit operand evaluates conditionally, so the flush right stops at
+    the logical binop (the ternary-arm fence's sibling). The face-wide fence
+    and its other three faces are pinned in
+    `test_thir_shortcircuit_argtemp.py`; this pin keeps the scalar face's own
+    exposure covered where the face lives."""
 
     SRC = _CONTAINER + (
         "def g(c: Container[Int32], b: bool) -> bool:\n"
@@ -204,10 +203,5 @@ class TestScalarTempShortCircuit:
         "    c = Container[Int32](None)\n"
         "    print(g(c, True))\n") + _MAIN
 
-    def test_raises_or_stays_identical_never_diverges(self):
-        from .validate import THIRValidationError
-        try:
-            out = _cpp(self.SRC, thir=True)
-        except (THIRValidationError, ThirUnsupported):
-            return
-        assert out == _cpp(self.SRC, thir=False)
+    def test_falls_back_byte_identical(self):
+        _assert_byte_identical(self.SRC)

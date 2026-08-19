@@ -11561,3 +11561,22 @@ STRICT SUBSET of what the AST treats as a frame field (missing params, `__self`,
 forwarded aliases), provably inert today because the resumable match gate
 rejects every record-field capture before it runs, but the docstring implied a
 completeness it does not have. Documented at the guard rather than widened.
+
+SHORT-CIRCUIT ARG-TEMP FENCE (2026-08-19, fix-argtemp-shortcircuit): the
+nested-temp threading landed in the 2026-07-22 adapter/temps wave gave
+`_lower_binop` operands the enclosing statement's flush right unconditionally,
+including `and`/`or` operands whose RHS may never run. The validator has always
+reset `argtemp_ok` at a logical binop (as it does at a ternary's arms), so any
+arg face that hoists a `THIRArgTemp` there built a node the validator then
+rejected with a hard `THIRValidationError` -- which escapes the per-body
+fallback boundary and kills the compile instead of falling back. Four faces
+reached it (`optptr.ctor_rvalue`, `optptr.container_temp`, `optptr.scalar_temp`,
+`argtemp.own_copy`), on both operands, in both `and` and `or`. `_lower_binop`
+now drops `temps_ok` for `_LOGICAL_OPS`, matching the ternary fence
+(`_lower_if_expr` grants the right to the condition only). Deliberately a FENCE,
+not a render: the AST's own hoist there sits OUTSIDE the short circuit and is
+filed as a CPython evaluation-order divergence, so mirroring it would bake in
+behavior already known to be wrong -- the shape can only route after the AST
+oracle is fixed. No corpus case held the shape (dial unchanged). Pinned per face
+in `tpyc/thir/test_thir_shortcircuit_argtemp.py`, each with an inverse routing
+pin at a flushable position; deleting the fence turns nine of them into errors.

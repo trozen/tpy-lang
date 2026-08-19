@@ -2493,6 +2493,15 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # at the enclosing statement, so a flushable position's right extends
     # into call-shaped operands. Cond positions thread False (unchanged).
     analyzer = lc.analyzer
+    if e.op in _LOGICAL_OPS:
+        # Short-circuit operands evaluate CONDITIONALLY, so a hoisted arg
+        # temp would run at the enclosing statement even when the operand
+        # is skipped. Dropping the right makes a temp-needing operand raise
+        # ThirUnsupported (whole-body fallback) instead of building a node
+        # the validator then rejects with a hard error. Same fence as the
+        # ternary's arms, which never receive the right either
+        # (`_lower_if_expr` grants it to the condition only).
+        temps_ok = False
 
     def reject() -> None:
         raise ThirUnsupported(
