@@ -1,9 +1,11 @@
 """Pins for the asdict-expansion arms: the dict-CONSTRUCTION call at a
 container element slot, the multi-list-member union comp disambiguation,
 the container FIELD at a union element slot, the dict-literal tuple
-member, the FIELD-receiver dict view, and the dict-literal print arg.
-Each mirrors a render the asdict/astuple macro expansion reaches; the
-remaining astuple tuple-construction print family stays deferred."""
+member, the FIELD-receiver dict view, the dict-literal print arg, and the
+all-rvalue storage spelling of a tuple literal at the print sink. Each
+mirrors a render the asdict/astuple macro expansion reaches; the mixed
+lvalue+rvalue print tuple and the container-FIELD expansion element stay
+deferred."""
 
 from __future__ import annotations
 
@@ -187,11 +189,12 @@ class TestMacroPrintArg:
         _assert_byte_identical(src)
 
     def test_astuple_container_expansion_still_defers(self):
-        # BOUNDARY: a pointer-repr astuple expansion (list field) needs
-        # the spelled storage-tuple print render
-        # (`TuplePrinter(std::tuple<std::vector<..>>(..))`) -- unmirrored;
-        # the tuple-literal wrap's borrow-form render would diverge, so
-        # the shape must keep deferring.
+        # BOUNDARY, and NOT at the tuple spelling any more: the all-rvalue
+        # storage arm now renders this wrap's `TuplePrinter(std::tuple<
+        # std::vector<..>>(..))` correctly. What keeps the shape out is its
+        # ELEMENT -- the expansion's container FIELD read rejects at
+        # `field.result_type` inside `_lower_container_elem`. Fence the
+        # element row, not the tuple render.
         src = _HDR + (
             "from dataclasses import dataclass, astuple\n"
             "@dataclass\n"
@@ -238,4 +241,126 @@ class TestAsdictBoundaries:
         )
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "show") is None
+        _assert_byte_identical(src)
+
+
+class TestPrintTupleStorageArm:
+    """The print sink threads no target, so the AST's slot ladder splits on
+    each ELEMENT: an all-rvalue literal takes the storage spelling, a simple
+    lvalue the borrow one. The astuple expansion of a dict-of-dataclass field
+    is the all-rvalue half; the dict comp inside it needs the value leg's
+    node-gated tuple row to build its `tuple` VALUE slot."""
+
+    DICT_OF_DC = _HDR + (
+        "from dataclasses import dataclass, astuple\n"
+        "@dataclass\n"
+        "class P:\n"
+        "    x: Int32 = 0\n"
+        "    y: Int32 = 0\n"
+        "@dataclass\n"
+        "class D:\n"
+        "    items: dict[str, P]\n"
+        "def main() -> None:\n"
+        "    d = D({'a': P(1, 2)})\n"
+        "    print(astuple(d))\n"
+    )
+
+    def test_astuple_dict_of_dataclass_routes(self):
+        thir, faces = _lower_ctx_witnessed(self.DICT_OF_DC)
+        assert _fn(thir, "main") is not None
+        assert faces["print.tuple_literal_storage_arg"] >= 1
+        assert faces["comp.dict"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(self.DICT_OF_DC,
+                                                  comments=False)
+        # The arity-1 paren construct, NOT braces: `std::tuple<T>{x}` would
+        # hit the C++23 brace-init ambiguity the AST spells around.
+        assert ("::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<"
+                "std::string, std::tuple<int32_t, int32_t>>>((") in cpp
+        assert ("__result.insert_or_assign(__macro_1, "
+                "std::tuple<int32_t, int32_t>{") in cpp
+
+    def test_rvalue_container_literal_in_tuple_routes(self):
+        # The general (non-macro) shape of the same arm.
+        src = _HDR + (
+            "def main() -> None:\n"
+            "    print(([1, 2], 3))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces["print.tuple_literal_storage_arg"] >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_dict_comp_tuple_value_slot_routes_outside_print(self):
+        # The value leg's row on its own, at a decl -- it is not gated on
+        # the print sink.
+        src = _HDR + (
+            "def f(src: dict[str, Int32]) -> None:\n"
+            "    d = {k: (v, v) for k, v in src.items()}\n"
+            "    print(len(d))\n"
+            "def main() -> None:\n"
+            "    f({'a': 1})\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces["comp.dict"] >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_record_name_pair_keeps_the_borrow_spelling(self):
+        # THE key boundary: two record NAMES are simple lvalues, so the AST
+        # renders the BORROW spelling. Keying the storage arm on anything
+        # coarser than per-element rvalue-ness (an empty `elem_capture`, for
+        # instance) turns this alias into a copy -- byte-visible only here,
+        # never on the two cases the arm was built for.
+        src = _HDR + (
+            "class R:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "    def __repr__(self) -> str:\n"
+            "        return 'R'\n"
+            "def f(a: R, b: R) -> None:\n"
+            "    print((a, b))\n"
+            "def main() -> None:\n"
+            "    f(R(1), R(2))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert not faces.get("print.tuple_literal_storage_arg")
+        assert faces["print.tuple_literal_arg"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "std::tuple<R*, R*>{&(a), &(b)}" in cpp
+
+    def test_mixed_lvalue_rvalue_print_tuple_still_defers(self):
+        # The AST gives a mixed literal a per-element mixed slot tuple that
+        # neither arm builds.
+        src = _HDR + (
+            "class R:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "    def __repr__(self) -> str:\n"
+            "        return 'R'\n"
+            "def f(a: R) -> None:\n"
+            "    print((a, R(9)))\n"
+            "def main() -> None:\n"
+            "    f(R(1))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not faces.get("print.tuple_literal_storage_arg")
+        _assert_byte_identical(src)
+
+    def test_dict_comp_bare_name_tuple_value_still_defers(self):
+        # The value leg's row is NODE-gated: a bare NAME value_expr at the
+        # tuple slot would need the whole `tuple_to_storage` copy, so it
+        # must keep rejecting.
+        src = _HDR + (
+            "def f(src: dict[str, tuple[Int32, Int32]]) -> None:\n"
+            "    d = {k: v for k, v in src.items()}\n"
+            "    print(len(d))\n"
+            "def main() -> None:\n"
+            "    f({'a': (1, 2)})\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
         _assert_byte_identical(src)

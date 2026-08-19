@@ -118,6 +118,55 @@ class TestNarrowedTargetReadRoutes:
         assert "(*p).x" in cpp
 
 
+class TestOwnedStrGenexprUnpackTarget:
+    """An owned-`str` unpack target: the AST's is_value_type branch spells
+    the tuple's OWNED element type (`std::string k = std::get<0>(t);`), so
+    the target's reads stay storage-form and bare-insert at the dict slot.
+    The comp unpack head already carried this disjunct; the genexpr head
+    was missing it. Corpus witness: tuple/tuple_literal_list."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "def main() -> None:\n"
+        "    raw = [('x', 10), ('y', 20)]\n"
+        "    d = dict[str, Int32]((k, v) for k, v in raw)\n"
+        "    names = list[str](k for k, v in raw)\n"
+        "    tot = sum(Int32(len(k)) + v for k, v in raw)\n"
+        "    flip = dict[Int32, str]((v, k) for k, v in raw)\n"
+        "    keep = dict[str, Int32]((k, v) for k, v in raw if v > 10)\n"
+        "    print(d['x'], names[0], tot, flip[10], len(keep))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        _thir, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("genexpr.unpack", 0) >= 5
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::string k = std::get<0>(" in cpp
+
+
+class TestViewStrGenexprUnpackTargetDefers:
+    # BOUNDARY: a StrView-typed element makes the container hold VIEWS,
+    # whose literal-key/element renders the owned-str slot predicate does
+    # not reproduce -- the target keeps the named reject.
+    SRC = (
+        "from tpy import Int32, StrView\n"
+        "def take(vs: list[tuple[StrView, Int32]]) -> Int32:\n"
+        "    return sum(Int32(len(k)) + v for k, v in vs)\n"
+        "def main() -> None:\n"
+        "    vs: list[tuple[StrView, Int32]] = []\n"
+        "    vs.append((StrView('p'), 1))\n"
+        "    print(take(vs))\n"
+        "main()\n"
+    )
+
+    def test_defers_byte_identical(self):
+        compiler, ast, thir = _gen(self.SRC)
+        assert thir == ast
+        fb = dict(compiler._thir_fallback)
+        assert fb.get("body:genexpr.unpack") == 1, fb
+
+
 class TestMovedGenexprUnpackDefers:
     # BOUNDARY: a moved container-LITERAL source with an unpack head is
     # unwitnessed and keeps the named reject (the unpack route admits

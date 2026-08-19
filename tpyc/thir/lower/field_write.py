@@ -89,6 +89,7 @@ from .predicates import (
     _f2b_optional_field_write_ok,
     _field_decl_type,
     _field_receiver_ok,
+    _owned_optional_call_source,
     _callable_value,
     _peel_coerce,
     _plain_container_read,
@@ -601,6 +602,16 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     argument's last use (which is also what copy() means)."""
     peeled = copy_ptr_optional_peel(stmt.value, lc.analyzer)
     tail_src = peeled if peeled is not None else stmt.value
+    # An `Own[T] | None`-returning call is ALREADY the field's
+    # `std::optional<T>` by value, so it assigns bare -- the lift the field's
+    # pointer repr implies would hand `ptr_to_optional` an optional where it
+    # takes a `T*`, which is ill-formed C++. Same predicate as the admission,
+    # so the two cannot drift apart.
+    if _owned_optional_call_source(tail_src, ftype, lc.analyzer):
+        lowered = _lower_expr(tail_src, lc, declared,
+                              use=_ExprUse(result=_ExprResultUse.STORAGE))
+        _witness("field_write.owned_opt_call")
+        return lowered
     ptr_src = (isinstance(tail_src, TpyName)
                and tail_src.name in lc.prescan.global_slots)
     val_opt_container = (

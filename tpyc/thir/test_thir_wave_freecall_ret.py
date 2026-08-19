@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_routes_byte_identical,
     _compile,
     _entry,
     _fn,
@@ -1093,7 +1094,9 @@ class TestTupleReturnCallSources:
     def test_ternary_tuple_source_defers(self):
         # BOUNDARY: the source gate admits literal/name/call shapes only --
         # a TERNARY tuple source stays out and the body falls back
-        # byte-identically.
+        # byte-identically. (Its pointer-repr twin DOES route -- see
+        # `TestF3BorrowTupleReturnSources` -- because the F3 sink lifts a
+        # storage lvalue, which this all-value tuple is not.)
         src = ("from tpy import Int32\n"
                "def f(c: bool) -> tuple[Int32, Int32]:\n"
                "    a = (1, 2)\n"
@@ -1104,6 +1107,130 @@ class TestTupleReturnCallSources:
                "    print(x + y)\n"
                "main()\n")
         assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+_F3 = ("from tpy import Int32, readonly\n"
+       "class Box:\n    val: Int32\n"
+       "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+       "class Holder:\n    box: Box\n    n: Int32\n"
+       "    a: tuple[Int32, Box]\n    b: tuple[Int32, Box]\n"
+       "    def __init__(self, b_: Box, n: Int32) -> None:\n"
+       "        self.box = b_\n        self.n = n\n"
+       "        self.a = (1, Box(5))\n        self.b = (2, Box(7))\n"
+       "    def get_pair(self) -> tuple[Box, Int32]:\n"
+       "        return (self.box, self.n)\n")
+
+
+class TestF3BorrowTupleReturnSources:
+    """The pointer-repr (F3) borrow-tuple return sink forks on the AST's
+    `is_storage_form_source`: a call whose F3 result is ALREADY borrow form
+    relays bare, while a ternary of two storage field reads is one storage
+    lvalue taking ONE `tuple_to_pointer` around the whole conditional."""
+
+    def test_method_relay_routes_bare(self):
+        src = _F3 + (
+            "def relay(h: Holder) -> tuple[Box, Int32]:\n"
+            "    return h.get_pair()\n"
+            "def main() -> None:\n"
+            "    h = Holder(Box(5), 42)\n"
+            "    t = relay(h)\n"
+            "    t[0].val = 99\n"
+            "    print(h.box.val)\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "relay") is not None
+        assert w.get("ret.btuple_call", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        # No lift: the callee's ABI already hands back the pointer tuple.
+        assert "return h.get_pair();" in cpp
+
+    def test_free_call_relay_routes_bare(self):
+        src = _F3 + (
+            "def make(h: Holder) -> tuple[Box, Int32]:\n"
+            "    return (h.box, h.n)\n"
+            "def relay(h: Holder) -> tuple[Box, Int32]:\n"
+            "    return make(h)\n"
+            "def main() -> None:\n"
+            "    h = Holder(Box(5), 42)\n"
+            "    t = relay(h)\n"
+            "    t[0].val = 99\n"
+            "    print(h.box.val)\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "relay") is not None
+        assert w.get("ret.btuple_call", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_value_tuple_call_keeps_its_own_arm(self):
+        # BOUNDARY: the value-tuple return call is NOT pointer-repr, so it
+        # keeps riding `ret.tuple_call` -- the new relay face must not
+        # capture that traffic.
+        src = ("from tpy import Int32\n"
+               "class M:\n"
+               "    def pair(self) -> tuple[Int32, Int32]:\n"
+               "        return (1, 2)\n"
+               "def f(m: M) -> tuple[Int32, Int32]:\n"
+               "    return m.pair()\n"
+               "def main() -> None:\n"
+               "    m = M()\n"
+               "    a, b = f(m)\n"
+               "    print(a + b)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("ret.tuple_call", 0) >= 1
+        assert w.get("ret.btuple_call", 0) == 0
+
+    def test_field_ternary_lifts_once(self):
+        src = _F3 + (
+            "def pick(h: Holder, c: bool) -> tuple[Int32, Box]:\n"
+            "    return h.a if c else h.b\n"
+            "def main() -> None:\n"
+            "    h = Holder(Box(0), 0)\n"
+            "    t = pick(h, True)\n"
+            "    t[1].val = 99\n"
+            "    print(h.a[1].val)\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert w.get("ret.btuple_ternary", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(((c) ? (h.a) : (h.b)));" in cpp)
+
+    def test_readonly_receiver_ternary_lifts_once(self):
+        # The const element pointers come from the RETURN type, not from
+        # either arm -- `is_const_storage_source` does not recurse into a
+        # ternary, so the lift's own const flag stays off on both paths.
+        src = _F3 + (
+            "def pick(h: readonly[Holder], c: bool"
+            ") -> tuple[Int32, readonly[Box]]:\n"
+            "    return h.a if c else h.b\n"
+            "def main() -> None:\n"
+            "    h = Holder(Box(0), 0)\n"
+            "    t = pick(h, True)\n"
+            "    print(t[1].val)\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ret.btuple_ternary", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>"
+                "(((c) ? (h.a) : (h.b)))" in cpp)
+
+    def test_mixed_arm_ternary_stays_ast(self):
+        # BOUNDARY: a local arm beside a field arm is not one storage
+        # lvalue, so the AST does not claim the conditional as storage form
+        # and no single lift is owed.
+        src = _F3 + (
+            "def mixed(h: Holder, c: bool, b_: Box) -> tuple[Int32, Box]:\n"
+            "    t = (7, b_)\n"
+            "    return h.a if c else t\n"
+            "def main() -> None:\n"
+            "    h = Holder(Box(0), 0)\n"
+            "    print(mixed(h, True, Box(3))[0])\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "mixed") is None
         _assert_byte_identical(src)
 
 

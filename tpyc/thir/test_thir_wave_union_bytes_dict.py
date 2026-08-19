@@ -44,6 +44,53 @@ class TestBytesUnionArgRows:
         _assert_routes_byte_identical(src)
 
 
+_RECV = _HDR + (
+    "class S:\n"
+    "    n: Int32\n"
+    "    def __init__(self) -> None:\n"
+    "        self.n = 0\n"
+    "    def go(self, data: bytes | dict[str, str] | None = None) -> Int32:\n"
+    "        return self.n\n"
+)
+
+
+class TestRecordMethodUnionNoneArg:
+    """The record-method twin of the free ladder's `unionlift.none` row: the
+    method arg loop shares `_lower_call_arg`'s lift, so a `None` at a
+    pointer-variant union method slot renders the fully spelled
+    `pv{std::monostate{}}` -- NOT `std::nullopt`."""
+
+    def test_none_at_ptr_union_method_slot_routes(self):
+        src = _RECV + (
+            "def main() -> None:\n"
+            "    s = S()\n"
+            "    print(s.go(None))\n"
+        )
+        _, faces = _lower_ctx_witnessed(src)
+        assert faces.get("unionlift.none", 0) > 0
+        hpp, cpp = _assert_routes_byte_identical(src)
+        # The callee's deep-const verdict makes this slot's pointees const;
+        # what the row pins is the fully spelled variant + monostate.
+        assert ("s.go(std::variant<std::monostate, const std::vector<uint8_t>*"
+                ", const ::tpy::ordered_map<std::string, std::string>*>"
+                "{std::monostate{}})" in hpp + cpp)
+        assert "go(std::nullopt)" not in hpp + cpp
+
+    def test_member_name_at_ptr_union_method_slot_still_defers(self):
+        # Only the None leg has a method-position witness; the member-NAME
+        # leg of the free ladder's row stays out.
+        src = _RECV + (
+            "def main() -> None:\n"
+            "    s = S()\n"
+            "    d = {'a': 'b'}\n"
+            "    print(s.go(d))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is None
+        assert not faces.get("unionlift.member")
+        _assert_byte_identical(src)
+
+
 class TestBytesUnionBoundaries:
     def test_list_literal_at_union_slot_still_defers(self):
         # The unwitnessed literal sibling: only the DICT literal has an

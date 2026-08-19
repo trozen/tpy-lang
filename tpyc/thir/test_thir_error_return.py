@@ -5,8 +5,8 @@ the expected pass-through return), the caller side (the statement-level
 statement-expression unwrap in its three dispositions), the return-tier
 try goto dispatch (`__except_N` / `__after_try_N`, the `__err_opt_N` as
 capture, the bare-raise re-raise), and the gate rejections that keep the
-un-mirrored shapes (aliasing borrow results, expression-position method
-callees, coerce-wrapped inits, container bind slots) on the AST path."""
+un-mirrored shapes (coerce-wrapped inits, container bind slots) on the AST
+path."""
 
 from __future__ import annotations
 
@@ -363,11 +363,10 @@ class TestErrorReturnGateRejections:
         _assert_byte_identical(src)
         assert not self._rejected(src, "use")
 
-    def test_expression_position_method_callee_rejected(self):
+    def test_expression_position_method_callee_routes(self):
         # A METHOD @error_return callee OUTSIDE the statement handlers (here
-        # a call argument) needs the `__er_N` statement-expression unwrap,
-        # which the plain-method arm does not render: `error_return_ok` is
-        # set only under `error_return_raw`, so this keeps falling back.
+        # a call argument) takes the `__er_N` statement-expression unwrap --
+        # the free-call arm's mirror, same THIRErrorReturnUnwrap render.
         src = (
             _ERR
             + "class Store:\n"
@@ -388,7 +387,9 @@ class TestErrorReturnGateRejections:
             + "    return v\n"
             + "print(use(Store(2)))\n"
         )
-        assert self._rejected(src, "use")
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(src)
+        assert "auto __er_" in _cpp(src, thir=True)
 
     def test_coerce_wrapped_bind_rejected(self):
         # `_error_return_stmt_fi` peels a TpyCoerce, but the bind/discard/
@@ -1168,6 +1169,90 @@ class TestErrorReturnAliasFirstDecl:
         assert _fn(thir, "use_ro") is None
 
 
+class TestErrorReturnAliasRebindSlotTarget:
+    """A REBIND-SLOT pointer local at an aliasing er bind still takes the
+    address-of alias, never the slot: the AST keys that arm on the pointer
+    local alone, and materializing into the slot would copy and sever the
+    borrow. The slot stays unallocated."""
+
+    _H = (
+        "from tpy import Int32, error_return, ReturnException\n"
+        "class E(Exception, ReturnException):\n"
+        "    pass\n"
+        "class Source:\n"
+        "    items: list[Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.items = [1, 2, 3]\n"
+        "class H:\n"
+        "    a: Source\n"
+        "    b: Source\n"
+        "    def __init__(self) -> None:\n"
+        "        self.a = Source()\n"
+        "        self.b = Source()\n"
+        "    @error_return(E)\n"
+        "    def va(self) -> Source:\n"
+        "        return self.a\n"
+        "    @error_return(E)\n"
+        "    def vb(self) -> Source:\n"
+        "        return self.b\n")
+
+    def test_rebind_slot_pointer_target_alias_binds(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (
+            self._H
+            + "def main() -> None:\n"
+            + "    h = H()\n"
+            + "    q: Source | None = None\n"
+            + "    try:\n"
+            + "        q = h.va()\n"
+            + "        q.items.append(4)\n"
+            + "        q = h.vb()\n"
+            + "    except E:\n"
+            + "        print(\"error\")\n"
+            + "    if q is not None:\n"
+            + "        q.items.append(5)\n"
+            + "    print(len(h.a.items))\n"
+            + "    print(len(h.b.items))\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "Source* q = nullptr;" in cpp
+        assert cpp.count("q = &(::tpy::unwrap_ref(*__try_tmp_") == 2
+        assert "__slot_" not in cpp
+
+    def test_ptr_variant_union_target_still_defers(self):
+        # A `Cat | Dog` local binds `std::variant<Cat*, Dog*>`, not a bare
+        # pointer: its reseat goes through `to_ptr_variant`, so the alias
+        # arm must not claim it.
+        src = (
+            "from tpy import Int32, error_return, ReturnException\n"
+            "class E(Exception, ReturnException):\n"
+            "    pass\n"
+            "class Cat:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 1\n"
+            "class Dog:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 2\n"
+            "class H:\n"
+            "    c: Cat\n"
+            "    def __init__(self) -> None:\n        self.c = Cat()\n"
+            "    @error_return(E)\n"
+            "    def vc(self) -> Cat:\n        return self.c\n"
+            "def main() -> None:\n"
+            "    h = H()\n"
+            "    d = Dog()\n"
+            "    p: Cat | Dog = d\n"
+            "    try:\n"
+            "        p = h.vc()\n"
+            "    except E:\n"
+            "        print(\"error\")\n"
+            "    if isinstance(p, Cat):\n"
+            "        print(p.n)\n"
+            "main()\n")
+        assert (_fallback_tags(src)
+                .get("body:stmt.var_decl:error_return.alias_bind") == 1)
+
+
 class TestRefCallAtStorageReturn:
     """A ref-returning call at the Own[record] STORAGE return slot renders
     bare and the slot copies from the reference (`return p.updated();`,
@@ -1373,3 +1458,55 @@ class TestRefCallStorageReturnBoundary:
             "    return a.updated() if c else b.updated()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "pick") is None
+
+
+class TestErrorReturnMethodExprUnwrap:
+    """An @error_return METHOD call in an expression position takes the same
+    `__er_N` statement-expression unwrap as the free-call arm."""
+
+    SRC = (
+        _ERR
+        + "from tpy import Int32\n"
+        + "class H:\n"
+        + "    items: list[Int32]\n"
+        + "    def __init__(self) -> None:\n"
+        + "        self.items = [1, 2]\n"
+        + "    @error_return(Err)\n"
+        + "    def er_val(self) -> Int32:\n"
+        + "        return 3\n"
+        + "    @error_return(Err)\n"
+        + "    def er_view(self) -> list[Int32]:\n"
+        + "        return self.items\n"
+        + "def in_binop(h: H) -> Int32:\n"
+        + "    try:\n"
+        + "        return h.er_val() + 1\n"
+        + "    except Err:\n"
+        + "        return -1\n"
+        + "def borrow_alias(h: H) -> Int32:\n"
+        + "    try:\n"
+        + "        if len(u := h.er_view()) > 0:\n"
+        + "            u.append(7)\n"
+        + "    except Err:\n"
+        + "        return -1\n"
+        + "    return h.items[len(h.items) - 1]\n"
+        + "print(in_binop(H()))\n"
+        + "print(borrow_alias(H()))\n"
+    )
+
+    def test_routes_byte_identical(self):
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(self.SRC)
+
+    def test_borrow_flavor_keeps_its_address_of_lift(self):
+        # The lift is what makes `u` ALIAS `h.items`: losing it would copy
+        # the list, and `u.append(7)` would not be observable on `h` -- a
+        # silent CPython divergence the byte-diff alone would not name.
+        cpp = _cpp(self.SRC, thir=True)
+        assert "&::tpy::unwrap_ref(*__er_" in cpp        # borrow: pointer form
+        assert "::tpy::unwrap_ref_move(*__er_" in cpp    # value: move form
+
+    def test_witnesses(self):
+        w = _emit_witnesses(self.SRC)
+        assert w.get("method.er_expr_unwrap", 0) >= 2
+        assert w.get("er.unwrap_ptr", 0) >= 1
+        assert w.get("er.unwrap", 0) >= 1

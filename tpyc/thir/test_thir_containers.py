@@ -2326,12 +2326,11 @@ class TestFieldReceiverSubscript:
             "        self.inner.ys[i] = 1\n")
         assert _fn(thir, "deep") is None and _fn(thir, "deep_put") is None
 
-    def test_narrowed_optional_field_read_routes_write_defers(self):
-        # The READ half now routes: the receiver resolver's narrowed_ok
-        # types the narrowed Optional[list] FIELD at its inner and the
-        # read renders `(*this->maybe)[..]` byte-identically (this pin
-        # used to record both halves deferring). The WRITE half keeps the
-        # declared slice (narrowed_ok is READ-site-only).
+    def test_narrowed_optional_field_read_and_write_route(self):
+        # Both halves resolve the narrowed Optional[list] FIELD at its inner
+        # (the receiver resolver's narrowed_ok, now threaded from the setitem
+        # gate too) and render the `(*this->maybe)` deref -- this pin used to
+        # record both halves deferring, then only the write.
         src = (
             _CONTAINER_FIELDS
             + "    def read(self) -> Int32:\n"
@@ -2343,7 +2342,9 @@ class TestFieldReceiverSubscript:
             + "            self.maybe[0] = v\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "read") is not None
-        assert _fn(thir, "put") is None
+        stmt = _fn(thir, "put").body[0].then_body[0]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.target.receiver, THIRFieldAccess)
         _assert_byte_identical(src)
 
     def test_checked_optional_field_ineligible(self):

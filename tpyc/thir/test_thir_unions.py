@@ -2705,8 +2705,9 @@ class TestPtrUnionTernary:
 class TestIsinstanceUnionValuePosition:
     """A union-subject isinstance at a VALUE position (`print(isinstance(
     p, A))`): the same holds_alternative chain the narrowing condition
-    renders, no extraction alias (call.isinstance_union_value). Polymorphic
-    and narrowed subjects keep rejecting."""
+    renders, no extraction alias (call.isinstance_union_value). Resumable
+    frame subjects are in -- a bare member, or the frame_slot `(*v)` deref.
+    Polymorphic and narrowed subjects keep rejecting."""
 
     def test_value_position_isinstance_routes(self):
         src = (_THREE_RECORDS
@@ -2747,16 +2748,52 @@ class TestIsinstanceUnionValuePosition:
         "    def __init__(self, y: Int32):\n        self.y = y\n"
     )
 
-    def test_generator_body_subject_falls_back(self):
-        # The value-position arm excludes generator/async bodies (the
-        # frame-slot deref spelling is unmirrored) -- the body must FALL
-        # BACK, never render the bare name over a frame slot. Local
-        # prelude: the shared _PTR_RECORDS H ctor trips the parked
-        # attempt-contamination bug (TODO.md) under a failed resumable
-        # lowering, which is not this pin's claim.
+    def test_generator_frame_param_subject_routes(self):
+        # A resumable frame PARAM: the variant is a bare frame member, so
+        # the chain spells it exactly like a sync local.
         src = (self._LOCAL_AB
                + "from typing import Iterator\n"
                + "def g(v: LA | LB) -> Iterator[bool]:\n"
+               + "    yield isinstance(v, LA)\n"
+               + "def main() -> None:\n"
+               + "    for b in g(LA(1)):\n"
+               + "        print(b)\n"
+               + "main()\n")
+        # `_lower_ctx_witnessed` cannot see a resumable's faces (the frame
+        # lowers through the codegen seam, not `lower_module`), so routing
+        # is claimed by `_assert_routes_byte_identical`'s no-fallback half.
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return std::holds_alternative<LA*>(v);" in cpp
+
+    def test_generator_frame_slot_subject_derefs(self):
+        # The shape the arm's generator exclusion used to fear: a
+        # branch-reassigned union LOCAL is a `frame_slot`, so the chain
+        # must deref (`(*u)`) rather than spell the bare member.
+        src = (self._LOCAL_AB
+               + "from typing import Iterator\n"
+               + "def g(flag: bool) -> Iterator[bool]:\n"
+               + "    u: LA | LB = LA(1)\n"
+               + "    if flag:\n"
+               + "        u = LB(2)\n"
+               + "    yield isinstance(u, LA)\n"
+               + "    yield isinstance(u, LB)\n"
+               + "def main() -> None:\n"
+               + "    for b in g(True):\n"
+               + "        print(b)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return std::holds_alternative<LA>((*u));" in cpp
+        assert "return std::holds_alternative<LB>((*u));" in cpp
+
+    def test_generator_narrowed_subject_still_defers(self):
+        # BOUNDARY unchanged by the frame widening: a subject with a live
+        # narrow entry keeps rejecting -- the extraction alias, not the
+        # bare variant, is what the AST spells there.
+        src = (self._LOCAL_AB
+               + "from typing import Iterator\n"
+               + "def g(v: LA | LB) -> Iterator[bool]:\n"
+               + "    assert isinstance(v, LA)\n"
+               + "    print(v.x)\n"
                + "    yield isinstance(v, LA)\n"
                + "def main() -> None:\n"
                + "    for b in g(LA(1)):\n"

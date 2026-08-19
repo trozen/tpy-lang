@@ -13,6 +13,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _compile,
     _entry,
+    _lower_ctx_witnessed,
 )
 
 
@@ -132,9 +133,9 @@ class TestOwnedViewBytesLiteralDecl:
 
 
 class TestScalarValueOptTernaryDefers:
-    # BOUNDARY: the value-opt ternary gate admits the SCALAR family, but
-    # the arm helper lowers only None/str/bytes literal arms -- a scalar
-    # Optional[Int32] ternary admits at the gate and defers at the arms.
+    # BOUNDARY: the value-opt ternary gate admits the SCALAR family, but the
+    # arm helper lowers only None/str/bytes literals and scalar NAMES -- a
+    # scalar CALL arm admits at the gate and defers at the arms.
     SRC = (
         "from tpy import Int32\n"
         "def pick(flag: bool) -> Int32 | None:\n"
@@ -151,9 +152,52 @@ class TestScalarValueOptTernaryDefers:
         assert fb.get("body:expr.ifexpr") == 1, fb
 
 
-class TestValueOptTernaryNameArmDefers:
-    # BOUNDARY: only the witnessed literal arms are in the ternary slice --
-    # a NAME arm (whatever its render would be) keeps the named reject.
+class TestScalarNameValueOptTernaryArm:
+    # A scalar name renders bare and carries no form facts, so the AST's
+    # per-arm `std::optional<T>(...)` wrap composes over it unchanged.
+    SRC = (
+        "from tpy import Int32\n"
+        "def lookup(n: Int32) -> Int32 | None:\n"
+        "    return n if n > 0 else None\n"
+        "def main() -> None:\n"
+        "    print(lookup(1))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        compiler, ast, thir = _gen(self.SRC)
+        assert thir == ast
+        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        assert "std::optional<int32_t>(n)" in thir[1]
+
+    def test_face_witnessed(self):
+        _, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("ifexpr.value_opt_scalar_name", 0) == 1
+
+
+class TestCharNameValueOptTernaryArmDefers:
+    # BOUNDARY: `Char` sits outside `_eligible_scalar` (it shares the str
+    # family's view/owned axis), so a Char name arm keeps the named reject.
+    SRC = (
+        "from tpy import Char\n"
+        "def pick(flag: bool, c: Char) -> Char | None:\n"
+        "    return c if flag else None\n"
+        "def main() -> None:\n"
+        "    print(pick(True, Char('a')))\n"
+        "main()\n"
+    )
+
+    def test_defers_byte_identical(self):
+        compiler, ast, thir = _gen(self.SRC)
+        assert thir == ast
+        fb = dict(compiler._thir_fallback)
+        assert fb.get("body:expr.ifexpr") == 1, fb
+
+
+class TestValueOptTernaryNonScalarNameArmDefers:
+    # BOUNDARY: the ternary slice carries the witnessed literal arms plus a
+    # SCALAR name; a name of any other family (here `str`, whose owned/view
+    # split is a separate render axis) keeps the named reject.
     SRC = (
         "from typing import Optional\n"
         "def pick(flag: bool, s: str) -> Optional[str]:\n"

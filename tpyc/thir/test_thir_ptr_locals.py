@@ -682,6 +682,55 @@ class TestBranchHoistDecls:
         assert cpp == _cpp(src, thir=False)
         assert "::tpy::ListPrinter((*items))" in cpp
 
+    def test_optional_storage_comprehension_source_routes(self):
+        # A COMPREHENSION source at the same assign: the whole stmt-expr
+        # lands in the engaged optional. Dispatched at the reseat because
+        # the generic expression lowering has no comprehension arm --
+        # admitting it at the gate alone only moves the reject.
+        from .testutil import _assert_routes_byte_identical
+        src = ("from tpy import Int32\n"
+               "class Node:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n"
+               "        self.v = v\n"
+               "def f(c: bool, src: list[Node]) -> Int32:\n"
+               "    if c:\n"
+               "        xs = [n.v + 1 for n in src]\n"
+               "    else:\n"
+               "        return -1\n"
+               "    xs.append(9)\n"
+               "    return xs[0] + len(xs)\n"
+               "def main() -> None:\n"
+               "    print(f(True, [Node(1), Node(2)]))\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("reseat.opt_storage_comp", 0) >= 1
+        cpp = _cpp(src, thir=True)
+        assert "std::optional<std::vector<int32_t>> xs;" in cpp
+        assert "xs = ({" in cpp
+
+    def test_optional_storage_comp_shadowed_loop_var_defers(self):
+        # BOUNDARY: the comprehension route still owns its own rejects --
+        # a loop var shadowing a specially-classified local (here a
+        # reassigned pointer local) keeps the whole body on the AST path.
+        src = ("from tpy import Int32\n"
+               "class Node:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n"
+               "        self.v = v\n"
+               "def f(c: bool, src: list[Node]) -> Int32:\n"
+               "    n = src[0]\n"
+               "    if c:\n"
+               "        n = src[1]\n"
+               "    if c:\n"
+               "        xs = [n.v + 1 for n in src]\n"
+               "    else:\n"
+               "        return -1\n"
+               "    return xs[0] + len(xs)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
     def test_optional_storage_call_source_routes(self):
         # The OPTIONAL_STORAGE assign's storage-call source flavor
         # (`items = make()` in a single-bind branch) -- reseat.opt_storage

@@ -509,7 +509,8 @@ class TestFieldWriteFamilies:
     def test_str_field_write_concat_value_routes(self):
         # A str-typed BINOP value now assigns its concat render bare (the
         # TestStrFieldConcatWrite pin in test_thir_forms carries the
-        # byte-identity assert); call/other sources still stay AST.
+        # byte-identity assert); call sources other than the zero-arg `str()`
+        # ctor still stay AST.
         thir = _lower_ctx(
             _FW_RECORDS
             + "    def suffix(self, s: str):\n        self.tag = s + \"!\"\n")
@@ -3725,3 +3726,120 @@ class TestProtocolNameAtStubArg:
         thir, wit = _lower_ctx_witnessed(src)
         assert _fn_l(thir, "list_from") is not None
         assert wit.get("call.inst_proto_name_arg", 0) >= 1
+
+
+class TestStrBytesFieldWriteValueShapes:
+    """Value shapes the str/bytes field-write allowlists admit beyond the
+    literal / name / binop rows: a str SLICE subscript, the zero-arg `str()`
+    ctor call, and a narrowed `bytes | None` NAME. The renders are the
+    existing bare STR / bytes-copy arms -- each new shape's materialization
+    rides its own node."""
+
+    def _fallback(self, src: str) -> dict:
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        return dict(compiler._thir_fallback)
+
+    def test_str_field_write_from_slice_routes(self):
+        # `self.tag = s[1:3]`: the sema strview_to_str coerce carries the
+        # `std::string(::tpy::str_slice(...))` materialization itself.
+        src = (_FW_RECORDS
+               + "    def cut(self, s: str) -> None:\n"
+               + "        self.tag = s[1:3]\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "cut") is not None
+        _assert_byte_identical(src)
+
+    def test_str_field_write_from_slice_emit(self):
+        src = ("class Tag:\n    name: str\n"
+               "    def __init__(self) -> None:\n        self.name = \"\"\n"
+               "    def cut(self, s: str) -> None:\n"
+               "        self.name = s[1:3]\n")
+        _assert_routes_byte_identical(src)
+
+    def test_str_field_write_from_index_stays_ast(self):
+        # BOUNDARY: the row is SLICE-shaped. A single-INDEX subscript is a
+        # one-char str with its own `str_getitem` render, so it must keep
+        # rejecting even though its type resolves str-family.
+        src = ("class Tag:\n    name: str\n"
+               "    def __init__(self) -> None:\n        self.name = \"t\"\n"
+               "    def pick(self, s: str) -> None:\n"
+               "        self.name = s[0]\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "pick") is None
+        _assert_byte_identical(src)
+
+    def test_str_field_write_from_str_ctor_routes(self):
+        # `self.name = str()`: the zero-arg ctor call default-constructs the
+        # owned field (`this->name = std::string();`).
+        src = ("class Tag:\n    name: str\n"
+               "    def __init__(self) -> None:\n        self.name = \"t\"\n"
+               "    def reset(self) -> None:\n        self.name = str()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_str_field_write_from_str_conversion_stays_ast(self):
+        # BOUNDARY: the ctor row is ZERO-ARG only -- `str(x)` is a conversion
+        # with its own render, not a default construction.
+        src = ("from tpy import Int32\n"
+               "class Tag:\n    name: str\n"
+               "    def __init__(self) -> None:\n        self.name = \"t\"\n"
+               "    def show(self, n: Int32) -> None:\n"
+               "        self.name = str(n)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "show") is None
+        _assert_byte_identical(src)
+
+    def test_bytes_field_write_from_narrowed_optional_routes(self):
+        # A NAME declared `bytes | None`, narrowed to `bytes`: the deref is a
+        # view, so the existing BORROW->STORAGE `bytes_copy` convert applies.
+        src = ("class Blob:\n    data: bytes\n"
+               "    def __init__(self, d: bytes) -> None:\n"
+               "        self.data = d\n"
+               "    def store(self, b: bytes | None) -> None:\n"
+               "        if b is not None:\n            self.data = b\n")
+        _assert_routes_byte_identical(src)
+
+    def test_str_field_write_from_narrowed_optional_stays_ast(self):
+        # BOUNDARY, and the reason the bytes row has no str twin: the AST
+        # MOVES a narrowed `str | None` deref at its last use
+        # (`this->name = std::move((*s));`) while the bare STR arm would
+        # render `(*s)`. Admitting it here would diverge.
+        src = ("class Tag:\n    name: str\n"
+               "    def __init__(self) -> None:\n        self.name = \"t\"\n"
+               "    def store(self, s: str | None) -> None:\n"
+               "        if s is not None:\n            self.name = s\n")
+        assert self._fallback(src) == {
+            "body:stmt.assign:assign.field_write_shape": 1}
+        _assert_byte_identical(src)
+
+
+class TestGenericOptionalFieldWrite:
+    """The F2b pointer-repr Optional field write admits a TYPE-PARAM inner
+    for the borrow-`T*` source: the lift is keyed on the field's repr, not
+    on what is inside."""
+
+    def test_type_param_optional_field_write_routes(self):
+        src = ("from tpy import Int32\n"
+               "class Container[T]:\n    _val: T | None\n"
+               "    def __init__(self, val: T | None) -> None:\n"
+               "        self._val = val\n"
+               "    def set(self, val: T | None) -> None:\n"
+               "        self._val = val\n")
+        _assert_routes_byte_identical(src)
+
+    def test_container_inner_optional_field_write_stays_ast(self):
+        # BOUNDARY: the widening names TypeParamRef explicitly. A
+        # pointer-repr `Optional[list]` field takes a target-threaded render
+        # the shared tail does not spell, so it must keep rejecting.
+        src = ("from tpy import Int32\n"
+               "class Bag:\n    items: list[Int32] | None\n"
+               "    def __init__(self, items: list[Int32] | None) -> None:\n"
+               "        self.items = items\n"
+               "    def set(self, items: list[Int32] | None) -> None:\n"
+               "        self.items = items\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "set") is None
+        _assert_byte_identical(src)

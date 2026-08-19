@@ -89,10 +89,98 @@ class TestFieldChainRejects:
 
     def test_optional_intermediate_rejects(self):
         # `o.mid.inner.v` where `inner` is `Inner | None`: the AST unwraps the
-        # intermediate (`deref_check`), a shape the plain chain does not carry.
+        # STORAGE optional (`deref_optional_check`), which is its own arm --
+        # not the `Ptr`-valued intermediate the chain does admit.
         assert self._rejects(
             "inner: Inner | None",
             "def f(o: Outer) -> Int32:\n    return o.mid.inner.v\n")
+
+
+_PTR_CHAIN = (
+    "from tpy import Int32, Ptr\n"
+    "class Q:\n"
+    "    flag: Int32\n"
+    "    def __init__(self, f: Int32):\n        self.flag = f\n"
+    "class A:\n"
+    "    q: Q\n"
+    "    def __init__(self, f: Int32):\n        self.q = Q(f)\n"
+    "class S:\n"
+    "    a: A\n"
+    "    def __init__(self, f: Int32):\n        self.a = A(f)\n"
+    "class M:\n"
+    "    s: Ptr[S]\n"
+    "    def __init__(self, s: Ptr[S]):\n        self.s = s\n"
+    "    def read(self) -> Int32:\n        return self.s.a.q.flag\n"
+    "    def write(self, v: Int32) -> None:\n        self.s.a.q.flag = v\n"
+    "def via_name(s: Ptr[S]) -> Int32:\n    return s.a.q.flag\n"
+    "def proven(s0: S) -> Int32:\n"
+    "    p: Ptr[S] = s0\n    return p.a.q.flag\n"
+    "def main() -> None:\n"
+    "    s = S(7)\n    m = M(s)\n    print(m.read())\n    m.write(9)\n"
+    "    print(m.read())\n    print(via_name(s))\n    print(proven(s))\n"
+    "main()\n"
+)
+
+
+class TestPtrValuedIntermediate:
+    """A chain hop THROUGH a `Ptr`-valued field/param: the inner hop carries
+    sema's auto-deref marker, so it is not marker-clean, but it renders
+    through the pointer arm and the outer hop spells a bare `.` off it."""
+
+    def test_routes_byte_identical(self):
+        _assert_routes_byte_identical(_PTR_CHAIN)
+
+    def test_both_renders_witnessed(self):
+        # The unproven receiver keeps its NULL CHECK and the proven one spells
+        # `->`: mirroring the arrow unconditionally would drop the check, so
+        # both renders must appear.
+        compiler, modules = _compile(_PTR_CHAIN)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        out = hpp + cpp
+        assert "return ::tpy::deref_check(this->s).a.q.flag;" in out
+        assert "::tpy::deref_check(this->s).a.q.flag = v;" in out   # write
+        assert "return ::tpy::deref_check(s).a.q.flag;" in out      # param
+        assert "return p->a.q.flag;" in out                         # non-null
+
+    def test_face_witnessed(self):
+        _, witnessed = _lower_ctx_witnessed(_PTR_CHAIN)
+        assert witnessed.get("field.chain_ptr_recv", 0) >= 1
+
+    def test_second_ptr_hop_keeps_rejecting(self):
+        # BOUNDARY: the row admits ONE marked inner hop, so a chain whose
+        # intermediate is ALSO a Ptr field stays on the AST path.
+        src = _PTR_CHAIN.replace("class S:\n    a: A\n"
+                                 "    def __init__(self, f: Int32):\n"
+                                 "        self.a = A(f)\n",
+                                 "class S:\n    a: Ptr[A]\n"
+                                 "    def __init__(self, a: Ptr[A]):\n"
+                                 "        self.a = a\n")
+        src = src.replace("    s = S(7)\n", "    inner = A(7)\n    s = S(inner)\n")
+        assert _fn(_lower_ctx(src), "via_name") is None
+
+    def test_user_deref_intermediate_keeps_rejecting(self):
+        # BOUNDARY: a USER `__deref__` proxy mid-chain
+        # (`this->r.__deref__().q.flag`) is its own family -- the row keys on
+        # the Ptr-valued receiver predicate, which a proxy record cannot pass.
+        src = (
+            "from tpy import Int32, auto_readonly\n"
+            "class Q:\n"
+            "    flag: Int32\n"
+            "    def __init__(self, f: Int32):\n        self.flag = f\n"
+            "class A:\n"
+            "    q: Q\n"
+            "    def __init__(self, f: Int32):\n        self.q = Q(f)\n"
+            "class Ref:\n"
+            "    _target: A\n"
+            "    def __init__(self, target: A):\n        self._target = target\n"
+            "    @auto_readonly\n"
+            "    def __deref__(self) -> A:\n        return self._target\n"
+            "def read(r: Ref) -> Int32:\n    return r.q.flag\n"
+        )
+        assert _fn(_lower_ctx(src), "read") is None
 
 
 class TestFieldOverCallRead:

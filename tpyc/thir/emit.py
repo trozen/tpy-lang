@@ -2046,18 +2046,32 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     state.try_except_label = None
     state.try_except_err_opt = None
     state.in_except_tier = None
+    # A hoist line this body produces must be drained INSIDE the lambda: the
+    # enclosing body's prologue is outside this capture list, so a declaration
+    # written there is unreachable from the lambda. The AST's
+    # `nested_hoist_scope` + buffered body; every `hoist_lines` producer is
+    # covered, not just the rebind-slot one lowering knows about.
+    saved_hoists = state.hoist_lines
+    state.hoist_lines = []
+    body_buf = io.StringIO()
     try:
         # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
         # with no emit_block_trailing_comments call, so a comment after the
         # lambda's last statement stays OUTSIDE the closing brace.
-        _emit_stmts(out, stmt.body, indent_level + 1, state)
+        _emit_stmts(body_buf, stmt.body, indent_level + 1, state)
+        if state.hoist_lines:
+            _witness("stmt.nested_def_hoist")
+        for content in state.hoist_lines:
+            out.write(f"{INDENT * (indent_level + 1)}{content}\n")
     finally:
+        state.hoist_lines = saved_hoists
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
          state.loop_else_labels, state.rebind_slots,
          state.union_slot_locals, state.error_return_cpp,
          state.try_except_label, state.try_except_err_opt,
          state.in_except_tier, state.inline_rvalue_slots) = saved
+    out.write(body_buf.getvalue())
     out.write(f"{indent}}};\n")
 
 
@@ -4190,6 +4204,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             elif bind == "assign":
                 # Reused target: the AST's declared-name tail (no decl).
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
+            elif bind == "global_slot":
+                # Pointer-slot global at module init: the moved-out element
+                # needs storage that outlives `__tpy_init`, so it lands in a
+                # `static` slot the pre-declared global points at. Lowering
+                # admits owned elements only, hence the unconditional move.
+                slot = state.global_slot()
+                out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
+                          f"std::move({get});\n")
+                out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
+                # A later rvalue write reuses this slot (the AST's
+                # rebind_slots registration at the same point).
+                state.rebind_slots[name] = state.slot_counter
             elif bind == "move":
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"std::move({get});\n")

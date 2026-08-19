@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 
@@ -174,17 +175,20 @@ class TestDemotedArrayAlias:
         cpp = _assert_byte_identical(src)
         assert "std::array<int32_t, 2>& ys = xs;" in cpp[1]
 
-    def test_bytearray_alias_stays_ast(self):
-        # The bytes/bytearray span-borrow family takes a different borrow
-        # shape; a name alias of it keeps rejecting.
+    def test_bytearray_alias_binds_reference(self):
+        # `bytearray` is a reference type like `list`, so its name alias binds
+        # the same `T&`. The span-borrow shape that keeps it out of other arms
+        # is a PARAM/arg-slot fact -- the REF_ALIAS decl emitter is
+        # family-blind.
         src = ("def main() -> None:\n"
                "    b = bytearray(b\"abc\")\n"
                "    c = b\n"
                "    c.append(33)\n"
                "    print(len(b))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "main") is not None
+        cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<uint8_t>& c = b;" in cpp[1]
 
 
 class TestUnionLiteralBoundaries:

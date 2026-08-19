@@ -66,6 +66,7 @@ from ..nodes import (
     THIRMatchFoldBind,
     THIRExpr,
     THIRFormConvert,
+    THIRLiteral,
     THIRMatch,
     THIRMatchArm,
     THIRMatchArmEntry,
@@ -1081,6 +1082,12 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
     # The AST renders every guard through gen_truthy_expr, so a non-bool guard
     # takes its type's truthiness wrap rather than rejecting.
     lowered = _lower_truthy(guard, lc, declared)
+    # A guard sema decided statically (e.g. `isinstance` against a non-union
+    # subject) folds to a bare bool literal whose result_type never got filled
+    # in; the render needs no type, so the bool value alone carries the arm.
+    if isinstance(lowered, THIRLiteral) and isinstance(lowered.value, bool):
+        _witness("match.guard_const_fold")
+        return lowered
     if not is_bool_type(unwrap_readonly(lowered.result_type)):
         raise ThirUnsupported("match.guard_type", detail=True)
     return lowered
@@ -1475,10 +1482,35 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                 continue
             if inner.name in lc.pointers:
                 # A capture the match hoisted into a POINTER local binds by
-                # address (`q = &(__match_subject_1.inner);`) -- its own rung.
-                # Beside node construction, where every rejection check lives:
-                # the hoist registers `lc.pointers` only after the arm gate has
-                # read its snapshot, so the gate could not see this anyway.
+                # address (`q = &(__match_subject_1.inner);`). The check lives
+                # beside node construction, not at the arm gate: the hoist
+                # registers `lc.pointers` only after the gate has read its
+                # snapshot, so the gate could not see this anyway. A FIELD
+                # subject is never the whole subject spelling, so the AST's
+                # already-a-pointer shortcut cannot apply here -- the lift is
+                # unconditional. An owning optional slot moves instead
+                # (assign_move) and a resumable frame field takes the
+                # generator write renders: both stay their own rungs.
+                # `frame_local_types` is a STRICT SUBSET of what the AST
+                # treats as a frame field (it misses params, `__self` and
+                # forwarded proto-param aliases). It is inert today because
+                # the resumable match gate rejects every record-field capture
+                # before this runs -- whoever widens that gate must replace
+                # this conjunct with a real frame-field membership test.
+                if (inner.name in declared
+                        and inner.name not in lc.optional_locals
+                        and inner.name not in lc.frame_local_types):
+                    _witness("match.field_bind_assign_addr")
+                    field_bindings.append(THIRMatchBinding(
+                        name=inner.name, mode="assign_addr",
+                        from_case_var=from_case_var,
+                        subject_prefix=bpre, subject_suffix=f"{bsuf}.{fname}",
+                        base_name=base))
+                    _pft = _match_record_field_type(pattern, fname, lc.analyzer)
+                    assert _pft is not None, \
+                        "ineligible ptr-hoist capture reached lowering"
+                    arm_declared[inner.name] = _pft
+                    continue
                 raise ThirUnsupported("match.field_bind_ptr_hoist")
             mode = ("assign" if inner.name in declared
                     else "copy" if inner.bind_by_value else "ref")

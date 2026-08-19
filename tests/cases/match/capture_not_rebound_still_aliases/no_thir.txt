@@ -1,3 +1,0 @@
-The record-capture alias bind off an Own[] local subject is outside the
-THIR match tier (stmt.match). Auto-managed by --thir-classify;
---thir-check-flip lists it once clean.

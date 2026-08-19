@@ -197,16 +197,16 @@ class TestThirScoping:
         it trips the comp-phase ratchet. Pins the >0 side (the pass side is
         test_clean_body_has_zero_fallback) so an inverted/broken fallback counter
         can't slip through -- no corpus case can exercise the fire side, since
-        unmarked <=> already clean. Uses a nested-def rebind-slot shape (an
-        emit-architecture park); if that ever migrates, swap in another
-        un-migrated construct."""
+        unmarked <=> already clean. Uses a nested-def rebind-slot shape; if
+        that ever migrates, swap in another un-migrated construct."""
         src_file = tmp_path / "main.py"
-        # An ENCLOSING body whose own branch rebind slot coexists with a
-        # nested def: parked on the emit architecture (the slot placement
-        # interacts with the lambda emit), so it stays un-migrated until
-        # the nested-def emit model changes. (Two earlier fixtures --
-        # `async def f(): return None`, then a nested-def-only rebind --
-        # both migrated.)
+        # A nested def whose local is first declared in an `if`/`else`: the
+        # slot rides `THIRIf.hoist_slots`, whose owner name the nested-def
+        # shadow exemption cannot read, so the enclosing-slot disjunct still
+        # fires. The same residue is pinned directly by
+        # test_thir_lambda_hoist.py -- swap both when it migrates. (Three
+        # earlier fixtures -- `async def f(): return None`, a nested-def-only
+        # rebind, then a nested def reserving its own slot -- all migrated.)
         src_file.write_text(
             "from tpy import Int32\n"
             "class P:\n"
@@ -215,9 +215,11 @@ class TestThirScoping:
             "        self.v = v\n"
             "def f(flag: Int32) -> Int32:\n"
             "    def g(k: Int32) -> Int32:\n"
-            "        p = P(k)\n"
             "        if k > 0:\n"
-            "            p = P(k * 10)\n"
+            "            p = P(k)\n"
+            "        else:\n"
+            "            p = P(0)\n"
+            "        p = P(k * 10)\n"
             "        return p.v\n"
             "    p = P(1)\n"
             "    if flag > 0:\n"

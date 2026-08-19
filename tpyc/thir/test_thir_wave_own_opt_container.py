@@ -1,6 +1,8 @@
 """Pins for the argparse Own[Optional[container]] chain, three arms:
 the MIL move (`tag(std::move(tag))` -- an Own storage-optional param
-into the Optional[container] field), the OPT_PTR_SLOT reseat from a
+into the Optional[container] field; its borrow sibling lifts a
+pointer-repr Optional param through `ptr_to_optional`), the
+OPT_PTR_SLOT reseat from a
 container-returning by-value call (`p = &*(__slot_N = <rvalue>);`), and
 the ctor-arg inline materialization
 (`std::move(p ? std::optional<V>(std::move(*p)) : std::nullopt)` --
@@ -14,9 +16,11 @@ shape)."""
 
 from __future__ import annotations
 
+from .nodes import Form, THIRFieldAccess, THIRFormConvert, THIRSetItem
 from .testutil import (
     _assert_byte_identical,
     _fn,
+    _lower_ctor,
     _lower_ctx_witnessed,
 )
 
@@ -70,9 +74,12 @@ class TestOwnOptContainerChain:
         assert _fn(thir, "read") is not None
         _assert_byte_identical(src)
 
-    def test_narrowed_opt_field_setitem_still_defers(self):
-        # The WRITE flavor keeps the declared slice (narrowed_ok is
-        # threaded from the READ call site only).
+    def test_narrowed_opt_field_setitem_routes(self):
+        # The WRITE flavor takes the same narrowed_ok receiver unwrap as the
+        # read above -- `::tpy::__setitem__((*a.coord), 0, 9)`. The
+        # un-narrowed write is sema-rejected outright ("Cannot assign to
+        # elements of `list[Int32] | None` (read-only)"), so there is no
+        # unproven shape this widening could mis-admit.
         src = _HDR + (
             "class Args:\n"
             "    coord: list[Int32] | None\n"
@@ -87,7 +94,91 @@ class TestOwnOptContainerChain:
             "    print(a.coord)\n"
         )
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "write") is None
+        stmt = _fn(thir, "write").body[1]
+        assert isinstance(stmt, THIRSetItem)
+        assert isinstance(stmt.target.receiver, THIRFieldAccess)
+        _assert_byte_identical(src)
+
+    def test_narrowed_opt_field_record_elem_setitem_routes(self):
+        # The record-element flavor the widened receiver newly reaches: the
+        # element move renders `__setitem__((*this->items), 0, std::move(b))`.
+        src = _HDR + (
+            "class Box:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n"
+            "class RecElems:\n"
+            "    items: list[Box] | None\n"
+            "    def __init__(self, c: Own[list[Box] | None]) -> None:\n"
+            "        self.items = c\n"
+            "    def write(self, b: Own[Box]) -> None:\n"
+            "        assert self.items is not None\n"
+            "        self.items[0] = b\n"
+            "def main() -> None:\n"
+            "    r = RecElems([Box(1)])\n"
+            "    r.write(Box(9))\n"
+            "    print(r.items is None)\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        stmt = _fn(thir, "write").body[1]
+        assert isinstance(stmt, THIRSetItem)
+        _assert_byte_identical(src)
+
+    def test_narrowed_opt_field_delitem_still_defers(self):
+        # The DEL gate keeps the DECLARED slice: `narrowed_ok` is threaded
+        # from the read and setitem call sites only, so the same narrowed
+        # Optional field rejects here.
+        src = _HDR + (
+            "class Args:\n"
+            "    d: dict[str, Int32] | None\n"
+            "    def __init__(self, d: dict[str, Int32] | None) -> None:\n"
+            "        self.d = d\n"
+            "    def drop(self) -> None:\n"
+            "        assert self.d is not None\n"
+            "        del self.d['a']\n"
+            "def main() -> None:\n"
+            "    a = Args({'a': 1})\n"
+            "    a.drop()\n"
+            "    print(a.d is None)\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "drop") is None
+        _assert_byte_identical(src)
+
+    def test_opt_container_mil_borrow_ptr_lift_routes(self):
+        # The MIL twin of the Optional[F1-record] borrow lift: a pointer-repr
+        # Optional[container] PARAM renders `T*` and lifts into the storage
+        # `std::optional<...>` field through `ptr_to_optional`.
+        src = _HDR + (
+            "class Buf:\n"
+            "    items: list[Int32] | None\n"
+            "    def __init__(self, items: list[Int32] | None) -> None:\n"
+            "        self.items = items\n"
+            "def main() -> None:\n"
+            "    b = Buf([1, 2])\n"
+            "    print(b.items is None)\n"
+        )
+        ctor = _lower_ctor(src, "Buf")
+        assert [mi.field_cpp for mi in ctor.mil_inits] == ["items"]
+        init = ctor.mil_inits[0].value
+        assert isinstance(init, THIRFormConvert)
+        assert init.form is Form.STORAGE and not init.move
+        _assert_byte_identical(src)
+
+    def test_opt_container_mil_literal_still_defers(self):
+        # A container LITERAL at the same slot is neither a move source nor a
+        # borrow pointer -- its own render stays unwitnessed, so the ctor
+        # keeps deferring.
+        src = _HDR + (
+            "class Buf:\n"
+            "    items: list[Int32] | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.items = [1, 2, 3]\n"
+            "def main() -> None:\n"
+            "    b = Buf()\n"
+            "    print(b.items is None)\n"
+        )
+        assert _lower_ctor(src, "Buf") is None
         _assert_byte_identical(src)
 
     def test_still_live_ctor_arg_still_defers(self):

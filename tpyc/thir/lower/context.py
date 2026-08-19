@@ -1060,8 +1060,10 @@ class _LowerCtx:
                 if (isinstance(inner_t, TupleType)
                         and inner_t.has_pointer_repr_element()):
                     _binding_ack(self, "storage_tuple_locals", pname)
-        # Subset of storage_tuple_locals iterated from a const source (a const
-        # loop var): the borrow tuple wrap spells `const T*` element pointers.
+        # Subset of storage_tuple_locals bound from a const source (a const loop
+        # var, or an alias off a const receiver chain): the borrow tuple wrap
+        # spells `const T*` element pointers. Mirrors the AST's
+        # `const_storage_form_tuple_locals`.
         self.const_storage_tuple_locals: set[str] = set()
         # Borrow-form tuple locals whose element pointers spell `const T*`
         # because SOME binding source reads const storage -- the mirror of

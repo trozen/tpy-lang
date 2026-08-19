@@ -102,7 +102,7 @@ from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.gen_async import collect_frame_nested_defs
-from ..nodes import Form
+from ..nodes import Form, THIRLiteral
 from .checks import (
     _module_qual_ctor_shape,
     _assert_narrow_info,
@@ -187,6 +187,20 @@ def _res_value_ok(t: 'TpyType | None', analyzer) -> bool:
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return bool(_eligible_scalar(t) or _eligible_char(t)
                 or _eligible_enum(t, analyzer) is not None)
+
+
+def _value_opt_yield_slot(t: 'TpyType | None') -> 'OptionalType | None':
+    """A VALUE-repr `Optional[T]` generator yield slot, or None. The whole
+    `std::optional<T>` crosses the `__next__` boundary by value, which is
+    what lets the sink pass a narrowed source un-dereferenced and a `None`
+    as `std::nullopt`. The pointer-repr sibling is a plain `T*` and keeps
+    the family gate's own rungs."""
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OptionalType) and not u.uses_pointer_repr():
+        return u
+    return None
 
 
 def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
@@ -924,7 +938,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         yt_tuple = (_unwrap_own(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(yt_t))))
                     if yt_t is not None else None)
+        # A VALUE-repr Optional yield slot (`Iterator[Int32 | None]`) is the
+        # whole `std::optional<T>` by value, so it admits on its INNER's
+        # capture -- the yield sink then passes the optional bare (no deref,
+        # no monostate). Scoped to this gate: `_res_param_ok` and the async
+        # return read the same predicate and keep their own slot rules.
+        yt_valopt = _value_opt_yield_slot(yt_t)
         if not (_res_capture_ok(yt_t, analyzer)
+                or (yt_valopt is not None
+                    and _res_capture_ok(yt_valopt.inner, analyzer))
                 or _resolved_str_value(yt_t, analyzer) is not None
                 or _resolved_bytes_value(yt_t, analyzer) is not None
                 # Tuple slots gate per-yield in the Yield arm (literal
@@ -2002,6 +2024,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 yield_values[id(ys)] = yv_lowered
                 _witness("res.yield_record_borrow")
                 return
+            yv_valopt = _value_opt_yield_slot(yt)
+            if yv_valopt is not None and isinstance(ys.value, TpyNoneLiteral):
+                # `yield None` at a value-repr Optional slot: the storage
+                # nullopt. SLOT-typed, not NoneType-typed -- a NoneType
+                # STORAGE literal renders `std::monostate{}` instead.
+                yield_values[id(ys)] = THIRLiteral(
+                    result_type=yt, value=None, form=Form.STORAGE,
+                    loc=ys.loc)
+                _witness("res.yield_value_opt_none")
+                return
             # A str-family FIELD at a str yield slot reads bare (`return
             # __case_0.name;`), the same precheck the return sinks thread. A
             # slot needing conversion arrives as a coerce, not a bare field,
@@ -2012,8 +2044,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                             and _str_field_value_read(ys.value, declared,
                                                       analyzer)
                             and _witness("res.yield_str_field"))
-            yv_lowered = _lower_expr(ys.value, lc, declared,
-                                     field_prechecked=yv_str_field)
+            # SLOT-keyed, never source-keyed: the same narrowed value-opt
+            # NAME must deref at an `Int32` slot (`return (*val);`) and pass
+            # whole at an `Int32 | None` one.
+            yv_lowered = _lower_expr(
+                ys.value, lc, declared, field_prechecked=yv_str_field,
+                allow_whole_optional=yv_valopt is not None)
             if (isinstance(ys.value, TpyName)
                     and ys.value.name in ptr_frame_locals
                     and isinstance(yv_lowered, THIRName)

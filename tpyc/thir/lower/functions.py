@@ -46,6 +46,7 @@ from ...namespace import BindingKind
 from ...binding_audit import publish_thir as publish_binding_facts
 from ...prescan import scan_reassigned_vars
 from ...typesys import (
+    AnyType,
     CONST_PARAMS_METHODS,
     IntLiteralType,
     RecursiveAliasInstanceType,
@@ -89,6 +90,7 @@ from ...codegen_cpp.forms import LocalBinding
 from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
+    is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
     is_dict,
@@ -148,6 +150,7 @@ from .predicates import (
     _is_borrow_tuple_source,
     _is_string_owned,
     _is_type_param_slot,
+    _own_type_param_slot,
     _optional_ptr_borrow_name,
     _readonly_global_type,
     _pointer_slot_global_type,
@@ -197,7 +200,8 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     candidates whose per-stub specializations are the same body modulo the
     (AST-owned) signature:
 
-    - `generic_stub`: a stub carries type params (template specializations);
+    - `generic_stub`: a stub has a protocol-/Fn-typed param (the synthesized
+      template header, whose call site is not the plain named call);
     - `arity`: a stub is shorter than the impl (missing-param default locals);
     - `ret_mismatch`: stub return types differ from the impl's (the return
       arm strips/validates per-stub coercions);
@@ -214,7 +218,7 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     Tags extend the dot-hierarchical drilldown convention (like
     `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
     (which is fallback.py's auto-composed form, never hand-built)."""
-    if any(getattr(fi, "type_params", None) for fi in stubs):
+    if any(_stub_has_template_param(fi) for fi in stubs):
         return "sig.overload_set.generic_stub"
     if not allow_arity and any(len(fi.params) != len(func.params)
                                for fi in stubs):
@@ -239,15 +243,15 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     return "sig.overload_set.plain"
 
 
-def _stub_signature_is_template(fi) -> bool:
-    """Analyzer-pure over-approximation of _signature_is_template: a stub
-    with type params or any protocol-/Fn-typed param (bare or under
-    readonly/Own/Optional shells) emits through the template-header path --
-    unmirrored per-stub territory. _overload_reject_detail's type_params
-    check misses protocol-param templates (no synthesized type_params), so
-    admission needs its own test."""
-    if getattr(fi, "type_params", None):
-        return True
+def _stub_has_template_param(fi) -> bool:
+    """A stub whose PARAMS force the template-header path: a protocol- or
+    Fn-typed param (bare or under readonly/Own/Optional shells) synthesizes
+    type params, and its call site is not the plain named call the call arms
+    admit -- unmirrored per-stub territory.
+
+    Declared type params are NOT part of this: `template<...>` is signature,
+    written by the AST printer, and the specialization bodies lower through
+    the ordinary arms."""
     return any(_stub_template_param(pt) for _n, pt in fi.params)
 
 
@@ -373,8 +377,8 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
     (impl-signature emission, so the arity/narrow/ret classifiers here
     don't apply)."""
     stubs = analyzer.overload_groups.get(id(func)) or []
-    if any(_stub_signature_is_template(fi) for fi in stubs) \
-            or _stub_signature_is_template(func):
+    if any(_stub_has_template_param(fi) for fi in stubs) \
+            or _stub_has_template_param(func):
         raise ThirUnsupported("sig.overload_set.generic_stub")
     if overload_stubs_are_literal_only(stubs, func):
         if stub is not None:
@@ -418,7 +422,16 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # body-side return arm determines whether a return shape routes. A record
     # param's const verdict comes from the method's FunctionInfo on the owning
     # record -- see `_param_is_const`.
-    if func.is_method:
+    #
+    # A macro-authored staticmethod reaches here with `is_method` FALSE:
+    # `FragmentParser.parse_fragment` sets method-ness by "first param named
+    # self", so a `quote_fun` fragment without one parses as a free function,
+    # and `quote_fun`'s docstring prescribes setting `is_staticmethod = True`
+    # on the result. `self_type` is what makes it record-owned; a genuinely
+    # free callable carrying the flag has no owner and still rejects.
+    is_record_callable = func.is_method or (func.is_staticmethod
+                                            and self_type is not None)
+    if is_record_callable:
         if self_type is None or not _f1_record(self_type, analyzer):
             raise ThirUnsupported("sig.receiver_record")
         # Inplace dunders (__iadd__ ...) admit: the AST's forced-const param
@@ -447,8 +460,6 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # readonly-keyed body effect (`const_locals.add("self")`) is unreachable
         # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
-        # Defensive: the parser sets is_method=True on staticmethods, so a free
-        # function should never carry the flag.
         raise ThirUnsupported("sig.staticmethod_flag")
     if func.is_overload_stub or func.native_function:
         raise ThirUnsupported("sig.special_callable")
@@ -463,7 +474,16 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # sensitive to none of them lowers identically per stub). Sole
     # carve-out: a property getter+setter pair shares one method name in
     # the registry but each has its own body (no shared-impl hijack).
-    if func.is_method:
+    #
+    # A simple generator is a second carve-out on the same argument, one tier
+    # up: the AST router lowers it at its leaf seam and never reaches the
+    # per-stub seeding loop, so its overload set emits ONE body (the impl
+    # signature with its defaults) and there is no specialization to hijack.
+    # Keyed on the simple-generator ENTRY, not on the shape: the plain
+    # function entry reaching the same func must keep its own reject.
+    single_body = (allow_resumable and func.is_generator
+                   and GeneratorCodegen.is_simple_generator(func))
+    if is_record_callable:
         ri = analyzer.registry.get_record_for_type(self_type)
         overloads = ri.get_method_overloads(func.name) if ri is not None else []
         if len(overloads) > 1:
@@ -501,7 +521,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if fis is not None and len(fis) > 1:
             if stub is not None:
                 _admit_overload_stub(func, fis, analyzer, stub)
-            else:
+            elif not single_body:
                 raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         raise ThirUnsupported("sig.builtin_decorator")
@@ -891,11 +911,16 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     except ThirUnsupported as ex:
         note(ex.reason)
         return None
-    is_record_method = self_type is not None and func.is_method
     # A static method has no receiver -- it lowers like a free function, but
     # keeps `record_name` so `_param_is_const` resolves its param verdicts from
     # the method's FunctionInfo on the owning record (the same lookup codegen's
-    # `_get_method_mutated_params` uses).
+    # `_get_method_mutated_params` uses). That holds for either spelling of a
+    # static: the parser's (`is_method` set) and the macro API's (`is_method`
+    # clear, ownership carried only by `self_type`).
+    is_record_method = self_type is not None and (func.is_method
+                                                  or func.is_staticmethod)
+    if is_record_method and not func.is_method:
+        _witness("fn.macro_staticmethod")
     has_self = is_record_method and not func.is_staticmethod
     self_receiver = "self" if has_self else None
     record_name = (self_type.name
@@ -1017,7 +1042,8 @@ def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
     return expr
 
 def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
-                            own_param_names: set[str], lc: _LowerCtx) -> bool:
+                            own_param_names: set[str], lc: _LowerCtx,
+                            ftype: TpyType) -> bool:
     """A record-producing source that constructs an F1-record field (or its
     pointer-repr `Optional`) *directly* via an implicit copy/construct -- as opposed
     to a borrow `T*` that must lift through `ptr_to_optional`. Three shapes:
@@ -1027,12 +1053,25 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
         `_record_rvalue_source_shape`, emitted as the bare `Name(args)` prvalue;
       * an **F1-record field-read off a param** receiver (`other.g`) -- a field copy.
 
-    Own params (which move) and `self.<field>` reads (their pointee may be
-    uninitialized at MIL time -- ordering-sensitive, deferred) are excluded."""
+    An own param at its LAST use moves and never reaches here; at a non-last
+    use it is a warned copy (sema's `copies ... field`) and takes the same
+    bare `field(param)` MIL as a plain record param -- admitted only when the
+    `Own[...]` payload is exactly `ftype`, so the pointer-repr `Optional`
+    field (where the payload is the Optional's inner) keeps rejecting.
+    `self.<field>` reads stay out: their pointee may be uninitialized at MIL
+    time, which is ordering-sensitive."""
     analyzer = lc.analyzer
     if isinstance(source, TpyName):
-        return (source.name not in own_param_names
-                and _f1_record(declared.get(source.name), analyzer))
+        dt = declared.get(source.name)
+        if source.name in own_param_names:
+            # `ftype` is REQUIRED, not defaulted: a caller that omitted it
+            # would silently un-fire this arm rather than fail.
+            own = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+                   if dt is not None else None)
+            return (isinstance(own, OwnType) and own.wrapped == ftype
+                    and _f1_record(own.wrapped, analyzer)
+                    and _witness("mil.own_param_copy"))
+        return _f1_record(dt, analyzer)
     if isinstance(source, TpyCall):
         return _record_rvalue_source_shape(source, analyzer)
     # An Own-returning METHOD-call rvalue (`self.shared = Rc.new(Val(0))` ->
@@ -1203,6 +1242,13 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
             # An Own[T] param at its LAST USE moves into the element slot
             # (`{1, std::move(b)}` inside the tuple_to_storage wrap).
             return True
+        if (_record_rvalue_source_shape(src, analyzer)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(src)))) == bare):
+            # A record ctor-call RVALUE (`Box(5)`) constructs straight into
+            # the element slot -- the spelled literal's brace-init absorbs
+            # the prvalue, no move and no lift.
+            return True
         return (isinstance(src, TpyName)
                 and _param_type(src.name) == bare)
     if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
@@ -1251,10 +1297,15 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
       * **tuple**: a borrow pointer-repr tuple param (`tuple_to_storage`); a
         value tuple's same-type name copy or spelled literal.
       * **any Optional** -- a `None` source (`f(std::nullopt)`), inner- and
-        repr-independent.
+        repr-independent; and for a POINTER-REPR Optional the own-param move
+        plus the borrow-`T*` `ptr_to_optional` lift, likewise inner-agnostic
+        (the AST keys the lift on the field's repr, never on the inner).
 
-    Field types beyond those (BytesView; cross-module / native / generic
-    records) leave the ctor on the AST path."""
+    Then a tail for families the cascade above claims for no arm: the
+    type-agnostic own-param move, an `Any` field's `into_any` coerce, and a
+    `bytearray` field's same-typed param copy. Field types beyond all of that
+    (BytesView; cross-module / native / generic records outside the move row)
+    leave the ctor on the AST path."""
     analyzer = lc.analyzer
     if not (isinstance(stmt, TpyAssign)
             and isinstance(stmt.target, TpyFieldAccess)
@@ -1304,7 +1355,11 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if _is_move_source(source, lc, own_param_names):
             return True
         if isinstance(source, TpyName):
-            return _is_type_param_slot(declared.get(source.name))
+            # `Own[T]` at a NON-last use is a warned copy (sema's `may copy
+            # ... field`), and copies through the same bare `item(item)` slot
+            # as a plain `T` param -- the Own only ever selected the move.
+            dt = declared.get(source.name)
+            return _is_type_param_slot(dt) or _own_type_param_slot(dt)
         return False
     if _mil_container_field(ftype):
         source = _unwrap_copy(stmt.value, analyzer)
@@ -1527,19 +1582,51 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             return False
         dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
         return _callable_value(dt) and dt == ft_bare
-    if (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
-            and _mil_container_field(unwrap_readonly(ftype.inner))):
-        # An Optional[CONTAINER] field (storage `std::optional<vector<T>>`,
-        # the argparse action="append" result records): an OWN param -- the
-        # same storage optional by rvalue-ref -- MOVES bare
-        # (`tag(std::move(tag))`, the type-agnostic M3b-move arm). Move
-        # sources only; borrow lifts / literals keep their own renders
-        # unwitnessed.
+    if isinstance(ftype, OptionalType) and ftype.uses_pointer_repr():
+        # The move and the `ptr_to_optional` lift are both INNER-AGNOSTIC: the
+        # AST arm keys the lift on the field's pointer repr alone, never on
+        # what is inside, so a record / container / bytearray / type-param
+        # inner all take the same wrap. An OWN param -- the same storage
+        # optional by rvalue-ref -- MOVES bare (`tag(std::move(tag))`, the
+        # type-agnostic M3b-move arm). Record inners additionally take the
+        # `None` and record-value sources below; literals keep their own
+        # renders unwitnessed.
         source = _unwrap_copy(stmt.value, analyzer)
-        return _is_move_source(source, lc, own_param_names)
+        if (_is_move_source(source, lc, own_param_names)
+                or _is_borrow_ptr_local(source, declared, set())):
+            return True
     is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
               and _f1_record(ftype.inner, analyzer))
     if not (is_opt or _f1_record(ftype, analyzer)):
+        # Tail rows for field families no arm of the cascade above claims.
+        # Each rides a render the tail emitter already spells type-agnostically,
+        # so admission is the only site that distinguishes them -- hence the
+        # classifier-row faces here rather than at the shared render.
+        tail_src = _unwrap_copy(stmt.value, analyzer)
+        if _is_move_source(tail_src, lc, own_param_names):
+            # The M3b-move arm is type-agnostic (`p(std::move(p))`); the
+            # cascade simply never reaches it for a tuple of type params or a
+            # cross-module recursive-alias union. Placed BELOW the cascade so
+            # a family with its own copy row keeps deciding for itself.
+            _witness("mil.unclaimed_family_move")
+            return True
+        if (isinstance(ftype, AnyType) and isinstance(tail_src, TpyCoerce)
+                and tail_src.coercion.name == "into_any"):
+            # An `Any` field from sema's into_any coerce: the coercion node
+            # carries its own `::tpy::make_any(...)` render, so the tail's
+            # bare source lowering is byte-identical.
+            _witness("mil.any_coerce")
+            return True
+        if is_bytearray_type(ftype) and isinstance(tail_src, TpyName):
+            # A `bytearray` field copies bare from a same-typed param
+            # (`data(data)`) -- a reference type, but the MIL slot is storage
+            # and the AST threads no conversion. Exact-shape pin like the
+            # container-param row: a differing spelling could carry one.
+            dt = declared.get(tail_src.name)
+            return (dt is not None
+                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
+                    == ftype
+                    and _witness("mil.bytearray_copy"))
         return False
     source = _unwrap_copy(stmt.value, analyzer)
     # M3b-move: an own-param at its last use moves into the field.
@@ -1551,8 +1638,10 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # pointers empty: a ctor MIL has no locals.
         return (isinstance(source, TpyNoneLiteral)
                 or _is_borrow_ptr_local(source, declared, set())
-                or _is_record_value_source(source, declared, own_param_names, lc))
-    return _is_record_value_source(source, declared, own_param_names, lc)
+                or _is_record_value_source(source, declared, own_param_names,
+                                           lc, ftype))
+    return _is_record_value_source(source, declared, own_param_names, lc,
+                                   ftype)
 
 def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
@@ -2268,6 +2357,7 @@ def _lower_ctor_mil_init(
         elif _is_borrow_ptr_local(source, declared, set()):
             v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
+            _witness("mil.optional_ptr_lift")
         else:
             # A record-value source constructs the optional directly -- no
             # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
@@ -2465,24 +2555,32 @@ def _rebound_name(node) -> 'str | None':
 
 
 def _rejects_lambda_hoist(body) -> bool:
-    """True when a nested def's body needs a rebind slot the lambda cannot reach.
+    """True when a nested def CONSUMES a rebind slot the ENCLOSING scope reserved.
 
-    THIR emits nested-def bodies at the enclosing body's level, so both halves of
-    the hazard put the declaration outside the lambda's capture list: the body
-    RESERVING its own slot, and the body CONSUMING one the enclosing scope
-    reserved (a `nonlocal` rebind). The AST path rejects both -- `use_rebind_slot`
-    compares the slot's owning hoist scope -- and THIR has no such runtime check,
-    so this predicate is its entire protection.
+    That is the `nonlocal` half of the hazard: the slot is declared at the
+    enclosing body's prologue, outside the lambda's capture list. The AST
+    rejects it in `use_rebind_slot` by comparing the slot's owning hoist scope,
+    and THIR has no such runtime check, so this predicate is its entire
+    protection. A nested def reserving its OWN slot is not a hazard --
+    `_emit_nested_def` drains it inside the lambda, mirroring the AST's
+    `nested_hoist_scope`.
+
+    A rebind whose name the nested def itself reserves a slot for is a SHADOW,
+    not a `nonlocal`: within one Python function scope a name is either local or
+    `nonlocal`, never both, so `rb in own` proves the rebind targets the INNER
+    slot. `own` is deliberately not computed across a further nesting level --
+    sema rejects a nested def inside a nested def, so there is none.
     """
     outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(body))
                         if n is not None}
     for nd in _iter_thir(body):
         if not isinstance(nd, THIRNestedDef):
             continue
+        own = {n for n in (_slot_owning_name(x) for x in _iter_thir(nd.body))
+               if n is not None}
         for n in _iter_thir(nd.body):
-            if _needs_held_back_slot(n):
-                return True
-            if _rebound_name(n) in outer_slot_names:
+            rb = _rebound_name(n)
+            if rb is not None and rb in outer_slot_names and rb not in own:
                 return True
     return False
 

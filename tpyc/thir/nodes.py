@@ -2303,6 +2303,8 @@ class THIRTupleUnpack(THIRStmt):
         "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
         "move"   -> T name = std::move(std::get<i>(tup)); // Own element
         "assign" -> name = std::get<i>(tup);   // reused target, no decl
+        "global_slot" -> static T __global_slot_N = std::move(std::get<i>(tup));
+                         name = &__global_slot_N;   // pointer-slot global
 
     Two RESUMABLE-frame modes (targets are frame fields -- assigned, never
     re-declared; the `wraps` slot carries the per-element unwrap_ref /
@@ -2334,7 +2336,7 @@ class THIRTupleUnpack(THIRStmt):
     source_wrap_cpp: str | None = None
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
-        "value", "cref", "move", "assign", "ref", "opt_ptr",
+        "value", "cref", "move", "assign", "ref", "opt_ptr", "global_slot",
         "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
         "frame_ptr_elem",
     })

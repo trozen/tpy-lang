@@ -150,6 +150,37 @@ def _top_level(source: str, default_int: str = "Int32",
             dict(compiler._thir_fallback))
 
 
+def _thir_ctx(source: str, default_int: str = "Int32", extra_lib_dirs=None):
+    """The seeded codegen ctx (`thir_functions` / `thir_simple_gens` /
+    `thir_resumables`) plus the fallback tally.
+
+    The routing view for a body the plain `_fn` lens cannot see: the generator
+    leaf seams key their own maps, and neither they nor `_thir_routed_bodies`
+    (functions + constructors only) move when such a body routes."""
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    ctx = compiler.collect_thir(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                thir_codegen=True))
+    return ctx, dict(compiler._thir_fallback)
+
+
+def _thir_ctx_witnessed(source: str, default_int: str = "Int32",
+                        extra_lib_dirs=None):
+    """`_thir_ctx` plus the face witnesses -- the CONSTRUCTOR-side sibling of
+    `_lower_ctx_witnessed`, which lowers free functions only and so cannot see
+    a face a ctor MIL row records."""
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    ctx = compiler.collect_thir(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                thir_codegen=True))
+    return (ctx, dict(compiler._thir_face_witnesses),
+            dict(compiler._thir_fallback))
+
+
 def _lower_ctor(source: str, record_name: str, extra_lib_dirs=None):
     """Lower one record's constructor to its THIRConstructor (or None if outside
     the M3 slice). Within the compiler context -- records resolve through the live

@@ -1014,6 +1014,105 @@ class TestValueTupleSlots:
 # `std::tuple<int32_t, int32_t> t = make(n);` at the decl (a plain
 # `t = make(n);` on a reassign -- tuples are value types, no pointer-local
 # machinery arises) and `return make(n);` at the tuple return slot.
+class TestOpenValueTupleCallReturn:
+    """`return min(a, b, key=..)` at `-> Own[tuple[T, Int32]]`. The open
+    element has no borrow/storage duality until T binds, so the whole family
+    -- return sink and native arg slot alike -- passes bare; only the concrete
+    tuple classifiers, which cannot answer `is_value_type()` for T, declined
+    it."""
+
+    def test_generic_min_return_routes(self):
+        src = ("from tpy import Int32, Own\n"
+               "def smaller[T](a: tuple[T, Int32],\n"
+               "               b: tuple[T, Int32]) -> Own[tuple[T, Int32]]:\n"
+               "    return min(a, b, key=lambda p: p[1])\n"
+               "def main() -> None:\n"
+               "    k, n = smaller((\"a\", 3), (\"b\", 1))\n"
+               "    print(k, n)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("call.open_value_tuple_ret", 0) == 1
+        assert w.get("arg.open_value_tuple_name", 0) == 2
+        cpp = _assert_routes_byte_identical(src)
+        assert ("return ::tpy::min_key(a, b, [](const std::tuple<"
+                "::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t "
+                "{ return std::get<1>(p); });" in cpp[0])
+
+    def test_generic_call_at_local_decl_stays_ast(self):
+        # BOUNDARY: the same call bound to a LOCAL is a different sink -- the
+        # decl slot has its own gates and does not take the bare return row.
+        src = ("from tpy import Int32\n"
+               "def pick[T](a: tuple[T, Int32], b: tuple[T, Int32]) -> Int32:\n"
+               "    t = min(a, b, key=lambda p: p[1])\n"
+               "    return t[1]\n"
+               "def main() -> None:\n"
+               "    print(pick((\"a\", 3), (\"b\", 1)))\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("call.open_value_tuple_ret", 0) == 0
+        assert _fn(thir, "pick") is None
+        _assert_byte_identical(src)
+
+    def test_record_element_stays_ast(self):
+        # BOUNDARY: `tuple[T, Box]` is not an OPEN VALUE tuple -- the concrete
+        # element is a reference type, so the family's "no duality until T
+        # binds" premise does not hold and the borrow/storage lift matters.
+        src = ("from tpy import Int32, Own\n"
+               "class Box:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+               "def smaller[T](a: tuple[T, Box],\n"
+               "               b: tuple[T, Box]) -> Own[tuple[T, Box]]:\n"
+               "    return min(a, b, key=lambda p: p[1].n)\n"
+               "def main() -> None:\n"
+               "    print(smaller((\"a\", Box(3)), (\"b\", Box(1)))[1].n)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("call.open_value_tuple_ret", 0) == 0
+        assert w.get("arg.open_value_tuple_name", 0) == 0
+        assert _fn(thir, "smaller") is None
+        _assert_byte_identical(src)
+
+    def test_method_call_source_stays_ast(self):
+        # BOUNDARY: a METHOD-call source at the OST return reaches the
+        # method-call ladder, which keeps its own reject. Kept as a unit
+        # because the row sits one shape away from it.
+        src = ("from tpy import Int32, Own\n"
+               "class Box:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+               "class H:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+               "    def mk(self) -> Own[tuple[Int32, Box]]:\n"
+               "        return (self.n, Box(1))\n"
+               "def relay(h: H) -> Own[tuple[Int32, Box]]:\n"
+               "    return h.mk()\n"
+               "def main() -> None:\n"
+               "    h = H(2)\n"
+               "    print(relay(h)[0])\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "relay") is None
+        _assert_byte_identical(src)
+
+    def test_generator_frame_return_stays_ast(self):
+        # BOUNDARY: inside a resumable frame the return takes the frame's own
+        # ladder, not this bare pass-through.
+        src = ("from tpy import Int32\n"
+               "from typing import Iterator\n"
+               "def walk[T](a: tuple[T, Int32],\n"
+               "            b: tuple[T, Int32]) -> Iterator[Int32]:\n"
+               "    t = min(a, b, key=lambda p: p[1])\n"
+               "    yield t[1]\n"
+               "def main() -> None:\n"
+               "    for v in walk((\"a\", 3), (\"b\", 1)):\n"
+               "        print(v)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("call.open_value_tuple_ret", 0) == 0
+        _assert_byte_identical(src)
+
+
 class TestTupleCallSlots:
     def _cpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
@@ -2396,11 +2495,11 @@ class TestStorageTupleAliasSourceShapes:
         _assert_byte_identical(src)
 
     def test_const_subscript_source_stays_ast(self):
-        # BOUNDARY: the const verdict for a non-field source would have to come
-        # from the AST's `is_const_storage_source`, whose body-global set drives
-        # LATER borrow reads. The widening admits non-const sources only, so a
-        # readonly container receiver must keep rejecting rather than bind an
-        # alias whose const-ness THIR did not derive.
+        # BOUNDARY, the plain-NAME receiver arm: it is admitted const-free, so
+        # a readonly container receiver must keep rejecting rather than bind an
+        # alias whose const-ness THIR did not derive. (A subscript off a FIELD
+        # receiver is a different arm -- it DOES derive const, through the
+        # `_btuple_const_storage` walk.)
         src = (self._BOX
                + "def f(items: readonly[list[tuple[Int32, Box]]]) -> Int32:\n"
                + "    t = items[0]\n"
@@ -2431,6 +2530,121 @@ class TestStorageTupleAliasSourceShapes:
                + "    print(f(Holder(Box(5))))\n"
                + "main()\n")
         assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestStorageTupleAliasFieldSubscriptSource:
+    """`auto&& pair = self.store[k]` -- a subscript off a FIELD receiver. Unlike
+    the plain-name-receiver arm this one derives its const-ness, from the same
+    `is_const_storage_source` chain walk the AST runs."""
+
+    _HOLDER = (
+        "from tpy import Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n"
+        "def weight_of(t: tuple[Int32, Box]) -> Int32:\n"
+        "    return t[0]\n"
+        "class Holder:\n"
+        "    store: dict[str, tuple[Int32, Box]]\n"
+        "    def __init__(self, b: Box) -> None:\n"
+        "        self.store = {\"a\": (1, b)}\n"
+    )
+
+    def test_mutating_receiver_routes(self):
+        # The alias ALIASES the stored element -- the write through it has to
+        # be visible on the field, so a copy here would be a parity bug.
+        src = (self._HOLDER
+               + "    def bump(self, k: str) -> None:\n"
+               + "        pair = self.store[k]\n"
+               + "        pair[1].val = pair[1].val + 1\n"
+               + "def main() -> None:\n"
+               + "    h = Holder(Box(5))\n"
+               + "    h.bump(\"a\")\n"
+               + "    print(h.store[\"a\"][1].val)\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert "auto&& pair = ::tpy::__getitem__(this->store, k);" in cpp[0]
+        assert "std::get<1>(pair).val" in cpp[0]
+
+    def test_const_receiver_derives_const_elements(self):
+        # The receiver is an inferred-readonly method, so the alias is const and
+        # a later borrow lift off it must spell `const Box*`. That spelling is
+        # the whole point of registering the local -- without the registration
+        # the lift would claim a mutable element pointer.
+        src = (self._HOLDER
+               + "    def peek(self, k: str) -> Int32:\n"
+               + "        pair = self.store[k]\n"
+               + "        return weight_of(pair)\n"
+               + "def main() -> None:\n"
+               + "    h = Holder(Box(5))\n"
+               + "    print(h.peek(\"a\"))\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert ("tuple_to_pointer<std::tuple<int32_t, const Box*>>(pair)"
+                in cpp[0])
+
+    def test_const_alias_of_alias_stays_ast(self):
+        # BOUNDARY, and the reason the const registration is not decoration:
+        # the plain-NAME arm is admitted const-free, so a const verdict must
+        # not launder through one hop. Registering `pair` is what makes the
+        # SECOND alias reject instead of claiming a non-const source.
+        src = (self._HOLDER
+               + "    def peek(self, k: str) -> Int32:\n"
+               + "        pair = self.store[k]\n"
+               + "        again = pair\n"
+               + "        return weight_of(again)\n"
+               + "def main() -> None:\n"
+               + "    h = Holder(Box(5))\n"
+               + "    print(h.peek(\"a\"))\n"
+               + "main()\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        outs = [compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=t))
+            for t in (False, True)]
+        assert outs[1] == outs[0]
+        fb = dict(compiler._thir_fallback)
+        assert fb.get("body:stmt.var_decl:decl.slot_type") == 1, fb
+
+    def test_branch_position_stays_ast(self):
+        # BOUNDARY: the alias arm requires `fn_top` -- a decl inside a branch
+        # takes the branch-slot render, which is not this shape.
+        src = (self._HOLDER
+               + "    def pick(self, k: str, go: bool) -> Int32:\n"
+               + "        if go:\n"
+               + "            pair = self.store[k]\n"
+               + "            return pair[0]\n"
+               + "        return 0\n"
+               + "def main() -> None:\n"
+               + "    h = Holder(Box(5))\n"
+               + "    print(h.pick(\"a\", True))\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 0
+        _assert_byte_identical(src)
+
+    def test_generator_position_stays_ast(self):
+        # BOUNDARY: inside a generator frame the alias would need a frame slot,
+        # a render the arm does not carry.
+        src = (self._HOLDER
+               + "from typing import Iterator\n"
+               + "def walk(h: Holder, k: str) -> Iterator[Int32]:\n"
+               + "    pair = h.store[k]\n"
+               + "    yield pair[0]\n"
+               + "    yield pair[1].val\n"
+               + "def main() -> None:\n"
+               + "    h = Holder(Box(5))\n"
+               + "    for n in walk(h, \"a\"):\n"
+               + "        print(n)\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 0
         _assert_byte_identical(src)
 
 
@@ -3378,4 +3592,87 @@ class TestBorrowTupleFieldElem:
             "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "pair") is None
+        _assert_byte_identical(src)
+
+
+class TestCopyWholeTupleLiteral:
+    """`copy((1, b))` of a WHOLE tuple with a reference element: the AST
+    builds the STORAGE form directly, each element straight into its value
+    slot (`std::tuple<int32_t, Box>{1, b}`), so a reference element
+    COPY-constructs -- copy semantics are the point of the construct.
+
+    The elements deliberately do NOT go through the container-element row:
+    that row moves a last-use name (`{1, std::move(b)}`), inverting the
+    copy. Only the byte-diff catches that -- the AST's `_gen_copy_expr`
+    never asks the move question here, so the move-verdict join is empty.
+    Corpus witness: tuple/tuple_copy_whole_ref_element."""
+
+    _SRC = (
+        "from tpy import copy, Int32\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "class Holder:\n"
+        "    pair: tuple[Int32, Box]\n"
+        "    def __init__(self, b: Box) -> None:\n"
+        "        self.pair = copy((77, b))\n"
+        "def main() -> None:\n"
+        "    b = Box(5)\n"
+        "    h = Holder(b)\n"
+        "    print(h.pair[0], h.pair[1].val)\n"
+        "    t = copy((1, b))\n"
+        "    print(t[0] + t[1].val)\n"
+        "    s = copy(('hi', b))\n"
+        "    print(s[0], s[1].val)\n"
+        "    c = Box(9)\n"
+        "    u = copy((b, c))\n"
+        "    print(u[0].val, u[1].val)\n"
+        "main()\n")
+
+    def test_routes_byte_identical(self):
+        # Three of the four sites; `lower_module` drives functions and
+        # methods only, so the ctor MIL's copy is not counted here -- its
+        # routing rides the no-fallback half of the assertion below.
+        _thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert faces.get("call.copy_tuple_storage", 0) == 3
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert "auto t = std::tuple<int32_t, Box>{1, b};" in cpp
+        # The str element resolves its pending slot before spelling.
+        assert 'auto s = std::tuple<std::string, Box>{"hi", b};' in cpp
+        assert "auto u = std::tuple<Box, Box>{b, c};" in cpp
+        assert "pair(std::tuple<int32_t, Box>{77, b})" in hpp
+        # The copy must not move any element.
+        assert "std::move" not in cpp
+
+    def test_tuple_name_source_still_defers(self):
+        # Boundary: a tuple NAME source takes the AST's
+        # `tuple_to_storage<S>(...)` sub-arm, which has no corpus witness
+        # and no mirrored render -- it keeps rejecting.
+        src = (
+            "from tpy import copy, Int32\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n"
+            "def main() -> None:\n"
+            "    b = Box(5)\n"
+            "    t = (1, b)\n"
+            "    u = copy(t)\n"
+            "    print(u[0], u[1].val)\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is None
+        _assert_byte_identical(src)
+
+    def test_all_value_tuple_literal_still_defers(self):
+        # Boundary: the arm is keyed on a pointer-repr element. An all-value
+        # tuple literal never reaches it and keeps the copy tail's reject.
+        src = (
+            "from tpy import copy, Int32\n"
+            "def main() -> None:\n"
+            "    n = Int32(3)\n"
+            "    t = copy((1, n))\n"
+            "    print(t[0], t[1])\n"
+            "main()\n")
+        assert _fn(_lower_ctx(src), "main") is None
         _assert_byte_identical(src)

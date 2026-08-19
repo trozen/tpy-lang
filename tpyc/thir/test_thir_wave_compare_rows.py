@@ -180,7 +180,8 @@ class TestPtrTupleFieldCompare:
     def test_field_vs_name_pair_still_defers(self):
         # A mixed field-vs-name operand pair sits outside BOTH pair
         # predicates (the name read carries a form conversion the pair
-        # does not mirror) -- must keep rejecting.
+        # does not mirror) -- must keep rejecting. F3-keyed: the VALUE-tuple
+        # flavor of this shape ROUTES (TestValueTupleFieldCompare).
         src = _REC + (
             "def mixed(h1: H, p: tuple[Point, Int32]) -> bool:\n"
             "    return h1.pair == p\n"
@@ -192,4 +193,170 @@ class TestPtrTupleFieldCompare:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "mixed") is None
         assert not faces.get("binop.tuple_field_compare")
+        _assert_byte_identical(src)
+
+
+_VAL = (
+    "from tpy import Int32\n"
+    "class H:\n"
+    "    pair: tuple[Int32, str]\n"
+    "    def __init__(self, p: tuple[Int32, str]) -> None:\n"
+    "        self.pair = p\n"
+)
+
+
+class TestValueTupleFieldCompare:
+    """A VALUE-tuple FIELD operand reads bare into the compare parens, like
+    a container field: storage and borrow form coincide there. The narrowed
+    `tuple[..] | None` flavor routes too -- its unwrap is a separate
+    declared-keyed fact on the field read, not a property of the operand
+    use -- so this row carries no declared-type key."""
+
+    def test_field_pair_routes(self):
+        src = _VAL + (
+            "def eq(a: H, b: H) -> bool:\n"
+            "    return a.pair == b.pair\n"
+            "def main() -> None:\n"
+            "    print(eq(H((1, 'a')), H((1, 'a'))))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq") is not None
+        assert faces["field.value_tuple"] >= 2
+        _assert_routes_byte_identical(src)
+
+    def test_field_vs_name_pair_routes(self):
+        # The value-tuple mirror of `test_field_vs_name_pair_still_defers`:
+        # at a value tuple the NAME side needs no form conversion, so the
+        # mixed pair routes where the F3 flavor rejects.
+        src = _VAL + (
+            "def eq(a: H, p: tuple[Int32, str]) -> bool:\n"
+            "    return a.pair == p\n"
+            "def main() -> None:\n"
+            "    print(eq(H((1, 'a')), (1, 'a')))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq") is not None
+        assert faces["field.value_tuple"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "return (a.pair == p);" in cpp
+
+    def test_narrowed_optional_value_tuple_pair_routes(self):
+        # NOT a defer pin: the narrowed read's `(*a.maybe)` unwrap comes
+        # from the field row's declared-vs-analyzed fact, which the operand
+        # use never touches, so the whole shape mirrors byte for byte.
+        src = (
+            "from tpy import Int32\n"
+            "class N:\n"
+            "    maybe: tuple[Int32, str] | None\n"
+            "    def __init__(self, p: tuple[Int32, str]) -> None:\n"
+            "        self.maybe = p\n"
+            "def eq(a: N, b: N) -> bool:\n"
+            "    if a.maybe is not None and b.maybe is not None:\n"
+            "        return a.maybe == b.maybe\n"
+            "    return False\n"
+            "def main() -> None:\n"
+            "    print(eq(N((1, 'a')), N((1, 'a'))))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq") is not None
+        assert faces["field.value_tuple"] >= 2
+        from .testutil import _compile, _entry
+        from ..codegen_cpp.context import CodeGenOptions
+        compiler, modules = _compile(src)
+        _hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert "return ((*a.maybe) == (*b.maybe));" in cpp
+        _assert_byte_identical(src)
+
+    def test_ordering_and_literal_side_route(self):
+        # The row is comparison-op blind and does not need both sides to be
+        # fields: ordering and a field-vs-literal pair ride it too.
+        src = (
+            "from tpy import Int32\n"
+            "class G:\n"
+            "    pair: tuple[Int32, Int32]\n"
+            "    def __init__(self, p: tuple[Int32, Int32]) -> None:\n"
+            "        self.pair = p\n"
+            "def lt(a: G, b: G) -> bool:\n"
+            "    return a.pair < b.pair\n"
+            "def eq_lit(a: G) -> bool:\n"
+            "    return a.pair == (1, 2)\n"
+            "def main() -> None:\n"
+            "    print(lt(G((1, 2)), G((1, 3))), eq_lit(G((1, 2))))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "lt") is not None
+        assert _fn(thir, "eq_lit") is not None
+        assert faces["field.value_tuple"] >= 3
+        _assert_routes_byte_identical(src)
+
+    def test_readonly_and_subscript_receivers_route(self):
+        src = (
+            "from tpy import Int32, readonly\n"
+            "class G:\n"
+            "    pair: tuple[Int32, Int32]\n"
+            "    def __init__(self, p: tuple[Int32, Int32]) -> None:\n"
+            "        self.pair = p\n"
+            "def eq_ro(a: readonly[G], b: readonly[G]) -> bool:\n"
+            "    return a.pair == b.pair\n"
+            "def eq_sub(xs: list[G]) -> bool:\n"
+            "    return xs[0].pair == xs[1].pair\n"
+            "def main() -> None:\n"
+            "    g = G((1, 2))\n"
+            "    print(eq_ro(g, g), eq_sub([g, G((1, 2))]))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq_ro") is not None
+        assert _fn(thir, "eq_sub") is not None
+        assert faces["field.value_tuple"] >= 4
+        _assert_routes_byte_identical(src)
+
+    def test_bytes_and_optional_element_families_route(self):
+        # The row keys on the value-tuple-ness of the WHOLE field, so the
+        # element family rides along; these two are the families whose
+        # element reads have their own form rules elsewhere.
+        src = (
+            "from tpy import Int32\n"
+            "class B:\n"
+            "    pair: tuple[bytes, Int32]\n"
+            "    def __init__(self, p: tuple[bytes, Int32]) -> None:\n"
+            "        self.pair = p\n"
+            "class O:\n"
+            "    pair: tuple[Int32 | None, Int32]\n"
+            "    def __init__(self, p: tuple[Int32 | None, Int32]) -> None:\n"
+            "        self.pair = p\n"
+            "def eq_b(a: B, b: B) -> bool:\n"
+            "    return a.pair == b.pair\n"
+            "def eq_o(a: O, b: O) -> bool:\n"
+            "    return a.pair == b.pair\n"
+            "def main() -> None:\n"
+            "    print(eq_b(B((b'x', 1)), B((b'x', 1))),\n"
+            "          eq_o(O((1, 2)), O((1, 2))))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq_b") is not None
+        assert _fn(thir, "eq_o") is not None
+        assert faces["field.value_tuple"] >= 4
+        _assert_routes_byte_identical(src)
+
+    def test_nested_tuple_element_field_pair_still_defers(self):
+        # A nested-tuple ELEMENT keeps the field read out of the row's
+        # reach (`field.result_type`), so the whole compare stays AST.
+        src = (
+            "from tpy import Int32\n"
+            "class H:\n"
+            "    pair: tuple[tuple[Int32, Int32], Int32]\n"
+            "    def __init__(self, p: tuple[tuple[Int32, Int32], Int32]"
+            ") -> None:\n"
+            "        self.pair = p\n"
+            "def eq(a: H, b: H) -> bool:\n"
+            "    return a.pair == b.pair\n"
+            "def main() -> None:\n"
+            "    print(eq(H(((1, 2), 3)), H(((1, 2), 3))))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "eq") is None
+        assert not faces.get("field.value_tuple")
         _assert_byte_identical(src)

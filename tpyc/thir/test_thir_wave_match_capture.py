@@ -11,11 +11,14 @@ A VALUE-repr Optional field capture (`Optional[scalar]` / owned-inner
 value-opt binding, so the body's None-test and narrowed derefs ride the
 binding-keyed arms.
 
-Two shapes stay out. A POINTER-repr Optional field capture binds a hoisted
-pointer, and a capture the match itself hoisted into a POINTER local binds by
-ADDRESS (`q = &(__match_subject_1.inner);`) -- both their own rungs. The
-pointer-hoist check has to run at lowering: the hoist registers `lc.pointers`
-only after the arm gate has already seen a pointer snapshot.
+A capture the match itself hoisted into a POINTER local binds by ADDRESS
+(`q = &(__match_subject_1.inner);`) -- a field subject is never the whole
+subject spelling, so the lift is unconditional. That check has to run at
+lowering: the hoist registers `lc.pointers` only after the arm gate has
+already seen a pointer snapshot.
+
+A POINTER-repr Optional field capture stays out -- it needs the
+`optional_to_ptr` lift rather than the raw address-of.
 """
 
 from __future__ import annotations
@@ -150,7 +153,7 @@ class TestKeywordCaptureFamilies:
         assert "auto& x = __case_0.n;" in body
         assert "auto& t = __case_1.s;" in body
 
-    def test_pointer_hoisted_capture_still_defers(self):
+    def test_pointer_hoisted_capture_binds_by_address(self):
         # `q` is read after the match, so the hoist takes the `Inner* q;`
         # pointer form and the bind is an address-of.
         src = _HOLDER + ("def f(h: Holder) -> Int32:\n"
@@ -160,7 +163,25 @@ class TestKeywordCaptureFamilies:
                          "        case _:\n"
                          "            return -1\n"
                          "    return q.n\n")
-        assert "body:match.field_bind_ptr_hoist" in _fallback(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("match.field_bind_assign_addr", 0) >= 1
+        _assert_routes_byte_identical(src)
+        body = _body(thir, "f")
+        assert "Inner* q;" in body
+        assert "q = &(__match_subject_1.inner);" in body
+
+    def test_optional_field_ptr_hoist_still_defers(self):
+        # A ptr-repr Optional field capture would need the `optional_to_ptr`
+        # lift, not the raw address-of: the arm gate keeps rejecting it.
+        src = _HOLDER + ("def f(h: Holder) -> Int32:\n"
+                         "    match h:\n"
+                         "        case Holder(kind=0, opt=q):\n"
+                         "            if q is not None:\n"
+                         "                q.n = 42\n"
+                         "        case _:\n"
+                         "            return -1\n"
+                         "    return 0\n")
+        assert "body:stmt.match" in _fallback(src)
 
 
 class TestMatchValueTupleHoist:

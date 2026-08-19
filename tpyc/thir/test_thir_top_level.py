@@ -1175,3 +1175,112 @@ class TestListFromArrayGlobal:
             "from_arr = set(arr)\n"
             "print(len(from_arr))\n")
         _assert_routes_byte_identical(src)
+
+
+class TestGlobalSlotUnpackTarget:
+    """A module-level `n, p = f()` whose Own element lands in a pointer-slot
+    global: `static T __global_slot_N = std::move(std::get<i>(__tup_N));`
+    then `p = &__global_slot_N;` (the AST's pointer_locals reassign tail).
+    The scalar sibling takes the plain declared-name assign."""
+
+    HDR = (
+        "from tpy import Own, Int32\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "def make_pair() -> tuple[Int32, Own[Point]]:\n"
+        "    return (Int32(42), Point(Int32(1)))\n"
+    )
+
+    SRC = HDR + (
+        "n, p = make_pair()\n"
+        "print(n)\n"
+        "print(p.x)\n"
+    )
+
+    def test_routes(self):
+        top, wit, fallback = _top_level(self.SRC)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert wit.get("stmt.tuple_unpack.global_slot_target") == 1
+
+    def test_byte_identical_and_emits_static_slot(self):
+        _hpp, cpp = _assert_byte_identical(self.SRC)
+        assert "auto __tup_1 = make_pair();" in cpp
+        assert "n = std::get<0>(__tup_1);" in cpp
+        assert ("static Point __global_slot_1 = "
+                "std::move(std::get<1>(__tup_1));") in cpp
+        assert "p = &__global_slot_1;" in cpp
+
+    def test_two_slot_targets_number_consecutively(self):
+        # Slot numbering is module-init-wide; two owned targets in one
+        # unpack draw two consecutive slots.
+        src = self.HDR + (
+            "def make_two() -> tuple[Own[Point], Own[Point]]:\n"
+            "    return (Point(Int32(3)), Point(Int32(5)))\n"
+            "g1, g2 = make_two()\n"
+            "print(g1.x + g2.x)\n")
+        top, _wit, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "static Point __global_slot_1 = " in cpp
+        assert "static Point __global_slot_2 = " in cpp
+
+    def test_slot_reuse_after_earlier_write_defers(self):
+        # An earlier rvalue write already owns the slot, so this unpack owes
+        # the REUSE render (`p = &(__global_slot_1 = ..)`), not a fresh slot.
+        src = self.HDR + (
+            "p = Point(Int32(0))\n"
+            "n, p = make_pair()\n"
+            "print(n, p.x)\n")
+        top, _wit, fallback = _top_level(src)
+        assert top is None
+        assert any(k.startswith("top_level:stmt.tuple_unpack")
+                   for k in fallback), fallback
+        _assert_byte_identical(src)
+
+    def test_optional_global_target_defers(self):
+        # A ptr-repr Optional global's slot carries the INNER spelling plus
+        # an optional_to_ptr lift -- a different line.
+        src = self.HDR + (
+            "def make_opt() -> tuple[Int32, Own[Point | None]]:\n"
+            "    return (Int32(1), Point(Int32(2)))\n"
+            "n, opt = make_opt()\n"
+            "print(n)\n"
+            "if opt is not None:\n"
+            "    print(opt.x)\n")
+        top, _wit, fallback = _top_level(src)
+        assert top is None
+        assert any(k.startswith("top_level:stmt.tuple_unpack")
+                   for k in fallback), fallback
+        _assert_byte_identical(src)
+
+    def test_branch_scoped_slot_defers(self):
+        # A first slot write inside an if body is the branch-scoped render.
+        src = self.HDR + (
+            "def flag() -> bool:\n"
+            "    return True\n"
+            "br = Point(Int32(0))\n"
+            "if flag():\n"
+            "    n, br = make_pair()\n"
+            "print(br.x)\n")
+        top, _wit, fallback = _top_level(src)
+        assert top is None
+        assert any(k.startswith("top_level:")
+                   for k in fallback), fallback
+        _assert_byte_identical(src)
+
+    def test_for_body_slot_defers(self):
+        # The for body is codegen's namespace push, which DROPS `static` from
+        # the slot line -- a divergent render this arm must not mirror.
+        src = self.HDR + (
+            "for i in range(1):\n"
+            "    n, fp = make_pair()\n"
+            "print(fp.x)\n")
+        top, _wit, fallback = _top_level(src)
+        assert top is None
+        assert any(k.startswith("top_level:")
+                   for k in fallback), fallback
+        _assert_byte_identical(src)

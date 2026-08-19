@@ -11284,3 +11284,280 @@ this row does not -- correct, because the marker-bearing field shapes take
 early returns further up the field arm and never reach the receiver gate.
 Probed (a property getter off a subscript routes byte-identically) and
 recorded at the predicate, so the next reader does not redo it.
+
+### Orchestrated flip wave: 13 cells, 12 flips (2026-08-18)
+
+Dial **3581/3731 -> 3593/3731**, markers 150 -> 138. Fourteen commits,
+~60 pins, full suite green with FULL exec (11873 passed, 3730 built+run,
+0 cache skips), move-verdicts 0/925, binding-facts 0/11359, interop
+31/34. Run as an orchestration: read-only scouts ablated candidate sites
+in parallel, implementers landed cells serially in one worktree.
+
+Flips: `tuple_ref_own_mix`, `tuple_unpack_module_own` (mixed borrow+Own
+unpack source; module-level global-slot target rung) / `tuple_literal_list`
+(owned-str genexpr unpack target) / `iterable_builtin_types` (view-family
+Iterator-protocol return) / `frames_resumable` (Own frame-field reads) /
+`tuple_copy_whole_ref_element` (`copy(<tuple literal>)` storage brace) /
+`dyn_inherit_ref_param` (protocol-method optional-ptr arg + narrowed
+ptr-repr Optional container view) / `requests_files` (None at a
+multi-member ptr-variant union arg + Own[bytes] literal ctor arg) /
+`custom_type_list` (ptr-repr Optional container decl + list/set narrowed
+for-each) / `narrowed_field_subscript_lhs` (narrowed-field setitem +
+its Optional MIL lift) / `tuple_call_relay_shares`,
+`tuple_ternary_field_return` (F3 borrow-tuple return: bare relay + the
+one-lift ternary). This closes the previous entry's open loop --
+`argparse/custom_type_list` was named there as the pointer-repr Optional
+cluster's other sole-site flip.
+
+**THE THREE BIGGEST SITES BY TOUCHED-CASE COUNT ARE DEAD ENDS, proven
+case-by-case rather than argued.** `field_write.py` (14 cases, ONE reason
+string hiding SEVEN render shapes), `functions.py` ctor-MIL (21 cases),
+`expressions.py` method-call args (13 cases): each was ablated per case
+and each buys ZERO flips. Two of them additionally CRASH the emitter if
+admitted blind (`Any`/`None` field slots; a value-optional MIL arm whose
+render reads `source.name` unconditionally -- a latent AttributeError one
+gate edit away). Do not re-grind them on site size.
+
+**The census sole-site label was wrong SEVEN times.** Per-body lowering
+aborts at the first `ThirUnsupported`, so a second blocker in the SAME
+STATEMENT is invisible; and some "sites" are one shared raise for a whole
+dispatch ladder (one such: 6 cases, 2 labelled sole, exactly 1 flips).
+Rank by ablation, never by census count. The flips that did land came
+from PAIRED small sites -- two rows in different files, neither of which
+flips anything alone.
+
+**Three method fixes that paid for themselves immediately:**
+1. **Count routed bodies, not byte-identity.** A fallen-back body re-emits
+   through the AST byte-identically, so identity proves nothing about
+   routing. This exposed 8 false "identical" verdicts in one brief, and a
+   whole target where three successive ablations each printed IDENTICAL
+   while `routed` never moved.
+2. **A byte-diff harness must be self-checking.** One scout's harness
+   mapped generated `<out>/<case>/main.d/{include,src}/...` onto
+   `expected/main.d/...`, found no counterpart, silently skipped, and
+   printed IDENTICAL having compared ZERO files -- voiding its brief. Strip
+   the `.d` component and print an explicit `cmp=N`.
+3. **Look for the already-landed sibling row before designing.** The
+   cheapest flip was a disjunct its sibling gate already carried verbatim,
+   docstring and all; 3 of another brief's 5 rows were the same story
+   (`btuple_slot` threaded at the decl sink but not the return sink;
+   `narrowed_ok` on the read gate's field leg but not the setitem gate;
+   `_is_borrow_ptr_local` nineteen lines below the arm that needed it).
+
+**`move_audit` IS STRUCTURALLY BLIND at copy/alias-position arms** --
+measured `joined=0` (`ast_recorded=0`) at several sites here, because the
+AST asks no move question on those nodes, so the join denominator is
+empty and it reports green regardless. It cannot be cited as coverage
+there; only the byte-diff and mutation-observing cases cover alias
+semantics. A live wrong-code divergence was found this way and fixed
+inside its cell: the natural element lowering for `copy((1, b))` emitted
+`std::move(b)` where the AST copies -- a move out of a `copy()` argument.
+
+Three pre-existing defects filed, none fixed here (all AST-side, so each
+needs its own change-set): a borrow-form unpack target rebinding THROUGH
+its alias (`ref, owned = split(p); ref = q` silently mutates `p`; TPy 80
+vs CPython 8); an unproven `Optional[dict]` receiver emitting
+`dict_values((*d))` with NO deref_check while the compiler's own warning
+on that line promises one; and (re-confirmed, already at BUGS.md:33/:217)
+the narrowed ptr-repr Optional subscript emitting raw `operator[]` --
+that one BLOCKS a THIR row, since mirroring the correct checked read
+diverges from a broken oracle.
+
+Merge review (2026-08-18): seven specialists, ZERO code defects.
+codegen-correctness, safety-model, cpython-parity and architecture-fit
+all clean; parity's structural argument is that with no `expected/**`
+file changed, these commits only widen WHICH predicate accepts a shape,
+never what is emitted. The meta-review pass dropped two findings as
+repo-wide conventions rather than branch defects, and STRENGTHENED the
+one real code finding: a routing pin asserting only render strings was
+flagged, and the sibling offered as mitigation turned out to filter only
+`resumable:`-prefixed fallback keys -- so a `body:`-prefixed fallback (the
+exact shape its own boundary sibling asserts) slipped past BOTH. Both now
+assert the whole dict.
+
+### Orchestrated flip wave 2: 11 cells, 12 flips (2026-08-19)
+
+Dial **3593/3731 -> 3605/3731**, markers 138 -> 126. Fourteen commits, full
+suite green with FULL exec (11965 passed, 3730 built+run, 0 cache skips),
+move-verdicts 0/926, binding-facts 0/11380, interop 31/34. Same orchestration
+as wave 1: read-only scouts ablated candidates in parallel, implementers
+landed cells serially in one worktree.
+
+Flips: `record_print_fields` + `tuple_hash` (value-tuple compare operand;
+native-protocol tuple per-element capture fork) / `dataclass_asdict_dict_tuple`
++ `dataclass_asdict_fuzz` (print-sink tuple storage spelling + dict-comp tuple
+value slot) / `truthy_frame_value_opt` + `narrowed_value_opt_frame_faces`
+(value-optional resumable frame shapes) / `generic_optional` (scalar rvalue at
+a pointer-repr Optional arg) / `tuple_borrow_const_deep_source` (field-receiver
+subscript at a storage-tuple alias + const registration) / `bytearray_aliases`
+(bytearray ref-alias + rvalue ctor arg) / `key_lambda_generic_element` (open
+value-tuple call family) / `global_walrus_shapes` (scalar name at a value-opt
+ternary arm) / `union/isinstance_static` (const-folded match guard).
+
+**EVERY ROW WAS A GATE-ONLY WIDENING RIDING AN EXISTING RENDER ARM.** No new
+THIR node types, no new C++ emit code, no design decisions, across 11 cells.
+Confirmed independently by the merge review.
+
+**TWO MEASUREMENT INSTRUMENTS WERE FOUND BROKEN, and both had been steering
+the work:**
+1. **`Compiler._thir_routed_bodies` is BLIND to resumable frames**
+   (`compiler.py:3513` sums `thir_functions + thir_constructors`, never
+   `thir_resumables`). A generator/async flip leaves the count UNCHANGED, so
+   the "count routed bodies before/after" rule -- the standard defence against
+   mistaking a fallback for a flip -- reads a real flip as a fallback. Two of
+   this wave's flips would have been discarded on that evidence. Use a
+   `lower_resumable` wrapper reporting `res_routed=N/M` for those shapes.
+2. **`sites_multi.py` cannot see resumable frame-gate rejects at all.**
+   `resumable.py`'s `_reject` does `note(reason); return None` and never
+   constructs a `ThirUnsupported`, which is what the census hooks. Every
+   generator/async case's site set in that file is a LOWER BOUND missing a
+   whole class. Measured on a case whose live `res.yield_type` fallback
+   appears nowhere in its census entry.
+   (A third instrument failed earlier in the session: one scout's byte-diff
+   harness mapped `<out>/<case>/main.d/...` onto `expected/main.d/...`, found
+   no counterpart, silently skipped, and printed IDENTICAL having compared
+   ZERO files. Strip the `.d` component and print an explicit `cmp=N`.)
+
+**THE THREE LARGEST RAISE SITES ARE DEAD ENDS, proven case-by-case, and the
+census sole-site label was wrong NINE times.** Per-body lowering aborts at the
+first `ThirUnsupported`, so a second blocker in the SAME STATEMENT is invisible
+to the census; and some "sites" are one shared raise for a whole dispatch
+ladder (one such: 6 cases, 2 labelled sole, exactly 1 flipped). Rank by
+ablation, never by census count. The flips came from PAIRED small sites --
+two rows in different files, neither flipping anything alone.
+
+**THE BLAST SWEEP, NOT THE FLIP PROOF, VALIDATES A GATE'S KEY.** Three rows
+this wave were byte-identical on their own flip case with a WRONG key, each
+exposed only by a neighbour: a print-sink row keyed on `elem_capture` turned a
+record alias into a copy; a bytearray ctor row placed in the predicate SHARED
+with the free-call loop diverged there (the AST hoists a temp where the ctor
+passes bare); an owned-str arg row in its wide form broke a pin. A flip proof
+over the target cases is not evidence for a gate's key.
+
+**`move_audit` IS STRUCTURALLY BLIND at copy/alias-position arms** (`joined=0`,
+`ast_recorded=0` -- the AST asks no move question there, so the join
+denominator is empty and it reports green regardless). It cannot be cited as
+coverage for those rows; only the byte-diff and mutation-observing cases can.
+One shipped wrong-code divergence was found and fixed this way (a
+native-protocol tuple literal moving what the AST aliased -- SEVEN shapes, six
+fixed, the seventh filed pending an AST-oracle decision), plus one near-miss
+caught during scouting before it landed.
+
+**Look for the already-landed SIBLING row before designing.** Nine rows this
+wave were verbatim siblings one sink over: `decl.opt_none` needed mirroring to
+the frame-field arm, the list comp's node-gated tuple row to the dict leg,
+`narrowed_ok` to the setitem gate, `btuple_slot` to the return sink,
+`_is_borrow_ptr_local` nineteen lines below the arm that needed it. No site
+histogram surfaces these; only reading the sibling gate does.
+
+Four defects filed (one since fixed): a resolved-scalar rvalue passed by VALUE
+into a pointer-repr Optional CTOR slot -- ill-formed C++ in a body that ROUTES,
+no fallback masking it (FIXED by `9869d5d67`, regression-pinned); a hard
+`THIRValidationError` when any arg face hoists a `THIRArgTemp` inside a
+short-circuit RHS -- a CRASH, not a fallback, so it BLOCKS CUTOVER (the ternary
+form is already fenced, `and`/`or` are not -- an incomplete fence, not a
+missing one); an AST-side hoist inside a short-circuit RHS evaluated
+UNCONDITIONALLY (CPython skips it); and a dropped `tuple_to_pointer` borrow
+lift at a relayed `Own[tuple]` unpack, changing what the binding aliases.
+
+**Pin hygiene, two failures worth repeating:** a routing pin filtering fallback
+keys by the `resumable:` PREFIX let a `body:`-prefixed key through -- the exact
+shape its own boundary sibling asserts; pin the WHOLE dict (or the exact dict,
+when a fixture legitimately carries a deliberate boundary reject). And FIVE
+pins needed conversion because a row removed their stated reason -- **two of
+them were found only by the full suite, not by the authors' shape-greps**, so
+the fence sweep is not a substitute for running everything. Watch specifically
+for a pin that keeps passing for a NEW reason: byte-identity and the ratchet
+are both blind to that.
+
+Merge review (2026-08-19): six specialists over 14 commits. Zero code defects;
+codegen-correctness, architecture-fit and cpython-parity clean. Parity
+confirmed the new `_open_value_tuple` predicate cannot reach the filed
+relayed-`Own[tuple]` bug (it admits only value-typed or unbound-type-param
+elements), so the wave does not widen that defect's reach.
+
+### Orchestrated flip wave 3: 11 cells, 11 flips (2026-08-19)
+
+Dial **3605/3731 -> 3619/3731**, markers 126 -> 112. Fifteen commits, full suite
+green with FULL exec (12003 passed, 3730 built+run, 0 cache skips),
+move-verdicts 0/926, binding-facts 0/11397, interop 31/34.
+
+Flips: `nested_def/rebind_slot_in_nested_def` + the `_ctor` flavor (a nested def
+draining its OWN hoist lines inside its lambda) / `calls/overload_generator` +
+`calls/overload_generic_mixed` (two INDEPENDENT gates) /
+`native/native_transitive_fields` (a Ptr-valued field-chain intermediate) /
+`error_return/walrus_borrow_alias` (an `@error_return` METHOD call unwrapped in
+expression position) / `records/macro_quote` (a macro-authored staticmethod) /
+`auto_move/auto_move_ctor_copy_warnings` (an `Own`-param MIL copy at NON-last
+use) / `records/optional_field_own_return` (an `Own[T]|None` call assigned BARE)
+/ `match/capture_not_rebound_still_aliases` (a ptr-hoisted field capture binding
+by address) / `error_return/borrow_result_source_intact` (an aliasing ER bind at
+a rebind-slot target) / `control_flow/with_target_pointer_bearing_value` (a
+borrow-tuple frame field as a resumable with-target) /
+`records/ctor_param_name_collision` (a value-position isinstance over a
+resumable frame subject) / `list/comp_array_error_return_fallback` (a
+comprehension source at the OPTIONAL_STORAGE reseat).
+
+Every row was a gate widening or a placement fix riding an EXISTING THIR node
+type. No new node types across the wave. Confirmed by the merge review.
+
+**A CELL WAS DELIBERATELY NOT LANDED BECAUSE THE AST EMITS AN ACCIDENT.**
+`generators/yield_loop_body_local_borrow` looked like a proven SMALL flip, but
+its oracle carries `::tpy::frame_slot<std::vector<int32_t>> x;` as a frame
+member that is NEVER REFERENCED in `__next__` -- the case block declares a
+SHADOWING `std::vector<int32_t>* x = nullptr;` for the same name. The AST emits
+a dead frame slot plus a shadowing local. Per the AST-first rule this needs an
+AST-side fix (drop the dead slot, its own snapshot-churning change) BEFORE any
+THIR row. `TODO.md` and the named fence at `expressions.py:5834` already park
+it; the implementer found the fence by reading the oracle after the scout's
+brief omitted it. Mirroring would have planted the accident permanently.
+
+**COST LABELS DERIVED FROM TRIAGE RATHER THAN ABLATION WERE SYSTEMATICALLY TOO
+PESSIMISTIC.** A triage classified 11 remaining sole-site cases as NEEDS RENDER
+("a cell, not a row"). Sizing them by ablation found SIX were SMALL and proven
+to flip alone, every one reusing an existing node type. The orchestrator twice
+declared the cheap tail exhausted on the strength of those labels and was twice
+wrong. Probe before pronouncing -- including about your own estimates.
+
+**THREE SCOUT CHARACTERIZATIONS WERE CORRECTED BY MEASUREMENT, one of which
+would have caused a real bug.** A brief quoted an oracle as `this->s->a.q.flag`;
+it is actually `::tpy::deref_check(this->s).a.q.flag` -- mirroring the arrow
+would have DROPPED A NULL CHECK (the AST emits `->` only when sema proved
+non-null). The same brief had the rejecting node wrong (the third hop, not the
+second) and predicted a new render arm that was not needed at all. A second
+brief called two cases "one shared predicate"; they are two independent gates,
+and the cross terms prove neither clears the other's case.
+
+**A FILED BUGS ENTRY WAS WRONG AND WAS CORRECTED.** `BUGS.md:130` claimed its
+fix would RETIRE two of this branch's markers. Checked: both inner locals are
+genuinely rvalue-rebound inside the nested def, so a correct prescan reserves
+the same slots on their own merit -- the fix would make the old reject fire
+WIDER, not narrower. No contention with the flip; the sentence was corrected.
+
+**THREE IMPLEMENTERS LANDED ROWS NARROWER THAN THEIR SCOUT SPECIFIED**, each
+justified by reading the AST arm: a match-capture key mirroring `_emit_binding`'s
+full declared-var ladder (with a DISCRIMINATING case built to prove one conjunct
+load-bearing -- an owned-optional hoist where the AST spells `std::move` and
+dropping the conjunct emits `&(...)`); a value-position isinstance arm that
+already EXISTED and only excluded generators (one conjunct dropped, nothing
+else); and a comprehension admission placed at the reseat rather than in the
+shared predicate whose other callers keep vetted source lists.
+
+**A NON-COMPILING NEGATIVE WAS REPRODUCED AND COMPILED before its fix landed.**
+The `Own[T]|None` bare assign: with only the admission row, THIR hands a
+`std::optional<Point>` to `ptr_to_optional`, which takes a `T*` --
+`error: no matching function for call to 'ptr_to_optional(std::optional<Point>)'`
+against the real runtime header. Both halves now share ONE predicate so
+admission and lift-suppression cannot drift.
+
+Merge review (2026-08-19, six specialists over 15 commits): zero code defects.
+codegen-correctness, cpython-parity and architecture-fit clean. Two findings
+worth keeping: codegen observed that although `move_audit` is blind at the ctor
+MIL, a wrong move/copy verdict there still CHANGES EMITTED TEXT (`std::move(...)`
+vs bare) and the byte-diff catches it -- so the blind spot is real but not an
+uncovered hole for that row. And THREE reviewers independently converged on one
+unwitnessed conjunct (`frame_local_types` in the match-capture ladder): it is a
+STRICT SUBSET of what the AST treats as a frame field (missing params, `__self`,
+forwarded aliases), provably inert today because the resumable match gate
+rejects every record-field capture before it runs, but the docstring implied a
+completeness it does not have. Documented at the guard rather than widened.

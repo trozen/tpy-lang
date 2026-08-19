@@ -183,9 +183,12 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     # (`generator_self_ref`), a `Record&`-like deref -- `.` member access,
     # same self machinery as the resumable `__self` (R2). Static / property
     # kinds keep their own dispatch shapes; defer them.
+    # Keyed on the flag alone, not on `is_method`: a macro-authored static
+    # carries only the flag (see `_check_callable_structure`) and must defer
+    # here too.
+    if func.is_staticmethod:
+        return _reject("sgen.static_method")
     if func.is_method:
-        if func.is_staticmethod:
-            return _reject("sgen.static_method")
         if func.is_property_getter or func.is_property_setter:
             return _reject("sgen.property")
         if self_type is None:

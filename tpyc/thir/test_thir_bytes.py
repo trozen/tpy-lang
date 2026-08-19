@@ -15,6 +15,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical, _lower_ctx_witnessed,
 )
 
 # --- bytes / BytesView values (F6 S6) ---
@@ -512,6 +513,120 @@ class TestBytearrayStorageCallDecl:
                "        ba = bytearray(b\"cd\")\n"
                "        print(len(ba))\n")
         assert _fn(_lower(src), "f") is None
+
+
+class TestBytearrayRefAlias:
+    """`bytearray` is a reference type, so a name/field alias binds
+    `std::vector<uint8_t>&` -- the same family-blind REF_ALIAS decl the other
+    ref containers take. The span-borrow shape that keeps `bytearray` out of
+    other arms is a PARAM/arg-slot fact, not a decl one."""
+
+    _HOLDER = (
+        "from tpy import Int32\n"
+        "class Holder:\n"
+        "    data: bytearray\n"
+        "    def __init__(self, data: bytearray):\n"
+        "        self.data = data\n"
+    )
+
+    def test_name_alias_routes(self):
+        # The alias must ALIAS: the append through `x` has to be visible on
+        # `ba`, so a copy here would be a CPython-parity bug.
+        src = ("def f() -> None:\n"
+               "    ba = bytearray(b\"ab\")\n"
+               "    x = ba\n"
+               "    x.append(99)\n"
+               "    print(len(ba))\n"
+               "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.bytearray_alias", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<uint8_t>& x = ba;" in cpp[1]
+
+    def test_field_alias_routes(self):
+        src = (self._HOLDER
+               + "def f(h: Holder) -> None:\n"
+               + "    y = h.data\n"
+               + "    y.append(7)\n"
+               + "    print(len(h.data))\n"
+               + "def main() -> None:\n"
+               + "    f(Holder(bytearray(b\"xy\")))\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.bytearray_alias", 0) == 1
+        _assert_routes_byte_identical(src)
+
+    def test_reassigned_alias_stays_ast(self):
+        # BOUNDARY: a reassigned alias cannot bind a reference -- it takes the
+        # pointer-rebind form, a render this arm does not carry.
+        src = ("def f(a: bytearray, b: bytearray, go: bool) -> None:\n"
+               "    x = a\n"
+               "    if go:\n"
+               "        x = b\n"
+               "    print(len(x))\n"
+               "def main() -> None:\n"
+               "    f(bytearray(b\"a\"), bytearray(b\"bc\"), True)\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.bytearray_alias", 0) == 0
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestBytearrayRvalueCtorArg:
+    """A `bytearray()` rvalue at a plain `bytearray` CTOR slot passes bare."""
+
+    _HOLDER = (
+        "from tpy import Int32, Own\n"
+        "class Holder:\n"
+        "    data: bytearray\n"
+        "    def __init__(self, data: bytearray):\n"
+        "        self.data = data\n"
+        "class OwnHolder:\n"
+        "    data: bytearray\n"
+        "    def __init__(self, data: Own[bytearray]):\n"
+        "        self.data = data\n"
+        "def take(b: bytearray) -> Int32:\n"
+        "    return len(b)\n"
+    )
+
+    def test_ctor_rvalue_routes(self):
+        src = (self._HOLDER
+               + "def f() -> None:\n"
+               + "    h = Holder(bytearray(b\"xy\"))\n"
+               + "    print(len(h.data))\n"
+               + "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.bytearray_rvalue", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert ("Holder h = Holder(::tpy::bytes_copy("
+                "::tpy::bytes_literal(\"xy\", 2)));" in cpp[1])
+
+    def test_free_call_rvalue_stays_ast(self):
+        # BOUNDARY, and the reason the row is ctor-scoped: at a FREE call the
+        # AST hoists `std::vector<uint8_t> __tmp_N = ...;` and passes the temp.
+        # Admitting the shape in the shared pass-through predicate would emit
+        # the bare form here and diverge.
+        src = (self._HOLDER
+               + "def f() -> None:\n"
+               + "    print(take(bytearray(b\"xy\")))\n"
+               + "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.bytearray_rvalue", 0) == 0
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_own_ctor_slot_stays_ast(self):
+        # BOUNDARY: an `Own[bytearray]` slot is the move family, not this
+        # bare-rvalue bind.
+        src = (self._HOLDER
+               + "def f() -> None:\n"
+               + "    h = OwnHolder(bytearray(b\"xy\"))\n"
+               + "    print(len(h.data))\n"
+               + "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.bytearray_rvalue", 0) == 0
+        _assert_byte_identical(src)
 
 
 class TestBytesNeDerivedNegation:

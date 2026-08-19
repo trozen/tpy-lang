@@ -1248,9 +1248,11 @@ class TestOpenTypeParamProtocolFieldArg:
 
 
 class TestNativeProtocolTupleLiteralArg:
-    """A tuple LITERAL at a native callee's protocol slot: the monomorphized
-    slot threads no target, so the literal spells its own sema type with
-    every element captured BY VALUE -- the storage form."""
+    """A tuple LITERAL at a native callee's protocol slot whose elements are
+    all values or RVALUES: the monomorphized slot threads no target, so the
+    literal spells its own sema type in the storage form. The simple-lvalue
+    element takes the ref capture instead -- see
+    `TestNativeProtocolTupleLiteralBorrow`."""
 
     SRC = _PRELUDE + (
         "from tpy import UInt64\n"
@@ -1293,6 +1295,148 @@ class TestNativeProtocolTupleLiteralArg:
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
+
+
+_BOX = _PRELUDE + (
+    "from tpy import UInt64\n"
+    "class Box:\n"
+    "    val: Int32\n"
+    "    def __init__(self, v: Int32) -> None:\n"
+    "        self.val = v\n"
+    "    def __hash__(self) -> UInt64:\n"
+    "        return UInt64(self.val)\n"
+)
+
+
+class TestNativeProtocolTupleLiteralBorrow:
+    """The same slot with a non-value SIMPLE LVALUE element. With no target
+    the AST re-derives each element's capture from the ELEMENT EXPRESSION,
+    so an lvalue record takes a `T*` ref slot -- keying the whole literal on
+    the storage tuple type moved (or copied) values the AST aliases."""
+
+    NAME_SRC = _BOX + (
+        "def main() -> None:\n"
+        "    b = Box(5)\n"
+        "    c = Box(6)\n"
+        "    print(hash((b, c)) == hash((b, c)))\n"
+        "main()\n"
+    )
+
+    FIELD_SRC = _BOX + (
+        "class Edge:\n"
+        "    a: Box\n"
+        "    b: Box\n"
+        "    def __init__(self, a: Box, b: Box) -> None:\n"
+        "        self.a = a\n"
+        "        self.b = b\n"
+        "    def __hash__(self) -> UInt64:\n"
+        "        return hash((self.a, self.b))\n"
+        "def main() -> None:\n"
+        "    e = Edge(Box(1), Box(2))\n"
+        "    print(hash(e) == hash(e))\n"
+        "main()\n"
+    )
+
+    def test_name_elements_route_as_pointers(self):
+        # Before the fork this emitted `std::tuple<Box, Box>{std::move(b),
+        # std::move(c)}` -- a move where the AST aliases, with no corpus
+        # case and no move_audit join to catch it.
+        _hpp, cpp = _assert_routes_byte_identical(self.NAME_SRC,
+                                                  comments=False)
+        assert "::tpy::__hash__(std::tuple<Box*, Box*>{&(b), &(c)})" in cpp
+
+    def test_name_elements_witness_the_fork(self):
+        _thir, faces = _lower_ctx_witnessed(self.NAME_SRC)
+        assert faces["btuple.proto_borrow"] >= 1
+
+    def test_readonly_field_elements_route_as_const_pointers(self):
+        _thir, faces = _lower_ctx_witnessed(self.FIELD_SRC)
+        assert faces["btuple.proto_borrow"] >= 1
+        assert faces["btuple.elem_field"] == 2
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.FIELD_SRC)
+        hpp, _cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert ("::tpy::__hash__(std::tuple<const Box*, const Box*>"
+                "{&(this->a), &(this->b)})") in hpp
+        _assert_routes_byte_identical(self.FIELD_SRC, comments=False)
+
+    def test_rvalue_elements_keep_the_storage_spelling(self):
+        src = _BOX + (
+            "def main() -> None:\n"
+            "    print(hash((1, Box(5))) == hash((1, Box(5))))\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert not faces.get("btuple.proto_borrow")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)})" in cpp
+
+    def test_mixed_lvalue_rvalue_still_defers(self):
+        # The AST gives a mixed literal a per-element mixed slot tuple
+        # (`std::tuple<Box*, Box>`); neither lowering builds that, so the
+        # fork must refuse rather than pick a side.
+        src = _BOX + (
+            "def main() -> None:\n"
+            "    b = Box(5)\n"
+            "    print(hash((b, Box(6))) == 0)\n"
+            "main()\n"
+        )
+        assert "btuple.proto_mixed" in _fallback_reasons(src)
+        _assert_byte_identical(src)
+
+    def test_nested_field_chain_still_defers(self):
+        src = _BOX + (
+            "class Edge:\n"
+            "    a: Box\n"
+            "    b: Box\n"
+            "    def __init__(self, a: Box, b: Box) -> None:\n"
+            "        self.a = a\n"
+            "        self.b = b\n"
+            "class Outer:\n"
+            "    e: Edge\n"
+            "    def __init__(self, e: Edge) -> None:\n"
+            "        self.e = e\n"
+            "def h(o: Outer) -> UInt64:\n"
+            "    return hash((o.e.a, o.e.b))\n"
+            "def main() -> None:\n"
+            "    print(h(Outer(Edge(Box(1), Box(2)))) == 0)\n"
+            "main()\n"
+        )
+        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
+        _assert_byte_identical(src)
+
+    def test_owned_str_element_still_defers(self):
+        # An owned-view VALUE element renders `std::string(s)` on the
+        # borrow path but bare on the AST's -- excluded, so the whole
+        # literal falls back rather than half-mirroring.
+        src = _BOX + (
+            "def h(b: Box, s: str) -> UInt64:\n"
+            "    return hash((s, b))\n"
+            "def main() -> None:\n"
+            "    print(h(Box(1), 'x') == 0)\n"
+            "main()\n"
+        )
+        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
+        _assert_byte_identical(src)
+
+    def test_own_param_element_still_defers(self):
+        # BUGS.md "Own[T] tuple element at a native protocol slot": THIR
+        # emits `std::move(b)` where the AST emits bare `b`, at the SAME
+        # value slot. The fork defers the shape rather than mirror either.
+        src = _BOX + (
+            "from tpy import Own\n"
+            "def h(b: Own[Box]) -> UInt64:\n"
+            "    return hash((1, b))\n"
+            "def main() -> None:\n"
+            "    print(h(Box(1)) == 0)\n"
+            "main()\n"
+        )
+        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
+        _assert_byte_identical(src)
 
 
 class TestOwnElemSlotCallBindsBare:

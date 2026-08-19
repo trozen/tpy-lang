@@ -878,9 +878,10 @@ class FunctionGenerator:
     def _signature_is_template(self, func: TpyFunction) -> bool:
         """Per-signature template test -- the building block of the group-aware
         is_template_function, which also folds in an @overload group's stubs.
-        THIR's per-stub admission mirrors this analyzer-purely as
-        `_stub_signature_is_template` (thir/lower/functions.py) -- keep the
-        two in sync when widening either."""
+        THIR's per-stub admission mirrors only the PARAM half of this
+        analyzer-purely (`_stub_has_template_param`, thir/lower/functions.py):
+        declared type params are signature, which this path still prints, so
+        THIR lowers those specializations' bodies."""
         if func.type_params:
             return True
         if self.protocols.get_all_protocol_params(func.params):

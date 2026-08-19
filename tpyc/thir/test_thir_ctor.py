@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
+from .nodes import Form, THIRBytesLiteral
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
     _ctor_tail, _PRELUDE, _assert_routes_byte_identical,
@@ -1382,6 +1383,31 @@ class TestCtorMilSmallFamilies:
             " : t(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>("
             "std::tuple<Box, int32_t>{Box(p), n})) {}\n")
 
+    def test_ptr_tuple_literal_ctor_call_elem_routes(self):
+        # A record CTOR-CALL rvalue element constructs straight into the
+        # element slot: the brace-init absorbs the prvalue, no move, no lift.
+        ctor = _lower_ctor(
+            self._BOX
+            + "class H:\n    t: tuple[Int32, Box]\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.t = (1, Box(5))\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : t(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>("
+            "std::tuple<int32_t, Box>{1, Box(5)})) {}\n")
+
+    def test_ptr_tuple_literal_ctor_call_optional_elem_stays_ast(self):
+        # The same rvalue at an Optional[record] slot renders its own lift,
+        # which this cell does not mirror -- stays AST.
+        ctor = _lower_ctor(
+            self._BOX
+            + "class H:\n    t: tuple[Int32, Box | None]\n"
+            + "    def __init__(self) -> None:\n"
+            + "        self.t = (1, Box(5))\n",
+            "H")
+        assert ctor is None
+
     def test_ptr_tuple_literal_optional_param_elem_stays_ast(self):
         # A pointer-repr optional PARAM (`Box*` binding) into the Optional
         # slot has no implicit conversion -- outside the cell, stays AST.
@@ -1804,6 +1830,126 @@ class TestCtorOwnStrLiteralArg:
         assert t == a
 
 
+class TestCtorOwnBytesLiteralArg:
+    """The `ctor.own_bytes_literal` row -- the bytes twin of the str one: a
+    bytes LITERAL passes bare into an `Own[bytes]` ctor slot with the OWNED
+    spelling. `Own` is the key: a plain `bytes` slot is view-shaped and keeps
+    the static-span render."""
+
+    SRC = (
+        "from tpy import Own\n"
+        "class H:\n"
+        "    b: bytes\n"
+        "    def __init__(self, b: Own[bytes]) -> None:\n"
+        "        self.b = b\n"
+        "def main() -> None:\n"
+        "    h = H(b\"hi\")\n"
+        "    print(h.b)\n"
+        "main()\n"
+    )
+
+    def test_literal_routes_and_witnesses(self):
+        thir, w = _lower_ctx_witnessed(self.SRC)
+        main = _fn(thir, "main")
+        assert main is not None
+        assert w.get("ctor.own_bytes_literal", 0) > 0
+        lit = main.body[0].init.args[0]
+        # The owned STORAGE form is the whole point of the Own key.
+        assert isinstance(lit, THIRBytesLiteral) and lit.form is Form.STORAGE
+        t, a = _cpp_both(self.SRC)
+        assert t == a
+        assert "::tpy::bytes_literal_owned(\"hi\", 2)" in t
+
+    def test_empty_literal_routes(self):
+        src = self.SRC.replace("b\"hi\"", "b\"\"").replace(
+            "print(h.b)", "print(len(h.b))")
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.own_bytes_literal", 0) > 0
+        t, a = _cpp_both(src)
+        assert t == a
+
+    def test_lvalue_name_stays_off_the_row(self):
+        # Literal-keyed like the str twin: a NAME source must ride the
+        # auto-move cascade, never the bare-literal render.
+        src = (
+            "from tpy import Own\n"
+            "class H:\n"
+            "    b: bytes\n"
+            "    def __init__(self, b: Own[bytes]) -> None:\n"
+            "        self.b = b\n"
+            "def main() -> None:\n"
+            "    t = b\"hi\"\n"
+            "    h = H(t)\n"
+            "    print(h.b)\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.own_bytes_literal", 0) == 0
+        t, a = _cpp_both(src)
+        assert t == a
+
+    def test_plain_bytes_slot_keeps_the_view_render(self):
+        # The silent-conversion hazard: a plain `bytes` ctor slot is
+        # view-shaped, so its literal must keep `bytes_literal`, not the
+        # owned spelling this row introduces.
+        src = (
+            "class H:\n"
+            "    b: bytes\n"
+            "    def __init__(self, b: bytes) -> None:\n"
+            "        self.b = b\n"
+            "def main() -> None:\n"
+            "    h = H(b\"hi\")\n"
+            "    print(h.b)\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.own_bytes_literal", 0) == 0
+        t, a = _cpp_both(src)
+        assert t == a
+        assert "bytes_literal_owned" not in t
+
+    def test_bytesview_slot_stays_off_the_row(self):
+        src = (
+            "from tpy import BytesView\n"
+            "class H:\n"
+            "    b: BytesView\n"
+            "    def __init__(self, b: BytesView) -> None:\n"
+            "        self.b = b\n"
+            "def main() -> None:\n"
+            "    h = H(b\"hi\")\n"
+            "    print(h.b)\n"
+            "main()\n"
+        )
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ctor.own_bytes_literal", 0) == 0
+        t, a = _cpp_both(src)
+        assert t == a
+        assert "bytes_literal_owned" not in t
+
+    def test_nested_ctor_position_still_defers(self):
+        # `H(G(b'x'))` clears the ctor-arg gate and advances to the nested
+        # ctor's own result gate -- that position is not on this row.
+        src = (
+            "from tpy import Own\n"
+            "class G:\n"
+            "    b: bytes\n"
+            "    def __init__(self, b: Own[bytes]) -> None:\n"
+            "        self.b = b\n"
+            "class H:\n"
+            "    g: G\n"
+            "    def __init__(self, g: Own[G]) -> None:\n"
+            "        self.g = g\n"
+            "def main() -> None:\n"
+            "    h = H(G(b\"x\"))\n"
+            "    print(h.g.b)\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
+        t, a = _cpp_both(src)
+        assert t == a
+
+
 class TestBaseInitCoerceAndValueOptArgs:
     """The wave-6 base-init arg rows: an IDENTITY str coerce (String param
     into a `str` base slot, both sides std::string) peels to its inner name
@@ -1949,4 +2095,126 @@ class TestMilSourceWidenings:
         # genuinely-borrow flavor (a `String`-returning accessor) is not
         # constructible in a plain fixture -- assert byte-identity either
         # way so the leg's behavior is pinned.
+        _assert_byte_identical(src)
+
+
+class TestMilTailFamilies:
+    """The ctor-MIL tail rows for field families the per-family cascade
+    claims for no arm: the inner-agnostic pointer-repr Optional lift, the
+    type-agnostic own-param move, an `Any` field's `into_any` coerce and a
+    `bytearray` field's same-typed param copy."""
+
+    def _fallback(self, src: str) -> dict:
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        return dict(compiler._thir_fallback)
+
+    def test_optional_type_param_field_lift_routes(self):
+        # A pointer-repr `Optional[T]` field (T a TYPE PARAM, so neither the
+        # F1-record nor the container inner arm claims it) lifts a borrow
+        # `T*` param through `ptr_to_optional`.
+        src = ("from tpy import Int32\n"
+               "class Container[T]:\n"
+               "    _val: T | None\n"
+               "    def __init__(self, val: T | None) -> None:\n"
+               "        self._val = val\n"
+               "def main() -> None:\n"
+               "    c = Container[Int32](None)\n"
+               "    print(c._val is None)\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_optional_bytearray_field_lift_defers_at_source(self):
+        # The gate admits the same lift with a `bytearray` inner (a
+        # NominalType with no type args, claimed by neither the F1-record nor
+        # the container arm), but the SOURCE lowering of the
+        # `bytearray | None` param name has no row -- so the ctor still falls
+        # back, one reject deeper. Pins where the chain actually stops.
+        src = ("class Bag:\n"
+               "    buf: bytearray | None\n"
+               "    def __init__(self, buf: bytearray | None) -> None:\n"
+               "        self.buf = buf\n")
+        assert self._fallback(src) == {"ctor:name.optional_ptr_read": 1}
+        _assert_byte_identical(src)
+
+    def test_value_repr_optional_tuple_field_stays_ast(self):
+        # BOUNDARY: the lift is gated on the field's POINTER repr. A
+        # value-repr `Optional[tuple]` field from a same-typed param has no
+        # MIL arm and keeps the whole ctor on the AST path.
+        src = ("from tpy import Int32\n"
+               "class Bag:\n"
+               "    tup: tuple[Int32, Int32] | None\n"
+               "    def __init__(self, tup: tuple[Int32, Int32] | None) -> None:\n"
+               "        self.tup = tup\n")
+        assert _lower_ctor(src, "Bag") is None
+        _assert_byte_identical(src)
+
+    def test_type_param_tuple_field_move_routes(self):
+        # A `tuple[A, B]` of type params: no tuple classifier claims the
+        # field, so only the tail move row admits the Own param.
+        src = ("from tpy import Int32, Own\n"
+               "class Pair[A, B]:\n"
+               "    p: tuple[A, B]\n"
+               "    def __init__(self, p: Own[tuple[A, B]]) -> None:\n"
+               "        self.p = p\n"
+               "def main() -> None:\n"
+               "    q = Pair[Int32, Int32]((Int32(1), Int32(2)))\n"
+               "    print(q.p[0])\n"
+               "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_field_same_typed_param_stays_ast(self):
+        # BOUNDARY: the tail move row needs an OWN param at its last use. A
+        # `Ptr[StrView]` field from a same-typed (non-Own) param is neither a
+        # move nor one of the two copy rows, so the ctor stays AST.
+        src = ("from tpy import Int32, Ptr, StrView\n"
+               "class C:\n    q: Ptr[StrView]\n    y: Int32\n"
+               "    def __init__(self, q: Ptr[StrView]) -> None:\n"
+               "        self.q = q\n        self.y = 1\n")
+        assert _lower_ctor(src, "C") is None
+        _assert_byte_identical(src)
+
+    def test_bytearray_field_param_copy_routes(self):
+        # `data(data)`: a bytearray field copies bare from a same-typed
+        # param (the MIL slot is storage; the AST threads no conversion).
+        src = ("class Holder:\n"
+               "    data: bytearray\n"
+               "    def __init__(self, data: bytearray) -> None:\n"
+               "        self.data = data\n")
+        _assert_routes_byte_identical(src)
+
+    def test_bytearray_field_ctor_call_stays_ast(self):
+        # BOUNDARY: the bytearray copy row is NAME-shaped. A `bytearray(b)`
+        # rvalue is a native ctor call with its own render and stays AST.
+        src = ("class Holder:\n"
+               "    data: bytearray\n"
+               "    def __init__(self, b: bytes) -> None:\n"
+               "        self.data = bytearray(b)\n")
+        assert _lower_ctor(src, "Holder") is None
+        _assert_byte_identical(src)
+
+    def test_any_field_into_any_coerce_routes(self):
+        # An `Any` field from sema's into_any coerce: the coercion node
+        # carries its own `::tpy::make_any(...)` render.
+        src = ("from typing import Any\n"
+               "from tpy import Int32\n"
+               "class Holder:\n"
+               "    payload: Any\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.payload = n\n")
+        _assert_routes_byte_identical(src)
+
+    def test_any_field_any_param_stays_ast(self):
+        # BOUNDARY: an already-`Any` source carries no into_any coerce, so
+        # the row's explicit coercion shape does not match.
+        src = ("from typing import Any\n"
+               "class Holder:\n"
+               "    payload: Any\n"
+               "    def __init__(self, p: Any) -> None:\n"
+               "        self.payload = p\n")
+        assert _lower_ctor(src, "Holder") is None
+        assert self._fallback(src) == {"ctor:ctor.mil_field.any.name": 1}
         _assert_byte_identical(src)

@@ -581,6 +581,51 @@ class TestMatchIfElifGuarded:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
+class TestConstFoldedGuard:
+    """`isinstance` against a non-union subject is decided by sema, which
+    clears the isinstance markers and leaves a bare bool with no result type
+    -- the guard renders `if (true)` / `if (false)`."""
+
+    def test_static_true_guard_routes(self):
+        src = (
+            "from tpy import Int32\n"
+            "def f(s: str, x: Int32) -> None:\n"
+            "    match s:\n"
+            "        case \"a\" if isinstance(x, Int32):\n"
+            "            print(0)\n"
+            "        case _:\n"
+            "            print(1)\n"
+            "f(\"a\", 1)\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("match.guard_const_fold", 0) == 1
+        assert "if (true)" in _cpp(src, thir=True)
+        _assert_routes_byte_identical(src)
+
+    def test_static_false_guard_routes(self):
+        # The AST does NOT elide a statically-false arm, so the fold has to
+        # emit the dead `if (false)` verbatim rather than dropping the arm.
+        src = (
+            "from tpy import Int32\n"
+            "class A:\n"
+            "    x: Int32\n"
+            "    def __init__(self) -> None:\n        self.x = 0\n"
+            "def f(s: str, x: Int32) -> None:\n"
+            "    match s:\n"
+            "        case \"a\" if isinstance(x, A):\n"
+            "            print(0)\n"
+            "        case _:\n"
+            "            print(1)\n"
+            "f(\"a\", 1)\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("match.guard_const_fold", 0) == 1
+        assert "if (false)" in _cpp(src, thir=True)
+        _assert_routes_byte_identical(src)
+
+
 UNION_PREAMBLE = (
     "from tpy import Int32\n"
     "class Cat:\n"

@@ -513,9 +513,17 @@ def _comp_lowering_route(
         # comp keeps the narrow key slice.
         key_ok = (_comp_slot_ok(args[0], analyzer)
                   or (route.owns_elements and _f1_record(args[0], analyzer)))
-        if not (is_dict(t) and len(args) == 2 and key_ok
-                and _comp_elem_slot_ok(args[1], analyzer,     # value: widened
-                                       allow_container=True)):
+        # The list leg's node-gated tuple row, on the dict's VALUE slot: a
+        # value `TupleType` slot fails the elem-slot ladder, but a tuple
+        # LITERAL value_expr rides the storage-direct row the same way (a
+        # bare NAME value_expr keeps rejecting -- it would need the whole
+        # tuple_to_storage copy the list leg's NAME half carries).
+        value_ok = (_comp_elem_slot_ok(args[1], analyzer, allow_container=True)
+                    or (isinstance(init.value_expr, TpyTupleLiteral)
+                        and isinstance(
+                            unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(args[1]))), TupleType)))
+        if not (is_dict(t) and len(args) == 2 and key_ok and value_ok):
             return None
     gen = init.generator
     # The comp vars shadow same-named outer locals for the element/filter
@@ -1058,7 +1066,11 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             if uname is None:
                 types.append(None)
                 continue
-            if not (_eligible_scalar(tt)
+            # A str target COPIES the stored element (`std::string k =
+            # std::get<i>(tup);` -- the AST's is_value_type branch over the
+            # tuple's OWNED element spelling), so its reads stay
+            # STORAGE-form; the comp unpack head carries the same disjunct.
+            if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
                     or _optional_ptr_borrow(tt, analyzer) is not None):
                 raise ThirUnsupported("genexpr.unpack")
             types.append(tt)

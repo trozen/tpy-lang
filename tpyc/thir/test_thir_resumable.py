@@ -1043,6 +1043,77 @@ class TestContainerAndNoneParams:
         assert not any(k.startswith("resumable:") for k in fallback)
 
 
+class TestOwnContainerFrameFields:
+    """An `Own[container]` PARAM becomes a plain owned frame FIELD. The sync
+    `name.own_read` reject exists because `seed_param_locals` marks such a
+    param movable, so its last-use read renders `std::move(p)` -- a binding a
+    frame body does not have (the payload was moved into the frame at
+    construction). Body reads are bare member reads; an OWNING sink still
+    takes the shared movable-last-use row, identically on both paths."""
+
+    def test_own_container_frame_reads_route(self):
+        src = (_PRE
+               + "import asyncio\n"
+               + "from typing import Iterator\n"
+               + "from tpy import Own\n\n"
+               + "def take(v: Own[list[Int32]]) -> Int32:\n"
+               + "    return Int32(len(v))\n\n"
+               + "def gen_plain(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
+               + "    yield len(xs)\n"
+               + "    yield xs[0]\n\n"
+               + "def gen_owning(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
+               + "    yield len(xs)\n"
+               + "    yield take(xs)\n\n"
+               + "def gen_dict(d: Own[dict[Int32, Int32]]) -> Iterator[Int32]:\n"
+               + "    yield len(d)\n"
+               + "    yield d[1]\n\n"
+               + "async def coro_own(xs: Own[list[Int32]]) -> Int32:\n"
+               + "    await asyncio.sleep(0.0)\n"
+               + "    return take(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("name.frame_own_field", 0) >= 5
+        # Pin the WHOLE dict: a resumable:-only filter lets a body: key
+        # through, and a frame body that stopped routing would land there.
+        # The one entry is `take`, the SYNC helper whose Own-param read is
+        # the deliberate boundary (test_sync_own_container_param_read...).
+        assert fallback == {"body:stmt.return:name.own_read": 1}
+
+    def test_own_container_frame_owning_sink_moves(self):
+        # The owning sink inside the frame renders `take(std::move(xs))` on
+        # BOTH paths: the widening only removes the reject, it does not
+        # suppress the shared movable-last-use row.
+        src = (_PRE
+               + "from typing import Iterator\n"
+               + "from tpy import Own\n\n"
+               + "def take(v: Own[list[Int32]]) -> Int32:\n"
+               + "    return Int32(len(v))\n\n"
+               + "def gen_owning(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
+               + "    yield len(xs)\n"
+               + "    yield take(xs)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        # Mechanical routing claim: the render asserts below are satisfied
+        # by a whole-body fallback, so the frame body must be pinned here.
+        # The single entry is the SYNC helper's deliberate boundary reject.
+        assert fallback == {"body:stmt.return:name.own_read": 1}
+        _c, _hpp, cpp = _gen(src, thir=True)
+        assert "return take(std::move(xs));" in cpp
+        assert "return ::tpy::__len__(xs);" in cpp
+
+    def test_sync_own_container_param_read_stays_ast(self):
+        # BOUNDARY: the same param in a SYNC body keeps the reject -- there
+        # the movable seeding is real and the AST's last-use render is the
+        # unmirrored `std::move(p)` shape the verdict names.
+        src = (_PRE
+               + "from tpy import Own\n\n"
+               + "def take(v: Own[list[Int32]]) -> Int32:\n"
+               + "    return Int32(len(v))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert fallback.get("body:stmt.return:name.own_read") == 1, fallback
+
+
 class TestStrBytesReturns:
     """Owned str/bytes async returns: the view->owned copy is the shared
     form-keyed wrap (`_wrap_view_owned_return`) -- a borrow-form (view)
@@ -3846,19 +3917,18 @@ class TestFrameFamilyAdmissions:
         _, hpp, cpp = _gen(src, thir=True)
         assert "std::holds_alternative<::tpy::BigInt>(a)" in hpp + cpp
 
-    def test_own_container_param_admits_reads_defer(self):
+    def test_own_container_param_routes(self):
         # F6: an Own[list] param admits (moved value-container field); its
-        # subscript READ now routes (the Own-receiver read row), so the
-        # honest next-blocker is the len-position NAME read
-        # (name.own_read), not res.param_type.
+        # subscript READ rides the Own-receiver row and the len-position
+        # NAME read rides the frame-field row (CONVERTED from a
+        # name.own_read fence: the reject named the sync param's movable
+        # last-use render, which a frame body does not have).
         src = ("from typing import Iterator\nfrom tpy import Int32, Own\n\n"
                + "def gen_own(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
                + "    yield xs[0]\n"
                + "    yield len(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert "res.param_type" not in fb
-        assert fb.get("name.own_read") == 1
+        assert not _res_fallback(src)
         _assert_identical(src)
 
 
@@ -4551,6 +4621,50 @@ class TestLeafWith:
         assert not any(k.startswith("resumable:") for k in fallback)
         _, _hpp, cpp = _gen(src, thir=True)
         assert "s = __ctx_1.__enter__();" in cpp
+
+    def test_frame_borrow_tuple_target_routes(self):
+        # A BORROW-form tuple enter target (`std::tuple<Item*, Int32>`):
+        # it subtracts itself from plain_frame_fields because its
+        # decl/reassign render differs, but the with-bind is the same
+        # plain member assign. Rebound by a second `with` so the assign
+        # (not a decl) is what is witnessed.
+        src = (_PRE
+               + "class Item:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n"
+               + "class PM:\n"
+               + "    item: Item\n"
+               + "    tag: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.item = Item(v)\n"
+               + "        self.tag = v\n"
+               + "    def __enter__(self) -> tuple[Item, Int32]:\n"
+               + "        return (self.item, self.tag)\n"
+               + "    def __exit__(self, exc_type, exc_val, exc_tb)"
+               + " -> None:\n        pass\n\n"
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[Int32]:\n"
+               + "    a = PM(7)\n"
+               + "    b = PM(9)\n"
+               + "    with a as p:\n"
+               + "        pass\n"
+               + "    yield 1\n"
+               + "    with b as p:\n"
+               + "        pass\n"
+               + "    yield 2\n"
+               + "    item, tag = p\n"
+               + "    item.v += 1\n"
+               + "    yield item.v\n"
+               + "    yield b.item.v\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("with.frame_btuple_target", 0) >= 2
+        assert not any(k.startswith("resumable:") for k in fallback)
+        _, hpp, cpp = _gen(src, thir=True)
+        assert "std::tuple<Item*, int32_t> p;" in hpp
+        assert cpp.count("p = __ctx_1.__enter__();") == 1
+        assert cpp.count("p = __ctx_2.__enter__();") == 1
 
     def test_leaf_return_defers(self):
         # A return nested in a leaf with renders its __exit__ chain through
@@ -7215,3 +7329,112 @@ class TestResReassignedNeedsCopyParams:
             "main()\n")
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "std::string t;" in _hpp
+
+
+class TestValueOptFrameShapes:
+    """A VALUE-repr `Optional[T]` crosses the frame boundary whole: the
+    frame field takes `std::nullopt`, and the yield slot passes a narrowed
+    source un-dereferenced. Every row is keyed on the SLOT -- the same
+    source shape must still deref at a non-optional slot."""
+
+    _IT = "from tpy import Int32\nfrom typing import Iterator\n\n"
+    _MAIN = "\ndef main() -> None:\n    pass\nmain()\n"
+
+    def test_frame_field_none_reassign_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self._IT + (
+            "def g(v: Int32 | None) -> Iterator[Int32]:\n"
+            "    while v:\n"
+            "        yield 1\n"
+            "        v = None\n"
+            "    yield 2\n") + self._MAIN
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses["res.frame_opt_none"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "v = std::nullopt;" in cpp
+
+    def test_frame_field_none_decl_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self._IT + (
+            "def g(p: Int32 | None) -> Iterator[Int32]:\n"
+            "    q: Int32 | None = None\n"
+            "    if p is not None:\n"
+            "        q = p\n"
+            "    yield 0\n"
+            "    if q is not None:\n"
+            "        yield q\n") + self._MAIN
+        witnesses, _fallback = _assert_identical(src)
+        assert witnesses["res.frame_opt_none"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "q = std::nullopt;" in cpp
+
+    def test_value_opt_yield_slot_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self._IT + (
+            "def g(p: Int32 | None) -> Iterator[Int32 | None]:\n"
+            "    if p is not None:\n"
+            "        yield p\n"
+            "    yield None\n") + self._MAIN
+        witnesses, _fallback = _assert_identical(src)
+        assert witnesses["res.yield_value_opt_none"] >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # The narrowed source passes WHOLE (no `(*p)`), the None spells
+        # nullopt (a NoneType STORAGE literal would render monostate).
+        assert "return p;" in cpp
+        assert "return std::nullopt;" in cpp
+        assert "std::monostate" not in cpp
+
+    def test_yield_slot_keys_the_deref_not_the_source(self):
+        # THE doctrinal pin: ONE module, ONE source shape (a narrowed
+        # value-opt loop var), two yield slots. The `Int32` slot must keep
+        # its deref and the `Int32 | None` slot must not gain one.
+        from .testutil import _assert_routes_byte_identical
+        src = self._IT + (
+            "def gd(d: dict[str, Int32 | None]) -> Iterator[Int32]:\n"
+            "    for val in d.values():\n"
+            "        if val is not None:\n"
+            "            yield val\n"
+            "def go(d: dict[str, Int32 | None]) -> Iterator[Int32 | None]:\n"
+            "    for val in d.values():\n"
+            "        if val is not None:\n"
+            "            yield val\n"
+            "    yield None\n") + self._MAIN
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return (*val);" in cpp
+        assert "return val;" in cpp
+
+    def test_unnarrowed_and_expr_sources_route_at_the_opt_slot(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self._IT + (
+            "def gw(p: Int32 | None) -> Iterator[Int32 | None]:\n"
+            "    yield p\n"
+            "def ge(p: Int32 | None) -> Iterator[Int32 | None]:\n"
+            "    if p is not None:\n"
+            "        yield p + 1\n"
+            "def gl() -> Iterator[Int32 | None]:\n"
+            "    yield 1\n") + self._MAIN
+        _assert_routes_byte_identical(src)
+
+    def test_str_optional_yield_slot_still_defers(self):
+        # The value-repr optional gate admits on its INNER's capture; an
+        # owned-view inner has its own conversion rules at the sink.
+        src = ("from typing import Iterator\n\n"
+               "def g(s: str | None) -> Iterator[str | None]:\n"
+               "    yield s\n"
+               "    yield None\n") + self._MAIN
+        assert _res_fallback(src).get("res.yield_type") == 1
+        _assert_identical(src)
+
+    def test_record_optional_yield_slot_still_defers(self):
+        # A pointer-repr Optional yield slot is a plain `T*` -- not this
+        # row's whole-optional shape.
+        src = self._IT + (
+            "class Box:\n"
+            "    v: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.v = v\n\n"
+            "def g(b: Box | None) -> Iterator[Box | None]:\n"
+            "    yield b\n"
+            "    yield None\n") + self._MAIN
+        assert _res_fallback(src).get("res.yield_type") == 1
+        _assert_identical(src)

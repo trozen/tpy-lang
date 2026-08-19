@@ -1,18 +1,24 @@
 """Pins for per-@overload-stub lowering: the (impl, stub)-keyed seeding,
 the isinstance/match dead-branch folds, per-stub return coercion -- and
-the boundaries: generic_stub / arity / db_compare / narrow_param keep
+the boundaries: template-PARAM stub / arity / db_compare / narrow_param keep
 rejecting, no partial folds, sema-placed checks survive in kept
-branches."""
+branches.
+
+A stub's declared TYPE PARAMS are not a boundary: `template<...>` is
+signature, printed by the AST path, and the specialization bodies lower
+through the ordinary arms."""
 
 from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_routes_byte_identical,
     _compile,
     _entry,
     _fn,
     _lower,
     _lower_ctx,
+    _thir_ctx,
 )
 from .lower import lower_function
 from .lower.functions import iter_module_callables, module_native_globals
@@ -172,9 +178,11 @@ class TestPerStubRouting:
 
 
 class TestPerStubBoundaries:
-    def test_generic_stub_keeps_rejecting(self):
-        # A protocol-param stub is a template specialization (the
-        # overload_template_stub_cross_module shape).
+    def test_template_param_stub_keeps_rejecting(self):
+        # A protocol-param stub synthesizes a template header whose CALL SITE
+        # is not the plain named call the call arms admit (the
+        # overload_template_stub_cross_module shape). Declared type params are
+        # a different question -- see TestGenericStubRouting.
         src = (
             "from typing import Iterable, overload\n"
             "from tpy import Int32, Own\n"
@@ -678,3 +686,86 @@ class TestShortStubArity:
         results = _per_stub_results(src, "fmt")
         assert results[0][0] is None
         assert results[0][1] == "sig.overload_set.arity"
+
+
+class TestGenericStubRouting:
+    """Declared type params on a stub are SIGNATURE: the `template<...>`
+    header and the `inline` on a non-generic twin come from the AST printer,
+    and each specialization's body lowers through the ordinary arms."""
+
+    def test_type_param_stub_specializations_route(self):
+        src = (
+            "from typing import overload\n"
+            "from tpy import Int32, Comparable\n"
+            "@overload\n"
+            "def pick[T: Comparable](xs: list[T]) -> Int32: ...\n"
+            "@overload\n"
+            "def pick(xs: str) -> Int32: ...\n"
+            "def pick[T: Comparable](xs: list[T] | str) -> Int32:\n"
+            "    if isinstance(xs, str):\n"
+            "        return len(xs)\n"
+            "    n = 0\n"
+            "    for _ in xs:\n"
+            "        n += 1\n"
+            "    return n\n"
+            "nums: list[Int32] = [3, 1, 2]\n"
+            "print(pick(nums))\n"
+            "print(pick('hello'))\n"
+        )
+        results = _per_stub_results(src, "pick")
+        assert len(results) == 2
+        assert all(fn is not None for fn, _ in results)
+        _assert_routes_byte_identical(src)
+
+
+class TestOverloadedGenerator:
+    """An @overload-ed simple generator emits ONE body -- the AST router
+    lowers it at the leaf seam and never reaches the per-stub seeding loop,
+    so there is no specialization for a shared impl to hijack."""
+
+    def test_overloaded_simple_generator_routes(self):
+        src = (
+            "from typing import overload, Iterator\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            "def rep[T](obj: T) -> Iterator[T]: ...\n"
+            "@overload\n"
+            "def rep[T](obj: T, n: Int32) -> Iterator[T]: ...\n"
+            "def rep[T](obj: T, n: Int32 = -1) -> Iterator[T]:\n"
+            "    i = 0\n"
+            "    while n < 0 or i < n:\n"
+            "        yield obj\n"
+            "        i += 1\n"
+            "for y in rep(9, 2):\n"
+            "    print(y)\n"
+        )
+        # The routing claim must be read off `thir_simple_gens`: the
+        # simple-generator seam keys its own map, and `_thir_routed_bodies`
+        # (functions + constructors) does not move when it routes.
+        ctx, fallback = _thir_ctx(src)
+        assert ctx.thir_simple_gens
+        assert not fallback
+        _assert_byte_identical(src)
+
+    def test_overloaded_resumable_generator_keeps_rejecting(self):
+        # BOUNDARY: a non-simple generator lowers through the resumable frame,
+        # a seam the carve-out deliberately excludes (no corpus witness).
+        src = (
+            "from typing import overload, Iterator\n"
+            "from tpy import Int32\n"
+            "@overload\n"
+            "def walk(n: Int32) -> Iterator[Int32]: ...\n"
+            "@overload\n"
+            "def walk(n: Int32, step: Int32) -> Iterator[Int32]: ...\n"
+            "def walk(n: Int32, step: Int32 = 1) -> Iterator[Int32]:\n"
+            "    i = 0\n"
+            "    while i < n:\n"
+            "        try:\n"
+            "            yield i\n"
+            "        finally:\n"
+            "            i += step\n"
+            "for x in walk(4, 2):\n"
+            "    print(x)\n"
+        )
+        _ctx, fallback = _thir_ctx(src)
+        assert fallback.get("resumable:sig.overload_set.arity") == 1

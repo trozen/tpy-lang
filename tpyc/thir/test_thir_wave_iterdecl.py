@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _SPAN_SRC = (
@@ -82,6 +83,40 @@ class TestNativeIterSlot:
         assert faces.get("print.protocol_call", 0) == 1
         cpp = _assert_byte_identical(src)
         assert "std::cout << ::tpy::__iter__(s) << " in cpp[1]
+
+    def test_view_receiver_dunder_iter_decl_routes(self):
+        # `char_it = chars.__iter__()` -- a str/StrView receiver's
+        # @cpp_template `__iter__` returns the Iterator[Char] PROTOCOL, which
+        # C++ concepts cannot type: the AST spells `auto` and the rvalue
+        # carries the concrete type. The protocol family already carried the
+        # row; the view family was missing it.
+        src = ("from tpy import StrView\n"
+               "def main() -> None:\n"
+               "    chars: str = 'hi'\n"
+               "    char_it = chars.__iter__()\n"
+               "    for c in char_it:\n"
+               "        print(c)\n"
+               "    sv: StrView = StrView('abc')\n"
+               "    sv_it = sv.__iter__()\n"
+               "    for c2 in sv_it:\n"
+               "        print(c2)\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("method.view_self_storage_ret", 0) == 2
+        cpp = _assert_routes_byte_identical(src)
+        assert "auto char_it = ::tpy::__iter__(chars);" in cpp[1]
+
+    def test_view_dunder_iter_non_storage_sinks_stay_ast(self):
+        # BOUNDARY: the widened row is STORAGE-sink only. The same protocol
+        # result at a for-head iterable and at a print arg carries no
+        # mirrored render, so both keep falling back.
+        for tail in ("    for c in chars.__iter__():\n        print(c)\n",
+                     "    print(chars.__iter__())\n"):
+            src = ("def main() -> None:\n"
+                   "    chars: str = 'hi'\n"
+                   + tail + "main()\n")
+            assert _fn(_lower_ctx(src), "main") is None
+            _assert_byte_identical(src)
 
     def test_pointer_receiver_dunder_iter_stays_ast(self):
         # The native_function-form arm admits bare non-pointer name

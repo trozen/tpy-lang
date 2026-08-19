@@ -178,13 +178,35 @@ class TestIfExprStrForms:
 
 
 class TestIfExprRejects:
-    def test_optional_result_rejected(self):
-        # A None arm makes the result Optional -- the ptr-lift arms stay AST.
-        thir = _lower(
-            "from tpy import Int32\n"
-            "def f(c: bool, a: Int32) -> Int32 | None:\n"
-            "    return a if c else None\n")
-        assert _fn(thir, "f") is None
+    def test_value_opt_scalar_name_arm_routes(self):
+        # RE-PINNED ROUTED: a VALUE-repr Optional result wraps every arm in the
+        # spelled `std::optional<T>(...)`, and a scalar name renders bare under
+        # that wrap like a literal does. The POINTER-repr Optional (a record
+        # result) is the ptr-lift family, pinned separately below.
+        src = ("from tpy import Int32\n"
+               "def f(c: bool, a: Int32) -> Int32 | None:\n"
+               "    return a if c else None\n"
+               "def main() -> None:\n"
+               "    print(f(True, 1))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_routes_byte_identical(src)
+        assert "std::optional<int32_t>(a)" in cpp[1]
+
+    def test_value_opt_call_arm_rejected(self):
+        # BOUNDARY: the value-opt arm slice is literals plus a scalar NAME --
+        # a CALL arm keeps the named reject.
+        src = ("from tpy import Int32\n"
+               "def one() -> Int32:\n"
+               "    return 1\n"
+               "def f(c: bool) -> Int32 | None:\n"
+               "    return one() if c else None\n"
+               "def main() -> None:\n"
+               "    print(f(True))\n"
+               "main()\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
 
     def test_container_result_routes(self):
         # RE-PINNED ROUTED (decl-slot track): the container ternary renders
