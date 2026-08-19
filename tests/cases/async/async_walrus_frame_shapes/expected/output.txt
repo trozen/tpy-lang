@@ -1,0 +1,20 @@
+scalar val 0
+scalar resume 0
+scalar val 10
+scalar resume 10
+owning len 2
+owning resume 2 0
+owning len 2
+owning resume 2 1
+borrow len 2
+borrow resume 3 1
+borrow len 3
+borrow resume 4 3
+rows after [1, 2, 99] [3, 4, 5, 99]
+optptr bound True
+optptr resume 107
+optptr bound True
+optptr resume 108
+optptr bound False
+optptr resume none
+nodes after 107 108

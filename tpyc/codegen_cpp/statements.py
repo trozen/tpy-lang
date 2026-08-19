@@ -35,9 +35,8 @@ from ..parse import (
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
     TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
-    TpyMatch, TpyNamedExpr, iter_capture_bindings,
+    TpyMatch, TpyNamedExpr, iter_capture_bindings, walrus_bindings,
 )
-from dataclasses import fields as dc_fields
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
@@ -403,9 +402,8 @@ class StatementGenerator:
                       and isinstance(stmt.target, TpyName)):
                     record(stmt.target.name, stmt.value)
                 # Walrus (`(t := src)`) binds too -- in conditions, values, etc.
-                for e in stmt.exprs():
-                    for tgt, src in _walrus_bindings(e):
-                        record(tgt, src)
+                for ne in walrus_bindings(stmt):
+                    record(ne.target, ne.value)
                 for body in stmt.sub_bodies():
                     collect(body)
 
@@ -424,22 +422,6 @@ class StatementGenerator:
                 opt_bindings.setdefault(tgt, []).append(src)
             else:
                 bindings.setdefault(tgt, []).append(src)
-
-        def _walrus_bindings(expr: TpyExpr | None):
-            """Yield (target, value) for every walrus node in `expr` (generic
-            dataclass-field recursion, like prescan's walrus scan)."""
-            if expr is None:
-                return
-            if isinstance(expr, TpyNamedExpr):
-                yield expr.target, expr.value
-            for f in dc_fields(expr):
-                val = getattr(expr, f.name)
-                if isinstance(val, TpyExpr):
-                    yield from _walrus_bindings(val)
-                elif isinstance(val, list):
-                    for item in val:
-                        if isinstance(item, TpyExpr):
-                            yield from _walrus_bindings(item)
 
         collect(func.body)
         if not bindings and not opt_bindings:

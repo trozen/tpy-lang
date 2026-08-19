@@ -7438,3 +7438,52 @@ class TestValueOptFrameShapes:
             "    yield None\n") + self._MAIN
         assert _res_fallback(src).get("res.yield_type") == 1
         _assert_identical(src)
+
+
+class TestFrameFieldWalrusFence:
+    """A walrus whose target is a resumable FRAME FIELD must reject.
+
+    The AST used to pre-declare a case-block local in front of the field and
+    write the shadow, so THIR's sync walrus rungs happened to byte-match. Now
+    that the AST writes the field, those rungs are wrong for a frame target and
+    the arm fences instead -- the frame-field write families are their own
+    porting row. Without the fence THIR would re-emit the shadow.
+    """
+
+    _MAIN = ("\ndef main() -> None:\n"
+             "    for u in g():\n"
+             "        u[:] = []\nmain()\n")
+
+    _PRE = "from typing import Iterator\nfrom tpy import Int32\n\n"
+
+    def _frame_src(self, walrus_stmt: str) -> str:
+        # The loop-body-local yield is what forces a resumable frame; the
+        # walrus sits away from the yield slot, which has its own earlier gate.
+        return (self._PRE
+                + "def g() -> Iterator[list[Int32]]:\n"
+                + "    i = 0\n"
+                + "    while i < 2:\n"
+                + "        buf: list[Int32] = []\n"
+                + "        buf.append(3)\n"
+                + "        yield buf\n"
+                + walrus_stmt
+                + "        i += 1\n") + self._MAIN
+
+    def test_frame_field_walrus_rejects(self):
+        src = self._frame_src("        if (m := i * 2) > 0:\n"
+                              "            print(\"m\", m)\n")
+        assert _res_fallback(src).get("expr.walrus") == 1
+        _assert_identical(src)
+
+    def test_sync_walrus_is_untouched(self):
+        # The fence keys on `frame_local_types`, which is empty for a sync
+        # body -- the sync walrus rungs must keep routing.
+        src = (self._PRE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    if (m := n * 2) > 0:\n"
+               + "        return m\n"
+               + "    return 0\n\n"
+               + "def main() -> None:\n    print(f(3))\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert not any(k.startswith("body:") and "walrus" in k
+                       for k in fallback)

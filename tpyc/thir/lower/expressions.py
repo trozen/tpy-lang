@@ -5840,10 +5840,16 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         # locals are frame fields (`(*b)` source reads, no named-row drain
         # for the predecls), a different render model -- only the
         # value-scalar tail below stays available there (sgen cond flush).
-        # (A yield-position borrow walrus is PARKED: the AST plants a dead
-        # `frame_slot` member AND a shadowing case-block pointer local for
-        # the same name -- see TODO.md's walrus design entry.)
         resumable = lc.func.is_generator or lc.func.is_async
+        if e.target in lc.frame_local_types:
+            # A RESUMABLE frame local (the map is empty for sync and for the
+            # sgen peephole): the target is a struct FIELD, so every rung
+            # below is wrong for it -- their pre-declaration would put a
+            # case-block local in front of the field and the write would die
+            # at the next suspension. The frame-field write families are a
+            # separate porting row.
+            note_detail("walrus.frame_field")
+            raise ThirUnsupported("expr.walrus")
         if (not resumable
                 and e.target in borrow_decls and e.target not in ever_owned
                 and is_plain_nonvalue(vtu)):

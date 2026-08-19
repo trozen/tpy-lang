@@ -214,7 +214,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             // buf.append(3)
             (*buf).push_back(3);
             // yield (x := buf)          # tpyc: ok
-            std::vector<int32_t>* x = nullptr;
             __state = S_RESUME_0;
             return (x = &((*buf)), *x);
         } else {

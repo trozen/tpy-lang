@@ -2025,15 +2025,29 @@ def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
         for case in stmt.cases:
             out.update(n.name for n in iter_capture_bindings(case.pattern))
 
-    def collect_walrus(e: TpyExpr) -> None:
+    out.update(ne.target for ne in walrus_bindings(stmt))
+    return out
+
+
+def walrus_bindings(stmt: TpyStmt) -> list['TpyNamedExpr']:
+    """Every walrus node in `stmt`'s OWN expressions, outermost first.
+
+    Sub-bodies are not descended into -- callers already walk those -- so this
+    composes with a statement walk without visiting a nested body twice.
+    """
+    found: list[TpyNamedExpr] = []
+
+    def collect(e: TpyExpr | None) -> None:
+        if not isinstance(e, TpyExpr):
+            return
         if isinstance(e, TpyNamedExpr):
-            out.add(e.target)
-        for c in (e.children() if hasattr(e, "children") else ()):
-            collect_walrus(c)
+            found.append(e)
+        for c in e.children():
+            collect(c)
 
     for e in stmt.exprs():
-        collect_walrus(e)
-    return out
+        collect(e)
+    return found
 
 
 def borrow_chain_root(expr: TpyExpr) -> str | None:

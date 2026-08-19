@@ -37,6 +37,7 @@ from .nodes import (
     expr_reads_self_field,
     is_stable_address_lvalue,
     walk_body_stmts,
+    walrus_bindings,
 )
 
 from .imports import (
@@ -76,6 +77,7 @@ __all__ = [
     "collect_name_refs",
     "collect_top_level_local_names",
     "expr_reads_self_field",
+    "walrus_bindings",
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",
     "get_builtins_exports", "get_typing_exports", "get_tpy_exports",

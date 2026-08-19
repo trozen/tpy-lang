@@ -35,7 +35,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
-    is_stable_address_lvalue,
+    is_stable_address_lvalue, walrus_bindings,
 )
 
 
@@ -2401,10 +2401,12 @@ class AsyncCoroCodegen:
         `frame_slot<T>` (which would copy across the suspension -- a silent
         reference-copy divergence from CPython).
 
-        Two binding shapes, mirroring how sync codegen renders them as
+        Three binding shapes, mirroring how sync codegen renders them as
         references (`Box& a = items[0]` / `auto&& a = tuple_elem_ref(...)`):
-          - single-assign `a = <lvalue>` of a plain non-value type, and
-          - tuple-unpack borrow targets (`stmt.is_ref[i]`).
+          - single-assign `a = <lvalue>` of a plain non-value type,
+          - tuple-unpack borrow targets (`stmt.is_ref[i]`), and
+          - a walrus `(a := <lvalue>)`, which sema already classified as a
+            statement-level borrow.
 
         Const sources (readonly params, const tuple elements) join
         `const_pointer_alias_locals` so the field is `const T*`. Exception-
@@ -2427,6 +2429,11 @@ class AsyncCoroCodegen:
         aliases = state.pointer_alias_locals
         const_aliases = state.const_pointer_alias_locals
         body = self._effective_body(func)
+        # Read per-function off the analyzer, not off ctx: this prescan runs at
+        # struct-emit time, before the body scope that would seed ctx with it.
+        analyzer = self.ctx.analyzer
+        borrow_decls = analyzer.function_stmt_borrow_decls.get(id(func), {})
+        ever_owned = analyzer.function_ever_owned_locals.get(id(func), set())
 
         exc_bindings: set[str] = set()
 
@@ -2551,6 +2558,29 @@ class AsyncCoroCodegen:
                                     i < len(s.is_const_ref) and s.is_const_ref[i])
                                 if elem_const:
                                     const_aliases.add(tname)
+                # A walrus binds in expression position, so it is invisible to
+                # the statement arms above. Read sema's verdict rather than
+                # re-deriving one from the source shape: the sync walrus render
+                # is chosen from the same fact, so the frame field and the sync
+                # local agree on alias-vs-own for the same program.
+                for ne in walrus_bindings(s):
+                    ltype = frame_local_types.get(ne.target)
+                    if ltype is None or ne.target not in borrow_decls:
+                        continue
+                    if ne.target in ever_owned:
+                        continue
+                    # Same handler-scoped exclusion the VarDecl row applies:
+                    # sema classifies a walrus off a caught exception as an
+                    # ordinary lvalue borrow, but the referent dies with the
+                    # catch block, so the frame keeps the owning copy.
+                    if root_name(ne.value) in exc_bindings:
+                        continue
+                    if not self.statements._is_plain_nonvalue(
+                            unwrap_ref_type(ltype)):
+                        continue
+                    aliases.add(ne.target)
+                    if borrow_decls[ne.target]:
+                        const_aliases.add(ne.target)
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)

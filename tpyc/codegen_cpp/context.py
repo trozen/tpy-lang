@@ -25,7 +25,7 @@ from ..parse import (
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
-    TpyNamedExpr,
+    TpyNamedExpr, walrus_bindings,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -3062,22 +3062,27 @@ class CodeGenContext:
                     or (lname in one_shot and inner.has_pointer_repr_element())):
                 owning.add(lname)
 
+        def record(name: str | None, src: TpyExpr | None) -> None:
+            if (name is None or src is None
+                    or name not in gen_names or name in reassigned):
+                return
+            inner = src.expr if isinstance(src, TpyCoerce) else src
+            if (isinstance(inner, (TpyCall, TpyMethodCall))
+                    and self.is_storage_form_source(inner)):
+                owning.add(name)
+
         def visit(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
-                src = None
                 if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    name, src = stmt.name, stmt.init
+                    record(stmt.name, stmt.init)
                 elif (isinstance(stmt, TpyAssign)
                       and isinstance(stmt.target, TpyName)):
-                    name, src = stmt.target.name, stmt.value
-                else:
-                    name = None
-                if (name is not None and src is not None
-                        and name in gen_names and name not in reassigned):
-                    inner = src.expr if isinstance(src, TpyCoerce) else src
-                    if (isinstance(inner, (TpyCall, TpyMethodCall))
-                            and self.is_storage_form_source(inner)):
-                        owning.add(name)
+                    record(stmt.target.name, stmt.value)
+                # A walrus binds in expression position: without this row its
+                # owning-call source is invisible here and the frame gets a
+                # borrow-form tuple field aliasing the dead result temporary.
+                for ne in walrus_bindings(stmt):
+                    record(ne.target, ne.value)
                 for body in stmt.sub_bodies():
                     visit(body)
 

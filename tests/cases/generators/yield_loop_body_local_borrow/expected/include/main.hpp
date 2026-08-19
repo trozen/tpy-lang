@@ -146,7 +146,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy:
     int32_t __state;
     int32_t i;
     ::tpy::frame_slot<std::vector<int32_t>> buf;
-    ::tpy::frame_slot<std::vector<int32_t>> x;
+    std::vector<int32_t>* x = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

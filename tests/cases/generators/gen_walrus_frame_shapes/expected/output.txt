@@ -1,0 +1,55 @@
+got -1
+got 0
+scalar resume 0
+got 10
+scalar resume 10
+got -1
+got 5
+str resume alpha
+got 2
+str resume be
+got -1
+got 1
+tuple resume 1 2
+got 2
+tuple resume 2 4
+got -1
+got 2
+owning resume 2 0
+got 2
+owning resume 2 1
+got -1
+got 2
+borrow resume 3 1
+got 3
+borrow resume 4 3
+rows after [1, 2, 99] [3, 4, 5, 99]
+got -1
+got 7
+optptr resume 107
+got 8
+optptr resume 108
+got -9
+optptr resume none
+nodes after 107 108
+got -1
+got 1
+borrow tuple resume 1 1001
+got 2
+borrow tuple resume 2 1002
+more after 1001 1002
+got -1
+got 1
+own tuple resume 1 5
+got 2
+own tuple resume 2 10
+got -1
+got 0
+caught bad
+got 0
+exc resume bad
+got -1
+got 0
+method resume 0
+got 10
+method resume 10

@@ -6707,6 +6707,15 @@ class ExpressionGenerator:
                 target_type=unwrap_qualifiers(value_type))
             return f"({target_name} = {value_code})"
 
+        # A resumable-frame body (generator / async) hoists every local-namespace
+        # binding into a frame FIELD, so the target already has storage: the
+        # sync pre-declarations below would put a same-named case-block local in
+        # front of it, and every write would land on storage that dies at the
+        # next suspension while later reads resolve to the never-written field.
+        if (self.ctx.in_generator_body
+                and expr.target in self.ctx.generator_field_names):
+            return self._gen_frame_named_expr(expr, value_type, value_code)
+
         # A pointer-repr tuple is a value type, but its expression rendering
         # is borrow form (std::tuple<..., T*>): declare the walrus local in
         # borrow form and lift storage-form sources element-wise, mirroring
@@ -6876,6 +6885,64 @@ class ExpressionGenerator:
             return f"({cpp_name} = {rhs})"
         if not value_type.is_value_type() and not isinstance(value_type, OptionalType):
             return f"({cpp_name} = {value_code}, *{cpp_name})"
+        return f"({cpp_name} = {value_code})"
+
+    def _gen_frame_named_expr(self, expr: TpyNamedExpr, value_type: TpyType,
+                              value_code: str) -> str:
+        """Walrus whose target is a resumable-frame FIELD: write the field, and
+        declare nothing.
+
+        The field's C++ form was decided once, by the frame-layout plan, and is
+        already reflected in the context sets `setup_resumable_frame_locals`
+        seeds from it -- so the dispatch below reads those sets rather than
+        re-deriving a form from the type, and the walrus rows in
+        `_classify_pointer_alias_locals` / `owning_generator_tuple_locals` are
+        what makes the plan see this binding at all. Gate and render therefore
+        key the same fact; a walrus classified one way and rendered another is
+        the drift this shares the plan to avoid.
+        """
+        cpp_name = escape_cpp_name(self.ctx.generator_storage_name(expr.target))
+        self.ctx.declared_vars.add(expr.target)
+        self.ctx.local_scope_names.add(expr.target)
+
+        if expr.target in self.ctx.generator_frame_slot_locals:
+            # frame_slot<T> has no operator= by design; emplace destroys any
+            # prior payload, constructs in place, and hands back the `T&` this
+            # expression evaluates to.
+            init = self.types.typed_brace_init(value_code, value_type)
+            return f"{cpp_name}.emplace({init})"
+
+        if expr.target in self.ctx.pointer_locals:
+            if (isinstance(value_type, OptionalType)
+                    and value_type.uses_pointer_repr()):
+                rhs = self.ctx.convert(
+                    FormValue(value_code, value_type,
+                              self.ctx.source_form(expr.value)),
+                    dst_type=value_type, dst_form=CppForm.BORROW)
+                return f"({cpp_name} = {rhs})"
+            # Borrow alias: point the field at the live source. A source that
+            # already renders as a pointer assigns straight through.
+            val_src = self.ctx.unwrap_copy(expr.value)
+            if (isinstance(val_src, TpyName)
+                    and val_src.name in self.ctx.pointer_locals):
+                return f"({cpp_name} = {value_code}, *{cpp_name})"
+            return f"({cpp_name} = &({value_code}), *{cpp_name})"
+
+        if expr.target in self.ctx.borrow_form_tuple_locals:
+            tuple_bare = unwrap_readonly(unwrap_own(value_type))
+            val_src = self.ctx.unwrap_copy(expr.value)
+            if isinstance(val_src, TpyCoerce):
+                val_src = val_src.expr
+            if (isinstance(tuple_bare, TupleType)
+                    and self.ctx.is_storage_form_source(val_src)):
+                elem_const = (expr.target
+                              in self.ctx.const_borrow_form_tuple_locals)
+                borrow_cpp = self.types.tuple_borrow_cpp(tuple_bare,
+                                                         const=elem_const)
+                value_code = (f"::tpy::tuple_to_pointer<{borrow_cpp}>"
+                              f"({value_code})")
+            return f"({cpp_name} = {value_code}, {cpp_name})"
+
         return f"({cpp_name} = {value_code})"
 
     def _gen_if_expr(self, expr: TpyIfExpr,
