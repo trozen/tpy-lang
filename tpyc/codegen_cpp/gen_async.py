@@ -22,6 +22,7 @@ import copy
 import io
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
+from functools import partial
 from typing import TYPE_CHECKING
 
 from ..binding_audit import end_ast_body as _binding_end_body
@@ -68,6 +69,7 @@ from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_bytes_category, is_owned_in_coro_frame,
                                   is_str_view_type, is_bytes_view_type,
                                   is_free_copy_scalar, view_owned_copy_init)
+from . import emit_prims
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
@@ -1512,7 +1514,8 @@ class AsyncCoroCodegen:
         # Nested defs become frame member functions (callable from every
         # resume case; frame-field access via implicit this).
         for nd in collect_frame_nested_defs(func.body):
-            params_str, nd_ret = self.statements.nested_def_signature(nd.func)
+            params_str, nd_ret = emit_prims.nested_def_signature(
+                self.types, nd.func)
             ret_str = nd_ret if nd_ret is not None else "void"
             out.write(f"{INDENT}{ret_str} "
                       f"{escape_cpp_name(nd.func.name)}({params_str});\n")
@@ -1585,7 +1588,7 @@ class AsyncCoroCodegen:
     def _resumable_frame_ctx(self, func: TpyFunction, record_name: str | None):
         """Set up + tear down resumable-frame ctx state for an async body.
 
-        Routes through `StatementGenerator.setup_body_scope` so async bodies
+        Routes through the shared `setup_body_scope` primitive so async bodies
         get the same per-scope state setup as sync (reassigned_vars,
         aliased_vars, movable_locals, etc. populated from sema scan).
         Layers the resumable-frame fields (`generator_field_names`,
@@ -1654,7 +1657,8 @@ class AsyncCoroCodegen:
             rec_info = self.ctx.analyzer.registry.get_record(record_name)
             if rec_info is not None and rec_info.type_param_bounds:
                 record_bounds = rec_info.type_param_bounds
-        self.statements.setup_body_scope(
+        emit_prims.setup_body_scope(
+            self.ctx, self.functions.protocols, self.types,
             func.params, func.return_type, func, local_ns,
             indent_level=1, is_method=bool(record_name),
             const_ref_params=crp, deep_const_borrow_params=dcbp,
@@ -1767,8 +1771,8 @@ class AsyncCoroCodegen:
                     self.ctx.indent_level = 0
                     out.write(f"}}\n")
             for nd in nested_defs:
-                params_str, nd_ret = self.statements.nested_def_signature(
-                    nd.func)
+                params_str, nd_ret = emit_prims.nested_def_signature(
+                    self.types, nd.func)
                 ret_str = nd_ret if nd_ret is not None else "void"
                 self._emit_template_header(out, func, record_name=record_name)
                 out.write(f"{ret_str} {struct_name}::"
@@ -2117,7 +2121,7 @@ class AsyncCoroCodegen:
             # AST finally stack (so _make_async_return's chain walk inlines
             # them) with one shared guard-liveness truth.
             live_finally_guards=self.ctx.live_finally_guards,
-            ast_finally_push=self.statements._push_finally,
+            ast_finally_push=partial(emit_prims.push_finally, self.ctx),
             ast_finally_pop=lambda: self.ctx.finally_stack.pop(),
             iter_counter=CtxIterCounter(self.ctx))
 
@@ -2476,8 +2480,8 @@ class AsyncCoroCodegen:
                     # seeded name set) is a const source too -- the frame
                     # field spells the verdict, so the alias must match.
                     def init_is_const(s=s, ltype_bare=ltype_bare):
-                        if (self.statements._is_const_indirect(
-                                    ltype_bare, s.init, s)
+                        if (emit_prims.is_const_indirect(
+                                    self.ctx, ltype_bare, s.init, s)
                                 or self.ctx.is_const_storage_source(s.init)):
                             return True
                         src = s.init
@@ -2495,7 +2499,7 @@ class AsyncCoroCodegen:
                     if (ltype is not None and s.init is not None
                             and not src_is_exc
                             and not isinstance(ltype_bare, OwnType)
-                            and self.statements._is_plain_nonvalue(ltype_bare)
+                            and emit_prims.is_plain_nonvalue(self.ctx, ltype_bare)
                             and not self.ctx.is_rvalue_source(s.init)):
                         aliases.add(s.name)
                         if init_is_const():
@@ -2522,7 +2526,8 @@ class AsyncCoroCodegen:
                         if (it.target is not None
                                 and it.aenter_result_is_borrow
                                 and it.enter_type is not None
-                                and self.statements._is_plain_nonvalue(
+                                and emit_prims.is_plain_nonvalue(
+                                    self.ctx,
                                     unwrap_ref_type(it.enter_type))):
                             aliases.add(it.target)
                             if it.aenter_result_is_const:
@@ -2547,11 +2552,13 @@ class AsyncCoroCodegen:
                         not self.ctx.is_rvalue_source(s.value)
                         or isinstance(s.value, (TpyCall, TpyMethodCall)))
                     if not src_is_loop_holder and src_safe_to_alias:
-                        src_const = self.statements._unpack_source_has_const_slots(s)
+                        src_const = emit_prims.unpack_source_has_const_slots(
+                            self.ctx, s)
                         for i, tname in enumerate(s.targets):
                             if (tname is not None and tname in frame_local_types
                                     and i < len(s.is_ref) and s.is_ref[i]
-                                    and self.statements._is_plain_nonvalue(
+                                    and emit_prims.is_plain_nonvalue(
+                                        self.ctx,
                                         unwrap_ref_type(frame_local_types[tname]))):
                                 aliases.add(tname)
                                 elem_const = src_const or (
@@ -2575,8 +2582,8 @@ class AsyncCoroCodegen:
                     # catch block, so the frame keeps the owning copy.
                     if root_name(ne.value) in exc_bindings:
                         continue
-                    if not self.statements._is_plain_nonvalue(
-                            unwrap_ref_type(ltype)):
+                    if not emit_prims.is_plain_nonvalue(
+                            self.ctx, unwrap_ref_type(ltype)):
                         continue
                     aliases.add(ne.target)
                     if borrow_decls[ne.target]:
@@ -2872,8 +2879,8 @@ class AsyncCoroCodegen:
                      if isinstance(target_type, OptionalType) else target_type)
             cpp_type = (self.types.type_to_cpp(unwrap_ref_type(inner))
                         if inner is not None else "auto")
-            field_cpp = self.statements.ptr_slot_field_type(
-                init, target_type, cpp_type)
+            field_cpp = emit_prims.ptr_slot_field_type(
+                self.ctx, init, target_type, cpp_type)
             if field_cpp is None:
                 return
             fname = f"__ptr_slot_f{len(fields)}"
@@ -3866,7 +3873,7 @@ class AsyncCoroCodegen:
         if region.finally_helper_name is not None:
             handler_throw_finallies = handler_throw_finallies + (region.finally_helper_name,)
         for handler in region.handlers:
-            self.statements._emit_except_handler_header(out, handler)
+            emit_prims.emit_except_handler_header(self.ctx, out, handler)
             self.ctx.indent_level += 1
             catch_indent = self.ctx.indent()
             # Reset the in-flight sub-future first action in catch.
@@ -4171,7 +4178,8 @@ class AsyncCoroCodegen:
             return None
         lit_snap = self.ctx.save_literal_facts()
         proto_snap = self.ctx.save_protocol_narrowings()
-        nv_saved = self.statements._emit_isinstance_extractions(
+        nv_saved = emit_prims.emit_isinstance_extractions(
+            self.ctx, self.types, self.functions.protocols,
             out, delta, indent_extra=0)
         return (nv_saved, proto_snap, lit_snap)
 
@@ -4436,15 +4444,15 @@ class AsyncCoroCodegen:
                 # Walk helpers between this exit and the outer finally
                 # entry; helpers BELOW the outer (`outer_boundary`) stay
                 # on the stack to run inside the outer's finally region.
-                self.statements._emit_finally_chain(out, inner,
-                                                     stop_at=outer_boundary)
+                emit_prims.emit_finally_chain(self.ctx, out, inner,
+                                              stop_at=outer_boundary)
                 out.write(f"{inner}__state = {outer_target};\n")
                 out.write(f"{inner}continue;\n")
             else:
                 # No outer CFG finally: replay locally. Walk any outer
                 # helpers (an enclosing helper-based finally outside
                 # this CFG-based one) before emitting the actual return.
-                self.statements._emit_finally_chain(out, inner)
+                emit_prims.emit_finally_chain(self.ctx, out, inner)
                 if self._is_generator_shape():
                     done_state = self.ctx.generator_resumable_done_state or "S_DONE"
                     out.write(f"{inner}__state = {done_state};\n")
@@ -4559,8 +4567,8 @@ class AsyncCoroCodegen:
         leaf = self.ctx.thir_resumable_leaf
         if leaf is not None:
             base_cpp = leaf.render_region_expr(iterable_expr)
-            src_cpp = self.expressions._maybe_unwrap_narrowed_optional(
-                iterable_expr, base_cpp,
+            src_cpp = emit_prims.maybe_unwrap_narrowed_optional(
+                self.ctx, iterable_expr, base_cpp,
                 self.ctx.is_indirect_name(iterable_expr))
         else:
             src_cpp = self.expressions.render_for_iterable(iterable_expr)
@@ -4642,10 +4650,10 @@ class AsyncCoroCodegen:
         if nargs == 3:
             sp = f"__for_step_{uid}"
             out.write(f"{indent}{sp}.emplace(static_cast<{cpp_elem}>({gen_args[2]}));\n")
-            if self.statements._extract_int_literal(range_call.args[2]) is None:
+            if emit_prims.extract_int_literal(range_call.args[2]) is None:
                 out.write(f"{indent}::tpy::range_check_step_nonzero(*{sp});\n")
             if not is_big_int_type(elem_type):
-                self.statements._gen_range_overflow_check(
+                emit_prims.gen_range_overflow_check(
                     out, indent, f"*{ci}", f"*{st}", f"*{sp}", elem_type)
 
     def _for_advance_parts(self, func: TpyFunction,
@@ -4665,7 +4673,7 @@ class AsyncCoroCodegen:
             nargs = len(range_call.args)
             if nargs == 3:
                 sp = f"(*__for_step_{uid})"
-                step_lit = self.statements._extract_int_literal(range_call.args[2])
+                step_lit = emit_prims.extract_int_literal(range_call.args[2])
                 if step_lit is not None and step_lit > 0:
                     cont = f"{ci} < {st}"
                 elif step_lit is not None and step_lit < 0:
@@ -4777,14 +4785,14 @@ class AsyncCoroCodegen:
         otherwise panic."""
         if self._is_generator_shape():
             # Fell off the end of the generator body -> StopIteration.
-            self.statements._emit_finally_chain(out, indent)
+            emit_prims.emit_finally_chain(self.ctx, out, indent)
             out.write(f"{indent}__state = S_DONE;\n")
             out.write(f"{indent}return ::tpy::make_unexpected("
                       f"::tpy::StopIteration{{}});\n")
             return
         if self._is_void_return(func):
             # Walk any active finally frames before returning.
-            self.statements._emit_finally_chain(out, indent)
+            emit_prims.emit_finally_chain(self.ctx, out, indent)
             out.write(f"{indent}__state = S_DONE;\n")
             out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
         else:
@@ -4902,7 +4910,7 @@ class AsyncCoroCodegen:
             # it never reaches `_gen_var_decl`'s promotion -- register the name
             # here or the working set under-covers every await-bound local and
             # its last use copies (an uncompilable copy for a @nocopy payload).
-            self.statements.promote_movable(payload.bind_target)
+            emit_prims.promote_movable(self.ctx, payload.bind_target)
             if payload.bind_target in self.ctx.generator_optional_fields:
                 out.write(f"{indent}{target}.emplace({moved});\n")
             else:
@@ -4928,13 +4936,13 @@ class AsyncCoroCodegen:
                 else:
                     out.write(f"{indent}(void)__ret{suspension_index};\n")
                 out.write(f"{indent}this->{pending_flag} = true;\n")
-                terminated = self.statements._emit_finally_chain(
-                    out, indent, stop_at=boundary)
+                terminated = emit_prims.emit_finally_chain(
+                    self.ctx, out, indent, stop_at=boundary)
                 if not terminated:
                     out.write(f"{indent}__state = {target_state};\n")
                     out.write(f"{indent}continue;\n")
                 return
-            self.statements._emit_finally_chain(out, indent)
+            emit_prims.emit_finally_chain(self.ctx, out, indent)
             if self._is_void_return(func):
                 out.write(f"{indent}(void)__ret{suspension_index};\n")
                 out.write(f"{indent}__state = S_DONE;\n")
@@ -5059,7 +5067,8 @@ class AsyncCoroCodegen:
         elif payload.mode is rcfg.AwaitMode.BORROWED:
             operand_cpp = self._suspend_expr_cpp(payload.operand_expr)
             self.ctx.temps.flush(out, indent)
-            declared = self.expressions._get_cpp_declared_type(payload.operand_expr)
+            declared = emit_prims.cpp_declared_type(
+                self.ctx, payload.operand_expr)
             declared = unwrap_readonly(unwrap_send_sync(declared)) if declared else None
             if (isinstance(declared, OwnType)
                     and is_dyn_protocol(unwrap_readonly(declared.wrapped))):

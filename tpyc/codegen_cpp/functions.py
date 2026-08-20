@@ -41,6 +41,7 @@ from ..parse.nodes import (
 )
 from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
+from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
 from .int_literals import render_int_literal_value
@@ -1819,12 +1820,13 @@ class FunctionGenerator:
         self.statements.gen_body(*args, **kwargs)
 
     def seed_param_locals(self, *args, **kwargs) -> None:
-        """Delegate to StatementGenerator.seed_param_locals()."""
-        self.statements.seed_param_locals(*args, **kwargs)
+        """Delegate to the shared emit primitive."""
+        emit_prims.seed_param_locals(self.ctx, self.protocols, *args, **kwargs)
 
     def seed_param_locals_scoped(self, *args, **kwargs):
-        """Delegate to StatementGenerator.seed_param_locals_scoped()."""
-        return self.statements.seed_param_locals_scoped(*args, **kwargs)
+        """Delegate to the shared emit primitive."""
+        return emit_prims.seed_param_locals_scoped(
+            self.ctx, self.protocols, *args, **kwargs)
 
     def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
         """Resolve the type of a global variable, unwrapping Own[T]/Optional[T] to T."""
@@ -1933,7 +1935,37 @@ class FunctionGenerator:
 
     def _gen_final_init_expr(self, stmt: TpyVarDecl, var_type: TpyType) -> str:
         """Generate the initializer expression for a Final global."""
+        init = self._thir_final_init_expr(stmt, var_type)
+        if init is not None:
+            return init
         return self.statements.expressions.gen_expr(stmt.init, var_type)
+
+    def _thir_final_init_expr(self, stmt: TpyVarDecl,
+                              var_type: TpyType) -> 'str | None':
+        """Render a Final global's initializer through THIR, or None when it
+        did not lower. The name itself is excluded from its own scope: sema
+        rejects a self- or forward-reference, so admitting it would seed a
+        binding no initializer can legally read."""
+        if not self.ctx.thir_codegen:
+            return None
+        # `thir.constants` imports `thir.emit`, so an eager import here would
+        # be a codegen_cpp <-> thir cycle; `thir.fallback` only rides along.
+        from ..thir.constants import final_global_scope, lower_constant
+        from ..thir.fallback import begin_attempt, commit_attempt, fold_attempt
+        scope = final_global_scope(
+            self.ctx.analyzer,
+            (n for n in self.ctx.final_globals if n != stmt.name))
+        begin_attempt()
+        init = lower_constant(
+            stmt.init, var_type, self.ctx.analyzer, const_scope=scope,
+            render_type=self.types.type_to_cpp,
+            render_type_stored=self.types.type_to_cpp_stored,
+            render_resolve=self.types.resolve_type)
+        if init is None:
+            fold_attempt("final_global")
+        else:
+            commit_attempt()
+        return init
 
     def gen_final_global_header(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a Final global declaration in header file.

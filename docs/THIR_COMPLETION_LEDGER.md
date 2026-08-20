@@ -1869,6 +1869,47 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: the shared emit primitives get a home outside the body
+  emitters** (2026-08-20; cutover gate OPEN 34 -> 5, no dial movement -- this
+  is skeleton work, not a routing wave). `tpyc/codegen_cpp/emit_prims.py`
+  holds 25 primitives hoisted out of `statements.py` (-778) and
+  `expressions.py` (-102): `setup_body_scope`, `seed_param_locals` and its
+  scoped ctor-window wrapper, `promote_movable`, `compute_borrow_tuple_const`,
+  `ptr_slot_field_type`, `_get_cpp_declared_type` and the shared predicates.
+  Each moved with its body and docstring intact -- only the `self` receiver
+  became an explicit `ctx`/`types`/`protocols` parameter -- and the old
+  methods were deleted outright, so there is one owner, not a copy.
+  WHY it is the piece that re-prices item 4: 31 of the 34 OPEN calls were
+  never "route it through THIR" work, they were helpers living in a module
+  slated for deletion but called from the layer that SURVIVES. Moving them
+  discharges the call without lowering anything.
+  `test_cutover_gate.py::test_shared_prims_module_never_names_a_body_emitter`
+  keeps the new module from becoming a second body emitter by importing one.
+  LESSON: a mechanical extraction this size gets its regression coverage from
+  the whole-corpus byte-diff, not from new units -- these helpers had none
+  before either, and zero snapshot churn IS the assertion.
+- **Landed: bytes view->owned coerce + its field-write row** (2026-08-20;
+  fallback bodies 389 -> 387, 0 flips, dial unchanged at 3627/3739). Steered
+  by ARM-RESIDUAL rather than the case dial: the cutover deletes AST body
+  arms, and an arm at residual N is held alive by N bodies, so the cheapest
+  deletions read off the bottom of that list, not off the case markers.
+  `bytesview_to_bytes` had no `_coerce_disposition` entry, so every position
+  holding one fell back; its lambda is an unconditional `bytes_copy({0})` --
+  the `strview_to_string` shape -- so it now materializes into the S6
+  view->owned FormConvert everywhere below the `Own[...]` reject. With the
+  coerce routable the bytes field-write family took the SLICE row its str
+  twin already had, plus the shared unbound-self receiver OR.
+  LESSONS: (1) the fence docstring was RIGHT -- it said a bytes slice
+  "rejects deeper at its coerce", and widening the admission alone moved the
+  reject from `assign.field_write_shape` to `expr.coerce` exactly as
+  written; read the fence's stated reason as a chain hint, not an obstacle.
+  (2) A leg that ablates to no effect on the drilled case can still be
+  load-bearing: the receiver OR looked dead (both probe shapes routed
+  without it) until a DISCRIMINATING case -- `Base.b = ...` from a derived
+  method, the ancestor-subobject spelling -- dropped alone. (3) The
+  per-body arm map must cover PLUGIN-frontend cases: a first pass keyed on
+  `src/main.py` silently skipped the four pascal cases and read
+  `value_pattern` as cleared when its sole body is `pascal/variant_record`.
 - **Landed: frame-layout render rows, wave 1** (2026-07-31; +3 flips, dial
   2881 -> 2884/3667). Three rows against the FrameLayoutPlan kinds: the
   dict_items proxy-ref borrow-tuple loop var (advance-gate admit
@@ -11701,3 +11742,102 @@ The pre-existing record-rvalue/mutated-method-param entry also gained a
 container-literal witness (`bx.take([1, 2, 3])`), which needs no short circuit
 or other context -- so its fix must cover literal args, not just record
 rvalues.
+
+### Cutover checklist item 4 -- the skeleton call-site inventory (2026-08-20)
+
+Item 4 asked for "every skeleton -> `gen_expr`/`gen_stmt` call site,
+inventoried and ground to zero". The inventory is now mechanical and lives
+where it cannot rot: `tpyc/codegen_cpp/test_cutover_gate.py` scans the
+fifteen skeleton modules for every call whose receiver chain crosses
+`self.expressions` / `self.statements` / `self.statements.match` /
+`self.statements.builtins`, and freezes each with the disposition that makes
+it acceptable today. Adding a call fails a unit; discharging one means
+deleting its entry in the same change.
+
+**The Gate D3 entry's grep found 4. The scan finds 78 calls (62 distinct
+sites) in four modules.** Classified by the only question that matters for
+the deletion commit -- does the call fire when the enclosing body ROUTED?
+
+| disposition | calls | what it is |
+|---|---|---|
+| SEAM | 6 | `statements.gen_body` -- the per-body routing entry point itself; its dispatch collapses at cutover |
+| AST_ARM | 38 | guarded by `thir_ctor is None` / `thir_top_level is None` / `leaf is None`; deleted with the AST path |
+| OPEN | 34 | fires on the routed path -- the actual cutover gate |
+
+**The finding that re-prices item 4: 31 of the 34 OPEN calls are in
+`gen_async`, not in the two sites D3 named.** The resumable frame skeleton
+leans on `statements` for far more than leaf emission -- `setup_body_scope`,
+`nested_def_signature` + `gen_nested_def_body`, `_make_async_return`,
+`_emit_finally_chain` (x7), `_emit_except_handler_header`,
+`_emit_isinstance_extractions`, `_gen_range_overflow_check`,
+`promote_movable`, and six shared predicates/type helpers
+(`_is_plain_nonvalue`, `_is_const_indirect`, `_extract_int_literal`,
+`ptr_slot_field_type`, `_get_cpp_declared_type`,
+`_maybe_unwrap_narrowed_optional`). None of these is a fallback arm; the
+leaf seam replaces only the LEAF renders. They are not "route it through
+THIR" work at all -- they are *relocation* work: helpers that live in a
+module slated for deletion but are called from a layer that survives. Where
+they land post-cutover is an open design question, and it gates the
+"wholesale deletion" property just as hard as an unrouted `gen_expr` does.
+
+**The two sites D3 named are routable, and the experiment says so.** A
+throwaway probe lowered Final-global and class-constant initializers through
+`_LowerCtx` + `_lower_expr` + `_emit_expr` and byte-compared against
+`gen_expr`: 22 of 25 distinct class-constant renders and 4 of 6 Final-global
+renders matched with nothing but `prescan.global_readonly` seeded for the
+sibling constant names, `((A) + (B))` and
+`((((((A) + (B))) * (::tpy::BigInt(10)))) - (::tpy::BigInt(1)))` included.
+The three misses are all seeding, not machinery: sibling CLASS-constant
+names were not in the seeded set (`mul_check`/`add_check` renders rejected at
+`name.global_read`), the top-level bare int literal needs
+`_slot_literal_retype` against the declared type (`100` vs
+`::tpy::BigInt(100)`), and a tuple constant needs the stored-vs-view element
+form. **The dedicated-renderer option is the wrong one here:** the domain
+includes overflow-checked arithmetic (`::tpy::mul_check<int32_t>(BASE, 2)`),
+so a "small constant renderer" would be a second copy of the arithmetic
+renderer -- exactly the permanent wart the AST-first rule exists to prevent.
+The domain was measured, not assumed: 202 distinct Final-global renders over
+a 606-case sample (stdlib included, since the skeleton is shared) -- 127
+coerced literals, 33 binops over Final names and literals, 17 one-arg
+primitive-constructor calls, 4 tuple literals, and one macro expansion.
+
+Routing them does not close the gate outright, it converts OPEN to AST_ARM
+(the skeleton would call `gen_expr` only when the constant did not lower),
+which is the same shape every body position already has and is what makes
+the deletion wholesale. Two decisions were left to the user rather than
+taken here: whether a non-body lowering position is in scope for this
+migration at all, and whether its fallbacks join `_thir_fallback` (and
+therefore the per-case ratchet) or stay a separate, untallied residue.
+
+**Outcome, same branch: 34 OPEN -> 5.** The measurement above stands as
+written; what follows is what the branch then did with it, because the
+34 -> 5 delta is the reusable fact, not the 34.
+
+Both escrowed decisions were taken in-branch and ratified by the user at
+the review gate. A non-body position IS in scope: `tpyc/thir/constants.py`
+routes the class-constant default and the `Final` global initializer,
+converting their two OPEN calls to AST_ARM. Their fallbacks are TALLIED in
+`_thir_fallback` but EXCLUDED from the ratchet
+(`fallback.NON_RATCHET_COMPONENTS = {class_const, final_global}`, read via
+`ratchet_total`) -- neither of the two options the entry named, but a third:
+no case's `no_thir.txt` marker was ever classified against a non-body
+position, so folding these into the ratchet would fail previously-clean
+unmarked cases without any regression having occurred. The residue stays
+visible and drivable to zero. The cost is honest and known: a case whose
+constant initializers still emit through AST now passes the ratchet and
+counts migrated on the dial, adding to the dial's existing overstatement.
+
+The other 29 were relocation, and got relocated rather than routed:
+`tpyc/codegen_cpp/emit_prims.py` gives the shared primitives a home outside
+the modules slated for deletion (see its `Landed:` bullet). That is what
+re-closes item 4 from 34 to 5 -- the paragraph above calls the placement
+"an open design question", and for these it is now answered.
+
+**The 5 survivors are all in `gen_async`, and all genuinely undecided** --
+they are not relocation. `gen_nested_def_body` (a nested def inside a coro
+finally), `_make_async_return` / `_make_generator_resumable_return` (the
+deferred-return recipes the leaf emitter reaches through),
+`_extra_template_args_for_await` (dispatches an arbitrary expression), and
+the ReturnT terminator in `_walk_inline` (`gen_stmt` runs the active finally
+chain around the `Poll<T>::ready`). Each needs a decision about where the
+behavior lives post-cutover, not a move.

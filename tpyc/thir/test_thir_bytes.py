@@ -15,7 +15,8 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _assert_byte_identical,
-    _assert_routes_byte_identical, _lower_ctx_witnessed,
+    _assert_routes_byte_identical, _lower_ctx_witnessed, _thir_ctx,
+    _thir_ctx_witnessed,
 )
 
 # --- bytes / BytesView values (F6 S6) ---
@@ -300,11 +301,18 @@ class TestBytesTailGate:
                 == "::tpy::bytes_copy(::tpy::bytes_slice(mk(), "
                    "::tpy::BasicSlice{0, 2}))")
 
-    def test_slice_owned_return_ineligible(self):
+    def test_slice_owned_return_routes(self):
         # An owned-bytes RETURN of a slice arrives as the bytesview_to_bytes
-        # coerce -- the deferred cross-type bytes-coercion cell -> AST.
-        thir = _lower("def f(b: bytes) -> bytes:\n    return b[1:3]\n")
-        assert _fn(thir, "f") is None
+        # coerce, whose lambda IS the unconditional bytes_copy wrap -> the S6
+        # view->owned FormConvert, in every position.
+        src = "def f(b: bytes) -> bytes:\n    return b[1:3]\n"
+        _assert_routes_byte_identical(src)
+        ret = _fn(_lower(src), "f").body[0]
+        assert isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.STORAGE
+        assert (_emit_expr(ret.value)
+                == "::tpy::bytes_copy(::tpy::bytes_slice(b, "
+                   "::tpy::BasicSlice{1, 3}))")
 
     def test_iteration_routes(self):
         # bytes/BytesView iterate as NativeIterable[UInt8] -- the value-scalar
@@ -673,3 +681,109 @@ class TestBytesMembershipCallReceiver:
                "    print(b\"b\" in hay)\n")
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
+
+
+class TestBytesSliceFieldWrite:
+    """`recv.b = x[1:3]` at an owned-`bytes` field -- the str slice row's
+    twin, landing on the other side of the family split: the sema coerce
+    carries no materialization for bytes, so the view-form slice takes the
+    ordinary `::tpy::bytes_copy` STORAGE convert."""
+
+    def test_slice_field_write_routes(self):
+        # Both receiver shapes the row admits: an unbound `self.b` inside a
+        # method, and a record LOCAL's field off a call-receiver slice.
+        src = ("class Holder:\n"
+               "    b: bytes\n"
+               "    def __init__(self):\n"
+               "        self.b = b\"\"\n"
+               "    def set_b(self, x: bytes) -> None:\n"
+               "        self.b = x[1:3]\n"
+               "def mk() -> bytes:\n"
+               "    return b\"abcdef\"\n"
+               "def f() -> None:\n"
+               "    h = Holder()\n"
+               "    h.b = mk()[0:2]\n"
+               "    h.set_b(b\"hello\")\n"
+               "    print(len(h.b))\n")
+        _assert_routes_byte_identical(src)
+        _ctx, faces, fell = _thir_ctx_witnessed(src)
+        # Both writes come through the new classifier row, not a neighbour
+        # family that happens to render the same text.
+        assert faces.get("field_write.bytes_slice") == 2, faces
+        assert not fell, fell
+
+    def test_stepped_slice_field_write_routes(self):
+        # A STEPPED slice source already renders owned; the field write must
+        # not double-wrap it (the row keys the source's own form).
+        src = ("class Holder:\n"
+               "    b: bytes\n"
+               "    def __init__(self):\n"
+               "        self.b = b\"\"\n"
+               "    def set_b(self, x: bytes) -> None:\n"
+               "        self.b = x[0:4:2]\n"
+               "def f() -> None:\n"
+               "    h = Holder()\n"
+               "    h.set_b(b\"hello\")\n"
+               "    print(len(h.b))\n")
+        _assert_routes_byte_identical(src)
+
+    def test_ancestor_subobject_field_write_routes(self):
+        # `Base.b = ...` inside a derived method -- the unbound-self receiver
+        # the row ORs in. Ablating that OR drops this shape alone.
+        src = ("class Base:\n"
+               "    b: bytes\n"
+               "    def __init__(self):\n"
+               "        self.b = b\"\"\n"
+               "class Derived(Base):\n"
+               "    n: int\n"
+               "    def __init__(self):\n"
+               "        Base.__init__(self)\n"
+               "        self.n = 0\n"
+               "    def set_b(self, x: bytes) -> None:\n"
+               "        Base.b = x[1:3]\n"
+               "    def reset(self) -> None:\n"
+               "        Base.b = b\"zz\"\n"
+               "def f() -> None:\n"
+               "    d = Derived()\n"
+               "    d.set_b(b\"hello\")\n"
+               "    d.reset()\n"
+               "    print(len(d.b))\n")
+        _assert_routes_byte_identical(src)
+
+    def test_bytearray_field_from_slice_stays_ast(self):
+        # `bytearray` is a REFERENCE type on a different axis: its coercion
+        # (`bytesview_to_bytearray`) has no disposition and `is_bytes_type`
+        # excludes it, so the field write keeps rejecting.
+        src = ("class Holder:\n"
+               "    ba: bytearray\n"
+               "    def __init__(self):\n"
+               "        self.ba = bytearray()\n"
+               "    def set_ba(self, x: bytes) -> None:\n"
+               "        self.ba = x[1:3]\n"
+               "def f() -> None:\n"
+               "    h = Holder()\n"
+               "    h.set_ba(b\"hello\")\n"
+               "    print(len(h.ba))\n")
+        _assert_byte_identical(src)
+        _ctx, fell = _thir_ctx(src)
+        assert fell == {"body:stmt.assign:assign.field_write_shape": 1,
+                        "ctor:ctor.mil_field.nominal.call": 1}, fell
+
+    def test_view_field_from_slice_stays_ast(self):
+        # A `BytesView` FIELD is the view side of the family -- no owned sink,
+        # so no copy row claims it.
+        src = ("from tpy import BytesView\n"
+               "class Holder:\n"
+               "    v: BytesView\n"
+               "    def __init__(self):\n"
+               "        self.v = b\"\"\n"
+               "    def set_v(self, x: bytes) -> None:\n"
+               "        self.v = x[1:3]\n"
+               "def f(x: bytes) -> None:\n"
+               "    h = Holder()\n"
+               "    h.set_v(x)\n"
+               "    print(len(h.v))\n")
+        _assert_byte_identical(src)
+        _ctx, fell = _thir_ctx(src)
+        assert fell == {"body:stmt.assign:assign.field_write_shape": 1,
+                        "ctor:ctor.mil_field.nominal.bytesliteral": 1}, fell

@@ -1038,7 +1038,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 f"consults it the byte-diff cannot see it. See "
                 f"tpyc/binding_audit.py.")
         if thir_active:
-            fell = sum(compiler._thir_fallback.values())
+            fell = thir_fallback.ratchet_total(compiler._thir_fallback)
             if THIR_CLASSIFY_WRITE:
                 _apply_no_thir_marker(case_dir, dirty=(fell > 0))
             elif THIR_CHECK_FLIP:
@@ -1048,7 +1048,10 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 # A fallback emits byte-identical AST, so the THIR snapshot
                 # compare can't see a silent THIR->AST regression. Surface the
                 # count so the comp phase fails the case (the ratchet): unmarked
-                # => every user body must route THIR.
+                # => every RATCHETED user body must route THIR. The non-body
+                # constant components are tallied but excluded (see
+                # thir_fallback.NON_RATCHET_COMPONENTS), so a case carrying only
+                # constant residue passes here and counts migrated on the dial.
                 thir_ratchet_fell = fell
                 record_thir_case(fell)
             elif not THIR_IGNORE_MARKERS:
@@ -1061,7 +1064,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 # --thir-codegen whole-corpus: no ratchet, but keep the dial --
                 # same accounting as the default run (marker => un-migrated
                 # regardless of the fallback count just measured; unmarked =>
-                # clean iff zero user bodies fell back).
+                # clean iff zero RATCHETED user bodies fell back, constant
+                # residue excluded as above).
                 if no_thir:
                     record_thir_case_marked()
                 else:
@@ -2358,7 +2362,7 @@ def run_interop_thir_overlay(mod_py: Path, case_dir: Path,
                 glue = Path(cpp_path).with_name(f"{Path(cpp_path).stem}_ext.cpp")
                 files[f"{label}.ext"] = glue if glue.exists() else None
 
-    fell = sum(compiler._thir_fallback.values())
+    fell = thir_fallback.ratchet_total(compiler._thir_fallback)
     routed_names = dict(compiler._thir_routed_names)
     divergences: list[str] = []
     for mod_name, files in sorted(emitted.items()):

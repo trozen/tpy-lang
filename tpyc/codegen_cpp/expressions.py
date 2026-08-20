@@ -35,6 +35,7 @@ from ..type_def_registry import (
 )
 from .. import move_audit
 from ..symbol_binding import lookup_imported, SymbolKind
+from . import emit_prims
 from .variant_access import VariantAccess
 
 
@@ -539,37 +540,10 @@ class ExpressionGenerator:
         return f"{view_to_owned_conv(family.owned_type)}({code})"
 
     def _get_cpp_declared_type(self, expr: TpyExpr) -> TpyType | None:
-        """Get the C++ declared type of a variable or field access.
-
-        For names, checks codegen var_types and current_func_params.
-        For field access (obj.field), resolves the field's declared type
-        on the record, which may be Optional even when sema has narrowed it.
-
-        MUST stay local-only for names: callers like the union-arg
-        already-variant check rely on module globals resolving None. The
-        narrowed-Optional family uses `_declared_type_incl_globals`.
-        """
-        if isinstance(expr, TpyName):
-            return self.ctx.var_types.get(expr.name) or self.ctx.current_func_params.get(expr.name)
-        if isinstance(expr, TpyFieldAccess):
-            return self._resolve_field_declared_type(expr)
-        return None
+        return emit_prims.cpp_declared_type(self.ctx, expr)
 
     def _declared_type_incl_globals(self, expr: TpyExpr) -> TpyType | None:
-        """`_get_cpp_declared_type` extended to module globals.
-
-        Only the narrowed-Optional unwrap family consults globals: a
-        narrowed global read must see its declared (possibly Optional)
-        type. Other `_get_cpp_declared_type` callers (e.g. the union-arg
-        already-variant check) rely on globals resolving None."""
-        declared = self._get_cpp_declared_type(expr)
-        if declared is not None:
-            return declared
-        if isinstance(expr, TpyName) and self.ctx.is_global_name(expr):
-            binding = self.ctx.analyzer.global_ns.lookup_local(expr.name)
-            if binding is not None:
-                return binding.type
-        return None
+        return emit_prims.declared_type_incl_globals(self.ctx, expr)
 
     def _receiver_is_own_dyn(self, recv: TpyExpr) -> bool:
         """True when `recv` renders as `std::unique_ptr<P>` for abstract @dynamic P.
@@ -630,33 +604,8 @@ class ExpressionGenerator:
 
     def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool,
                                         target_type: TpyType | None = None) -> str:
-        """Unwrap narrowed Optional receivers.
-
-        When sema has proven a std::optional<T> variable holds a value,
-        the C++ variable is still optional -- dereference it with (*obj).
-        Handles simple names, field accesses, and generator-promoted
-        Optional locals (whose rendered `obj` is already the inner
-        storage-form Optional after the outer init-tracking deref).
-        When `target_type` is given, the unwrap only fires for a
-        non-Optional target -- an Optional target keeps the whole copy.
-        """
-        if needs_deref:
-            return obj
-        if (target_type is not None
-                and isinstance(unwrap_readonly(target_type), OptionalType)):
-            return obj
-        cpp_decl = self._declared_type_incl_globals(expr_obj)
-        analyzed = self.ctx.get_expr_type(expr_obj)
-        is_comp_var = isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.comp_local_names
-        is_storage_optional = self.ctx.is_storage_form_optional_source(expr_obj)
-        if (cpp_decl is not None
-                and isinstance(cpp_decl, OptionalType)
-                and (isinstance(expr_obj, TpyFieldAccess) or is_comp_var
-                     or is_storage_optional
-                     or not cpp_decl.uses_pointer_repr())
-                and not isinstance(analyzed, OptionalType)):
-            return f"(*{obj})"
-        return obj
+        return emit_prims.maybe_unwrap_narrowed_optional(
+            self.ctx, expr_obj, obj, needs_deref, target_type)
 
     def render_for_iterable(self, expr: TpyExpr) -> str:
         """Render a for-loop iterable as the contained container value.
@@ -674,46 +623,11 @@ class ExpressionGenerator:
             expr, code, self.ctx.is_indirect_name(expr))
 
     def narrowed_value_optional_iter_type(self, expr: TpyExpr, declared: TpyType | None) -> TpyType | None:
-        """For a for-loop iterable: if `declared` is a narrowed value-Optional
-        (`str|None`/`bytes|None` proven non-None, value-repr -- still
-        `std::optional<V>` in C++), return its narrowed inner so dispatch and
-        frame-field types use the contained value `V`. Pointer-repr Optionals
-        (e.g. `list|None`) already deref via the pointer-narrowing path, so they
-        pass through unchanged. The matching `(*v)` render is applied separately
-        via `_maybe_unwrap_narrowed_optional`. Shared by the sync for-loop
-        (`_for_iterable_deref` / `_gen_for_each_loop`) and the resumable-frame
-        strategy analysis (`_analyze_for_strategy`)."""
-        analyzed = self.ctx.get_expr_type(expr)
-        if (analyzed is not None
-                and isinstance(declared, OptionalType)
-                and not declared.uses_pointer_repr()
-                and not isinstance(analyzed, OptionalType)):
-            return unwrap_ref_type(analyzed)
-        return declared
+        return emit_prims.narrowed_value_optional_iter_type(
+            self.ctx, expr, declared)
 
     def _resolve_field_declared_type(self, expr: TpyFieldAccess) -> TpyType | None:
-        """Resolve the declared type of a field on its record/object."""
-        obj_type = self._get_cpp_declared_type(expr.obj)
-        if obj_type is None:
-            obj_type = self.ctx.get_expr_type(expr.obj)
-        if obj_type is None:
-            return None
-        actual_type = unwrap_readonly(obj_type)
-        if isinstance(actual_type, PtrType):
-            actual_type = actual_type.pointee
-        elif isinstance(actual_type, OwnType):
-            actual_type = actual_type.wrapped
-        elif isinstance(actual_type, OptionalType):
-            if actual_type.inner.is_value_type():
-                return None
-            actual_type = actual_type.inner
-        if isinstance(actual_type, NominalType) and actual_type.is_record:
-            record = self.ctx.analyzer.registry.get_record_for_type(actual_type)
-            if record:
-                for f in record.fields:
-                    if f.name == expr.field:
-                        return f.type
-        return None
+        return emit_prims.resolve_field_declared_type(self.ctx, expr)
 
     def _gen_copy_expr(self, arg: TpyExpr) -> str:
         """Generate an explicit copy of arg as an rvalue for Own[T] ownership transfer."""

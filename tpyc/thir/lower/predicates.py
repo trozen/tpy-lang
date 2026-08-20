@@ -449,6 +449,12 @@ def _coerce_disposition(e: TpyCoerce, *,
         return "materialize"
     if name == "strview_to_string":
         return "materialize"
+    if name == "bytesview_to_bytes":
+        # `::tpy::bytes_copy({0})` with no position or source branch in the
+        # lambda -- the `strview_to_string` shape, so it materializes
+        # everywhere below the Own reject (which keeps the arg cascade's
+        # render decision unmirrored, exactly as for the str family).
+        return "materialize"
     return None
 
 

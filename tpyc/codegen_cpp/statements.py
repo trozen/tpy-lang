@@ -6,7 +6,6 @@ Generates C++ code from TurboPython statements.
 
 from __future__ import annotations
 import io
-from contextlib import contextmanager
 from typing import Callable, Iterator, TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -18,12 +17,12 @@ from ..typesys import (
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     polymorphic_source_inner,
     is_polymorphic_subclass_fact,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, unwrap_send_sync, TypeParamRef, UnionType, LiteralType, LiteralTag,
+    ReadonlyType, unwrap_readonly, unwrap_send_sync, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType, unwrap_qualifiers,
-    is_void_like_type, collapse_tuple_own_elements,
+    is_void_like_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
@@ -34,25 +33,23 @@ from ..parse import (
     TpyTupleLiteral, TupleElemCapture,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
-    TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
-    TpyMatch, TpyNamedExpr, iter_capture_bindings, walrus_bindings,
+    TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
+    TpyMatch, TpyNamedExpr, iter_capture_bindings,
 )
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
-from .. import binding_audit
 from ..sema.literal_utils import (
     fixed_int_literal_value_from_expr,
     literal_value_from_expr,
 )
-from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
 from ..value_category import wants_move, async_return_form, AsyncReturnForm
-from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate, try_terminates_ignoring_finally
 
 from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, module_init_targets, loop_var_binding, is_lvalue_iterable, view_key_target, contains_named_expr
+from . import emit_prims
 from .forms import classify_local_binding, LocalBinding
 from ..type_def_registry import (
     is_list, is_dict,
@@ -74,21 +71,6 @@ if TYPE_CHECKING:
     from .expressions import ExpressionGenerator
     from .builtins import BuiltinGenerator
     from .protocols import ProtocolGenerator
-
-
-# The ctx set-fields `StatementGenerator.seed_param_locals` mutates -- the single
-# authoritative list the ctor member-init save/restore (records._extract_field_inits)
-# snapshots AND clears before seeding (the MIL window must classify against
-# exactly the ctor's params; stale same-named entries flip name-keyed
-# verdicts). Add here when seed_param_locals starts writing a new set.
-# (var_types, a dict, is snapshotted and cleared separately by that caller.)
-# NB other name-keyed per-body fields (const_ref_params, declared_vars,
-# local_scope_names, narrowed_vars) stay stale through the window; none
-# has a demonstrated MIL-render consumer.
-PARAM_LOCAL_SET_FIELDS = (
-    "pointer_locals", "const_indirect_locals", "optional_locals",
-    "ptr_variant_locals", "movable_locals", "storage_form_tuple_locals",
-)
 
 
 class StatementGenerator:
@@ -165,112 +147,6 @@ class StatementGenerator:
             out.write(f"{hoist_indent}{decl}")
         out.write(body_buf.getvalue())
 
-    def seed_param_locals(self, params: list[tuple[str, TpyType]],
-                          local_ns: Namespace,
-                          deep_const_borrow_params: set[str]) -> None:
-        """Classify params into the pointer-form local sets access dispatch reads
-        (`PARAM_LOCAL_SET_FIELDS` + `var_types`) so a pointer-repr param derefs
-        with `->` in a ctor member-init initializer as it does in the body."""
-        # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
-        for pname, ptype in params:
-            # Peel the Send/Sync marker (representationally transparent -- it
-            # erases to its inner type in C++) so a Send[Own[T]] param is
-            # classified by its Own/pointer/optional shape, not treated as opaque.
-            actual = unwrap_readonly(unwrap_send_sync(ptype))
-            if self.protocols.is_static_protocol_param(ptype):
-                # Static protocol params: check if nullable (uses pointer repr)
-                infos = self.protocols.get_all_protocol_params([(pname, ptype)])
-                if infos and infos[0].has_none:
-                    self.ctx.pointer_locals.add(pname)
-                    self.ctx.const_indirect_locals.add(pname)
-            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
-                self.ctx.pointer_locals.add(pname)
-                # `const P*` when annotated `readonly[...]` OR when the inferred
-                # verdict const-consts it (readonly fn/method whose param address
-                # does not escape) -- same addr-escape-aware verdict the signature
-                # renders, so borrow-locals off this receiver spell const to match.
-                if (isinstance(ptype, ReadonlyType)
-                        or pname in deep_const_borrow_params):
-                    self.ctx.const_indirect_locals.add(pname)
-            # Own[OptionalType[P_ref]]: param renders as `std::optional<P>&&`
-            # (storage form), but body access patterns are the same as a
-            # storage-form Optional local: arrow for member access (uses
-            # optional<P>::operator->), .has_value() for null check, direct
-            # std::move into another storage slot. Register as both
-            # pointer_local (for arrow access) and optional_local (so the
-            # null-check dispatch picks has_value over `!= nullptr`). Rebind
-            # the namespace to the bare Optional so type-aware codegen sites
-            # match the sibling pointer-repr Optional handling. movable_locals
-            # is set below via the generic `unwrap_optional_own + non-value`
-            # pass.
-            elif is_own_pointer_repr_optional(actual):
-                self.ctx.pointer_locals.add(pname)
-                self.ctx.optional_locals.add(pname)
-                self.ctx.var_types[pname] = actual.wrapped
-                local_ns.bind_variable(pname, actual.wrapped)
-            # Non-value union params are pointer variants (variant<T*...>)
-            elif self.ctx.is_ptr_variant_union(actual):
-                self.ctx.ptr_variant_locals.add(pname)
-                # Deep-const members (`const T*`) when the param is `readonly[...]`
-                # OR the const verdict deep-consts it (readonly fn/method whose
-                # param address does not escape). `deep_const_borrow_params` is the
-                # same addr-escape-aware verdict the signature and call site read,
-                # so the body's `std::get<T*>` matches the param decl.
-                if (isinstance(ptype, ReadonlyType)
-                        or pname in deep_const_borrow_params):
-                    self.ctx.const_indirect_locals.add(pname)
-            # Own[T] and Own[T] | None params are movable (caller gave up ownership)
-            own_actual = unwrap_optional_own(actual)
-            if own_actual is not None and not own_actual.wrapped.is_value_type():
-                self.ctx.movable_locals.add(pname)
-            if (isinstance(actual, TupleType) and actual.is_owned_movable()
-                    and not isinstance(ptype, ReadonlyType)):
-                self.ctx.movable_locals.add(pname)
-                self.ctx.storage_form_tuple_locals.add(pname)
-            # Own[tuple[T | None, ...]] params are stored in storage form
-            # (std::tuple<std::optional<T>, ...>); same C++ shape as the
-            # storage-form locals registered for storage-form tuple iteration.
-            if isinstance(actual, OwnType):
-                inner = unwrap_readonly(actual.wrapped)
-                if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
-                    self.ctx.storage_form_tuple_locals.add(pname)
-            # Value-optional params (std::optional<T> by value) are movable when
-            # the inner type has an expensive copy (String, BigInt, etc.).
-            # readonly params are excluded to respect the no-mutation contract.
-            elif (isinstance(actual, OptionalType) and not actual.uses_pointer_repr()
-                    and not isinstance(ptype, ReadonlyType)
-                    and actual.inner.is_expensive_copy()):
-                self.ctx.movable_locals.add(pname)
-
-    @contextmanager
-    def seed_param_locals_scoped(
-            self, params: list[tuple[str, TpyType]], local_ns: Namespace,
-            deep_const_borrow_params: set[str]) -> Iterator[None]:
-        """Seed the param classification (`seed_param_locals`) for the body of
-        the with-block, then restore the exact ctx sets it writes. For callers
-        that run before `setup_body_scope`/`reset_scope` (the ctor member-init
-        extraction) where the full scope snapshot isn't usable yet. Owning the
-        save/restore here keeps it from drifting out of sync with what
-        seed_param_locals mutates.
-
-        The sets are CLEARED before seeding, not merely added to: the caller
-        runs outside any body scope, so whatever the previously emitted body
-        left behind is stale -- a same-named binding from it would flip
-        name-keyed verdicts (`is_ptr_variant_source`, pointer derefs, moves)
-        inside the window."""
-        saved = {f: getattr(self.ctx, f).copy() for f in PARAM_LOCAL_SET_FIELDS}
-        saved_var_types = dict(self.ctx.var_types)
-        try:
-            for f in PARAM_LOCAL_SET_FIELDS:
-                setattr(self.ctx, f, set())
-            self.ctx.var_types = {}
-            self.seed_param_locals(params, local_ns, deep_const_borrow_params)
-            yield
-        finally:
-            for f, prev in saved.items():
-                setattr(self.ctx, f, prev)
-            self.ctx.var_types = saved_var_types
-
     def setup_body_scope(self, params: list[tuple[str, TpyType]],
                          return_type: TpyType, func: TpyFunction,
                          local_ns: Namespace, indent_level: int = 1,
@@ -279,185 +155,14 @@ class StatementGenerator:
                          const_ref_params: set[str] | None = None,
                          deep_const_borrow_params: set[str] | None = None,
                          owning_record_name: str | None = None,
-                         return_cpp: str | None = None) -> 'ScanResult | None':
-        """Reset per-scope ctx state and repopulate it for the given function.
-
-        Shared by gen_body (sync + simple-gen + multi-yield-gen) and async
-        body emission (`_resumable_frame_ctx`). Returns the scan result so
-        callers can use it for body-emission-specific work
-        (reassigned-param copies, etc.).
-        """
-        self.ctx.reset_scope()
-        # Apply literal overload facts (injected by _gen_literal_specialized_function,
-        # survives reset_scope like overload_param_types)
-        if self.ctx.literal_overload_facts:
-            self.ctx.literal_facts.update(self.ctx.literal_overload_facts)
-        self.ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
-        self.ctx.deep_const_borrow_params = deep_const_borrow_params if deep_const_borrow_params is not None else set()
-        self.ctx.declared_vars = {pname for pname, _ in params}
-        self.ctx.var_types = {pname: unwrap_ref_type(ptype) for pname, ptype in params}
-        self.ctx.local_scope_names = {pname for pname, _ in params}
-        self.ctx.global_declared_vars = self.ctx.analyzer.function_global_decls.get(id(func), set())
-        scan = self.ctx.analyzer.function_scan_results.get(id(func))
-        if scan:
-            self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
-            self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
-            self.ctx.lvalue_reassigned_vars = scan.lvalue_reassigned - self.ctx.global_declared_vars
-            self.ctx.aliased_vars = set(scan.alias_sources.values())
-            self.ctx.alias_names = scan.initial_alias_names
-        else:
-            self.ctx.reassigned_vars = set()
-            self.ctx.rvalue_reassigned_vars = set()
-            self.ctx.lvalue_reassigned_vars = set()
-            self.ctx.aliased_vars = set()
-            self.ctx.alias_names = set()
-        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
-        self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
-        self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
-        self.ctx.sema_ever_owned_locals = self.ctx.analyzer.function_ever_owned_locals.get(id(func), set())
-        self.ctx.sema_stmt_borrow_decls = self.ctx.analyzer.function_stmt_borrow_decls.get(id(func), {})
-        # Classify params into the pointer-form local sets (pointer_locals,
-        # ptr_variant_locals, optional_locals, movable_locals, ...) that access
-        # dispatch consults so `->` vs `.` / move / variant-form are correct.
-        self.seed_param_locals(params, local_ns, self.ctx.deep_const_borrow_params)
-        binding_audit.begin_ast_body(func)
-        # Generator-promoted locals are struct fields; pre-seed var_types
-        # so codegen sites that consult it (e.g. address-of for tuple
-        # slots) see the original TPy type rather than the synthetic
-        # outer-optional wrapper used for init tracking.
-        if func.generator_locals:
-            for lname, ltype in func.generator_locals:
-                self.ctx.var_types[lname] = ltype
-            self.ctx.setup_resumable_frame_locals(func)
-        self.ctx.current_ns = local_ns
-        self.ctx.indent_level = indent_level
-        self.ctx.current_return_type = return_type
-        self.ctx.current_return_cpp = return_cpp
-        self.ctx.current_return_const = bool(getattr(func, 'is_readonly', False))
-        # Set current_yield_type for generator bodies so yield-emission sites
-        # don't need it threaded through their call signatures. Skipped for
-        # sema-errored generators (no resolved yield type) -- leaves the
-        # field at its reset_scope() default rather than crashing later.
-        if func.is_generator and func.generator_yield_type is not None:
-            self.ctx.current_yield_type = func.generator_yield_type
-        raw_error_return = getattr(func, 'error_return', None)
-        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if raw_error_return else None
-        self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
-        self.ctx.in_property_getter = getattr(func, 'is_property_getter', False)
-        self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
-        if func.type_param_bounds:
-            self.ctx.current_type_param_bounds.update(func.type_param_bounds)
-        if is_method:
-            self.ctx.in_method = True
-            # `self` resolves to the enclosing record's type during the body
-            # so `lookup_var_type('self')` can drive `isinstance(self, Sub)`
-            # polymorphic dispatch. None for static methods (no self). Use
-            # `build_record_self_type` so the NominalType carries the proper
-            # qname + generic type-param refs, matching how sema constructs
-            # self's type -- avoids future cross-module short-name collision
-            # risk if polymorphic-source predicates ever route through qname
-            # equality.
-            if owning_record_name is not None:
-                rec_info = self.ctx.analyzer.registry.get_record(owning_record_name)
-                if rec_info is not None:
-                    self.ctx.current_method_record_type = build_record_self_type(
-                        rec_info, qname=rec_info.qualified_name())
-                else:
-                    self.ctx.current_method_record_type = NominalType(owning_record_name)
-        self._compute_borrow_tuple_const(func)
-        return scan
-
-    def _compute_borrow_tuple_const(self, func: TpyFunction) -> None:
-        """Populate `const_borrow_form_tuple_locals`: borrow-form tuple locals
-        whose declared element pointers must be `const T*` because some binding
-        source is a const-storage location.
-
-        Codegen runs after Phase-2 const inference, so each source's final
-        const-ness is known here. The declared const must be at least as const
-        as every source feeding the local (mutable->const lift is safe,
-        const->mutable would not compile); we therefore OR const over all
-        bindings. A bare-name source feeding from another borrow-form tuple
-        carries that local's const, so iterate to a fixpoint over name chains.
-        """
-        bindings: dict[str, list[TpyExpr]] = {}
-        # Nullable-borrow-tuple locals tracked separately: their const set is
-        # const_optional_borrow_tuple_locals (the inner tuple sits behind a
-        # std::optional, but const-ness is inferred from the same sources).
-        opt_bindings: dict[str, list[TpyExpr]] = {}
-
-        # A nullable-borrow-tuple local is identified by its TARGET type
-        # (`tuple[..., T] | None`), not the source: a rebind source is often a
-        # plain `tuple[..., T]` field, but the local stays the optional form.
-        optional_targets: set[str] = set()
-
-        def collect(stmts: list[TpyStmt]) -> None:
-            for stmt in stmts:
-                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    tt = self._resolve_target_type(stmt)
-                    if (isinstance(tt, OptionalType)
-                            and tt.wraps_pointer_repr_tuple()):
-                        optional_targets.add(stmt.name)
-                    record(stmt.name, stmt.init)
-                elif (isinstance(stmt, TpyAssign)
-                      and isinstance(stmt.target, TpyName)):
-                    record(stmt.target.name, stmt.value)
-                # Walrus (`(t := src)`) binds too -- in conditions, values, etc.
-                for ne in walrus_bindings(stmt):
-                    record(ne.target, ne.value)
-                for body in stmt.sub_bodies():
-                    collect(body)
-
-        def record(tgt: str, src: TpyExpr) -> None:
-            if tgt not in self.ctx.reassigned_vars and tgt not in self.ctx.hoisted_vars:
-                return
-            st = self.ctx.analyzer.get_expr_type(src)
-            stb = (unwrap_readonly(unwrap_ref_type(st))
-                   if st is not None else None)
-            is_ptr_repr_tuple = (
-                (isinstance(stb, TupleType) and stb.has_pointer_repr_element())
-                or (isinstance(stb, OptionalType) and stb.wraps_pointer_repr_tuple()))
-            if not is_ptr_repr_tuple:
-                return
-            if tgt in optional_targets:
-                opt_bindings.setdefault(tgt, []).append(src)
-            else:
-                bindings.setdefault(tgt, []).append(src)
-
-        collect(func.body)
-        if not bindings and not opt_bindings:
-            return
-        # Fixpoint over both kinds together: a name chain can cross between a
-        # plain borrow-tuple local and a nullable one, and `is_const_storage_source`
-        # (consulted via `_tuple_source_is_const`) reads both const sets.
-        pairs = [(bindings, self.ctx.const_borrow_form_tuple_locals),
-                 (opt_bindings, self.ctx.const_optional_borrow_tuple_locals)]
-        changed = True
-        while changed:
-            changed = False
-            for binds, const_set in pairs:
-                for name, srcs in binds.items():
-                    if name in const_set:
-                        continue
-                    if any(self._tuple_source_is_const(s) for s in srcs):
-                        const_set.add(name)
-                        changed = True
-
-    def _tuple_source_is_const(self, src: TpyExpr) -> bool:
-        """Whether a borrow-tuple binding source reads from const storage.
-
-        A ternary feeds whichever arm runs, so it is const if either arm is.
-        An explicit `readonly[...]` source (readonly param / field / return) is
-        const even though it is not in `const_ref_params`: its element pointers
-        lift as `const T*`, so the borrow local must declare them const.
-        """
-        inner = self.ctx.unwrap_copy(src)
-        if isinstance(inner, TpyIfExpr):
-            return (self._tuple_source_is_const(inner.then_expr)
-                    or self._tuple_source_is_const(inner.else_expr))
-        if self.ctx.is_const_storage_source(inner):
-            return True
-        st = self.ctx.analyzer.get_expr_type(inner)
-        return isinstance(st, ReadonlyType)
+                         return_cpp: str | None = None):
+        return emit_prims.setup_body_scope(
+            self.ctx, self.protocols, self.types, params, return_type, func,
+            local_ns, indent_level=indent_level, is_method=is_method,
+            record_type_param_bounds=record_type_param_bounds,
+            const_ref_params=const_ref_params,
+            deep_const_borrow_params=deep_const_borrow_params,
+            owning_record_name=owning_record_name, return_cpp=return_cpp)
 
     def gen_body(self, out: TextIO, body: list[TpyStmt],
                  params: list[tuple[str, TpyType]], return_type: TpyType,
@@ -949,11 +654,7 @@ class StatementGenerator:
         return None
 
     def _is_plain_nonvalue(self, t: TpyType) -> bool:
-        # Recursive-union wrappers are reference types like records: a local
-        # bound from a reference source (`g = h.get()`) binds `Tree<T>&`, a
-        # fresh value (`t = [1, 2]`) stays by value -- the is_rvalue_source
-        # rule in _needs_indirection draws that line (mirrors list/dict/record).
-        return self.ctx.is_plain_nonvalue(t)
+        return emit_prims.is_plain_nonvalue(self.ctx, t)
 
     def _needs_indirection(self, target_type: TpyType | None, name: str,
                             init: TpyExpr | None) -> bool:
@@ -982,65 +683,7 @@ class StatementGenerator:
 
     def _is_const_indirect(self, target_type: TpyType | None, init: TpyExpr | None,
                            stmt: 'TpyVarDecl | None' = None) -> bool:
-        """Check if a local variable should use const indirection (const T* or const T&).
-
-        Detects when the variable is derived from a ReadonlyType source:
-        - Optional inner is ReadonlyType (None-seeded from readonly param)
-        - Init expression has ReadonlyType in sema (direct alias of readonly param)
-        - Sema var_types holds ReadonlyType for annotated locals that are later
-          reassigned from a readonly source
-        """
-        if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
-            return True
-        if init is not None:
-            sema_type = self.ctx.analyzer.get_expr_type(init)
-            if isinstance(sema_type, ReadonlyType):
-                return True
-        # For annotated Optional locals, sema var_types may hold
-        # OptionalType(ReadonlyType(T)) even when stmt.type is plain Optional[T].
-        if stmt is not None:
-            sema_var_type = self.ctx.analyzer.var_types.get(id(stmt))
-            if (isinstance(sema_var_type, OptionalType)
-                    and isinstance(sema_var_type.inner, ReadonlyType)):
-                return True
-        # Readonly method call returns const T& -> variable needs const indirection.
-        # (TypeParamRef returns are handled separately via val_or_cref_t in _gen_local_var_decl.)
-        if isinstance(init, TpyMethodCall):
-            fi = init.resolved_function_info
-            if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
-                return True
-        # Operator dispatch mirrors the method-call arm: a readonly dunder's
-        # borrow return is const-projected at emit, so the alias binds const.
-        if isinstance(init, TpyBinOp) and init.resolved_binop is not None:
-            fi = init.resolved_binop.method
-            if fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
-                return True
-        if isinstance(init, TpyUnaryOp) and init.resolved_unaryop is not None:
-            fi = init.resolved_unaryop.method
-            if fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
-                return True
-        # A subscript / method call on a const-rooted receiver binds const:
-        # when the enclosing method's readonly-ness is INFERRED (post
-        # body-analysis), sema resolved the MUTABLE twin, so the
-        # fi.is_readonly arms above miss -- but C++ overload resolution on
-        # the const receiver picks the const twin regardless. Sound for the
-        # same reason as the name-alias arm below: a const-rooted source
-        # implies inference proved no writes through the result.
-        if isinstance(init, (TpySubscript, TpyMethodCall)) \
-                and self.ctx.is_const_storage_source(init.obj):
-            return True
-        # An alias of a const-inferred source must also bind const, else a
-        # mutable reference/pointer would be taken from a const source. Sound
-        # because a const source implies the alias is never written through --
-        # a write would have marked the source mutated via the borrow chain.
-        # Covers the pointer-local (Optional) branch, which the T&-branch
-        # call-site propagation does not reach.
-        if isinstance(init, TpyName) and (
-                init.name in self.ctx.const_ref_params
-                or init.name in self.ctx.const_indirect_locals
-                or init.name in self.ctx.deep_const_borrow_params):
-            return True
-        return False
+        return emit_prims.is_const_indirect(self.ctx, target_type, init, stmt)
 
     def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:
         """Check if the type is a @dynamic protocol (needs adapter slot codegen)."""
@@ -1180,41 +823,7 @@ class StatementGenerator:
         return self.types._resolve_view_storage(family, var_id)
 
     def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:
-        """Resolve the target type for a variable declaration."""
-        target_type = resolve_stmt_binding_type(
-            stmt,
-            self.ctx.analyzer,
-            include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
-        )
-        if target_type is None and stmt.init:
-            target_type = self.ctx.analyzer.get_expr_type(stmt.init)
-        if target_type is not None:
-            # Strip Ref and ReadonlyType -- C++ reference semantics are
-            # handled by codegen binding (T& / auto&), not by the type itself.
-            # Send/Sync markers (canonically outermost) have no C++ shape.
-            target_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_type)))
-            # Keep Own[dyn P]: the owned-erased local IS unique_ptr<P>;
-            # stripping it would route the decl to the borrow-form
-            # pointer-local path (dangling for an owned rvalue init).
-            if isinstance(target_type, OwnType) and not is_dyn_protocol(
-                    unwrap_readonly(target_type.wrapped)):
-                target_type = target_type.wrapped
-            target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
-            if isinstance(target_type, FloatLiteralType):
-                target_type = FLOAT
-            resolved = self._resolve_pending_container(target_type)
-            if resolved is not None:
-                target_type = resolved
-            elif isinstance(target_type, PendingViewType):
-                target_type = self.types._resolve_pending_view(target_type)
-            # A reassigned per-element-Own tuple local (including the nullable
-            # `tuple[..., Own[T]] | None` form) takes the unified borrow shape
-            # so an alias rebind aliases the source instead of copying. Sema
-            # records this on inferred decls; an annotated decl reaches codegen
-            # with the raw `stmt.type`, so re-apply the collapse here.
-            if stmt.name in self.ctx.reassigned_vars:
-                target_type = collapse_tuple_own_elements(target_type)
-        return target_type
+        return emit_prims.resolve_target_type(self.ctx, self.types, stmt)
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
         """Resolve a pending container via the shared unified lookup (see
@@ -1300,45 +909,8 @@ class StatementGenerator:
     def ptr_slot_field_type(self, init: 'TpyExpr',
                             target_type: TpyType | None,
                             cpp_type: str) -> str | None:
-        """The frame-field C++ type an rvalue write into a pointer-form
-        frame local needs for its materialization slot, or None when the
-        write materializes no storage (None literal, alias, optional_to_ptr
-        lift forms).
-
-        Single source of truth shared by the resumable ptr-slot prescan
-        (which reserves the field) and the emit arms in
-        `_gen_pointer_local_rebind` (which consume it): the two MUST agree
-        on which writes need a slot, or a frame write lands back in a
-        dying case-block local -- the emit arms raise on a missing entry
-        rather than fall back. The routing order mirrors the emit arms.
-        """
-        if isinstance(init, TpyNoneLiteral):
-            return None
-        if self.ctx.callee_returns_own_ptr_optional(init):
-            # Own[Optional[T]]-returning call: the slot holds the returned
-            # optional<T> whole; the pointer is lifted via optional_to_ptr.
-            return f"std::optional<{cpp_type}>"
-        if (isinstance(init, TpyName)
-                and self.ctx.needs_optional_to_ptr_lift(init.name)):
-            return None
-        init_type = self.ctx.get_expr_type(init)
-        if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
-            if (self.ctx.is_storage_form_optional_source(init)
-                    and not self.ctx.is_rvalue_source(init)):
-                return None
-            if not self.ctx.is_value_emit_rvalue(init):
-                return None
-        if not self.ctx.is_rvalue_source(init):
-            return None
-        # Polymorphic refinement: a per-site slot can hold the subclass
-        # whole (the shared-slot slicing reject still fires upstream for
-        # the sync-shared shapes; this only spells the site's storage).
-        slot_cpp = cpp_type
-        sub = polymorphic_subclass_into_optional(
-            target_type, init_type, self.ctx.analyzer.registry)
-        if sub is not None:
-            slot_cpp = sub.name
-        return f"std::optional<{slot_cpp}>"
+        return emit_prims.ptr_slot_field_type(
+            self.ctx, init, target_type, cpp_type)
 
     @staticmethod
     def _reject_polymorphic_rvalue_into_optional_local(
@@ -2078,21 +1650,7 @@ class StatementGenerator:
             dst_type=bare, dst_form=CppForm.STORAGE)
 
     def promote_movable(self, name: str) -> None:
-        """Promote a sema-owned local into the body's working movable set.
-
-        `sema_movable_locals` is the RAW per-function fact ("sema proved this
-        local owned"); `movable_locals` is what the move sites actually read,
-        and a name joins it only when its declaration reaches a decl arm that
-        promotes. The arms that DON'T call this -- ptr-variant unions,
-        non-Own @dynamic protocol locals, `val_or_ref_t` TypeParamRef locals,
-        REF_ALIAS borrows, frame-promoted POINTER locals -- alias rather than
-        own, so a last-use read there must copy, not steal. Grep this method's
-        callers for the authoritative promoting-arm set: THIR's `_is_move_source`
-        mirrors exactly it, and the two sets silently diverging is a move-vs-copy
-        miscompile no byte-diff can see.
-        """
-        if name in self.ctx.sema_movable_locals:
-            self.ctx.movable_locals.add(name)
+        emit_prims.promote_movable(self.ctx, name)
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
@@ -3022,9 +2580,7 @@ class StatementGenerator:
 
 
     def _is_const_borrow_source(self, var_name: str, var_decl: 'TpyType | None') -> bool:
-        return (isinstance(var_decl, ReadonlyType)
-                or var_name in self.ctx.deep_const_borrow_params
-                or var_name in self.ctx.const_ref_params)
+        return emit_prims.is_const_borrow_source(self.ctx, var_name, var_decl)
 
     def _build_isinstance_init_clause(
         self, type_facts: dict[str, TpyType] | None,
@@ -3075,189 +2631,20 @@ class StatementGenerator:
         return f"{init_expr}; ", [var_name]
 
     def _fresh_alias_local(self, var_name: str, *, persistent: bool) -> str:
-        # Default is `__{var_name}`. `persistent` is True when the emit is at
-        # the same C++ scope as the caller (assert, early-return) -- where a
-        # prior alias declared in the same lexical scope would collide. False
-        # when the caller opened a fresh `{...}` block (if-body, while-body):
-        # shadowing the outer alias is fine and produces cleaner names.
-        #
-        # Collision check spans the scope-global `declared_persistent_aliases`
-        # set rather than `narrowed_vars` (which only holds the most-recent
-        # alias per source variable -- earlier aliases like `__p` become
-        # invisible after a bump to `__p_2` even though their C++ declaration
-        # is still live). The caller records the chosen name in the set; the
-        # set is part of LocalScopeSnap so it tracks C++ lexical scope.
-        base = f"__{var_name}"
-        # In a resumable frame the alias must not shadow a captured frame
-        # field (e.g. `self` is the field `__self`): the cast initializer
-        # reads the source by name, so a same-named alias would self-reference
-        # its own uninitialized storage. Frame-field sets are empty outside
-        # resumable bodies, so this is a no-op for sync codegen.
-        if (base == self.ctx.generator_self_ref
-                or base in self.ctx.generator_field_names):
-            base = f"{base}_narrowed"
-        if not persistent:
-            return base
-        in_use = self.ctx.declared_persistent_aliases
-        if base not in in_use:
-            return base
-        n = 2
-        while f"{base}_{n}" in in_use:
-            n += 1
-        return f"{base}_{n}"
+        return emit_prims.fresh_alias_local(
+            self.ctx, var_name, persistent=persistent)
 
     def _emit_isinstance_extractions(
         self, out: TextIO, type_facts: dict[str, TpyType],
         *, indent_extra: int = 1, persistent: bool = False,
     ) -> dict[str, str | None]:
-        """Emit std::get extractions for isinstance-narrowed variables.
-
-        Returns saved narrowed_vars entries for later restoration.
-        Only emits extraction when the fact is a concrete (non-union) type.
-        `indent_extra` controls how many indent levels past the current level
-        to emit at: 1 (default) inside an if-block / while-block, 0 after an
-        assert or at the implicit-else of an early-returning if.
-        `persistent` is True when the alias must outlive the caller's emit
-        block (assert / early-return): the alias-name picker bumps the suffix
-        if a prior alias of the same shape is in scope. False when the caller
-        opened a fresh `{...}` block (if-body / while-body / else-body) --
-        shadowing the outer alias is fine.
-        """
-        saved: dict[str, str | None] = {}
-        if not type_facts:
-            return saved
-        inner_indent = INDENT * (self.ctx.indent_level + indent_extra)
-        for var_name, narrowed_type in type_facts.items():
-            # A union fact has no single alternative to extract; a void-like
-            # fact (NoneType, or the VoidType `make_union` yields when only the
-            # None member remains -- e.g. the else of `isinstance(v, (int, str))`
-            # on `int | str | None`) narrows to None, which has no value to bind.
-            if isinstance(narrowed_type, UnionType) or is_void_like_type(narrowed_type):
-                continue
-            # Deref-view facts don't retype the wrapper var -- no extraction
-            # local. The narrowed reads route through deref_narrowed_to (and the
-            # if-init's deref_view_init_locals); the wrapper stays its own type.
-            if parse_deref_view_key(var_name) is not None:
-                continue
-            # LiteralType narrowing: track for dead branch elimination,
-            # no std::get extraction needed.
-            if isinstance(narrowed_type, LiteralType):
-                self.ctx.literal_facts[var_name] = narrowed_type
-                continue
-            # Protocol isinstance narrows the concept constraint, not the value;
-            # no std::get extraction needed (the variable is already a T& ref).
-            # Track the narrowed type so get_resolved_type surfaces it to
-            # downstream dispatch (for-loop peephole, `in` operator, etc.).
-            if is_protocol_type(narrowed_type):
-                self.ctx.protocol_narrowings[var_name] = narrowed_type
-                continue
-            # In @overload context, the param is already the concrete type --
-            # no std::get extraction needed.
-            if var_name in self.ctx.overload_param_types:
-                continue
-            cpp_type = self.types.type_to_cpp(narrowed_type)
-            var_decl = self.ctx.lookup_var_type(var_name)
-            # Polymorphic source + strict-subclass narrowed_type: cast-and-cache
-            # extraction. Identity narrowing (`is not None`) keeps the same
-            # class and is gated out by the predicate.
-            if is_polymorphic_subclass_fact(
-                    var_decl, narrowed_type, self.ctx.analyzer.registry):
-                # If `_gen_if` pre-bound the cast via C++17 if-init, route reads
-                # through `(*__var_ptr)` directly -- no need for a separate
-                # reference local that just aliases the deref. Compiler sees the
-                # same object either way. For assert/while paths that don't go
-                # through if-init, emit the fresh cast into a reference local.
-                init_local = self.ctx.isinstance_init_locals.get(var_name)
-                if init_local is not None:
-                    saved[var_name] = self.ctx.narrowed_vars.get(var_name)
-                    self.ctx.narrowed_vars[var_name] = f"(*{init_local})"
-                    continue
-                local_name = self._fresh_alias_local(var_name, persistent=persistent)
-                cast_const = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
-                cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
-                source_inner = polymorphic_source_inner(
-                    var_decl, self.ctx.analyzer.registry)
-                cast_rhs = self.protocols.dynamic_narrow_cast_rhs(
-                    cpp_type, narrowed_type, source_inner, cast_arg,
-                    is_const=bool(cast_const))
-                out.write(
-                    f"{inner_indent}{cast_const}{cpp_type}& {local_name} = "
-                    f"*{cast_rhs};\n"
-                )
-                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
-                self.ctx.narrowed_vars[var_name] = local_name
-                if persistent:
-                    self.ctx.declared_persistent_aliases.add(local_name)
-                continue
-            # Any narrowing (D15): the source variable is a tpy::Any cell;
-            # the narrowed binding is a `const T&` borrow into its
-            # contents. The outer Any survives unchanged.
-            if isinstance(var_decl, AnyType):
-                local_name = self._fresh_alias_local(var_name, persistent=persistent)
-                if self.ctx.is_indirect_name(TpyName(var_name)):
-                    var_ref = f"(*{var_name})"
-                else:
-                    var_ref = var_name
-                out.write(
-                    f"{inner_indent}const {cpp_type}& {local_name} = "
-                    f"std::any_cast<const {cpp_type}&>({var_ref}.value);\n"
-                )
-                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
-                self.ctx.narrowed_vars[var_name] = local_name
-                if persistent:
-                    self.ctx.declared_persistent_aliases.add(local_name)
-                continue
-            # std::get needs the underlying variant. Previously-extracted T&
-            # aliases in narrowed_vars (from outer if-branch narrowing, match
-            # binds, or inline isinstance facts) point at non-variants, so we
-            # must target the original variable here.
-            # A union local hoisted into the resumable frame is a
-            # `frame_slot<variant<...>>`; std::get needs the variant, not the
-            # slot wrapper (the same `(*name)` unwrap the name-read path uses).
-            fs_deref = self.ctx.frame_slot_deref(var_name)
-            if self.ctx.is_indirect_name(TpyName(var_name)):
-                var_ref = f"(*{var_name})"
-            elif fs_deref is not None:
-                var_ref = fs_deref
-            else:
-                var_ref = var_name
-            local_name = self._fresh_alias_local(var_name, persistent=persistent)
-            # Value-type union params are const&, so std::get yields const T&.
-            # Non-value union params and locals are mutable.
-            var_decl_type = self.ctx.var_types.get(var_name)
-            is_const = (var_name in self.ctx.current_func_params
-                        and var_decl_type is not None
-                        and (var_decl_type.is_value_type() or var_decl_type.needs_wrapper()))
-            qualifier = "const auto&" if is_const else "auto&"
-            # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
-            if var_name in self.ctx.ptr_variant_locals:
-                is_const = var_name in self.ctx.const_indirect_locals
-                va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=is_const)
-            else:
-                va = VariantAccess(var_ref, var_decl_type, is_ptr_variant=False)
-            out.write(f"{inner_indent}{qualifier} {local_name} = {va.get_by_type(cpp_type, lvalue=True)};\n")
-            saved[var_name] = self.ctx.narrowed_vars.get(var_name)
-            self.ctx.narrowed_vars[var_name] = local_name
-            if persistent:
-                self.ctx.declared_persistent_aliases.add(local_name)
-        return saved
+        return emit_prims.emit_isinstance_extractions(
+            self.ctx, self.types, self.protocols, out, type_facts,
+            indent_extra=indent_extra, persistent=persistent)
 
 
     def _unpack_source_has_const_slots(self, stmt: TpyTupleUnpack) -> bool:
-        """True when the unpack source has const-typed borrow slots.
-
-        Triggered when the source is a name referring to either:
-        - a const-inferred param (deep_const_borrow_params), or
-        - a synthesized for-loop tuple iterating a const-bound source
-          (const_storage_form_tuple_locals).
-        Drives the unpack codegen to emit `const T*` / `const T&` for
-        unpacked locals rather than `T*` / `T&` (which would fail to bind
-        from the const slot).
-        """
-        if not isinstance(stmt.value, TpyName):
-            return False
-        return (stmt.value.name in self.ctx.deep_const_borrow_params
-                or stmt.value.name in self.ctx.const_storage_form_tuple_locals)
+        return emit_prims.unpack_source_has_const_slots(self.ctx, stmt)
 
     def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
         """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
@@ -3781,17 +3168,7 @@ class StatementGenerator:
         emit_body(out, indent)
 
     def nested_def_signature(self, func: TpyFunction) -> 'tuple[str, str | None]':
-        """(params_str, ret_cpp-or-None-for-void) for a nested def -- shared
-        by the lambda emission and the resumable-frame member emission."""
-        params = []
-        for pname, ptype in func.params:
-            resolved = self.types.resolve_type(ptype)
-            cpp_name = escape_cpp_name(pname)
-            params.append(resolved.to_cpp_param(cpp_name))
-        return_type = self.types.resolve_type(func.return_type)
-        ret_cpp = (None if isinstance(return_type, VoidType)
-                   else self.types.type_to_cpp(return_type))
-        return ", ".join(params), ret_cpp
+        return emit_prims.nested_def_signature(self.types, func)
 
     def gen_nested_def_body(self, out: TextIO, func: TpyFunction,
                             ret_cpp: 'str | None') -> None:
@@ -3983,95 +3360,14 @@ class StatementGenerator:
 
     def _push_finally(self, emit_finally: Callable[[TextIO, str], None],
                       terminates: bool) -> FinallyContext:
-        """Push a finally frame onto the active stack.
-
-        loop_depth captures len(loop_else_labels) at push time so
-        break/continue can identify finally frames inside the innermost
-        active loop body.
-
-        The guard name is allocated eagerly (an exit site inside the body
-        needs it while the body emits) but only declared if an exit site
-        actually used it -- see FinallyContext.guard_name.
-        """
-        self.ctx.finally_guard_counter += 1
-        guard = f"__fin_ran_{self.ctx.finally_guard_counter}"
-        fctx = FinallyContext(
-            emit_finally=emit_finally,
-            terminates=terminates,
-            loop_depth=len(self.ctx.loop_else_labels),
-            guard_name=guard,
-        )
-        self.ctx.finally_stack.append(fctx)
-        return fctx
+        return emit_prims.push_finally(self.ctx, emit_finally, terminates)
 
     def _emit_except_handler_header(self, out: TextIO, handler) -> None:
-        """Emit a single ` catch (...) {` clause header for `handler`.
-        Caller is responsible for emitting the handler body and the
-        closing `}`. Shared by sync try/except codegen and the
-        async-await try/except path in `gen_async.py`.
-        """
-        if handler.exception_type is None:
-            out.write(" catch (...) {\n")
-            return
-        cpp_type = error_return_to_cpp(
-            handler.exception_type,
-            self.ctx.analyzer.ctx.module_name,
-            self.ctx.analyzer.registry)
-        if handler.binding:
-            binding = escape_cpp_name(handler.binding)
-            out.write(f" catch (const {cpp_type}& {binding}) {{\n")
-        else:
-            out.write(f" catch (const {cpp_type}&) {{\n")
+        emit_prims.emit_except_handler_header(self.ctx, out, handler)
 
     def _emit_finally_chain(self, out: TextIO, indent: str,
                             stop_at: int = 0) -> bool:
-        """Emit finally bodies inline from innermost down to stop_at (exclusive).
-
-        Each finally body is emitted with the corresponding frame popped, so
-        any return/break/continue inside it redirects through the outer
-        frames -- not back through itself. The stack is restored on exit so
-        subsequent code in the caller's scope is unaffected (relevant when
-        emitting the normal-fall-through finally before popping in the
-        caller).
-
-        ``indent_level`` is temporarily synced to the ``indent`` string so
-        that gen_stmt-based emit_finally callbacks (which read
-        self.ctx.indent_level rather than the ``ind`` argument) emit at the
-        correct depth. Callers may pass an indent that doesn't correspond
-        to the current emission point (e.g. _gen_propagate_check emits a
-        nested return inside an `if` body); the level is restored after.
-
-        Returns True if any finally body terminates (raise/return) -- the
-        caller must suppress its own trailing return/break/continue/throw
-        in that case, since control already left.
-        """
-        snapshot = list(self.ctx.finally_stack)
-        prev_indent_level = self.ctx.indent_level
-        target_level = len(indent) // len(INDENT)
-        terminated = False
-        try:
-            self.ctx.indent_level = target_level
-            while len(self.ctx.finally_stack) > stop_at:
-                fctx = self.ctx.finally_stack.pop()
-                # Set before the copy runs: if the copy raises, the frame's
-                # own catch must not run it again. Frames further out still
-                # have a false guard, so their finallies do run -- Python's
-                # unwind semantics.
-                if fctx.guard_name is not None:
-                    # Record the guard live: the emitter (sync catch here, or
-                    # a resumable region catch, whose frames outlive one
-                    # _emit_finally_chain call) declares and tests it only
-                    # when its name is present in live_finally_guards.
-                    self.ctx.live_finally_guards.add(fctx.guard_name)
-                    out.write(f"{indent}{fctx.guard_name} = true;\n")
-                fctx.emit_finally(out, indent)
-                if fctx.terminates:
-                    terminated = True
-                    break
-        finally:
-            self.ctx.indent_level = prev_indent_level
-            self.ctx.finally_stack = snapshot
-        return terminated
+        return emit_prims.emit_finally_chain(self.ctx, out, indent, stop_at)
 
     def _make_try_finally_emit(self, stmt: TpyTry) -> tuple[Callable[[TextIO, str], None], bool]:
         """Build an emit callback and terminates flag for a try/finally's body.
@@ -6322,13 +5618,7 @@ class StatementGenerator:
 
     @staticmethod
     def _extract_int_literal(expr: TpyExpr) -> int | None:
-        """Extract a compile-time integer value from a range argument.
-
-        Handles bare literals (3), negated literals (-3), and fixed-int
-        constructor calls with a literal arg (Int32(3)).
-        Returns the integer value or None if not a compile-time constant.
-        """
-        return fixed_int_literal_value_from_expr(expr)
+        return emit_prims.extract_int_literal(expr)
 
     def _gen_range_counter_loop(self, out: TextIO, stmt: TpyForEach,
                                  indent: str, elem_type: TpyType) -> bool:
@@ -6454,10 +5744,8 @@ class StatementGenerator:
     def _gen_range_overflow_check(self, out: TextIO, indent: str,
                                     start_expr: str, stop_expr: str,
                                     step_expr: str, elem_type: TpyType) -> None:
-        """Emit upfront overflow check for fixed-int range loops with step != ±1."""
-        if is_fixed_int_type(elem_type):
-            cpp_t = elem_type.to_cpp()
-            out.write(f"{indent}::tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
+        emit_prims.gen_range_overflow_check(
+            out, indent, start_expr, stop_expr, step_expr, elem_type)
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator.

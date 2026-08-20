@@ -396,12 +396,22 @@ class RecordGenerator:
         # Use the expression generator so tuples / type-coerced literals emit
         # the same way module-level Final constants do.
         if record_info and not record_info.is_native:
+            # Earlier constants of this body are in scope for the later ones
+            # (`DOUBLE: Final[Int32] = BASE * 2`), on top of the module's
+            # Final globals -- accumulated in declaration order so a class
+            # constant shadowing a global wins, as it does in C++.
+            const_scope = self._thir_const_scope(record_info)
             for cc_name, cc_fld in record_info.class_constants.items():
                 self.ctx.emit_preceding_comments(out, cc_fld.loc, indent=INDENT)
                 self.ctx.emit_source_comment(out, cc_fld.loc, indent=INDENT)
                 cpp_type = self.types.type_to_cpp(cc_fld.type)
                 if cc_fld.default_expr is not None:
-                    init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
+                    init = self._thir_class_const_init(cc_fld, const_scope)
+                    if init is None:
+                        init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
+                    # Unconditional: the C++ member exists whichever path
+                    # rendered it, so a later sibling reads it bare either way.
+                    self._thir_add_const(const_scope, cc_name, cc_fld.type)
                 else:
                     init = cc_fld.default_value if cc_fld.default_value is not None else "{}"
                 is_final = record_info.is_final_class_constant(cc_name)
@@ -718,6 +728,46 @@ class RecordGenerator:
         if "." not in record.name:
             self._gen_record_ostream(out, record, has_str_repr=has_str_repr)
             self._gen_nested_ostream_operators(out, record)
+
+    def _thir_const_scope(self, record_info) -> 'dict | None':
+        """The constant names a class body's initializers may reference, or
+        None when THIR is off. Mutated in declaration order by the caller."""
+        if not self.ctx.thir_codegen or not record_info.class_constants:
+            return None
+        from ..thir.constants import final_global_scope
+        return final_global_scope(self.ctx.analyzer, self.ctx.final_globals)
+
+    def _thir_add_const(self, const_scope: 'dict | None', name: str,
+                        declared) -> None:
+        """Bring one already-emitted class constant into scope for the
+        constants declared after it."""
+        if const_scope is None:
+            return
+        from ..thir.constants import add_constant_scope_entry
+        add_constant_scope_entry(const_scope, name, declared, self.ctx.analyzer)
+
+    def _thir_class_const_init(self, cc_fld, const_scope: 'dict | None'
+                               ) -> 'str | None':
+        """Render a class constant's initializer through THIR, or None when
+        it did not lower (the caller falls back to `gen_expr`)."""
+        if const_scope is None:
+            return None
+        # `thir.constants` imports `thir.emit`, so an eager import here would
+        # be a codegen_cpp <-> thir cycle; `thir.fallback` only rides along.
+        from ..thir.constants import lower_constant
+        from ..thir.fallback import begin_attempt, commit_attempt, fold_attempt
+        begin_attempt()
+        init = lower_constant(
+            cc_fld.default_expr, cc_fld.type, self.ctx.analyzer,
+            const_scope=const_scope,
+            render_type=self.types.type_to_cpp,
+            render_type_stored=self.types.type_to_cpp_stored,
+            render_resolve=self.types.resolve_type)
+        if init is None:
+            fold_attempt("class_const")
+        else:
+            commit_attempt()
+        return init
 
     def _gen_nested_ostream_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Emit operator<< for all nested records (must be at namespace scope)."""

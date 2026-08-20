@@ -2295,10 +2295,12 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     `is_bytes_type`. A NAME declared `bytes | None` and narrowed to `bytes`
     here joins the plain name row: its deref is a view either way, so it
     takes the same `bytes_copy` convert -- never a move, which is what keeps
-    the str twin of this row OUT of `_str_field_write_ok`. The str rows for a
-    SLICE source have no bytes counterpart either: a bytes slice rejects
-    deeper at its coerce, so the convert was never exercised over one."""
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
+    the str twin of this row OUT of `_str_field_write_ok`. A bytes SLICE
+    source (`self.b = x[1:3]`) mirrors the str slice row, but lands on the
+    OTHER side of the split the str docstring names: the sema coerce carries
+    no materialization for bytes, so the view-form slice takes this family's
+    ordinary `bytes_copy` STORAGE convert."""
+    if not _field_receiver_or_unbound_self_ok(stmt.target, declared, analyzer):
         return False
     ft = _resolved_bytes_value(analyzer.get_expr_type(stmt.target), analyzer)
     if ft is None or not is_bytes_type(ft):
@@ -2306,6 +2308,14 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     v = stmt.value
     if isinstance(v, TpyBytesLiteral):
         return True
+    # The slice row alone peels the sema coerce: the literal/name rows below
+    # key the RAW node, and widening them to coerce-wrapped sources would
+    # admit shapes no render row was measured against.
+    sliced = v.expr if isinstance(v, TpyCoerce) else v
+    if isinstance(sliced, TpySubscript) and isinstance(sliced.index, TpySlice):
+        outer = _resolved_bytes_value(analyzer.get_expr_type(v), analyzer)
+        return (outer is not None and is_bytes_type(outer)
+                and _witness("field_write.bytes_slice"))
     if not (isinstance(v, TpyName) and v.name in declared):
         return False
     dt = declared[v.name]

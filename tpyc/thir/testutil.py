@@ -131,6 +131,70 @@ def _assert_routes_byte_identical(source: str, default_int: str = "Int32",
     return thir
 
 
+def _constant_positions(source: str, default_int: str = "Int32",
+                        extra_lib_dirs=None, comments: bool = True):
+    """The routing lens for the two NON-BODY constant positions (class
+    constants, `Final` global initializers).
+
+    Returns `(routed, ast_rendered, fallback)`: the constant names THIR
+    rendered, the names the AST `gen_expr` fallback rendered, and the
+    fallback tally. The AST set comes from spying on the exact `gen_expr`
+    call each position falls back to, so a pin built on it fails when the
+    skeleton stops calling THIR -- byte-identity and an empty fallback dict
+    are both satisfied by a fallback, and so can claim routing without
+    being able to fail.
+
+    The emitted (.hpp, .cpp) are asserted byte-identical across the two
+    paths on the way, since a routed constant that renders differently is
+    the failure this position exists to prevent."""
+    from ..codegen_cpp.context import CodeGenOptions
+    from ..codegen_cpp.expressions import ExpressionGenerator
+    opts = dict(emit_source_comments=comments, comment_line_numbers=False)
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    entry = _entry(modules)
+    ast = compiler.generate_code_to_strings(
+        entry, options=CodeGenOptions(thir_codegen=False, **opts))
+    seen: set[int] = set()
+    original = ExpressionGenerator.gen_expr
+
+    def spy(self, expr, target_type=None):
+        seen.add(id(expr))
+        return original(self, expr, target_type)
+
+    ExpressionGenerator.gen_expr = spy
+    try:
+        thir = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(thir_codegen=True, **opts))
+    finally:
+        ExpressionGenerator.gen_expr = original
+    assert thir == ast, "routed constant diverged from the AST oracle"
+    routed: set[str] = set()
+    ast_rendered: set[str] = set()
+    for name, init in _constant_inits(entry):
+        (ast_rendered if id(init) in seen else routed).add(name)
+    return routed, ast_rendered, dict(compiler._thir_fallback)
+
+
+def _constant_inits(entry):
+    """(name, initializer expression) for every constant position in the
+    entry module -- `Final` globals first, then each record's class
+    constants."""
+    from ..parse.nodes import TpyVarDecl
+    out = []
+    for stmt in entry.ast.top_level_stmts:
+        if isinstance(stmt, TpyVarDecl) and stmt.is_final and stmt.init:
+            out.append((stmt.name, stmt.init))
+    for record in entry.ast.all_records():
+        info = entry.analyzer.registry.get_record(record.name)
+        if info is None:
+            continue
+        for cc_name, cc_fld in info.class_constants.items():
+            if cc_fld.default_expr is not None:
+                out.append((cc_name, cc_fld.default_expr))
+    return out
+
+
 def _top_level(source: str, default_int: str = "Int32",
                extra_lib_dirs=None):
     """Lower a module's `__tpy_init` body through the REAL generator seeding

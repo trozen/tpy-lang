@@ -16,6 +16,7 @@ from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeP
 from tpyc import modules as builtin_modules
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame, view_owned_copy_init)
+from . import emit_prims
 from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
 from .resumable_cfg import _stmts_have_any_suspension, same_module_dep_unit
 from .protocols import protocol_param_template_name
@@ -925,8 +926,9 @@ class GeneratorCodegen:
         # `std::optional<V>` in the frame -- dispatch on / build the iterator
         # field type from the contained `V` (the resumable for-src render derefs
         # `(*v)` to match). Shared with the sync for-loop's type handling.
-        iterable_type = self.expressions.narrowed_value_optional_iter_type(
-            stmt.iterable, self.types.get_resolved_type(stmt.iterable))
+        iterable_type = emit_prims.narrowed_value_optional_iter_type(
+            self.ctx, stmt.iterable,
+            self.types.get_resolved_type(stmt.iterable))
 
         # Iterator[T] protocol -- iterable already has __next__()
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":

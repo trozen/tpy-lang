@@ -635,6 +635,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ctor call (classifier row)
     "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
                                     # `bytes | None`, narrowed here
+    "field_write.bytes_slice",      # `self.b = x[1:3]` -- a bytes SLICE value
+                                    # (classifier row; shared bytes_copy emit)
     "field_write.opt_lift_tparam",  # pointer-repr `Optional[T]` field (T a
                                     # type param) <- borrow `T*` local
     "field_write.str",
