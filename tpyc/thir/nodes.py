@@ -216,6 +216,11 @@ class THIRWalrus(THIRExpr):
     # with the bare-name result tail (`, t`).
     slot_cpp: 'str | None' = None
     borrow_cpp: 'str | None' = None
+    # A resumable-frame `frame_slot<T>` target: the write is
+    # `name.emplace(v)` (the slot has no operator=), and the string is the
+    # type prefix a bare brace-init value needs to bind to emplace's
+    # forwarding ref (the AST's typed_brace_init).
+    emplace_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)

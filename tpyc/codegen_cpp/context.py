@@ -808,6 +808,26 @@ def _slot_spellable(cpp_type: str) -> bool:
     return not re.match(r"^(const\s+)?auto\b", stripped)
 
 
+def _as_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
+    """Render an initializer as a standalone expression of type `type_cpp`.
+
+    A temp's initializer is authored for a copy-initialized declaration
+    (`T t = init;`), where a braced form carries the target type implicitly.
+    Forwarding the same string (to `emplace`, or to a relocated
+    `std::optional<T> t = ...;` decl) puts it where nothing supplies that
+    type: `emplace` deduces `initializer_list<U>` from the elements alone and
+    `std::optional` has no initializer-list constructor. Naming the type
+    closes both holes. Whether the render is braced is decided deep in the
+    array-literal target-type cascade, so it cannot be re-derived from the
+    string by the callers that produce it.
+    """
+    if brace_init:
+        return f"{type_cpp}{{{init_expr}}}"
+    if init_expr.startswith("{"):
+        return f"{type_cpp}{init_expr}"
+    return init_expr
+
+
 class TempState:
     """Manages temporary variables for array literals passed to mutable reference params."""
 
@@ -866,9 +886,7 @@ class TempState:
         if region is None or not movable or not _slot_spellable(type_cpp):
             self._pending.append((temp_name, type_cpp, init_expr, brace_init))
             return temp_name
-        # A braced init is not an expression on its own; name the type so the
-        # emplace argument (and the relocated-decl fallback) stays well-formed.
-        emplace_arg = f"{type_cpp}{{{init_expr}}}" if brace_init else init_expr
+        emplace_arg = _as_expression(type_cpp, init_expr, brace_init)
         region.bank(len(self._pending), temp_name, emplace_arg)
         self._pending.append(
             (temp_name, f"std::optional<{type_cpp}>", emplace_arg, False))

@@ -322,6 +322,7 @@ from .predicates import (
     _is_none_compare_operand,
     _value_opt_rvalue,
     _narrowed_opt_field_read,
+    _narrowed_opt_container_field,
     _ADDR_PTR_COERCIONS,
     _INDIRECT_DEREF_COERCIONS,
     _PTR_IDENTITY_COERCIONS,
@@ -4524,6 +4525,20 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                         and _plain_container_read(
                             _field_decl_type(e, declared, analyzer))
                         and _witness("field.container_iterable"))
+                    # The NARROWED flavor of the row above: the declared
+                    # Optional keeps it off that key, and the deref the AST
+                    # renders is the same `field.narrowed_deref` flag every
+                    # other narrowed-field read carries -- so the read is
+                    # still the whole render, one unwrap deeper. Reached from
+                    # the RESUMABLE for-head only (the sync route prechecks
+                    # its field iterable, so that read skips this ladder);
+                    # BORROW_BIND is excluded because no position reaches
+                    # this arm through it, and admitting one would ship
+                    # unwitnessed.
+                    or (use.result is _ExprResultUse.ITERABLE
+                        and _narrowed_opt_container_field(
+                            e, rtype, declared, analyzer)
+                        and _witness("field.narrowed_opt_container_iterable"))
                     # An F3 tuple FIELD read consumed by a borrow lift
                     # (`t = h.pair` -> `tuple_to_pointer<..>(h.pair)`): the
                     # bare member read feeds the wrap.
@@ -5846,10 +5861,8 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # sgen peephole): the target is a struct FIELD, so every rung
             # below is wrong for it -- their pre-declaration would put a
             # case-block local in front of the field and the write would die
-            # at the next suspension. The frame-field write families are a
-            # separate porting row.
-            note_detail("walrus.frame_field")
-            raise ThirUnsupported("expr.walrus")
+            # at the next suspension.
+            return _lower_frame_walrus(e, vtu, lc, declared, loc)
         if (not resumable
                 and e.target in borrow_decls and e.target not in ever_owned
                 and is_plain_nonvalue(vtu)):
@@ -5913,27 +5926,10 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # FIELD source lifts via optional_to_ptr (THIRFormConvert
             # BORROW), `None` assigns nullptr, an already-pointer NAME
             # passes bare. Other sources stay AST.
-            src_t = analyzer.get_expr_type(e.value)
-            src_t = unwrap_readonly(src_t) if src_t is not None else None
-            if (isinstance(e.value, TpyFieldAccess)
-                    and _field_markers_clean(e.value)
-                    and _field_receiver_ok(e.value, declared, analyzer)
-                    and isinstance(src_t, OptionalType)
-                    and unwrap_readonly(src_t.inner)
-                    == unwrap_readonly(opt_ptr.inner)
-                    and reads_storage_form_optional(analyzer, e.value)):
-                lowered_value: THIRExpr = THIRFormConvert(
-                    result_type=vtu,
-                    value=_lower_field_source(e.value, lc, declared),
-                    form=Form.BORROW, loc=loc)
-            elif isinstance(e.value, TpyNoneLiteral):
-                lowered_value = THIRLiteral(result_type=vtu, value=None,
-                                            form=Form.BORROW, loc=loc)
-            elif (isinstance(e.value, TpyName)
-                  and e.value.name in lc.pointers
-                  and e.value.name not in lc.prescan.global_slots):
-                lowered_value = _lower_expr(e.value, lc, declared)
-            else:
+            lowered_value = _walrus_opt_ptr_source(
+                e.value, vtu, opt_ptr.inner, lc, declared, loc,
+                allow_none=True)
+            if lowered_value is None:
                 note_detail("walrus.opt_ptr_src")
                 raise ThirUnsupported("expr.walrus")
             declared[e.target] = vtu
@@ -8787,6 +8783,165 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         _witness("expr.value_tuple_self_typed")
         return _lower_tuple_literal(e, vt, lc, declared)
     raise ThirUnsupported(expr_kind_tag(e))
+
+
+def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
+                           lc: '_LowerCtx', declared: dict[str, TpyType],
+                           loc, *, allow_none: bool) -> 'THIRExpr | None':
+    """Source rungs shared by the sync and resumable-frame pointer-repr Optional
+    walrus arms: a storage-form Optional FIELD lifts via optional_to_ptr, `None`
+    assigns nullptr, an already-pointer NAME passes bare. Returns None when no
+    rung fits, so each caller raises under its own reject tag.
+
+    `allow_none` is False at the frame arm: sema rejects a walrus reassignment
+    of a non-value resumable local ("not supported yet"), so a `None` source is
+    unconstructible there and admitting it would be unwitnessed."""
+    analyzer = lc.analyzer
+    src_t = analyzer.get_expr_type(value)
+    src_t = unwrap_readonly(src_t) if src_t is not None else None
+    if (isinstance(value, TpyFieldAccess)
+            and _field_markers_clean(value)
+            and _field_receiver_ok(value, declared, analyzer)
+            and isinstance(src_t, OptionalType)
+            and unwrap_readonly(src_t.inner) == unwrap_readonly(inner)
+            and reads_storage_form_optional(analyzer, value)):
+        return THIRFormConvert(
+            result_type=vtu,
+            value=_lower_field_source(value, lc, declared),
+            form=Form.BORROW, loc=loc)
+    if allow_none and isinstance(value, TpyNoneLiteral):
+        return THIRLiteral(result_type=vtu, value=None, form=Form.BORROW,
+                           loc=loc)
+    if (isinstance(value, TpyName)
+            and value.name in lc.pointers
+            and value.name not in lc.prescan.global_slots):
+        return _lower_expr(value, lc, declared)
+    return None
+
+
+def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
+                        declared: dict[str, TpyType], loc) -> THIRExpr:
+    """Walrus whose target is a resumable-frame FIELD (`_gen_frame_named_expr`):
+    write the field, declare nothing.
+
+    The field's C++ form was decided once, by the frame-layout plan, and the
+    `lc` sets below are seeded straight from that plan -- so the dispatch reads
+    them rather than re-deriving a form from the type, and a walrus classified
+    one way but rendered another is impossible by construction. (The AST arm
+    keys the same plan, but through a `pointer_locals` set that merges the
+    alias and Optional-ptr kinds and re-splits them on the value type.)"""
+    analyzer = lc.analyzer
+    cpp_name = escape_cpp_name(e.target)
+    if isinstance(vtu, TupleType) and e.target in lc.prescan.reassigned:
+        # The AST re-types a REASSIGNED tuple target to its unified borrow
+        # form (collapse_tuple_own_elements) before rendering anything;
+        # reject rather than mirror that transform with no witness.
+        note_detail("walrus.frame_tuple_reassign")
+        raise ThirUnsupported("expr.walrus")
+    if e.target in lc.coro_handle_slots:
+        # A concrete coro handle is a frame_slot too, but its writes carry a
+        # factory-call-only admission (and no brace-init spelling: the handle
+        # type has no self-contained C++ name) that only the statement arm
+        # mirrors.
+        note_detail("walrus.frame_coro_handle")
+        raise ThirUnsupported("expr.walrus")
+    if e.target in lc.frame_slots:
+        # An owning `frame_slot<T>` field: emplace destroys any prior payload,
+        # constructs in place and hands back the `T&` the expression evaluates
+        # to (the slot has no operator= by design). The brace-init prefix
+        # spells the WALRUS type, which is what the AST arm's typed_brace_init
+        # reads too (the frame DECL arm instead spells the resolved slot).
+        value = _lower_expr(
+            e.value, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                         tuple_source=isinstance(vtu, TupleType)))
+        declared[e.target] = vtu
+        _witness("expr.walrus_frame_slot")
+        return THIRWalrus(
+            result_type=vtu, name=e.target, cpp_name=cpp_name,
+            value=value, emplace_cpp=lc.render_type(vtu), loc=loc)
+    if e.target in lc.opt_ptr_frame_locals:
+        # Pointer-repr Optional field (`P* m;` -- nullptr doubles as None):
+        # the borrow-form assign, over the source rungs shared with the sync
+        # walrus_opt_ptr arm. CALL sources stay out: an
+        # `Own[T | None]` callee returns a `std::optional<T>` rvalue the AST
+        # assigns to the `T*` field with neither a lift nor storage to
+        # address (BUGS.md), and its borrowing sibling -- which does render
+        # correctly -- has no position that reaches this dispatch today
+        # (condition, while-head, yield and call-arg walruses each reject at
+        # their own site first), so admitting it would be unwitnessed.
+        frame_opt = _optional_ptr_borrow(vtu, analyzer)
+        if frame_opt is None:
+            note_detail("walrus.frame_opt_ptr_type")
+            raise ThirUnsupported("expr.walrus")
+        opt_value = _walrus_opt_ptr_source(
+            e.value, vtu, frame_opt.inner, lc, declared, loc,
+            allow_none=False)
+        if opt_value is None:
+            note_detail("walrus.frame_opt_ptr_src")
+            raise ThirUnsupported("expr.walrus")
+        value = opt_value
+        declared[e.target] = vtu
+        _witness("expr.walrus_frame_opt_ptr")
+        return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                          value=value, loc=loc)
+    if e.target in lc.alias_ptr_locals:
+        # Bare `T*` alias field: point it at the LIVE source lvalue and read
+        # back through the deref tail (`(row = &(rows[i]), *row)`). Only the
+        # proven-lvalue container element is admitted, the alias-bind arm's
+        # guards -- an unproven-Optional / slice / rvalue-container element
+        # would take the address of a dying temporary, and the alias outlives
+        # every suspension.
+        if not (isinstance(e.value, TpySubscript)
+                and not e.value.needs_optional_runtime_check
+                and e.value.slice_function_info is None
+                and not isinstance(e.value.index, TpySlice)
+                and _subscript_container_recv_type(
+                    e.value.obj, declared, analyzer) is not None):
+            note_detail("walrus.frame_alias_src")
+            raise ThirUnsupported("expr.walrus")
+        value = _lower_expr(e.value, lc, declared, subscript_prechecked=True)
+        declared[e.target] = vtu
+        _witness("expr.walrus_frame_alias")
+        return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                          value=value, tail="deref", addr_of=True, loc=loc)
+    if e.target in lc.borrow_tuple_frame_locals:
+        # Borrow-form tuple field (`std::tuple<..., T*> bt;`): the bare assign
+        # with the name tail. Only a BORROWING call source is admitted -- its
+        # C++ return IS the borrow tuple, so nothing needs lifting. A tuple
+        # LITERAL is rejected on purpose: its element renders derive const-ness
+        # from the source while the tuple type comes from the local's borrow
+        # spelling, and over a `readonly` container the two disagree and emit
+        # ill-formed C++ (BUGS.md). A storage-form source would need the
+        # tuple_to_pointer lift.
+        if not (isinstance(e.value, (TpyCall, TpyMethodCall))
+                and _f1_tuple(analyzer.get_expr_type(e.value),
+                              analyzer) is not None
+                and not _own_declared_call_ret(e.value)):
+            note_detail("walrus.frame_btuple_src")
+            raise ThirUnsupported("expr.walrus")
+        value = _lower_expr(e.value, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                         tuple_source=True))
+        declared[e.target] = vtu
+        _witness("expr.walrus_frame_btuple")
+        return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                          value=value, tail="name", loc=loc)
+    if e.target not in lc.plain_frame_fields:
+        # Every family whose write render is NOT the plain member assign
+        # subtracts itself from plain_frame_fields (erased @dynamic handles,
+        # pointer-form loop vars, unpack alias targets); their renders are
+        # not mirrored here, so they must not fall through to it.
+        note_detail("walrus.frame_field_kind")
+        raise ThirUnsupported("expr.walrus")
+    # Plain frame field: the position-blind member assign. The value renders
+    # against the TARGET type (`gen_expr(expr.value, value_type)`), unlike the
+    # frame decl arm's bare gen_expr.
+    value = _lower_expr(e.value, lc, declared, target_type=vtu)
+    declared[e.target] = vtu
+    _witness("expr.walrus_frame_field")
+    return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                      value=value, loc=loc)
 
 
 def _lower_into_any(e: TpyCoerce, lc: '_LowerCtx',
@@ -13877,9 +14032,18 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 return _lower_expr(
                     arm, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-            return _lower_expr(arm, lc, declared,
-                               use=_ExprUse(indirect_read=True),
-                               target_type=rec_t)
+            lowered = _lower_expr(arm, lc, declared,
+                                  use=_ExprUse(indirect_read=True),
+                                  target_type=rec_t)
+            if isinstance(lowered, THIRSelf):
+                # A bare `self` arm is a VALUE position: the C++ ternary needs
+                # `(*this)` for the `Acc&` operand, not the raw `Acc*` --
+                # gen_expr_deref's receiver-pointer deref, the binop-compare
+                # retag. A poly-narrowed `self` never reaches here (its read
+                # lowers to the alias THIRName), matching the AST's
+                # narrowed_vars carve-out.
+                return replace(lowered, deref=lc.self_is_pointer)
+            return lowered
         then = _rec_arm_lower(e.then_expr)
         orelse = _rec_arm_lower(e.else_expr)
         _witness("ifexpr.record")

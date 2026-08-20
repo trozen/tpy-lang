@@ -1534,6 +1534,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.cpp_type is not None:
             state.temps.declare_named(e.cpp_name, e.cpp_type, init=e.init)
         v = _emit_expr(e.value, state)
+        if e.emplace_cpp is not None:
+            # frame_slot<T> write: a bare brace-init needs its type prefix to
+            # bind to emplace's forwarding ref (the AST's typed_brace_init,
+            # shared with the frame-slot statement write).
+            if v.startswith("{"):
+                v = f"{e.emplace_cpp}{v}"
+            return f"{e.cpp_name}.emplace({v})"
         if e.slot_cpp is not None:
             # Reassigned borrow-tuple: the owning slot is allocated once per
             # target (sibling occurrences reuse it, the AST's rebind_slots

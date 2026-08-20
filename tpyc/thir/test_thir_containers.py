@@ -2703,7 +2703,10 @@ class TestContainerFieldIteration:
         assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
         assert isinstance(loop.iterable, THIRFieldAccess)
 
-    def test_optional_container_field_rejects(self):
+    def test_optional_container_field_routes_with_one_unwrap(self):
+        # The NARROWED Optional flavor of the row: it is a separate arm (the
+        # bare-container row is DECLARED-type keyed, so it cannot claim this)
+        # and the read owes exactly one `(*h.xs)` unwrap.
         src = (
             _PRELUDE
             + "from typing import Optional\n"
@@ -2718,7 +2721,11 @@ class TestContainerFieldIteration:
             + "    return acc\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "auto& __obj_0 = (*h.xs);" in cpp
+        assert "(*(*h.xs))" not in cpp
+        assert cpp == self._cpp(src, thir=False)
 
 
 class TestBytesFieldSubscript:

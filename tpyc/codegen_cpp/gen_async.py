@@ -4554,8 +4554,8 @@ class AsyncCoroCodegen:
         otherwise return the (re-evaluable) named expression."""
         # Shares `render_for_iterable` with the sync for-loop: narrowed
         # Optional unwrap + indirect-name deref with one owner per shape.
-        # (A routed body rejects narrowed-optional iterables, so its leaf
-        # render is bare and only needs the value-Optional unwrap.)
+        # (A routed body hands over a BARE leaf for every narrowed-optional
+        # iterable it admits, so this unwrap stays the single owner.)
         leaf = self.ctx.thir_resumable_leaf
         if leaf is not None:
             base_cpp = leaf.render_region_expr(iterable_expr)

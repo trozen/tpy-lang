@@ -292,6 +292,7 @@ from .predicates import (
     _f2_reseat_ok,
     _facts_have_concrete,
     _field_decl_type,
+    _narrowed_opt_container_field,
     _method_member_cpp,
     _field_markers_clean,
     _field_receiver_ok,
@@ -399,6 +400,7 @@ from .checks import (
     _container_lit_elem_ok,
     _assert_narrow_info,
     _borrow_local_binding,
+    _borrow_dunder_source,
     _bytes_aug_concat_ok,
     _class_const_aug_assign_ok,
     _container_aug_setitem_ok,
@@ -407,6 +409,7 @@ from .checks import (
     _container_literal_shape_ok,
     _bytearray_recv,
     _container_setitem_ok,
+    _deref_coerce_borrow_slot,
     _user_record_setitem_ok,
     _func_ref_routable,
     _print_kwarg_token,
@@ -1164,16 +1167,25 @@ def _for_each_container_route(
         it_type = _resolved_viewfam_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
             # Container field (`for x in self.xs:`): the DECLARED field type,
-            # unwrapped like the name arm -- a narrowed Optional[container]
-            # field (the AST's `(*recv.field)` unwrap) stays OptionalType here
-            # and rejects at is_native_iterable. The iterable renders as its
-            # own THIRFieldAccess inside the same lvalue `auto& __obj_N =`
+            # unwrapped like the name arm. The iterable renders as its own
+            # THIRFieldAccess inside the same lvalue `auto& __obj_N =`
             # capture a name takes.
             ft = _field_decl_type(it, declared, analyzer)
             if ft is None:
                 note_detail("foreach.field_family")
                 return None
             it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
+            if (isinstance(it_type, OptionalType)
+                    and _narrowed_opt_container_field(
+                        it, analyzer.get_expr_type(it), declared, analyzer)):
+                # A NARROWED Optional[container] field carries its own
+                # `(*this->d)` unwrap in the read, so begin()/end() come off
+                # the container inside -- the route keys the INNER. This
+                # route must claim the shape: the iter-proto route's field
+                # leg lacks the is_native_iterable exclusion its call
+                # sibling carries, so it would otherwise emit the universal
+                # __iter__ loop where the AST emits begin/end.
+                it_type = unwrap_readonly(it_type.inner)
             container_field = True
             if isinstance(it_type, TypeParamRef):
                 # An open-T FIELD whose bound is NativeIterable/Spannable
@@ -3127,10 +3139,14 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
                 # the deref-flagged render (`(*std::get<1>(p))`).
                 src = replace(src, deref=True)
                 _witness("decl.btuple_elem_alias")
-        elif isinstance(stmt.init, (TpyBinOp, TpyIfExpr)):
+        elif isinstance(stmt.init, (TpyBinOp, TpyUnaryOp, TpyIfExpr)):
             # A container and/or select (`x = a or b`) or ternary
             # (`x = a if c else b`) of lvalues: the lowered ternary IS the
-            # aliased lvalue -- the `T&` binds it directly.
+            # aliased lvalue -- the `T&` binds it directly. A borrow-returning
+            # operator dunder (`c = a + b`, `c = -a`) binds the same way: the
+            # friend shim's `[const] T&` return already IS the operand lvalue.
+            if _borrow_dunder_source(stmt.init, lc.analyzer):
+                _witness("decl.dunder_borrow_alias")
             src = _lower_expr(stmt.init, lc, declared)
         elif isinstance(stmt.init, TpyName):
             # A pointer-local source aliases through the deref
@@ -3139,12 +3155,31 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             # always yields a THIRName here, so the helper never misses.
             src = _lower_ptr_name_src(stmt.init, lc, declared)
             assert src is not None
+        elif isinstance(stmt.init, TpyCoerce):
+            # The deref auto-coercion the gate admitted (`p2: Point = ptr`):
+            # `::tpy::deref_check(ptr)` is itself the aliased lvalue, so the
+            # `T&` binds it directly -- no address-of, no field build.
+            _witness("decl.deref_coerce_alias")
+            src = _lower_expr(stmt.init, lc, declared)
         else:
             src = _lower_field_source(stmt.init, lc, declared)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
+    if binding is LocalBinding.POINTER and isinstance(stmt.init, TpyCoerce):
+        # The reassigned sibling: the deref_check lvalue is reseatable, so the
+        # decl takes its address (`Point* copy = &(::tpy::deref_check(ptr));`)
+        # -- the container-element rung's PTR_ADDR emit over the coerce render.
+        needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
+        if needs_rebind:
+            lc.rebind_slot_locals.add(stmt.name)
+        _witness("decl.deref_coerce_addr")
+        return THIRPtrLocalDecl(
+            name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
+            init=_lower_expr(stmt.init, lc, declared),
+            cpp_type=lc.render_type(vtype), needs_rebind_slot=needs_rebind,
+            is_const=is_const, loc=loc)
     if binding is LocalBinding.POINTER and isinstance(stmt.init, TpyName):
         # A reassigned bare record-name alias: `[const] T* x = &(a);`. The bare
         # name renders as a plain lvalue; the THIRFormConvert emits the `&(...)`.
@@ -7773,6 +7808,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         stmt.init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
                     loc=loc)
+            elif (_borrow_dunder_source(stmt.init, analyzer)
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      analyzer.get_expr_type(stmt.init) or vtype)))
+                  == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      declared[stmt.name])))):
+                # The OPERATOR flavor of that row (`c = a + b;` / `c = -b;` ->
+                # `c = &(((a) + (b)));`): a borrow-returning dunder's friend
+                # shim hands back an operand's `[const] T&`, so the address-of
+                # is of live storage, not a temp. The reseat twin of
+                # `decl.dunder_borrow_alias`. Value-returning dunders are
+                # `is_rvalue_source`-True and were already claimed by the
+                # BRANCH_RVALUE / rebind-slot rungs above.
+                _witness("reseat.dunder_borrow")
+                return THIRPtrLocalRebind(
+                    name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                    value=_lower_expr(stmt.init, lc, declared), loc=loc)
             elif (isinstance(stmt.init, TpySubscript)
                   and stmt.init.slice_function_info is None
                   and not isinstance(stmt.init.index, TpySlice)
@@ -7799,6 +7850,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         stmt.init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER)),
                     loc=loc)
+            elif _deref_coerce_borrow_slot(stmt.init, declared.get(stmt.name),
+                                           declared, analyzer):
+                # A deref auto-coercion reseat (`copy = ptr2;` ->
+                # `copy = &(::tpy::deref_check(ptr2));`): the deref_check
+                # result is an lvalue, so the same PTR_ADDR address-of the
+                # decl rung applies -- the reseat twin of
+                # `decl.deref_coerce_addr`.
+                _witness("reseat.deref_coerce")
+                return THIRPtrLocalRebind(
+                    name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                    value=_lower_expr(stmt.init, lc, declared), loc=loc)
             elif (isinstance(stmt.init, TpyIfExpr)
                   and all(isinstance(arm, (TpyCall, TpyMethodCall))
                           and call_returns_cpp_ref(
@@ -10317,6 +10379,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                   and _container_record_elem_subscript(
                       stmt.value, declared, analyzer)):
                 record_ok = bool(_witness("ret.record_subscript"))
+            elif (lc.prescan.ret_record_borrow is not None
+                  and isinstance(stmt.value, TpyIfExpr)):
+                # `return self if self.n >= o.n else o` at a `T&` borrow
+                # slot: a same-type lvalue ternary is itself a C++ lvalue,
+                # so it returns bare through the generic tail. Admission is
+                # shape-shallow like `ret.record_methodcall` -- the arm
+                # shapes are the `ifexpr.record` gate's own business, and it
+                # rejects the prvalue-arm flavors (a ctor / by-value call)
+                # that no borrow return could bind.
+                record_ok = bool(_witness("ret.record_ifexpr"))
             elif (isinstance(stmt.value, TpyName)
                   and stmt.value.name in lc.pointers
                   and stmt.value.name not in narrowed
@@ -10374,6 +10446,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         use=_ExprUse(result=_ExprResultUse.RECEIVER,
                                      borrow_ret_passthrough=True)),
                     loc=loc)
+            elif (lc.prescan.ret_record_borrow is not None
+                  and _deref_coerce_borrow_slot(
+                      stmt.value, lc.prescan.ret_record_borrow,
+                      declared, analyzer)):
+                # `return ptr` at a record borrow slot with `ptr: Ptr[Point]`
+                # -- the deref auto-coercion's INLINE flavor
+                # (`return ::tpy::deref_check(ptr);`). Same gate as the ARG
+                # position's twin, so the two cannot drift; the null check is
+                # the coercion's own render, not something this arm adds.
+                # The record-wrapper `__deref__()` flavor hoists a slot-typed
+                # VALUE copy at the arg position and has no return-slot render,
+                # so it keeps rejecting here.
+                record_ok = bool(_witness("ret.record_deref_coerce"))
             elif (isinstance(stmt.value, TpyName)
                   and stmt.value.name != "self"
                   and stmt.value.name not in narrowed

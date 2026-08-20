@@ -1445,6 +1445,22 @@ def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
             or _alias_ref_container(target_type))
 
 
+def _borrow_dunder_source(init: TpyExpr, analyzer) -> bool:
+    """An operator expression resolved to a BORROW-returning record dunder
+    (`a + b` off `__add__(self, o) -> Acc`, `-a` off `__neg__`), i.e. one whose
+    C++ friend shim returns `[const] T&` and therefore hands out an alias of an
+    operand. This is the operator flavor of the borrow-returning call source:
+    `is_rvalue_source` already follows the dunder's return convention, so the
+    classifier hands back REF_ALIAS -- the gate only has to say the operand
+    render is one the borrow-decl arm can bind. An `Own[T]`-returning dunder is
+    a fresh value and never reaches here (rvalue -> OTHER/REBIND_SLOT)."""
+    if isinstance(init, TpyBinOp) and init.resolved_binop is not None:
+        return call_returns_cpp_ref(analyzer, init.resolved_binop.method)
+    if isinstance(init, TpyUnaryOp) and init.resolved_unaryop is not None:
+        return call_returns_cpp_ref(analyzer, init.resolved_unaryop.method)
+    return False
+
+
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
                           analyzer,
@@ -1692,12 +1708,19 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # emplaced `__logical_slot` pointer-select, still an lvalue), so
         # it binds as the single-assignment `T&` alias. Operand shapes
         # gate inside the select / ternary lowering.
+        #
+        # A borrow-returning operator dunder (`c = a + b`, `c = -a`) joins the
+        # same row: its friend shim returns `[const] Acc&`, so the result IS an
+        # operand's lvalue and the alias binds the operator render directly
+        # (`const Acc& c = ((a) + (b));`). The `[const]` comes from
+        # `_f1_is_const`'s dunder arms, mirroring `_is_const_indirect`.
         if (binding is LocalBinding.REF_ALIAS
                 and (_alias_ref_container(target_type)
                      or _f1_record(target_type, analyzer))
                 and ((isinstance(stmt.init, TpyBinOp)
                       and stmt.init.op in ("&&", "||"))
-                     or isinstance(stmt.init, TpyIfExpr))):
+                     or isinstance(stmt.init, TpyIfExpr)
+                     or _borrow_dunder_source(stmt.init, analyzer))):
             return binding
         # The reassigned POINTER sibling of the bare-name alias: a plain record
         # NAME source lifts to a reseatable `[const] T* x = &(a);` (later
@@ -1710,6 +1733,19 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and (stmt.init.name in declared
                      or stmt.init.name in prescan.param_names)
                 and _f1_record(target_type, analyzer)):
+            return binding
+        # `p2: Point = ptr` off a `Ptr[Point]` binding -- the deref
+        # auto-coercion's INLINE flavor as a borrow-local SOURCE. The
+        # deref_check lvalue binds the single-assignment alias
+        # (`Point& p2 = ::tpy::deref_check(ptr);`) or, reassigned, the
+        # reseatable `Point* copy = &(::tpy::deref_check(ptr));`; both are the
+        # same rows the container-element subscript source takes. Shares
+        # `_deref_coerce_arg` with the ARG position so the key cannot drift;
+        # the record-wrapper `__deref__()` flavor has no borrow-slot render
+        # (it hoists a VALUE copy) and stays rejected.
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
+                and _deref_coerce_borrow_slot(stmt.init, target_type,
+                                              declared, analyzer)):
             return binding
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
@@ -5766,6 +5802,32 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
     if isinstance(actual, NominalType) and actual.is_user_record:
         return "temp", slot
     return None
+
+
+def _deref_coerce_borrow_slot(a: TpyExpr, slot: 'TpyType | None',
+                              locals_: dict[str, TpyType], analyzer) -> bool:
+    """`_deref_coerce_arg`'s INLINE flavor at a BORROW-form slot that binds the
+    `deref_check` lvalue by reference -- a record borrow RETURN or a borrow
+    local's decl/reseat. The wrapper `__deref__()` flavor has no such render
+    (it hoists a slot-typed VALUE copy) and stays out.
+
+    A `Ptr[readonly[T]]` source at a NON-readonly slot is excluded: the deref
+    yields `const T&` while the slot spells `T&`, which the AST emits anyway --
+    ill-formed C++ ("binding reference of type 'T&' to 'const T' discards
+    qualifiers", verified with g++ at both slots). Const-ness is decided on the
+    coerce node itself, so the pair is read there rather than re-derived from
+    the return type / local binding."""
+    dc = _deref_coerce_arg(a, slot, locals_, analyzer)
+    if dc is None or dc[0] != "inline":
+        return False
+    assert isinstance(a, TpyCoerce)
+    # Same normalization the sibling applies before its PtrType test, so a
+    # wrapped source cannot turn the `.pointee` read into an AttributeError
+    # (which would escape the per-body fallback boundary as a crash).
+    actual = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.actual_type)))
+    if isinstance(actual, PtrType) and isinstance(actual.pointee, ReadonlyType):
+        return isinstance(a.expected_type, ReadonlyType)
+    return True
 
 
 def _iter_rvalue_structural_arg(a: TpyExpr, proto,

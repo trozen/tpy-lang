@@ -7,7 +7,8 @@ AST render is NOT the plain copy (rebound targets, borrow returns)."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
+                       _compile, _entry)
 
 
 def _gen_thir(source: str):
@@ -361,9 +362,10 @@ class TestRecordBinopDecl:
         assert faces.get("decl.rvalue_storage_call", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_borrow_returning_dunder_binop_stays_ast(self):
-        # A dunder returning `Acc&` ALIASES an operand: the AST decls
-        # `const Acc& c = ((a) + (b));`, not the plain value copy.
+    def test_borrow_returning_dunder_binop_binds_alias(self):
+        # A dunder returning `Acc&` ALIASES an operand, so the decl is the
+        # `const Acc&` bind, not the plain value copy this class otherwise
+        # pins. (Was a boundary pin until the borrow-dunder decl row landed.)
         src = (
             "from tpy import Int32\n"
             "class Acc:\n"
@@ -379,10 +381,11 @@ class TestRecordBinopDecl:
             "    print(c.n)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        out, faces, fallback = _gen_thir(src)
+        assert fallback == {}, fallback
         assert "const Acc& c = ((a) + (b));" in out
-        _assert_byte_identical(src)
+        assert faces.get("decl.dunder_borrow_alias", 0) >= 1
+        _assert_routes_byte_identical(src)
 
 
 class TestUnionNarrowBindingVerdict:

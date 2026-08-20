@@ -165,10 +165,11 @@ class TestOwnOptContainerChain:
         assert init.form is Form.STORAGE and not init.move
         _assert_byte_identical(src)
 
-    def test_opt_container_mil_literal_still_defers(self):
+    def test_opt_container_mil_literal_takes_its_own_row(self):
         # A container LITERAL at the same slot is neither a move source nor a
-        # borrow pointer -- its own render stays unwitnessed, so the ctor
-        # keeps deferring.
+        # borrow pointer: it has a row of its own that threads the Optional's
+        # INNER and prefixes the container spelling (an Optional target cannot
+        # deduce a bare brace-init), so it must NOT arrive as a FormConvert.
         src = _HDR + (
             "class Buf:\n"
             "    items: list[Int32] | None\n"
@@ -178,7 +179,11 @@ class TestOwnOptContainerChain:
             "    b = Buf()\n"
             "    print(b.items is None)\n"
         )
-        assert _lower_ctor(src, "Buf") is None
+        ctor = _lower_ctor(src, "Buf")
+        assert [mi.field_cpp for mi in ctor.mil_inits] == ["items"]
+        init = ctor.mil_inits[0].value
+        assert not isinstance(init, THIRFormConvert)
+        assert init.typed_brace_cpp == "std::vector<int32_t>"
         _assert_byte_identical(src)
 
     def test_still_live_ctor_arg_still_defers(self):

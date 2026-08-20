@@ -1,0 +1,25 @@
+free_call 0 1
+user_ctor 1
+generic_ctor 0 1
+free_type_param 0 1
+free_generator 9 6
+method_generator 9 6
+protocol_union 0 2
+narrow_int False True
+narrow_float 0.0 1.0
+fixed_array 0 9
+nested_list 0 1
+same_width_int 0 1
+same_width_float 0.0 1.0
+empty_literal 4
+repeat_literal 0
+dict_literal 2
+set_literal 3
+and_rhs False True
+or_rhs True True
+ternary_then 0 1
+ternary_else 0 1
+chained False True
+relocated_decl 0 2
+side_effect_skipped 0 0
+side_effect_taken 1 1

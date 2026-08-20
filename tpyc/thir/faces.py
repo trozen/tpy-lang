@@ -71,6 +71,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `auto __tmp_N = ::tpy::Range<...>(..);`
     "arg.deref_coerce_inline",      # Ptr[T] deref coercion at a record slot
                                     # -> inline `::tpy::deref_check(p)`
+    "decl.deref_coerce_alias",      # the same coercion at a borrow local ->
+                                    # `Point& p2 = ::tpy::deref_check(ptr);`
+    "decl.deref_coerce_addr",       # ... reassigned, so pointer-bound ->
+                                    # `Point* copy = &(deref_check(ptr));`
+    "reseat.deref_coerce",          # ... and its reseat -> `copy =
+                                    # &(::tpy::deref_check(ptr2));`
     "move.opt_own_last_use",        # record name moved bare into an
                                     # Optional[Own[T]] slot (converting ctor)
     "move.own_opt_last_use",        # ... and the reverse-nesting twin: the
@@ -781,6 +787,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare-copied from a same-typed opt param
     "mil.optview_shim",             # value-repr Optional[str/bytes] field <-
                                     # borrow optional<view> param (arg-split shim)
+    "mil.optional_container_literal",  # `lst(std::vector<int32_t>{1, 2, 3})` --
+                                    # a container literal into a value-repr
+                                    # Optional[container] field (inner-threaded)
+    "mil.optional_str_literal",     # `s("xy")` -- a str literal into a
+                                    # value-repr Optional[str] field
     "mil.optional_ptr_lift",        # `f(::tpy::ptr_to_optional(p))` -- a borrow
                                     # `T*` source into a pointer-repr Optional
                                     # field, inner-agnostic
@@ -1031,6 +1042,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_storage",
     "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
+    "ret.record_deref_coerce",      # `return ptr` (Ptr[T] local/param) at the
+                                    # borrow return -> `deref_check(ptr)`
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.record_field",             # `return recv.field` at the borrow slot
     "ret.record_subscript",         # `return c[i]` -- container record element
@@ -1172,6 +1185,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # bare member read is what begin()/end() are taken off
     # (`(__self.nodes).begin()`). The sync for-head has its own arm.
     "field.container_iterable",
+    # The NARROWED `Optional[container]` flavor of the row above
+    # (`if self.d is not None: for k in self.d:` -> `(*this->d)`): the same
+    # bare read, carrying the narrowed-Optional unwrap.
+    "field.narrowed_opt_container_iterable",
     # A stored-awaitable F1-record field at the BORROWED suspend operand
     # (`await self.evt` -> `__sub_0 = &(__self.evt);`): the bare member
     # read; the skeleton owns the `&(..)` wrap.
@@ -1519,6 +1536,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.record_borrow_call",
     "decl.container_borrow_call",   # borrow container return binds the T&
                                     # alias (the record row's container twin)
+    "decl.dunder_borrow_alias",     # the operator flavor: a borrow-returning
+                                    # `__add__`/`__neg__` result binds the
+                                    # alias -- `const Acc& c = ((a) + (b));`
+    "ret.record_ifexpr",            # lvalue ternary at a record BORROW return
+                                    # -> `return ((c) ? ((*this)) : (o));`
     # Open-T local from a T-returning call in a generic body (lowering;
     # the `::tpy::val_or_ref_t<T> item = box.get();` form-neutral bind).
     "decl.tparam_call",
@@ -1844,6 +1866,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.param_name",            # `x = b;` over a record param's T& lvalue
     "reseat.borrow_call",           # `x = pick(s);` -> `x = &(pick(s));`
     "reseat.subscript_elem",        # `p = xs[i];` -> `p = &(__getitem__(...));`
+    "reseat.dunder_borrow",         # `c = a + b;` -> `c = &(((a) + (b)));`,
+                                    # the operator flavor of reseat.borrow_call
     "print.hoisted_container_arg",  # ListPrinter((*items)) over a hoisted ptr
     # Raise statements (lowering).
     "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
@@ -2323,6 +2347,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)
     "res.for_narrowed_opt_src",     # narrowed value-opt iterable, bare leaf (skeleton unwraps)
+    # Same, for a narrowed Optional FIELD iterable: the leaf hands over the
+    # member read with its own narrowed unwrap stripped.
+    "res.for_narrowed_opt_field_src",
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
     "res.yield_record_borrow",      # record yield of a routed loop-var name
@@ -2488,6 +2515,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # desugared unpack alias) into the slot
     "top_level.import_init",
     "top_level.final_skip",
+    # Walrus whose target is a resumable-frame FIELD -- one row per
+    # frame-layout verdict (lowering; the write renders, nothing declares).
+    "expr.walrus_frame_slot",       # owning slot: `xs.emplace(v)`
+    "expr.walrus_frame_opt_ptr",    # `T*` Optional field: `(m = v)`, with
+                                    # the optional_to_ptr lift on a field src
+    "expr.walrus_frame_alias",      # `T*` alias field: `(row = &(v), *row)`
+    "expr.walrus_frame_btuple",     # borrow tuple field: `(bt = v, bt)`
+    "expr.walrus_frame_field",      # plain field: `(n = v)`
 })
 
 

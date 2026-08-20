@@ -57,17 +57,26 @@ def main():
     gen(src, base / "ast", thir=False)
     print(f"fallback: {fallback}")
     ok = True
+    cmp = 0
     for f in sorted((base / "ast").rglob("*.[ch]pp")):
         rel = f.relative_to(base / "ast")
         tf = base / "thir" / rel
         a = f.read_text().splitlines()
         b = tf.read_text().splitlines()
+        cmp += 1
         if a != b:
             ok = False
             print(f"DIVERGES: {rel}")
             for line in difflib.unified_diff(a, b, "ast", "thir",
                                              lineterm="", n=1):
                 print(line)
+    # `cmp` guards the vacuous green: a path-mapping slip that finds no
+    # counterpart file skips silently and would otherwise print IDENTICAL
+    # having compared nothing.
+    print(f"cmp={cmp}")
+    if cmp == 0:
+        print("VACUOUS -- compared zero files")
+        return
     print("IDENTICAL" if ok else "DIVERGENT")
 
 

@@ -46,6 +46,7 @@ from ..nodes import (
     THIRAssign,
     THIRCoroHandleMove,
     THIRExpr,
+    THIRFieldAccess,
     THIRFrameSlotWrite,
     THIRNoOpStmt,
     THIRIfExpr,
@@ -141,6 +142,7 @@ from .predicates import (
     _f1_record,
     _f1_tuple,
     _generic_value_tuple_return,
+    _narrowed_opt_field_read,
     _optional_ptr_borrow,
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
@@ -674,6 +676,14 @@ def _for_iterable_narrowed_optional(iterable, declared, analyzer) -> bool:
     render does not reproduce. Detect the frame-field case (declared storage
     is Optional, sema type narrowed non-Optional) and reject -- a named
     rung."""
+    if isinstance(iterable, TpyFieldAccess):
+        # A narrowed Optional FIELD gets the same treatment: on the routed
+        # path the skeleton calls `_maybe_unwrap_narrowed_optional` directly,
+        # and that helper (unlike `render_for_iterable`, which short-circuits
+        # fields and is only reached with no THIR leaf) DOES wrap a field --
+        # so the leaf must hand over the un-derefed member read.
+        return _narrowed_opt_field_read(
+            iterable, analyzer.get_expr_type(iterable), declared, analyzer)
     if not isinstance(iterable, TpyName):
         return False
     dt = declared.get(iterable.name)
@@ -722,11 +732,18 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
     if _for_iterable_narrowed_optional(it, declared, analyzer):
         # The begin_end skeleton owns the narrowed value-Optional unwrap
         # (`_maybe_unwrap_narrowed_optional` over the leaf render), so the
-        # leaf supplies the BARE name -- a deref'd leaf would double-deref.
-        if not (isinstance(lowered_it, THIRName) and lowered_it.deref):
+        # leaf supplies the BARE name/member -- a deref'd leaf would
+        # double-deref.
+        if isinstance(lowered_it, THIRFieldAccess):
+            if not lowered_it.narrowed_deref:
+                raise ThirUnsupported("res.for_narrowed_optional")
+            _witness("res.for_narrowed_opt_field_src")
+            lowered_it = replace(lowered_it, narrowed_deref=False)
+        elif isinstance(lowered_it, THIRName) and lowered_it.deref:
+            _witness("res.for_narrowed_opt_src")
+            lowered_it = replace(lowered_it, deref=False)
+        else:
             raise ThirUnsupported("res.for_narrowed_optional")
-        _witness("res.for_narrowed_opt_src")
-        lowered_it = replace(lowered_it, deref=False)
     region_exprs[id(it)] = lowered_it
 
 

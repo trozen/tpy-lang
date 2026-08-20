@@ -6534,6 +6534,20 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         if (fi is not None and fi.is_readonly
                 and call_returns_cpp_ref(analyzer, fi)):
             return True
+    # Operator dispatch mirrors that arm: a readonly dunder's borrow return is
+    # const-projected on the friend shim, so `c = a + b` / `c = -a` bind
+    # `const T&`. Keyed on the RAW `fi.is_readonly` like `_is_const_indirect`
+    # -- readonly-ness here is usually INFERRED, so it never shows up as a
+    # ReadonlyType on the init and the raw-sema branches above miss it.
+    if isinstance(stmt.init, TpyBinOp) and stmt.init.resolved_binop is not None:
+        fi = stmt.init.resolved_binop.method
+        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+            return True
+    if (isinstance(stmt.init, TpyUnaryOp)
+            and stmt.init.resolved_unaryop is not None):
+        fi = stmt.init.resolved_unaryop.method
+        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+            return True
     # A subscript / method call on a const-rooted receiver binds const even
     # when sema resolved the MUTABLE twin (the enclosing method's
     # readonly-ness is INFERRED post body-analysis, so fi.is_readonly above
@@ -7076,6 +7090,29 @@ def _narrowed_opt_field_read(e: TpyFieldAccess, rtype: 'TpyType | None',
     return fdt is not None and isinstance(
         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt))),
         OptionalType)
+
+def _narrowed_opt_container_field(e: TpyExpr, rtype: 'TpyType | None',
+                                  locals_: dict[str, TpyType],
+                                  analyzer) -> bool:
+    """A sema-NARROWED `Optional[list/dict/set]` field read: the AST unwraps
+    it (`(*this->d)`) and takes begin()/end() off the container inside, so
+    the for-head's container route claims it and the bare-container row's
+    DECLARED-type key deliberately does not.
+
+    Narrowing is keyed on `_narrowed_opt_field_read` -- the AST mirror --
+    and NOT re-derived here: `_field_decl_type` is munged (it unwraps an
+    Optional/readonly RECEIVER and resolves inherited fields) where the
+    AST's `is_narrowed_optional_field` keys the raw declared type, and a
+    past attempt to add a receiver rule to that predicate de-routed a real
+    case. `_field_decl_type` decides only the container FAMILY of the
+    Optional's inner."""
+    if not (isinstance(e, TpyFieldAccess)
+            and _narrowed_opt_field_read(e, rtype, locals_, analyzer)):
+        return False
+    fdt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        _field_decl_type(e, locals_, analyzer))))
+    return (isinstance(fdt, OptionalType)
+            and _plain_container_read(fdt.inner))
 
 def _nonvalue_container_ret(ret: TpyType | None) -> bool:
     """A non-value builtin-container call return (`list`/`dict`/`set`) admitted

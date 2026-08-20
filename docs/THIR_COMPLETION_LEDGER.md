@@ -11580,3 +11580,124 @@ behavior already known to be wrong -- the shape can only route after the AST
 oracle is fixed. No corpus case held the shape (dial unchanged). Pinned per face
 in `tpyc/thir/test_thir_shortcircuit_argtemp.py`, each with an inverse routing
 pin at a flushable position; deleting the fence turns nine of them into errors.
+
+**CORRECTION (2026-08-19): the stated reason above no longer holds.** The AST
+oracle was fixed by `143d7f1dc`, which defers a conditional-operand temp into
+the operand it belongs to -- so the hoist no longer sits outside the short
+circuit and the evaluation-order divergence it cited is closed for `and`/`or`,
+both ternary arms, and the chained comparison. The fence may still be wanted,
+but it now needs a different justification: the AST splits per create-site and
+per type, keeping a NON-MOVABLE payload and every `create_typed` face eager
+while deferring the movable ones, so only the eager slice is an ordinary
+byte-identical mirror. The deferred slice needs a render THIR does not have.
+
+### Orchestrated flip wave 4: six lowering cells + an AST fix, 7 flips (2026-08-19)
+
+Dial **3619/3737 -> 3627/3739**, corpus markers 118 -> 112, interop 32/34 (2
+markers). Thirteen commits, full suite green with FULL exec (12110
+passed, 23 skipped, 3738 built+run; 12107 passed / 26 skipped comp-only),
+move-verdicts 0 divergences over 927 joined nodes, binding-facts 0 gaps over
+11475 joined bodies.
+
+**Read the dial delta precisely.** Migrated moved +8, but that is SEVEN corpus
+flips PLUS one NEW case added unmarked that routes clean
+(`control_flow/ternary_self_arm`). Marker math: 118 - 7 flips + 1 new MARKED
+case (`operators/short_circuit_brace_arg`) = 112. The interop flip
+(`tests/interop/dunder_identity`) is tallied separately and is NOT inside the
+3627. The figure in this very entry was nearly hand-copied from memory;
+re-measuring changed it and corrected a "+8 flips" claim into "7 flips + 1 new
+clean case".
+
+Flips: `operators/coercion_unified` + `pointers/ptr_to_value_coercion` (the
+`Ptr[T]` -> record deref-coerce at the decl and return borrow slots) /
+`operators/op_borrow_return_alias` + `operators/op_readonly_borrow_return` +
+`tests/interop/dunder_identity` (borrow-dunder alias decl + lvalue ternary
+borrow return, with a `_f1_is_const` companion fix adding the TpyBinOp /
+TpyUnaryOp arms) / `operators/op_borrow_branch_hoist` (reseat a hoisted pointer
+over a borrow-dunder render) / `optional/opt_field_iter_narrow` +
+`generators/gen_readonly_param_iter` (the `Optional[container]` field at its
+narrowed READ and its ctor member-init-list WRITE, five rows).
+
+**TWO CELLS FLIPPED NOTHING AND ARE STILL THE WAVE'S LARGEST GAINS.** The
+record-ternary `self`-arm deref shipped no flip because the shape ALREADY
+ROUTED -- and emitted `this` where the AST emits `((*this))`, i.e.
+uncompilable C++ from a routed body with NO corpus witness. And the resumable
+frame-field walrus row -- a five-way dispatch on the frame-layout PLAN kind
+plus a new `THIRWalrus.emplace_cpp` field and emit mode -- routed **+11
+resumable bodies** (`gen_walrus_frame_shapes` 0/10 -> 8/10,
+`async_walrus_frame_shapes` 2/6 -> 5/6) with zero flips: both witness cases
+also block at a free-call argument terminal (`call.native_arg.other` /
+`call.arg_shape.optional`), which no walrus rung can clear.
+
+**AN AST REGRESSION WAS FOUND AND FIXED MID-WAVE.** A deferred
+conditional-operand temp banked `__tmp.emplace({1, 2, 3})`, which is ill-formed
+because `emplace` deduces `initializer_list` independently of the container's
+element type. Regression from the conditional-operand temp deferral already on
+master. Repaired at the chokepoint (`TempState._register`, new `_as_expression`
+helper) rather than at the symptom site, with zero snapshot churn;
+`operators/short_circuit_brace_arg` is its regression guard (added marked --
+it does not route).
+
+The `Ptr[T]` cell landed a deliberate FENCE beside its rows: a
+`Ptr[readonly[T]]` source at a MUTABLE slot, where the AST itself emits
+ill-formed C++. Filed, not mirrored, per the AST-first rule.
+
+Also in the wave: seven stale pins/comments converted (each had kept passing
+for a reason a row had removed), and `dualgen.py` hardened to refuse a vacuous
+`IDENTICAL` -- it now prints `cmp=N` and errors when it compared zero files.
+
+**EVERY ONE OF THE SIX CELLS PRODUCED A CORRECTNESS FINDING, AND NOT ONE CAME
+FROM THE CORPUS, THE BYTE-DIFF, THE RATCHET, OR A GREEN SUITE.** All six came
+from adversarial dualgen / boundary probes aimed at the gate being widened. The
+`self`-arm defect is the sharpest instance: a routed body emitting uncompilable
+C++ that no instrument in the standing set can see, because no case holds the
+shape. Probe the gate you are widening; the suite only covers what the corpus
+already contains.
+
+**TWO SUPPOSEDLY-DEAD LEGS WERE SETTLED BY BUILDING A DISCRIMINATOR, one in
+each direction.** In the first, a scout's stub had read as "no effect" for a
+STRUCTURAL reason -- the plain tail was gated on a set the leg's own targets
+were subtracted from, so ablating the leg could not move anything, and the leg
+was real. In the second, three discriminating shapes were built and none
+reached the arm, so the leg was correctly dropped. "Try hard to build a
+discriminator before dropping a dead leg" paid twice in one wave, and the two
+payoffs pointed opposite ways.
+
+**A REVIEWER'S CAUSAL CLAIM WAS REFUTED BY ABLATION.** codegen-correctness
+reported that the `Optional[container]` cell INTRODUCED the compare-operand
+divergence (`this->lst` vs `(*this->lst)`). Ablating the new read row left the
+divergence unchanged, proving it pre-existing; the filed BUGS entry stands as
+written and the cell needed no change. One ablation run settled what two agents
+disagreed about.
+
+**RANK BY ABLATION, NEVER BY CENSUS COUNT -- again.** The census's "sole-site"
+label was wrong for 2 of 3 candidates this wave, and a recorded "~10-case
+cluster" measured as THREE cases, all dead. This is the third consecutive wave
+in which census-derived rankings misdirected the opening move.
+
+**THE PAYING UNIT OF WORK IS NOW THE SITE PAIR, NOT THE SITE.** 69 of the 118
+blocked cases reject at exactly TWO sites. Ranking single sites by touch-count
+is therefore the wrong instrument at this stage: the modal blocked case needs
+two rows in different files, neither of which flips anything alone. Select
+pairs, and price both halves before opening a cell.
+
+Seven defects filed (`BUGS.md`), one pointer each:
+- A `Ptr[readonly[T]]` source at a NON-readonly record slot emits an ill-formed
+  bind at both the local-decl and the return position (AST-side; THIR fences).
+- A container LITERAL at a union param builds the ptr-variant from the
+  literal's own expression type instead of the union member's.
+- THIR's method-call argument lowering lacks the TypeParamRef temp-hoist its
+  free-call sibling has (latent divergence, no case covers the site).
+- An `IntN(0)` constructor call loses its cast when it is a ternary arm
+  (latent, `-Werror=conversion` only).
+- `match self:` emits an ill-formed match subject -- a non-const reference
+  bound to a pointer rvalue, then a `dynamic_cast` of a `Pet**`.
+- A WALRUS iterable in a RESUMABLE `for` head is rendered TWICE: the side
+  effect runs twice and `begin()` points into destroyed storage (silent UB).
+- A NARROWED `Optional[container]` field at an EQUALITY operand loses its
+  unwrap on the THIR path (latent divergence; the ablation above).
+
+The pre-existing record-rvalue/mutated-method-param entry also gained a
+container-literal witness (`bx.take([1, 2, 3])`), which needs no short circuit
+or other context -- so its fix must cover literal args, not just record
+rvalues.

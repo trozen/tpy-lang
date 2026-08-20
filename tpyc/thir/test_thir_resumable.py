@@ -5976,10 +5976,11 @@ class TestResumableContainerFieldForHead:
         assert witnesses.get("field.container_iterable", 0) == 1
         assert not any(k.startswith("resumable:") for k in fallback)
 
-    def test_narrowed_optional_container_field_still_defers(self):
-        # BOUNDARY: a NARROWED `Optional[list]` field types as a plain
-        # container on the EXPR but the AST unwraps that read, so the arm
-        # keys on the DECLARED type and this must keep falling back.
+    def test_narrowed_optional_container_field_routes(self):
+        # A NARROWED `Optional[list]` field types as a plain container on the
+        # EXPR while the DECLARED type stays Optional, so it is a row of its
+        # own beside the bare-container one above. The skeleton owns the
+        # unwrap, so the leaf hands over the member read stripped of it.
         src = ("from typing import Iterator, Optional\n"
                "from tpy import Int32\n"
                "class H:\n"
@@ -5990,7 +5991,11 @@ class TestResumableContainerFieldForHead:
                "        if self.xs is not None:\n"
                "            for x in self.xs:\n                yield x\n"
                "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.for_narrowed_opt_field_src", 0) == 1
+        assert witnesses.get("field.narrowed_opt_container_iterable", 0) == 1
+        assert not witnesses.get("field.container_iterable")
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestResumableLeafFinally:
@@ -7440,14 +7445,14 @@ class TestValueOptFrameShapes:
         _assert_identical(src)
 
 
-class TestFrameFieldWalrusFence:
-    """A walrus whose target is a resumable FRAME FIELD must reject.
+class TestFrameFieldWalrus:
+    """A walrus whose target is a resumable FRAME FIELD writes the field and
+    declares nothing -- one row per frame-layout verdict.
 
     The AST used to pre-declare a case-block local in front of the field and
-    write the shadow, so THIR's sync walrus rungs happened to byte-match. Now
-    that the AST writes the field, those rungs are wrong for a frame target and
-    the arm fences instead -- the frame-field write families are their own
-    porting row. Without the fence THIR would re-emit the shadow.
+    write the shadow (a wrong-code bug, fixed): every rung of the SYNC walrus
+    ladder pre-declares, so a frame target needs its own dispatch, keyed off
+    the same layout plan the frame struct is spelled from.
     """
 
     _MAIN = ("\ndef main() -> None:\n"
@@ -7455,6 +7460,11 @@ class TestFrameFieldWalrusFence:
              "        u[:] = []\nmain()\n")
 
     _PRE = "from typing import Iterator\nfrom tpy import Int32\n\n"
+
+    _NODE = ("class Node:\n"
+             "    v: Int32\n"
+             "    def __init__(self, v: Int32) -> None:\n"
+             "        self.v = v\n\n")
 
     def _frame_src(self, walrus_stmt: str) -> str:
         # The loop-body-local yield is what forces a resumable frame; the
@@ -7469,11 +7479,180 @@ class TestFrameFieldWalrusFence:
                 + walrus_stmt
                 + "        i += 1\n") + self._MAIN
 
-    def test_frame_field_walrus_rejects(self):
+    def test_plain_frame_field_walrus_routes(self):
+        # The value-scalar field: the bare member assign, no pre-decl.
         src = self._frame_src("        if (m := i * 2) > 0:\n"
                               "            print(\"m\", m)\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("expr.walrus_frame_field") == 1
+        assert not fallback, fallback
+
+    def test_frame_slot_walrus_emplaces_with_brace_type(self):
+        # An owning `frame_slot<T>` target: `zs.emplace(<value>)`, and a bare
+        # brace-init value wears the slot's type so it binds to emplace's
+        # forwarding ref. The for-head iterable is the one position from which
+        # a container walrus reaches the dispatch today.
+        src = (self._PRE
+               + "def g() -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        for q in (zs := [i, i + 1]):\n"
+               + "            yield q\n"
+               + "        print(\"resume\", zs[0])\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    for u in g():\n        print(u)\nmain()\n")
+        _c, _hpp, cpp = _gen(src, thir=True)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("expr.walrus_frame_slot") == 1
+        assert not fallback, fallback
+        assert "zs.emplace(std::array<int32_t, 2>{" in cpp
+
+    def test_frame_alias_walrus_addresses_the_element(self):
+        # A statement-borrow alias field is a `T*` into the caller's element:
+        # `(row = &(rows[i]), *row)`, so the post-resume mutation is visible
+        # outside (an owning copy would silently diverge from CPython).
+        src = (self._PRE
+               + "def g(rows: list[list[Int32]]) -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < len(rows):\n"
+               + "        yield len(row := rows[i])\n"
+               + "        row.append(99)\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    rows = [[1, 2]]\n"
+               + "    for u in g(rows):\n        print(u)\nmain()\n")
+        _c, _hpp, cpp = _gen(src, thir=True)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("expr.walrus_frame_alias") == 1
+        assert not fallback, fallback
+        assert "(row = &(rows[" in cpp and ", *row)" in cpp
+
+    def test_frame_opt_ptr_walrus_lifts_a_storage_field(self):
+        # A pointer-repr Optional field bound from a STORAGE-form Optional
+        # field source takes the optional_to_ptr lift -- the rung that makes
+        # this leg more than a bare assign.
+        src = (self._PRE
+               + "from tpy import Own\n\n"
+               + self._NODE
+               + "class Holder:\n"
+               + "    item: Node | None\n"
+               + "    def __init__(self, n: Own[Node]) -> None:\n"
+               + "        self.item = n\n\n"
+               + "    def g(self) -> Iterator[Int32]:\n"
+               + "        yield -1\n"
+               + "        i = 0\n"
+               + "        while i < 2:\n"
+               + "            if (p := self.item) is not None:\n"
+               + "                yield p.v\n"
+               + "            else:\n"
+               + "                yield -2\n"
+               + "            i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    h = Holder(Node(5))\n"
+               + "    for u in h.g():\n        print(u)\nmain()\n")
+        _c, _hpp, cpp = _gen(src, thir=True)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("expr.walrus_frame_opt_ptr") == 1
+        assert not fallback, fallback
+        assert "(p = ::tpy::optional_to_ptr(__self.item))" in cpp
+
+    def test_frame_borrow_tuple_walrus_takes_the_name_tail(self):
+        # A borrow-form tuple field (`std::tuple<int32_t, Node*>`): the bare
+        # assign plus the `, bt` result tail, off a BORROWING call whose C++
+        # return already IS the borrow tuple.
+        src = (self._PRE
+               + self._NODE
+               + "def borrow_pair(n: Node) -> tuple[Int32, Node]:\n"
+               + "    return (n.v, n)\n\n"
+               + "def g(nodes: list[Node]) -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < len(nodes):\n"
+               + "        yield (bt := borrow_pair(nodes[i]))[0]\n"
+               + "        bt[1].v += 1000\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    nodes = [Node(1)]\n"
+               + "    for u in g(nodes):\n        print(u)\nmain()\n")
+        _c, _hpp, cpp = _gen(src, thir=True)
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("expr.walrus_frame_btuple") == 1
+        assert not fallback, fallback
+        assert "(bt = borrow_pair(" in cpp and ", bt)" in cpp
+
+    def test_frame_borrow_tuple_literal_source_stays_ast(self):
+        # A tuple LITERAL over a `readonly` container is a filed AST bug: the
+        # element render derives const-ness from the source while the tuple
+        # type comes from the local's borrow spelling, and the two disagree
+        # (ill-formed C++). Routing it would mirror the bug.
+        src = (self._PRE
+               + "from tpy import readonly\n\n"
+               + self._NODE
+               + "def g(nodes: readonly[list[Node]]) -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < len(nodes):\n"
+               + "        yield (t := (i, nodes[i]))[0]\n"
+               + "        print(\"resume\", t[1].v)\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    nodes = [Node(1)]\n"
+               + "    for u in g(nodes):\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("expr.walrus_frame_btuple")
         assert _res_fallback(src).get("expr.walrus") == 1
-        _assert_identical(src)
+        assert fallback, "the body must stay on the AST path"
+
+    def test_frame_opt_ptr_nested_field_source_stays_ast(self):
+        # The Optional-ptr source ladder admits a DIRECT field read only: a
+        # nested receiver is outside `_field_receiver_ok`, and its lift would
+        # be spelled off an un-validated receiver.
+        src = (self._PRE
+               + "from tpy import Own\n\n"
+               + self._NODE
+               + "class Inner:\n"
+               + "    item: Node | None\n"
+               + "    def __init__(self, n: Own[Node]) -> None:\n"
+               + "        self.item = n\n\n"
+               + "class Holder:\n"
+               + "    inner: Inner\n"
+               + "    def __init__(self, n: Own[Node]) -> None:\n"
+               + "        self.inner = Inner(n)\n\n"
+               + "    def g(self) -> Iterator[Int32]:\n"
+               + "        yield -1\n"
+               + "        i = 0\n"
+               + "        while i < 2:\n"
+               + "            if (p := self.inner.item) is not None:\n"
+               + "                yield p.v\n"
+               + "            else:\n"
+               + "                yield -2\n"
+               + "            i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    h = Holder(Node(5))\n"
+               + "    for u in h.g():\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("expr.walrus_frame_opt_ptr")
+        assert fallback, "the body must stay on the AST path"
+
+    def test_simple_generator_walrus_is_untouched(self):
+        # The peephole lambda has no frame at all (`frame_local_types` empty),
+        # so its walrus keeps the sync rungs -- including the pre-declaration
+        # a frame target must never emit.
+        src = (self._PRE
+               + "def g(n: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while (m := i * 2) < n:\n"
+               + "        yield m\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    for u in g(6):\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert not any("walrus_frame" in k for k in witnesses)
+        assert not fallback, fallback
 
     def test_sync_walrus_is_untouched(self):
         # The fence keys on `frame_local_types`, which is empty for a sync

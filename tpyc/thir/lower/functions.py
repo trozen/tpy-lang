@@ -105,6 +105,7 @@ from ..nodes import (
     Form,
     THIRBaseInit,
     THIRConstructor,
+    THIRContainerLiteral,
     THIRExpr,
     THIRFormConvert,
     THIRFunction,
@@ -131,6 +132,7 @@ from ..nodes import (
 from ...value_category import is_rvalue_source
 from .predicates import (
     _peel_coerce,
+    _str_literal_value_opt_arg,
     _IDENTITY_STR_COERCIONS,
     _callable_value,
     _ru_instance_literal_ok,
@@ -1199,6 +1201,20 @@ def _mil_container_field(t) -> bool:
         return False
     return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
 
+def _mil_optional_container_inner(t) -> 'TpyType | None':
+    """The CONTAINER inner of an `Optional[list/dict/set/Array]` FIELD, or
+    None -- the type a MIL container literal is classified and lowered
+    against, mirroring `_gen_array_literal`'s own Optional unwrap.
+
+    No `uses_pointer_repr()` guard: that predicate answers for the BORROW
+    positions (params/returns/locals), where a non-value inner takes `T*`;
+    a field slot is storage form and spells `std::optional<C>` regardless.
+    Reading the borrow verdict here would reject every container inner."""
+    if not isinstance(t, OptionalType):
+        return None
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t.inner)))
+    return inner if _mil_container_field(inner) else None
+
 def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
                            declared: dict[str, TpyType], lc: _LowerCtx, *,
                            own_params: 'set[str]' = frozenset()) -> bool:
@@ -1509,6 +1525,17 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if isinstance(source, TpyTupleLiteral):
             return True
         return False
+    oc_inner = _mil_optional_container_inner(ftype)
+    if oc_inner is not None:
+        source = _unwrap_copy(stmt.value, analyzer)
+        if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+            # A container literal into an `Optional[container]` field. The AST
+            # threads the field type and `_gen_array_literal` unwraps the
+            # Optional itself, so the literal is classified against the INNER
+            # -- element targets derived from the Optional would diverge.
+            # Other sources keep the Optional rows below.
+            return _container_literal_shape_ok(
+                source, oc_inner, analyzer, threaded=True)
     if isinstance(ftype, OptionalType) and isinstance(
             _unwrap_copy(stmt.value, analyzer), TpyNoneLiteral):
         # `self.f = None` renders `f(std::nullopt)` for EVERY Optional field
@@ -1529,6 +1556,12 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                                 TpyBoolLiteral))):
             # `self.slot = 1` on `int | None` -> `slot(1)`: the converting
             # ctor absorbs the bare (target-retyped) literal.
+            return True
+        if _str_literal_value_opt_arg(_peel_coerce(source), ftype):
+            # `self.s = "xy"` on `str | None` -> `s("xy")`: the same bare
+            # literal both paths render at a value-repr Optional[str] slot.
+            # str ONLY -- `_value_opt_view` also covers bytes, whose owned
+            # field needs the view->owned copy this bare render omits.
             return True
         if not isinstance(source, TpyName):
             return False
@@ -2335,10 +2368,34 @@ def _lower_ctor_mil_init(
         _witness("mil.value_tuple_name")
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
     if isinstance(ftype, OptionalType):
+        oc_inner = _mil_optional_container_inner(ftype)
         if isinstance(source, TpyNoneLiteral):
             _witness("mil.optional_none")
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                       form=Form.STORAGE, loc=loc)
+        elif oc_inner is not None and isinstance(
+                source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+            # A container literal into `std::optional<C>`: lowered against the
+            # INNER, mirroring `_gen_array_literal`'s own Optional unwrap --
+            # threading the Optional would derive the element targets from it.
+            # An ARRAY literal additionally self-describes
+            # (`lst(std::vector<int32_t>{1, 2, 3})`), which is the AST's
+            # union_prefix on the same branch: a bare brace-init has no
+            # deducible type for the optional's ctor. Dict/set literals spell
+            # their own container type already.
+            _witness("mil.optional_container_literal")
+            v = _lower_expr(source, lc, declared, target_type=oc_inner)
+            if isinstance(source, TpyArrayLiteral):
+                if not isinstance(v, THIRContainerLiteral):
+                    # The prefix has nowhere to live; reject rather than let a
+                    # `replace` TypeError escape the per-body fallback.
+                    raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
+                v = replace(v, typed_brace_cpp=lc.render_type(oc_inner))
+        elif _str_literal_value_opt_arg(_peel_coerce(source), ftype):
+            # `s("xy")` -- the bare str literal at a value-repr Optional[str]
+            # slot; C++'s `const char*` -> `optional<string>` chain absorbs it.
+            _witness("mil.optional_str_literal")
+            v = _lower_expr(source, lc, declared)
         elif not ftype.uses_pointer_repr() and _value_opt_view(
                 ftype, analyzer) is not None:
             # A value-repr Optional[str/bytes] field <- a borrow
