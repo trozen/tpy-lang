@@ -21,8 +21,8 @@ int32_t test(int32_t x) {
     // elif (v := take([10, 20])) == x:
     } else {
         int32_t v;
-        std::vector<int32_t> __tmp_2 = {10, 20};
-        if (((v = take(__tmp_2)) == x)) {
+        std::vector<int32_t> __tmp_1 = {10, 20};
+        if (((v = take(__tmp_1)) == x)) {
             // return v
             return v;
         // else:

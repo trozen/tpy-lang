@@ -4615,7 +4615,13 @@ class StatementGenerator:
                 elif not self.ctx.temps._pending and not self.ctx.temps._pending_named:
                     out.write(f"{indent}}} else if constexpr ({guard_conds}) {{\n")
                 else:
-                    self.ctx.temps._pending.clear()
+                    # Same discard shape as the walrus-elif below (no probe
+                    # render happens in this arm, so the checkpoint-less
+                    # walrus rollback only drops nothing and keeps the
+                    # counter) -- the bare `_pending.clear()` here used to
+                    # burn numbers AND drop pre-existing pending decls.
+                    self.ctx.temps.rollback_walrus_probe(
+                        self.ctx.temps.probe_checkpoint())
                     out.write(f"{indent}}} else {{\n")
                     self.ctx.indent_level += 1
                     self.ctx.temps.flush(out, self.ctx.indent())
@@ -4654,14 +4660,16 @@ class StatementGenerator:
                     # Elif condition produced temp/walrus vars -- can't use
                     # flat else-if; nest in an else block and let recursive
                     # _gen_if regenerate the condition in a flushable
-                    # position. A temp-only probe render is discarded
-                    # wholesale (counter included), so the regeneration
-                    # reissues the same __tmp_N names. Walrus pre-decls
-                    # can't be rolled back (their registry side effects
-                    # persist); they are flushed inside the else block
-                    # instead (walrus_pre_declared prevents re-creation).
+                    # position. The probe render is discarded (counter
+                    # included, when safe), so the regeneration reissues the
+                    # same __tmp_N names. Walrus pre-decls can't be rolled
+                    # back (their registry side effects persist); they are
+                    # flushed inside the else block instead
+                    # (walrus_pre_declared prevents re-creation) -- and they
+                    # consume no number, so the walrus-flavored rollback
+                    # restores the counter too instead of burning it.
                     if self.ctx.temps.has_named_since(probe_cp):
-                        self.ctx.temps._pending.clear()
+                        self.ctx.temps.rollback_walrus_probe(probe_cp)
                     else:
                         self.ctx.temps.rollback_discarded(probe_cp)
                     out.write(f"{indent}}} else {{\n")

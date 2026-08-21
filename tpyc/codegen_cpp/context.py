@@ -835,6 +835,9 @@ class TempState:
         self._pending: list[tuple[str, str, str | None, bool]] = []
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
+        # Counter-CONSUMING named slots (declare_named_auto) ever created;
+        # rollback_walrus_probe keys its counter-restore safety on it.
+        self._auto_named: int = 0
         self._regions: list[CondRegion] = []
 
     @contextmanager
@@ -924,6 +927,7 @@ class TempState:
         (e.g. the optional<T> backing a short-circuit pointer-select), where the
         caller needs the generated name back rather than supplying it."""
         self._counter += 1
+        self._auto_named += 1
         name = f"{prefix}_{self._counter}"
         self._pending_named.append((name, cpp_type, init, False))
         return name
@@ -965,12 +969,14 @@ class TempState:
         del self._pending_named[pending_named:]
         return True
 
-    def probe_checkpoint(self) -> tuple[int, int, int]:
-        """`checkpoint()` plus the name counter, for `rollback_discarded`.
+    def probe_checkpoint(self) -> tuple[int, int, int, int]:
+        """`checkpoint()` plus the name counter and the named-auto tally, for
+        `rollback_discarded` / `rollback_walrus_probe`.
 
         Compatible with `has_pending_since` / `has_named_since` (same first
         two elements)."""
-        return (len(self._pending), len(self._pending_named), self._counter)
+        return (len(self._pending), len(self._pending_named), self._counter,
+                self._auto_named)
 
     def rollback_discarded(self, checkpoint: tuple[int, int, int]) -> None:
         """Discard temps registered after `checkpoint` AND restore the counter.
@@ -985,6 +991,22 @@ class TempState:
         assert len(self._pending_named) == checkpoint[1]
         del self._pending[checkpoint[0]:]
         self._counter = checkpoint[2]
+
+    def rollback_walrus_probe(self, checkpoint: tuple[int, int, int, int]) -> None:
+        """Discard anonymous temps after `checkpoint` and restore the counter
+        when that is safe -- the walrus-flavored probe discard (the elif
+        whose condition carries both a walrus and temps). Named pre-decls
+        registered since stay: their registry side effects persist and the
+        regeneration suppresses re-creation (walrus_pre_declared) -- and a
+        walrus `declare_named` consumes no number, so the regeneration
+        reissues the identical `__tmp_N` sequence. The one hazard is a
+        counter-CONSUMING named-auto slot since the checkpoint (an elif
+        mixing a walrus with a short-circuit rvalue-select): its kept name
+        would collide with a reissued number, so the counter then stays
+        burned -- the pre-fix behavior, with no corpus witness."""
+        del self._pending[checkpoint[0]:]
+        if self._auto_named == checkpoint[3]:
+            self._counter = checkpoint[2]
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
