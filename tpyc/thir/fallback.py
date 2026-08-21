@@ -346,7 +346,13 @@ def expr_kind_tag(e: object) -> str:
 def stmt_reject_reason(stmt: TpyStmt, detail: str | None = None) -> str:
     """The composed tag for a statement lowering rejected:
     a landmark tag stands alone; a bare `stmt.*` shape picks up the
-    sub-construct detail recorded during this statement's admission, if any."""
+    sub-construct detail recorded during this statement's admission, if any.
+
+    CALL-TIME composition: the detail is read off the compiler when THIS
+    function runs, so never pre-evaluate the result into a helper argument
+    ahead of the note_detail that should ride it -- pass a zero-arg callable
+    and render at the raise instead (a pre-evaluated string silently drops
+    the tag; it cost one red run on the nested-def gate extraction)."""
     reason = classify_stmt(stmt)
     compiler = get_current_compiler()
     if detail is None:

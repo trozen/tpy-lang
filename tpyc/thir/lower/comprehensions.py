@@ -705,7 +705,8 @@ def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
 
 def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
                                body_declared: dict[str, TpyType],
-                               *, typed_brace: bool = False) -> 'THIRExpr':
+                               *, typed_brace: bool = False,
+                               allow_temps: bool = False) -> 'THIRExpr':
     """Lower a comprehension element/value against a possibly-container slot
     (dict VALUE, list/set element, Array slot). A list/Array container slot
     is element-SHAPE-sensitive, so only the two vetted sources route: a
@@ -722,7 +723,8 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
     (`push_back`) and an array-lambda return already have a declared target
     type, so their brace stays bare -- matching the AST."""
     if not _container_family_slot(vt):
-        return _lower_container_elem(e, vt, lc, body_declared)
+        return _lower_container_elem(e, vt, lc, body_declared,
+                                     allow_temps=allow_temps)
     if type(e) in _COMP_KINDS:
         value = _lower_container_elem(e, vt, lc, body_declared)
     elif isinstance(e, TpyArrayLiteral):
@@ -908,8 +910,14 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
                 init.element_expr, elem_t, lc, body_declared, gen,
                 is_last_sink=True)
         else:
+            # Element temps flush PER-ITERATION into the loop body (the
+            # emit's element checkpoint/flush_since window), so the list/set
+            # element is a flushable position -- the AST hoists
+            # `take(Probe(c, i))`-style arg temps right above push_back.
+            # Dict key/value sinks keep the default (no emit window there).
             element = _lower_comp_container_elem(
-                init.element_expr, elem_t, lc, body_declared)
+                init.element_expr, elem_t, lc, body_declared,
+                allow_temps=True)
         key = value = None
     range_start = range_stop = None
     start_lit = stop_lit = False

@@ -154,15 +154,18 @@ FROZEN_SITES: dict[tuple[str, str, str], tuple[int, str | tuple[str, ...]]] = {
         (1, AST_ARM),
     ("gen_async.py", "_emit_generator_yield",
      "self.statements.gen_yield_value"): (1, AST_ARM),
+    # A routed frame emits its nested-def member bodies through the leaf
+    # emitter (`leaf.emit_nested_def_body`, lowered under the member scope
+    # at frame lowering); this call is the fallback frame's arm.
+    ("gen_async.py", "gen_coro_finally_top_def",
+     "self.statements.gen_nested_def_body"): (1, AST_ARM),
     # Frame scaffolding that runs for routed bodies too. What is left after
-    # the emit-primitive relocation is not primitive: `gen_nested_def_body`
-    # and `_walk_inline`'s ReturnT `gen_stmt` dispatch walk a body,
+    # the emit-primitive relocation is not primitive: `_walk_inline`'s
+    # ReturnT `gen_stmt` dispatch walks a body,
     # `_extra_template_args_for_await` dispatches an arbitrary expression,
     # and `_make_async_return` reaches `gen_expr` through its deferred-return
     # recipe. Where each belongs post-cutover is an open decision, not a
     # relocation.
-    ("gen_async.py", "gen_coro_finally_top_def",
-     "self.statements.gen_nested_def_body"): (1, OPEN),
     ("gen_async.py", "_thir_resumable_leaf_emitter",
      "self.statements._make_async_return"): (1, OPEN),
     ("gen_async.py", "_thir_resumable_leaf_emitter",
@@ -351,6 +354,6 @@ def test_cutover_gate_open_sites() -> None:
     open_calls = sorted(
         (k, i) for k, (n, d) in FROZEN_SITES.items()
         for i, disp in enumerate(_dispositions(n, d)) if disp == OPEN)
-    assert len(open_calls) == 5, (
+    assert len(open_calls) == 4, (
         f"the cutover gate's OPEN set changed ({len(open_calls)} calls); "
         f"update the count when a site is discharged: {open_calls}")

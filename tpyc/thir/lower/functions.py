@@ -1356,6 +1356,10 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                                TpyNoneLiteral)):
             return True
         return True
+    if isinstance(unwrap_readonly(ftype), NoneType):
+        # `self.slot = None` on a NoneType field: `slot(std::monostate{})`.
+        # Literal source only -- the corpus has no name-source witness.
+        return isinstance(_unwrap_copy(stmt.value, analyzer), TpyNoneLiteral)
     view_t = _resolved_str_value(ftype, analyzer)
     if view_t is None:
         view_t = _resolved_bytes_value(ftype, analyzer)
@@ -2215,6 +2219,14 @@ def _lower_ctor_mil_init(
         return THIRMilInit(field_cpp=field_cpp,
                            value=THIRLiteral(result_type=ftype, value=None,
                                              form=Form.VALUE, loc=loc))
+    if (isinstance(unwrap_readonly(ftype), NoneType)
+            and isinstance(source, TpyNoneLiteral)):
+        # None into the NoneType cell: the STORAGE literal spells the
+        # `std::monostate{}` the MIL direct-init needs.
+        _witness("mil.none_unit")
+        return THIRMilInit(field_cpp=field_cpp,
+                           value=THIRLiteral(result_type=ftype, value=None,
+                                             form=Form.STORAGE, loc=loc))
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
             or _eligible_enum(ftype, analyzer) is not None):
         return THIRMilInit(field_cpp=field_cpp,

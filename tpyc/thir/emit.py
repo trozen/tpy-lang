@@ -13,12 +13,14 @@ default so emission stays decoupled from the analyzer.
 
 from __future__ import annotations
 
+import contextlib
 import io
 from dataclasses import dataclass, field
 from typing import Callable, TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
+    INDENT, CondRegion, _as_expression, _slot_spellable,
+    any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
@@ -205,13 +207,45 @@ class TempSink:
         self._counter = 0
         self._pending: list[tuple[str, str, str, bool]] = []
         self._pending_named: list[tuple[str, str, 'str | None']] = []
+        self._regions: list = []
 
     def create(self, cpp_type: str, init_expr: str, *,
-               brace_init: bool = False) -> str:
+               brace_init: bool = False, movable: bool = False) -> str:
+        # TempState._register's deferral mirror: inside an open conditional
+        # region a movable+spellable temp declares an uninit optional slot,
+        # banks its emplace into the region, and reads `(*__tmp_N)`.
         self._counter += 1
         name = f"__tmp_{self._counter}"
-        self._pending.append((name, cpp_type, init_expr, brace_init))
-        return name
+        region = self._regions[-1] if self._regions else None
+        if region is None or not movable or not _slot_spellable(cpp_type):
+            self._pending.append((name, cpp_type, init_expr, brace_init))
+            return name
+        emplace_arg = _as_expression(cpp_type, init_expr, brace_init)
+        region.bank(len(self._pending), name, emplace_arg)
+        self._pending.append(
+            (name, f"std::optional<{cpp_type}>", emplace_arg, False))
+        return f"(*{name})"
+
+    @contextlib.contextmanager
+    def conditional_region(self):
+        """Defer temps created inside to the operand (see
+        `TempState.conditional_region`) -- the standalone mirror, sharing
+        CondRegion so `region.prefix` composes identically."""
+        region = CondRegion()
+        self._regions.append(region)
+        try:
+            yield region
+        finally:
+            self._regions.pop()
+            parts = []
+            for index, name, emplace_arg in region._slots:
+                if (index >= len(self._pending)
+                        or self._pending[index][0] != name):
+                    continue
+                _, cpp_type, _, brace_init = self._pending[index]
+                self._pending[index] = (name, cpp_type, None, brace_init)
+                parts.append(f"{name}.emplace({emplace_arg})")
+            region.prefix = "".join(f"{p}, " for p in parts)
 
     def declare_named(self, name: str, cpp_type: str, *,
                       init: 'str | None' = None) -> None:
@@ -247,7 +281,9 @@ class TempSink:
         `checkpoint` -- the restructured loop-head / nested-elif flush."""
         pending_n = checkpoint[0]
         for name, cpp_type, init_expr, brace_init in self._pending[pending_n:]:
-            if brace_init:
+            if init_expr is None:
+                out.write(f"{indent}{cpp_type} {name};\n")
+            elif brace_init:
                 out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
             else:
                 out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
@@ -261,7 +297,9 @@ class TempSink:
                 out.write(f"{indent}{cpp_type} {name};\n")
         self._pending_named.clear()
         for name, cpp_type, init_expr, brace_init in self._pending:
-            if brace_init:
+            if init_expr is None:
+                out.write(f"{indent}{cpp_type} {name};\n")
+            elif brace_init:
                 out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
             else:
                 out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
@@ -281,9 +319,13 @@ class CtxTempSink(TempSink):
         self._ctx = ctx
 
     def create(self, cpp_type: str, init_expr: str, *,
-               brace_init: bool = False) -> str:
+               brace_init: bool = False, movable: bool = False) -> str:
         return self._ctx.temps.create_typed(cpp_type, init_expr,
-                                            brace_init=brace_init)
+                                            brace_init=brace_init,
+                                            movable=movable)
+
+    def conditional_region(self):
+        return self._ctx.temps.conditional_region()
 
     def declare_named(self, name: str, cpp_type: str, *,
                       init: 'str | None' = None) -> None:
@@ -657,12 +699,22 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
     reprs: list[str] = []
     binds: list[str | None] = []
     for i in range(n + 1):
-        code = _emit_expr(e.inits[i], state)
+        # Operands 0 and 1 always run; every later one sits behind a passed
+        # compare, so its deferred temps bank into a region and splice at
+        # the operand (the AST's i >= 2 regions).
+        if i >= 2:
+            with state.temps.conditional_region() as _region:
+                code = _emit_expr(e.inits[i], state)
+            prefix = _region.prefix
+        else:
+            code = _emit_expr(e.inits[i], state)
+            prefix = ""
         if e.bound[i]:
             reprs.append(f"_cmp{i}")
-            binds.append(f"auto&& _cmp{i} = {code};")
+            init = f"({prefix}{code})" if prefix else code
+            binds.append(f"auto&& _cmp{i} = {init};")
         else:
-            reprs.append(code)
+            reprs.append(f"({prefix}{code})" if prefix else code)
             binds.append(None)
 
     def render_pair(i: int, left: str, right: str) -> str:
@@ -688,13 +740,24 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     # helper when the divisor is proven non-zero, and paren-wrap the result.
     # Comparisons reuse this path (their dunder carries a `{self} OP {0}`
     # template), so the same code emits both arithmetic and comparison binops.
-    left, right = _emit_expr(e.left, state), _emit_expr(e.right, state)
+    left = _emit_expr(e.left, state)
+    if e.resolved is None and e.op in ("&&", "||"):
+        # The RHS runs only when the LHS does not short-circuit: its
+        # deferred temps bank into a conditional region and splice ahead of
+        # the operand, exactly the AST's `({prefix}{right})` wrap.
+        with state.temps.conditional_region() as _rhs_region:
+            right = _emit_expr(e.right, state)
+    else:
+        _rhs_region = None
+        right = _emit_expr(e.right, state)
     # Post-generation operand casts (int-enum underlying / mixed BigInt-float),
     # applied before the wrapper/template expansion like the AST's.
     if e.left_cast is not None:
         left = e.left_cast.format(left)
     if e.right_cast is not None:
         right = e.right_cast.format(right)
+    if _rhs_region is not None and _rhs_region.prefix:
+        right = f"({_rhs_region.prefix}{right})"
     if e.template_override is not None:
         # The rebuilt fixed-int literal arm (gen_call_from_fi over the
         # target-typed operands): plain template expansion, no wrappers, no
@@ -984,8 +1047,10 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
             insert = (f"__result.insert_or_assign({_emit_expr(e.key, state)}, "
                       f"{_emit_expr(e.value, state)})")
     elif e.kind == "set":
+        cp_el = state.temps.checkpoint()
         insert = f"__result.insert({_emit_expr(e.element, state)})"
     else:
+        cp_el = state.temps.checkpoint()
         insert = f"__result.push_back({_emit_expr(e.element, state)})"
     if e.conditions:
         # Condition temps land at loop-body indent BEFORE the `if` -- the
@@ -993,14 +1058,24 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         # cond-temp placement). checkpoint/flush_since drains ONLY the
         # conditions' own temps: an outer pending decl (a walrus predecl
         # enqueued before this comp rendered) must stay for the statement
-        # flush, not fall inside the loop.
+        # flush, not fall inside the loop. Element temps flush innermost
+        # (right above the insert), after the filter passes.
         cp = state.temps.checkpoint()
         cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
         state.temps.flush_since(buf, cp, ind2)
         buf.write(f"{ind2}if ({cond_str}) {{\n")
+        if e.kind != "dict":
+            state.temps.flush_since(buf, cp_el, ind3)
         buf.write(f"{ind3}{insert};\n")
         buf.write(f"{ind2}}}\n")
     else:
+        # Element temps flush per-iteration at loop-body indent, right
+        # above the insert -- the AST's placement (and the degrade seam: a
+        # temp DEFERRED by an enclosing conditional region relocates here
+        # as the eager `std::optional<T> __tmp_N = init;` decl, exactly
+        # like the AST's intervening-flush arm).
+        if e.kind != "dict":
+            state.temps.flush_since(buf, cp_el, ind2)
         buf.write(f"{ind2}{insert};\n")
     buf.write(f"{ind1}}}\n")
     buf.write(f"{ind1}std::move(__result);\n")
@@ -1443,7 +1518,14 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # (strview_to_str / str_to_string / strview_to_string) lower here too:
         # the cross-type respelling is family-internal, the emit identical --
         # `String` is the same owned std::string spelled as a distinct type.
-        if is_str_type(t) or is_string_type(t) or is_bytes_type(t):
+        # An explicit `materialize` (set at lowering, where the view-vs-object
+        # meaning is decided) overrides the family derivation -- bytearray's
+        # view copy takes this branch only via the explicit True (see the
+        # node docstring); an explicit False falls through to the object
+        # move/copy arm below.
+        if e.materialize is True or (e.materialize is None
+                                     and (is_str_type(t) or is_string_type(t)
+                                          or is_bytes_type(t))):
             return f"{view_to_owned_conv(t)}({inner})"
         # F5: a generic record's `T` field write. The C++ template's
         # `param_val_or_ref_t<T>` / `own_param_t<T>` resolve the copy/move target
@@ -1691,7 +1773,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             truthy = "true"
         else:
             truthy = lhs_r
-        rhs_r = _emit_expr(e.rhs, state)
+        # The RHS evaluates lazily inside its branch: deferred temps bank
+        # into the region and splice ahead of the operand -- the AST's
+        # `rhs_region` in `_gen_logical_value`.
+        with state.temps.conditional_region() as _rhs_region:
+            rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
         if e.ptr_select_cpp is not None:
@@ -1700,12 +1786,14 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             slot = state.temps.declare_named_auto(
                 "__logical_slot", f"std::optional<{e.ptr_select_cpp}>")
             lhs_p = f"&({lhs_r})"
-            rhs_p = f"({slot}.emplace({rhs_r}), &*{slot})"
+            rhs_p = f"({_rhs_region.prefix}{slot}.emplace({rhs_r}), &*{slot})"
             if e.op == "||":
                 return f"(*({truthy} ? {lhs_p} : {rhs_p}))"
             return f"(*({truthy} ? {rhs_p} : {lhs_p}))"
         lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
         rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
+        if _rhs_region.prefix:
+            rhs_b = f"({_rhs_region.prefix}{rhs_b})"
         if e.op == "||":
             return f"({truthy} ? {lhs_b} : {rhs_b})"
         return f"({truthy} ? {rhs_b} : {lhs_b})"
@@ -1761,10 +1849,18 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                 f" : std::nullopt")
     if isinstance(e, THIRIfExpr):
         # _gen_if_expr's render; arm targets and the mixed-arm str wraps were
-        # decided at lowering, so the emit is pure spelling.
-        return (f"(({_emit_expr(e.cond, state)}) ? "
-                f"({_emit_expr(e.then, state)}) : "
-                f"({_emit_expr(e.orelse, state)}))")
+        # decided at lowering. Each arm evaluates only when chosen, so its
+        # deferred temps bank into a per-arm region and splice ahead of the
+        # arm render (the AST's then/else regions -- an empty prefix
+        # concatenates as a no-op, exactly like the AST).
+        cond_cpp = _emit_expr(e.cond, state)
+        with state.temps.conditional_region() as _then_region:
+            then_cpp = _emit_expr(e.then, state)
+        with state.temps.conditional_region() as _else_region:
+            else_cpp = _emit_expr(e.orelse, state)
+        return (f"(({cond_cpp}) ? "
+                f"({_then_region.prefix}{then_cpp}) : "
+                f"({_else_region.prefix}{else_cpp}))")
     if isinstance(e, THIRCall):
         return _emit_call(e, state)
     if isinstance(e, THIRUnionArgLift):
@@ -1779,7 +1875,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # per-arg cascade. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
         cpp_type = e.cpp_type if e.cpp_type is not None else "auto"
-        name = state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init)
+        name = state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init,
+                                  movable=bool(e.movable))
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
@@ -2785,8 +2882,12 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     state.match_counter += 1
     subject = f"__match_subject_{state.match_counter}"
     binding = "auto&" if stmt.subject_ref else "auto"
-    out.write(f"{indent}{binding} {subject} = "
-              f"{_emit_expr(stmt.subject, state)};\n")
+    subject_cpp = _emit_expr(stmt.subject, state)
+    # The AST flushes subject arg temps before the bind line
+    # (gen_match's `ctx.temps.flush`); admitted subjects rarely carry
+    # any, but a call-rooted rvalue subject can.
+    state.temps.flush(out, indent)
+    out.write(f"{indent}{binding} {subject} = {subject_cpp};\n")
     if stmt.strategy == "if_elif":
         _emit_match_if_elif(out, stmt, indent_level, state, subject)
     elif stmt.strategy == "if_elif_guarded":
@@ -4723,6 +4824,16 @@ class ResumableLeafEmitter:
         the skeleton's `statements.gen_yield_value(ys)`."""
         return _emit_expr(self._lookup(self._body.yield_values, ys,
                                        "yield value"), self._state)
+
+    def emit_nested_def_body(self, out: TextIO, func,
+                             indent_level: int) -> None:
+        """Emit a frame nested def's MEMBER body -- the seam replacement for
+        `gen_coro_finally_top_def`'s `gen_nested_def_body` call. The
+        signature/struct-decl lines stay skeleton; the body statements were
+        lowered under the member scope at frame lowering."""
+        body = self._lookup(self._body.nested_def_bodies, func,
+                            "nested def body")
+        _emit_stmts(out, body, indent_level, self._state)
 
     def render_suspend_expr(self, expr) -> str:
         """Render an ERASED/BORROWED await operand or a bound-method await

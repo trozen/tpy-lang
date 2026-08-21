@@ -1778,7 +1778,15 @@ class AsyncCoroCodegen:
                 out.write(f"{ret_str} {struct_name}::"
                           f"{escape_cpp_name(nd.func.name)}({params_str}) {{\n")
                 self.ctx.indent_level = 1
-                self.statements.gen_nested_def_body(out, nd.func, nd_ret)
+                if leaf is not None:
+                    # Routed frame: the member body was lowered under the
+                    # member scope at frame lowering; a missing entry is a
+                    # lowering/seam disagreement, never a per-member
+                    # fallback.
+                    leaf.emit_nested_def_body(out, nd.func,
+                                              self.ctx.indent_level)
+                else:
+                    self.statements.gen_nested_def_body(out, nd.func, nd_ret)
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 

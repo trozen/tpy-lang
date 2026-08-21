@@ -1,16 +1,18 @@
-"""The short-circuit fence over arg faces that hoist a `THIRArgTemp`.
+"""Conditional-operand arg temps over the optptr faces.
 
-An `and`/`or` operand evaluates CONDITIONALLY, so a hoisted arg temp there
-would run at the enclosing statement even when the operand is skipped. The
-flush right therefore stops at the logical binop (`_lower_binop`), exactly as
-it stops at a ternary's arms -- a temp-needing operand raises `ThirUnsupported`
-(whole-body fallback) instead of building a node the post-lowering validator
-rejects with a hard `THIRValidationError`, which escapes the per-body fallback
-boundary and kills the compile.
+An `and`/`or` RHS evaluates CONDITIONALLY. An AUDITED temp row (movable fact
+mirrored off the AST creator) routes: the emit opens the same
+`conditional_region` the AST does, so a movable+spellable temp DEFERS into
+the operand (`std::optional<T> __tmp_N;` + the spliced emplace) and a
+non-deferring one hoists eagerly at the statement. The LHS always evaluates:
+its temp hoists at the statement (or banks into an enclosing region when the
+logical nests inside a conditional operand). An UNAUDITED row that might
+defer keeps rejecting (`argtemp.cond_defer` at the `_lower_expr` exit check,
+whole-body fallback) instead of building a node the post-lowering validator
+rejects with a hard `THIRValidationError`.
 
-Each face gets a fence pin (identity, no crash, body rejected at the call) and
-an inverse pin proving the same face still ROUTES from a flushable position.
-Deleting the fence turns every fence pin into an error, not a silent pass.
+Each face keeps its flushable-position inverse pin; the conditional shapes
+are routing pins with the deferred/eager render asserted.
 """
 
 from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
@@ -76,17 +78,21 @@ class TestCtorRvalueFace:
     PLAIN = _REC + ("def f() -> bool:\n"
                     "    return take(A(7))\n") + _MAIN
 
-    def test_and_rhs_is_fenced(self):
-        _assert_fenced(self.AND)
+    def test_and_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.AND)
+        assert "std::optional<A> __tmp_1;" in cpp
+        assert "(b && (__tmp_1.emplace(A(7)), take(&((*__tmp_1)))))" in cpp
 
-    def test_or_rhs_is_fenced(self):
-        _assert_fenced(self.OR)
+    def test_or_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.OR)
+        assert "std::optional<A> __tmp_1;" in cpp
+        assert "__tmp_1.emplace(A(7))" in cpp
 
-    def test_lhs_is_fenced(self):
-        # The LHS evaluates unconditionally, so its temp would be sound to
-        # hoist -- but the validator rejects an arg temp under EITHER logical
-        # operand, so the fence has to cover both to stay crash-free.
-        _assert_fenced(self.LHS)
+    def test_lhs_hoists_eagerly(self):
+        # The LHS always evaluates: its temp is the plain statement hoist.
+        _hpp, cpp = _assert_routes_byte_identical(self.LHS)
+        assert "A __tmp_1 = A(7);" in cpp
+        assert "std::optional<A>" not in cpp
 
     def test_flushable_position_still_routes(self):
         _assert_routes_byte_identical(self.PLAIN)
@@ -107,11 +113,13 @@ class TestContainerTempFace:
     PLAIN = _CONTAINER_ARG + ("def f() -> bool:\n"
                               "    return take([1, 2, 3])\n") + _MAIN
 
-    def test_and_rhs_is_fenced(self):
-        _assert_fenced(self.AND)
+    def test_and_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.AND)
+        assert "std::optional<std::vector<int32_t>> __tmp_1;" in cpp
 
-    def test_or_rhs_is_fenced(self):
-        _assert_fenced(self.OR)
+    def test_or_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.OR)
+        assert "std::optional<std::vector<int32_t>> __tmp_1;" in cpp
 
     def test_flushable_position_still_routes(self):
         _assert_routes_byte_identical(self.PLAIN)
@@ -141,11 +149,13 @@ class TestScalarTempFace:
                            "    c = Box[Int32](None)\n"
                            "    print(g(c))\n") + _MAIN
 
-    def test_and_rhs_is_fenced(self):
-        _assert_fenced(self.AND, "body:expr.method_call")
+    def test_and_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.AND)
+        assert "std::optional<int32_t> __tmp_1;" in cpp + _hpp
 
-    def test_or_rhs_is_fenced(self):
-        _assert_fenced(self.OR, "body:expr.method_call")
+    def test_or_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.OR)
+        assert "std::optional<int32_t> __tmp_1;" in cpp + _hpp
 
     def test_flushable_position_still_routes(self):
         _assert_routes_byte_identical(self.PLAIN)
@@ -157,7 +167,11 @@ class TestScalarTempFace:
 
 class TestOwnCopyFace:
     """`argtemp.own_copy`: a borrowed name at an `Own[T]` slot copies into a
-    temp and moves the temp in."""
+    temp and moves the temp in. The temp is `auto`-spelled, so the AST keeps
+    it EAGER even inside a conditional region (`std::optional<auto>` is not
+    a spelling) -- the RHS shapes now ROUTE through the eager-only right,
+    byte-identically (the copy running in a skipped branch is the AST's own
+    documented residue, BUGS.md)."""
 
     AND = _OWN_ARG + ("def f(b: bool, xs: list[Int32]) -> bool:\n"
                       "    return b and take(xs)\n") + _MAIN
@@ -166,11 +180,11 @@ class TestOwnCopyFace:
     PLAIN = _OWN_ARG + ("def f(xs: list[Int32]) -> bool:\n"
                         "    return take(xs)\n") + _MAIN
 
-    def test_and_rhs_is_fenced(self):
-        _assert_fenced(self.AND)
+    def test_and_rhs_routes_eager(self):
+        _assert_routes_byte_identical(self.AND)
 
-    def test_or_rhs_is_fenced(self):
-        _assert_fenced(self.OR)
+    def test_or_rhs_routes_eager(self):
+        _assert_routes_byte_identical(self.OR)
 
     def test_flushable_position_still_routes(self):
         _assert_routes_byte_identical(self.PLAIN)
@@ -178,6 +192,42 @@ class TestOwnCopyFace:
     def test_inverse_witnesses_the_same_face(self):
         _, witnesses = _lower_ctx_witnessed(self.PLAIN)
         assert witnesses.get("argtemp.own_copy", 0) == 1
+
+
+class TestMutableRefContainerLiteralDefers:
+    """The plain mutable-ref container-literal temp row
+    (`argtemp.container_literal`, audited movable off the slot) defers in a
+    conditional operand like its optptr siblings."""
+
+    SRC = ("from tpy import Int64\n"
+           "def take_i64(xs: list[Int64]) -> Int64:\n"
+           "    return len(xs)\n"
+           "def f(flag: bool) -> bool:\n"
+           "    return flag and take_i64([1, 2, 3]) > 0\n"
+           "def main() -> None:\n    print(f(True))\nmain()\n")
+
+    def test_and_rhs_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::optional<std::vector<int64_t>> __tmp_1;" in cpp
+        assert "__tmp_1.emplace(std::vector<int64_t>{1, 2, 3})" in cpp
+
+
+class TestGenericRefSlotDefers:
+    """The generic ref-slot temp row (`argtemp.generic_ref_slot`, audited
+    movable off the resolved slot) defers in a ternary arm."""
+
+    SRC = ("from tpy import Int64\n"
+           "def take_any[T](xs: T) -> Int64:\n"
+           "    return 1\n"
+           "def f(flag: bool) -> Int64:\n"
+           "    return take_any([1, 2, 3]) if flag else 0\n"
+           "def main() -> None:\n    print(f(True))\nmain()\n")
+
+    def test_ternary_arm_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::optional<std::vector<int32_t>> __tmp_1;" in cpp
+        assert ("(__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), "
+                "take_any<std::vector<int32_t>>((*__tmp_1)))" in cpp)
 
 
 class TestFenceDoesNotOverTrigger:
@@ -194,15 +244,17 @@ class TestFenceDoesNotOverTrigger:
         _assert_routes_byte_identical(self.SRC)
 
 
-class TestTernaryArmStaysFenced:
-    """The pre-existing sibling fence: a ternary ARM never receives the flush
-    right either. Boundary pin -- it must keep rejecting, not start routing."""
+class TestTernaryArmDefers:
+    """The ternary sibling: an audited movable temp in an ARM defers through
+    the arm's own region (`(cond) ? (__tmp_1.emplace(..), ..) : (..)`)."""
 
     SRC = _REC + ("def f(b: bool) -> bool:\n"
                   "    return take(A(7)) if b else False\n") + _MAIN
 
-    def test_arm_is_fenced(self):
-        _assert_fenced(self.SRC)
+    def test_arm_defers(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::optional<A> __tmp_1;" in cpp
+        assert "? (__tmp_1.emplace(A(7)), take(&((*__tmp_1))))" in cpp
 
 
 class TestIfConditionUnchanged:

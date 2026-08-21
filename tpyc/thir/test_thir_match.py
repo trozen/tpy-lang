@@ -3698,3 +3698,112 @@ class TestScalarFieldSubjectFlavors:
         assert "auto& __match_subject_1 = h.n;" in cpp
         assert ("auto& __match_subject_1 = "
                 "::tpy::__getitem__(h.items, 0);") in cpp
+
+
+class TestMatchScalarRvalueSubject:
+    """A NON-LVALUE subject on the SWITCH scalar tiers copies into the
+    dispatch local (`auto __match_subject_N = <expr>;` -- the AST's
+    `_match_subject_is_lvalue` ternary; a scalar copy is safe by value).
+    Witnesses: the pascal frontend's call-rooted `deref(p).tag` subject and
+    the bare-call sibling. Lvalue subjects keep the `auto&` bind, and the
+    if/elif chain tiers stay out of the rung."""
+
+    SRC = (
+        "from tpy import Int32, Ptr, deref\n"
+        "class Rec:\n"
+        "    tag: Int32\n"
+        "    def __init__(self, t: Int32):\n        self.tag = t\n"
+        "def pick(p: Ptr[Rec]) -> Int32:\n"
+        "    match deref(p).tag:\n"
+        "        case 1:\n            return 10\n"
+        "        case 2:\n            return 20\n"
+        "        case _:\n            return 0\n"
+        "def tag2() -> Int32:\n    return 2\n"
+        "def pick2() -> Int32:\n"
+        "    match tag2():\n"
+        "        case 2:\n            return 5\n"
+        "        case _:\n            return 0\n"
+        "def main() -> None:\n"
+        "    r = Rec(2)\n"
+        "    q: Ptr[Rec] = r\n"
+        "    print(pick(q), pick2())\n"
+        "main()\n"
+    )
+
+    def test_routed_and_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "pick") is not None
+        assert _fn(thir, "pick2") is not None
+        assert witnessed.get("match.scalar_rvalue_subject", 0) >= 2
+
+    def test_byte_identical_and_copy_bind(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "auto __match_subject_1 = ::tpy::deref_check(p).tag;" in cpp
+        assert "auto __match_subject_1 = tag2();" in cpp
+        assert "auto& __match_subject_1" not in cpp
+
+    def test_lvalue_field_subject_keeps_ref_bind(self):
+        # BOUNDARY: an lvalue chain subject stays on the `auto&` bind --
+        # the rung must not demote it to a copy.
+        src = (
+            "from tpy import Int32\n"
+            "class Rec:\n"
+            "    tag: Int32\n"
+            "    def __init__(self, t: Int32):\n        self.tag = t\n"
+            "def pick(r: Rec) -> Int32:\n"
+            "    match r.tag:\n"
+            "        case 1:\n            return 10\n"
+            "        case _:\n            return 0\n"
+            "def main() -> None:\n"
+            "    print(pick(Rec(1)))\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert not witnessed.get("match.scalar_rvalue_subject")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __match_subject_1 = r.tag;" in cpp
+
+    def test_chain_tier_rvalue_subject_stays_ast(self):
+        # BOUNDARY: the if/elif chain scalars (float labels) are outside the
+        # admitted switch kinds -- a non-lvalue subject there keeps
+        # rejecting (the chain's literal-cond renders are unaudited for
+        # rvalue subjects).
+        src = (
+            "from tpy import Ptr, deref\n"
+            "class Rec:\n"
+            "    val: float\n"
+            "    def __init__(self, v: float):\n        self.val = v\n"
+            "def pick(p: Ptr[Rec]) -> float:\n"
+            "    match deref(p).val:\n"
+            "        case 1.5:\n            return 10.0\n"
+            "        case _:\n            return 0.0\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is None
+        assert not witnessed.get("match.scalar_rvalue_subject")
+        _assert_byte_identical(src)
+
+    def test_ptr_name_lvalue_chain_subject_not_claimed(self):
+        # ADVERSARIAL NEIGHBOR: `match p.tag:` on `p: Ptr[Rec]` spells the
+        # same `deref_check(p).tag` subject C++ but is an LVALUE chain
+        # (pointer-name root) -- whatever its current disposition, the
+        # rvalue rung must not claim it.
+        src = (
+            "from tpy import Int32, Ptr\n"
+            "class Rec:\n"
+            "    tag: Int32\n"
+            "    def __init__(self, t: Int32):\n        self.tag = t\n"
+            "def pick(p: Ptr[Rec]) -> Int32:\n"
+            "    match p.tag:\n"
+            "        case 1:\n            return 10\n"
+            "        case _:\n            return 0\n"
+            "def main() -> None:\n"
+            "    r = Rec(1)\n"
+            "    q: Ptr[Rec] = r\n"
+            "    print(pick(q))\n"
+            "main()\n"
+        )
+        _thir, witnessed = _lower_ctx_witnessed(src)
+        assert not witnessed.get("match.scalar_rvalue_subject")
+        _assert_byte_identical(src)

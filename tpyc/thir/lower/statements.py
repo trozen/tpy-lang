@@ -408,6 +408,7 @@ from .checks import (
     _container_literal_decl_ok,
     _container_literal_shape_ok,
     _bytearray_recv,
+    _bytearray_value_slot_init,
     _container_setitem_ok,
     _deref_coerce_borrow_slot,
     _user_record_setitem_ok,
@@ -1563,6 +1564,32 @@ def _for_iter_proto_route(
         if not fi.is_generator and not _iter_proto_call_ret(it, analyzer):
             return None
         iterable_lvalue = _iter_call_lvalue(it, analyzer)
+    elif isinstance(it, TpyIfExpr):
+        # A TERNARY of iterator-returning calls (`for v in (gen([1, 2, 3])
+        # if flag else gen([9])):`): the rvalue capture binds the chosen
+        # frame (`auto __src_N = ((flag) ? (..) : (..));`), each arm's
+        # deferred temps banking into its own emit region. RVALUE call arms
+        # only -- an lvalue arm would need the alias capture the ternary
+        # cannot carry.
+        for arm in (it.then_expr, it.else_expr):
+            if not isinstance(arm, (TpyCall, TpyMethodCall)):
+                return None
+            afi = arm.resolved_function_info
+            if afi is None:
+                return None
+            if not afi.is_generator and not _iter_proto_call_ret(arm,
+                                                                 analyzer):
+                return None
+            if _iter_call_lvalue(arm, analyzer):
+                return None
+        et = _resolved_loop_elem_type(stmt, analyzer)
+        if not _for_each_elem_binding_ok(et):
+            note_detail("foreach.elem_family."
+                        + _type_family_tag(et, analyzer))
+            return None
+        _witness("foreach.ifexpr_iterable")
+        return _ForEachRoute(route="iter_proto", elem_type=et,
+                             iterable_lvalue=False)
     elif isinstance(it, TpyFieldAccess):
         # A user-iterator FIELD read (`for k in r.headers:`) captures the
         # member lvalue (`auto& __src_N = r.headers;`) exactly like a local
@@ -4122,6 +4149,34 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
         lc.unhandled_hoists = saved_hoists
 
 
+def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
+    """The entry gates shared by the LAMBDA and frame-MEMBER nested-def
+    forms (kept in one place so the two cannot drift): a resumable nested
+    func, a generic / @error_return signature, param defaults, and a
+    `global` declaration all reject -- the last two because the shared
+    `_nested_def_lowering_scope` premises assume them away (no global
+    decls; no param seeding). Callers keep their own form-specific gates
+    (capture spelling, name collision, param-type ladder) in their own
+    order so reject tags stay stable.
+
+    `reason_for` is a ZERO-ARG callable: `stmt_reject_reason` composes the
+    note_detail tag at its own call time, so the reason must render AFTER
+    the detail is noted -- a pre-evaluated string would drop the tag."""
+    analyzer = lc.analyzer
+    if func.is_async or func.is_generator:
+        note_detail("nesteddef.resumable_func")
+        raise ThirUnsupported(reason_for())
+    if func.type_params or func.error_return is not None:
+        note_detail("nesteddef.signature")
+        raise ThirUnsupported(reason_for())
+    if any(d is not None for d in func.defaults):
+        note_detail("nesteddef.param_default")
+        raise ThirUnsupported(reason_for())
+    if analyzer.function_global_decls.get(id(func)):
+        note_detail("nesteddef.global_decl")
+        raise ThirUnsupported(reason_for())
+
+
 def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     """Lower `def name(...)` in a function body to `_gen_nested_def`'s lambda:
     the capture list spelled purely from sema's node facts, params and the
@@ -4133,18 +4188,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     func = stmt.func
     loc = getattr(stmt, "loc", None)
     begin_stmt()
-    if func.is_async or func.is_generator:
-        note_detail("nesteddef.resumable_func")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    if func.type_params or func.error_return is not None:
-        note_detail("nesteddef.signature")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    if any(d is not None for d in func.defaults):
-        note_detail("nesteddef.param_default")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    if analyzer.function_global_decls.get(id(func)):
-        note_detail("nesteddef.global_decl")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+    _nested_def_entry_reject(func, lc, lambda: stmt_reject_reason(stmt))
     # A captured `self` spells `this` in the capture list (the AST's
     # `self_captures_this`: the body renders the receiver through `this`, so
     # the capture is the pointer -- alias semantics in every capture mode).
@@ -8688,7 +8732,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # A per-element-Own record tuple slot
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
                     # is the plain spelled copy like a value tuple.
-                    or _own_record_tuple(vtype, analyzer) is not None)
+                    or _own_record_tuple(vtype, analyzer) is not None
+                    # A `None`-annotated unit slot (`local: None = x`):
+                    # `std::monostate local = x;` -- borrow and storage
+                    # coincide (monostate has no borrow form), so the decl
+                    # is the plain spelled copy like a scalar's.
+                    or (isinstance(unwrap_readonly(vtype), NoneType)
+                        and _witness("decl.none_unit_slot"))
+                    # A `bytearray` slot with a DECIDED init shape: the
+                    # bytesview_to_bytearray materialize copy or an owned
+                    # dunder rvalue. NAME inits ride the alias cascade;
+                    # the bytes-param identity coercion keeps rejecting
+                    # (wrong-code AST oracle, BUGS.md).
+                    or _bytearray_value_slot_init(stmt.init, vtype,
+                                                  analyzer))
                 if not slot_ok:
                     # Branch-first REBIND_SLOT and owned-record decls are
                     # handled by the borrow cascade above (its per-arm
@@ -12383,13 +12440,36 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("foreach.tuple_unpack_iter")
             else:
                 _witness("foreach.iter_proto")
-            proto_iterable = _lower_expr(
-                it, lc, declared,
-                # The emit flushes arg temps inside the rvalue brace
-                # scope, right before the `__src` bind -- the AST's
-                # flush point -- so temp-hoisting arg rows are safe here.
-                use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                             allow_temps=True))
+            if isinstance(it, TpyIfExpr):
+                # The route-admitted ternary of iterator-returning calls:
+                # each arm lowers at the ITERABLE use (the same widening a
+                # direct call source gets) under the conditional-operand
+                # audit; the emit's per-arm regions defer their temps.
+                _witness("foreach.ifexpr_iterable_lower")
+                proto_iterable = THIRIfExpr(
+                    result_type=lc.analyzer.get_expr_type(it),
+                    cond=_lower_truthy(it.condition, lc, declared,
+                                       temps_ok=True),
+                    then=_lower_expr(
+                        it.then_expr, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     allow_temps=True),
+                        cond_eager=True),
+                    orelse=_lower_expr(
+                        it.else_expr, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     allow_temps=True),
+                        cond_eager=True),
+                    form=Form.VALUE,
+                    loc=getattr(it, "loc", None))
+            else:
+                proto_iterable = _lower_expr(
+                    it, lc, declared,
+                    # The emit flushes arg temps inside the rvalue brace
+                    # scope, right before the `__src` bind -- the AST's
+                    # flush point -- so temp-hoisting arg rows are safe here.
+                    use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                 allow_temps=True))
             if isinstance(proto_iterable, THIRSelf):
                 # `for x in self:` captures `(*this)` -- gen_expr_deref's
                 # receiver-pointer deref, the print-self retag.

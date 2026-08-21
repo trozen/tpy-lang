@@ -38,6 +38,18 @@ from ..compilation_context import get_current_compiler
 THIR_FACES: frozenset[str] = frozenset({
     # THIRArgTemp arms (lowering; _lower_call_arg / the method-arg row).
     "argtemp.value_union",          # free-call value-union member temp
+    "ifexpr.container_comp_arm",    # container ternary with a comp arm:
+                                    # rvalue arms, VALUE copy
+    "foreach.ifexpr_iterable",      # for-head TERNARY of iterator calls:
+                                    # route admission
+    "foreach.ifexpr_iterable_lower",  # ... and its dedicated lowering leg
+    "argtemp.list_repeat",          # list-repeat rvalue into a container
+                                    # ref slot: the AST is_temporary hoist
+    "argtemp.cond_eager",           # NON-deferring temp in a conditional
+                                    # operand: the eager statement hoist
+    "argtemp.cond_defer_audited",   # audited deferring temp in a
+                                    # conditional operand: the emit's
+                                    # region defers it like the AST
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
                                     # union wrapper slot (json.dumps([...]))
@@ -2213,6 +2225,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.bind_assign_addr",       # hoisted ptr-local: `name = &(subject);`
     "match.bind_assign_move",       # hoisted opt slot: `name = std::move(subject);`
     "match.subject_rvalue",         # call rvalue subject: owned `auto` dispatch-local
+    "match.scalar_rvalue_subject",  # switch-tier non-lvalue subject: `auto` copy
     "match.hoist_ptr_local",        # capture hoist: `T* name;` borrow-only form
     "match.hoist_ptr_slot",         # rvalue-reassigned hoist: T* + rebind slot
     "match.hoist_opt_ptr_local",    # ptr-repr Optional capture hoist: `T* name;`
@@ -2337,6 +2350,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>)
                                     # or the bare alias-of-alias pointer copy)
     "res.nested_def_member",        # frame nested def -> the marker-line stmt
+    "res.nested_def_body",          # frame nested def MEMBER body lowered
     "res.return_self_borrow",       # `return self` at a Poll<T*> slot: &(__self)
     "res.return_tuple_literal",     # value-tuple literal at the async return slot
     "res.return_generic_tuple",     # generic tuple literal at the async return slot
@@ -2503,6 +2517,13 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # RECEIVER position's own `&(...)` lift
     "call.er_ref_bind",             # ref-returning @error_return callee at
                                     # the raw er-bind's alias-bind arm
+    "call.native_record_recv",      # native record-rvalue call under a
+                                    # postfix member read (deref(p).f)
+    "decl.none_unit_slot",          # None-annotated decl: monostate copy
+    "decl.bytearray_view_copy",     # bytearray slot from a coerced view:
+                                    # the materialize bytes_copy
+    "field.none_unit_write",        # NoneType field write: bare assign
+    "mil.none_unit",                # ctor MIL None field: slot(monostate{})
     "top_level.global_no_init",     # annotation-only global: emits nothing
     "top_level.global_slot",
     "top_level.global_slot_comp",   # comp init renders its stmt-expr inside

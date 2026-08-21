@@ -965,9 +965,21 @@ def _match_route(
                      or _wrapper_borrow_return(
                          subj.resolved_function_info.return_type,
                          analyzer) is not None))
+            # A NON-LVALUE subject on the SWITCH scalar tiers copies into
+            # the dispatch local (`auto __match_subject_N = <expr>;` -- the
+            # AST's `_match_subject_is_lvalue` ternary; a scalar copy is
+            # safe by value). Lvalue chains rooted at pointer/narrowed/
+            # tuple-alias names stay out: the AST binds those `auto&`, an
+            # unmirrored render. The chain scalar tiers (if_elif*) stay
+            # out too -- their literal-cond renders are unaudited for
+            # rvalue subjects.
+            scalar_rvalue_subject = (
+                kind in ("switch_enum", "switch_primitive")
+                and not _match_subject_is_lvalue(subj))
             if _wrap_borrow_subj:
                 pass
             elif not (union_call_subject
+                      or scalar_rvalue_subject
                       or (kind == "if_elif_record"
                           and isinstance(subj, TpyCall)
                           and is_rvalue_source(analyzer, subj)
@@ -1023,7 +1035,8 @@ def _match_route(
                 is None):
             return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types)
-    return _MatchRoute(kind=kind, hoist_types=hoist_types)
+    return _MatchRoute(kind=kind, hoist_types=hoist_types,
+                       subject_rvalue=subject_rvalue)
 
 def _select_match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
@@ -1238,12 +1251,14 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                         and all(stmts_terminate(c.body) for c in stmt.cases))
     if emit_unreachable:
         _witness("match.unreachable_tail")
+    if route.subject_rvalue:
+        _witness("match.scalar_rvalue_subject")
     return THIRMatch(
         strategy=kind,
         subject=_lower_expr(stmt.subject, lc, declared,
                             field_prechecked=isinstance(stmt.subject,
                                                         TpyFieldAccess)),
-        subject_ref=True,
+        subject_ref=not route.subject_rvalue,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,

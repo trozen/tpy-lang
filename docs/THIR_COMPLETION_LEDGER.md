@@ -1869,6 +1869,71 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: the six-forks batch** (2026-08-21, branch thir-forks-0821; 6
+  flips, dial 3627 -> 3633; fallback bodies 387 -> ~381 user; cutover gate
+  OPEN 5 -> 4). The 2026-08-20 handoff's six "decision-bound" forks were
+  scouted in one parallel batch and EVERY premise shrank on verification --
+  three de-designed to ordinary work, one fork measured dead, the largest
+  raise site was 5 cases, not 27 (census tag conflated site-touch with the
+  fork). What landed:
+  (1) match: a non-lvalue subject on the switch scalar tiers copies into
+  the dispatch local (`match.scalar_rvalue_subject`), plus the native
+  record-rvalue call at the RECEIVER position (`call.native_record_recv` --
+  the pascal `deref(s).kind` shape; the scouted "sole blocker" claim was
+  wrong, stmt.match masked expr.call). Zeroes the `value_pattern` arm.
+  (2) NoneType/monostate at FOUR value slots (the scout found a ctor-MIL
+  row the fork description missed): free-call arg, decl slot, field write,
+  ctor MIL. All renders pre-existed; four narrow admissions.
+  (3) frame nested-def MEMBER bodies lower through the leaf seam
+  (`res.nested_def_body`, `THIRResumableBody.nested_def_bodies`,
+  `leaf.emit_nested_def_body`): the fork's sub-body-routing concept is NOT
+  LIVE -- a 13/13 decision-test probe routed every member body, and the
+  marker-standing-in audit found the class has ONE member. Erases the
+  8-case dial overstatement; `gen_nested_def_body` reclassified
+  OPEN -> AST_ARM (gate 5 -> 4).
+  (4) conditional-operand arg temps, core: the eager-only gate
+  (`argtemp.cond_eager` / the `argtemp.cond_defer` exit check on the
+  conservative would-defer guess) then the D1 deferred render -- THIR emit
+  opens the AST's own `TempState.conditional_region` through CtxTempSink
+  (byte-identity BY CONSTRUCTION), with `THIRArgTemp.movable` as the
+  AUDITED defer fact (None = unaudited keeps rejecting). Four splice
+  points: logical BinOp RHS, ValueSelect RHS, IfExpr arms, chained
+  stmt-expr operands i>=2. The periphery pair flipped the SAME DAY (the
+  user called slice (c) back in): the list-repeat arg row, the
+  MUTATED-slot ctor container hoist (const slots keep the inline brace --
+  a unit fixture caught the divergence the mutated-only corpus case was
+  blind to), the value-select RHS grant, the for-head iterator-ternary
+  route, the comp-as-ternary-arm rung (LIST-only), comp elements as a
+  flushable position (the degrade relocation IS the per-iteration
+  flush_since), Sized/pending/Array-demote in the native comp predicate,
+  and the coerce arm riding allow_temps through. Fork 4 total: 5/5 cases.
+  (5) `THIRFormConvert.materialize` tri-state (None = the legacy family
+  derivation) -- bytearray is the one view-family member whose
+  (family, form) pair does not determine the render, so validate.py forces
+  an explicit decision on bytearray STORAGE converts; the coerce
+  chokepoint's materialize disposition tags True; the bytearray decl slot
+  admits ONLY the `bytesview_to_bytearray` coerced-view shape (the
+  bytes-param identity coercion keeps rejecting -- its AST oracle is
+  wrong-code, filed in BUGS.md; the owned dunder rvalue has no routable
+  witness while the bytearray binop arm rejects).
+  Alongside on its own AST-first branch (fix-walrus-temp-burn): the
+  walrus-elif temp-counter burn fix (`rollback_walrus_probe`), churn
+  measured at ONE case / 2 lines against the feared corpus-wide
+  renumbering.
+  LESSONS: verify-the-premise went 6-for-6 (27 -> 5 cases; the five-case
+  bytearray residue list was dead; 13/13 nested defs route; churn 1 case);
+  and the scouted "~10 FormConvert construction sites" were 73 -- the
+  SECOND grep-standing-in-for-an-instrument miss in two sessions (gate
+  item 4 went 2 -> 26 -> 5 the same way): a class, not an anecdote.
+  CUTOVER CONSOLIDATION SURFACE left by this branch (fold into the
+  printer-layer temp-machinery pass): the standalone TempSink's region
+  banking mirrors TempState._close_region verbatim (only unit callers use
+  it -- every production seam passes CtxTempSink, so the mirror's sole
+  drift guard is test_thir_condtemp); THIRArgTemp.would_defer reaches the
+  printer's _slot_spellable through the acknowledged context<->nodes
+  cycle; and the conditional-operand concept lives in three encodings
+  (the lowering exit check, validate.py's eager_only axis, the emit
+  regions).
 - **Landed: the shared emit primitives get a home outside the body
   emitters** (2026-08-20; cutover gate OPEN 34 -> 5, no dial movement -- this
   is skeleton work, not a routing wave). `tpyc/codegen_cpp/emit_prims.py`
@@ -11833,7 +11898,9 @@ the modules slated for deletion (see its `Landed:` bullet). That is what
 re-closes item 4 from 34 to 5 -- the paragraph above calls the placement
 "an open design question", and for these it is now answered.
 
-**The 5 survivors are all in `gen_async`, and all genuinely undecided** --
+**The 5 survivors are all in `gen_async`, and all genuinely undecided**
+(now 4 -- `gen_nested_def_body` resolved 2026-08-21, see the six-forks
+entry under "Maintaining this ledger") --
 they are not relocation. `gen_nested_def_body` (a nested def inside a coro
 finally), `_make_async_return` / `_make_generator_resumable_return` (the
 deferred-return recipes the leaf emitter reaches through),

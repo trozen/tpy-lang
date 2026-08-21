@@ -873,18 +873,22 @@ class TestSlicedOutShapes:
         assert "static_cast<uint64_t>(18446744073709551615ull)" in cpp
 
     def test_unhandled_expression_lowering_reject_falls_back_after_await(self):
+        # The original container-literal-in-ternary fixture routes since the
+        # conditional-region deferral (its temp row is audited); an UNAUDITED
+        # arg-temp row -- the value-union member temp -- keeps the pin's
+        # claim alive: a lowering reject after an await folds the WHOLE
+        # frame back, byte-identically.
         src = (_PRE
-               + "def eat(xs: list[Int32]) -> Int32:\n"
-               + "    xs.append(1)\n"
-               + "    return len(xs)\n\n"
+               + "def eat(u: Int32 | str) -> Int32:\n"
+               + "    return 1 if isinstance(u, Int32) else 0\n\n"
                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
                + "async def f(n: Int32) -> Int32:\n"
                + "    n = await step(n)\n"
-               + "    x = eat([1, 2]) if n > 0 else 0\n"
+               + "    x = eat(n) if n > 0 else 0\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _, fallback = _assert_identical(src)
-        assert fallback.get("resumable:expr.call") == 1
+        assert fallback.get("resumable:argtemp.cond_defer") == 1
 
     def test_async_with_global_manager_routes(self):
         # RE-PINNED ROUTED (thir-wave-next6): a global manager seeds as a
@@ -7666,3 +7670,77 @@ class TestFrameFieldWalrus:
         _witnesses, fallback = _assert_identical(src)
         assert not any(k.startswith("body:") and "walrus" in k
                        for k in fallback)
+
+
+class TestFrameNestedDefMemberBody:
+    """A routed frame's nested-def MEMBER bodies emit from THIR
+    (res.nested_def_body -- the gen_coro_finally_top_def seam): lowered at
+    frame lowering under the member scope (frame classifications kept, leaf
+    mode cleared so returns are plain), emitted via
+    `leaf.emit_nested_def_body`. A member body outside the slice folds the
+    WHOLE frame back -- there is no per-member fallback."""
+
+    SRC = (_PRE
+           + "import asyncio\n"
+           + "async def runner() -> Int32:\n"
+           + "    total: Int32 = 0\n"
+           + "    def bump(d: Int32) -> Int32:\n"
+           + "        nonlocal total\n"
+           + "        total += d\n"
+           + "        return total\n"
+           + "    bump(2)\n"
+           + "    await asyncio.sleep(0)\n"
+           + "    return bump(3)\n\n"
+           + "def main() -> None:\n"
+           + "    print(asyncio.run(runner()))\n"
+           + "main()\n")
+
+    def test_member_body_routes_byte_identical(self):
+        witnesses, fallback = _assert_identical(self.SRC)
+        assert witnesses.get("res.nested_def_member", 0) >= 1  # marker line
+        assert witnesses.get("res.nested_def_body", 0) >= 1    # member body
+        assert not fallback, fallback
+
+    def test_member_body_emits_from_thir(self):
+        # The routed frame must take leaf.emit_nested_def_body, never
+        # gen_nested_def_body -- spy on the AST member emitter.
+        from ..codegen_cpp.statements import StatementGenerator
+        calls: list[str] = []
+        original = StatementGenerator.gen_nested_def_body
+
+        def spy(self, out, func, ret_cpp):
+            calls.append(func.name)
+            return original(self, out, func, ret_cpp)
+
+        StatementGenerator.gen_nested_def_body = spy
+        try:
+            _c, _hpp, _cpp = _gen(self.SRC, thir=True)
+        finally:
+            StatementGenerator.gen_nested_def_body = original
+        assert "bump" not in calls, (
+            "routed frame emitted its member body through the AST path")
+
+    def test_name_collision_folds_whole_frame(self):
+        # BOUNDARY: a member whose name collides with a module function
+        # would consult the wrong FunctionInfo for const verdicts -- the
+        # frame folds back whole (fallback tallied, output identical by
+        # construction).
+        src = (_PRE
+               + "import asyncio\n"
+               + "def bump(d: Int32) -> Int32:\n"
+               + "    return d\n\n"
+               + "async def runner() -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    def bump(d: Int32) -> Int32:\n"
+               + "        nonlocal total\n"
+               + "        total += d\n"
+               + "        return total\n"
+               + "    bump(2)\n"
+               + "    await asyncio.sleep(0)\n"
+               + "    return bump(3)\n\n"
+               + "def main() -> None:\n"
+               + "    print(asyncio.run(runner()))\n"
+               + "main()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("res.nested_def_body")
+        assert any("res.nested_def_member" in k for k in fallback), fallback

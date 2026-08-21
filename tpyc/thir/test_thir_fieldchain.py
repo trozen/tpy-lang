@@ -8,8 +8,9 @@ the self / param / narrowed-Optional bottom receivers."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import (_compile, _entry, _fn, _lower_ctx,
-                       _lower_ctx_witnessed, _assert_routes_byte_identical)
+from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
+                       _lower_ctx, _lower_ctx_witnessed,
+                       _assert_routes_byte_identical)
 
 # Three-deep value F1-record chain. `f` returns a param chain, `via_self` a
 # `this->` chain, `local` binds the chain then reads it, `narrowed` reaches the
@@ -407,3 +408,57 @@ class TestPtrChainNoneSubject:
             "    print(Holder(VInner(p)).read())\n"
             "go()\n")
         _assert_routes_byte_identical(src)
+
+
+class TestFieldOverNativeDerefCall:
+    """A @native record-rvalue free call under a postfix member read
+    (call.native_record_recv): the pascal frontend's explicit `deref(p).tag`
+    member-through-pointer spelling -- both paths compose `.field` on the
+    bare `::tpy::deref_check(p)` render. A BORROW-returning user call
+    receiver stays out (the REF_ALIAS place/loan frontier)."""
+
+    SRC = (
+        "from tpy import Int32, Ptr, deref\n"
+        "class Rec:\n"
+        "    tag: Int32\n"
+        "    def __init__(self, t: Int32):\n        self.tag = t\n"
+        "def read(p: Ptr[Rec]) -> Int32:\n"
+        "    return deref(p).tag\n"
+        "def main() -> None:\n"
+        "    r = Rec(3)\n"
+        "    q: Ptr[Rec] = r\n"
+        "    print(read(q))\n"
+        "main()\n"
+    )
+
+    def test_routed_and_witnessed(self):
+        thir, witnessed = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "read") is not None
+        assert witnessed.get("call.native_record_recv", 0) >= 1
+
+    def test_byte_identical_and_render(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "return ::tpy::deref_check(p).tag;" in cpp
+
+    def test_borrow_returning_user_call_recv_not_claimed(self):
+        # BOUNDARY: a field read off a BORROW-returning user free call
+        # (`get(h).tag`, `Rec&` return) belongs to the plain
+        # `field.call_recv` arm -- the native-receiver rung must not claim
+        # it (its render would be identical today, but the two arms gate
+        # different shapes and must stay distinguishable).
+        src = (
+            "from tpy import Int32\n"
+            "class Rec:\n"
+            "    tag: Int32\n"
+            "    def __init__(self, t: Int32):\n        self.tag = t\n"
+            "class H:\n"
+            "    r: Rec\n"
+            "    def __init__(self):\n        self.r = Rec(1)\n"
+            "def get(h: H) -> Rec:\n    return h.r\n"
+            "def f(h: H) -> Int32:\n    return get(h).tag\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert witnessed.get("field.call_recv", 0) >= 1
+        assert not witnessed.get("call.native_record_recv")
+        _assert_byte_identical(src)

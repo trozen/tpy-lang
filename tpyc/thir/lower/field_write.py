@@ -35,6 +35,7 @@ from ...type_def_registry import (
     is_set,
 )
 from ...typesys import (
+    NoneType,
     OptionalType,
     TpyType,
     unwrap_optional_own,
@@ -650,7 +651,10 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     cnv_t = (unwrap_readonly(ftype.inner) if val_opt_container
              else ftype)
     if (not mv and lowered.result_type == cnv_t
-            and (lowered.form is Form.STORAGE or whole_opt_field)):
+            and (lowered.form is Form.STORAGE or whole_opt_field
+                 # A NoneType source has no borrow form (monostate), so
+                 # any form is already the storage value -- bare copy.
+                 or isinstance(unwrap_readonly(cnv_t), NoneType))):
         return lowered
     if mv and lowered.result_type == cnv_t and lowered.form is Form.STORAGE:
         # An already-storage source at last use (an `Own[P | None]` param

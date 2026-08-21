@@ -38,7 +38,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 
-from ..fallback import ThirUnsupported, begin_stmt, note, stmt_reject_reason
+from ..fallback import (ThirUnsupported, begin_stmt, note, note_detail,
+                        stmt_reject_reason)
 from ..faces import witness as _witness
 from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import (
@@ -171,7 +172,10 @@ from .statements import (
     _lower_narrow_cond,
     _lower_resumable_return_value,
     _lower_stmt,
+    _lower_stmts,
     _make_narrow_alias,
+    _nested_def_entry_reject,
+    _nested_def_lowering_scope,
     _persistent_alias_name,
     _var_decl_type,
 )
@@ -2215,6 +2219,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     finally:
         lc.in_finally_helper = False
 
+    # Frame nested defs are struct MEMBERS emitted by
+    # `gen_coro_finally_top_def`; lower each member BODY here so the routed
+    # frame emits it from THIR instead of `gen_nested_def_body`. The
+    # statement position keeps its THIRFrameNestedDef marker; a member body
+    # outside the slice folds the WHOLE frame back (per-body all-or-nothing
+    # at the frame's granularity).
+    nested_def_bodies: dict[int, tuple] = {}
+    for _nd in collect_frame_nested_defs(list(func.body)):
+        nested_def_bodies[id(_nd.func)] = _lower_member_nested_def(
+            _nd, lc, declared)
+
     # Nested leaf returns (THIRResumableReturn): register their values so
     # the skeleton's `_make_async_return` value render (`render_return_value`,
     # keyed by id(ast)) finds them exactly like ReturnT terminator values.
@@ -2238,7 +2253,61 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         leaves=leaves, conds=conds, await_args=await_args,
         return_values=return_values, yield_values=yield_values,
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
-        match_dispatches=match_dispatches)
+        match_dispatches=match_dispatches,
+        nested_def_bodies=nested_def_bodies)
+
+
+def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
+    """Lower one frame nested def's MEMBER body -- the seam replacement for
+    `gen_coro_finally_top_def`'s `gen_nested_def_body` call.
+
+    The member is a plain sync function over the frame struct: the frame
+    classification sets stay live (an outer local reads as the frame's own
+    field via implicit this, exactly like in the frame body -- the AST's
+    `gen_nested_def_body` deliberately keeps local-render state), while the
+    per-function return/prescan facts swap through the shared nested-def
+    scope, and `resumable_leaf_mode` CLEARS so a `return` lowers plain
+    (`return v;` -- the member is not a resume step). No capture gates:
+    a member has no capture list; self reaches through the frame's
+    receiver spelling."""
+    func = nd.func
+    analyzer = lc.analyzer
+    _nested_def_entry_reject(func, lc, lambda: "res.nested_def_member")
+    if (analyzer.registry.get_function(func.name)
+            or (lc.record_name is not None
+                and (ri := analyzer.registry.get_record(lc.record_name))
+                is not None
+                and ri.get_method_overloads(func.name))):
+        # Same hazard as the lambda form (which keeps its own copy so its
+        # reject-tag ORDER stays stable): a colliding name makes the body's
+        # const-verdict lookups consult the wrong FunctionInfo.
+        note_detail("nesteddef.name_collision")
+        raise ThirUnsupported("res.nested_def_member")
+    body_declared = dict(declared)
+    for pname, ptype in func.params:
+        if not isinstance(ptype, TpyType):
+            note_detail("nesteddef.param_unresolved")
+            raise ThirUnsupported("res.nested_def_member")
+        # No param seeding, like the lambda form: `gen_nested_def_body`
+        # only adds the names to local_scope_names. Unlike the lambda form
+        # there is no param-TYPE ladder: the member's signature is skeleton
+        # emission (`nested_def_signature`), and the body reads a param as
+        # a plain name on both paths -- the lambda ladder exists to fence
+        # shapes whose AST LAMBDA emit is ill-formed (BUGS.md), a hazard
+        # the member form does not share.
+        body_declared[pname] = ptype
+    saved_leaf = lc.resumable_leaf_mode
+    lc.resumable_leaf_mode = False
+    try:
+        with _nested_def_lowering_scope(lc, func, self_captured=True):
+            body = _lower_stmts(func.body, lc, body_declared)
+            if lc.unhandled_hoists:
+                note_detail("nesteddef.hoisted_vars")
+                raise ThirUnsupported("res.nested_def_member")
+    finally:
+        lc.resumable_leaf_mode = saved_leaf
+    _witness("res.nested_def_body")
+    return tuple(body)
 
 
 def _reject(reason: str):

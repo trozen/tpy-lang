@@ -787,3 +787,72 @@ class TestBytesSliceFieldWrite:
         _ctx, fell = _thir_ctx(src)
         assert fell == {"body:stmt.assign:assign.field_write_shape": 1,
                         "ctor:ctor.mil_field.nominal.bytesliteral": 1}, fell
+
+
+class TestBytearrayValueSlotDecl:
+    """The bytearray VALUE decl slot's DECIDED init shape: a
+    bytesview_to_bytearray-coerced view source materializes
+    (`std::vector<uint8_t> ba = ::tpy::bytes_copy(<view>);` -- the coerce
+    chokepoint's explicit materialize=True convert; bytearray is a reference
+    type, so the family alone cannot pick view-copy over object-move). The
+    bytes-param IDENTITY coercion keeps rejecting (its AST oracle is
+    wrong-code -- BUGS.md, span-vs-vector&), and the owned dunder rvalue
+    stays out until the bytearray binop arm exists."""
+
+    def test_view_slice_init_materializes(self):
+        src = ("def make() -> bytes:\n"
+               "    return b\"abcd\"\n"
+               "def f() -> None:\n"
+               "    ba: bytearray = make()[1:3]\n"
+               "    print(len(ba))\n"
+               "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("decl.bytearray_view_copy", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::vector<uint8_t> ba = ::tpy::bytes_copy("
+                "::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));"
+                in cpp)
+
+    def test_owned_dunder_rvalue_stays_ast(self):
+        # BOUNDARY: `bb = ba + b"cd"` still rejects at the bytearray binop
+        # arm (binop.shape.+), so the decl row carries no owned-rvalue leg
+        # -- admitting one would be an admitted-but-unwitnessed shape.
+        src = ("def f() -> None:\n"
+               "    ba = bytearray(b\"ab\")\n"
+               "    bb = ba + b\"cd\"\n"
+               "    print(len(bb))\n"
+               "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not w.get("decl.bytearray_view_copy")
+        _assert_byte_identical(src)
+
+    def test_bytes_param_identity_coercion_keeps_rejecting(self):
+        # BOUNDARY: `ba: bytearray = p` off a bytes PARAM -- the identity
+        # bytes_to_bytearray coercion whose AST oracle is ill-formed C++
+        # (BUGS.md). THIR's reject is protecting the broken oracle; do not
+        # admit until the AST-first fix lands.
+        src = ("def f(p: bytes) -> None:\n"
+               "    ba: bytearray = p\n"
+               "    print(len(ba))\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is None
+        assert not w.get("decl.bytearray_view_copy")
+        _assert_byte_identical(src)
+
+    def test_name_alias_stays_on_alias_cascade(self):
+        # BOUNDARY: `ba2 = ba` keeps the REF_ALIAS bind -- the value-slot
+        # row must not claim an aliasable name init.
+        src = ("def f() -> None:\n"
+               "    ba = bytearray(b\"ab\")\n"
+               "    ba2 = ba\n"
+               "    ba2.append(99)\n"
+               "    print(len(ba))\n"
+               "f()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("decl.bytearray_alias", 0) == 1
+        assert not w.get("decl.bytearray_view_copy")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<uint8_t>& ba2 = ba;" in cpp

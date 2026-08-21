@@ -20,7 +20,8 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from ..parse import SourceLocation
-from ..typesys import ResolvedBinop, TpyType
+from ..typesys import (ResolvedBinop, TpyType, unwrap_readonly,
+                       unwrap_ref_type)
 
 if TYPE_CHECKING:
     # Compatibility metadata only (cpp_local_representation); imported under
@@ -747,6 +748,35 @@ class THIRArgTemp(THIRExpr):
     brace_init: bool = False
     move: bool = False
     addr_of: bool = False
+    # The AUDITED defer fact: the movable argument the AST's creator passes
+    # to `TempState.create`/`create_typed` for this row, decided at lowering
+    # (inside a conditional region, movable AND spellable => the deferred
+    # optional-slot render). None = the row is UNAUDITED -- the
+    # conditional-operand exit check then rejects the shape on the
+    # conservative `would_defer` guess instead of risking a divergent
+    # eager/deferred placement.
+    movable: 'bool | None' = None
+
+    def would_defer(self) -> bool:
+        """Would the AST's conditional-operand machinery DEFER this temp
+        (an uninit `std::optional<T>` slot + a banked `emplace`) instead of
+        hoisting it eagerly at the statement? Mirrors
+        `TempState._register`'s decision: movable AND slot-spellable. A
+        `None` cpp_type is the `auto` row (never spellable). The audited
+        `movable` fact answers directly; an unaudited row guesses off the
+        slot type, an unanswerable type reading as movable -- the
+        conservative polarity for a gate that REJECTS deferring shapes."""
+        # Local import: codegen_cpp.context imports thir.nodes (a genuine
+        # cycle), so the printer helper cannot move to module level.
+        from ..codegen_cpp.context import _slot_spellable
+        if not _slot_spellable(self.cpp_type or "auto"):
+            return False
+        if self.movable is not None:
+            return self.movable
+        t = self.result_type
+        if not isinstance(t, TpyType):
+            return True
+        return unwrap_readonly(unwrap_ref_type(t)).is_movable()
 
 
 @dataclass(frozen=True)
@@ -1487,13 +1517,23 @@ class THIRFormConvert(THIRExpr):
     view->owned copy may also respell the type (`StrView` -> `str`/`String`,
     the materializing str-family coercions): the respelling IS the form change
     materialized in the type system, carried on `result_type`, and the
-    `std::string(x)` emit stays one chokepoint. There is no `kind` field: the
-    runtime helper is a pure function of (family(result_type), value.form ->
-    form, is_const, move). F1 covers the Optional storage->borrow read
-    (`::tpy::optional_to_ptr`)."""
+    `std::string(x)` emit stays one chokepoint. F1 covers the Optional
+    storage->borrow read (`::tpy::optional_to_ptr`).
+
+    `materialize` tags the "copy a VIEW into an owning buffer" meaning where
+    lowering DECIDES it. For every type but `bytearray` the runtime helper is
+    a pure function of (family(result_type), value.form -> form, is_const,
+    move), and `None` keeps that derivation. `bytearray` breaks it -- the one
+    owned member of a view family that is a REFERENCE type, so a borrow-form
+    `bytes` value is a span while a borrow-form `bytearray` value is an
+    object reference; the same (family, BORROW->STORAGE) pair thus has two
+    correct renders (`::tpy::bytes_copy(view)` vs move/copy the object) and
+    a bytearray-result STORAGE convert MUST carry an explicit True/False
+    (validate.py enforces it)."""
     value: THIRExpr
     is_const: bool = False
     move: bool = False
+    materialize: 'bool | None' = None
 
 
 # --- Statements ---
@@ -1956,12 +1996,14 @@ class THIRAnyNarrowAlias(THIRStmt):
 @dataclass(frozen=True)
 class THIRFrameNestedDef(THIRStmt):
     """A nested `def` at its statement position inside a RESUMABLE frame
-    body: the function itself is a frame MEMBER (declared + emitted by the
-    gen_async scaffolding, callable from every resume case), so the
-    statement renders only the `// def {name}: frame member` marker line
-    under its ordinary source comment. `loc` drives the source comment;
-    the marker spells the PYTHON name (the AST comment is unescaped -- a
-    keyword-colliding def like `double` stays `double` there)."""
+    body: the function itself is a frame MEMBER (signature + struct decl
+    stay gen_async scaffolding, callable from every resume case; the member
+    BODY lowers into `THIRResumableBody.nested_def_bodies` and emits via
+    the leaf seam), so the statement renders only the
+    `// def {name}: frame member` marker line under its ordinary source
+    comment. `loc` drives the source comment; the marker spells the PYTHON
+    name (the AST comment is unescaped -- a keyword-colliding def like
+    `double` stays `double` there)."""
     name: str = ""
 
 
@@ -3248,6 +3290,14 @@ class THIRResumableBody:
     # sync match tiers with arm BODIES replaced by body_key hooks -- the
     # skeleton walks the arm BBs through its arm emitter at those points.
     match_dispatches: 'Mapping[int, THIRStmt]' = field(default_factory=dict)
+    # Frame nested defs (keyed by id() of the nested TpyFunction): the
+    # member-function BODY statements, lowered under the nested function's
+    # own per-function scope with the frame classifications kept (a member
+    # reaches frame locals through the frame's fields via implicit this).
+    # The skeleton keeps the signature/struct-decl lines; the statement
+    # position keeps its THIRFrameNestedDef marker.
+    nested_def_bodies: 'Mapping[int, tuple[THIRStmt, ...]]' = (
+        field(default_factory=dict))
 
 
 @dataclass(frozen=True)

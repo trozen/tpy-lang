@@ -455,6 +455,13 @@ def _coerce_disposition(e: TpyCoerce, *,
         # everywhere below the Own reject (which keeps the arg cascade's
         # render decision unmirrored, exactly as for the str family).
         return "materialize"
+    if name == "bytesview_to_bytearray":
+        # The bytearray twin of bytesview_to_bytes: the identical
+        # `::tpy::bytes_copy({0})` lambda. Unlike bytes, a bytearray sink
+        # from a view source ALWAYS carries this sema coercion (the
+        # coercion-less same-type case cannot arise for a reference type),
+        # so this row alone covers the family's view->owned direction.
+        return "materialize"
     return None
 
 

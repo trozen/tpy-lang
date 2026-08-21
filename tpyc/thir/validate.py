@@ -43,8 +43,8 @@ import dataclasses
 
 from ..codegen_cpp.forms import is_ptr_variant_union
 from ..type_def_registry import (
-    is_basic_slice_type, is_bytes_view_type, is_slice_type, is_span,
-    is_str_view_type,
+    is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
+    is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
 )
 from ..typesys import (
     AnyType, NominalType, OptionalType, OwnType, PtrType, TupleType,
@@ -53,7 +53,8 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
-    Form, THIRArgTemp, THIRAssign, THIRCall, THIRCoerce, THIRConstructor,
+    Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
+    THIRCoerce, THIRConstructor,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
@@ -113,6 +114,29 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node,
                   f"no-op form convert (form={node.form.name}, "
                   f"type={node.result_type})")
+        cv = node.result_type
+        cv = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cv)))
+              if cv is not None else None)
+        if node.materialize:
+            # The view->owned copy: only the view families own the render,
+            # and a fresh buffer never moves.
+            if not (cv is not None
+                    and (is_str_type(cv) or is_string_type(cv)
+                         or is_bytes_type(cv) or is_bytearray_type(cv))):
+                _fail(owner, node,
+                      f"materialize convert with non-view-family result "
+                      f"{node.result_type}")
+            if node.move:
+                _fail(owner, node, "materialize convert carrying a move "
+                                   "(a fresh buffer never moves)")
+        if (cv is not None and is_bytearray_type(cv)
+                and node.form is Form.STORAGE and node.materialize is None):
+            # bytearray is the one view-family member whose (family, form)
+            # pair does NOT determine the render (see the node docstring):
+            # the meaning must be decided at lowering.
+            _fail(owner, node,
+                  "bytearray STORAGE convert without an explicit "
+                  "materialize decision")
     elif isinstance(node, THIRCoerce):
         rt = node.result_type
         rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
@@ -202,7 +226,7 @@ def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
 
 
 def _walk(owner: str, node: THIRNode, return_type=None, *,
-          argtemp_ok: bool = False) -> None:
+          argtemp_ok: bool = False, eager_only: bool = False) -> None:
     """`argtemp_ok` marks the value expression of a flushable statement
     (expr stmt / var-decl init / assign value / return value / print arg)
     -- the only
@@ -212,7 +236,14 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     their temps (pre-`if` flush, the nested-elif block, the restructured
     `while (true)` loop head -- never a pre-loop stale snapshot). Anywhere
     else (a loop-header iterable, a MIL cell) a temp has no flush point on
-    the AST path, so reaching one is a lowering bug."""
+    the AST path, so reaching one is a lowering bug.
+
+    `eager_only` marks a CONDITIONAL operand position (a ternary arm, a
+    logical RHS): an AUDITED temp (movable fact mirrored off the AST
+    creator) is legal there -- the emit's conditional region defers or
+    keeps it eager exactly as the AST decides -- while an UNAUDITED temp
+    that might defer (`THIRArgTemp.would_defer`'s conservative guess) is a
+    lowering bug: its eager/deferred placement could diverge."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
@@ -237,33 +268,45 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                     _fail(owner, node.receiver,
                           "receiver THIRArgTemp under a non-flushable "
                           "statement position")
+                if (eager_only and node.receiver.movable is None
+                        and node.receiver.would_defer()):
+                    _fail(owner, node.receiver,
+                          "unaudited deferring THIRArgTemp receiver under "
+                          "a conditional operand")
                 _walk(owner, node.receiver.init, return_type,
-                      argtemp_ok=argtemp_ok)
+                      argtemp_ok=argtemp_ok, eager_only=eager_only)
             else:
                 _walk(owner, node.receiver, return_type,
-                      argtemp_ok=argtemp_ok)
+                      argtemp_ok=argtemp_ok, eager_only=eager_only)
         for a in node.args:
             if isinstance(a, THIRArgTemp):
                 if not argtemp_ok:
                     _fail(owner, a, "THIRArgTemp under a non-flushable "
                                     "statement position")
+                if (eager_only and a.movable is None
+                        and a.would_defer()):
+                    _fail(owner, a, "unaudited deferring THIRArgTemp under "
+                                    "a conditional operand")
                 # A temp's SOURCE ctor flushes its own arg temps at the SAME
                 # statement point (`describe(Canvas(Circle(5)))` -- __tmp_1
                 # innermost-first, then __tmp_2), so nested temps under the
                 # init are legal when the outer temp is flushable.
-                _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok)
+                _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
             elif (isinstance(a, THIRUnionArgLift)
                     and a.temp_cpp is not None):
                 if not argtemp_ok:
                     _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
                                     "non-flushable statement position")
                 if a.value is not None:
-                    _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok)
+                    _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok,
+                          eager_only=eager_only)
             else:
                 # A call-shaped arg's own args flush at the same statement
                 # point (allow_temps rides through nested calls at lowering),
                 # so the flush right propagates through call-arg nesting.
-                _walk(owner, a, return_type, argtemp_ok=argtemp_ok)
+                _walk(owner, a, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
         return
     if isinstance(node, THIRErrorReturnUnwrap):
         # The expression unwrap is TRANSPARENT for flushability: its call's
@@ -367,24 +410,40 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, a, return_type)
         return
     if isinstance(node, THIRIfExpr):
-        # Ternary ARMS evaluate lazily: a hoisted temp there would run
-        # eagerly before the statement -- lowering never threads allow_temps
-        # into arms, so the validator resets the right (zero false
-        # positives) and keeps the miscompile class detectable. The
-        # CONDITION evaluates exactly once unconditionally, so it inherits
-        # the enclosing flush right (`Gate __tmp_1 = Gate(true);` before
+        # Ternary ARMS evaluate lazily: only a NON-DEFERRING temp may hoist
+        # there (the AST's non-movable arm hoists it eagerly at the
+        # statement; a deferring temp would need the conditional-region
+        # render THIR does not carry). The CONDITION evaluates exactly once
+        # unconditionally, so it inherits the enclosing flush right
+        # (`Gate __tmp_1 = Gate(true);` before
         # `((check(__tmp_1)) ? (1) : (0))` -- the AST hoist).
         for child in _iter_children(node):
-            _walk(owner, child, return_type,
-                  argtemp_ok=argtemp_ok and child is node.cond)
+            if child is node.cond:
+                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
+            else:
+                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=True)
+        return
+    if isinstance(node, THIRChainedCompareStmtExpr):
+        # Operands 0 and 1 always evaluate; every later one sits behind a
+        # passed compare, so inits[2:] are conditional-operand positions --
+        # the ternary-arm rule, mirrored (the lowering-time cond_eager check
+        # is the primary gate; this keeps the structural net symmetric).
+        for idx, init in enumerate(node.inits):
+            _walk(owner, init, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=(True if idx >= 2 else eager_only))
         return
     if (isinstance(node, THIRBinOp) and node.resolved is None
             and node.op in ("&&", "||")):
-        # Short-circuit operands likewise: the RHS may never run, so its
-        # temps must not hoist (the truthy lowering never grants temps_ok
-        # to logical operands).
+        # Short-circuit RHS: the conditional-operand rule (audited temps
+        # defer through the emit region, unaudited would-defer ones are a
+        # lowering bug). The LHS always evaluates: it keeps the plain
+        # inherited right (its temp hoists at the statement or banks into
+        # an enclosing region).
         for child in _iter_children(node):
-            _walk(owner, child, return_type)
+            _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=(True if child is node.right else eager_only))
         return
     # The flush right propagates through EXPRESSION nesting (binop operands,
     # coerce wraps, ...): every sub-position of a flushable value expression
@@ -392,7 +451,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     # -- each statement handler above grants the right per position.
     for child in _iter_children(node):
         _walk(owner, child, return_type,
-              argtemp_ok=argtemp_ok and isinstance(node, THIRExpr))
+              argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
+              eager_only=eager_only and isinstance(node, THIRExpr))
 
 
 def validate_function(fn: THIRFunction) -> None:

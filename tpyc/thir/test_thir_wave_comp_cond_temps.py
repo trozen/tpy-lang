@@ -2,8 +2,10 @@
 emit's loop-body-indent flush before the `if`. A per-iteration owned-move
 temp in a filter (`if is_small(Box(i))`) lands inside the loop scope where
 the loop var is declared -- the AST's per-clause cond-temp placement.
-Element-position temps stay rejected (set elements must be copyable; the
-element lowering never threads allow_temps)."""
+Since the fork-4 periphery, list/set ELEMENT positions carry the flush
+right too (their temps flush right above the insert; the filtered flavor
+flushes inside the `if` at the innermost indent) -- see
+TestOwnedElementRoutes and test_thir_condtemp's periphery pins."""
 
 from .testutil import _assert_routes_byte_identical
 
@@ -45,10 +47,11 @@ class TestCompConditionTemps:
         assert "if (is_small(__tmp_2))" in cpp
 
 
-class TestOwnedElementStaysFenced:
-    # The ELEMENT position keeps rejecting: an owned-element comp
-    # (`[Box(i) ...]`) rides the owns_elements gate to the AST path,
-    # byte-identically -- filters got flush rights, elements did not.
+class TestOwnedElementRoutes:
+    # RE-PINNED ROUTED (fork-4 periphery): the owned-element comp
+    # (`[Box(i) ...]`) rides the owns_elements sink byte-identically since
+    # the element-position flush rights landed -- the fence's "elements did
+    # not get flush rights" premise is gone.
     SRC = (
         _BOX
         + "def owned_elems(n: Int32) -> None:\n"
@@ -58,15 +61,6 @@ class TestOwnedElementStaysFenced:
         + "main()\n"
     )
 
-    def test_owned_element_comp_stays_ast(self):
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+    def test_owned_element_comp_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(self.SRC)

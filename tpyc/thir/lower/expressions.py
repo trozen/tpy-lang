@@ -1043,11 +1043,15 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               or _record_rvalue_call_shape(e, analyzer)
               # A @native free call returning a by-value record (`f =
               # open(path)`): the native residue of the plain record-rvalue
-              # arm above, landing bare in a STORAGE value slot. The
-              # RECEIVER flavor stays out until a witness exists (the
-              # template row below carries the corpus shapes).
+              # arm above, landing bare in a STORAGE value slot and under a
+              # postfix member read (`deref(s).kind` -- the pascal frontend's
+              # explicit deref call; both paths compose `<call>.field` on the
+              # bare render).
               or (result is _ExprResultUse.STORAGE
                   and _native_record_rvalue_call_shape(e, analyzer))
+              or (result is _ExprResultUse.RECEIVER
+                  and _native_record_rvalue_call_shape(e, analyzer)
+                  and _witness("call.native_record_recv"))
               # The @cpp_template residue (`make_default[Point]()` ->
               # `Point p = Point{};`, `abs(t).v` -> `(t).__abs__().v`,
               # `unsafe_load(p, 0).x` -> `p[0].x`): the expanded
@@ -1317,6 +1321,16 @@ def _record_ctor_arg_supported(
         # like DIRECT -- its temps flush at the same enclosing statement;
         # the restricted branch below serves only flush-less nested slots.
         temps_ok = use.allow_temps
+        if (temps_ok and is_mutated
+                and isinstance(arg, (TpyArrayLiteral, TpyDictLiteral,
+                                     TpySetLiteral))
+                and _container_literal_arg(arg, param_type, analyzer)):
+            # A container LITERAL at a MUTATED ctor ref slot: the mutable
+            # ref cannot bind a prvalue, so the AST hoists the temp
+            # (`std::vector<T> __tmp_N = {..}; Holder(__tmp_N)`) --
+            # rendered (and witnessed) at the ctor loop's argtemp row. A
+            # const slot keeps the inline brace-init arm.
+            return True
         if _str_pass_through_arg(
                 arg, param_type, declared, analyzer, mutated=is_mutated):
             _witness("ctor.str_arg")
@@ -2305,7 +2319,7 @@ def _contains_isinstance_fact(e: TpyExpr) -> bool:
 
 def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
                         lc: '_LowerCtx', declared: dict[str, TpyType],
-                        loc) -> THIRExpr:
+                        loc, *, temps_ok: bool = False) -> THIRExpr:
     """Value-position and/or -> THIRValueSelect (_gen_logical_value's VALUE
     slice, tier A: scalar / float / BigInt / str results). Record results,
     the rvalue-RHS pointer-select, inline-isinstance LHS facts, and every
@@ -2350,8 +2364,14 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
                         if l_str is not None
                         and isinstance(e.left, TpyStrLiteral)
                         else "auto&&")
+    # The RHS evaluates only in its branch: the conditional-operand right
+    # (audited temps defer through the emit's ValueSelect region, unaudited
+    # would-defer ones reject at the exit check), gated on the enclosing
+    # flush right like every other grant site.
     lowered_rhs = _lower_expr(e.right, lc, declared,
-                              use=_ExprUse(literal_fold_ok=True))
+                              use=_ExprUse(literal_fold_ok=True,
+                                           allow_temps=temps_ok),
+                              cond_eager=temps_ok)
     r_str = _resolved_str_value(rt_res, analyzer)
     rhs_sv = (not isinstance(e.right, TpyName) and r_str is not None
               and isinstance(e.right, TpyStrLiteral))
@@ -2494,15 +2514,15 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # at the enclosing statement, so a flushable position's right extends
     # into call-shaped operands. Cond positions thread False (unchanged).
     analyzer = lc.analyzer
+    logical_rhs_temps = False
     if e.op in _LOGICAL_OPS:
-        # Short-circuit operands evaluate CONDITIONALLY, so a hoisted arg
-        # temp would run at the enclosing statement even when the operand
-        # is skipped. Dropping the right makes a temp-needing operand raise
-        # ThirUnsupported (whole-body fallback) instead of building a node
-        # the validator then rejects with a hard error. Same fence as the
-        # ternary's arms, which never receive the right either
-        # (`_lower_if_expr` grants it to the condition only).
-        temps_ok = False
+        # Both operands keep the incoming flush right, like the AST: an LHS
+        # temp hoists at the enclosing statement (it always evaluates) or
+        # banks into an ENCLOSING region when this logical nests inside a
+        # conditional operand. The RHS additionally rides the cond_eager
+        # exit check: an audited temp defers through the emit's own region,
+        # an unaudited would-defer one rejects.
+        logical_rhs_temps = temps_ok
 
     def reject() -> None:
         raise ThirUnsupported(
@@ -2942,8 +2962,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if rtype is None or not is_bool_type(rtype):
             # Value-position and/or: Python operand semantics via the
             # once-evaluated-LHS ternary (_gen_logical_value's slice) --
-            # the AST splits on the RESULT type alone.
-            return _lower_value_select(e, rtype, lc, declared, loc)
+            # the AST splits on the RESULT type alone. logical_rhs_temps
+            # carries the incoming flush right (temps_ok itself was left
+            # unchanged for the operand path above).
+            return _lower_value_select(e, rtype, lc, declared, loc,
+                                       temps_ok=logical_rhs_temps)
         lt = _operand_type(e.left, declared, analyzer)
         rt = _operand_type(e.right, declared, analyzer)
         if (lt is None or not is_bool_type(lt)
@@ -3646,6 +3669,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             right = _slot_literal_retype(
                 _lower_expr(e.right, lc, declared,
                             use=_arith_operand_use(e.right),
+                            cond_eager=logical_rhs_temps,
                             field_owned_str_ok=isinstance(e.right,
                                                           TpyFieldAccess)),
                 rslot, lc)
@@ -4073,7 +4097,45 @@ def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
             return t if isinstance(t, TpyType) else None
     return None
 
+def _check_cond_eager_temps(node: THIRExpr) -> None:
+    """The conditional-operand exit check. An AUDITED THIRArgTemp (movable
+    fact mirrored off the AST creator at its row) passes whole: the emit
+    opens the same `conditional_region` the AST does, so it defers or stays
+    eager exactly as the AST decides. An UNAUDITED row that MIGHT defer
+    (the conservative `would_defer` guess) rejects -- a wrong eager/deferred
+    placement is a byte divergence, so unaudited rows stay fenced."""
+    if isinstance(node, THIRArgTemp):
+        if node.movable is None and node.would_defer():
+            raise ThirUnsupported("argtemp.cond_defer", detail=True)
+        _witness("argtemp.cond_defer_audited" if node.would_defer()
+                 else "argtemp.cond_eager")
+    for f in dataclass_fields(node):
+        v = getattr(node, f.name)
+        if isinstance(v, THIRExpr):
+            _check_cond_eager_temps(v)
+        elif isinstance(v, tuple):
+            for item in v:
+                if isinstance(item, THIRExpr):
+                    _check_cond_eager_temps(item)
+
+
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
+                declared: dict[str, TpyType], *,
+                use: _ExprUse = _ExprUse(),
+                cond_eager: bool = False,
+                **kwargs) -> THIRExpr:
+    """`_lower_expr_impl` plus the conditional-operand exit check:
+    `cond_eager` (a per-call lowering mode, deliberately NOT an _ExprUse
+    flag -- it is consumed right here and never propagates) walks the
+    lowered subtree once, so the grant sites (the logical RHS, ternary
+    scalar arms, chained comparators i>=2) need no per-row threading."""
+    lowered = _lower_expr_impl(e, lc, declared, use=use, **kwargs)
+    if cond_eager:
+        _check_cond_eager_temps(lowered)
+    return lowered
+
+
+def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 declared: dict[str, TpyType], *,
                 use: _ExprUse = _ExprUse(),
                 allow_whole_optional: bool = False,
@@ -5794,14 +5856,19 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # Inline arm of _gen_chained_compare: left-fold the sema pairs with
             # the bare && (resolved None), reproducing `((a < b) && (b < c))`.
             # Each pair is a full TpyBinOp (sema-analyzed), so it lowers like any
-            # comparison.
+            # comparison. Pairs past the first evaluate CONDITIONALLY (the
+            # fold short-circuits): the eager-only right, like a logical RHS.
             folded = _lower_expr(e.pairs[0], lc, declared)
+            _pair_use = _ExprUse(allow_temps=use.allow_temps)
             for pair in e.pairs[1:]:
                 folded = THIRBinOp(result_type=rtype, left=folded, op="&&",
-                                   right=_lower_expr(pair, lc, declared),
+                                   right=_lower_expr(pair, lc, declared,
+                                                     use=_pair_use,
+                                                     cond_eager=use.allow_temps),
                                    resolved=None, loc=loc)
             return folded
-        return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc)
+        return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc,
+                                               temps_ok=use.allow_temps)
     if isinstance(e, TpyNamedExpr):
         # _gen_named_expr's target-class ladder. Lowered classes: value
         # scalars (`(n = v)`), pointer-repr Optional targets
@@ -6643,6 +6710,29 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     args.append(THIRArgTemp(
                         result_type=rec, cpp_type=rec.to_cpp(),
                         init=_lower_expr(a, lc, declared), form=Form.BORROW,
+                        loc=getattr(a, "loc", None)))
+                elif (i in ctor_mut
+                      and isinstance(a, (TpyArrayLiteral, TpyDictLiteral,
+                                         TpySetLiteral))
+                      and _container_literal_arg(a, p.type, analyzer)):
+                    # The gate-admitted MUTATED-slot container-literal hoist
+                    # (the ctor sibling of the free-call
+                    # argtemp.container_literal rows); const slots keep the
+                    # inline brace-init arm below.
+                    if not temp_args:
+                        raise ThirUnsupported(
+                            "ctor container-literal temp outside a flush "
+                            "position")
+                    _ct_slot = unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(p.type)))
+                    _ct_lowered = _lower_literal_arg(
+                        a, _ct_slot, lc, declared,
+                        "container-literal ctor arg on the make path")
+                    _witness("argtemp.container_literal")
+                    args.append(THIRArgTemp(
+                        result_type=_ct_slot, cpp_type=_ct_slot.to_cpp(),
+                        init=_ct_lowered, form=Form.BORROW,
+                        movable=unwrap_ref_type(_ct_slot).is_movable(),
                         loc=getattr(a, "loc", None)))
                 elif _field_read_ref_ctor_arg(a, p.type, declared, analyzer,
                                               mutated=i in ctor_mut):
@@ -8354,12 +8444,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                     if isinstance(a, (TpyArrayLiteral, TpyDictLiteral,
                                       TpySetLiteral)):
                         _witness("argtemp.gen_factory")
+                        # The AST's create(temp_type) hoist: movable off the
+                        # slot, so the conditional-region defer matches.
                         return THIRArgTemp(
                             result_type=fslot, cpp_type=fslot.to_cpp(),
                             init=_lower_literal_arg(
                                 a, fslot, lc, declared,
                                 "factory-method container-literal arg on "
                                 "the make path"),
+                            movable=unwrap_ref_type(fslot).is_movable(),
                             form=Form.BORROW, loc=getattr(a, "loc", None))
                     if _record_rvalue_temp_slot(
                             a, ptype, lc.analyzer,
@@ -8369,6 +8462,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                             result_type=fslot, cpp_type=fslot.to_cpp(),
                             init=_lower_expr(a, lc, declared,
                                              use=_RECORD_TEMP_FLUSH_USE),
+                            movable=unwrap_ref_type(fslot).is_movable(),
                             form=Form.BORROW, loc=getattr(a, "loc", None))
                     raise ThirUnsupported("method.gen_factory_arg_shape")
             # The Own-slot copy half needs the flush threaded into
@@ -8667,9 +8761,13 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 e.expr, lc, declared,
                 # The AST pre-derefs an indirect-name inner for these
                 # coercions (`&(*q)` -- the "need dereferencing for globals"
-                # arm), so their inner is an indirect_read position.
+                # arm), so their inner is an indirect_read position. The
+                # flush right rides THROUGH the coerce like every other
+                # expression nesting (the AST flushes a wrapped call's arg
+                # temps at the same statement).
                 use=_ExprUse(indirect_read=(
-                    e.coercion.name in _INDIRECT_DEREF_COERCIONS)),
+                    e.coercion.name in _INDIRECT_DEREF_COERCIONS),
+                             allow_temps=use.allow_temps),
                 # The Optional view<->str identity coerce consumes the WHOLE
                 # optional (bare pass-through, no deref), so its value-opt
                 # call-rvalue inner is a whole-optional read.
@@ -8689,9 +8787,12 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             # The cross-type view->owned copy (`std::string(x)`) IS the S1
             # view->owned form transfer -- one emit chokepoint. The coerce
             # adds only the family-internal type respelling (StrView -> str /
-            # String), carried on result_type.
+            # String), carried on result_type. The explicit materialize flag
+            # is what admits the bytearray twin (a reference type, where the
+            # family does not determine the render).
             return THIRFormConvert(result_type=rtype, value=inner,
-                                   form=Form.STORAGE, loc=loc)
+                                   form=Form.STORAGE, materialize=True,
+                                   loc=loc)
         if (e.coercion.name == "bytes_to_bytesview"
                 and isinstance(inner, THIRBytesLiteral)):
             # A LITERAL source at the view coerce takes the static
@@ -10460,7 +10561,8 @@ def _generic_module_static_callee(e, lc: '_LowerCtx') -> 'tuple[str, tuple[str, 
 
 
 def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
-                                    declared: dict[str, TpyType], loc):
+                                    declared: dict[str, TpyType], loc, *,
+                                    temps_ok: bool = False):
     """The complex-intermediate arm of _gen_chained_compare (the GCC stmt-expr
     with single-eval `auto&& _cmpI` temps). Each pair lowers through the shared
     comparison path (`_lower_expr` -> THIRBinOp), so operand targets and the
@@ -10471,7 +10573,14 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
     left for i=0, pair i-1's right otherwise) so its target matches the AST's
     `operand_code`."""
     _witness("chained_compare.stmt_expr")
-    pairs = [_lower_expr(p, lc, declared) for p in e.pairs]
+    # Pairs past the first sit behind a passed compare: comparators i>=2
+    # evaluate conditionally, so their pairs carry the flush right plus the
+    # cond_eager exit check (audited temps defer through the emit's i>=2
+    # regions; unaudited would-defer ones reject).
+    _pair_use = _ExprUse(allow_temps=temps_ok)
+    pairs = [_lower_expr(e.pairs[0], lc, declared)] + [
+        _lower_expr(p, lc, declared, use=_pair_use, cond_eager=temps_ok)
+        for p in e.pairs[1:]]
     n = len(pairs)
     all_operands = [e.left] + e.comparators
     inits = [pairs[0].left]
@@ -10551,9 +10660,12 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 raise ThirUnsupported(
                     "generic ref-slot literal temp outside a flush position")
             _witness("argtemp.generic_ref_slot")
+            # TempState.create's movable: the resolved slot's own type.
             args.append(THIRArgTemp(
                 result_type=resolved, cpp_type=resolved.to_cpp(),
-                init=init, form=Form.VALUE, loc=getattr(a, "loc", None)))
+                init=init, form=Form.VALUE,
+                movable=unwrap_ref_type(resolved).is_movable(),
+                loc=getattr(a, "loc", None)))
 
         if (isinstance(ptype, TypeParamRef)
                 and isinstance(peeled, (TpyIntLiteral,
@@ -10770,6 +10882,13 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                     a, ptype, declared, lc.storage_tuple_locals,
                     analyzer) is not None:
                 ok = True  # witnessed at the lift arm (arg.btuple_storage_name)
+            if not ok and temp_args and isinstance(a, TpyListRepeat):
+                # Admission for the list-repeat ref-param hoist; rendered
+                # (and witnessed) at the argtemp.list_repeat arm below.
+                _lr_slot = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ptype)))
+                ok = isinstance(_lr_slot, NominalType) and (
+                    is_list(_lr_slot) or is_array(_lr_slot))
             if (not ok and temp_args and frame_capturing
                     and isinstance(a, TpyArrayLiteral)):
                 # The frame-capturing readonly-slot LIST literal: hoists
@@ -11115,6 +11234,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         _witness("argtemp.container_literal")
         return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
                            init=lowered, form=Form.BORROW,
+                           movable=unwrap_ref_type(slot).is_movable(),
                            loc=getattr(a, "loc", None))
     if (isinstance(a, (TpyDictLiteral, TpySetLiteral, TpyArrayLiteral))
             and temp_args
@@ -11131,7 +11251,26 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         _witness("argtemp.container_literal")
         return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
                            init=lowered, form=Form.BORROW,
+                           movable=unwrap_ref_type(slot).is_movable(),
                            loc=getattr(a, "loc", None))
+    if (isinstance(a, TpyListRepeat) and temp_args
+            and (kind is None
+                 or kind[0] not in ("native", "native_c", "template"))):
+        # The list-REPEAT sibling of the literal arms above (`take([0] * n)`
+        # -> `std::vector<T> __tmp_N = ::tpy::from_range(...); take(__tmp_N)`):
+        # the AST's is_temporary ref-param hoist over the repeat render. The
+        # repeat arm itself gates the element/result families and rejects
+        # the lazy ListRepeatType shape.
+        slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        if isinstance(slot, NominalType) and (is_list(slot)
+                                              or is_array(slot)):
+            lowered = _lower_expr(a, lc, declared, target_type=slot)
+            if isinstance(lowered, THIRListRepeat):
+                _witness("argtemp.list_repeat")
+                return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+                                   init=lowered, form=Form.BORROW,
+                                   movable=unwrap_ref_type(slot).is_movable(),
+                                   loc=getattr(a, "loc", None))
     if (isinstance(a, (TpyCall, TpyMethodCall)) and temp_args
             and (kind is None or kind[0] not in ("native", "native_c", "template"))):
         # The call-rvalue sibling of the literal ArgTemp arm above:
@@ -11829,8 +11968,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             a, _pul, lc, declared,
             "container literal at a nullable protocol ctor slot")
         _witness("argtemp.protocol_union_literal")
+        # The AST's `create(arg_expr_type, gen)` tail: movable comes off the
+        # temp's own (demoted sema) type, so the conditional-region defer
+        # decision matches.
         return THIRArgTemp(result_type=_pul, cpp_type=_pul.to_cpp(),
                            init=init, addr_of=True, form=Form.BORROW,
+                           movable=unwrap_ref_type(_pul).is_movable(),
                            loc=getattr(a, "loc", None))
     if _required_protocol_union_slot(ptype):
         # Everywhere ELSE that same slot renders the plain value:
@@ -12686,6 +12829,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRArgTemp(result_type=inner_ct,
                                cpp_type=lc.render_type(inner_ct),
                                init=lit, addr_of=True,
+                               movable=unwrap_ref_type(inner_ct).is_movable(),
                                form=Form.BORROW, loc=loc)
         if opt_face == 'scalar_temp':
             # A scalar RVALUE at the Optional[scalar] slot: the typed temp +
@@ -12701,6 +12845,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRArgTemp(result_type=inner_s,
                                cpp_type=lc.render_type(inner_s),
                                init=init_s, addr_of=True,
+                               movable=unwrap_ref_type(inner_s).is_movable(),
                                form=Form.BORROW, loc=loc)
         if opt_face == 'ctor':
             # Admitted only under temps_ok; a silent fall-through would render
@@ -12712,19 +12857,29 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("optptr.ctor_rvalue")
             # A marker-call rvalue init is the temp's storage sink (the AST
             # hoists `auto __tmp_N = <call>;`), so its F1-record result is
-            # admitted like any owned-record storage slot.
+            # admitted like any owned-record storage slot. The temp's SOURCE
+            # ctor flushes its own arg temps at the same statement point
+            # (validator-blessed nesting), so the enclosing flush right
+            # rides into the init use like the AST's render order implies.
             init_use = (_ExprUse(record_ctor=_RecordCtorUse.NESTED_ARG,
-                                 result=_ExprResultUse.STORAGE)
-                        if isinstance(a, TpyMethodCall) else _NESTED_ARG_USE)
+                                 result=_ExprResultUse.STORAGE,
+                                 allow_temps=temp_args)
+                        if isinstance(a, TpyMethodCall)
+                        else _ExprUse(record_ctor=_RecordCtorUse.NESTED_ARG,
+                                      allow_temps=temp_args))
             # A subclass ctor rvalue declares the CHILD's type; &(child)
             # binds the base pointer implicitly (the AST's upcast temp).
             at_c = lc.analyzer.get_expr_type(a)
             at_c = unwrap_readonly(at_c) if at_c is not None else None
             tmp_t = (at_c if isinstance(at_c, NominalType) and at_c != inner
                      else inner)
+            # The AST's `create(temp_type, gen)` tail: movable comes off the
+            # temp's own type, so the defer decision inside a conditional
+            # region is identical on both paths.
             return THIRArgTemp(result_type=tmp_t, cpp_type=tmp_t.to_cpp(),
                                init=_lower_expr(a, lc, declared, use=init_use),
                                addr_of=True,
+                               movable=unwrap_ref_type(tmp_t).is_movable(),
                                form=Form.BORROW, loc=loc)
         if opt_face in ('adapter_rvalue', 'adapter_name'):
             # Structural conformer at an Optional[@dynamic P] slot: the
@@ -13284,6 +13439,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
 def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
                          use: _ExprUse = _ExprUse(),
+                         cond_eager: bool = False,
                          allow_whole_optional: bool = False,
                          field_owned_str_ok: bool = False,
                          allow_union_divergent: bool = False) -> THIRExpr:
@@ -13298,7 +13454,8 @@ def _lower_char_targeted(e: TpyExpr, target: TpyType | None,
     if isinstance(e, TpyStrLiteral) and _eligible_char(target):
         return THIRCharLiteral(result_type=CHAR, value=e.value,
                                loc=getattr(e, "loc", None))
-    return _lower_expr(e, lc, declared, use=use, target_type=target,
+    return _lower_expr(e, lc, declared, use=use, cond_eager=cond_eager,
+                       target_type=target,
                        allow_whole_optional=allow_whole_optional,
                        field_owned_str_ok=field_owned_str_ok,
                        allow_union_divergent=allow_union_divergent)
@@ -13994,6 +14151,46 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(result_type=u_res, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW, loc=loc)
     rec_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t)))
+    # LIST comps only: the set/dict flavors have no witness, so they keep
+    # rejecting until one exists (the machinery below is family-blind, so
+    # widening is a gate edit + a unit when a case arrives).
+    _comp_kinds = (TpyListComprehension,)
+    if (is_list(rec_t)
+            and any(isinstance(arm, _comp_kinds)
+                    for arm in (e.then_expr, e.else_expr))
+            and all(isinstance(arm, _comp_kinds + (TpyArrayLiteral,))
+                    for arm in (e.then_expr, e.else_expr))):
+        # A container ternary with a COMPREHENSION arm (`ys = [f(i) for i
+        # in xs] if cond else [0]`): all-rvalue arms, so the ternary is a
+        # VALUE the decl copies bare. The comp renders its stmt-expr inside
+        # the arm; its per-iteration element flush is what relocates any
+        # deferred temp into the loop body (the degrade seam). The literal
+        # arm self-spells (`std::vector<int32_t>{0}` -- the AST's
+        # array-literal branch prefix).
+        from .comprehensions import _lower_comprehension
+
+        def _rv_container_arm(arm) -> THIRExpr:
+            if isinstance(arm, _comp_kinds):
+                _ptrs = _comp_shadow_pointers(lc.pointers, declared,
+                                              lc.analyzer)
+                lowered_arm = _lower_comprehension(arm, rec_t, lc, declared,
+                                                   _ptrs)
+            else:
+                lowered_arm = _lower_expr(arm, lc, declared,
+                                          target_type=rec_t)
+                if (isinstance(lowered_arm, THIRContainerLiteral)
+                        and lowered_arm.typed_brace_cpp is None):
+                    lowered_arm = replace(lowered_arm,
+                                          typed_brace_cpp=lc.render_type(
+                                              rec_t))
+            _check_cond_eager_temps(lowered_arm)
+            return lowered_arm
+
+        then = _rv_container_arm(e.then_expr)
+        orelse = _rv_container_arm(e.else_expr)
+        _witness("ifexpr.container_comp_arm")
+        return THIRIfExpr(result_type=result_t, cond=cond, then=then,
+                          orelse=orelse, form=Form.VALUE, loc=loc)
     if ((is_list(rec_t) or is_dict(rec_t) or is_set(rec_t))
             and isinstance(e.then_expr, TpyName)
             and isinstance(e.else_expr, TpyName)):
@@ -14049,10 +14246,19 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _witness("ifexpr.record")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW, loc=loc)
+    # ARMS evaluate lazily: the eager-only conditional right (a
+    # non-deferring temp hoists at the enclosing statement, the AST's
+    # non-movable arm; would-defer temps raise at the exit check). Gated on
+    # the ternary's own flushable right, like the AST's statement flush.
+    _arm_use = _ExprUse(allow_temps=cond_temps_ok)
     then = _slot_literal_retype(
-        _lower_char_targeted(e.then_expr, slot, lc, declared), slot, lc)
+        _lower_char_targeted(e.then_expr, slot, lc, declared,
+                             use=_arm_use, cond_eager=cond_temps_ok),
+        slot, lc)
     orelse = _slot_literal_retype(
-        _lower_char_targeted(e.else_expr, slot, lc, declared), slot, lc)
+        _lower_char_targeted(e.else_expr, slot, lc, declared,
+                             use=_arm_use, cond_eager=cond_temps_ok),
+        slot, lc)
     form = Form.VALUE
     str_rt = _resolved_str_value(rtype, analyzer)
     if str_rt is not None:

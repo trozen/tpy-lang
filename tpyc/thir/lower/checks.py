@@ -110,6 +110,7 @@ from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
 from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
+from ...typesys import make_list
 from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
                                   reads_storage_form_optional)
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
@@ -1902,13 +1903,42 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
               # LITERAL values only -- a view-form source would raise the
               # owned-vs-view conversion question the scalar row never has.
               or (_value_opt_owned_str(ftype, analyzer)
-                  and isinstance(_peel_coerce(stmt.value), TpyStrLiteral))):
+                  and isinstance(_peel_coerce(stmt.value), TpyStrLiteral))
+              # A NoneType field (`slot: None` -> `std::monostate`): borrow
+              # and storage coincide, so the store is bare like a scalar's
+              # (a None literal renders the STORAGE `std::monostate{}`).
+              or (isinstance(unwrap_readonly(ftype), NoneType)
+                  and _witness("field.none_unit_write"))):
         # A generic record's `T` field write emits as a plain assign (`field = v`
         # / `field = std::move(v)`) -- the BORROW->STORAGE convert renders the
         # source bare/moved (its TypeParamRef emit arm), byte-identical to the
         # AST's `val_or_ref_t<T>` / `own_param_t<T>` copy/move per instantiation.
         return False
     return True
+
+def _bytearray_value_slot_init(init: 'TpyExpr | None',
+                               vtype: 'TpyType | None', analyzer) -> bool:
+    """A `bytearray` VALUE decl slot, admitted only for the DECIDED init
+    shape: a `bytesview_to_bytearray`-coerced view source (the materialize
+    copy, `std::vector<uint8_t> ba = ::tpy::bytes_copy(<view>);`). NAME
+    inits never reach the value ladder (the alias cascade binds them
+    REF_ALIAS); the bytes-param identity coercion keeps rejecting (its AST
+    oracle is wrong-code, BUGS.md); and the owned dunder rvalue
+    (`ba + b"cd"`) has no routable witness while the bytearray binop arm
+    itself rejects, so it stays out until that arm exists."""
+    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
+         if vtype is not None else None)
+    if t is None or not is_bytearray_type(t) or init is None:
+        return False
+    if (isinstance(init, TpyCoerce)
+            and init.coercion.name == "bytesview_to_bytearray"
+            # The designated chokepoint answers "does this coerce
+            # materialize" -- and keeps the wrong-oracle identity coercion
+            # (bytes_to_bytearray -> "identity") out by construction.
+            and _coerce_disposition(init) == "materialize"):
+        return bool(_witness("decl.bytearray_view_copy"))
+    return False
+
 
 def _user_deref_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                                narrowed: 'AbstractSet[str]', analyzer,
@@ -4274,6 +4304,10 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
             or _dyn_own_conformer_arg(a, ptype, locals_, analyzer) is not None
             or _dyn_own_forward_call_arg(a, ptype, analyzer) is not None
             or _wide_opt_deref_name_arg(a, ptype, locals_, analyzer)
+            # `None` at a plain unit slot (`takes_none(None)` on
+            # `x: None`): the bare `std::monostate{}` render -- the free
+            # -call twin of the method/generic ladders' row.
+            or _none_unit_arg(a, ptype) is not None
             or _none_value_opt_arg(a, ptype, analyzer) is not None
             or _value_opt_pass_through_arg(a, ptype, locals_,
                                            narrowed, analyzer)
@@ -5193,12 +5227,24 @@ def _native_iterable_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
                           TpyDictComprehension)):
         return None
     pb = _protocol_binding(ptype)
-    if pb is None or pb.name not in ("Iterable", "Sequence"):
+    # Sized joins the iterable pair: `len([...comp...])` renders the same
+    # inline stmt-expr into `::tpy::__len__` (the slot only sizes it).
+    if pb is None or pb.name not in ("Iterable", "Sequence", "Sized"):
         return None
     at = analyzer.get_expr_type(a)
     if at is None:
         return None
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    # A comp whose container is still PENDING resolves through the shared
+    # record first (`sum([f() for ...])` -- the element decided the family
+    # but the node kept the pending shell).
+    at = resolve_pending_container(at, analyzer) or at
+    if is_array(at):
+        # The fixed-bound Array optimization is a DECL-position fact; at a
+        # native Iterable slot the AST renders the plain vector flavor
+        # (`std::vector<T> __result; ... reserve(stop)`), so the render
+        # target is the LIST form of the element.
+        return make_list(unwrap_readonly(at.type_args[0]))
     return at if (is_list(at) or is_set(at) or is_dict(at)) else None
 
 
