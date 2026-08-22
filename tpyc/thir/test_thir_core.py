@@ -213,6 +213,17 @@ class TestEligibility:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
+    def test_float_name_truthiness_condition_routes(self):
+        # A float name in a logical condition renders bare (`(a && b)`) --
+        # the AST's implicit-bool primitive arm covers floats too.
+        src = (_PRELUDE
+               + "def f(a: Int32, b: float) -> None:\n"
+               + "    if a and b:\n        print(1)\n"
+               + "def main() -> None:\n    f(1, 2.0)\nmain()\n")
+        assert _fn(_lower(src), "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "if ((a && b))" in cpp[1]
+
     def test_literal_first_decl_is_eligible(self):
         # `total = 0` resolves to the default int (not IntLiteralType).
         thir = _lower(_PRELUDE + "def f() -> Int32:\n    total = 0\n    return total\n")
@@ -401,26 +412,31 @@ class TestParamReassignCopy:
         assert "std::string p = __param_p;" in cpp
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_str_view_param_stays_ast(self):
-        # A str param is a string_view borrow; its copy changes the local's
-        # form (view -> owned) -- gate-excluded.
+    def test_str_view_param_copy_respells_owned(self):
+        # A str param's copy respells the LOCAL owned
+        # (`std::string p = std::string(__param_p);`); body reads keep
+        # their view-form renders -- the owned local converts implicitly
+        # at every view sink, exactly as on the AST path.
         src = ("def f(p: str) -> None:\n"
                "    p = \"x\"\n    print(p)\n"
                "f(\"a\")\n")
-        out, reason = self._reason(src, "f")
-        assert out is None
-        assert reason == "sig.param_reassign_copy"
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert "std::string p = std::string(__param_p);" in cpp
+        assert cpp == self._cpp(src, thir=False)
 
-    def test_optional_str_param_stays_ast(self):
+    def test_optional_str_param_copy_respells_owned(self):
         # Optional[str]'s copy is the make_optional view->owned split.
         src = ("def f(p: str | None) -> None:\n"
                "    p = \"x\"\n    print(p)\n"
                "f(\"a\")\n")
-        out, reason = self._reason(src, "f")
-        assert out is None
-        assert reason == "sig.param_reassign_copy"
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = self._cpp(src, thir=True)
+        assert ("= __param_p ? std::make_optional(std::string(*__param_p))"
+                " : std::nullopt;" in cpp)
+        assert cpp == self._cpp(src, thir=False)
 
     def test_method_param_copy_routes(self):
         # Methods ride the same gen_params rename + prologue machinery.
@@ -1050,17 +1066,26 @@ class TestForEachContainer:
         assert fn is not None
         assert isinstance(fn.body[1], THIRForEach)
 
-    def test_optional_record_element_ineligible(self):
+    def test_optional_record_element_const_source_routes(self):
         # A ptr-repr Optional[record] loop var off a CONST source (the
-        # const-ref list param) stays AST -- the const twin of the
-        # storage-opt registration is unmirrored (foreach.storage_opt_const);
-        # non-const sources route via the storage-opt loop-var seed.
-        thir = _lower_ctx(
+        # const-ref list param) binds `const optional<Box>&`, registered in
+        # the const twin of the storage-opt set so a lift-decl off it spells
+        # `const Box*`.
+        src = (
             _F1_RECORDS
             + "def f(items: list[Box | None]) -> Int32:\n    total = 0\n"
-            + "    for item in items:\n        total = total + 1\n"
-            + "    return total\n")
-        assert _fn(thir, "f") is None
+            + "    for item in items:\n"
+            + "        first = item\n"
+            + "        if first is not None:\n"
+            + "            total = total + 1\n"
+            + "    return total\n"
+            + "def main():\n    print(f([]))\nmain()\n")
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("foreach.storage_opt_const_elem", 0) == 1
+        assert "const Box* first = ::tpy::optional_to_ptr(item);" in hpp + cpp
 
     def test_union_element_narrow_routes(self):
         # A narrowable (non-Optional) UNION loop var IS admitted: its isinstance

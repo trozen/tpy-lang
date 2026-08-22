@@ -234,19 +234,21 @@ def test_bodyless_binding_is_not_called_a_fallback():
 def test_resumable_fallback_records_its_reason():
     # gen_async's fold site is a THIRD call of the node-carrying fold_attempt
     # (alongside body/ctor); without this, only the sync path was covered.
-    # The mixed own+borrow tuple frame local is a reliably-fenced
-    # resumable shape (res.local_storage -- the MIXED_TUPLE_SLOT kind).
+    # An Any LOCAL live across a suspension is a fenced resumable shape:
+    # every frame-local family excludes Any (only Any PARAMS ride), so the
+    # body rejects at res.local_storage.
     out = _dump(
-        "import asyncio\nfrom tpy import Int32, Own\n\n"
-        "class Box:\n    val: Int32\n"
-        "    def __init__(self, v: Int32) -> None:\n        self.val = v\n\n"
-        "def make(b: Box) -> tuple[Own[Box], Box]:\n"
-        "    return (Box(1), b)\n\n"
-        "async def f(b: Box) -> Int32:\n"
-        "    t = make(b)\n"
+        "import asyncio\nfrom tpy import Int32\nfrom typing import Any\n\n"
+        "async def f(n: Int32) -> Int32:\n"
+        "    a: Any = n\n"
         "    await asyncio.sleep(0)\n"
-        "    return t[0].val\n\n"
+        "    print(a)\n"
+        "    return n\n\n"
         "def main() -> None:\n    pass\nmain()\n")
     import re
     m = re.search(r"fn f: <fell back to AST: (\S+)>", out)
-    assert m and m.group(1), out
+    assert m, out
+    # The exact tag pins WHICH fence holds the fixture up: if Any locals
+    # gain a frame-local family, the fixture (not just this assert) is
+    # stale and needs a new fenced shape.
+    assert m.group(1) == "res.local_storage", out

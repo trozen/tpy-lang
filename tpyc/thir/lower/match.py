@@ -91,6 +91,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    _btuple_const_storage,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -372,7 +373,8 @@ def _match_keywords_ok(
         narrowed: AbstractSet[str], storage_tuple_locals: AbstractSet[str],
         arm_declared: dict[str, TpyType], *, allow_conds: bool,
         nested_ok: bool = False,
-        opt_frame: AbstractSet[str] = frozenset()) -> bool:
+        opt_frame: AbstractSet[str] = frozenset(),
+        match_ptr: AbstractSet[str] = frozenset()) -> bool:
     """The field sub-pattern slice for one class pattern: literal conditions
     (the record tiers and the guarded-union tier; the unconditional union
     switch has no `&&` position, so its walk passes allow_conds=False --
@@ -410,7 +412,11 @@ def _match_keywords_ok(
             if as_node is not None:
                 return False
             _of_cap = inner.name in opt_frame
-            if ((inner.name in pointers and not _of_cap)
+            # An enclosing match's `T*` capture hoist may be RE-SEATED here
+            # (`q = &(__match_subject_2.inner);`) -- the AST's nested-reuse
+            # route. Every other pointer-local reuse keeps rejecting.
+            _mp_cap = inner.name in match_ptr
+            if ((inner.name in pointers and not _of_cap and not _mp_cap)
                     or inner.name in narrowed
                     or inner.name in storage_tuple_locals):
                 return False
@@ -455,7 +461,8 @@ def _match_keywords_ok(
                 if not _match_keywords_ok(
                         inner, analyzer, pointers, narrowed,
                         storage_tuple_locals, arm_declared,
-                        allow_conds=allow_conds, nested_ok=nested_ok):
+                        allow_conds=allow_conds, nested_ok=nested_ok,
+                        match_ptr=match_ptr):
                     return False
             if as_node is not None:
                 if (as_node.name in pointers or as_node.name in narrowed
@@ -666,7 +673,8 @@ def _record_arm_ok(
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
         subj_type: 'TpyType | None',
-        opt_frame: AbstractSet[str] = frozenset()) -> bool:
+        opt_frame: AbstractSet[str] = frozenset(),
+        match_ptr: AbstractSet[str] = frozenset()) -> bool:
     """Admit one record arm while that arm is lowered."""
     if case.type_facts:
         return False
@@ -683,7 +691,7 @@ def _record_arm_ok(
         if not _match_keywords_ok(
                 test, analyzer, pointers, narrowed,
                 storage_tuple_locals, arm_declared, allow_conds=True,
-                nested_ok=True, opt_frame=opt_frame):
+                nested_ok=True, opt_frame=opt_frame, match_ptr=match_ptr):
             return False
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
@@ -706,7 +714,8 @@ def _record_arm_ok(
     else:
         return False
     if bnode is not None:
-        if (bnode.name in pointers or bnode.name in narrowed
+        if ((bnode.name in pointers and bnode.name not in match_ptr)
+                or bnode.name in narrowed
                 or bnode.name in storage_tuple_locals):
             return False
         arm_declared[bnode.name] = subj_type
@@ -751,6 +760,35 @@ def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
         return False
     return not (root in pointers or root in narrowed
                 or root in storage_tuple_locals)
+
+
+def _match_capture_borrows_const(stmt: TpyMatch, name: str,
+                                 lc: '_LowerCtx') -> bool:
+    """Whether capture `name` is re-seated by a NESTED match and any match
+    binding it reads a const subject, so the shared `T*` slot must spell
+    `const T*`. The mirror of the AST's decl-site re-ask
+    (`_match_capture_borrows_const`, codegen_cpp/statements.py): sema fixes
+    its stmt-borrow const flag in Phase 1, before mutation propagation
+    settles whether a borrowed param renders `const T&`, so both paths ask
+    again here. Match-rooted nested reuse only -- the single-match shape is
+    the open AST defect (BUGS.md) and stays on the Phase-1 verdict."""
+    found_nested = False
+    const = False
+
+    def visit(s, nested: bool) -> None:
+        nonlocal found_nested, const
+        if (isinstance(s, TpyMatch)
+                and any(name == n.name
+                        for case in s.cases
+                        for n in iter_capture_bindings(case.pattern))):
+            found_nested = found_nested or nested
+            const = const or _btuple_const_storage(s.subject, lc)
+        for body in s.sub_bodies():
+            for inner in body:
+                visit(inner, True)
+
+    visit(stmt, False)
+    return found_nested and const
 
 
 def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
@@ -844,7 +882,10 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             if name in prescan.rvalue_reassigned:
                 # Rvalue reseats need the function-top rebind slot rung.
                 return None
-            hoist_declared.append((name, vtype, "ptr"))
+            hoist_declared.append(
+                (name, vtype,
+                 "ptr_const" if _match_capture_borrows_const(stmt, name, lc)
+                 else "ptr"))
             continue
         if _statements._opt_storage_hoist_flavor(name, vtype, lc) is None:
             hoist_declared.append((name, vtype, "opt_storage"))
@@ -1008,10 +1049,10 @@ def _match_route(
             # M4c: wrapper subjects are NAME (incl. the deref'd pointer
             # local) or borrow-returning-CALL only (a field/subscript
             # source would compose `.value` over a member read -- out of
-            # slice) and unguarded-tier only (the guarded emit's get
-            # positions are not wrapper-aware).
+            # slice). Both union tiers dispatch through the `.value`
+            # variant member (`wrapper_value` on the node).
             if (not isinstance(subj, (TpyName, TpyCall, TpyMethodCall))
-                    or union_route != "switch_union"):
+                    or union_route not in ("switch_union", "guarded_union")):
                 return None
         return _MatchRoute(kind=kind, hoist_types=hoist_types,
                           union_route=union_route,
@@ -1106,6 +1147,27 @@ def _lower_match_guard(guard: TpyExpr, lc: _LowerCtx,
     return lowered
 
 
+def _guarded_hook_alias_agree(stmt: TpyMatch, analyzer) -> bool:
+    """Hook-mode interlock for the guarded union tier: the resume-env walk
+    names a fact-carrying arm's alias `__case_{source_index}` while this
+    tier extracts `__case_{variant_index}` -- admit only when the two
+    indices agree for every fact-carrying class arm (they usually do: the
+    common match lists arms in member order)."""
+    u = unwrap_readonly(stmt.subject_type)
+    members = _union_index_members(u)
+    if members is None:
+        return False
+    for i, case in enumerate(stmt.cases):
+        parts = _match_arm_parts(case)
+        if parts is None:
+            continue  # the tier lowering rejects this case itself
+        test, _b = parts
+        if (case.type_facts and isinstance(test, TpyClassPattern)
+                and _union_member_index(members, test.resolved_type) != i):
+            return False
+    return True
+
+
 def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
                  declared: dict[str, TpyType], pointers: AbstractSet[str], loc, *,
                  loop_depth: int = 0,
@@ -1125,19 +1187,22 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if arm_body_hooks and (kind not in (
             "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded",
             "switch_union", "if_elif_record", "optional_partition")
-            or (kind == "switch_union"
-                and route.union_route == "guarded_union")
             # opt_ptr_frame IS a frame-field binding (no decl mechanics);
             # every other non-value hoist kind stays out of hook mode.
             or any(hk not in ("value", "opt_ptr_frame")
-                   for _n, _t, hk in route.hoist_types)):
+                   for _n, _t, hk in route.hoist_types)
+            or (kind == "switch_union"
+                and route.union_route == "guarded_union"
+                and not _guarded_hook_alias_agree(stmt, lc.analyzer))):
         # Dispatch-hook mode (a resumable MatchDispatch): the scalar tiers,
-        # the unguarded union switch, and the unguarded record chain carry
-        # the skeleton hook at their arm-body points; the guarded tiers /
-        # optional tiers and pointer/optional hoist kinds (frame-field
-        # pointer mechanics unverified) stay their own rungs. VALUE-kind
-        # hoists are no-op decls in a resumable -- every local is already a
-        # frame field -- so they admit with the decl suppressed below.
+        # the union switch (guarded included -- its in-case `if (guard)` +
+        # fall-through gotos are dispatch structure, and gen_match fires the
+        # arm hook at the same body points), and the unguarded record chain
+        # carry the skeleton hook; the optional tiers and pointer/optional
+        # hoist kinds (frame-field pointer mechanics unverified) stay their
+        # own rungs. VALUE-kind hoists are no-op decls in a resumable --
+        # every local is already a frame field -- so they admit with the
+        # decl suppressed below.
         raise ThirUnsupported("res.match_strategy")
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
@@ -1147,14 +1212,21 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     hoist_kinds: dict[str, str] = {}
     for name, vtype, hkind in route.hoist_types:
         hoist_kinds[name] = hkind
-        if hkind == "ptr":
+        if hkind in ("ptr", "ptr_const"):
             # Borrow-only pointer-local (`T* name;`): reads/writes deref via
-            # `pointers`, reseats ride the hoisted-record arms.
-            hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
+            # `pointers`, reseats ride the hoisted-record arms. The const
+            # flavor is the nested-reuse re-ask (`const T* name;`): one slot
+            # shared by binds off subjects of differing const-ness, so it
+            # takes the const form for either to compile.
+            _cq = "const " if hkind == "ptr_const" else ""
+            hoist_decls.append((name, f"{_cq}{lc.render_type(vtype)}*"))
             lc.pointers.add(name)
             lc.branch_hoisted.add(name)
+            lc.match_ptr_hoists.add(name)
             declared[name] = vtype
             _witness("match.hoist_ptr_local")
+            if _cq:
+                _witness("match.hoist_ptr_const")
             continue
         if hkind == "ptr_slot":
             # Route-gated to the record tiers (ptr_slot_ok).
@@ -1206,7 +1278,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         if route.union_route == "guarded_union":
             return _lower_match_guarded_union(stmt, lc, declared, loc,
                                               pointers, hoist_decls,
-                                              loop_depth=loop_depth)
+                                              loop_depth=loop_depth,
+                                              arm_body_hooks=arm_body_hooks)
         return _lower_match_union(stmt, lc, declared, loc, pointers,
                                   hoist_decls,
                                   loop_depth=loop_depth,
@@ -1700,6 +1773,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 case, lc.analyzer, declared, pointers,
                 lc.narrow.narrowed.keys(), lc.storage_tuple_locals,
                 subj_type,
+                match_ptr=lc.match_ptr_hoists,
                 # The exemption requires an LVALUE subject: the AST
                 # raises "would dangle across a suspension" for a
                 # materialized rvalue subject, and the capture would be a
@@ -1728,7 +1802,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         binding = None
         if bnode is not None:
             hkind = hoist_kinds.get(bnode.name)
-            if hkind == "ptr":
+            if hkind in ("ptr", "ptr_const"):
                 # `_emit_binding`'s declared pointer-local arm: a pointer-repr
                 # subject assigns the pointer directly, a value lvalue subject
                 # aliases via address-of. An rvalue subject never reaches this
@@ -1736,6 +1810,15 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 if subject_rvalue:
                     raise ThirUnsupported("match.capture_shape", detail=True)
                 mode = "assign" if subject_is_ptr else "assign_addr"
+            elif bnode.name in lc.match_ptr_hoists:
+                # An ENCLOSING match hoisted this capture as a pointer local;
+                # this (nested) match re-seats it. Same declared-pointer arm
+                # as above -- `hoist_kinds` is per-match, so the plain
+                # `in declared` tail below would spell a value copy.
+                if subject_rvalue:
+                    raise ThirUnsupported("match.capture_shape", detail=True)
+                mode = "assign" if subject_is_ptr else "assign_addr"
+                _witness("match.bind_reuse_ptr")
             elif hkind == "opt_storage":
                 # The owned optional slot moves from the MATERIALIZED rvalue
                 # subject only; an lvalue subject or a guarded arm (later
@@ -1749,7 +1832,10 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 mode = "copy" if bnode.bind_by_value else "ref"
             _witness(f"match.bind_{mode}")
             binding = THIRMatchBinding(name=bnode.name, mode=mode)
-            if hkind is None:
+            if hkind is None and bnode.name not in lc.match_ptr_hoists:
+                # A reused hoist keeps the declaring match's type: a
+                # RE-TYPING nested reuse is a sema error, so overwriting
+                # here could only paper over one.
                 arm_declared[bnode.name] = subj_type
         guard = None
         if case.guard is not None:
@@ -1993,7 +2079,12 @@ def _lower_subject_expr(subj: TpyExpr, lc: _LowerCtx,
         # bind consumes.
         return _lower_expr(subj, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-    return _lower_expr(subj, lc, declared)
+    # A narrow-then-match NAME subject (`if v is None: ... match v:`) reads
+    # assign/flow-DIVERGENT on sema's books, but the sink consumes the WHOLE
+    # variant at full arity -- the AST binds the bare name
+    # (`auto& __match_subject_N = v;`), so the member-typed-sink miscompile
+    # the divergence fence guards cannot arise here.
+    return _lower_expr(subj, lc, declared, allow_union_divergent=True)
 
 
 def _lower_optional_subject(stmt: TpyMatch, lc: _LowerCtx,
@@ -2923,6 +3014,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                                pointers: AbstractSet[str],
                                hoist_decls: 'list[tuple[str, str]]',
                                *, loop_depth: int = 0,
+                               arm_body_hooks: bool = False,
                                ) -> THIRMatch:
     """Lower a guarded_union `match` (M4b) -- `_gen_match_guarded_union`'s
     per-index grouping: class arms land on their variant index, or-pattern
@@ -2944,6 +3036,8 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
     emission like the AST's repeated gen_stmt runs)."""
     u = unwrap_readonly(stmt.subject_type)
     _witness("match.guarded_union")
+    if u.needs_wrapper():
+        _witness("match.guarded_union_wrapper")
     members = _union_index_members(u)
     if members is None:
         raise ThirUnsupported("stmt.match")
@@ -3033,6 +3127,18 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                         lc.forbidden_reads.update(
                             _match_pattern_captures(pattern))
                     guard = _lower_match_guard(case.guard, lc, arm_declared)
+            if arm_body_hooks:
+                # Dispatch-hook mode: the arm body is a BB chain the
+                # skeleton walks; field-subpattern mechanics are
+                # unverified against the frame, so they keep rejecting.
+                if field_conds or field_bindings:
+                    raise ThirUnsupported("res.match_strategy")
+                binding = _hook_mode_binding(binding, lc)
+                return THIRMatchArmEntry(
+                    body=(), loc=case.loc, binding=binding, guard=guard,
+                    variant_index=idx if kind == "class" else None,
+                    case_alias=alias if kind == "class" else None,
+                    body_key=id(case.body))
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
                 branch_decls_ok=True, loop_depth=loop_depth)
@@ -3088,6 +3194,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
         # bindings THIR cannot classify.
         is_ptr_variant=(_narrow_subject_is_ptr(subj_name, u, lc)
                         if subj_name is not None else False),
+        wrapper_value=u.needs_wrapper(),
         loc=loc,
     )
 

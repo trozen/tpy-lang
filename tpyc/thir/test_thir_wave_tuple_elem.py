@@ -215,30 +215,27 @@ class TestPtrElementPassesBare:
         assert "take(std::tuple<T*, int32_t>{&(n), 10})" in out
         _assert_byte_identical(src)
 
-    def test_ptr_element_at_optional_slot_defers(self):
-        # The pointer-repr-Optional element row knows only the addr_of
-        # render, so an already-pointer source must DEFER rather than lift
-        # it wrongly. Routing it bare would be a new emit arm.
+    def test_ptr_element_at_optional_slot_routes_bare(self):
+        # The pointer-repr-Optional element slot: the source already IS the
+        # `T*` the slot wants, so it must pass BARE. The `&(p)` lift the
+        # addr_of row would have spelled is the wrong-code shape this pin
+        # exists to catch, and it stays asserted against.
         src = (_PTR_T.replace("def take(t: tuple[T, Int32]) -> Int32:\n"
                               "    return t[0].x + t[1]\n",
                               "def take(t: tuple[T | None, Int32]) -> Int32:\n"
-                              "    n = t[0]\n"
-                              "    if n is None:\n"
-                              "        return t[1]\n"
-                              "    return n.x + t[1]\n")
+                              "    return t[1]\n")
                + "def use(p: Ptr[T]) -> Int32:\n"
                + "    return take((p, 10))\n")
         out, fallback = _gen_thir(src)
-        assert "body:expr.tuple_literal" in fallback
+        assert not fallback
+        assert "take(std::tuple<T*, int32_t>{p, 10})" in out
         assert "{&(p), 10}" not in out
         _assert_byte_identical(src)
 
-    def test_ptr_at_optional_ptr_call_arg_defers(self):
+    def test_ptr_at_optional_ptr_call_arg_routes_bare(self):
         # The adjacent SINK for the same predicate: the optional-ptr call arg
         # (kept with these pins because they share the predicate, not the
-        # sink). It rejects before reaching any pointer test today -- pinned
-        # so it stays a reject rather than becoming a silent `&(p)` if the
-        # arm is widened without routing through `_already_pointer_source`.
+        # sink). Same claim -- bare, never a silent `&(p)`.
         src = (_PTR_T
                + "def f(n: T | None) -> Int32:\n"
                + "    if n is None:\n"
@@ -247,6 +244,7 @@ class TestPtrElementPassesBare:
                + "def use(p: Ptr[T]) -> Int32:\n"
                + "    return f(p)\n")
         out, fallback = _gen_thir(src)
-        assert "body:expr.call" in fallback
+        assert not fallback
+        assert "return f(p);" in out
         assert "f(&(p))" not in out
         _assert_byte_identical(src)

@@ -58,7 +58,39 @@ class TestWrapperMatch:
         assert "std::get<0>(__match_subject_1.value)" in out
         _assert_byte_identical(src)
 
-    def test_guarded_wrapper_match_falls_back(self):
+    def test_narrow_then_match_subject_routes(self):
+        # After `if t is None: return`, the subject reads flow-DIVERGENT on
+        # sema's books but the match consumes the WHOLE variant at full
+        # arity -- the bare `auto& __match_subject_N = t;` bind routes.
+        src = (
+            "class Leaf:\n"
+            "    value: int\n"
+            "    def __init__(self, value: int) -> None:\n"
+            "        self.value = value\n"
+            "type Tree = None | Leaf | list[Tree]\n"
+            "def describe(t: Tree) -> str:\n"
+            "    if t is None:\n"
+            "        return \"null\"\n"
+            "    match t:\n"
+            "        case Leaf():\n"
+            "            return \"leaf\"\n"
+            "        case _:\n"
+            "            return \"branch\"\n"
+            "def main() -> None:\n"
+            "    a: Tree = None\n"
+            "    print(describe(a))\n"
+            "main()\n"
+        )
+        out, faces, fallback = _gen_thir(src)
+        assert faces.get("isnone.union_wrapper_monostate", 0) >= 1
+        assert faces.get("match.union_wrapper_value", 0) >= 1
+        assert not fallback
+        assert "auto& __match_subject_1 = t;" in out
+        _assert_byte_identical(src)
+
+    def test_guarded_wrapper_match_routes(self):
+        # The guarded tier dispatches a wrapper subject through `.value`
+        # like the unguarded one (switch head + get positions).
         src = _TREE + (
             "def describe(t: Tree, big: bool) -> str:\n"
             "    match t:\n"
@@ -74,8 +106,10 @@ class TestWrapperMatch:
             "main()\n"
         )
         out, faces, fallback = _gen_thir(src)
-        assert not faces.get("match.union_wrapper_value")
-        assert any("stmt.match" in r for r in fallback)
+        assert faces.get("match.guarded_union_wrapper", 0) >= 1
+        assert not fallback
+        assert ".value.index())" in out
+        assert "std::get<0>(__match_subject_1.value)" in out
         _assert_byte_identical(src)
 
     def test_wrapper_field_subject_falls_back(self):
@@ -228,10 +262,11 @@ class TestWrapperMatchSubjectSources:
         # elem row (`b.append(9)` at list[Tree[Int32]]).
         assert "b.push_back(9);" in cpp
 
-    def test_field_own_call_and_guarded_defer(self):
+    def test_field_and_own_call_defer_guarded_call_routes(self):
         # BOUNDARY: a FIELD wrapper subject (the `.value`-over-member
-        # composition), an Own-returning call subject (value flavor), and
-        # the guarded tier all keep deferring.
+        # composition) and an Own-returning call subject (value flavor)
+        # keep deferring; the guarded tier's borrow-call subject now rides
+        # the wrapper `.value` respell like the unguarded one.
         from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = self._PRE + (
             "def field_subject(h: Holder) -> None:\n"
@@ -256,7 +291,7 @@ class TestWrapperMatchSubjectSources:
         thir = _lower_ctx(src)
         assert _fn(thir, "field_subject") is None
         assert _fn(thir, "own_call_subject") is None
-        assert _fn(thir, "guarded_call") is None
+        assert _fn(thir, "guarded_call") is not None
 
     def test_nongeneric_wrapper_call_subject_routes(self):
         # The _wrapper_borrow_return disjunct's own witness: a bare

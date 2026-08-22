@@ -755,12 +755,18 @@ class TestValueReprOptionalStrParam:
         assert wit.get("ret.value_opt_view_shim", 0) >= 1
 
 
-    def test_optional_str_local_decl_defers(self):
-        # A value-repr Optional[str] LOCAL (the decl-shim target) classifies
-        # OTHER at its decl -- the whole body stays AST.
-        thir = _lower_ctx(
-            "def use(s: str | None) -> None:\n    t = s\n    print(t)\n")
-        assert _fn(thir, "use") is None
+    def test_optional_str_local_decl_takes_the_shim(self):
+        # A value-repr Optional[str] LOCAL bound from a borrow-form param:
+        # the owned slot takes the view->owned shim, and the local registers
+        # as an OWNED value-opt binding so its own reads route.
+        src = "def use(s: str | None) -> None:\n    t = s\n    print(t)\n"
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert wit.get("decl.optview_shim", 0) == 1
+        hpp, cpp = _assert_byte_identical(src)
+        assert ("std::optional<std::string> t = s ? "
+                "std::make_optional(std::string(*s)) : std::nullopt;"
+                in hpp + cpp)
 
     def test_faces_witnessed(self):
         thir, wit = _lower_ctx_witnessed(
@@ -952,13 +958,17 @@ class TestValueReprOptionalBytes:
             "def use(b: BytesView | None) -> bool:\n    return sink(b)\n")
         assert _fn(thir, "use") is None
 
-    def test_print_whole_optional_defers(self):
-        # `print(b)` on a whole Optional[bytes] stays AST: there is no
-        # print_optional_val route for bytes (the str-only `_print_optval_opt`),
-        # so `_value_opt_view_name` defers it in `_print_arg_ok`.
-        thir = _lower_ctx(
-            "def use(b: bytes | None) -> None:\n    print(b)\n")
-        assert _fn(thir, "use") is None
+    def test_print_whole_optional_bytes_spells_the_formatter(self):
+        # `print(b)` on a whole Optional[bytes] wraps the borrow-form
+        # `optional<span>` param in `print_optional_val<BytesPrinter, ..>`:
+        # the inner template arg is the VIEW (the param's storage), not the
+        # owned vector a FIELD of the same TPy type would carry.
+        src = "def use(b: bytes | None) -> None:\n    print(b)\n"
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        hpp, cpp = _assert_byte_identical(src)
+        assert ("::tpy::print_optional_val<::tpy::BytesPrinter, "
+                "std::span<const uint8_t>>(b)") in hpp + cpp
 
     def test_faces_witnessed(self):
         thir, wit = _lower_ctx_witnessed(
@@ -1499,16 +1509,21 @@ class TestOwnedViewOptWholeSrc:
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_narrowed_param_source_falls_back(self):
-        # Regression: sema narrows `s` inside the guard, so the read takes
-        # the deref path -- the whole-copy row must not admit it.
+    def test_narrowed_param_source_takes_the_shim(self):
+        # Sema narrows `s` inside the guard, so the bare whole-copy row
+        # (`_owned_view_opt_whole_src`) still declines -- but the owned slot
+        # takes the view->owned SHIM instead, which is keyed on the param's
+        # DECLARED binding and so is narrowing-blind, exactly like the AST's.
         src = ("from typing import Optional\n"
                "def relay(s: Optional[str]) -> None:\n"
                "    if s is not None:\n"
                "        y: Optional[str] = s\n"
                "        if y is not None:\n            print(y)\n")
-        assert _fn(_lower_ctx(src), "relay") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "relay") is not None
+        hpp, cpp = _assert_byte_identical(src)
+        assert ("std::optional<std::string> y = s ? "
+                "std::make_optional(std::string(*s)) : std::nullopt;"
+                in hpp + cpp)
 
 
 class TestOptViewArgMethodPositionStaysBare:

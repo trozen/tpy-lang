@@ -10,8 +10,8 @@ from .emit import emit_thir_body
 from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRBytesLiteral, THIRCall,
-    THIRForEach, THIRFormConvert, THIRName, THIRStrSlice, THIRSubscript,
-    THIRVarDecl,
+    THIRForEach, THIRFormConvert, THIRName, THIRParamCopy, THIRStrSlice,
+    THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _assert_byte_identical,
@@ -125,12 +125,19 @@ class TestBytesValues:
         assert args[1].print_form is PrintForm.BYTES
         assert isinstance(args[1].expr, THIRBytesLiteral) and args[1].expr.form is Form.STORAGE
 
-    def test_reassigned_bytes_param_ineligible(self):
+    def test_reassigned_bytes_param_copy_routes(self):
         # An owned-bytes param reassign hoists the AST's owned-copy prologue
-        # (param_needs_copy_for_reassign).
-        thir = _lower(
-            'def f(a: bytes) -> None:\n    a = b"other"\n    print(a)\n')
-        assert _fn(thir, "f") is None
+        # (param_needs_copy_for_reassign) with the view-family respell: the
+        # view param lands in an owned local; body reads keep their
+        # view-form renders (the owned local converts at every view sink).
+        src = 'def f(a: bytes) -> None:\n    a = b"other"\n    print(a)\n'
+        fn = _fn(_lower(src), "f")
+        assert fn is not None
+        copy = fn.body[0]
+        assert isinstance(copy, THIRParamCopy)
+        assert (copy.name, copy.cpp_type) == ("a", "std::vector<uint8_t>")
+        assert copy.init_cpp == "::tpy::bytes_copy(__param_a)"
+        _assert_routes_byte_identical(src)
 
     def test_bytearray_param_len_routes(self):
         # len() over a bytearray param routes byte-identically now (the len
@@ -359,12 +366,42 @@ class TestBytesTailGate:
                 == '(::tpy::bytes_concat((::tpy::bytes_concat(a, '
                    '::tpy::bytes_literal_owned("x", 1))), v))')
 
-    def test_concat_bytearray_operand_ineligible(self):
-        # bytes + bytearray also resolves to the native bytes_concat dunder,
-        # but a bytearray operand is not a bytes-slice value.
-        thir = _lower(
-            "def f(a: bytes, m: bytearray) -> bytes:\n    return a + m\n")
-        assert _fn(thir, "f") is None
+    def test_bytearray_operand_and_result_route(self):
+        # bytes + bytearray resolves to the same native bytes_concat dunder;
+        # the bytearray operand reads bare (its vector converts to the
+        # helper's span param). A bytearray RECEIVER makes the RESULT a
+        # bytearray and pins the literal operand to the OWNED render -- the
+        # bytes receiver's overload takes the view one.
+        src = ("def f(a: bytes, m: bytearray) -> bytes:\n"
+               "    return a + m\n"
+               "def g(m: bytearray) -> None:\n"
+               '    bb = m + b"cd"\n'
+               "    print(bb)\n"
+               "    print(m * 2)\n")
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "return (::tpy::bytes_concat(a, m));" in out
+        assert ('std::vector<uint8_t> bb = (::tpy::bytes_concat(m, '
+                '::tpy::bytes_literal_owned("cd", 2)));') in out
+        assert ("::tpy::ByteArrayPrinter((::tpy::bytes_repeat(m, 2)))"
+                in out)
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("binop.bytearray_operand", 0) >= 1
+        assert w.get("binop.bytearray_result", 0) >= 1
+
+    def test_list_concat_keeps_its_own_arm(self):
+        # BOUNDARY (no over-capture): the bytearray rows are keyed on the
+        # bytearray RESULT plus the resolved bytes helper, so a container
+        # result still takes the container ladder.
+        src = ("from tpy import Int32\n"
+               "def f(a: list[Int32], b: list[Int32]) -> None:\n"
+               "    print(a + b)\n"
+               "f([1], [2])\n")
+        _assert_routes_byte_identical(src)
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("binop.list_concat", 0) >= 1
+        assert not w.get("binop.bytearray_result")
+        assert not w.get("binop.bytearray_operand")
 
     def test_repeat_both_directions_route(self):
         # bytes repeat is commutative in the surface (`b * n` and `n * b`), and
@@ -790,14 +827,14 @@ class TestBytesSliceFieldWrite:
 
 
 class TestBytearrayValueSlotDecl:
-    """The bytearray VALUE decl slot's DECIDED init shape: a
+    """The bytearray VALUE decl slot's two DECIDED init shapes: a
     bytesview_to_bytearray-coerced view source materializes
     (`std::vector<uint8_t> ba = ::tpy::bytes_copy(<view>);` -- the coerce
     chokepoint's explicit materialize=True convert; bytearray is a reference
-    type, so the family alone cannot pick view-copy over object-move). The
-    bytes-param IDENTITY coercion keeps rejecting (its AST oracle is
-    wrong-code -- BUGS.md, span-vs-vector&), and the owned dunder rvalue
-    stays out until the bytearray binop arm exists."""
+    type, so the family alone cannot pick view-copy over object-move), and
+    the owned dunder rvalue (`bb = ba + b"cd"`) takes the fresh vector by
+    value. The bytes-param IDENTITY coercion keeps rejecting (its AST oracle
+    is wrong-code -- BUGS.md, span-vs-vector&)."""
 
     def test_view_slice_init_materializes(self):
         src = ("def make() -> bytes:\n"
@@ -814,19 +851,20 @@ class TestBytearrayValueSlotDecl:
                 "::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));"
                 in cpp)
 
-    def test_owned_dunder_rvalue_stays_ast(self):
-        # BOUNDARY: `bb = ba + b"cd"` still rejects at the bytearray binop
-        # arm (binop.shape.+), so the decl row carries no owned-rvalue leg
-        # -- admitting one would be an admitted-but-unwitnessed shape.
+    def test_owned_dunder_rvalue_takes_the_slot(self):
+        # `bb = ba + b"cd"` -- the fresh concat vector lands in the value
+        # slot; the coerce row is NOT the one that fires.
         src = ("def f() -> None:\n"
                "    ba = bytearray(b\"ab\")\n"
                "    bb = ba + b\"cd\"\n"
                "    print(len(bb))\n"
                "f()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ('std::vector<uint8_t> bb = (::tpy::bytes_concat(ba, '
+                '::tpy::bytes_literal_owned("cd", 2)));') in hpp + cpp
+        _thir, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.bytearray_owned_rvalue", 0) == 1
         assert not w.get("decl.bytearray_view_copy")
-        _assert_byte_identical(src)
 
     def test_bytes_param_identity_coercion_keeps_rejecting(self):
         # BOUNDARY: `ba: bytearray = p` off a bytes PARAM -- the identity

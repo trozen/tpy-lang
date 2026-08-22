@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import conftest as C  # noqa: E402
+from _case_entry import entry_src  # noqa: E402
 import tpyc.thir.fallback as F  # noqa: E402
 from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.codegen_cpp import CodeGenOptions  # noqa: E402
@@ -63,8 +64,8 @@ opts = dataclasses.replace(
 
 for case in names:
     cd = ROOT / "tests/cases" / case
-    src = cd / "src/main.py"
-    if not src.exists():
+    src = entry_src(cd)
+    if src is None:
         continue
     patched.last = None
     seen = set()

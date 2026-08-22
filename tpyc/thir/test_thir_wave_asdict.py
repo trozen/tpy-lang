@@ -1939,9 +1939,9 @@ class TestQualCtorProtocolTemp:
 class TestBytearrayAugConcat:
     """`got += chunk` on a bytearray local: the same resolved-binop
     concat-and-assign render as the owned-bytes target
-    (`got = ::tpy::bytes_concat(got, chunk);`). A param target keeps the
-    bytes row's local-only condition; a bytearray VALUE operand has no
-    admission row."""
+    (`got = ::tpy::bytes_concat(got, chunk);`), with a bytearray VALUE
+    operand reading bare into the helper. A param target keeps the bytes
+    row's local-only condition."""
 
     def test_bytearray_local_routes(self):
         src = ("def main() -> None:\n"
@@ -1971,9 +1971,10 @@ class TestBytearrayAugConcat:
         _w, fallback = _assert_identical(src)
         assert fallback, "expected the param target to fall back"
 
-    def test_bytearray_value_stays_ast(self):
-        # BOUNDARY: a bytearray VALUE operand is outside
-        # _bytes_concat_operand's slice.
+    def test_bytearray_value_operand_routes(self):
+        # A bytearray VALUE operand reads bare into the same helper: its
+        # `std::vector<uint8_t>` converts to the span param implicitly, so
+        # the concat-and-assign render is the bytes row's.
         src = ("def use(a: bytearray) -> None:\n"
                "    got = bytearray()\n"
                "    got += a\n"
@@ -1982,8 +1983,9 @@ class TestBytearrayAugConcat:
                "    b2 = bytearray(b\"zz\")\n"
                "    use(b2)\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
-        assert fallback, "expected the bytearray value operand to fall back"
+        w, fallback = _assert_identical(src)
+        assert not fallback, fallback
+        assert w.get("binop.bytearray_operand", 0) >= 1
 
 
 class TestUnionFieldWriteSources:

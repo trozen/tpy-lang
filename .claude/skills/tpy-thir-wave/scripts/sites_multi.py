@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import conftest as C  # noqa: E402
+from _case_entry import entry_src  # noqa: E402
 import tpyc.thir.fallback as F  # noqa: E402
 from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.codegen_cpp import CodeGenOptions  # noqa: E402
@@ -69,11 +70,11 @@ OPTS = dataclasses.replace(
 
 def probe(case: str):
     cd = ROOT / "tests/cases" / case
-    src = cd / "src/main.py"
-    if not src.exists():
-        # A frontend-plugin case (pascal/...) has no src/main.py. Returning
-        # [] here would read as "raised nothing" -- i.e. a flip candidate.
-        return [["<unprobed>", "no src/main.py"]]
+    src = entry_src(cd)
+    if src is None:
+        # Returning [] here would read as "raised nothing" -- i.e. a flip
+        # candidate -- so name the gap instead.
+        return [["<unprobed>", "no entry source"]]
     _state["raises"] = set()
     try:
         fr, extra = C._frontend_registry_for(src)

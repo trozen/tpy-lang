@@ -89,11 +89,11 @@ class TestOptionalContainerSubscript:
         assert _fn(_lower_ctx(src), "main") is None
         _assert_byte_identical(src)
 
-    def test_readonly_view_iteration_stays_ast(self):
+    def test_readonly_view_iteration_registers_the_const_twin(self):
         # A CONST dict receiver's `.values()` view (`readonly[dict[..]]`
         # param) tracks the receiver's const-ness: the storage-opt
-        # registration probes the view's RECEIVER and must reject the loop
-        # (the const twin is unmirrored).
+        # registration probes the view's RECEIVER and records the loop var in
+        # the CONST twin, so consumers off it spell `const P*`.
         src = ("from tpy import Int32, readonly\n"
                + _HDR.replace("from tpy import Int32\n", "") +
                "def count(d: readonly[dict[str, P | None]]) -> Int32:\n"
@@ -105,7 +105,10 @@ class TestOptionalContainerSubscript:
                "    d: dict[str, P | None] = {\"a\": P(Int32(1))}\n"
                "    print(count(d))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "count") is None
+        from .testutil import _lower_ctx_witnessed
+        thir, wit = _lower_ctx_witnessed(src)
+        assert _fn(thir, "count") is not None
+        assert wit.get("foreach.storage_opt_const_elem", 0) == 1
         _assert_byte_identical(src)
 
     def test_generator_optional_elem_stays_ast(self):

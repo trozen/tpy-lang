@@ -48,6 +48,7 @@ from .predicates import (
     _nullable_static_protocol_param,
     _storage_optional_return_wide,
     _own_opt_storage_binding,
+    _value_opt_string_owned,
     _own_viewfam_param,
     _param_is_const,
     _protocol_auto_slot,
@@ -68,7 +69,9 @@ from .predicates import (
     _value_opt_view,
     _generic_value_tuple_return,
     _own_storage_tuple_return,
+    _wrapper_ref_tuple_return,
     _value_tuple_return,
+    _union_elem_value_tuple,
 )
 
 
@@ -85,6 +88,11 @@ class _ExprResultUse(Enum):
     # moves/points the result into the sub-future slot (emplace(std::move..)
     # / &(..)), so a record-family result renders bare -- no value slot.
     SUSPEND = auto()
+    # An `Own[...]` value-variant ARG slot consuming a same-union
+    # Own[A | B]-returning call rvalue whole -- the prvalue moves through
+    # the `&&` slot bare (`describe(pick(True))`). Never threaded at
+    # decl/return sinks (their slots gate separately).
+    OWN_SLOT = auto()
 
 
 class _RecordCtorUse(Enum):
@@ -222,7 +230,7 @@ class _Prescan:
                  "ret_container_storage", "ret_container_borrow",
                  "ret_res_container",
                  "ret_value_tuple", "ret_generic_tuple",
-                 "ret_own_storage_tuple",
+                 "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
                  "ret_str", "ret_bytes",
                  "ret_char", "ret_union", "ret_ptr_union", "ret_union_borrow",
                  "ret_own_union",
@@ -231,6 +239,7 @@ class _Prescan:
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
                  "value_opt_params", "param_names",
+                 "own_tuple_params",
                  "has_self", "is_constructor", "global_seeded", "global_readonly",
                  "global_cpp", "global_write_cpp", "native_globals",
                  "global_slots")
@@ -252,6 +261,15 @@ class _Prescan:
         # param-implies-view verdicts (`_str_name_form`/`_bytes_name_form`).
         self.owned_viewfam_params = {
             n for n, t in src_params if _own_viewfam_param(t) is not None}
+        # `Own[tuple[...]]` params: the signature binds the STORAGE tuple by
+        # value, so an element read is a `T&`/value -- never the borrow
+        # param's deref-flagged `(*std::get<i>(p))` (the alias-decl
+        # predicate keys on this; the expr type strips Own and cannot tell).
+        self.own_tuple_params = {
+            n for n, t in src_params
+            if isinstance((_otp := unwrap_readonly(unwrap_send_sync(t))),
+                          OwnType)
+            and isinstance(unwrap_readonly(_otp.wrapped), TupleType)}
         # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
         # `return <param>` into a value-optional return slot passes the WHOLE
         # optional bare (deref-on-narrow stripped), so return lowering keys on
@@ -391,7 +409,11 @@ class _Prescan:
         # over the narrow `_value_tuple` (nested value-tuple / value-Optional[
         # scalar] elements). A bare value-tuple name return stays on the narrow
         # arm (no bare-copy read arm for a widened-element receiver).
-        self.ret_value_tuple = _value_tuple_return(rt, analyzer)
+        # The union-element widening: a VALUE tuple with a value-union
+        # element returns the same spelled brace-init (the variant
+        # element's converting ctor absorbs the member render).
+        self.ret_value_tuple = (_value_tuple_return(rt, analyzer)
+                                or _union_elem_value_tuple(rt, analyzer))
         # The GENERIC tuple return slot (>=1 TypeParamRef element): the
         # RESUMABLE return arm's `val_or_ptr_t` bridge AND the sync return
         # arm's literal row (`return (tag, val)` -> the spelled brace-init
@@ -401,6 +423,10 @@ class _Prescan:
         # (`-> Own[tuple[str, Resource]]`): a tuple LITERAL of storage-direct
         # members returns the spelled brace-init.
         self.ret_own_storage_tuple = _own_storage_tuple_return(rt, analyzer)
+        # The REFERENCE-element tuple return slot (`-> tuple[Tree, Int32]`
+        # -> `std::tuple<Tree&, int32_t>`): literal-of-lvalue-names sources
+        # only, gated at the return arm.
+        self.ret_wrapper_ref_tuple = _wrapper_ref_tuple_return(rt, analyzer)
         # S1 str slice: the resolved str-family return type (owned `str` or
         # `StrView`), so a `return <view-form source>` into an owned `std::string`
         # return copies via the view->owned THIRFormConvert. None otherwise.
@@ -509,6 +535,7 @@ class _Prescan:
             or self.ret_value_tuple is not None
             or self.ret_generic_tuple is not None
             or self.ret_own_storage_tuple is not None
+            or self.ret_wrapper_ref_tuple is not None
             or self.ret_str is not None or self.ret_bytes is not None
             or self.ret_union is not None or self.ret_ptr_union is not None
             or self.ret_own_union is not None
@@ -580,9 +607,13 @@ class _NarrowScope:
 _BRANCH_SCOPED_SETS = (
     "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
     "dyn_protocol_locals", "coro_frame_locals", "opt_storage_call_locals",
-    "optional_locals", "branch_hoisted", "iterator_object_locals",
+    "optional_locals", "branch_hoisted", "match_ptr_hoists",
+    "iterator_object_locals",
     "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
-    "movable_locals", "storage_tuple_locals", "const_storage_tuple_locals",
+    "const_storage_opt_locals",
+    "movable_locals", "storage_tuple_locals", "own_borrow_tuple_locals",
+    "optional_borrow_tuple_locals",
+    "const_storage_tuple_locals",
     "frame_slots", "forbidden_reads", "forbidden_writes",
 )
 # DELIBERATELY NOT branch-scoped. Registration that must survive a scope
@@ -657,16 +688,18 @@ class _LowerCtx:
                  "pointers", "ptr_variant_locals", "rebind_slot_locals",
                  "dyn_protocol_locals", "coro_frame_locals",
                  "opt_storage_call_locals",
-                 "optional_locals", "branch_hoisted",
+                 "optional_locals", "branch_hoisted", "match_ptr_hoists",
                  "iterator_object_locals",
                  "ref_alias_locals",
                  "value_opt_bindings", "storage_opt_locals",
+                 "const_storage_opt_locals",
                  "deref_view_spelled", "forwarded_map",
                  "movable_locals",
                  "sema_movable_locals",
                  "params",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
+                 "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
                  "const_storage_tuple_locals", "frame_slots",
                  "resumable_leaf_mode", "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
@@ -913,11 +946,20 @@ class _LowerCtx:
         # the const twin (`const_storage_form_optional_locals`) stay
         # unmirrored until witnessed.
         self.storage_opt_locals: set[str] = set()
+        # The CONST subset of the above (a `const optional<P>&` loop var off
+        # a const-bound source): its consumers spell `const P*`. Mirrors the
+        # AST's `const_storage_form_optional_locals`.
+        self.const_storage_opt_locals: set[str] = set()
         # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
         # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
         # its slot lazily at function top (PtrSlotKind.BRANCH_RVALUE); the
         # AST's ctx.branch_hoisted_vars.
         self.branch_hoisted: set[str] = set()
+        # Captures a routed match hoisted as `T*` pointer-locals. A NESTED
+        # match may re-seat one (`q = &(__match_subject_2.inner);`); every
+        # other pointer-local reuse keeps rejecting, so the admission keys
+        # on this set rather than on `pointers`.
+        self.match_ptr_hoists: set[str] = set()
         # Iterator-object locals (`it = g()`, the `auto` decl off a
         # generator/iterator factory): the for-head's name arm admits one as
         # a plain lvalue iterable despite its protocol declared type (a
@@ -965,6 +1007,13 @@ class _LowerCtx:
         for pname, ptype in self.params:
             if _own_opt_storage_binding(ptype):
                 self.value_opt_bindings[pname] = ValueOptKind.RECORD
+            # The `Optional[String]` PARAM seed (`std::optional<std::string>`
+            # by value at the param too): the VIEW kind's owned-deref
+            # semantics -- has_value None-test, STORAGE `(*x)` narrowed
+            # deref (the name arm's owned-inner form override), the
+            # expensive-copy movable move at owned sinks.
+            elif _value_opt_string_owned(ptype) is not None:
+                self.value_opt_bindings[pname] = ValueOptKind.VIEW
         # Resumable frame_slot locals (R1c): a non-value coro/generator local
         # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
         # the THIRName; member access is `.` since the slot is not a pointer),
@@ -1045,11 +1094,14 @@ class _LowerCtx:
         # `_is_borrow_form_name`'s type verdict. Both stay unreachable via the
         # call/subscript arms rejecting an owned-tuple source.
         self.storage_tuple_locals: set[str] = set()
-        # The owned-tuple PARAM seeds are the documented partial above:
-        # acknowledge them so the binding-fact join stays honest until the
-        # arm-widening change seeds them for real (they mirror the AST's two
-        # seed_param_locals arms -- the owned-movable tuple param and the
-        # Own[tuple-with-borrow-element] param).
+        # The owned-MOVABLE tuple PARAM seed is the documented partial above:
+        # acknowledge it so the binding-fact join stays honest until an
+        # arm-widening change seeds it for real. The `Own[tuple-with-
+        # pointer-repr-element]` param seeds FOR REAL: the signature spells
+        # the storage tuple by value, so its name reads are STORAGE -- the
+        # unpack lift (`tuple_to_pointer<std::tuple<P*, P*>>(t)`), the
+        # optional-element decl lift, and the storage-name arg row all key
+        # on this membership (mirrors the AST's seed_param_locals arm).
         for pname, ptype in self.params:
             actual = unwrap_readonly(unwrap_send_sync(ptype))
             if (isinstance(actual, TupleType) and actual.is_owned_movable()
@@ -1059,7 +1111,23 @@ class _LowerCtx:
                 inner_t = unwrap_readonly(actual.wrapped)
                 if (isinstance(inner_t, TupleType)
                         and inner_t.has_pointer_repr_element()):
-                    _binding_ack(self, "storage_tuple_locals", pname)
+                    self.storage_tuple_locals.add(pname)
+        # Nullable borrow-form tuple locals (`tuple[.., ref] | None` ->
+        # `std::optional<std::tuple<.., T*>>` -- the OPTIONAL_BORROW_TUPLE
+        # LocalCppForm): None-tests read `.has_value()`, narrowed reads
+        # deref `(*t)` and take the borrow-tuple element arrows, reseats
+        # re-wrap through the optional (storage lift / owning-slot
+        # emplace / nullopt).
+        self.optional_borrow_tuple_locals: set[str] = set()
+        # Locals holding the MIXED borrow render of a per-element-Own tuple
+        # (`auto p = make_mixed(b)` -- owned elements by value, ref elements
+        # as pointers): the NAME leg of `_renders_own_borrow_tuple`, the
+        # mirror of codegen's `own_borrow_tuple_locals`. Deliberately NOT in
+        # `storage_tuple_locals` here (the AST holds them in both): THIR's
+        # element-read arrow (`_subscript_yields_borrow_ptr`) treats a
+        # storage name as `.`-access, so the pair must stay split until the
+        # read arms key on this set directly.
+        self.own_borrow_tuple_locals: set[str] = set()
         # Subset of storage_tuple_locals bound from a const source (a const loop
         # var, or an alias off a const receiver chain): the borrow tuple wrap
         # spells `const T*` element pointers. Mirrors the AST's

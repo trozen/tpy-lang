@@ -200,6 +200,14 @@ class TestPerElementOwnReturnsStillReject:
         fell = _thir_fallbacks(self.ALL_OWN)
         assert any(k.startswith("body:") for k in fell), fell
 
-    def test_mixed_own_return_falls_back(self):
-        fell = _thir_fallbacks(self.MIXED_OWN)
-        assert any(k.startswith("body:") for k in fell), fell
+    def test_mixed_own_return_routes(self):
+        # CONSCIOUS CONVERSION (the class docstring's future-widening
+        # clause): the mixed-own storage-sink cell admits the call at the
+        # Own element slot -- the non-move tuple_to_storage materialization
+        # (`push_back(::tpy::tuple_to_storage<std::tuple<Rc<Node>, Node>>(
+        # make_mixed(n, 1)))`), dualgen-verified byte-identical.
+        from .testutil import _assert_routes_byte_identical
+        _hpp, cpp = _assert_routes_byte_identical(self.MIXED_OWN)
+        assert ("push_back(::tpy::tuple_to_storage<std::tuple<"
+                "::tpystd::tplib::rc::Rc<Node>, Node>>"
+                "(make_mixed(n, 1)));" in cpp)

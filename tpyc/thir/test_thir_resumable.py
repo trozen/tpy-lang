@@ -719,6 +719,37 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n    pass\nmain()\n")
         assert _res_fallback(src).get("res.param_type") == 1
 
+    def test_any_param_routes(self):
+        # An `Any` frame param is a bare `::tpy::Any` value field; the
+        # truthiness read rides the shared to_bool render.
+        from .testutil import _assert_routes_byte_identical
+        src = ("from typing import Any, Iterator\nfrom tpy import Int32\n\n"
+               + "def g(v: Any) -> Iterator[Int32]:\n"
+               + "    if v:\n"
+               + "        yield 1\n"
+               + "    yield 2\n\n"
+               + "def main() -> None:\n"
+               + "    for u in g(1):\n        print(u)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "if (::tpy::to_bool(v))" in cpp
+
+    def test_any_local_still_defers(self):
+        # BOUNDARY: an Any LOCAL keeps res.local_storage -- the param rung
+        # is capture-position only.
+        src = ("from typing import Any, Iterator\nfrom tpy import Int32\n\n"
+               + "def g(n: Int32) -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        v: Any = i\n"
+               + "        if v:\n"
+               + "            yield i\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for u in g(3):\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert fallback == {"resumable:res.local_storage": 1}, fallback
+
     def test_optional_local_none_init_routes(self):
         # A pointer-repr Optional[record] frame local's writes ride the
         # SYNC reseat arms (pass-1 registration makes every frame decl a
@@ -1459,6 +1490,28 @@ class TestBorrowTupleLocals:
         assert witnesses.get("res.btuple_yield", 0) >= 2
         assert not any(k.startswith("resumable:") for k in fallback)
 
+    def test_subscript_element_yield_lifts(self):
+        # A container-ELEMENT source at the resumable btuple yield slot
+        # lifts the storage element to borrow form (the sgen elem-lift
+        # arm's resumable twin; the frame-slot deref rides the name read).
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE_BOX.replace("import asyncio\n", "")
+               + "from typing import Iterator\n\n"
+               + "def gen(n: Int32) -> Iterator[tuple[Int32, Box]]:\n"
+               + "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield items[i]\n"
+               + "        yield items[0]\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for t in gen(1):\n"
+               + "        t[1].val += 1\n"
+               + "        print(t[0], t[1].val)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(::tpy::__getitem__((*items), 0));") in cpp
+
     def test_generic_tuple_yield_routes(self):
         # CONVERTED (the generic tuple-yield builder): a
         # TypeParamRef element spells `val_or_ptr_t<T>` with to_val_or_ptr
@@ -2130,13 +2183,13 @@ class TestNarrowedResume:
         assert not fallback, fallback
         _assert_identical(src)
 
-    def test_narrowed_rebind_defers(self):
-        # Rebinding a narrowed name un-narrows MID-BB, which the
-        # entry-level scope cannot mirror -- the _rebinds_narrowed guard
-        # falls such a body back. Today the guard is DEFENSIVE: sema
-        # forbids reassigning params, and union LOCALS reject earlier at
-        # res.local_storage (this pin's shape) -- it becomes load-bearing
-        # the day union locals route.
+    def test_narrowed_rebind_routes(self):
+        # Rebinding a narrowed name un-narrows MID-BB: the statement-ordered
+        # narrow KILL pops the alias at the rebinding leaf, so later reads
+        # in the BB use the bare union binding (the AST drops the narrowing
+        # at the same point). (Was the defensive _rebinds_narrowed
+        # whole-body reject.)
+        from .testutil import _assert_routes_byte_identical
         src = (self._UNION
                + "def vals() -> Iterator[str]:\n"
                + "    a: Dog | Cat = Dog()\n"
@@ -2144,9 +2197,26 @@ class TestNarrowedResume:
                + "        yield a.sound()\n"
                + "        a = Cat()\n"
                + "        yield \"end\"\n\n"
+               + "def main() -> None:\n"
+               + "    for s in vals():\n        print(s)\nmain()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_rebind_reading_value_still_defers(self):
+        # BOUNDARY: a rebind whose VALUE reads the narrowed name is
+        # order-ambiguous for the entry-level scope -- the kill plan
+        # rejects it and the body stays AST.
+        src = (self._UNION
+               + "def echo(a: Dog | Cat) -> Dog | Cat:\n"
+               + "    return a\n\n"
+               + "def vals() -> Iterator[str]:\n"
+               + "    a: Dog | Cat = Dog()\n"
+               + "    if isinstance(a, Dog):\n"
+               + "        yield a.sound()\n"
+               + "        a = echo(a)\n"
+               + "        yield \"end\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
+        assert fallback.get("res.narrowed_resume") == 1, fallback
         _assert_identical(src)
 
     def test_poly_self_narrow_routes(self):
@@ -2186,9 +2256,35 @@ class TestNarrowedResume:
         assert fallback.get("res.narrowed_resume", 0) >= 1
         _assert_identical(src)
 
-    def test_guarded_union_dispatch_defers(self):
-        # A guard sends the dispatch to the guarded_union tier -- no hook
-        # support yet (filed); the body falls back whole.
+    def test_guarded_union_dispatch_routes(self):
+        # The guarded_union tier now rides dispatch-hook mode: the in-case
+        # `if (guard)` + fall-through gotos are dispatch structure, the arm
+        # bodies BB chains the skeleton walks. (Was fenced pending hook
+        # support.)
+        # NB union members canonicalize (Cat sorts before Dog), so the
+        # Cat arm is BOTH source index 0 and variant index 0 -- the
+        # env-alias interlock's agreement case.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._UNION
+               + "def pick(a: Dog | Cat, flag: bool) -> Iterator[str]:\n"
+               + "    match a:\n"
+               + "        case Cat() if flag:\n"
+               + "            yield \"c\"\n"
+               + "            yield a.sound()\n"
+               + "        case _:\n"
+               + "            yield \"o\"\n\n"
+               + "def main() -> None:\n"
+               + "    for s in pick(Dog(), True):\n        print(s)\n"
+               + "    for s in pick(Cat(), True):\n        print(s)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "if (flag) {" in cpp
+        assert "goto __match_end_" in cpp
+
+    def test_guarded_union_alias_disagreement_defers(self):
+        # BOUNDARY: a fact-carrying class arm whose SOURCE index differs
+        # from its VARIANT index -- the resume-env walk would name the
+        # alias `__case_{source}` while the tier extracts
+        # `__case_{variant}`; the interlock keeps the body AST.
         src = (self._UNION
                + "def pick(a: Dog | Cat, flag: bool) -> Iterator[str]:\n"
                + "    match a:\n"
@@ -5464,12 +5560,11 @@ class TestPtrValueLocalAndCallNoneTest:
         assert "(get_cell() == nullptr)" in joined
         assert "(p == nullptr)" in joined
 
-    def test_non_ptr_call_subject_still_defers(self):
-        # BOUNDARY: a record-returning call is not a None-testable subject
-        # in TPy (sema rejects) -- instead pin the adjacent still-gated
-        # shape: an Optional[record]-returning call subject in a SYNC body
-        # keeps its own row's verdict (value_opt rvalues only; a ptr-repr
-        # Optional call subject stays rejected).
+    def test_ptr_opt_call_subject_compares_bare(self):
+        # A ptr-repr `Optional[record]`-returning call as an is-None subject
+        # in a SYNC body: the borrowed `T*` result IS what the test compares,
+        # so it lands bare (`(find() == nullptr)`) -- the whole-optional
+        # consumer row, the SYNC twin of the frame-local rows above.
         src = (_PRE
                + "class Rec:\n"
                + "    def __init__(self, v: Int32) -> None:\n"
@@ -5479,9 +5574,9 @@ class TestPtrValueLocalAndCallNoneTest:
                + "    return _r\n\n"
                + "def main() -> None:\n"
                + "    print(find() is None)\nmain()\n")
-        compiler, _hpp, _cpp = _gen(src, thir=True)
-        assert any(k.startswith("body:") or k.startswith("top_level:")
-                   for k in compiler._thir_fallback)
+        compiler, hpp, cpp = _gen(src, thir=True)
+        assert not compiler._thir_fallback, compiler._thir_fallback
+        assert "(find() == nullptr)" in hpp + cpp
 
 
 class TestVoidReturnNone:
@@ -6485,6 +6580,51 @@ class TestOptTupleUnpackHolder:
         assert fallback.get("res.local_storage") == 1
         _assert_identical(src)
 
+    def test_container_optional_local_routes(self):
+        # The CONTAINER OPT_PTR local flavor (`h = self.lst` at
+        # `list[Int32] | None`): a `T*` frame field bound via
+        # optional_to_ptr; the narrowed for head derefs through the leaf
+        # (`((*h)).begin()` -- no skeleton unwrap for the pointer form).
+        from .testutil import _assert_routes_byte_identical
+        src = ("from typing import Iterator\nfrom tpy import Int32\n\n"
+               "class Holder:\n"
+               "    lst: list[Int32] | None\n"
+               "    def __init__(self):\n"
+               "        self.lst = [1, 2, 3]\n"
+               "    def via_alias(self) -> Iterator[Int32]:\n"
+               "        h = self.lst\n"
+               "        if h is not None:\n"
+               "            for x in h:\n"
+               "                yield x\n\n"
+               "def main() -> None:\n"
+               "    h = Holder()\n"
+               "    print(sum(h.via_alias()))\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "h = ::tpy::optional_to_ptr(__self.lst);" in cpp
+        assert "((*h)).begin()" in cpp
+
+    def test_container_optional_local_none_reseat_routes(self):
+        # The dict-inner + None-reseat neighbours of the container OPT_PTR
+        # local: nullptr doubles as None across the suspension.
+        from .testutil import _assert_routes_byte_identical
+        src = ("from typing import Iterator\nfrom tpy import Int32\n\n"
+               "class Holder:\n"
+               "    d: dict[Int32, Int32] | None\n"
+               "    def __init__(self):\n"
+               "        self.d = {1: 10, 2: 20}\n"
+               "    def keys_of(self) -> Iterator[Int32]:\n"
+               "        m = self.d\n"
+               "        if m is not None:\n"
+               "            for k in m:\n"
+               "                yield k\n"
+               "        m = None\n"
+               "        if m is None:\n"
+               "            yield -1\n\n"
+               "def main() -> None:\n"
+               "    h = Holder()\n"
+               "    print(sum(h.keys_of()))\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "m = nullptr;" in cpp
 
 
 class TestFramePtrSlotReseats:
@@ -6757,10 +6897,12 @@ class TestResumableYieldShapes:
                + "main()\n")
         assert "res.yield_type" in str(_res_fallback(src))
 
-    def test_walrus_yield_defers(self):
-        # BOUNDARY (PARKED design): the AST plants a dead frame_slot member
-        # AND a shadowing case-block pointer local for a yield-position
-        # borrow walrus -- fenced until the AST wart is resolved (TODO.md).
+    def test_walrus_yield_routes(self):
+        # A yield-position borrow walrus over a frame_slot NAME: the alias
+        # field points at the frame storage and the comma tail hands out the
+        # deref lvalue. (Was fenced on an AST wart -- the dead frame_slot
+        # member + shadowing case-block local -- fixed 2026-08-19.)
+        from .testutil import _assert_routes_byte_identical
         src = (self._IT
                + "def gen() -> Iterator[list[Int32]]:\n"
                + "    i = 0\n"
@@ -6772,7 +6914,54 @@ class TestResumableYieldShapes:
                + "def main() -> None:\n"
                + "    for xs in gen():\n        print(len(xs))\n"
                + "main()\n")
-        assert "res.yield_type" in str(_res_fallback(src))
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return (x = &((*buf)), *x);" in cpp
+
+    def test_own_tuple_literal_yield_routes(self):
+        # An Own-record-element tuple literal at the RESUMABLE tuple yield
+        # slot spells the plain storage brace-init (the selection helper
+        # shared with the sgen ladder).
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "class Box:\n"
+               + "    val: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.val = v\n\n"
+               + "def g(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:\n"
+               + "    yield (-1, Box(0))\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        yield (i, Box(i * 10))\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    total = 0\n"
+               + "    for i, b in g(3):\n"
+               + "        total = total + i + b.val\n"
+               + "    print(total)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return std::tuple<int32_t, Box>{i, Box(" in cpp
+
+    def test_own_ctor_yield_routes(self):
+        # A CTOR call at an OWN record yield slot lands the bare storage
+        # render (`return Node(i);`). The borrow-record sibling is
+        # unconstructible (sema: declare Iterator[Own[Node]]).
+        from .testutil import _assert_routes_byte_identical
+        src = (self._IT
+               + "class Node:\n"
+               + "    v: Int32\n"
+               + "    def __init__(self, v: Int32) -> None:\n"
+               + "        self.v = v\n\n"
+               + "def make(n: Int32) -> Iterator[Own[Node]]:\n"
+               + "    yield Node(0)\n"
+               + "    i = 1\n"
+               + "    while i < n:\n"
+               + "        yield Node(i)\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    xs = [x for x in make(3)]\n"
+               + "    print(len(xs), xs[2].v)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return Node(i);" in cpp
 
     def test_own_record_yield_routes(self):
         # The Own peel also reaches the RECORD yield family
@@ -7562,6 +7751,131 @@ class TestFrameFieldWalrus:
         assert witnesses.get("expr.walrus_frame_opt_ptr") == 1
         assert not fallback, fallback
         assert "(p = ::tpy::optional_to_ptr(__self.item))" in cpp
+
+    def test_frame_walrus_call_arg_routes(self):
+        # A walrus ARG at a plain free call (`value_of((m = pick(nodes, i)))`):
+        # the arg ladder admits a frame-field walrus position-blind, and the
+        # opt-ptr leg's BORROWING-call source lands bare.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + self._NODE
+               + "def pick(nodes: list[Node], i: Int32) -> Node | None:\n"
+               + "    if i < len(nodes):\n"
+               + "        return nodes[i]\n"
+               + "    return None\n\n"
+               + "def value_of(n: Node | None) -> Int32:\n"
+               + "    if n is not None:\n"
+               + "        return n.v\n"
+               + "    return -9\n\n"
+               + "def g(nodes: list[Node]) -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < 3:\n"
+               + "        yield value_of(m := pick(nodes, i))\n"
+               + "        if m is not None:\n"
+               + "            m.v += 100\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    nodes = [Node(1)]\n"
+               + "    for u in g(nodes):\n        print(u)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "value_of((m = pick(nodes, i)))" in cpp
+
+    def test_frame_walrus_native_arg_emplaces(self):
+        # The NATIVE-callee twin (`len(xs := [i, i+1])`): the same admission
+        # rides the native arg ladder; the frame_slot leg emplaces in place.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + "def g() -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        yield len(xs := [i, i + 1])\n"
+               + "        print(\"resume\", xs[0])\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    for u in g():\n        print(u)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__len__(xs.emplace(" in cpp
+
+    def test_frame_opt_ptr_walrus_own_call_source_stays_ast(self):
+        # An `Own[T | None]`-returning CALL source is a filed AST bug (the
+        # owning `std::optional<T>` rvalue has neither a lift nor storage to
+        # address) -- the borrowing-call rung must not capture it.
+        src = (self._PRE
+               + "from tpy import Own\n\n"
+               + self._NODE
+               + "def maybe_get(i: Int32) -> Own[Node | None]:\n"
+               + "    if i > 0:\n"
+               + "        return Node(i)\n"
+               + "    return None\n\n"
+               + "def value_of(n: Node | None) -> Int32:\n"
+               + "    if n is not None:\n"
+               + "        return n.v\n"
+               + "    return -9\n\n"
+               + "def g() -> Iterator[Int32]:\n"
+               + "    yield -1\n"
+               + "    i = 0\n"
+               + "    while i < 2:\n"
+               + "        yield value_of(m := maybe_get(i))\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    for u in g():\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("walrus.optptr_call_src")
+        assert fallback == {"resumable:expr.walrus": 1}, fallback
+
+    def test_sync_opt_ptr_walrus_call_source_routes(self):
+        # The SYNC arm shares the source rungs, so the borrowing-call rung
+        # serves it too (`if (m := pick(nodes, i)) is not None:`).
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PRE
+               + self._NODE
+               + "def pick(nodes: list[Node], i: Int32) -> Node | None:\n"
+               + "    if i < len(nodes):\n"
+               + "        return nodes[i]\n"
+               + "    return None\n\n"
+               + "def f(nodes: list[Node]) -> Int32:\n"
+               + "    if (m := pick(nodes, 0)) is not None:\n"
+               + "        return m.v\n"
+               + "    return -1\n\n"
+               + "def main() -> None:\n"
+               + "    print(f([Node(7)]))\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "(m = pick(nodes, 0))" in cpp
+
+    def test_sgen_peephole_call_arg_walrus_stays_ast(self):
+        # A call-arg walrus in a SIMPLE-GENERATOR peephole body: the frame
+        # map is empty, so the arg admission must not fire (the peephole's
+        # predecl ordering is a filed AST bug; routing would mirror it).
+        src = (self._PRE
+               + "def g(n: Int32) -> Iterator[Int32]:\n"
+               + "    for i in range(n):\n"
+               + "        yield len(xs := [i, i + 1]) + xs[0]\n"
+               + "\ndef main() -> None:\n"
+               + "    for u in g(2):\n        print(u)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not any("walrus_frame" in k for k in witnesses)
+        assert fallback == {"body:expr.call": 1}, fallback
+
+    def test_frame_alias_walrus_pointer_name_source_stays_ast(self):
+        # An alias walrus whose NAME source is itself a pointer local takes
+        # the AST's no-addr-of branch -- the frame-slot-name leg (always
+        # addr-of) must not capture it.
+        src = (self._PRE
+               + "def g(rows: list[list[Int32]]) -> Iterator[list[Int32]]:\n"
+               + "    i = 0\n"
+               + "    while i < len(rows):\n"
+               + "        row = rows[i]\n"
+               + "        yield (x := row)\n"
+               + "        print(\"resume\", len(row))\n"
+               + "        i += 1\n"
+               + "\ndef main() -> None:\n"
+               + "    rows = [[1, 2]]\n"
+               + "    for u in g(rows):\n        print(len(u))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert not witnesses.get("expr.walrus_frame_alias_slot")
+        assert fallback == {"resumable:expr.walrus": 1}, fallback
 
     def test_frame_borrow_tuple_walrus_takes_the_name_tail(self):
         # A borrow-form tuple field (`std::tuple<int32_t, Node*>`): the bare

@@ -1162,11 +1162,9 @@ class TestVarargPackAtNativeCallee:
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
 
-    def test_view_source_element_still_rejects(self):
-        # The boundary the widening must not have loosened: a str VIEW
-        # source element needs the AST's owned-copy wrap, so the pack still
-        # raises `call.vararg_view_elem` -- at a NATIVE callee too, now that
-        # the kind check is gone.
+    def test_view_source_element_takes_owned_copy(self):
+        # A str VIEW source element takes the AST's owned-copy wrap
+        # (`std::string(s)` into the pack array) -- at a NATIVE callee too.
         src = _PRELUDE + (
             "from tpy.extern import native\n"
             "@native(\"__user_join\")\n"
@@ -1177,9 +1175,11 @@ class TestVarargPackAtNativeCallee:
             "    go(\"a\")\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx(src), "go") is None
-        assert "call.vararg_view_elem" in _fallback_reasons(src)
-        _assert_byte_identical(src)
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "go") is not None
+        assert w.get("vararg.view_elem_copy", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert "{std::string(s), \"b\"}" in cpp[1]
 
 
 class TestOpenTypeParamProtocolFieldArg:

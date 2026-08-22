@@ -17,6 +17,7 @@ from .nodes import (
 )
 from .testutil import (
     _assert_byte_identical,
+    _assert_routes_byte_identical,
     _emit_expr as _emit,
     _fn,
     _lower_ctx,
@@ -191,11 +192,14 @@ class TestProtocolArgSlots:
         temp = _fn(thir, "go").body[0].expr.args[0]
         assert temp.cpp_type is None and not temp.brace_init  # `auto __tmp_N = ...`
 
-    def test_own_iterable_slot_stays_ast(self):
-        # `Iterable[Own[T]]` is a forwarding-ref slot whose last-use arg
-        # rewrites to `::tpy::own_iter(std::move(x))` inside gen_call_arg --
-        # not a protocol pre-arm, and not reproduced here.
-        thir = _lower_ctx(
+    def test_own_iterable_slot_routes_consuming_wrap(self):
+        # `Iterable[Own[T]]` is a forwarding-ref slot: the movable last-use
+        # arg takes the consuming `::tpy::own_iter(std::move(nums))` wrap
+        # (gen_call_arg's position-blind arm, mirrored by
+        # `_consuming_iter_wrap` at the Iterable NAME tail), and the callee's
+        # protocol-param loop admits the Own[value-T] element (typed copy
+        # bind + consuming movable seed).
+        src = (
             "from typing import Iterable\n"
             "from tpy import Int32, Own\n"
             "def total(xs: Iterable[Own[Int32]]) -> Int32:\n"
@@ -204,10 +208,12 @@ class TestProtocolArgSlots:
             "    return t\n"
             "def go() -> None:\n"
             "    nums: list[Int32] = [1, 2]\n    print(total(nums))\n")
-        # Both sides fall back: the `Iterable[Own[T]]` PARAM is a forwarding-ref
-        # slot (`total`), and its call site takes the consuming own_iter (`go`).
-        assert _fn(thir, "total") is None
-        assert _fn(thir, "go") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "total") is not None
+        assert _fn(thir, "go") is not None
+        assert faces.get("call.own_iter_arg")
+        assert faces.get("foreach.proto_own_elem_val")
+        _assert_routes_byte_identical(src)
 
 
 class TestProtocolMethodCallRejects:
@@ -249,6 +255,60 @@ class TestProtocolMethodCallRejects:
             "    def items(self) -> list[Int32]: ...\n"
             "def run(s: Source) -> None:\n    s.items()\n")
         assert _fn(_lower_ctx(src), "run") is not None
+        _assert_byte_identical(src)
+
+
+class TestOwnStructuralProtocolParam:
+    """`Own[Iterable[T]]` on a plain generic function: the monomorphized
+    `T_items&&` slot is a plain C++ lvalue inside the body (bare name
+    reads, the universal-loop `auto& __src_N = items;` capture), and the
+    generic call site moves a last-use container name / hoists a copy
+    temp for a still-live one (gen_call_arg's Own cascade)."""
+
+    _SRC = (
+        "from tpy import Own, Int32\n"
+        "from typing import Iterable\n"
+        "def first[T](items: Own[Iterable[T]]) -> T:\n"
+        "    for x in items:\n"
+        "        return x\n"
+        "    assert False, \"empty\"\n"
+        "def main() -> None:\n"
+        "    nums: list[Int32] = [1, 2, 3]\n"
+        "    print(first(nums))\n"
+        "    words: list[str] = [\"hello\", \"world\"]\n"
+        "    print(first(words))\n"
+        "    print(len(words))\n"
+        "main()\n")
+
+    def test_own_iterable_param_routes(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "first") is not None
+        assert _fn(thir, "main") is not None
+        assert faces.get("foreach.own_proto_param")
+        assert faces.get("move.own_proto_container")       # first(nums)
+        assert faces.get("argtemp.own_proto_container")    # first(words)
+        _assert_routes_byte_identical(self._SRC)
+
+    def test_nongeneric_still_live_copy_stays_ast(self):
+        # BOUNDARY: the still-live copy half is wired at the GENERIC arg
+        # loop only; a non-generic free call's Own[protocol] slot keeps
+        # its arg-shape reject (the last-use move half routes there).
+        src = (
+            "from tpy import Own, Int32\n"
+            "from typing import Iterable\n"
+            "def total(items: Own[Iterable[Int32]]) -> Int32:\n"
+            "    s = 0\n"
+            "    for x in items:\n"
+            "        s += x\n"
+            "    return s\n"
+            "def main() -> None:\n"
+            "    nums: list[Int32] = [1, 2, 3]\n"
+            "    print(total(nums))\n"
+            "    print(len(nums))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "total") is not None
+        assert _fn(thir, "main") is None
         _assert_byte_identical(src)
 
 
@@ -523,13 +583,18 @@ class TestCopyIterOwnElemArg:
             "    print(len(a))\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
-        assert faces.get("protoarg.copy_iter", 0) >= 2
+        # The NAME leg takes the ordinary bare row now that the Own-elem
+        # slot passes `_protocol_arg_slot`; only the rvalue keeps the
+        # CopyIter-specific admission.
+        assert faces.get("protoarg.copy_iter", 0) >= 1
+        assert faces.get("protoarg.bare", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_own_iter_name_at_own_elem_slot_still_defers(self):
-        # Boundary: the SIBLING adapter -- an own_iter-bound NAME at the
-        # same slot must not be swept in by the CopyIter qname check (the
-        # OwnIter flavor moves via the consuming rewrite, never binds bare).
+    def test_own_iter_name_at_own_elem_slot_binds_bare(self):
+        # The SIBLING adapter: an OwnIter-bound NAME at the same slot binds
+        # BARE on both paths (`::tpy::list_extend(a, oi)`) -- OwnIter IS the
+        # consuming iterator, it has no consuming __iter__ of its own, so
+        # the wrap declines (the move happened at `own_iter(b)`).
         src = (
             "from tpy import Int32, own_iter\n"
             "class Node:\n"
@@ -541,13 +606,15 @@ class TestCopyIterOwnElemArg:
             "    oi = own_iter(b)\n"
             "    a.extend(oi)\n"
             "    print(len(a))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert not faces.get("call.own_iter_arg")
+        _assert_routes_byte_identical(src)
 
-    def test_user_conformer_at_own_elem_slot_still_defers(self):
-        # Boundary: a USER iterator record at the same slot is not the
-        # CopyIter adapter -- the body keeps its existing fallback.
+    def test_user_conformer_at_own_elem_slot_binds_bare(self):
+        # A USER iterator record at the same slot has no consuming
+        # __iter__, so the wrap declines and the name binds bare on both
+        # paths.
         src = (
             "from tpy import Int32\n"
             "from typing import Iterator\n"
@@ -564,9 +631,10 @@ class TestCopyIterOwnElemArg:
             "    g = Gen3()\n"
             "    a.extend(g)\n"
             "    print(len(a))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert not faces.get("call.own_iter_arg")
+        _assert_routes_byte_identical(src)
 
 
 class TestAssertIsinstanceSelf:
@@ -633,3 +701,53 @@ class TestAssertIsinstanceSelf:
         thir = _lower_ctx(src)
         assert _fn(thir, "gen_assert") is None
         _assert_byte_identical(src)
+
+
+class TestSendMarkerParams:
+    """`Send[Pet]` params bind `Ref[Send[Pet]]` -- the marker is not
+    canonically outermost, so the protocol predicates peel the wrappers to
+    fixpoint (the AST erases Send wherever it sits)."""
+
+    _SEND = (
+        "from typing import Protocol\n"
+        "from tpy import Int32, Send, dynamic\n"
+        "@dynamic\n"
+        "class Pet(Protocol):\n"
+        "    def speak(self) -> Int32: ...\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def speak(self) -> Int32:\n"
+        "        return self.n\n"
+    )
+
+    def test_send_param_receiver_routes(self):
+        # `def greet(p: Send[Pet]): p.speak()` -- the receiver family
+        # resolves the protocol under Ref[Send[..]] and renders the same
+        # bare `p.speak()` a bare-Pet param gets.
+        src = (self._SEND
+               + "def greet(p: Send[Pet]) -> None:\n"
+               + "    print(p.speak())\n")
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "greet")
+        assert fn is not None
+        stmt = fn.body[0]
+        call = stmt.args[0].expr
+        assert isinstance(call, THIRMethodCall)
+        assert _emit(call) == "p.speak()"
+
+    def test_send_slot_adapter_args_route(self):
+        # The arg slot admits through the wrappers: an lvalue takes the
+        # zero-copy RefAdapter temp, a ctor rvalue the owning Adapter --
+        # the same temps a bare-Pet slot hoists.
+        src = (self._SEND
+               + "def greet(p: Send[Pet]) -> None:\n"
+               + "    print(p.speak())\n"
+               + "def main() -> None:\n"
+               + "    d = Dog(3)\n"
+               + "    greet(d)\n"
+               + "    greet(Dog(7))\n"
+               + "main()\n")
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(src)

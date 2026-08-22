@@ -541,3 +541,69 @@ class TestGenericForwardTypeParam:
         joined = _hpp + cpp
         assert "return identity<std::vector<T>>(items);" in joined
         assert "return identity<T>(this->val);" in joined
+
+
+class TestCtorMilNullableProtocolUnionArg:
+    """The Pool[T] shape: a generic-record ctor whose MIL init is an
+    explicit-type-arg generic ctor (`ArrayList[T, 8](items)`) taking an
+    `Own[list[T]]` PARAM name at a nullable protocol-union slot
+    (`Spannable[T] | Iterable[Own[T]] | None`) -- the `&(items)` addr
+    lift over the bare name (`_items(ArrayList<T, 8>(&(items)))`)."""
+
+    def test_own_list_param_addr_lift_routes(self):
+        from .testutil import _lower_ctor, _ctor_tail, _lower_ctx
+        src = (
+            "from tpy import Int32, Own\n"
+            "from tplib.array_list import ArrayList\n"
+            "class Pool[T]:\n"
+            "    _items: ArrayList[T, 8]\n"
+            "    def __init__(self, items: Own[list[T]]) -> None:\n"
+            "        self._items = ArrayList[T, 8](items)\n"
+            "def main() -> None:\n"
+            "    nums: list[Int32] = [1, 2]\n"
+            "    p = Pool[Int32](nums)\n"
+            "    print(len(p._items))\n"
+            "main()\n")
+        ctor = _lower_ctor(src, "Pool")
+        assert ctor is not None
+        assert "&(items)" in _ctor_tail(ctor)
+        _assert_routes_byte_identical(src)
+
+    def test_free_decl_position_routes(self):
+        # The addr lift serves the free decl position too (`al =
+        # ArrayList[Int32, 8](items)` off an Own[list] param) -- the
+        # verdict is nullability-keyed, never a move.
+        from .testutil import _lower_ctx, _fn
+        src = (
+            "from tpy import Int32, Own\n"
+            "from tplib.array_list import ArrayList\n"
+            "def load(items: Own[list[Int32]]) -> Int32:\n"
+            "    al = ArrayList[Int32, 8](items)\n"
+            "    return len(al)\n"
+            "def main() -> None:\n"
+            "    nums: list[Int32] = [1, 2, 3]\n"
+            "    print(load(nums))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "load") is not None
+        _assert_routes_byte_identical(src)
+
+    def test_own_list_param_general_read_still_defers(self):
+        # BOUNDARY: the Own[container] param's GENERAL read (a bare
+        # `len(items)` after the lift) has no arm -- only the whole-name
+        # consuming positions route, so a body with a later plain read
+        # keeps its fallback.
+        from .testutil import _assert_byte_identical, _lower_ctx, _fn
+        src = (
+            "from tpy import Int32, Own\n"
+            "from tplib.array_list import ArrayList\n"
+            "def load(items: Own[list[Int32]]) -> Int32:\n"
+            "    al = ArrayList[Int32, 8](items)\n"
+            "    return len(al) + len(items)\n"
+            "def main() -> None:\n"
+            "    nums: list[Int32] = [1, 2, 3]\n"
+            "    print(load(nums))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "load") is None
+        _assert_byte_identical(src)

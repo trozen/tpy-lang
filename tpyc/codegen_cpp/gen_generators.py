@@ -367,7 +367,12 @@ class GeneratorCodegen:
             with_counter=CtxCounter(self.ctx, "with_counter"),
             try_counter=CtxCounter(self.ctx, "try_except_counter"),
             finally_guard_counter=CtxCounter(
-                self.ctx, "finally_guard_counter"))
+                self.ctx, "finally_guard_counter"),
+            # Held-back rebind-slot decls drain into the ctx's nested hoist
+            # scope; _lambda_body_sink flushes them at the lambda prologue
+            # (the AST path's own drain point).
+            hoist_sink=lambda line: self.ctx.pending_hoist_decls.append(
+                line + "\n"))
 
     @contextmanager
     def _lambda_body_sink(self, out: 'TextIO', indent: str):

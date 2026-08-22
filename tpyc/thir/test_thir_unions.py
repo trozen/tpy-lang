@@ -570,9 +570,19 @@ class TestPtrUnionEligibility:
             "def fa(h: H) -> Int32:\n    return take(h.u)\n")
         assert _fn(thir, "fa") is None
 
-    def test_own_union_param_rejects(self):
+    def test_own_union_param_arg_lifts_to_ptr_variant(self):
+        # An Own[union] STORAGE-variant param NAME into a ptr-variant slot
+        # takes the to_ptr_variant lift (the needs_to_ptr_variant_lift arm).
         thir = self._lower(
             "def take(v: A | B) -> Int32:\n    return 0\n"
+            "def op(v: Own[A | B]) -> Int32:\n    return take(v)\n")
+        assert _fn(thir, "op") is not None
+
+    def test_own_union_param_readonly_slot_stays_ast(self):
+        # BOUNDARY: the readonly ptr-variant slot's const lift spelling is
+        # unwitnessed -- the storage-name row declines it.
+        thir = self._lower(
+            "def take(v: readonly[A | B]) -> Int32:\n    return 0\n"
             "def op(v: Own[A | B]) -> Int32:\n    return take(v)\n")
         assert _fn(thir, "op") is None
 
@@ -3061,3 +3071,62 @@ class TestUnionReseatAndBranchCopy:
             "        print(isinstance(pet3, Cat))\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
+
+
+class TestOwnUnionStorageTrack:
+    """The Own[A | B] STORAGE-variant track: isinstance narrowing over the
+    Own-peeled subject (const auto& value extraction, no post-if alias),
+    the to_ptr_variant arg lift, and the same-union call-rvalue pass."""
+
+    _SRC = (
+        "from tpy import Int32, Own\n"
+        "class A:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class B:\n"
+        "    y: Int32\n"
+        "    def __init__(self, y: Int32) -> None:\n        self.y = y\n"
+        "def describe(u: Own[A | B]) -> Int32:\n"
+        "    if isinstance(u, A):\n"
+        "        return u.x\n"
+        "    if isinstance(u, B):\n"
+        "        return u.y\n"
+        "    return Int32(0)\n"
+        "def pick(flag: bool) -> Own[A | B]:\n"
+        "    if flag:\n        return A(7)\n"
+        "    return B(11)\n"
+        "def borrow_union(u: A | B) -> Int32:\n"
+        "    if isinstance(u, A):\n"
+        "        return u.x\n"
+        "    return Int32(0)\n"
+        "def fwd(u: Own[A | B]) -> Int32:\n"
+        "    return borrow_union(u)\n"
+        "def main() -> None:\n"
+        "    print(describe(A(7)))\n"
+        "    print(describe(pick(True)))\n"
+        "    print(fwd(A(13)))\n"
+        "main()\n")
+
+    def test_track_routes_byte_identical(self):
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        for name in ("describe", "pick", "fwd", "main"):
+            assert _fn(thir, name) is not None, name
+        assert w.get("arg.own_union_storage_name", 0) >= 1
+        assert w.get("own.union_call_pass", 0) >= 1
+        cpp = _assert_byte_identical(self._SRC)
+        # Value extraction off the storage variant, const from the Own
+        # param's is_value_type() verdict.
+        assert "const auto& __u = std::get<A>(u);" in cpp[1]
+        assert "std::holds_alternative<A>(u)" in cpp[1]
+        assert "borrow_union(::tpy::to_ptr_variant(u))" in cpp[1]
+        assert "describe(pick(true))" in cpp[1]
+
+    def test_own_subject_emits_no_post_if_alias(self):
+        # The AST's post-guard extraction reads the RAW declared type
+        # (OwnType, not UnionType) and skips Own subjects -- the mirror
+        # must not emit a post-if persistent alias.
+        cpp = _assert_byte_identical(self._SRC)
+        body = cpp[1].split("int32_t describe")[1].split("\n}")[0]
+        # exactly the two in-branch aliases, none at function scope
+        assert body.count("__u = std::get") == 2
+        assert "}\n    const auto& __u" not in "int32_t describe" + body

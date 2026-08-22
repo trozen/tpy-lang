@@ -144,3 +144,70 @@ class TestLocalTupleReceiverStaysDeferred:
     def test_local_receiver_falls_back(self):
         fell = _thir_fallbacks(self.SRC)
         assert any(k.startswith("body:") for k in fell), fell
+
+
+class TestMixedOwnTupleLocalPtrElem:
+    """The LOCAL twin of the field stack: a ptr-Optional element off a
+    MIXED own-borrow tuple LOCAL is already the bare `Box*` borrowed
+    half, so the decl and the None-subject render it DIRECTLY -- no
+    optional_to_ptr lift. A fully-OWNED storage tuple's Optional element
+    (`std::optional<Box>` at the slot) keeps deferring."""
+
+    _MIXED = (
+        "from tpy import Int32, Own\n"
+        "class Box:\n"
+        "    val: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.val = v\n"
+        "def make_mixed(b: Box) -> tuple[Own[Box], Box | None]:\n"
+        "    return (Box(1), b)\n"
+    )
+
+    SRC = (
+        _MIXED +
+        "def probe(b: Box) -> Int32:\n"
+        "    p = make_mixed(b)\n"
+        "    e = p[1]\n"
+        "    if e is not None:\n"
+        "        e.val = 42\n"
+        "    if p[1] is not None:\n"
+        "        return p[0].val\n"
+        "    return -1\n"
+        "def main() -> None:\n"
+        "    b = Box(7)\n"
+        "    print(probe(b), b.val)\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "Box* e = std::get<1>(p);" in cpp
+        assert "(std::get<1>(p) != nullptr)" in cpp
+        assert "optional_to_ptr(std::get<1>(p))" not in cpp
+
+    def test_faces(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("decl.mixed_elem_ptr", 0) >= 1
+        assert w.get("isnone.tuple_elem_bare", 0) >= 1
+
+    def test_owned_storage_tuple_elem_stays_deferred(self):
+        # The BOUNDARY: a fully-owned storage tuple stores
+        # `std::optional<Box>` at the slot -- a different (has_value /
+        # lift) render this row must not capture.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n"
+            "def make() -> Own[tuple[Box | None, Int32]]:\n"
+            "    return (Box(3), 7)\n"
+            "def main() -> None:\n"
+            "    t = make()\n"
+            "    e = t[0]\n"
+            "    if e is not None:\n"
+            "        print(e.val)\n"
+            "main()\n"
+        )
+        fell = _thir_fallbacks(src)
+        assert any(k.startswith("body:") for k in fell), fell

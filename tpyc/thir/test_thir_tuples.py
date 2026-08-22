@@ -14,7 +14,7 @@ from .nodes import (
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
     _lower_ctx_witnessed, _assert_byte_identical,
-    _assert_routes_byte_identical, _PRELUDE,
+    _assert_routes_byte_identical, _top_level, _PRELUDE,
 )
 from ..codegen_cpp.forms import is_ptr_variant_union
 from ..typesys import TupleType, unwrap_readonly, unwrap_ref_type
@@ -202,14 +202,121 @@ class TestF3TupleFieldWrite:
         assert write.value.form is Form.STORAGE and write.value.move is False
         assert write.value.value.form is Form.BORROW  # the borrow tuple param p
 
-    def test_storage_source_field_write_is_ineligible(self):
-        # A storage-form source (`other.pair`, a field read) is a direct copy with
-        # no tuple_to_storage wrap -- a later F3 cell, so it stays on the AST path.
+    def test_storage_source_field_write_copies_bare(self):
+        # A storage-form source (`other.pair`, a field read) is a direct copy
+        # with no tuple_to_storage wrap: `h.pair = other.pair;`.
         thir = _lower_ctx(
             _F3_OPT_RECORDS
             + "def copy_from(h: Holder, other: Holder) -> None:\n"
             + "    h.pair = other.pair\n")
-        assert _fn(thir, "copy_from") is None
+        fn = _fn(thir, "copy_from")
+        assert fn is not None
+        write = fn.body[0]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.target, THIRFieldAccess)
+        assert isinstance(write.value, THIRFieldAccess)  # bare, no convert
+        assert write.value.form is Form.STORAGE
+
+    def test_subscript_source_field_write_copies_bare(self):
+        # A container-element source is the same storage value: the bare
+        # checked read, no wrap (`h.pair = ::tpy::__getitem__(items, 0);`).
+        thir = _lower_ctx(
+            _F3_OPT_RECORDS
+            + "def copy_from(h: Holder,\n"
+            + "              items: list[tuple[T | None, T | None]]) -> None:\n"
+            + "    h.pair = items[0]\n")
+        fn = _fn(thir, "copy_from")
+        assert fn is not None
+        write = fn.body[0]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.value, THIRSubscript)  # bare, no convert
+
+    def test_storage_name_field_write_copies_bare(self):
+        # A storage-form tuple NAME source (the `auto&&` alias local) copies
+        # bare too -- `this->pair = t;` -- where a borrow-tuple PARAM name
+        # takes the tuple_to_storage lift (the routing pin above).
+        thir = _lower_ctx(
+            _F3_OPT_RECORDS
+            + "def copy_alias(h: Holder, other: Holder) -> None:\n"
+            + "    t = other.pair\n"
+            + "    h.pair = t\n")
+        fn = _fn(thir, "copy_alias")
+        assert fn is not None
+        write = fn.body[1]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.value, THIRName)  # bare, no convert
+        assert write.value.form is Form.STORAGE
+
+    # Like _F3_OPT_RECORDS, but the ctor takes a borrow tuple param (the
+    # routed mil.tuple_storage row) -- the `(None, None)` MIL literal is a
+    # separate cell, and a routing pin's fixture must route END TO END.
+    _F3_OPT_PARAM_RECORDS = (
+        "from tpy import Int32\n"
+        "class T:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class Holder:\n"
+        "    pair: tuple[T | None, T | None]\n"
+        "    def __init__(self, p: tuple[T | None, T | None]) -> None:\n"
+        "        self.pair = p\n"
+    )
+
+    def test_mil_subscript_source_stores_bare(self):
+        # The ctor-MIL twin of the subscript row: `pair(::tpy::__getitem__(
+        # items, 0))` -- a storage element read stores bare in the MIL.
+        ctor = _lower_ctor(
+            "from tpy import Int32\n"
+            "class T:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "class SubCtor:\n"
+            "    pair: tuple[T | None, T | None]\n"
+            "    def __init__(self,\n"
+            "                 items: list[tuple[T | None, T | None]]) -> None:\n"
+            "        self.pair = items[0]\n",
+            "SubCtor")
+        assert ctor is not None
+        assert "pair(::tpy::__getitem__(items, 0))" in _ctor_tail(ctor)
+
+    def test_storage_elem_read_container_sinks_byte_identical(self):
+        # The container-literal element / append-arg twins of the subscript
+        # row over a PLAIN-record element tuple (`tuple[Int32, P]`): the
+        # storage element read lands bare at the owned tuple sinks.
+        _assert_routes_byte_identical(
+            _PRELUDE
+            + "class P:\n"
+            + "    x: Int32\n"
+            + "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            + "def lit(items: list[tuple[Int32, P]]) -> None:\n"
+            + "    xs: list[tuple[Int32, P]] = [items[0]]\n"
+            + "    print(len(xs))\n"
+            + "def app(items: list[tuple[Int32, P]]) -> None:\n"
+            + "    out: list[tuple[Int32, P]] = []\n"
+            + "    out.append(items[0])\n"
+            + "    print(len(out))\n"
+            + "def main():\n"
+            + "    src: list[tuple[Int32, P]] = [(1, P(5))]\n"
+            + "    lit(src)\n    app(src)\n"
+            + "main()\n")
+
+    def test_f3_storage_source_writes_byte_identical(self):
+        # Emit-level pin for the storage-source rows: subscript, field,
+        # alias-name, and loop-var sources all copy bare, byte-identical.
+        _assert_routes_byte_identical(
+            self._F3_OPT_PARAM_RECORDS
+            + "def w1(h: Holder, items: list[tuple[T | None, T | None]]) -> None:\n"
+            + "    h.pair = items[0]\n"
+            + "def w2(h: Holder, other: Holder) -> None:\n"
+            + "    h.pair = other.pair\n"
+            + "def w3(h: Holder, items: list[tuple[T | None, T | None]]) -> None:\n"
+            + "    for t in items:\n"
+            + "        h.pair = t\n"
+            + "def main():\n"
+            + "    t = T(1)\n"
+            + "    items: list[tuple[T | None, T | None]] = [(t, None)]\n"
+            + "    h = Holder((t, None))\n"
+            + "    w1(h, items)\n    w2(h, h)\n    w3(h, items)\n    print(0)\n"
+            + "main()\n")
 
 
 
@@ -2176,7 +2283,10 @@ class TestBorrowTupleHoistRejects:
         _both_cpp(src)
 
     def test_call_source_hoist_rejects(self):
-        # An owning-call source needs the emplace-slot machinery (deferred).
+        # BOUNDARY: a PLAIN borrow-tuple return (no Own element) is neither
+        # the owning-call family (`_btuple_owning_call_init` -- False here)
+        # nor the mixed-own one (`is_mixed_own` -- also False), so the hoist
+        # admission still has no call leg for it and the body falls back.
         src = (
             _BT_RECORDS
             + "def make(b: Box2) -> tuple[Int32, Box2]:\n"
@@ -2909,6 +3019,53 @@ class TestBtupleRebindDecl:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert faces.get("decl.btuple_literal")
+        _assert_byte_identical(src)
+
+    def test_name_copy_init_routes(self):
+        # A borrow-form tuple NAME init (`q = p` where p aliases pick(h)'s
+        # borrow result): the plain pointer-tuple copy re-aliases the same
+        # elements -- no lift (a lift is a no-op convert the validator
+        # rejects; this rung intercepts before the storage-lvalue tail).
+        src = (self._SRC
+               + "def pick(h: Holder) -> tuple[Int32, Box]:\n"
+               + "    return h.pair\n"
+               + "def use(h: Holder) -> Int32:\n"
+               + "    p = pick(h)\n"
+               + "    q = p\n"
+               + "    q = h.pair\n"
+               + "    q[1].val += 1\n"
+               + "    return q[0]\n"
+               + "h = Holder(Box(5))\n"
+               + "print(use(h))\n"
+               + "print(h.pair[1].val)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("decl.btuple_name_copy")
+        _assert_byte_identical(src)
+
+    def test_branch_first_name_copy_routes(self):
+        # The BRANCH-FIRST flavor: `q = p` off the borrow-form loop var of
+        # a generator loop declares in place (`std::tuple<int32_t, Box*> q
+        # = p;` inside the loop body), no slot machinery.
+        src = (self._SRC
+               + "from typing import Iterator\n"
+               + "def gen() -> Iterator[tuple[Int32, Box]]:\n"
+               + "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
+               + "    yield items[0]\n"
+               + "def pick(h: Holder) -> tuple[Int32, Box]:\n"
+               + "    for p in gen():\n"
+               + "        q = p\n"
+               + "        q = h.pair\n"
+               + "        return q\n"
+               + "    raise RuntimeError(\"empty\")\n"
+               + "h = Holder(Box(7))\n"
+               + "t = pick(h)\n"
+               + "t[1].val = 99\n"
+               + "print(t[0])\n"
+               + "print(h.pair[1].val)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert faces.get("decl.btuple_name_copy")
         _assert_byte_identical(src)
 
     def test_borrow_call_init_stays_out(self):
@@ -3675,4 +3832,551 @@ class TestCopyWholeTupleLiteral:
             "    print(t[0], t[1])\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is None
+        _assert_byte_identical(src)
+
+
+# --- F3 tuple GLOBALS (storage form at namespace scope) ---
+
+_F3_GLOBAL_RECORDS = (
+    "from tpy import Int32\n"
+    "class T:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+)
+
+
+class TestF3TupleGlobal:
+    def test_top_level_storage_global_write_routes_lifted(self):
+        # THE WRONG-KEY REGRESSION PIN (dualgen-proven latent
+        # divergence): a top-level `g: tuple[T | None, T | None] =
+        # (t1, t2)` target is a namespace-scope STORAGE value. The reseat
+        # used to key it through `_borrow_tuple_local_type` as a borrow
+        # LOCAL and emit the borrow literal BARE -- ill-formed C++
+        # (`g = std::tuple<T*, T*>{t1, t2};`, no optional<T> <- T*
+        # conversion) with no corpus witness (the corpus sibling holds a
+        # None element that used to fall the whole body back). The write
+        # must route AND spell the tuple_to_storage lift.
+        src = (
+            _F3_GLOBAL_RECORDS
+            + "t1 = T(10)\n"
+            + "t2 = T(20)\n"
+            + "g: tuple[T | None, T | None] = (t1, t2)\n"
+            + "def main() -> None:\n"
+            + "    a, b = g\n"
+            + "    if a is not None:\n        print(a.x)\n"
+            + "main()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None
+        assert faces.get("top_level.tuple_storage_global")
+        # main's `a, b = g` (global-name unpack at opt_ptr targets) is a
+        # known deferral -- the top_level body itself must not fall back.
+        assert not any(k.startswith("top_level:") for k in fell)
+        _hpp, cpp = _assert_byte_identical(src)
+        assert ("g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
+                "std::optional<T>>>(std::tuple<T*, T*>{t1, t2});" in cpp)
+
+    def test_top_level_none_element_routes(self):
+        # The corpus shape: a None element renders nullptr inside the lifted
+        # borrow literal.
+        src = (
+            _F3_GLOBAL_RECORDS
+            + "t1 = T(10)\n"
+            + "g: tuple[T | None, T | None] = (t1, None)\n"
+            + "def use() -> None:\n    print(0)\n"
+            + "use()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None and fell == {}
+        _hpp, cpp = _assert_byte_identical(src)
+        assert ("g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
+                "std::optional<T>>>(std::tuple<T*, T*>{t1, nullptr});"
+                in cpp)
+
+    def test_top_level_global_name_source_defers(self):
+        # Boundary: a non-literal source at the storage-global write has no
+        # mirrored render -- the arm must claim-and-reject (never leak into
+        # a value reseat that would skip the lift).
+        src = (
+            _F3_GLOBAL_RECORDS
+            + "t1 = T(10)\n"
+            + "g: tuple[T | None, T | None] = (t1, None)\n"
+            + "g2: tuple[T | None, T | None] = g\n"
+            + "def use() -> None:\n    print(0)\n"
+            + "use()\n")
+        top, _faces, fell = _top_level(src)
+        assert top is None
+        assert fell == {
+            "top_level:stmt.var_decl:top_level.tuple_global_source": 1}
+
+    def test_global_read_at_borrow_tuple_param_lifts_const(self):
+        # A seeded read-only F3 tuple global at a const borrow-tuple param
+        # slot takes `tuple_to_pointer<const S>(g)` (the storage NAME row).
+        src = (
+            _F3_GLOBAL_RECORDS
+            + "t1 = T(10)\n"
+            + "g: tuple[T | None, T | None] = (t1, None)\n"
+            + "def consume(p: tuple[T | None, T | None]) -> None:\n"
+            + "    a, b = p\n"
+            + "    if a is not None:\n        print(a.x)\n"
+            + "def main() -> None:\n"
+            + "    consume(g)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("consume(::tpy::tuple_to_pointer<std::tuple<const T*, "
+                "const T*>>(g));" in cpp)
+
+
+class TestF3TupleUnpackFromField:
+    _RECORDS = (
+        "from tpy import Int32, readonly\n"
+        "class T:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class Holder:\n"
+        "    pair: tuple[T | None, T | None]\n"
+        "    def __init__(self, p: tuple[T | None, T | None]) -> None:\n"
+        "        self.pair = p\n"
+    )
+
+    def test_field_source_unpack_lifts(self):
+        # `a, b = h.pair` off a mutable receiver: the member lifts via
+        # tuple_to_pointer, the opt_ptr targets read std::get bare.
+        src = (
+            self._RECORDS
+            + "def main() -> None:\n"
+            + "    t = T(1)\n"
+            + "    h = Holder((t, None))\n"
+            + "    a, b = h.pair\n"
+            + "    if a is not None:\n        print(a.x)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair)"
+                in cpp + _hpp)
+
+    def test_readonly_receiver_unpack_defers(self):
+        # Boundary: a readonly receiver's const spelling is unwitnessed --
+        # the field-source row must keep rejecting (fallback, and the AST
+        # output stays the oracle).
+        src = (
+            self._RECORDS
+            + "def read(h: readonly[Holder]) -> None:\n"
+            + "    a, b = h.pair\n"
+            + "    if a is not None:\n        print(a.x)\n"
+            + "def main() -> None:\n"
+            + "    t = T(1)\n"
+            + "    read(Holder((t, None)))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read") is None
+        _assert_byte_identical(src)
+
+
+class TestMilNoneTupleElement:
+    def test_mil_none_none_identity_wrap(self):
+        # `self.pair = (None, None)` hoists into the MIL with the committed
+        # IDENTITY wrap: the inner literal is the STORAGE tuple, wrapped in
+        # tuple_to_storage all the same (mirroring the AST byte-for-byte;
+        # the identity-lift cleanup is a separate AST-first change).
+        ctor = _lower_ctor(
+            "from tpy import Int32\n"
+            "class T:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "class Holder:\n"
+            "    pair: tuple[T | None, T | None]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.pair = (None, None)\n",
+            "Holder")
+        assert ctor is not None
+        assert ("pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
+                "std::optional<T>>>(std::tuple<std::optional<T>, "
+                "std::optional<T>>{std::nullopt, std::nullopt}))"
+                in _ctor_tail(ctor))
+
+    def test_mil_name_none_mix(self):
+        # (p, None): the param name and the storage nullopt share one
+        # spelled literal (dualgen-proven byte-identical).
+        ctor = _lower_ctor(
+            "from tpy import Int32\n"
+            "class T:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "class MixCtor:\n"
+            "    pair: tuple[T | None, T | None]\n"
+            "    def __init__(self, p: T) -> None:\n"
+            "        self.pair = (p, None)\n",
+            "MixCtor")
+        assert ctor is not None
+        assert "{p, std::nullopt}" in _ctor_tail(ctor)
+
+
+# --- Ptr[T] tuple elements (mixed Optional + Ptr) ---
+
+_PTR_MIXED_RECORDS = (
+    "from tpy import Int32, Ptr\n"
+    "class Tag:\n"
+    "    name: Int32\n"
+    "    def __init__(self, name: Int32) -> None:\n        self.name = name\n"
+    "class Point:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+    "class Holder:\n"
+    "    pair: tuple[Point | None, Ptr[Tag]]\n"
+    "    def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:\n"
+    "        self.pair = pair\n"
+)
+
+
+class TestPtrTupleElement:
+    def test_ptr_element_reads_route(self):
+        # A Ptr[T] element is a pointer VALUE: `std::get<N>` reads it bare
+        # at decl/arg positions, and a member access through it takes the
+        # Ptr arm's wrap -- `::tpy::deref_check(std::get<1>(h.pair)).name`.
+        src = (
+            _PTR_MIXED_RECORDS
+            + "def take(p: Ptr[Tag]) -> None:\n"
+            + "    if p is not None:\n        print(p.name)\n"
+            + "def use(h: Holder) -> None:\n"
+            + "    q = h.pair[1]\n"
+            + "    take(q)\n"
+            + "    print(h.pair[1].name)\n"
+            + "def main() -> None:\n"
+            + "    tg = Tag(7)\n"
+            + "    ptr: Ptr[Tag] = tg\n"
+            + "    p = Point(3)\n"
+            + "    h = Holder((p, ptr))\n"
+            + "    use(h)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::deref_check(std::get<1>(h.pair)).name" in cpp)
+
+    def test_optional_element_member_keeps_check(self):
+        # Boundary (the measured deref_check-drop hazard): an UNPROVEN
+        # Optional element member read must keep its runtime check -- it
+        # rides the storage-optional subscript arm, never the bare
+        # subscript-receiver row.
+        src = (
+            _PTR_MIXED_RECORDS
+            + "def use(h: Holder) -> None:\n"
+            + "    print(h.pair[0].x)\n"
+            + "def main() -> None:\n"
+            + "    tg = Tag(7)\n"
+            + "    ptr: Ptr[Tag] = tg\n"
+            + "    p = Point(3)\n"
+            + "    h = Holder((p, ptr))\n"
+            + "    use(h)\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::deref_check(::tpy::optional_to_ptr("
+                "std::get<0>(h.pair))).x" in cpp)
+
+    def test_mil_ptr_mixed_borrow_param_lifts(self):
+        # The MIL borrow-param row over the mixed tuple: the runtime helper
+        # leaves the Ptr slot alone (the regression case's contract).
+        ctor = _lower_ctor(_PTR_MIXED_RECORDS, "Holder")
+        assert ctor is not None
+        assert ("pair(::tpy::tuple_to_storage<std::tuple<std::optional"
+                "<Point>, Tag*>>(pair))" in _ctor_tail(ctor))
+
+
+# --- Nested-storage tuple family (tuple-in-tuple, no borrow form) ---
+
+_NESTED_RECORDS = (
+    "from tpy import Int32\n"
+    "class P:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+)
+
+
+class TestNestedStorageTuple:
+    def test_nested_chain_and_sinks_byte_identical(self):
+        # The nested std::get chain (reads and scalar-field writes) plus the
+        # nested-ref literal at the container / field / setitem / append /
+        # MIL sinks -- the borrow ladder replays per level and the outer
+        # tuple stores bare (no borrow form to lift from).
+        src = (
+            _NESTED_RECORDS
+            + "class Holder:\n"
+            + "    q: tuple[Int32, tuple[Int32, P]]\n"
+            + "    def __init__(self, c: P) -> None:\n"
+            + "        self.q = (1, (2, c))\n"
+            + "def via_list(c: P) -> Int32:\n"
+            + "    xs: list[tuple[Int32, tuple[Int32, P]]] = [(1, (2, c))]\n"
+            + "    xs[0][1][1].n = 41\n"
+            + "    return c.n\n"
+            + "def via_inner_lvalue(c: P) -> Int32:\n"
+            + "    t = (2, c)\n"
+            + "    xs: list[tuple[Int32, tuple[Int32, P]]] = [(1, t)]\n"
+            + "    xs[0][1][1].n = 42\n"
+            + "    return t[1].n\n"
+            + "def via_append(c: P) -> Int32:\n"
+            + "    q: tuple[Int32, tuple[Int32, P]] = (1, (2, c))\n"
+            + "    xs: list[tuple[Int32, tuple[Int32, P]]] = []\n"
+            + "    xs.append(q)\n"
+            + "    return q[1][1].n\n"
+            + "def via_field(h: Holder, c: P) -> Int32:\n"
+            + "    h.q = (9, (8, c))\n"
+            + "    h.q[1][1].n = 44\n"
+            + "    return c.n\n"
+            + "def via_setitem(c: P) -> Int32:\n"
+            + "    d: dict[Int32, tuple[Int32, tuple[Int32, P]]] = {}\n"
+            + "    d[0] = (9, (8, c))\n"
+            + "    d[0][1][1].n = 47\n"
+            + "    return c.n\n"
+            + "def main() -> None:\n"
+            + "    a = P(0)\n"
+            + "    print(via_list(a), via_inner_lvalue(a), via_append(a))\n"
+            + "    print(via_field(Holder(a), a), via_setitem(a))\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 41;"
+                in cpp)
+        assert ("::tpy::tuple_to_storage<std::tuple<int32_t, P>>"
+                "(std::tuple<int32_t, const P*>{2, &(c)})" in cpp)
+        assert "::tpy::tuple_to_storage<std::tuple<int32_t, P>>(t)" in cpp
+        assert "xs.push_back(q);" in cpp
+        assert "std::get<1>(std::get<1>(h.q)).n = 44;" in cpp
+
+    def test_comp_mixed_fresh_and_borrow_member_still_defers(self):
+        # Boundary (BUGS.md: comprehension element mixing a fresh ctor with
+        # a borrowed ref is BROKEN on the AST side): the borrowed NAME
+        # member keeps the comp element out, so THIR must not admit it.
+        src = (
+            _NESTED_RECORDS
+            + "class Node:\n"
+            + "    v: Int32\n"
+            + "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+            + "def f(b: P) -> Int32:\n"
+            + "    xs = [(Node(i), b) for i in range(2)]\n"
+            + "    return len(xs)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+
+
+# --- Own[tuple[T | None, ..]] params (consuming literal args) ---
+
+_OWN_PARAM_RECORDS = (
+    "from tpy import Int32, Own, copy\n"
+    "class P:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+    "def take(t: Own[tuple[P | None, P | None]]) -> Int32:\n"
+    "    a, b = t\n"
+    "    if a is not None:\n        return a.x\n"
+    "    return Int32(0)\n"
+)
+
+
+class TestOwnTupleParam:
+    def test_literal_args_and_body_route(self):
+        # The consuming literal family at the Own[tuple] slot -- last-use
+        # moves (the committed `std::move(&(a))` no-op spelling is the
+        # contract), copy()/fresh rvalues via tuple_value_to_borrow, None
+        # -> nullptr -- plus the Own-param body reads: the unpack lift and
+        # the optional-element decl lift.
+        src = (
+            _OWN_PARAM_RECORDS
+            + "def take_sub(t: Own[tuple[P | None, P | None]]) -> Int32:\n"
+            + "    first = t[0]\n"
+            + "    if first is not None:\n        return first.x\n"
+            + "    return Int32(0)\n"
+            + "def main() -> None:\n"
+            + "    a = P(1)\n"
+            + "    b = P(2)\n"
+            + "    print(take((a, b)))\n"
+            + "    c = P(3)\n"
+            + "    d = P(4)\n"
+            + "    print(take((c, copy(d))))\n"
+            + "    print(take((d, None)))\n"
+            + "    print(take((P(5), P(6))))\n"
+            + "    print(take((None, None)))\n"
+            + "    pairs: list[tuple[P | None, P | None]] = [(P(7), None)]\n"
+            + "    print(take(pairs[0]))\n"
+            + "    print(take_sub((P(9), P(10))))\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("take(::tpy::tuple_to_storage_move<std::tuple<std::optional"
+                "<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), "
+                "std::move(&(b))}))" in cpp)
+        assert ("::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>"
+                "(std::tuple<P*, P>{std::move(&(c)), P(d)})" in cpp)
+        assert "{nullptr, nullptr}" in cpp
+        assert "take(::tpy::__getitem__(pairs, 0))" in cpp
+        assert ("auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>"
+                "(t);" in cpp)
+        assert ("P* first = ::tpy::optional_to_ptr(std::get<0>(t));"
+                in cpp)
+
+    def test_own_tuple_relay_still_defers(self):
+        # Boundary (the recorded lost-lift relay bug family): an Own[tuple]
+        # param passed WHOLE to another Own[tuple] slot keeps deferring.
+        src = (
+            _OWN_PARAM_RECORDS
+            + "def relay(t: Own[tuple[P | None, P | None]]) -> Int32:\n"
+            + "    return take(t)\n"
+            + "def main() -> None:\n"
+            + "    print(relay((P(1), P(2))))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "relay") is None
+        _assert_byte_identical(src)
+
+
+# --- REFERENCE-element (wrapper-member) tuples ---
+
+_WRAPPER_RECORDS = (
+    "from tpy import Int32, Own\n"
+    "type Tree[T] = T | list[Tree[T]]\n"
+    "def count(t: Tree[Int32]) -> Int32:\n"
+    "    match t:\n"
+    "        case list() as b:\n"
+    "            return len(b)\n"
+    "        case _:\n"
+    "            return 1\n"
+)
+
+
+class TestWrapperRefTuple:
+    def test_wrapper_tuple_rows_route(self):
+        # The reference-element family: the return literal spells the
+        # borrow form (`std::tuple<Tree<int32_t>&, int32_t>{t, 0}`), the
+        # `auto` decl binds the call result whole, `std::get<0>(p)` passes
+        # bare at the wrapper slot, and the Own-member storage decl moves
+        # the wrapper member (`{std::move(leaf), 0}`) with the bare name
+        # return riding NRVO.
+        src = (
+            _WRAPPER_RECORDS
+            + "def keep_param(t: Tree[Int32]) -> tuple[Tree[Int32], Int32]:\n"
+            + "    return (t, 0)\n"
+            + "def own_escape() -> tuple[Own[Tree[Int32]], Int32]:\n"
+            + "    leaf: Tree[Int32] = 5\n"
+            + "    pair = (leaf, 0)\n"
+            + "    return pair\n"
+            + "def main() -> None:\n"
+            + "    tree: Tree[Int32] = [1, 2]\n"
+            + "    p = keep_param(tree)\n"
+            + "    print(count(p[0]))\n"
+            + "    q, n = own_escape()\n"
+            + "    print(count(q))\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("return std::tuple<Tree<int32_t>&, int32_t>{t, 0};" in cpp)
+        assert ("auto pair = std::tuple<Tree<int32_t>, int32_t>"
+                "{std::move(leaf), 0};" in cpp)
+        assert "auto p = keep_param(tree);" in cpp
+        assert "count(std::get<0>(p))" in cpp
+
+    def test_wrapper_elem_value_positions_still_defer(self):
+        # Boundary: a wrapper element at a VALUE decl (`e = p[0]`) and the
+        # whole-tuple unpack (`a, n = p`) are unwitnessed -- both keep
+        # falling back (dualgen-verified byte-identical via the AST).
+        src = (
+            _WRAPPER_RECORDS
+            + "def keep_param(t: Tree[Int32]) -> tuple[Tree[Int32], Int32]:\n"
+            + "    return (t, 0)\n"
+            + "def elem_value_decl(t: Tree[Int32]) -> Int32:\n"
+            + "    p = keep_param(t)\n"
+            + "    e = p[0]\n"
+            + "    return count(e)\n"
+            + "def unpack_whole(t: Tree[Int32]) -> Int32:\n"
+            + "    p = keep_param(t)\n"
+            + "    a, n = p\n"
+            + "    return count(a) + n\n"
+            + "def main() -> None:\n"
+            + "    tree: Tree[Int32] = [1, 2]\n"
+            + "    print(elem_value_decl(tree))\n"
+            + "    print(unpack_whole(tree))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "elem_value_decl") is None
+        assert _fn(thir, "unpack_whole") is None
+        _assert_byte_identical(src)
+
+
+# --- Nullable borrow-form tuple locals (OPTIONAL_BORROW_TUPLE) ---
+
+_OPT_BTUPLE_RECORDS = (
+    "from tpy import Int32, Own\n"
+    "class Box:\n"
+    "    val: Int32\n"
+    "    def __init__(self, v: Int32):\n        self.val = v\n"
+    "class Holder:\n"
+    "    pair: tuple[Int32, Box]\n"
+    "    def __init__(self, b: Box):\n"
+    "        self.pair = (1, b)\n"
+    "def make_pair(v: Int32) -> tuple[Int32, Own[Box]]:\n"
+    "    return (v, Box(v))\n"
+)
+
+
+class TestOptionalBorrowTupleLocal:
+    def test_family_rows_route_byte_identical(self):
+        # decl rows (None / storage lift / owning-call slot), reseat rows
+        # (same three, slot reuse), the branch hoist, has_value None tests,
+        # and narrowed `(*t)` reads/writes.
+        src = (
+            _OPT_BTUPLE_RECORDS
+            + "def alias_storage() -> Int32:\n"
+            + "    h = Holder(Box(5))\n"
+            + "    h2 = Holder(Box(7))\n"
+            + "    t: tuple[Int32, Box] | None = h.pair\n"
+            + "    t = h2.pair\n"
+            + "    if t is not None:\n"
+            + "        t[1].val = 99\n"
+            + "    return h2.pair[1].val\n"
+            + "def reowned(v: Int32) -> Int32:\n"
+            + "    t: tuple[Int32, Box] | None = make_pair(9)\n"
+            + "    t = make_pair(v)\n"
+            + "    if t is not None:\n"
+            + "        t[1].val = 50\n"
+            + "        return t[0] + t[1].val\n"
+            + "    return -1\n"
+            + "def branch_declared(h: Holder, flag: bool) -> Int32:\n"
+            + "    if flag:\n"
+            + "        t: tuple[Int32, Box] | None = h.pair\n"
+            + "    else:\n"
+            + "        t = None\n"
+            + "    if t is not None:\n"
+            + "        t[1].val = 55\n"
+            + "    return h.pair[1].val\n"
+            + "def main() -> None:\n"
+            + "    print(alias_storage())\n"
+            + "    print(reowned(5))\n"
+            + "    h = Holder(Box(2))\n"
+            + "    print(branch_declared(h, True))\n"
+            + "    print(branch_declared(h, False))\n"
+            + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::optional<std::tuple<int32_t, Box*>> t = "
+                "std::optional<std::tuple<int32_t, Box*>>{"
+                "::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(h.pair)};" in cpp)
+        assert ("std::optional<std::tuple<int32_t, Box>> __slot_1;" in cpp)
+        assert ("t = std::optional<std::tuple<int32_t, Box*>>{"
+                "::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
+                "(__slot_1.emplace(make_pair(v)))};" in cpp)
+        assert "std::get<1>((*t))->val = 99;" in cpp
+        assert "if ((t.has_value())) {" in cpp
+        assert "std::optional<std::tuple<int32_t, Box*>> t;" in cpp
+        assert "t = std::nullopt;" in cpp
+
+    def test_readonly_family_still_defers(self):
+        # Boundary (dualgen-caught divergence): a READ-ONLY binding spells
+        # `const Box*` element pointers on the AST path -- the const set
+        # (`const_opt_borrow_tuple_locals`) keys the whole family out.
+        src = (
+            _OPT_BTUPLE_RECORDS
+            + "def read_only(h: Holder, flag: bool) -> Int32:\n"
+            + "    t: tuple[Int32, Box] | None = None\n"
+            + "    if flag:\n"
+            + "        t = h.pair\n"
+            + "    if t is not None:\n"
+            + "        return t[1].val\n"
+            + "    return -1\n"
+            + "def main() -> None:\n"
+            + "    h = Holder(Box(9))\n"
+            + "    print(read_only(h, True))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read_only") is None
         _assert_byte_identical(src)

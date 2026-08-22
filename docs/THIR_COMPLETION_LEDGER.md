@@ -11908,3 +11908,241 @@ deferred-return recipes the leaf emitter reaches through),
 the ReturnT terminator in `_walk_inline` (`gen_stmt` runs the active finally
 chain around the `Poll<T>::ready`). Each needs a decision about where the
 behavior lives post-cutover, not a move.
+
+### The thir-tail four-wave push (2026-08-21)
+
+Dial **3635/3739 -> 3678/3739**, corpus markers 104 -> 61 (the 2 interop
+markers unchanged). Forty-three flips across four waves stacked on one
+branch: resumable-frames, readonly-dynamic, misc-expr, and tuple-core --
+the two middle-sized ones grown as lane branches and merged back.
+
+**A wrong-KEY divergence was found and fixed at the top-level tuple
+reseat.** A namespace-scope storage-tuple write (`g: tuple[T | None,
+T | None] = (t1, t2)` after a first binding) was keyed through
+`_borrow_tuple_local_type` as if the target were a borrow LOCAL, so the
+reseat emitted the borrow literal BARE -- ill-formed C++ (`g =
+std::tuple<T*, T*>{t1, t2};`, no `optional<T> <- T*` conversion) from a
+routed body with no corpus witness (the corpus sibling's None element
+used to fall the whole body back). Dualgen-proven, fixed by keying the
+write on the global's storage form, and pinned as a regression unit in
+`test_thir_tuples.py`.
+
+**Resumable-frames produced five pre-commit catches, none from the
+corpus or a green suite.** (1) dualgen: admitting an Own[CONTAINER] sgen
+capture flips the skeleton's iterable-strategy classification
+(`ctx.var_types` is seeded by the AST's gen_body, not the leaf path) --
+scaffolding divergence, shape pinned AST. (2) dualgen: the newly
+readable mixed frame name exposed the `tuple_to_storage` lift row
+wrapping a bare mixed pass (`show((*p))`); `_own_tuple_shape_match` now
+excludes MIXED slots. (3) a unit pin: the frame-slot `tuple_source`
+threading pre-empted the Own[tuple]-declared callee's
+`call.own_tuple_storage_ret` row (face shift only, byte-identical). (4)
+a latent alias leak: the resumable BB loop restored `lc.narrow` by
+IDENTITY while `branch_scope` restores by replacement, so an arm-scoped
+hook-mode install leaked the last arm's alias into every later BB --
+masked until the blanket rejects lifted; the loop now restores by value
+snapshot. (5) a latent validator crash: a non-branch borrow-tuple name
+init fell through to the storage-lvalue lift tail and died on the
+no-op-convert check.
+
+**Flagged for a follow-up sweep: the narrow-kill / guarded-hook state
+stack.** The mid-BB narrow KILL (a top-level rebind pops the alias at
+the rebinding leaf) and the guarded_union dispatch-hook mode both
+install per-arm state on `lc.narrow` that the resume-env walk must
+restore exactly; catch (4) above shows how easily an identity-vs-value
+restore mismatch slips through when blanket rejects stop masking it.
+Every save/restore around the resumable BB walk deserves one deliberate
+pass before more hook modes land.
+
+**A named cutover-consolidation mirror pair:** `predicates.py
+_renders_own_borrow_tuple` <-> the codegen context's
+`renders_own_borrow_tuple` (`codegen_cpp/context.py`). The THIR
+predicate deliberately re-derives the AST-side fact so the two paths
+agree statement-for-statement; at cutover the pair collapses to one
+definition, and until then any change to either side must touch both.
+
+### The thir-tail six later waves (2026-08-22)
+
+Dial **3678/3739 -> 3724/3739**, corpus markers 61 -> 15 (the 2 interop
+markers unchanged). Six more waves stacked on the same branch --
+optional-core (7 flips), iterables-comp (11), optional-decl-print (11),
+tuple-unpack-ops (8), stdlib-method (5), odds (4) -- for 46 flips here
+and **89 for the branch: 106 markers -> 17** (104 corpus + 2 interop at
+the start, 15 corpus + 2 interop now). Marker count re-measured with
+`find tests -name no_thir.txt`, not carried from a wave report.
+
+**THE TAIL WAS SCOUTED BEFORE IT WAS GROUND, AND THE SCOUTING PAID --
+BUT EVERY SCOUT VERDICT WAS A HYPOTHESIS, NOT A PLAN.** Ten read-only
+scouts mapped the ten clusters (blocker, reject site, proposed row,
+predicted flips) before a line was written, and the predictions were
+close enough to partition the work into non-overlapping lanes. They were
+also wrong in a specific, repeatable way: **the scout locates the reject,
+the implementer discovers the shape.** The falsified premises, one per
+cluster, are the durable record:
+
+- **iterables-comp**: the consuming-iterable wrap does NOT belong as a
+  rung on the free-call ladder. The AST's consuming arm runs in
+  `gen_call_arg` for EVERY position, so keying the wrap on any position
+  flag would have left per-position divergences; it landed position-blind
+  in `_lower_call_arg`.
+- **stdlib-method**: two near-misses in one cluster. Cell A keyed on the
+  container WRAP (as scouted) would have REGRESSED value-tuple f-string
+  returns -- a value-tuple call and a container-ctor call both route today
+  at the plain VALUE sink and ITERABLE has no tuple row. Cell C's
+  `movable_local` key is TRUE for `Own` PARAMS too (`_LowerCtx` seeds
+  every non-value Own param movable): the broad key gave a fully green
+  corpus AND byte-identical dualgen on every param shape buildable, and
+  broke SEVEN committed fences. Seven pins asserting the same boundary is
+  a design decision, not staleness -- narrowed to `not is_param`.
+- **odds**: pascal/m17's blocking field is `PStr[255]`, the pascal
+  runtime's own GENERIC USER-RECORD, not tpy `String`. `_f1_record` is
+  False for it, so the case needs the record-spelling slice widened, not
+  the scouted result row. The scouted String row landed anyway (verified
+  independently) and flips nothing.
+- **tuple-unpack-ops**: user dunders DO carry a `cpp_template` --
+  `sema/protocols.py` injects `get_dunder_cpp_template`, so the existing
+  unary arm already renders them and no new render row was needed, only
+  the DECL admission.
+- **optional-core**: the cross-module import blocker was not an alias-
+  resolve miss in `_ru_wrapper_field_arg` (disable-and-probe showed that
+  leg DEAD and it was reverted) -- the row was simply absent from the
+  marker/qualcall ladder.
+- **optional-decl-print**: cell F was mis-scoped as "const threading into
+  an existing row". No arm accepted a storage-opt NAME source at all,
+  const or not, and the decl sits in-branch, so it also needed
+  branch-first admission.
+
+**EVERY LATENT DEFECT THIS HALF OF THE BRANCH FOUND CAME FROM ADVERSARIAL
+DUALGEN OR A BLAST SWEEP AROUND THE GATE BEING WIDENED. NOT ONE CAME FROM
+THE CORPUS BYTE-DIFF, THE RATCHET, OR A GREEN SUITE.** Five worth naming:
+
+- A namespace-scope storage-tuple write was keyed through
+  `_borrow_tuple_local_type` as if the target were a borrow LOCAL, so the
+  reseat emitted the borrow literal bare -- ill-formed C++ from a routed
+  body with no corpus witness. (Carried over from the first four waves;
+  repeated here because the same wrong-key shape recurred.)
+- Routing `pascal/set_of`'s top level made THIR emit `a = &*(__slot_1 =
+  ...)`, spelling a `__slot_N` identifier module scope never declares
+  (the AST spells `__global_slot_1`): the raw name-target assign arm
+  bypassed `_lower_global_slot_write` entirely, while the var-decl arm had
+  delegated to it all along. Only reachable from a frontend AST and only
+  once the rest of the body routes. **"CLEAN" is not "flips", and it is
+  not "correct" either** -- the scout had checked fallback only.
+- The PRE-EXISTING `reseat.opt_ptr_copy` arm MIS-CLAIMED a shape: a
+  storage-opt source carries the same DECLARED ptr-repr Optional type as a
+  `T*` binding, so that arm emitted `first = it` and dropped the
+  `optional_to_ptr` lift. Found by the neighbour sweep, not by the drilled
+  case.
+- The wrapper-REFERENCE-element unpack rung admitted a NAME source as well
+  as the call source; the AST binds `auto& __tup_N = p;` there (the
+  is_ref holder rule) where the arm's bind spelled `const auto&`. The
+  implementer's own probes all used the corpus's CALL source -- the rung
+  is now scoped to call sources.
+- A VIEW-inner value-opt LOCAL's `is None` emitted `v == nullptr` instead
+  of `!v.has_value()`, because the is-None `value_repr` disjunction was
+  missing the declared-type `_value_opt_view` row.
+
+**PIN ROT IS A CROSS-LANE COST, AND A LANE'S OWN TARGETED RUNS ARE
+STRUCTURALLY BLIND TO IT.** About nineteen committed fences were
+invalidated by later widenings and had to be converted to routing pins
+(commits `c2b54a56c` 9, `95bf7e126` 4, `ee675fa11` 3, `5e509168f` 3).
+Several were found ONLY by a full `pytest tpyc/` run: shape-grepping the
+obviously-related files missed them -- one ctor-arg fence survived a
+384-test sweep of the four ctor-arg pin files and fell to the full suite,
+and the storage-opt loop-var work broke a pin in `test_thir_ptr_locals.py`
+that no grep of the optional/print files would reach. The structural
+reason: a lane runs the files ITS shapes touch, but a widening invalidates
+fences keyed on a REASON, and the reason can be stated in a file about a
+different construct. Budget one full unit run per lane before merge, and
+treat "my targeted files are green" as no evidence at all about fences.
+Each conversion must name the exact C++ now emitted -- flipping a
+`is None` assertion to `is not None` is a WEAKER claim than the fence it
+replaces, because a whole-body fallback satisfies it.
+
+**TEN AGENTS IN TWO-LANE ROUNDS, WITH EXPLICITLY PARTITIONED FILE
+TERRITORIES, COST EXACTLY ONE TEXTUAL MERGE CONFLICT** (the arg ladder in
+`lower/expressions.py`). The partition was by RESERVED ARM, not by
+directory: each lane's brief listed the predicates and render arms it
+owned and the ones another lane held. One deviation was needed and handled
+without breaking the partition -- the own-dunder rebind reseat needed
+`_rebind_rvalue_source_ok`, which another lane owned, so the disjunct went
+at the REBIND_SLOT **call site** instead of inside the shared predicate.
+That is better scoping anyway (the reseat is the only witnessed sink), and
+it is the general move when a predicate a lane needs has other callers.
+
+**The merge-time hazard is the "pre-existing failures" claim.** Three
+lanes independently reported the same four unit failures as pre-existing,
+each proving it by checking out its own base and re-running. All four
+proofs were correct AND the failures were not really pre-existing: they
+were stale fences created by a SIBLING lane's widening, already merged
+into the later lanes' bases. A lane cannot distinguish "broken before I
+started" from "broken by the lane that merged just before me", so the
+orchestrator must re-verify every such claim after the merge and route
+each fence to the lane whose widening removed its reason. Left
+unconverted, they read as a red suite of unknown provenance.
+
+**Follow-ups for a future wave.** The 15 remaining corpus markers are no
+longer one population:
+
+- **AST-bug-blocked oracles** (the fix belongs on the AST side first, per
+  the migration contract): `none_safety/narrowed_local_optional_reads` and
+  `none_safety/optional_container_literal` both sit on the raw
+  `(*lst)[i]` subscript defect (BUGS.md's two proven-ptr-repr
+  `Optional[container]` subscript entries), and
+  `tuple/element_vs_singleton_global` on the tuple-of-reference-type
+  global borrow-slot entry.
+- **By-design residue**: `native/extern_c_str_param` stays marked on
+  `sig.linkage_c_abi` -- the C-ABI story is decided at cutover, not
+  before.
+- **One design fork**: `tuple/mixed_own_tuple_local_decl_paths` has 3 of 6
+  bodies routing; `loop_carried` needs the if-hoist's `in_branch` scope
+  fence lifted, which requires THIR's hoist registration to be
+  FUNCTION-scoped rather than registering into the enclosing scope's
+  `declared` copy. The try-hoist and walrus sinks were deliberately left
+  unbuilt because the case cannot flip without it and an admitted-but-
+  caseless arm would carry its own fixtures for no dial movement.
+- **Named tracks, each a cell**: `str/fstr_decompose` and
+  `argparse/custom_type` and `tplib/json_model_nested` (the macro/FStr
+  surface), `pascal/m17_with_stmt` (widen the record-spelling slice to a
+  generic user-record instance -- a blanket-precheck experiment confirmed
+  the rest of that chain already renders byte-identically),
+  `iterators/iterable_long_str_elems` (the global-vs-local arg gap, now
+  filed in TODO.md: `declared` CONTAINS module globals, so no arg
+  predicate can tell an owned-str GLOBAL from a local at an `Own[str]`
+  slot; `lc.prescan.global_readonly` holds the answer and is not threaded
+  in).
+- **Not scouted, not attempted here** (five markers, carried in from
+  before this push -- listed so the accounting closes at 15 corpus
+  markers, plus the two interop markers, which this push did not touch
+  either): `list/list_repeat_lazy` was scouted and then dropped on a
+  stub probe -- the decl reject hides a ~7-arm chain (a lazy-repeat node
+  and render, the decl slot family, the `len(x)` and `consume(x)` name
+  args, the for-head over a repeat name, the print wrap, and the separate
+  fixed-count statement-expr arm), and its Iterable arm additionally sits
+  on the documented `render_type` crash over a still-pending arg type;
+  `auto_move/auto_consuming_ctor_user` was deferred for a ctor-MIL ladder
+  collision with a parallel lane; `records/dataclass_asdict_optional` was
+  skipped as a no-sibling singleton (`_container_lit_elem_ok` has no arm
+  for asdict's optional-wrapped ternary elements, and one case does not
+  pay for one); and
+  `protocols/protocol_generic_arg_infer_compound_return` (the open-T
+  tuple `val_or_ptr` family) plus `bytes/bytes_optional_param_borrow`
+  (the view-param reassign-copy FORM respell -- a deliberate reject that
+  needs a new binding kind) were both scouted MEDIUM+ in the
+  stdlib-method cluster and never attempted, that lane's budget having
+  gone to its earlier cells. So for these five the recorded scout verdict
+  is all that is known: nothing below it has been measured on this tree.
+
+**Two mirror pairs to consolidate at cutover**, both deliberate
+re-derivations of an AST-side fact so the paths agree
+statement-for-statement, both collapsing to one definition when the AST
+body emitters go: `predicates.py::_renders_own_borrow_tuple` <->
+`codegen_cpp/context.py::renders_own_borrow_tuple`, and the THIR
+`_value_opt_*` / `_optional_print_formatter` mirrors of `builtins.py`'s
+`_optional_container_formatter` / `_optional_print_inner_cpp`. Until
+cutover, a change to either side must touch both.
+
+**The narrow-kill / guarded-hook state stack still wants one deliberate
+pass** (flagged in the four-wave entry, unchanged here): both install
+per-arm state on `lc.narrow` that the resume-env walk must restore
+exactly, and the later waves added more hook modes on top of it.

@@ -1,4 +1,0 @@
-THIR deliberately rejects the per-element-Own tuple decl/return (the fence
-pinned by test_per_element_own_call_result_still_defers). It was installed
-because the AST render was ill-formed here; now that the AST is fixed the
-fence is un-rejectable, but that is migration work -- see TODO.md.

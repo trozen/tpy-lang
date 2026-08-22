@@ -54,6 +54,7 @@ class TruthinessMode(Enum):
     RECORD_BOOL = auto()
     RECORD_LEN = auto()
     ALWAYS_TRUE = auto()
+    PTR_TRUTHY = auto()
 
 
 @dataclass(frozen=True)
@@ -379,12 +380,15 @@ class THIRIsNone(THIRExpr):
     On a union-typed NAME binding (`union_monostate=True`) it renders the
     monostate holds test `(std::holds_alternative<std::monostate>(v))` /
     `(!...)` -- _gen_binop's union arm, identical for value- and
-    pointer-variant reprs (monostate is a value member in both)."""
+    pointer-variant reprs (monostate is a value member in both). A
+    recursive-alias WRAPPER binding (`union_wrapper=True`) reads the variant
+    through `.value` (VariantAccess.variant_expr's wrapper indirection)."""
     operand: THIRExpr
     negate: bool = False
     value_repr: bool = False
     any_typeid: bool = False
     union_monostate: bool = False
+    union_wrapper: bool = False
 
 
 @dataclass(frozen=True)
@@ -897,6 +901,10 @@ class THIRMethodCall(THIRExpr):
     # non-narrowed NAME receiver; a pointer-local one moves its deref
     # (`std::move(*w).take()` -- the emit folds is_arrow into the deref).
     move_receiver: bool = False
+    # An Optional[Callable] FIELD invocation's `.value()` unwrap between
+    # the member and the call (`(*this).on_event.value()(msg)` -- the AST
+    # callable-field arm's unconditional, narrowing-blind string append).
+    callable_value_unwrap: bool = False
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
@@ -1564,6 +1572,11 @@ class THIRVarDecl(THIRStmt):
     # emplaces into; the decl aliases the slot via tuple_to_pointer. The
     # statement twin of THIRWalrus.slot_cpp.
     btuple_slot_cpp: str | None = None
+    # The OPTIONAL-borrow-tuple flavor (`t: tuple[..] | None = make_pair(..)`):
+    # cpp_type is the optional spelling and the emplace RHS wraps through it
+    # (`std::optional<B>{::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))}`);
+    # this carries the borrow tuple spelling B.
+    btuple_opt_borrow_cpp: str | None = None
 
 
 class PtrSlotKind(Enum):
@@ -1633,6 +1646,13 @@ class PtrSlotKind(Enum):
     # `T* s = ::tpy::optional_to_ptr(__slot_N);` -- the AST's is_opt_field
     # slot machinery). `cpp_type` carries the pointee spelling.
     OPT_STORAGE_CALL = auto()
+    # ... and the INLINE-slot reseat of a ptr-repr Optional local whose
+    # source is a storage-form Optional FIELD off an rvalue receiver
+    # (`v = make_holder(p).value` -> `v = ::tpy::optional_to_ptr(__slot_N =
+    # make_holder(p).value);`, the AST's `_ptr_from_rvalue_slot` is_opt_field
+    # branch over the decl-site rebind slot). One line, unlike the
+    # OPT_STORAGE_CALL reseat's fill-then-lift pair.
+    OPT_FIELD_RVALUE = auto()
     # Rvalue reseat of a branch-hoisted pointer-local that carries NO if-head
     # rebind slot (the name is reassigned but not rvalue-reassigned -- the
     # mixed rvalue/lvalue flavor): the first such reseat allocates the
@@ -1773,6 +1793,10 @@ class THIRAssign(THIRStmt):
     # `t = ::tpy::tuple_to_pointer<{borrow}>(__slot_N.emplace({v}));` --
     # the reseat sibling of THIRVarDecl.btuple_slot_cpp.
     btuple_borrow_cpp: 'str | None' = None
+    # The OPTIONAL-borrow-tuple reseat flavor: when set, the emplace RHS
+    # wraps through the optional spelling (`t = std::optional<B>{
+    # ::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))};`).
+    btuple_opt_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
@@ -2101,12 +2125,15 @@ class THIRParamCopy(THIRStmt):
     rename is emitted by the AST path (gen_params), keyed on the same
     scan.reassigned + param_needs_copy_for_reassign facts, so body reads keep
     the plain name. `name` is the escaped C++ name; `cpp_type` the owned
-    storage spelling (`ptype.to_cpp()`, exactly the AST prologue's). The
-    view-family init variants (`std::string(__param_x)` and the Optional
-    make_optional split) are gate-excluded, so the init is always the plain
-    param read."""
+    storage spelling (`ptype.to_cpp()`, exactly the AST prologue's).
+    `init_cpp` overrides the plain `__param_{name}` read for the
+    view-family variants (`std::string(__param_x)` / the Optional
+    make_optional split); body reads keep their view-form renders -- the
+    owned local converts implicitly at every view sink, exactly as on the
+    AST path."""
     name: str
     cpp_type: str
+    init_cpp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -2350,6 +2377,11 @@ class THIRTupleUnpack(THIRStmt):
         "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
         "move"   -> T name = std::move(std::get<i>(tup)); // Own element
         "assign" -> name = std::get<i>(tup);   // reused target, no decl
+        "ptr_variant" -> std::variant<A*, B*> name =
+                             ::tpy::to_ptr_variant(std::get<i>(tup));
+                         // Own[A | B] element off the value-variant capture
+        "unwrap_ref" -> T& name = ::tpy::unwrap_ref(std::get<i>(tup));
+                        // recursive-wrapper element (a live `X&` slot)
         "global_slot" -> static T __global_slot_N = std::move(std::get<i>(tup));
                          name = &__global_slot_N;   // pointer-slot global
 
@@ -2383,7 +2415,8 @@ class THIRTupleUnpack(THIRStmt):
     source_wrap_cpp: str | None = None
 
     _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
-        "value", "cref", "move", "assign", "ref", "opt_ptr", "global_slot",
+        "value", "cref", "move", "assign", "ref", "opt_ptr", "ptr_variant",
+        "unwrap_ref", "global_slot",
         "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
         "frame_ptr_elem",
     })
@@ -3093,7 +3126,12 @@ class PrintForm(Enum):
     OPT_VAL = auto()
     OPT_VAL_BOOL = auto()
     OPT_VAL_FLOAT = auto()
+    OPT_VAL_FMT = auto()  # `print_optional_val<FMT, INNER>(...)` -- an inner
+                          # whose C++ type has no plain operator<< (container /
+                          # tuple / bytes / bytearray) needs an explicit
+                          # Formatter; FMT rides `opt_fmt_cpp`
     OPT_PTR = auto()
+    OPT_PTR_FMT = auto()  # the pointer-repr twin, `print_optional<FMT, INNER>`
 
 
 @dataclass(frozen=True)
@@ -3102,7 +3140,8 @@ class THIRPrintArg:
     `print_form` is named distinctly from `THIRExpr.form` (the unrelated
     borrow/storage axis) to keep the two from being conflated. `opt_inner_cpp`
     carries the Optional inner's C++ spelling for the templated
-    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` wrappers (None for every other form).
+    `OPT_VAL_BOOL`/`OPT_VAL_FLOAT`/`OPT_VAL_FMT`/`OPT_PTR_FMT` wrappers (None
+    for every other form); `opt_fmt_cpp` the Formatter for the last two.
     `deref` streams the referent of a pointer-shaped read (`(*std::get<1>(t))`
     -- a borrow-tuple record element): print is a VALUE position, so the
     pointer the element read hands back has to be dereferenced here rather
@@ -3111,6 +3150,7 @@ class THIRPrintArg:
     print_form: PrintForm
     opt_inner_cpp: str | None = None
     deref: bool = False
+    opt_fmt_cpp: str | None = None
 
 
 @dataclass(frozen=True)

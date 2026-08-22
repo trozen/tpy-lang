@@ -131,11 +131,12 @@ class TestStringCtorArgs:
 
 
 class TestOptionalStringFence:
-    def test_optional_string_narrowed_return_stays_ast(self):
-        # The AST MOVES the narrowed deref at an owned String sink
-        # (`return std::move((*x));`) instead of the view->owned copy the
-        # value-optional view family emits, so `Optional[String]` is not
-        # part of that family.
+    def test_optional_string_narrowed_return_routes_move(self):
+        # An `Optional[String]` param binds `std::optional<std::string>`
+        # by value AT THE PARAM TOO, so its narrowed deref is an OWNED
+        # lvalue the AST MOVES at the owned return
+        # (`return std::move((*x));`) -- the registered owned-string
+        # binding, plus the bare str-literal at the same slot.
         src = (
             "from typing import Optional\n"
             "from tpy import String\n"
@@ -144,12 +145,13 @@ class TestOptionalStringFence:
             "        return x\n"
             "    return \"\"\n"
             "def main() -> None:\n"
-            "    print(unwrap(String(\"a\")))\n"
+            "    print(unwrap(\"a\"))\n"
             "main()\n"
         )
         out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        assert not fallback
         assert "return std::move((*x));" in out
+        assert "(x.has_value())" in out
         _assert_byte_identical(src)
 
     def test_optional_str_param_return_still_routes(self):
@@ -167,4 +169,46 @@ class TestOptionalStringFence:
         )
         _out, _faces, fallback = _gen_thir(src)
         assert not fallback
+        _assert_byte_identical(src)
+
+
+class TestOptionalStringBoundaries:
+    def test_whole_optional_string_pass_stays_ast(self):
+        # A WHOLE Optional[String] param passed into another
+        # Optional[String] slot has no witnessed arg row -- keep out.
+        src = (
+            "from typing import Optional\n"
+            "from tpy import String\n"
+            "def inner(y: Optional[String]) -> String:\n"
+            "    if y is not None:\n"
+            "        return y\n"
+            "    return \"n\"\n"
+            "def outer(x: Optional[String]) -> String:\n"
+            "    return inner(x)\n"
+            "def main() -> None:\n"
+            "    print(outer(\"a\"))\n"
+            "main()\n"
+        )
+        _out, _faces, fallback = _gen_thir(src)
+        assert any(r.startswith("body:") for r in fallback), fallback
+        _assert_byte_identical(src)
+
+    def test_optional_string_local_decl_stays_ast(self):
+        # An Optional[String] LOCAL is not seeded (param-only
+        # registration); its decl keeps deferring.
+        src = (
+            "from typing import Optional\n"
+            "from tpy import String\n"
+            "def pick(f: bool) -> Optional[String]:\n"
+            "    if f:\n"
+            "        return \"y\"\n"
+            "    return None\n"
+            "def main() -> None:\n"
+            "    v: Optional[String] = pick(True)\n"
+            "    if v is not None:\n"
+            "        print(v)\n"
+            "main()\n"
+        )
+        _out, _faces, fallback = _gen_thir(src)
+        assert any(r.startswith("body:") for r in fallback), fallback
         _assert_byte_identical(src)

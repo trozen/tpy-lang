@@ -3424,3 +3424,103 @@ class TestStrLiteralProtocolArgTemp:
             "main()\n"
         )
         _assert_byte_identical(src)
+
+
+class TestNativeSliceSubscriptArg:
+    """A list/Span slice subscript rendered inline at a native value slot
+    (the `_inst_slice_arg_ok` row shared with container instantiation)."""
+
+    def test_len_of_list_slice_routes(self):
+        src = (
+            "from tpy import Int32\n"
+            "def use() -> None:\n"
+            "    items: list[Int32] = [10, 20, 30]\n"
+            "    print(len(items[1:1]))\n"
+            "use()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("arg.native_slice_subscript", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert ("::tpy::__len__(::tpy::list_slice(items, "
+                "::tpy::BasicSlice{1, 1}))" in cpp[1])
+
+    def test_len_of_stepped_span_slice_routes(self):
+        # The stepped flavor and a Span receiver ride the same row (the
+        # subscript arm renders list_stepped_slice / span slicing itself).
+        src = (
+            "from tpy import Int32, Span\n"
+            "def use(s: Span[Int32]) -> None:\n"
+            "    print(len(s[1:3]))\n"
+            "    items: list[Int32] = [1, 2, 3, 4]\n"
+            "    print(len(items[::2]))\n"
+            "xs = [10, 20, 30, 40]\n"
+            "use(xs)\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_byte_identical(src)
+
+
+class TestVarargViewOwnedTrack:
+    """The varargs view/owned track: view-source str elements take the
+    owned-copy wrap, bytes elements ride their coerce, and the pack flush
+    threads into a nested method-call arg position."""
+
+    _JOINS = (
+        "from tpy import StrView, Int32\n"
+        "def joins(a: str, *parts: str) -> str:\n"
+        "    out = a\n"
+        "    for p in parts:\n"
+        "        out = out + p\n"
+        "    return out\n"
+    )
+
+    def test_nested_pack_flush_threads(self):
+        # `out.append(joins("/", d))`: the pack temp hoists at the
+        # enclosing statement, through the own-str-slot arg row.
+        src = (self._JOINS
+               + "def f(names: list[str]) -> None:\n"
+               + "    out: list[str] = []\n"
+               + "    for d in names:\n"
+               + "        out.append(joins(\"/\", d))\n"
+               + "    for s in out:\n"
+               + "        print(s)\n"
+               + "def main() -> None:\n    f([\"a\"])\nmain()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("vararg.view_elem_copy", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert ("std::array<const std::string, 1> __tmp_1{std::string(d)};"
+                in cpp[1])
+        assert "out.push_back(joins(\"/\"," in cpp[1]
+
+    def test_bytes_elem_rides_coerce(self):
+        # A bytes view element's copy IS the bytesview_to_bytes coerce --
+        # no extra wrap (double-copy).
+        src = ("from tpy import BytesView, Int32\n"
+               "def total(a: bytes, *parts: bytes) -> Int32:\n"
+               "    n = len(a)\n"
+               "    for p in parts:\n"
+               "        n += len(p)\n"
+               "    return n\n"
+               "def f(bv: BytesView) -> Int32:\n"
+               "    return total(b\"x\", bv)\n"
+               "def main() -> None:\n    print(f(b\"hello\"))\nmain()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("vararg.bytes_elem", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert "{::tpy::bytes_copy(bv)}" in cpp[1]
+
+    def test_owned_str_element_lands_bare(self):
+        # BOUNDARY: an owned STORAGE source element is not wrapped.
+        src = (self._JOINS
+               + "def f() -> None:\n"
+               + "    owned = \"a\" + \"b\"\n"
+               + "    print(joins(\"p\", owned, \"q\"))\n"
+               + "f()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "{owned, \"q\"}" in cpp[1]

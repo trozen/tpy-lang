@@ -241,14 +241,22 @@ class TestUnionNoneTest:
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_wrapper_union_none_test_still_defers(self):
-        # A recursive-alias wrapper binding reads through `.value` -- a
-        # different render, out of slice.
+    def test_wrapper_union_none_test_routes(self):
+        # A recursive-alias wrapper binding reads the variant through
+        # `.value` -- the same monostate holds test, respelled
+        # (`std::holds_alternative<std::monostate>(t.value)`).
         src = (
             "type Tree = int | None | list[Tree]\n"
             "def f(t: Tree) -> bool:\n"
-            "    return t is None\n")
-        assert _fn(_lower_ctx(src), "f") is None
+            "    return t is None\n"
+            "def main() -> None:\n"
+            "    a: Tree = None\n"
+            "    print(f(a))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+        _, faces = _lower_ctx_witnessed(src)
+        assert faces.get("isnone.union_wrapper_monostate", 0) >= 1
+        assert faces.get("decl.wrapper_none", 0) >= 1
 
     def test_scalar_name_decl_source_still_defers(self):
         # A scalar-member NAME init at a mixed-union decl slot stays out
@@ -345,11 +353,84 @@ class TestRecursiveUnionLiteralArg:
                "def f(k: str) -> None:\n    print(json.dumps({k: 1}))\n")
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_negative_literal_element_still_defers(self):
-        # A negative literal parses as a unary op, not a literal node --
-        # outside the element family.
+    def test_negative_literal_element_routes(self):
+        # A negative literal parses as a unary op; the unary-minus literal
+        # fold renders the bare negated token, same bounds as the raw
+        # literal (`{-1}` in the hoisted JsonValue temp).
         src = ("import json\n"
-               "def f() -> None:\n    print(json.dumps([-1]))\n")
+               "def f() -> None:\n    print(json.dumps([-1]))\n"
+               "def main() -> None:\n    f()\nmain()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_out_of_range_negative_literal_element_still_defers(self):
+        # The fold keeps the raw literal's int32 bounds; a wider negated
+        # value takes the width-pinned ctor spelling -- unmirrored.
+        src = ("import json\n"
+               "def f() -> None:\n    print(json.dumps([-4294967296]))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_record_ctor_elements_route(self):
+        # `[Leaf(1), [Leaf(2)]]`: member-record CTOR rvalues render bare
+        # inside the spelled container (the converting ctor absorbs the
+        # prvalue) -- decl slot, wrapper-arg temp, global init, and the
+        # container-element subscript at a same-wrapper slot.
+        src = (
+            "from dataclasses import dataclass\n"
+            "from tpy import Int32\n"
+            "@dataclass\n"
+            "class Leaf:\n"
+            "    value: Int32\n"
+            "type Tree = Leaf | list[Tree]\n"
+            "def depth(t: Tree) -> Int32:\n"
+            "    if isinstance(t, Leaf):\n"
+            "        return 0\n"
+            "    return 1\n"
+            "g: Tree = [Leaf(7)]\n"
+            "def main() -> None:\n"
+            "    x: Tree = [Leaf(1), [Leaf(2), Leaf(3)]]\n"
+            "    zs: list[Tree] = [Leaf(1), [Leaf(2)]]\n"
+            "    print(depth(x))\n"
+            "    print(depth(zs[1]))\n"
+            "    print(depth([Leaf(10), [Leaf(20)]]))\n"
+            "    print(depth(g))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_generic_instance_ctor_element_routes(self):
+        # The generic-instance flavor shares the element rules; a ctor
+        # element renders the same bare prvalue in the spelled container.
+        src = (
+            "from dataclasses import dataclass\n"
+            "from tpy import Int32\n"
+            "@dataclass\n"
+            "class Leaf:\n"
+            "    value: Int32\n"
+            "type Tree[T] = Leaf | T | list[Tree[T]]\n"
+            "def depth(t: Tree[Int32]) -> Int32:\n"
+            "    if isinstance(t, Leaf):\n"
+            "        return 0\n"
+            "    return 1\n"
+            "def main() -> None:\n"
+            "    x: Tree[Int32] = [Leaf(1), 5]\n"
+            "    print(depth(x))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_nonctor_call_element_still_defers(self):
+        # A non-ctor CALL element (`make_leaf()`) stays out of the ru
+        # element family.
+        src = (
+            "from dataclasses import dataclass\n"
+            "from tpy import Int32, Own\n"
+            "@dataclass\n"
+            "class Leaf:\n"
+            "    value: Int32\n"
+            "type Tree = Leaf | list[Tree]\n"
+            "def make_leaf() -> Own[Leaf]:\n"
+            "    return Leaf(9)\n"
+            "def f() -> None:\n"
+            "    x: Tree = [Leaf(1), make_leaf()]\n"
+            "    print(isinstance(x, Leaf))\n")
         assert _fn(_lower_ctx(src), "f") is None
 
     def test_generic_alias_instance_literal_still_defers(self):
@@ -361,6 +442,130 @@ class TestRecursiveUnionLiteralArg:
             "def sink(t: Tree[int]) -> None:\n    pass\n"
             "def f() -> None:\n    sink([1, None])\n")
         assert _fn(_lower_ctx(src), "f") is None
+
+
+_WRAP_V = "type V = None | bool | int | str | list[V] | dict[str, V]\n"
+
+
+class TestWrapperNoneDeclAndElems:
+    """The wrapper-union None family: `a: V = None` decls (monostate),
+    container-OF-wrapper literal elements (None -> monostate, nested
+    literals spelled), and the Own[wrapper] ctor literal row. Boundaries:
+    reassigned wrapper locals (the AST's rebind-slot pointer binding) and
+    None at the Own[wrapper] ctor slot keep deferring."""
+
+    def test_container_of_wrapper_literal_routes(self):
+        src = _WRAP_V + (
+            "def main() -> None:\n"
+            "    items: list[V] = [None, True, 42, \"hi\", [1, None],"
+            " {\"k\": 1, \"n\": None}]\n"
+            "    d: dict[str, V] = {\"k\": 1, \"n\": None}\n"
+            "    print(len(items), len(d))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+        _, faces = _lower_ctx_witnessed(src)
+        assert faces.get("containerlit.wrapper_elem", 0) >= 1
+
+    def test_fstring_wrapper_element_still_defers(self):
+        # A non-literal element (f-string) at a wrapper element slot stays
+        # out of the ru element family.
+        src = _WRAP_V + (
+            "def f() -> None:\n"
+            "    xs: list[V] = [f\"a{1}\"]\n"
+            "    print(len(xs))\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+    def test_reassigned_wrapper_local_stays_ast(self):
+        # A REASSIGNED wrapper local is the AST's F2 rebind-slot pointer
+        # binding (`V* a = &__slot_N;` + emplace reseats) -- the decl, the
+        # `a = None` reseat, and the deref'd None-test all stay AST.
+        src = _WRAP_V + (
+            "def main() -> None:\n"
+            "    a: V = 5\n"
+            "    print(\"x\")\n"
+            "    a = None\n"
+            "    b: V = None\n"
+            "    print(a is None, b is None)\n"
+            "main()\n")
+        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "main") is None
+
+    def test_own_wrapper_ctor_literal_routes(self):
+        src = _WRAP_V + (
+            "from tpy import Own\n"
+            "class Holder:\n"
+            "    value: V\n"
+            "    def __init__(self, value: Own[V]) -> None:\n"
+            "        self.value = value\n"
+            "def main() -> None:\n"
+            "    h = Holder(7)\n"
+            "    g = Holder(\"s\")\n"
+            "    b = Holder(True)\n"
+            "    print(\"done\")\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+        _, faces = _lower_ctx_witnessed(src)
+        assert faces.get("ctor.ru_wrapper_own_literal", 0) >= 1
+
+    def test_none_at_own_wrapper_ctor_slot_still_defers(self):
+        # `Holder(None)` -- the monostate spelling at the Own slot is its
+        # own unwitnessed row; keep deferring.
+        src = _WRAP_V + (
+            "from tpy import Own\n"
+            "class Holder:\n"
+            "    value: V\n"
+            "    def __init__(self, value: Own[V]) -> None:\n"
+            "        self.value = value\n"
+            "def f() -> None:\n"
+            "    h = Holder(None)\n"
+            "    print(\"done\")\n")
+        assert _fn(_lower_ctx(src), "f") is None
+
+
+class TestOptionalSpanSlot:
+    """The value-repr `Optional[Span]` pair: the spanlike coerce at an
+    `Span[...] | None` slot (single-level Optional peel, readonly helper
+    choice preserved) and the has_value None-test over the bare param.
+    Narrowed reads keep deferring."""
+
+    def test_optional_span_coerce_and_none_test_route(self):
+        src = (
+            "from tpy import Int32, Span, readonly\n"
+            "def has_values(values: Span[readonly[Int32]] | None) -> bool:\n"
+            "    return values is not None\n"
+            "def main() -> None:\n"
+            "    arr: list[Int32] = [10, 20, 30]\n"
+            "    print(has_values(arr))\n"
+            "    print(has_values(None))\n"
+            "    print(has_values([42, 99]))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_mutable_optional_span_coerce_routes(self):
+        # The MUTABLE inner picks as_mut_span through the Optional peel
+        # (unpeeled, the readonly test on the whole Optional would flip
+        # the helper).
+        src = (
+            "from tpy import Int32, Span\n"
+            "def bump(values: Span[Int32] | None) -> bool:\n"
+            "    return values is not None\n"
+            "def main() -> None:\n"
+            "    arr: list[Int32] = [1, 2]\n"
+            "    print(bump(arr))\n"
+            "    print(bump(None))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_optional_span_read_stays_ast(self):
+        # A narrowed read of the binding derefs `(*values)` on the AST
+        # path -- unmirrored; only the None test routes.
+        src = (
+            "from tpy import Int32, Span, readonly\n"
+            "def first(values: Span[readonly[Int32]] | None) -> Int32:\n"
+            "    if values is not None:\n"
+            "        return values[0]\n"
+            "    return -1\n")
+        assert _fn(_lower_ctx(src), "first") is None
 
 
 class TestValueOptReturnPosition:
@@ -485,3 +690,62 @@ class TestRuWrapperFreeCallArgs:
                "main()\n")
         _assert_byte_identical(src)
         assert _fn(_lower_ctx(src), "main") is None
+
+
+class TestValueOptTupleArgs:
+    """The value-TUPLE inner of the whole-value-opt arg family: a
+    `tuple[str, str] | None` slot is `std::optional<std::tuple<..>>` by
+    value, so a same-optional NAME and a tuple LITERAL both bind it bare --
+    the scalar/callable inners' twin, in the free and record-method
+    ladders alike. The name arm fences this kind to whole-optional
+    positions, so the arg row threads that use."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Svc:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 0\n"
+        "    def send(self, auth: tuple[str, str] | None) -> Int32:\n"
+        "        return 1\n"
+        "def free_send(auth: tuple[str, str] | None) -> Int32:\n"
+        "    return 2\n"
+        "def relay(s: Svc, auth: tuple[str, str] | None) -> None:\n"
+        "    print(s.send(auth))\n"
+        "    print(free_send(auth))\n"
+        "def main() -> None:\n"
+        "    s = Svc()\n"
+        "    relay(s, (\"u\", \"p\"))\n"
+        "    print(free_send((\"a\", \"b\")))\n"
+        "    print(free_send(None))\n"
+        "main()\n"
+    )
+
+    def test_whole_name_and_literal_route(self):
+        thir, w = _lower_ctx_witnessed(self._SRC)
+        # Twice at the pass rows (gate + render key on one predicate), once
+        # per position.
+        assert w.get("arg.value_opt_tuple", 0) >= 2
+        assert w.get("arg.tuple_literal_value_opt", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        out = hpp + cpp
+        assert "s.send(auth)" in out
+        assert "free_send(auth)" in out
+        assert 'free_send(std::tuple<std::string, std::string>{"a", "b"})' in out
+
+    def test_pointer_repr_tuple_optional_stays_ast(self):
+        # BOUNDARY: a RECORD-element tuple optional uses the pointer repr,
+        # whose whole pass renders a conversion -- the value-tuple row must
+        # not capture it.
+        src = ("from tpy import Int32\n"
+               "class Box:\n"
+               "    v: Int32\n"
+               "    def __init__(self, v: Int32) -> None:\n"
+               "        self.v = v\n"
+               "def take_ptr(p: tuple[Box, Box] | None) -> Int32:\n"
+               "    return 1\n"
+               "def ptr_pass(p: tuple[Box, Box] | None) -> None:\n"
+               "    print(take_ptr(p))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "ptr_pass") is None
+        _assert_byte_identical(src)

@@ -7,7 +7,8 @@ the None / rvalue reseats, and the ptr-variant union rvalue / address kinds.
 """
 
 from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
-                       _fn, _F1_RECORDS, _assert_byte_identical)
+                       _fn, _F1_RECORDS, _assert_byte_identical,
+                       _assert_routes_byte_identical, _thir_ctx)
 from ..codegen_cpp import CodeGenOptions
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
@@ -942,20 +943,27 @@ class TestOptNameCopyDecl:
         assert faces.get("decl.opt_name_copy")
         _assert_byte_identical(src)
 
-    def test_reassigned_target_stays_out(self):
-        # BOUNDARY: a reassigned Optional target needs the lvalue-lift +
-        # mixed-reseat machinery -- stays on the AST path.
+    def test_reassigned_target_takes_the_same_bare_copy(self):
+        # A name-REASSIGNED target binds the same bare pointer copy: the
+        # AST's direct-pointer-copy arm returns before the rebind-slot
+        # predecl, so neither flavor allocates a slot and the reseats ride
+        # the slotless pointer arms.
         src = (self._SRC
                + "def f(a: Point | None, b: Point | None) -> Int32:\n"
                + "    q: Point | None = a\n"
                + "    q = b\n"
                + "    if q is not None:\n"
                + "        return q.x\n"
-               + "    return 0\n")
+               + "    return 0\n"
+               + "def main():\n    print(f(None, None))\nmain()\n")
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("decl.opt_name_copy")
-        _assert_byte_identical(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("decl.opt_name_copy")
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "Point* q = a;" in out
+        assert "q = b;" in out
+        assert "__slot_" not in out
 
     def test_narrowed_inner_target_stays_out(self):
         # BOUNDARY: a plain-T target off a narrowed Optional name reads the
@@ -1237,3 +1245,374 @@ class TestCopyReseatRows:
         assert _fn(_lower_ctx(src), "f") is None
         _assert_byte_identical(src)
 
+
+
+class TestPtrValueHoistAndTernary:
+    """`Ptr[T]` as a first-class T* VALUE at the if-hoist predecl and the
+    ternary result -- never the pointer-local deref machinery."""
+
+    _P = (
+        "from tpy import Int32, Ptr, readonly\n"
+        "class Point:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "g: Point = Point(1)\n"
+        "h: Point = Point(2)\n"
+        "def addr_g() -> Ptr[Point]:\n"
+        "    return g\n"
+        "def addr_h() -> Ptr[Point]:\n"
+        "    return h\n"
+    )
+
+    def test_ptr_branch_hoist_routes_plain_predecl(self):
+        # The branch-first Ptr decl hoists as the plain-value tail
+        # (`Point* p;`), branch assigns render bare -- no pointer-local
+        # registration, no deref on reads.
+        src = (self._P
+               + "def f(cond: bool) -> Ptr[Point]:\n"
+               + "    if cond:\n"
+               + "        p: Ptr[Point] = addr_g()\n"
+               + "    else:\n"
+               + "        p = addr_h()\n"
+               + "    return p\n"
+               + "def main() -> None:\n"
+               + "    print(f(True).x)\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("if.hoist_decl", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert "Point* p;\n    if (cond)" in cpp[1]
+
+    def test_ptr_ternary_call_arms_route_bare(self):
+        # A Ptr[T]-result ternary renders each call arm bare -- the
+        # scalar-style value render.
+        src = (self._P
+               + "def f(cond: bool) -> Ptr[Point]:\n"
+               + "    p: Ptr[Point] = addr_g() if cond else addr_h()\n"
+               + "    return p\n"
+               + "def main() -> None:\n"
+               + "    print(f(False).x)\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "Point* p = ((cond) ? (addr_g()) : (addr_h()));" in cpp[1]
+
+    def test_readonly_ptr_hoist_routes_const_pointee(self):
+        # `Ptr[readonly[T]]` rides the same value row (`const T*` spelling
+        # comes from the one PtrType render on both paths).
+        src = (self._P
+               + "def f(cond: bool) -> Ptr[readonly[Point]]:\n"
+               + "    if cond:\n"
+               + "        p: Ptr[readonly[Point]] = addr_g()\n"
+               + "    else:\n"
+               + "        p = addr_h()\n"
+               + "    return p\n"
+               + "def main() -> None:\n"
+               + "    print(f(True).x)\n"
+               + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "const Point* p;\n    if (cond)" in cpp[1]
+
+    def test_mixed_own_tuple_hoist_takes_its_own_row(self):
+        # The adjacent mixed owned+borrow-element TUPLE hoist
+        # (`tuple[Own[Box], Box]`) is NOT the Ptr value row: it predecls the
+        # hybrid `std::tuple<Box, Box*> t;` and each branch plain-assigns
+        # the call result (the borrow-tuple hoist's mixed_call row).
+        src = ("from tpy import Int32, Own\n"
+               "class Box:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "def make(b: Box) -> tuple[Own[Box], Box]:\n"
+               "    return (Box(1), b)\n"
+               "def f(b: Box, c: Box, cond: bool) -> Int32:\n"
+               "    if cond:\n"
+               "        t = make(b)\n"
+               "    else:\n"
+               "        t = make(c)\n"
+               "    t[1].n = 33\n"
+               "    return t[0].n\n"
+               "def main() -> None:\n"
+               "    print(f(Box(1), Box(2), True))\n"
+               "main()\n")
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "std::tuple<Box, Box*> t;" in out
+        assert "t = make(b);" in out
+        # The predecl keeps the per-element arrow the decl arm would set.
+        assert "std::get<1>(t)->n = 33;" in out
+        assert "return std::get<0>(t).n;" in out
+
+
+class TestNarrowedFieldPtrOptWiden:
+    """A sema-NARROWED storage-Optional FIELD widened back to a ptr-opt
+    slot keys the DECLARED field type: the arg and return positions take
+    the same `::tpy::optional_to_ptr(t.o)` lift over the RAW member read
+    (never `&(field)`, never the narrowed `(*t.o)` unwrap)."""
+
+    _POD = (
+        "class Pod:\n"
+        "    x: int\n"
+        "    def __init__(self) -> None:\n"
+        "        self.x = 0\n"
+        "class T:\n"
+        "    o: Pod | None\n"
+        "    def __init__(self) -> None:\n"
+        "        self.o = None\n"
+    )
+
+    def test_narrowed_field_arg_and_return_lift(self):
+        src = self._POD + (
+            "def is_def(o: Pod | None) -> bool:\n"
+            "    return o is not None\n"
+            "def take(t: T) -> Pod | None:\n"
+            "    if t.o is None:\n"
+            "        return None\n"
+            "    return t.o\n"
+            "def main() -> None:\n"
+            "    t = T()\n"
+            "    t.o = Pod()\n"
+            "    assert t.o is not None\n"
+            "    print(is_def(t.o))\n"
+            "    p = take(t)\n"
+            "    print(p is not None)\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return ::tpy::optional_to_ptr(t.o);" in cpp
+        assert "is_def(::tpy::optional_to_ptr(t.o))" in cpp
+        assert "optional_to_ptr((*" not in cpp
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ret.ptr_opt_field_narrowed", 0) >= 1
+
+    def test_pointee_typed_field_takes_the_addr_of_instead(self):
+        # BOUNDARY: the neighbouring arm. A field DECLARED as the pointee
+        # (never Optional) stores a plain `Pod` member, so the ptr-opt
+        # return is the address-of lift -- the optional_to_ptr row must not
+        # claim it (that would read a `std::optional` member that is not
+        # there).
+        src = (
+            "class Pod:\n"
+            "    x: int\n"
+            "    def __init__(self) -> None:\n"
+            "        self.x = 0\n"
+            "class T2:\n"
+            "    o: Pod\n"
+            "    def __init__(self) -> None:\n"
+            "        self.o = Pod()\n"
+            "def take(t: T2) -> Pod | None:\n"
+            "    return t.o\n"
+            "def main() -> None:\n"
+            "    t = T2()\n"
+            "    p = take(t)\n"
+            "    print(p is not None)\n"
+            "main()\n"
+        )
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return &(t.o);" in cpp
+        assert "optional_to_ptr" not in cpp
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ret.ptr_opt_field_addr", 0) >= 1
+        assert not w.get("ret.ptr_opt_field_narrowed")
+        assert not w.get("ret.ptr_opt_field")
+
+
+class TestPtrOptionalCollapse:
+    """`Ptr[T]` IS `T*`, the same C++ shape as a ptr-repr `T | None` --
+    the collapse rows: a Ptr name passes bare into a ptr-opt slot (incl.
+    the readonly-inner widening), None renders `nullptr` at a collapsed
+    Ptr slot, a storage-Optional field lifts via optional_to_ptr at a Ptr
+    slot, a Ptr local returns bare at a ptr-opt return (never `&(p)`),
+    and a Ptr element passes bare into a ptr-opt tuple-literal slot."""
+
+    _PRE = (
+        "from tpy import Ptr, readonly\n"
+        "class Node:\n"
+        "    val: int\n"
+        "    def __init__(self, v: int) -> None:\n"
+        "        self.val = v\n"
+    )
+
+    def test_ptr_name_into_ptr_opt_slot_passes_bare(self):
+        src = self._PRE + (
+            "def consume(n: Node | None) -> int:\n"
+            "    if n is not None:\n"
+            "        return n.val\n"
+            "    return -1\n"
+            "def consume_ro(n: readonly[Node] | None) -> int:\n"
+            "    if n is not None:\n"
+            "        return n.val\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    items: list[Node] = [Node(1)]\n"
+            "    p: Ptr[Node] = items[0]\n"
+            "    print(consume(p))\n"
+            "    print(consume_ro(p))\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "consume(p)" in cpp
+        assert "consume_ro(p)" in cpp
+        assert "&(p)" not in cpp
+
+    def test_none_and_field_lift_at_ptr_slot(self):
+        src = self._PRE + (
+            "class Holder:\n"
+            "    opt: Node | None\n"
+            "    def __init__(self, v: Node) -> None:\n"
+            "        self.opt = v\n"
+            "def take_ptr_node(p: Ptr[Node]) -> int:\n"
+            "    if p is not None:\n"
+            "        return p.val\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    h = Holder(Node(2))\n"
+            "    print(take_ptr_node(h.opt))\n"
+            "    print(take_ptr_node(None))\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "take_ptr_node(::tpy::optional_to_ptr(h.opt))" in cpp
+        assert "take_ptr_node(nullptr)" in cpp
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("optptr.ptr_slot_lift", 0) >= 1
+        assert w.get("arg.ptr_none", 0) >= 1
+
+    def test_ptr_local_return_and_tuple_elem_pass_bare(self):
+        src = self._PRE + (
+            "def find(items: list[Node], target: int) -> Node | None:\n"
+            "    for it in items:\n"
+            "        if it.val == target:\n"
+            "            p: Ptr[Node] = it\n"
+            "            return p\n"
+            "    return None\n"
+            "def first_pair(items: list[Node]) -> tuple[Node | None, int]:\n"
+            "    if len(items) > 0:\n"
+            "        p: Ptr[Node] = items[0]\n"
+            "        return (p, items[0].val)\n"
+            "    return (None, 0)\n"
+            "def main() -> None:\n"
+            "    items: list[Node] = [Node(1), Node(2)]\n"
+            "    pair = first_pair(items)\n"
+            "    print(pair[1])\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "            return p;" in cpp or "        return p;" in cpp
+        assert "&(p)" not in cpp
+        assert "{p, ::tpy::__getitem__(items, 0).val}" in cpp
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("ret.ptr_opt_ptr_name", 0) >= 1
+        assert w.get("btuple.elem_optptr", 0) >= 1
+
+    def test_ptr_opt_call_result_lands_bare_at_ptr_and_whole_sinks(self):
+        # `Ptr[T]` IS `T*`, so a BORROW-returning ptr-repr Optional result
+        # binds a Ptr local bare and tests `== nullptr` bare -- the two
+        # `_call_use_supported` rows the collapse needs.
+        src = self._PRE + (
+            "def first(items: list[Node]) -> Node | None:\n"
+            "    if len(items) == 0:\n"
+            "        return None\n"
+            "    return items[0]\n"
+            "def ptr_local(items: list[Node]) -> int:\n"
+            "    p: Ptr[Node] = first(items)\n"
+            "    if p is not None:\n"
+            "        return p.val\n"
+            "    return -1\n"
+            "def none_test(items: list[Node]) -> bool:\n"
+            "    return first(items) is None\n"
+            "def main() -> None:\n"
+            "    items: list[Node] = [Node(1)]\n"
+            "    print(ptr_local(items), none_test(items))\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "Node* p = first(items);" in out
+        assert "return (first(items) == nullptr);" in out
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("call.ptr_opt_whole", 0) >= 1
+
+    def test_optional_local_slot_keeps_its_own_row(self):
+        # BOUNDARY: an `Optional`-TYPED local is the OPT_PTR_SLOT binding,
+        # not the collapsed Ptr slot -- it keeps the passthrough decl row
+        # (same render here, but a different arm, and only that arm carries
+        # the slot machinery a non-borrow callee would need).
+        src = self._PRE + (
+            "def first(items: list[Node]) -> Node | None:\n"
+            "    if len(items) == 0:\n"
+            "        return None\n"
+            "    return items[0]\n"
+            "def probe(items: list[Node]) -> int:\n"
+            "    x: Node | None = first(items)\n"
+            "    if x is not None:\n"
+            "        return x.val\n"
+            "    return -1\n"
+            "def main() -> None:\n"
+            "    print(probe([Node(1)]))\n"
+            "main()\n"
+        )
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "Node* x = first(items);" in cpp
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("decl.opt_call_passthrough", 0) >= 1
+        assert w.get("call.ptr_opt_whole", 0) == 0
+
+
+class TestGenericOptionalPtrSlot:
+    _SRC = (
+        "class Pod:\n"
+        "    x: int\n"
+        "    def __init__(self) -> None:\n        self.x = 0\n"
+        "class T:\n"
+        "    o: Pod | None\n"
+        "    def __init__(self) -> None:\n        self.o = None\n"
+        "def is_def_gen[U](o: U | None) -> bool:\n"
+        "    return o is not None\n"
+        "def main() -> None:\n"
+        "    t = T()\n"
+        "    print(is_def_gen(t.o))\n"
+        "    t.o = Pod()\n"
+        "    print(is_def_gen(t.o))\n"
+        "main()\n"
+    )
+
+    def test_storage_opt_field_lifts_at_a_substituted_slot(self):
+        # A `U | None` slot substituted to `Pod | None` takes the SAME
+        # `optional_to_ptr` field lift the concrete ladder gives -- the
+        # generic arg gate delegates to the concrete optional-ptr faces
+        # once the slot resolves.
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        out = hpp + cpp
+        assert "is_def_gen<Pod>(::tpy::optional_to_ptr(t.o))" in out
+        assert "&(t.o)" not in out
+
+    def test_pointee_typed_field_at_the_generic_slot_keeps_rejecting(self):
+        # BOUNDARY: the neighbouring source shape. A field DECLARED as the
+        # pointee needs the ADDRESS-OF lift at the substituted `U | None`
+        # slot (`is_def_gen<Pod>(&(t.o))`), which the generic arg gate does
+        # not admit -- only the storage-optional field's optional_to_ptr
+        # does. Identity is the claim here: the body falls back.
+        src = (
+            "class Pod:\n"
+            "    x: int\n"
+            "    def __init__(self) -> None:\n        self.x = 0\n"
+            "class T2:\n"
+            "    o: Pod\n"
+            "    def __init__(self) -> None:\n        self.o = Pod()\n"
+            "def is_def_gen[U](o: U | None) -> bool:\n"
+            "    return o is not None\n"
+            "def main() -> None:\n"
+            "    t = T2()\n"
+            "    print(is_def_gen(t.o))\n"
+            "main()\n"
+        )
+        _ctx, fell = _thir_ctx(src)
+        assert fell == {"body:stmt.expr_stmt:call.generic_arg_shape": 1}, fell
+        assert "is_def_gen<Pod>(&(t.o))" in "".join(
+            _assert_byte_identical(src))

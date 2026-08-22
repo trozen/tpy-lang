@@ -1,2 +1,0 @@
-THIR fences the mixed owned+borrow tuple; these bodies are the AST-first
-form-decision the lowering will mirror once the elementwise rule lands there.

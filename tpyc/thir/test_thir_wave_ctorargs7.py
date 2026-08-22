@@ -455,11 +455,12 @@ class TestTryParseBoundaries:
             _lower_ctx(src)
 
 
-class TestPrintNarrowedOptionalFieldDeclines:
-    def test_narrowed_optional_container_field_stays_ast(self):
-        # The AST prints print_optional_val over the WHOLE narrowed
-        # Optional field; the kind-keyed field print form must decline
-        # (the wave's corpus-caught divergence, pinned as a unit).
+class TestPrintNarrowedOptionalField:
+    def test_narrowed_optional_container_field_wraps_the_whole_optional(self):
+        # The AST prints print_optional_val over the WHOLE narrowed Optional
+        # field (field storage IS `std::optional<T>`), with the kind-keyed
+        # Formatter its container inner needs -- NOT the plain container
+        # printer the same read would take at a non-Optional field.
         src = ("from tpy import Int32\n"
                "class Bag:\n"
                "    items: list[Int32] | None\n"
@@ -469,8 +470,12 @@ class TestPrintNarrowedOptionalFieldDeclines:
                "        if self.items is not None:\n"
                "            print(self.items)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "show") is None
-        _assert_byte_identical(src)
+        assert _fn(thir, "show") is not None
+        hpp, cpp = _assert_byte_identical(src)
+        out = hpp + cpp
+        assert ("::tpy::print_optional_val<::tpy::ListPrinter<std::vector"
+                "<int32_t>>, std::vector<int32_t>>(this->items)") in out
+        assert "::tpy::ListPrinter(this->items)" not in out
 
 
 class TestDictViewItemsInstArg:

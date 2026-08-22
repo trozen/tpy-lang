@@ -1,2 +1,0 @@
-Nested value-tuple storage (tuple_to_storage of an inner tuple) is not
-lowered by THIR yet; the bodies here fall back to the AST path.

@@ -8,8 +8,8 @@ from ..codegen_cpp.context import CodeGenOptions
 from .lower import lower_module
 from .nodes import TruthinessMode, THIRTruthy, THIRUnaryNot
 from .testutil import (
-    _assert_byte_identical, _compile, _entry, _fn, _lower_ctx,
-    _lower_ctx_witnessed,
+    _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
+    _fn, _lower_ctx, _lower_ctx_witnessed,
 )
 
 
@@ -60,6 +60,9 @@ _SRC = (
     "def filtered(items: list[str]) -> Int32:\n"
     "    selected = [item for item in items if item]\n"
     "    return len(selected)\n"
+    "def optional_record(f: Flag | None) -> bool:\n"
+    "    if f:\n        return True\n"
+    "    return False\n"
 )
 
 
@@ -90,7 +93,7 @@ class TestStructuredTruthiness:
         thir, witnessed = _lower_ctx_witnessed(_SRC)
         names = (
             "positions", "compound", "field_method", "storage_optional",
-            "indirect", "filtered",
+            "indirect", "filtered", "optional_record",
         )
         missing = [name for name in names if _fn(thir, name) is None]
         assert not missing, missing
@@ -311,21 +314,6 @@ class TestStructuredTruthiness:
         assert wit.get("truthy.optional_field_whole", 0) >= 1
         assert "::tpy::is_truthy(box.value)" in _hpp + cpp
 
-    def test_unnarrowed_optional_record_truthiness_stays_ast(self):
-        # An un-narrowed pointer-repr Optional[record] with a truthiness dunder
-        # dispatches ::tpy::ptr_truthy in the AST (null-check + __bool__);
-        # THIR has no matching node yet, so the whole body falls back.
-        src = (
-            "class Flag:\n"
-            "    value: bool\n"
-            "    def __init__(self, value: bool):\n        self.value = value\n"
-            "    def __bool__(self) -> bool:\n        return self.value\n"
-            "def probe(f: Flag | None) -> bool:\n"
-            "    if f:\n        return True\n"
-            "    return False\n"
-        )
-        assert _fn(_lower_ctx(src), "probe") is None
-
 
 class TestAlwaysTrueDiscardsItsOperand:
     _SRC = (
@@ -375,4 +363,129 @@ class TestAlwaysTrueDiscardsItsOperand:
             "def main():\n    probe(Holder())\nmain()\n"
         )
         assert _fn(_lower_ctx(src), "probe") is None
+        _assert_byte_identical(src)
+
+
+class TestPtrTruthyOptionalRecord:
+    """`gen_truthy_expr`'s un-narrowed pointer-repr `Optional[record]` arm and
+    its storage-form complement."""
+
+    _SRC = (
+        "class Flag:\n"
+        "    value: bool\n"
+        "    def __init__(self, value: bool):\n        self.value = value\n"
+        "    def __bool__(self) -> bool:\n        return self.value\n"
+        "class Holder:\n"
+        "    f: Flag | None\n"
+        "    def __init__(self, f: Flag | None):\n        self.f = f\n"
+        "def observe(f: Flag) -> Flag | None:\n    return f\n"
+        "def name_op(c: Flag | None) -> bool:\n"
+        "    if c:\n        return True\n"
+        "    return False\n"
+        "def not_op(c: Flag | None) -> bool:\n"
+        "    return not c\n"
+        "def and_op(c: Flag | None, d: Flag | None) -> bool:\n"
+        "    if c and d:\n        return True\n"
+        "    return False\n"
+        "def call_op(f: Flag) -> bool:\n"
+        "    if observe(f):\n        return True\n"
+        "    return False\n"
+        "def alias_reseat(c: Flag | None) -> bool:\n"
+        "    x = c\n"
+        "    while x:\n        x = None\n"
+        "    return False\n"
+        "def field_op(h: Holder) -> bool:\n"
+        "    if h.f:\n        return True\n"
+        "    return False\n"
+        "def elem_op(xs: list[Flag | None]) -> bool:\n"
+        "    if xs[0]:\n        return True\n"
+        "    return False\n"
+        "def main():\n    print(name_op(None))\nmain()\n"
+    )
+
+    def test_ptr_and_storage_forms_route(self):
+        # The pointer sources dispatch `::tpy::ptr_truthy` (null check AND
+        # the dunder, one evaluation); the storage-form field / element read
+        # `std::optional<T>`, which has no pointer dispatch, so they render
+        # bare (the divergence BUGS.md files, not an oracle accident).
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        _thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("truthy.ptr_truthy", 0) >= 5
+        assert wit.get("call.ptr_truthy_operand", 0) == 1
+        assert wit.get("truthy.storage_opt_bare", 0) == 2
+        assert wit.get("subscript.opt_record_truthy", 0) == 1
+        out = hpp + cpp
+        assert "if (::tpy::ptr_truthy(c))" in out
+        assert "(!(::tpy::ptr_truthy(c)))" in out
+        assert "(::tpy::ptr_truthy(c) && ::tpy::ptr_truthy(d))" in out
+        assert "::tpy::ptr_truthy(observe(f))" in out
+        assert "Flag* x = c;" in out
+        assert "if (h.f)" in out
+        assert "if (::tpy::__getitem__(xs, 0))" in out
+
+    def test_ptr_truthy_nodes_carry_the_mode(self):
+        thir = _lower_ctx(self._SRC)
+        modes = [n.mode for n in _truthy_nodes(_fn(thir, "name_op"))]
+        assert modes == [TruthinessMode.PTR_TRUTHY]
+
+    def test_container_inner_keeps_the_bare_non_null_test(self):
+        # `is_user_record` excludes builtin containers from the dispatch, so
+        # `if xs:` on a `list | None` stays the bare pointer test -- a filed
+        # divergence THIR must not "fix" by routing a different render.
+        src = (
+            "from tpy import Int32\n"
+            "def probe(xs: list[Int32] | None) -> bool:\n"
+            "    if xs:\n        return True\n"
+            "    return False\n"
+        )
+        assert _fn(_lower_ctx(src), "probe") is None
+        _assert_byte_identical(src)
+
+    def test_dunderless_record_inner_keeps_the_bare_test(self):
+        # No `__bool__`/`__len__` on the inner: the AST falls through to the
+        # bare non-null test, so the dispatch must NOT fire (it would add a
+        # dunder call the record does not have).
+        src = (
+            "from tpy import Int32\n"
+            "class Plain:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "def probe(p: Plain | None) -> bool:\n"
+            "    if p:\n        return True\n"
+            "    return False\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("truthy.ptr_truthy", 0) == 0
+        assert "if (p)" in hpp + cpp
+
+    def test_non_name_non_call_ptr_sources_keep_rejecting(self):
+        # A tuple ELEMENT, a method call and a ternary all reach the AST's
+        # ptr_truthy gate as raw `T*` sources, but none has a verified
+        # operand render here -- they must reject rather than fall into the
+        # ladder, whose bare render would silently drop the dunder.
+        src = (
+            "from tpy import Int32\n"
+            "class Flag:\n"
+            "    value: bool\n"
+            "    def __init__(self, value: bool):\n        self.value = value\n"
+            "    def __bool__(self) -> bool:\n        return self.value\n"
+            "class Box:\n"
+            "    f: Flag | None\n"
+            "    def __init__(self, f: Flag | None):\n        self.f = f\n"
+            "    def get(self) -> Flag | None:\n        return self.f\n"
+            "def tup_op(t: tuple[Flag | None, Int32]) -> bool:\n"
+            "    if t[0]:\n        return True\n"
+            "    return False\n"
+            "def method_op(b: Box) -> bool:\n"
+            "    if b.get():\n        return True\n"
+            "    return False\n"
+            "def tern_op(a: Flag | None, b: Flag | None, c: bool) -> bool:\n"
+            "    if (a if c else b):\n        return True\n"
+            "    return False\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "tup_op") is None
+        assert _fn(thir, "method_op") is None
+        assert _fn(thir, "tern_op") is None
         _assert_byte_identical(src)

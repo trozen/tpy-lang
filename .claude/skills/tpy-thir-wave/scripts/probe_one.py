@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import conftest as C  # noqa: E402
+from _case_entry import entry_src  # noqa: E402
 from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.codegen_cpp import CodeGenOptions  # noqa: E402
 
@@ -29,7 +30,10 @@ SCRATCH = Path("/tmp/agents/thir-wave/__probe_out__")
 
 def probe(case: str) -> None:
     case_dir = ROOT / "tests" / "cases" / case
-    main_src = case_dir / "src" / "main.py"
+    main_src = entry_src(case_dir)
+    if main_src is None:
+        print(f"=== {case} ===\n  NO ENTRY SOURCE")
+        return
     frontend_registry, extra_lib_dirs = C._frontend_registry_for(main_src)
     default_int = C.get_case_default_int(case_dir)
     lib_dirs = list(extra_lib_dirs) + list(C.DEFAULT_LIB_DIRS)

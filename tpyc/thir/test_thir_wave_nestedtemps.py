@@ -171,6 +171,55 @@ class TestCondTemps:
         assert w.get("expr.walrus_scalar", 0) >= 1
         _assert_byte_identical(src)
 
+    def test_if_walrus_nested_temp_routes(self):
+        # A temp nested INSIDE the walrus value evaluates before the
+        # assignment on both paths: the if head lowers, the walrus predecl
+        # and the arg temp flush in decl order (predecl first).
+        src = (_EAT
+               + "def use(x: Int32) -> Int32:\n"
+               + "    if (v := eat([10, 20])) == x:\n"
+               + "        return v\n"
+               + "    return -v\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("expr.walrus_scalar", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert ("int32_t v;\n"
+                "    std::vector<int32_t> __tmp_1 = {10, 20};\n"
+                "    if (((v = eat(__tmp_1)) == x))" in cpp[1])
+
+    def test_elif_walrus_nested_temp_flushes_in_else_block(self):
+        # The nested-elif flush point: the predecl + temp land inside the
+        # else block, predecl first (the AST's else-block flush order).
+        src = (_EAT
+               + "def use(x: Int32) -> Int32:\n"
+               + "    if x < 0:\n"
+               + "        return -1\n"
+               + "    elif (v := eat([10, 20])) == x:\n"
+               + "        return v\n"
+               + "    else:\n"
+               + "        return -v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("    } else {\n"
+                "        int32_t v;\n"
+                "        std::vector<int32_t> __tmp_1 = {10, 20};\n"
+                "        if (((v = eat(__tmp_1)) == x))" in cpp[1])
+
+    def test_if_walrus_outside_temp_stays_ast(self):
+        # A temp OUTSIDE the walrus in the same if cond keeps the fence:
+        # hoisting it ahead of the if would run it before the walrus
+        # assignment it may read.
+        src = (_EAT
+               + "def use(x: Int32) -> Int32:\n"
+               + "    if (v := x) == eat([1, 2]):\n"
+               + "        return v\n"
+               + "    return -v\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
+
     def test_mixed_walrus_temp_cond_stays_ast(self):
         # Mixed walrus + temps keeps the AST's legacy single-eval flush
         # (BUGS residual): an in-head temp could run before the walrus
@@ -251,6 +300,67 @@ class TestWalrusLadder:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert w.get("expr.walrus_value_opt", 0) >= 1
+        _assert_byte_identical(src)
+
+    _GET_OPT = ("from tpy import Int32\n"
+                "def get_opt(x: Int32) -> Int32 | None:\n"
+                "    if x > 0:\n"
+                "        return x * 10\n"
+                "    return None\n")
+
+    def test_value_opt_first_decl_walrus_routes(self):
+        # FIRST-DECL value-opt scalar walrus: predecl the bare
+        # `std::optional<int32_t> val;` slot, assign in place, and compose
+        # `.has_value()` with the is-not-None compare; narrowed reads ride
+        # the value-opt local registrations.
+        src = (self._GET_OPT
+               + "def use() -> Int32:\n"
+               + "    if (val := get_opt(3)) is not None:\n"
+               + "        return val + 5\n"
+               + "    return -1\n"
+               + "def main() -> None:\n    print(use())\nmain()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("expr.walrus_value_opt", 0) >= 1
+        cpp = _assert_byte_identical(src)
+        assert "std::optional<int32_t> val;" in cpp[1]
+        assert "if (((val = get_opt(3)).has_value()))" in cpp[1]
+
+    def test_value_opt_walrus_reuse_declares_once(self):
+        # A REUSED target is the reassign on the predeclared slot -- no
+        # duplicate C++ declaration.
+        src = (self._GET_OPT
+               + "def use() -> Int32:\n"
+               + "    if (val := get_opt(3)) is not None:\n"
+               + "        return val\n"
+               + "    if (val := get_opt(5)) is not None:\n"
+               + "        return val\n"
+               + "    return -1\n"
+               + "def main() -> None:\n    print(use())\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        cpp = _assert_byte_identical(src)
+        assert cpp[1].count("std::optional<int32_t> val;") == 1
+
+    def test_ptr_optional_walrus_call_source_stays_ast(self):
+        # BOUNDARY (BUGS.md): a POINTER-repr Optional walrus with a CALL
+        # source is the broken optional_to_ptr-less AST emit -- must keep
+        # falling back, not be captured by the value-opt arm.
+        src = ("from tpy import Int32, Own\n"
+               "class Item:\n"
+               "    x: Int32\n"
+               "    def __init__(self, x: Int32) -> None:\n"
+               "        self.x = x\n"
+               "def maybe_get(i: Int32) -> 'Own[Item | None]':\n"
+               "    if i > 0:\n"
+               "        return Item(i)\n"
+               "    return None\n"
+               "def use(i: Int32) -> Int32:\n"
+               "    if (x := maybe_get(i)) is not None:\n"
+               "        return x.x\n"
+               "    return 0\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
         _assert_byte_identical(src)
 
     def test_sibling_branch_nonvalue_rebind_sema_rejected(self):

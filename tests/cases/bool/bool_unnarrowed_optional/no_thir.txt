@@ -1,3 +1,0 @@
-Un-narrowed pointer-repr Optional[record] truthiness dispatches
-::tpy::ptr_truthy in the AST; THIR has no matching node yet
-(truthy.optional_ptr_record fallback).

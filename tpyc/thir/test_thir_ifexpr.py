@@ -229,6 +229,63 @@ class TestIfExprRejects:
             '    return b if c else b"x"\n')
         assert _fn(thir, "f") is None
 
+    def test_bytes_owned_elem_arms_route_storage(self):
+        # Both arms OWNED container-element subscripts (root-mutation
+        # demoted sink): bare arms, owned copy at the decl -- no
+        # bytes_copy wrap.
+        src = ("def f(c: list[bytes], d: list[bytes], cond: bool) -> int:\n"
+               "    x = c[0] if cond else d[0]\n"
+               '    c.append(b"padpadpadpadpadpadpadpadpadpadpad")\n'
+               "    return len(x)\n"
+               "def main() -> None:\n"
+               '    print(f([b"abcd"], [b"ef"], True))\n'
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("ifexpr.bytes_owned_elems", 0) == 1
+        cpp = _assert_byte_identical(src)
+        assert ("std::vector<uint8_t> x = ((cond) ? "
+                "(::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));"
+                in cpp[1])
+
+    def test_bytes_view_param_vs_elem_arm_stays_ast(self):
+        # BOUNDARY: a plain-param VIEW arm mixed with an owned element arm
+        # is the span-vs-vector wrong-code AST shape (BUGS.md) -- must
+        # keep deferring, not be captured by the owned-elems leg.
+        thir = _lower(
+            "def f(b: bytes, c: list[bytes], cond: bool) -> int:\n"
+            "    x = b if cond else c[0]\n"
+            "    return len(x)\n")
+        assert _fn(thir, "f") is None
+
+    def test_bytes_elem_vs_literal_arm_stays_ast(self):
+        # BOUNDARY: an owned element arm + a bytes literal is outside the
+        # both-subscript leg -- keeps deferring.
+        thir = _lower(
+            "def f(c: list[bytes], cond: bool) -> int:\n"
+            '    x = c[0] if cond else b"zz"\n'
+            "    return len(x)\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_field_arms_route_owned_decl(self):
+        # str FIELD arms (`r.s if cond else t.s`) render bare member reads
+        # and the owned-str decl copies the ternary directly.
+        src = ("class Rec:\n"
+               "    s: str\n"
+               "    def __init__(self, s: str) -> None:\n"
+               "        self.s = s\n"
+               "def f(r: Rec, t: Rec, cond: bool) -> str:\n"
+               "    x = r.s if cond else t.s\n"
+               '    r.s = "padpadpadpadpadpadpadpadpadpadpadpad"\n'
+               "    return x\n"
+               "def main() -> None:\n"
+               '    print(f(Rec("eta"), Rec("theta"), True))\n'
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "std::string x = ((cond) ? (r.s) : (t.s));" in cpp[1]
+
     def test_nonbool_ternary_condition_rejected(self):
         # `if a if c else b:` (int truthiness) stays AST, mirroring the
         # condition name arm's bool pin.

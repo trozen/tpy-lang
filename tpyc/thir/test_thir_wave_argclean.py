@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_routes_byte_identical,
     _fn,
     _lower_ctx,
     _lower_ctx_witnessed,
@@ -269,8 +270,10 @@ class TestCallableFieldCall:
         assert faces["ctor.lambda_arg"] >= 1
         _assert_byte_identical(src)
 
-    def test_optional_callable_field_stays_ast(self):
-        # Optional[Callable] fields take the `.value()` unwrap -- AST.
+    def test_optional_callable_field_routes_value_unwrap(self):
+        # Optional[Callable] field invocation: the AST's unconditional
+        # `.value()` unwrap between the member and the call
+        # (`h.cb.value()(3)`), narrowing-blind.
         src = _PRELUDE + (
             "from typing import Callable\n"
             "class Handler:\n"
@@ -278,9 +281,47 @@ class TestCallableFieldCall:
             "    def __init__(self) -> None:\n"
             "        self.cb = None\n"
             "def use(h: Handler) -> None:\n"
-            "    h.cb(3)\n"
+            "    if h.cb is not None:\n"
+            "        h.cb(3)\n"
+            "def main() -> None:\n"
+            "    use(Handler())\n"
+            "main()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces["method.opt_callable_field"] >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_optional_callable_field_ptr_receiver_stays_ast(self):
+        # A narrowed pointer-local receiver stays out of the callable-field
+        # arm (the deref spelling is the receiver rows' business).
+        src = _PRELUDE + (
+            "from typing import Callable\n"
+            "class Handler:\n"
+            "    cb: Callable[[Int32], None] | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.cb = None\n"
+            "def use(h: Handler | None) -> None:\n"
+            "    if h is not None:\n"
+            "        if h.cb is not None:\n"
+            "            h.cb(3)\n"
         )
         assert _fn(_lower_ctx(src), "use") is None
+        _assert_byte_identical(src)
+
+    def test_optional_callable_field_write_from_lambda_stays_ast(self):
+        # A lambda RHS at an Optional[Callable] field write stays out
+        # (NAME sources only).
+        src = _PRELUDE + (
+            "from typing import Callable\n"
+            "class Handler:\n"
+            "    cb: Callable[[Int32], None] | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.cb = None\n"
+            "def install(h: Handler) -> None:\n"
+            "    h.cb = lambda n: print(n)\n"
+        )
+        assert _fn(_lower_ctx(src), "install") is None
         _assert_byte_identical(src)
 
 

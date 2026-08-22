@@ -245,3 +245,34 @@ class TestUnionAndPtrParams:
         assert ctor is None
         assert reason.startswith("ctor.mil_field")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
+
+    _PTR_DATA = ("from tpy import Int32, Ptr\n"
+                 "class Data:\n    value: Int32\n"
+                 "    def __init__(self, v: Int32) -> None:\n"
+                 "        self.value = v\n")
+
+    def test_ptr_null_ctor_mil_routes(self):
+        # `self.p = Ptr[Data]()`: the MIL slot is a storage sink, so the
+        # null ctor threads STORAGE use and renders the typed nullptr
+        # (`p(static_cast<Data*>(nullptr))`, ctor.ptr_null).
+        src = (self._PTR_DATA
+               + "class C:\n    p: Ptr[Data]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.p = Ptr[Data]()\n")
+        ctor, _ = _lower_ctor_reason(src, "C")
+        assert ctor is not None
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert "p(static_cast<Data*>(nullptr))" in _cpp(src, thir=True)
+
+    def test_nonvalue_ptr_null_ctor_mil_stays_ast(self):
+        # BOUNDARY: a Ptr pointee outside _eligible_ptr_value (StrView)
+        # never reaches the STORAGE thread -- the MIL field gate itself
+        # keeps the ctor on the AST path.
+        src = ("from tpy import Int32, Ptr, StrView\n"
+               "class C:\n    q: Ptr[StrView]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.q = Ptr[StrView]()\n")
+        ctor, reason = _lower_ctor_reason(src, "C")
+        assert ctor is None
+        assert reason == "ctor.mil_field.ptr.call"
+        assert _cpp(src, thir=True) == _cpp(src, thir=False)

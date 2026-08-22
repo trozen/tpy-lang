@@ -350,15 +350,20 @@ class TestMethodCall:
         assert isinstance(arg, THIRFormConvert) and arg.form is Form.STORAGE
         assert isinstance(arg.value, THIRName) and arg.value.form is Form.BORROW
 
-    def test_reassigned_str_param_arg_ineligible(self):
-        # A reassigned str param hoists an owned-copy prologue in the AST, so the
-        # whole body is rejected -- the view form the append relies on is no
-        # longer stable.
-        thir = _lower(
-            "from tpy import Int32\n"
-            + "def f(xs: list[str], s: str) -> None:\n"
-            + "    s = 'x'\n    xs.append(s)\n")
-        assert _fn(thir, "f") is None
+    def test_reassigned_str_param_arg_routes(self):
+        # A reassigned str param takes the owned-copy prologue respell
+        # (`std::string s = std::string(__param_s);`); its reads keep the
+        # view-form renders, so the append still wraps `std::string(s)` --
+        # a redundant but valid copy, exactly the AST's render.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[str], s: str) -> None:\n"
+               "    s = 'x'\n    xs.append(s)\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _assert_byte_identical(
+            src + "def main() -> None:\n"
+                  "    a: list[str] = []\n    f(a, \"y\")\n    print(a[0])\n"
+                  "main()\n")
 
     def test_str_owned_local_arg_ineligible(self):
         # An owned-str STORAGE source (a concat result) takes gen_call_arg's
@@ -1362,6 +1367,47 @@ class TestSpanReturn:
         assert _fn(thir, "view") is not None
         _assert_byte_identical(src)
 
+    def test_span_call_result_routes(self):
+        # `span(x)` as a VALUE / decl / for-head source: the value-view
+        # prvalue lands bare (call.span_value_ret) and the for-head takes
+        # the owning `auto __obj_N = ::tpy::as_span(items);` capture
+        # (foreach.span_call). The Spannable protocol-param arg binds bare.
+        src = (
+            "from tpy import Int32, Spannable, span\n"
+            "def span_len(x: Spannable[Int32]) -> Int32:\n"
+            "    return len(span(x))\n"
+            "def span_sum(x: Spannable[Int32]) -> Int32:\n"
+            "    total: Int32 = 0\n"
+            "    for v in span(x):\n"
+            "        total += v\n"
+            "    return total\n"
+            "def main() -> None:\n"
+            "    items: list[Int32] = [1, 2, 3, 4]\n"
+            "    print(span_len(items), span_sum(items))\n"
+            "    print(len(span(items)))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "span_len") is not None
+        assert _fn(thir, "span_sum") is not None
+        assert faces.get("call.span_value_ret")
+        assert faces.get("foreach.span_call")
+        _assert_routes_byte_identical(src)
+
+    def test_span_call_at_span_slot_still_defers(self):
+        # BOUNDARY: a span() rvalue at a Span PARAM slot has no arg row --
+        # the body keeps its arg-shape fallback.
+        src = (
+            "from tpy import Int32, Span, span, readonly\n"
+            "def take(sp: Span[readonly[Int32]]) -> Int32:\n"
+            "    return len(sp)\n"
+            "def main() -> None:\n"
+            "    items: list[Int32] = [1, 2, 3]\n"
+            "    print(take(span(items)))\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
+        _assert_byte_identical(src)
+
     def test_span_span_return_ineligible(self):
         # Span[Span[Int32]] -- the element is not a scalar -> AST.
         thir = _lower(
@@ -1450,6 +1496,49 @@ class TestContainerCallIterable:
         loop = _fn(thir, "f").body[0]
         assert isinstance(loop, THIRForEach) and loop.iterable_lvalue
 
+    def test_container_ctor_iterable_routes(self):
+        # A container INSTANTIATION at the for-head (`for v in set(xs):`):
+        # the ctor prvalue rides the ITERABLE result rung
+        # (call.container_ctor_iterable) into the owning `auto __obj_N =`
+        # capture.
+        src = (
+            "from tpy import Int32\n"
+            "def f() -> None:\n"
+            "    xs: list[Int32] = [3, 1, 2, 3]\n"
+            "    for v in set(xs):\n        print(v)\n"
+            "f()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and not loop.iterable_lvalue
+        assert faces.get("call.container_ctor_iterable")
+        _assert_routes_byte_identical(src)
+
+    def test_list_of_generator_call_iterable_routes(self):
+        # `for it in list(each(items)):` -- the instantiation's generator
+        # arg (call.inst args) under the same ITERABLE ctor rung; ref-T
+        # elements bind the borrow alias off the materialized list.
+        src = (
+            "from tpy import Int32, Comparable, Own, copy\n"
+            "from typing import Iterator\n"
+            "class Item:\n"
+            "    key: Int32\n"
+            "    def __init__(self, key: Int32) -> None:\n"
+            "        self.key = key\n"
+            "    def __lt__(self, other: 'Item') -> bool:\n"
+            "        return self.key < other.key\n"
+            "def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:\n"
+            "    for x in xs:\n"
+            "        yield copy(x)\n"
+            "def main() -> None:\n"
+            "    items: list[Item] = [Item(3), Item(1)]\n"
+            "    for it in list(each(items)):\n"
+            "        print(it.key)\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert faces.get("call.container_ctor_iterable")
+        _assert_routes_byte_identical(src)
+
     def test_bytes_returning_call_iterable_ineligible(self):
         # Call lowering admits a bytes return in value position; the for-each
         # arm filters it (the owned-vs-view capture shape is a deferred cell).
@@ -1478,6 +1567,82 @@ class TestContainerCallIterable:
         assert "auto __obj_0 = make_list(4);" in thir_cpp
         assert "auto& __obj_1 = get_list(items);" in thir_cpp
         assert "auto& __obj_2 = view(items);" in thir_cpp
+
+
+class TestNarrowedValueOptViewIterable:
+    """A proven-narrowed value-repr `str | None` / `bytes | None` NAME at a
+    for-head / comprehension source: the container begin/end loop over the
+    deref capture (`auto& __obj_N = (*b);`) -- NOT the narrowed-alias
+    universal loop (wrong render family for a container payload)."""
+
+    def test_narrowed_bytes_param_for_and_comp_route(self):
+        src = (
+            "def sum_bytes(b: bytes | None) -> int:\n"
+            "    if b is None:\n"
+            "        return -1\n"
+            "    acc = 0\n"
+            "    for x in b:\n"
+            "        acc += int(x)\n"
+            "    return acc\n"
+            "def comp_bytes(b: bytes | None) -> int:\n"
+            "    if b is None:\n"
+            "        return -1\n"
+            "    return sum([int(x) for x in b])\n"
+            "def main() -> None:\n"
+            "    print(sum_bytes(b\"abc\"), comp_bytes(None))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "sum_bytes") is not None
+        assert _fn(thir, "comp_bytes") is not None
+        assert faces.get("foreach.narrowed_value_opt_view")
+        assert faces.get("comp.narrowed_value_opt_view")
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_str_local_routes(self):
+        # The owned-inner LOCAL flavor (`std::optional<std::string>`): the
+        # same deref capture over the owned payload.
+        src = (
+            "def pick(flag: bool) -> str | None:\n"
+            "    if flag:\n"
+            "        return \"abc\"\n"
+            "    return None\n"
+            "def count(flag: bool) -> int:\n"
+            "    s = pick(flag)\n"
+            "    if s is None:\n"
+            "        return -1\n"
+            "    acc = 0\n"
+            "    for c in s:\n"
+            "        acc += ord(c)\n"
+            "    return acc\n"
+            "def main() -> None:\n"
+            "    print(count(True), count(False))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "count") is not None
+        assert faces.get("foreach.narrowed_value_opt_view")
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_repr_narrowed_list_keeps_its_own_leg(self):
+        # BOUNDARY: a narrowed POINTER-repr Optional container keeps the
+        # landed narrowed_opt leg -- the value-opt admission must not
+        # capture it (different route selection, same render family).
+        src = (
+            "def sum_list(xs: list[int] | None) -> int:\n"
+            "    if xs is None:\n"
+            "        return -1\n"
+            "    acc = 0\n"
+            "    for v in xs:\n"
+            "        acc += v\n"
+            "    return acc\n"
+            "def main() -> None:\n"
+            "    data: list[int] = [1, 2]\n"
+            "    print(sum_list(data), sum_list(None))\n"
+            "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "sum_list") is not None
+        assert faces.get("foreach.narrowed_opt_listset")
+        assert not faces.get("foreach.narrowed_value_opt_view")
+        _assert_routes_byte_identical(src)
 
 
 class TestNativeIterableBuiltins:
@@ -4815,6 +4980,61 @@ class TestListConcatBinop:
                "f()\n")
         _assert_routes_byte_identical(src)
 
+    def test_set_ctor_call_operand_routes(self):
+        # A container-producing free CALL operand (`set(range(1, 4)) | {7}`
+        # -- what a `[1..3, 7]` set literal desugars to): the fresh value
+        # renders inline inside the dunder template, no temp.
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    c = set(range(1, 4)) | {7}\n"
+               "    d = {7} | set(range(1, 4))\n"
+               "    print(len(c), len(d))\n"
+               "f()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert ("::tpy::set_union(::tpy::set_construct<int32_t>("
+                "::tpy::Range<int32_t>(1, 4))") in cpp
+
+    def test_borrow_returning_call_operand_still_defers(self):
+        # BOUNDARY: the call-operand leg is scoped to RVALUE sources -- a
+        # borrow-returning call is an lvalue whose render is the callee's
+        # storage, so it must keep rejecting.
+        src = ("from tpy import Int32\n"
+               "class H:\n"
+               "    items: set[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.items = {1}\n"
+               "def borrow_set(h: H) -> set[Int32]:\n"
+               "    return h.items\n"
+               "def f(h: H) -> None:\n"
+               "    c = borrow_set(h) | {7}\n"
+               "    print(len(c))\n"
+               "def main() -> None:\n"
+               "    f(H())\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_method_call_operand_still_defers(self):
+        # BOUNDARY: the leg admits FREE calls only -- a method-call operand
+        # (its own receiver-form rows) stays out.
+        src = ("from tpy import Int32, Own\n"
+               "class H:\n"
+               "    items: set[Int32]\n"
+               "    def __init__(self) -> None:\n"
+               "        self.items = {1}\n"
+               "    def get(self) -> set[Int32]:\n"
+               "        return self.items\n"
+               "def f(h: H) -> None:\n"
+               "    c = h.get() | {7}\n"
+               "    print(len(c))\n"
+               "def main() -> None:\n"
+               "    f(H())\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
     def test_list_ordering_compare_still_defers(self):
         # BOUNDARY: the ordering widening in _container_compare_pair is
         # SET-only -- a list ordering compare must keep falling back.
@@ -5235,3 +5455,127 @@ class TestWrapperMemberContainerNameElem:
             '    d: dict[str, Tree] = {"a": 1, "b": inner}\n'
             "    print(len(d))\n")
         _assert_routes_byte_identical(src)
+
+
+class TestTparamDictKey:
+    """The open-T dict/set key slice (`dict[T, int]` under `[T: Hashable]`):
+    every consumer render is key-type-neutral, so the shared key predicate
+    admits the TypeParamRef and the generic bodies route verbatim like
+    their concrete twins. A dict LITERAL with a T-typed key EXPRESSION is
+    not constructible (sema rejects `{x: 1}` even under the Hashable
+    bound), so only the empty-literal MIL shape is pinned. The driver
+    passes a NAME iterable: a literal at the generic structural slot has
+    a pre-existing THIR argtemp-vs-bare divergence outside this cell."""
+
+    _BAG = (
+        "from tpy import Hashable\n"
+        "from typing import Iterable\n"
+        "class Bag[T: Hashable]:\n"
+        "    _data: dict[T, int]\n"
+        "    def __init__(self) -> None:\n"
+        "        self._data = {}\n"
+        "    def add_all(self, items: Iterable[T]) -> None:\n"
+        "        for x in items:\n"
+        "            self._data[x] = self._data.get(x, 0) + 1\n"
+        "    def __getitem__(self, key: T) -> int:\n"
+        "        return self._data.get(key, 0)\n"
+        "    def __contains__(self, key: T) -> bool:\n"
+        "        return key in self._data\n"
+        "    def total(self) -> int:\n"
+        "        s = 0\n"
+        "        for k in self._data:\n"
+        "            s = s + self._data[k]\n"
+        "        return s\n"
+        "def main() -> None:\n"
+        "    b = Bag[str]()\n"
+        "    xs = [\"a\", \"b\", \"a\"]\n"
+        "    b.add_all(xs)\n"
+        "    print(b[\"a\"], \"a\" in b, b.total())\n"
+        "main()\n"
+    )
+
+    def test_tparam_key_bodies_route(self):
+        # setitem + .get receiver + subscript read + membership needle +
+        # the ctor's empty dict[T, int] MIL literal, all through the
+        # widened shared key slice.
+        thir, w = _lower_ctx_witnessed(self._BAG)
+        for name in ("add_all", "__getitem__", "__contains__", "total"):
+            assert _fn(thir, name) is not None, name
+        assert w.get("binop.contains_tparam_needle", 0) >= 1
+        _assert_routes_byte_identical(self._BAG)
+
+    def test_tparam_set_membership_still_defers(self):
+        # BOUNDARY: a set[T] receiver's membership takes the
+        # resolved-__contains__ lane whose needle rows are not widened --
+        # the body keeps the AST path.
+        src = (
+            "from tpy import Hashable\n"
+            "class Seen[T: Hashable]:\n"
+            "    _seen: set[T]\n"
+            "    def __init__(self) -> None:\n"
+            "        self._seen = set()\n"
+            "    def add(self, x: T) -> None:\n"
+            "        self._seen.add(x)\n"
+            "    def has(self, x: T) -> bool:\n"
+            "        return x in self._seen\n"
+            "def main() -> None:\n"
+            "    s = Seen[str]()\n"
+            "    s.add(\"a\")\n"
+            "    print(s.has(\"a\"))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        assert _fn(thir, "has") is None
+        _assert_byte_identical(src)
+
+
+class TestNestedArrayCtorAndChainedSubscript:
+    """Array[Array[T,N],M] ctor rvalue at a Span slot + the s[0][0]
+    chained subscript over a Span-of-Array receiver."""
+
+    _SRC = ("from tpy import Int32, Span, Array\n"
+            "def take(s: Span[Array[Int32, 2]]) -> Int32:\n"
+            "    return s[0][0] + s[1][1]\n"
+            "def main() -> None:\n"
+            "    r: Int32 = take(Array[Array[Int32, 2], 2]([[1, 2],"
+            " [3, 4]]))\n"
+            "    print(r)\n"
+            "main()\n")
+
+    def test_nested_ctor_and_chain_route(self):
+        thir = _lower_ctx(self._SRC)
+        assert _fn(thir, "take") is not None
+        assert _fn(thir, "main") is not None
+        cpp = _assert_byte_identical(self._SRC)
+        assert ("take(::tpy::as_mut_span(std::array<std::array<int32_t, 2>,"
+                " 2>({{{1, 2}, {3, 4}}})))" in cpp[1])
+        assert ("::tpy::__getitem__(::tpy::__getitem__(s, 0), 0)"
+                in cpp[1])
+
+    def test_flat_array_ctor_at_span_slot_routes(self):
+        src = ("from tpy import Int32, Span, Array\n"
+               "def take(s: Span[Int32]) -> Int32:\n"
+               "    return s[0] + s[1]\n"
+               "def main() -> None:\n"
+               "    print(take(Array[Int32, 2]([1, 2])))\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert w.get("call.container_ctor_value", 0) >= 1
+        _assert_byte_identical(src)
+
+    def test_span_container_elem_ref_alias_routes(self):
+        # The span_elem_ok widening: a Span-of-container element binds the
+        # REF_ALIAS local like a list-of-container element.
+        src = ("from tpy import Int32, Span, Array\n"
+               "def f(s: Span[Array[Int32, 2]]) -> Int32:\n"
+               "    row = s[0]\n"
+               "    return row[1]\n"
+               "def main() -> None:\n"
+               "    a: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]\n"
+               "    print(f(a))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "std::array<int32_t, 2>& row = " in cpp[1]

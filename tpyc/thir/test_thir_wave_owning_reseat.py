@@ -105,10 +105,12 @@ class TestOptPtrLiftOffMethodCallField:
                 "::tpy::optional_to_ptr(child.get().next);") in cpp.replace(
                     "::tpystd::tplib::rc::", "")
 
-    def test_free_call_receiver_field_keeps_rejecting(self):
-        # The lift arm admits METHOD-call receivers only: a field off a
-        # FREE-call result could hand optional_to_ptr a dying temporary,
-        # so that shape must keep falling back.
+    def test_free_call_receiver_field_materializes_a_slot(self):
+        # A field off a FREE-call result is an RVALUE receiver, so the bare
+        # lift would hand optional_to_ptr a dying temporary. The AST
+        # materializes the WHOLE optional first, and THIR mirrors that slot
+        # + lift pair -- the two receiver flavors take DIFFERENT renders,
+        # which is what keeps the method-call row's bare lift honest.
         src = _CHAIN + (
             "from tpy import Own\n"
             "def make() -> Own[Node]:\n"
@@ -118,9 +120,14 @@ class TestOptPtrLiftOffMethodCallField:
             "    if nxt is not None:\n"
             "        return nxt.value\n"
             "    return 0\n"
+            "def main() -> None:\n"
+            "    print(probe())\n"
+            "main()\n"
         )
-        fell = _thir_fallbacks(src)
-        assert "body:stmt.var_decl:decl.opt_slot_source" in fell, fell
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = (hpp + cpp).replace("::tpystd::tplib::rc::", "")
+        assert "std::optional<Rc<Node>> __slot_1 = make().next;" in out
+        assert "Rc<Node>* nxt = ::tpy::optional_to_ptr(__slot_1);" in out
 
     def test_inferred_readonly_receiver_lift_stays_nonconst(self):
         # Regression (review round 2026-08-02): the AST's
@@ -169,3 +176,81 @@ class TestOptPtrLiftOffMethodCallField:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "const" in next(
             line for line in cpp.splitlines() if "optional_to_ptr" in line)
+
+
+_TEMP_FIELD = (
+    "from tpy import Int32, Own, copy\n"
+    "class Point:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32):\n        self.x = x\n"
+    "class Holder:\n"
+    "    value: Point | None\n"
+    "    def __init__(self) -> None:\n        self.value = None\n"
+    "def make_holder() -> Own[Holder]:\n"
+    "    h = Holder()\n"
+    "    h.value = Point(1)\n"
+    "    return copy(h)  # tpyc: warning(/unnecessary copy/)\n"
+)
+
+
+class TestOptFieldOffRvalueReceiver:
+    """A storage-form Optional FIELD read off an RVALUE receiver: the whole
+    optional materializes in a slot before the receiver temporary dies."""
+
+    def test_reseat_writes_the_slot_inline(self):
+        src = _TEMP_FIELD + (
+            "def probe() -> Int32:\n"
+            "    v: Point | None = None\n"
+            "    v = make_holder().value\n"
+            "    if v is not None:\n"
+            "        return v.x\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(probe())\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        # The rebind slot is declared EMPTY at the function top and written
+        # inline -- one line, unlike the OPT_STORAGE_CALL fill-then-lift.
+        assert "std::optional<Point> __slot_1;" in out
+        assert ("v = ::tpy::optional_to_ptr(__slot_1 = "
+                "make_holder().value);") in out
+
+    def test_lvalue_receiver_keeps_the_bare_lift(self):
+        # BOUNDARY: an LVALUE receiver's field is live storage, so it takes
+        # the bare `optional_to_ptr(h.value)` -- no slot. The two receiver
+        # flavors must not collapse into one render.
+        src = _TEMP_FIELD + (
+            "def probe(h: Holder) -> Int32:\n"
+            "    v = h.value\n"
+            "    if v is not None:\n"
+            "        return v.x\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(probe(Holder()))\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "::tpy::optional_to_ptr(h.value);" in out
+        assert "__slot_1 = h.value" not in out
+
+    def test_rvalue_reassigned_first_decl_keeps_rejecting(self):
+        # BOUNDARY: a name DECLARED from the rvalue field AND rvalue-reseat
+        # later needs the AST's two-slot pairing (an init slot plus a
+        # separate rebind slot); the decl row registers only one, so the
+        # shape must fall back rather than reuse the init slot.
+        src = _TEMP_FIELD + (
+            "def probe() -> Int32:\n"
+            "    v = make_holder().value\n"
+            "    v = make_holder().value\n"
+            "    if v is not None:\n"
+            "        return v.x\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(probe())\n"
+            "main()\n"
+        )
+        fell = _thir_fallbacks(src)
+        assert "body:stmt.var_decl:decl.opt_slot_source" in fell, fell

@@ -181,11 +181,21 @@ class TestScalarTempBoundaries:
     @pytest.mark.parametrize("src", [STR_INNER, CHAR_INNER, FLOAT_LITERAL,
                                      BARE_INT_LITERAL, FIELD_LVALUE,
                                      RECORD_INNER, TERNARY_SOURCE,
-                                     MATCH_GUARD, LISTCOMP_BODY])
+                                     MATCH_GUARD])
     def test_stays_ast_byte_identical(self, src):
         _assert_byte_identical(src)
         _thir, witnesses = _lower_ctx_witnessed(src)
         assert witnesses.get("optptr.scalar_temp", 0) == 0
+
+    def test_listcomp_body_routes_with_temp_flush(self):
+        # The Array-demoted list comp's element became a flush position
+        # (the array_from_index lambda flush): the scalar_temp face now
+        # fires INSIDE the lambda, byte-identical to the AST's
+        # per-iteration hoist.
+        from .testutil import _assert_routes_byte_identical
+        _thir, witnesses = _lower_ctx_witnessed(self.LISTCOMP_BODY)
+        assert witnesses.get("optptr.scalar_temp", 0) >= 1
+        _assert_routes_byte_identical(self.LISTCOMP_BODY)
 
 
 class TestScalarTempShortCircuit:

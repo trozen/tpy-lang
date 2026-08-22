@@ -1404,21 +1404,25 @@ class TestStrFieldReturn:
         assert faces.get("fstr.str_field", 0) == 1
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_string_field_stays_ast(self):
-        # A `String` field resolves outside the str slice
-        # (_resolved_str_value is None) -- stays AST.
+    def test_string_field_return_routes(self):
+        # `String` IS inside the resolved str slice (it renders
+        # `std::string`), and both str sinks take the same bare member read:
+        # the owned slot copies it implicitly, the view slot converts.
         src = (
-            "from tpy import String\n"
+            "from tpy import String, StrView\n"
             "class S:\n"
             "    s: String\n"
             "    def __init__(self, s: String) -> None:\n"
             "        self.s = s\n"
             "    def get(self) -> str:\n"
             "        return self.s\n"
+            "    def get_view(self) -> StrView:\n"
+            "        return self.s\n"
             'print(S("x").get())\n'
+            'print(S("y").get_view())\n'
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "get") is None
+        hpp, _cpp_out = _assert_routes_byte_identical(src, comments=False)
+        assert hpp.count("return this->s;") == 2
 
     def test_fstring_str_field_arg_routes(self):
         # `f"...{self.name}..."` -- the owned-str field formats bare via the
@@ -2044,9 +2048,9 @@ class TestPrintWrapArgs:
         arg = fn.body[0].args[0]
         assert arg.print_form is PrintForm.BYTEARRAY
 
-    def test_span_name_stays_ast(self):
-        # Span prints via ListPrinter on the AST path but is outside the
-        # admitted container kinds -- stays AST.
+    def test_span_name_routes_list_printer(self):
+        # A Span NAME shares gen_print's sequence arm: ListPrinter over
+        # the bare lvalue.
         src = (
             "from tpy import Int32, Span\n"
             "def use(s: Span[Int32]) -> None:\n"
@@ -2055,7 +2059,26 @@ class TestPrintWrapArgs:
             "use(xs)\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert fn.body[0].args[0].print_form is PrintForm.LIST
+        cpp = _assert_byte_identical(src)
+        assert "std::cout << ::tpy::ListPrinter(s) << \"\\n\";" in cpp[1]
+
+    def test_readonly_span_name_routes_list_printer(self):
+        # The readonly-element flavor rides the same row.
+        src = (
+            "from tpy import Int32, Span, readonly\n"
+            "def use(s: Span[readonly[Int32]]) -> None:\n"
+            "    print(s)\n"
+            "xs = [1, 2]\n"
+            "use(xs)\n"
+        )
+        thir = _lower_ctx(src)
+        fn = _fn(thir, "use")
+        assert fn is not None
+        assert fn.body[0].args[0].print_form is PrintForm.LIST
+        _assert_byte_identical(src)
 
     def test_dict_view_name_stays_ast(self):
         # A dict-view binding prints via its own operator<< -- excluded.

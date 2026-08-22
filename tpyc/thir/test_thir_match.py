@@ -3384,10 +3384,10 @@ class TestMatchLiteralSubject:
         _, w = _lower_ctx_witnessed(src)
         assert w.get("match.literal_facts", 0) > 0
 
-    def test_literal_fact_compare_defers(self):
-        # An arm body COMPARING the fact name is the AST's dead-branch fold
-        # (`mode == "r"` folds to true) -- un-mirrored, so the body must
-        # fall back rather than render the un-folded compare.
+    def test_literal_fact_compare_folds(self):
+        # An arm body COMPARING the fact name takes the AST's expression
+        # fold: `mode == "r"` under the case fact renders bare `true`
+        # (the _try_fold_literal_comparison mirror).
         src = (
             "from typing import Literal\n"
             "def f(mode: Literal[\"r\", \"w\"]) -> None:\n"
@@ -3399,8 +3399,10 @@ class TestMatchLiteralSubject:
             "            print(\"write\")\n"
             "f(\"r\")\n"
         )
-        assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert self._routed(src, "f")
+        out = _cpp(src, thir=True)
+        assert out == _cpp(src, thir=False)
+        assert "if (true) {" in out
 
     def test_literal_fact_membership_defers(self):
         # `mode in ("r", "w")` inside an arm folds on the AST path -- same

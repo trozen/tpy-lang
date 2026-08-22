@@ -11,9 +11,9 @@ from .testutil import _emit_expr
 from .nodes import (
     Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRCharLiteral,
     THIRCoerce, THIRContainerLiteral, THIRForEach, THIRFormConvert,
-    THIRFString, THIRFStringArg, THIRMethodCall, THIRName, THIRSetItem,
-    THIRStrAppend, THIRStrLiteral, THIRStrMembership, THIRStrSlice,
-    THIRSubscript, THIRVarDecl,
+    THIRFString, THIRFStringArg, THIRMethodCall, THIRName, THIRParamCopy,
+    THIRSetItem, THIRStrAppend, THIRStrLiteral, THIRStrMembership,
+    THIRStrSlice, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _PRELUDE,
@@ -118,10 +118,18 @@ class TestStrValues:
         assert app.target == "t"
         assert isinstance(app.value, THIRStrLiteral)
 
-    def test_reassigned_str_param_ineligible(self):
-        # A reassigned str param hoists an owned copy in the AST prologue.
-        thir = _lower('def f(a: str) -> None:\n    a = "other"\n    print(a)\n')
-        assert _fn(thir, "f") is None
+    def test_reassigned_str_param_copy_routes(self):
+        # A reassigned str param hoists the AST's owned-copy prologue with
+        # the view-family respell (view param -> owned std::string local);
+        # body reads keep their view-form renders.
+        src = 'def f(a: str) -> None:\n    a = "other"\n    print(a)\n'
+        fn = _fn(_lower(src), "f")
+        assert fn is not None
+        copy = fn.body[0]
+        assert isinstance(copy, THIRParamCopy)
+        assert (copy.name, copy.cpp_type) == ("a", "std::string")
+        assert copy.init_cpp == "std::string(__param_a)"
+        _assert_routes_byte_identical(src)
 
     def test_concat_routes(self):
         # str + str routes as an owned (STORAGE) String-result binop; the
@@ -625,6 +633,51 @@ class TestFString:
             '    return f"{xs}"\n')
         fstr = _fn(thir, "f").body[1].value
         assert _emit_expr(fstr) == 'std::format("{}", ::tpy::list_to_str(xs))'
+
+    def test_container_call_arg_routes(self):
+        # A container-RETURNING call under the to_str wrap: the wrap consumes
+        # the bare call render, so the arg takes the ITERABLE result use
+        # (`::tpy::list_to_str(h.items())`). Method and free calls share the
+        # row.
+        src = ("from tpy import Int32, Own\n"
+               "class Holder:\n"
+               "    def items(self) -> Own[list[Int32]]:\n"
+               "        return [1, 2, 3]\n"
+               "    def lookup(self) -> Own[dict[str, Int32]]:\n"
+               "        return {\"a\": 1}\n"
+               "def make_set() -> Own[set[Int32]]:\n"
+               "    return {1, 2}\n"
+               "def f(h: Holder) -> None:\n"
+               '    print(f"m={h.items()}")\n'
+               '    print(f"d={h.lookup()}")\n'
+               '    print(f"s={make_set()}")\n'
+               "def main() -> None:\n"
+               "    f(Holder())\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("fstr.container_call_arg", 0) == 3
+        fstr = _fn(thir, "f").body[0].args[0].expr
+        assert isinstance(fstr, THIRFString)
+        args = [p for p in fstr.parts if isinstance(p, THIRFStringArg)]
+        assert [a.wrap for a in args] == ["::tpy::list_to_str({0})"]
+        assert isinstance(args[0].expr, THIRMethodCall)
+        _assert_routes_byte_identical(src)
+
+    def test_value_tuple_call_arg_keeps_value_row(self):
+        # The ITERABLE override is keyed on the list/dict/set families ONLY:
+        # a value-TUPLE return the wrap also covers renders bare at the plain
+        # VALUE sink and must keep that row (ITERABLE has no tuple row).
+        src = ("from tpy import Int32\n"
+               "def make_pair() -> tuple[Int32, Int32]:\n"
+               "    return (1, 2)\n"
+               "def f() -> None:\n"
+               '    print(f"t={make_pair()}")\n'
+               "def main() -> None:\n"
+               "    f()\n"
+               "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("fstr.container_call_arg", 0) == 0
+        _assert_routes_byte_identical(src)
 
     def test_combinator_inner_expr_routes(self):
         # `list(map(lambda ...))` interpolated: the container-ctor VALUE
@@ -1236,17 +1289,23 @@ class TestStrSubscriptSliceIter:
         # Only param_needs_copy_for_reassign types (owned str/bytes, BigInt)
         # hoist the AST's mutable-copy prologue; a StrView param is a by-value
         # view and reassigns in place on both paths.
-        thir = _lower(
+        src = (
             "from tpy import StrView\n"
             "def f(s: StrView, flag: bool) -> None:\n"
             "    if flag:\n        s = s[1:]\n    print(s)\n"
             'def g(a: str) -> None:\n    a = "other"\n    print(a)\n')
+        thir = _lower(src)
         f = _fn(thir, "f")
         assert f is not None
         reassign = f.body[0].then_body[0]
         assert isinstance(reassign, THIRAssign)
         assert isinstance(reassign.value, THIRStrSlice)
-        assert _fn(thir, "g") is None  # owned str param still rejected
+        # The owned-str sibling routes WITH the respelled prologue copy;
+        # the view param's body starts at the if -- no prologue.
+        g = _fn(thir, "g")
+        assert g is not None and isinstance(g.body[0], THIRParamCopy)
+        assert not isinstance(f.body[0], THIRParamCopy)
+        _assert_routes_byte_identical(src)
 
 
 

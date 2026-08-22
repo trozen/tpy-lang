@@ -111,6 +111,64 @@ class TestGlobalSlotBoundaries:
         ))
 
 
+class TestStructuralProtocolGlobal:
+    """`it = iter(d)` at module scope: the structural-protocol global's
+    `static auto __global_slot_N = ::tpy::__iter__((*d));` + addr assign,
+    slot REUSE on reassign (`it = &(__global_slot_N = ...);`), and the
+    for-each over the global name (`auto& __src_N = (*it);` deref capture
+    into the universal loop) -- inside a function body and at top level."""
+
+    _SRC = (
+        'd = {"a": 1, "b": 2}\n'
+        "it = iter(d)\n"
+        "def use_global_iter() -> None:\n"
+        "    for k in it:\n"
+        "        print(k)\n"
+        "use_global_iter()\n"
+        'd2 = {"x": 10}\n'
+        "it = iter(d2)\n"
+        "for k in it:\n"
+        "    print(k)\n")
+
+    def test_proto_global_slot_and_reuse_route(self):
+        top, wit, fallback = _top_level(self._SRC)
+        assert top is not None
+        assert not fallback
+        assert wit.get("top_level.global_slot_proto", 0) >= 2
+        # The reuse half must actually fire (the second `it =` write).
+        assert wit.get("top_level.global_slot_reuse", 0) >= 1
+        _assert_byte_identical(self._SRC)
+
+    def test_function_reads_proto_global(self):
+        thir = _lower_ctx(self._SRC)
+        assert _fn(thir, "use_global_iter") is not None
+
+    def test_user_record_iter_source_stays_ast(self):
+        # BOUNDARY (BUGS.md `iter(c)` self-copy family): a USER-record
+        # source's `static auto` slot would copy when `__iter__` returns
+        # self -- the broken oracle keeps falling back.
+        src = (
+            "from tpy import Int32\n"
+            "from typing import Iterator\n"
+            "class Cyc:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 0\n"
+            "    def __iter__(self) -> Iterator[Int32]:\n"
+            "        i = 0\n"
+            "        while i < 2:\n"
+            "            yield i\n"
+            "            i += 1\n"
+            "c = Cyc()\n"
+            "it = iter(c)\n"
+            "for v in it:\n"
+            "    print(v)\n")
+        top, _w, fallback = _top_level(src)
+        assert top is None
+        assert fallback.get("top_level:stmt.var_decl:"
+                            "top_level.global_slot_protocol")
+        _assert_byte_identical(src)
+
+
 class TestGlobalSlotSiblingWrites:
     """The other three module-scope faces of `_gen_pointer_local_rebind`:
     slot reuse on a later rvalue write, the `None` source, and a

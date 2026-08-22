@@ -599,6 +599,44 @@ class TestBranchPositionCompDecl:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
+class TestCompGlobalShadow:
+    """A comp var shadowing a POINTER-SLOT GLOBAL at module scope: the
+    walk scrubs the pointer classification scoped (comp.global_shadow),
+    so the fresh C++-scoped loop var reads bare while the iterable keeps
+    the enclosing scope's deref."""
+
+    _SRC = (
+        "x = [10, 20, 30]\n"
+        "r1 = [len(x) for x in [\"a\", \"bb\"]]\n"
+        "r4 = list(len(x) for x in [\"a\", \"bb\"])\n"
+        "r6 = [x * x for x in range(5)]\n"
+        "def main() -> None:\n"
+        "    print(x)\n    print(r1)\n    print(r4)\n    print(r6)\n"
+        "main()\n")
+
+    def test_top_level_shadow_routes(self):
+        from .testutil import _top_level
+        top, wit, fallback = _top_level(self._SRC)
+        assert top is not None
+        assert not fallback
+        assert wit.get("comp.global_shadow")
+        _assert_byte_identical(self._SRC)
+
+    def test_self_shadow_iterable_stays_ast(self):
+        # BOUNDARY (AST bug, see BUGS.md): an iterable reading the SAME
+        # pointer-slot global the loop var shadows renders bare on the AST
+        # path (ill-formed C++) -- the broken oracle keeps falling back.
+        src = (
+            "x = [10, 20, 30]\n"
+            "s = [x + 1 for x in x]\n"
+            "def main() -> None:\n    print(s)\nmain()\n")
+        from .testutil import _top_level
+        top, _wit, fallback = _top_level(src)
+        assert top is None
+        assert fallback.get("top_level:expr.list_comp")
+        _assert_byte_identical(src)
+
+
 class TestGenexprC4Cells:
     """The C4 make_generator cells: range counter lambdas, filter
     conditions, the structural-slot auto temp vs the native inline split.
@@ -976,3 +1014,94 @@ class TestQualifiedGenfacCompSource:
     # The lambda row's family boundaries (void bodies, unsupported param
     # shapes) are sema-rejected at real itertools slots and already pinned
     # at the other ladders sharing _lambda_routable (test_thir_callargs).
+
+
+class TestGenfacUnpackCompSource:
+    """A comp UNPACK head over a generator-factory call source
+    (`[a + b for a, b in pairs(3)]`): the owning `auto __obj_N` capture,
+    the `auto& __tup_N = *__beg_N;` head and the shared per-element binds.
+    The CONTAINER-returning-call unpack keeps rejecting (storage-form
+    registration differs)."""
+
+    PRE = ("from typing import Iterator\nfrom tpy import Int32\n\n")
+
+    def test_scalar_unpack_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:\n"
+            "    yield (0, 0)\n"
+            "    i: Int32 = 1\n"
+            "    while i < n:\n"
+            "        yield (i, i * i)\n"
+            "        i += 1\n\n"
+            "def main() -> None:\n"
+            "    print([a + b for a, b in pairs(3)])\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto& __tup_1 = *__beg_" in cpp
+        assert "int32_t a = std::get<0>(__tup_1);" in cpp
+
+    def test_record_and_str_unpack_route(self):
+        # The record element rides the ref binding; a str element copies
+        # owned; a discard slot emits nothing.
+        from .testutil import _assert_routes_byte_identical
+        src = self.PRE + (
+            "class Box:\n"
+            "    val: Int32\n"
+            "    def __init__(self, v: Int32) -> None:\n"
+            "        self.val = v\n\n"
+            "def pairs(items: list[Box]) -> Iterator[tuple[Int32, Box]]:\n"
+            "    i = 0\n"
+            "    for it in items:\n"
+            "        yield (i, it)\n"
+            "        i += 1\n\n"
+            "def named(n: Int32) -> Iterator[tuple[str, Int32]]:\n"
+            "    i = 0\n"
+            "    while i < n:\n"
+            "        yield (\"x\" * i, i)\n"
+            "        i += 1\n\n"
+            "def main() -> None:\n"
+            "    items = [Box(3), Box(4)]\n"
+            "    print([b.val + i for i, b in pairs(items)])\n"
+            "    print([s for s, _ in named(3)])\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_container_call_unpack_still_defers(self):
+        # BOUNDARY: an unpack over a CONTAINER-returning call keeps
+        # rejecting (unwitnessed storage-form registration).
+        src = self.PRE + (
+            "from tpy import Own\n"
+            "def make() -> Own[list[tuple[Int32, Int32]]]:\n"
+            "    return [(1, 2), (3, 4)]\n\n"
+            "def f() -> None:\n"
+            "    print([a + b for a, b in make()])\n\n"
+            "def main() -> None:\n    f()\nmain()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+
+class TestFilterWalrusLeak:
+    """PEP 572: a walrus in a comp FILTER binds in the ENCLOSING scope --
+    the predecl lands before the statement-expr and the target stays
+    readable after the comprehension."""
+
+    def test_filter_walrus_leaks_to_enclosing_scope(self):
+        src = (_PRELUDE
+               + "def double(x: Int32) -> Int32:\n"
+               + "    return x * 2\n"
+               + "def f() -> None:\n"
+               + "    items = [1, 2, 3, 4, 5]\n"
+               + "    filtered = [y for x in items if (y := double(x)) > 5]\n"
+               + "    print(filtered)\n"
+               + "    print(y)\n"
+               + "def main() -> None:\n    f()\nmain()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("comp.filter_walrus_leak", 0) == 1
+        cpp = _assert_byte_identical(src)
+        # The predecl flushes BEFORE the comp statement-expr.
+        assert ("int32_t y;\n"
+                "    std::vector<int32_t> filtered = ({" in cpp[1])
+        assert "if (((y = double_(x)) > 5))" in cpp[1]

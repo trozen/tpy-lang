@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-from .testutil import _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical
+from .testutil import (_assert_byte_identical,
+                       _assert_routes_byte_identical, _fn,
+                       _lower_ctx, _lower_ctx_witnessed)
 
 
 class TestNameFieldWriteFamilies:
@@ -57,10 +59,10 @@ class TestNameFieldWriteBoundaries:
             "def main() -> None:\n"
             "    c = C(hi)\n    c.set(hi)\n    c.cb()\nmain()\n")
 
-    def test_optional_callable_field_stays_ast(self):
-        # `Callable | None` is the OPTIONAL family, not the callable one --
-        # its store goes through the optional arms, so this row must not
-        # capture it.
+    def test_optional_callable_field_routes(self):
+        # `Callable | None` is the OPTIONAL family, not the callable one, so
+        # it is the optional-callable row (not this one) that owns the store
+        # -- `std::optional<std::function>::operator=` absorbs the bare name.
         src = ("from typing import Callable, Optional\n"
                "class C:\n"
                "    cb: Optional[Callable[[], None]]\n"
@@ -68,5 +70,5 @@ class TestNameFieldWriteBoundaries:
                "        self.cb = None\n"
                "    def set(self, f: Callable[[], None]) -> None:\n"
                "        self.cb = f\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "set") is None
+        hpp, _cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "this->cb = f;" in hpp

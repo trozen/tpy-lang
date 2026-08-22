@@ -5,7 +5,7 @@ COMMITTED boundary pins for the three divergences the remote byte-diff
 caught (the probe-becomes-pin rule):
 
   * print_optional over a CONTAINER pointee spells kind-keyed template
-    args -- the OPT_PTR print row must keep rejecting it (fallback).
+    args (the Formatter is a pure function of the pointee type).
   * A None-NARROWED Optional FIELD at the ptr-opt return lifts via
     optional_to_ptr (declared-type keyed), never the pointee addr row.
   * An `Own[Box]`-returning call coerced into an Optional local takes the
@@ -106,21 +106,41 @@ class TestPointeeBoundaries:
         assert "Box* t = &__slot_1;" in cpp
         assert "optional_to_ptr(__slot_1)" not in cpp
 
-    def test_container_pointee_print_keeps_rejecting(self):
-        # BOUNDARY (fixed divergence): print_optional over a CONTAINER
-        # pointee spells the kind-keyed template args
-        # (`print_optional<ListPrinter<..>, ..>(lst)`) -- unmirrored, the
-        # OPT_PTR print row must not capture it (byte-identical fallback).
+    def test_container_pointee_print_spells_the_formatter(self):
+        # print_optional over a CONTAINER pointee spells the kind-keyed
+        # template args -- the Formatter is a pure function of the pointee
+        # type, so the OPT_PTR row picks it rather than excluding the shape.
         src = (
             "from tpy import Int32\n"
-            "def main() -> None:\n"
-            "    lst: list[Int32] | None = [Int32(1)]\n"
+            "def show(lst: list[Int32] | None) -> None:\n"
             "    print(lst)\n"
+            "def main() -> None:\n"
+            "    xs: list[Int32] = [Int32(1)]\n"
+            "    show(xs)\n"
+            "    show(None)\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
+        hpp, cpp = _assert_routes_byte_identical(src)
         thir, wit = _lower_ctx_witnessed(src)
-        assert wit.get("print.opt_ptr_name", 0) == 0
+        assert wit.get("print.opt_ptr_name", 0) == 1
+        assert ("::tpy::print_optional<::tpy::ListPrinter<std::vector"
+                "<int32_t>>, std::vector<int32_t>>(lst)") in hpp + cpp
+
+    def test_bytearray_pointee_print_and_binding_route(self):
+        # bytearray joins the WIDE pointee class: the param binds `T*` and
+        # its print spells ByteArrayPrinter (distinct from bytes' repr).
+        src = (
+            "def show(b: bytearray | None) -> None:\n"
+            "    print(b)\n"
+            "def main() -> None:\n"
+            "    buf = bytearray(b\"ok\")\n"
+            "    show(buf)\n"
+            "    show(None)\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::print_optional<::tpy::ByteArrayPrinter, "
+                "std::vector<uint8_t>>(b)") in hpp + cpp
 
     def test_narrowed_optional_field_return_lifts(self):
         # BOUNDARY (fixed divergence): a None-NARROWED Optional FIELD at
@@ -222,3 +242,107 @@ class TestStorageAccessorScalarBoundary:
         from .lower.predicates import _storage_optional_return_wide
         assert _storage_optional_return_wide(
             OptionalType(INT32), analyzer) is None
+
+
+class TestOptionalPrintFormatters:
+    """gen_print's two Optional arms: the FIELD source takes the `_val`
+    spelling whatever the repr, and the Formatter template is keyed on the
+    inner's C++ type having no plain `operator<<`."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Bag:\n"
+        "    items: list[Int32] | None\n"
+        "    by_key: dict[str, Int32] | None\n"
+        "    elems: set[Int32] | None\n"
+        "    data: bytes | None\n"
+        "    buf: bytearray | None\n"
+        "    tup: tuple[Int32, Int32] | None\n"
+        "    def __init__(self, items: list[Int32] | None,\n"
+        "                 by_key: dict[str, Int32] | None,\n"
+        "                 elems: set[Int32] | None, data: bytes | None,\n"
+        "                 buf: bytearray | None,\n"
+        "                 tup: tuple[Int32, Int32] | None) -> None:\n"
+        "        self.items = items\n"
+        "        self.by_key = by_key\n"
+        "        self.elems = elems\n"
+        "        self.data = data\n"
+        "        self.buf = buf\n"
+        "        self.tup = tup\n"
+        "    def show(self) -> None:\n"
+        "        print(self.items)\n"
+        "        print(self.by_key)\n"
+        "        print(self.elems)\n"
+        "        print(self.data)\n"
+        "        print(self.buf)\n"
+        "        print(self.tup)\n"
+        "def show_bytes(b: bytes | None) -> None:\n"
+        "    print(b)\n"
+        "def main() -> None:\n"
+        "    Bag(None, None, None, b\"hi\", None, (1, 2)).show()\n"
+        "    show_bytes(None)\n"
+        "main()\n"
+    )
+
+    def test_field_sources_take_print_optional_val(self):
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        out = hpp + cpp
+        # Pointer-repr fields: field storage IS std::optional<T>, so the
+        # `_val` spelling, with the kind-keyed Formatter.
+        assert ("::tpy::print_optional_val<::tpy::ListPrinter<std::vector"
+                "<int32_t>>, std::vector<int32_t>>(this->items)") in out
+        assert ("::tpy::print_optional_val<::tpy::DictPrinter<std::string, "
+                "int32_t>, ::tpy::ordered_map<std::string, int32_t>>"
+                "(this->by_key)") in out
+        assert ("::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, "
+                "::tpy::ordered_set<int32_t>>(this->elems)") in out
+        assert ("::tpy::print_optional_val<::tpy::ByteArrayPrinter, "
+                "std::vector<uint8_t>>(this->buf)") in out
+        # Value-repr fields (bytes / value tuple) take the same wrap.
+        assert ("::tpy::print_optional_val<::tpy::BytesPrinter, "
+                "std::vector<uint8_t>>(this->data)") in out
+        assert ("::tpy::print_optional_val<::tpy::TuplePrinter<int32_t, "
+                "int32_t>, std::tuple<int32_t, int32_t>>(this->tup)") in out
+
+    def test_view_param_spells_the_view_inner(self):
+        # A borrow-form Optional[bytes] PARAM is `optional<span<const
+        # uint8_t>>`, so its explicit inner template arg is the VIEW, not
+        # the owned vector the field carries.
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert ("::tpy::print_optional_val<::tpy::BytesPrinter, "
+                "std::span<const uint8_t>>(b)") in hpp + cpp
+
+    def test_ctor_literal_args_and_value_opt_tuple_mil(self):
+        hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        thir, wit = _lower_ctx_witnessed(self._SRC)
+        assert wit.get("ctor.bytes_literal_value_opt", 0) == 1
+        assert wit.get("ctor.tuple_literal_value_opt", 0) == 1
+        out = hpp + cpp
+        assert '::tpy::bytes_literal_owned("hi", 2)' in out
+        assert "std::tuple<int32_t, int32_t>{1, 2}" in out
+        assert "tup(tup)" in out
+
+    def test_record_pointee_print_keeps_the_ctad_form(self):
+        # BOUNDARY: a record inner streams through its own operator<<, so
+        # no Formatter is spelled -- the plain CTAD call, not the templated
+        # one, on both the NAME and the FIELD source.
+        src = (
+            "from tpy import Int32\n"
+            "class Rec:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "class Holder:\n"
+            "    r: Rec | None\n"
+            "    def __init__(self, r: Rec | None):\n        self.r = r\n"
+            "    def show(self) -> None:\n        print(self.r)\n"
+            "def show_name(r: Rec | None) -> None:\n    print(r)\n"
+            "def main() -> None:\n"
+            "    Holder(None).show()\n"
+            "    show_name(None)\n"
+            "main()\n"
+        )
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "::tpy::print_optional_val(this->r)" in out
+        assert "::tpy::print_optional(r)" in out
+        assert "print_optional<" not in out

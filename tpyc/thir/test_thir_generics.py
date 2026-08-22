@@ -1601,3 +1601,71 @@ class TestGenericTupleLiteralArg:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is None
         _assert_byte_identical(src)
+
+
+class TestOwnProtoContainerArg:
+    """A CONTAINER conformer NAME into an `Own[protocol]` slot of a generic
+    callee (`indexed(nums)` at `Own[Iterable[T]]`): the monomorphized
+    `T_items&&` param consumes the container, so the last-use lvalue moves
+    (`indexed<int32_t>(std::move(nums))`). The still-live copy half is
+    unwitnessed and rejects; the sgen lambda reads the captured Own param
+    bare (Own[PROTOCOL] payloads only -- an Own[container] param flips the
+    skeleton's iterable-strategy classification and must stay AST)."""
+
+    _SRC = ("from tpy import Own, Int32\n"
+            "from typing import Iterable, Iterator\n\n"
+            "def indexed[T](items: Own[Iterable[T]])"
+            " -> Iterator[tuple[Int32, T]]:\n"
+            "    i: Int32 = 0\n"
+            "    for item in items:\n"
+            "        yield (i, item)\n"
+            "        i += 1\n\n")
+
+    def test_last_use_container_moves(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._SRC
+               + "def main() -> None:\n"
+               + "    nums: list[Int32] = [10, 20, 30]\n"
+               + "    for i, n in indexed(nums):\n"
+               + "        print(i, n)\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "indexed<int32_t>(std::move(nums))" in cpp
+
+    def test_still_live_container_copies_and_moves_temp(self):
+        # The container is read after the call: the still-live half hoists
+        # the copy temp and moves that (`auto __tmp_N = nums;` +
+        # `indexed<int32_t>(std::move(__tmp_N))`) -- the cell-D
+        # argtemp.own_proto_container arm.
+        from .testutil import (_assert_routes_byte_identical,
+                               _lower_ctx_witnessed)
+        src = (self._SRC
+               + "def main() -> None:\n"
+               + "    nums: list[Int32] = [10, 20, 30]\n"
+               + "    for i, n in indexed(nums):\n"
+               + "        print(i, n)\n"
+               + "    print(len(nums))\n"
+               + "main()\n")
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("argtemp.own_proto_container", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_own_container_sgen_param_stays_ast(self):
+        # BOUNDARY: an Own[CONTAINER] sgen param read must keep
+        # name.own_read -- admitting it flips the skeleton's
+        # iterable-strategy classification (ctx.var_types is seeded by the
+        # AST's gen_body, not the leaf path); dualgen-caught scaffolding
+        # divergence.
+        from .testutil import _thir_ctx
+        src = ("from tpy import Own, Int32\n"
+               "from typing import Iterator\n\n"
+               "def drain(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
+               "    for x in xs:\n"
+               "        yield x + len(xs)\n\n"
+               "def main() -> None:\n"
+               "    for u in drain([1, 2, 3]):\n"
+               "        print(u)\n"
+               "main()\n")
+        _ctx, fallback = _thir_ctx(src)
+        assert fallback == {"body:name.own_read": 1}, fallback
+        _assert_byte_identical(src)

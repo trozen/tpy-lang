@@ -20,12 +20,14 @@ The reseat row's const half is NOT that key: the branch pre-decl reads sema's
 `stmt_borrow_decls`, which carries its own dunder arms, so `@readonly(False)`
 discriminates there too but through a different path.
 
-Boundary units hold the shapes that must keep rejecting: an `Own[...]`-
-returning dunder (a fresh value, not an alias), a REASSIGNED local off a
-borrow dunder (POINTER, not REF_ALIAS), a `ValueType` record's dunder (a
-by-value return -- no pointer local at all), a subclass return at a
-base-annotated slot (source and pointee types differ), a ternary at an
-`Own[...]` STORAGE return, and a ternary with a FIELD-access arm (no
+The `Own[...]`-returning dunder is the inverse pole of the same
+discriminator (`is_rvalue_source`): a fresh value, never an alias, so its
+decl is the plain copy and its branch-hoisted reseat stores through the
+rebind slot. Boundary units hold the shapes that must keep rejecting: a
+REASSIGNED local off a borrow dunder (POINTER, not REF_ALIAS), a `ValueType`
+record's dunder (a by-value return -- no pointer local at all), a subclass
+return at a base-annotated slot (source and pointee types differ), a ternary
+at an `Own[...]` STORAGE return, and a ternary with a FIELD-access arm (no
 `ifexpr.record` render)."""
 
 from __future__ import annotations
@@ -163,9 +165,10 @@ class TestDunderBorrowDecl:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "const std::vector<int32_t>& ys = -(a);" in hpp + cpp
 
-    def test_own_returning_dunder_keeps_rejecting(self):
-        # BOUNDARY: an `Own[...]` return is a FRESH value, so the classifier
-        # never reaches REF_ALIAS and the decl stays the value-slot reject.
+    def test_own_returning_dunder_decls_a_plain_value(self):
+        # The INVERSE of the alias row: an `Own[...]` return is a FRESH
+        # value, so the classifier never reaches REF_ALIAS and the decl is
+        # the plain spelled copy (`_rvalue_storage_decl_op`).
         src = (
             "from tpy import Int32, Own\n"
             "class Acc:\n"
@@ -180,8 +183,10 @@ class TestDunderBorrowDecl:
             "    print(c.n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.slot_type": 1}, fell
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "Acc c = -(a);" in hpp + cpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["decl.rvalue_storage_unary"] >= 1
 
     def test_reassigned_dunder_local_keeps_rejecting(self):
         # BOUNDARY: a reassigned alias classifies POINTER (it must reseat),
@@ -407,11 +412,11 @@ class TestDunderBorrowReseat:
         thir, faces = _lower_ctx_witnessed(src)
         assert faces["reseat.dunder_borrow"] >= 2
 
-    def test_own_returning_dunder_reseat_keeps_rejecting(self):
-        # BOUNDARY: an `Own[...]` return is a fresh value -- addressing it
-        # would point at a temp. It is `is_rvalue_source`-True, so it is
-        # claimed by the rebind-slot rung ABOVE this row and never offered
-        # to it; the AST renders `c = &*(__slot_1 = ((a) + (b)));`.
+    def test_own_returning_dunder_reseats_through_the_slot(self):
+        # The INVERSE of the address-of row: an `Own[...]` return is a fresh
+        # value -- addressing it would point at a temp. It is
+        # `is_rvalue_source`-True, so the rebind-slot rung ABOVE this row
+        # claims it and stores through the slot instead.
         src = (
             "from tpy import Int32, Own\n"
             "class Acc:\n"
@@ -423,8 +428,13 @@ class TestDunderBorrowReseat:
             "    def __neg__(self) -> Own[Acc]:\n"
             "        return Acc(-self.n)\n"
         ) + _PICK.replace("    a.n = 9\n", "")
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.rebind_source": 1}, fell
+        hpp, cpp = _assert_routes_byte_identical(src)
+        out = hpp + cpp
+        assert "std::optional<Acc> __slot_1;" in out
+        assert "c = &*(__slot_1 = ((a) + (b)));" in out
+        assert "c = &*(__slot_1 = -(b));" in out
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["reseat.rvalue_op"] >= 2
 
     def test_subclass_return_at_base_slot_keeps_rejecting(self):
         # BOUNDARY: the row's type guard. A dunder returning a SUBCLASS bound

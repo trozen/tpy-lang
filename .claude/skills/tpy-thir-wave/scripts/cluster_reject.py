@@ -19,6 +19,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
+
+from _case_entry import entry_src  # noqa: E402
+
 BLOCKERS = Path("/tmp/agents/thir-wave/blockers.json")
 LINE_RE = re.compile(r"^\s+(\d+)x line (\d+): (.*)$")
 CASE_RE = re.compile(r"^=== (.*) ===$")
@@ -44,9 +49,9 @@ def main() -> None:
         m = LINE_RE.match(line)
         if not m or needle not in m.group(3):
             continue
-        src = ROOT / "tests" / "cases" / cur / "src" / "main.py"
-        text = "<no main.py>"
-        if src.exists():
+        src = entry_src(ROOT / "tests" / "cases" / cur)
+        text = "<no entry source>"
+        if src is not None:
             lines = src.read_text().splitlines()
             idx = int(m.group(2)) - 1
             if 0 <= idx < len(lines):

@@ -178,11 +178,13 @@ class TestPerStubRouting:
 
 
 class TestPerStubBoundaries:
-    def test_template_param_stub_keeps_rejecting(self):
-        # A protocol-param stub synthesizes a template header whose CALL SITE
-        # is not the plain named call the call arms admit (the
-        # overload_template_stub_cross_module shape). Declared type params are
-        # a different question -- see TestGenericStubRouting.
+    def test_template_param_stub_routes_per_stub(self):
+        # A protocol-param stub's template header is SIGNATURE (AST-printed,
+        # like declared type params -- see TestGenericStubRouting); each
+        # specialization body lowers through the ordinary arms: the
+        # isinstance fold kills the scalar branch in the template stub and
+        # the protocol-param loop carries the Own[Int32]-element for-each
+        # (the overload_template_stub_cross_module shape).
         src = (
             "from typing import Iterable, overload\n"
             "from tpy import Int32, Own\n"
@@ -197,10 +199,15 @@ class TestPerStubBoundaries:
             "    for x in xs:\n"
             "        s += x\n"
             "    return s\n"
+            "def go() -> None:\n"
+            "    nums: list[Int32] = [3, 1, 2]\n"
+            "    print(total(nums))\n"
+            "go()\n"
         )
         results = _per_stub_results(src, "total")
-        assert results and all(fn is None for fn, _ in results)
-        assert all(r == "sig.overload_set.generic_stub" for _, r in results)
+        assert len(results) == 2
+        assert all(fn is not None for fn, _ in results)
+        _assert_routes_byte_identical(src)
 
     def test_arity_bool_default_routes(self):
         # A missing param with a LIVE BOOL default injects a Literal[False]
@@ -242,11 +249,10 @@ class TestPerStubBoundaries:
         assert results[1][0] is not None
         _assert_byte_identical(src)
 
-    def test_literal_decided_compare_outside_fold_rejects(self):
-        # BOUNDARY: a compare the AST's EXPRESSION-level fold decides
-        # (`m == "z"` under Literal["r","w"] facts renders bare `false`) is
-        # an unmirrored render -- the body keeps falling back; only
-        # undecidable compares (the live-chain branches) lower plain.
+    def test_literal_decided_compare_outside_folds(self):
+        # A compare the EXPRESSION-level fold decides (`m == "z"` under
+        # Literal["r","w"] facts) renders bare `false` -- the
+        # _try_fold_literal_comparison mirror at a value sink.
         src = (
             "from typing import overload, Literal\n"
             "from tpy import Int32\n"
@@ -261,9 +267,9 @@ class TestPerStubBoundaries:
             "    return 1\n"
         )
         results = _per_stub_results(src, "gmode")
-        assert results and all(fn is None for fn, _ in results)
-        assert all("literal_fold" in (r or "") for _, r in results)
-        _assert_byte_identical(src)
+        assert results and all(fn is not None for fn, _ in results)
+        cpp = _assert_byte_identical(src)
+        assert "bool flag = false;" in cpp[1]
 
     def test_literal_incompatible_return_rejects(self):
         # BOUNDARY: in literal mode an incompatible per-stub return is DEAD
@@ -383,13 +389,11 @@ class TestPerStubBoundaries:
         assert results and all(fn is None for fn, _ in results)
         _assert_byte_identical(src)
 
-    def test_expression_position_chain_fold_rejects(self):
-        # BOUNDARY: an &&/|| chain at EXPRESSION position whose combiner
-        # decides (coverage under {r,w}) even though each leaf is
-        # undecidable -- the AST renders bare `true`
-        # (_try_fold_literal_chain); the chain fence keeps the body AST.
-        # The {x,y} stub's leaves each decide False and reject at the leaf
-        # fence instead.
+    def test_expression_position_chain_folds(self):
+        # An &&/|| chain at EXPRESSION position whose combiner decides
+        # (coverage under {r,w}) renders bare `true` -- the
+        # _try_fold_literal_chain mirror; the {x,y} stub's leaves each
+        # decide False, so its chain folds `false`.
         src = (
             "from typing import overload, Literal\n"
             "@overload\n"
@@ -400,8 +404,10 @@ class TestPerStubBoundaries:
             '    return m == "r" or m == "w"\n'
         )
         results = _per_stub_results(src, "isrw")
-        assert results and all(fn is None for fn, _ in results)
-        _assert_byte_identical(src)
+        assert results and all(fn is not None for fn, _ in results)
+        cpp = _assert_byte_identical(src)
+        assert "return true;" in cpp[1]
+        assert "return false;" in cpp[1]
 
     def test_literal_fact_param_write_rejects(self):
         # BOUNDARY: a literal-mode body that REASSIGNS the fact-carrying

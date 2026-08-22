@@ -150,10 +150,19 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # families, not a form passthrough.
         value_target = rt is not None and (
             isinstance(rt, (PtrType, AnyType)) or is_span(rt)
-            or is_slice_type(rt) or is_basic_slice_type(rt))
+            or is_slice_type(rt) or is_basic_slice_type(rt)
+            # An `Optional[Span[...]]` slot coerce produces the same VALUE
+            # result (`std::optional<span>` absorbs the as_span rvalue).
+            or (isinstance(rt, OptionalType)
+                and is_span(unwrap_readonly(rt.inner))))
+        # The optional-borrow-tuple wrap (`std::optional<B>{<borrow rhs>}`)
+        # materializes a STORAGE optional out of the borrow tuple -- form-
+        # producing like the ptr/span families.
+        opt_btuple_target = node.coercion_name == "opt_btuple_wrap"
         if node.form is not node.expr.form and not (
                 (view_target and node.form is Form.BORROW)
-                or (value_target and node.form is Form.VALUE)):
+                or (value_target and node.form is Form.VALUE)
+                or (opt_btuple_target and node.form is Form.STORAGE)):
             _fail(owner, node,
                   f"coerce form {node.form.name} != inner "
                   f"{node.expr.form.name} (non-view-target passthrough)")
@@ -192,6 +201,18 @@ def _borrow_legal_return(rt) -> bool:
         return True
     if isinstance(t, TupleType) and t.has_pointer_repr_element():
         return True
+    # A REFERENCE-element tuple return (`std::tuple<Tree&, int32_t>` -- a
+    # wrapper element with no Own marker): the slot itself is the borrow
+    # form, so a BORROW value is exactly right (ret.wrapper_ref_tuple).
+    if isinstance(t, TupleType) and t.has_ref_elements():
+        return True
+    if isinstance(t, OptionalType) and not t.uses_pointer_repr():
+        # A VIEW-inner value optional (`std::optional<std::string_view>`):
+        # the view converts into the optional implicitly, exactly as it does
+        # into the bare view slot below -- no spelled convert to miss.
+        inner = unwrap_readonly(t.inner)
+        if is_str_view_type(inner) or is_bytes_view_type(inner):
+            return True
     return is_str_view_type(t) or is_bytes_view_type(t)
 
 

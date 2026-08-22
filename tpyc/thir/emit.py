@@ -524,6 +524,12 @@ class _EmitState:
     # hoisting construct that slips past lowering's defer fails LOUD at the
     # produce site rather than emitting an undeclared `__slot_N`.
     hoist_drainable: bool = True
+    # The sgen leaf's drain: a callable routing a held-back rebind-slot decl
+    # into the live ctx's nested hoist scope, which the AST skeleton's
+    # _lambda_body_sink flushes at the lambda prologue (its own drain
+    # point). Only the rebind-slot producer consults it; the other
+    # hoist_lines producers keep the drainable assert.
+    hoist_sink: 'Callable[[str], None] | None' = None
     rebind_slots: dict[str, int] = field(default_factory=dict)
     # Plain block slots allocated by a slotless local's first INLINE_RVALUE
     # reseat (function-top only). A SEPARATE registry from `rebind_slots`:
@@ -890,6 +896,10 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")
+    if e.callable_value_unwrap:
+        # Optional[Callable] field invoke: the `.value()` unwrap between
+        # the member and the call (the AST arm's string append).
+        return f"{recv}.{e.method_cpp}.value()({', '.join(args)})"
     return (f"{recv}{'->' if arrow else '.'}"
             f"{e.method_cpp}{mtargs}({', '.join(args)})")
 
@@ -910,9 +920,10 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
     if e.loop == "array_range":
         # The array_from_index RANGE arm (_gen_array_comprehension): sema
         # proved literal bounds, so start/step inline as index arithmetic
-        # inside the per-index lambda; no `({` prelude, no reserve, and the
-        # element renders directly after the binding (this arm admits no
-        # temp-producing elements).
+        # inside the per-index lambda; no `({` prelude, no reserve. Element
+        # temps flush into the lambda before the `return` (the AST's
+        # per-iteration flush: `auto __tmp_N = i;` ahead of
+        # `Box(std::move(__tmp_N))`).
         n = state.next_loop_index()
         idx = f"{e.counter_cpp}(__i_{n})"
         if e.range_start is None:
@@ -927,7 +938,10 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
                   f"{e.array_size_cpp}>("
                   f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
         buf.write(f"{ind1}{e.counter_cpp} {cpp_var} = {var_init};\n")
-        buf.write(f"{ind1}return {_emit_expr(e.element, state)};\n")
+        cp_el = state.temps.checkpoint()
+        elem_s = _emit_expr(e.element, state)
+        state.temps.flush_since(buf, cp_el, ind1)
+        buf.write(f"{ind1}return {elem_s};\n")
         buf.write(f"{stmt_ind}}})")
         return buf.getvalue()
     if e.loop == "array_source":
@@ -1563,10 +1577,13 @@ def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
     if slot is not None:
         line = state.deferred_rebind_hoists.pop(slot, None)
         if line is not None:
-            assert state.hoist_drainable, (
-                "a deferred rebind-slot hoist reached a non-draining leaf "
-                "emitter")
-            state.hoist_lines.append(line)
+            if state.hoist_sink is not None:
+                state.hoist_sink(line)
+            else:
+                assert state.hoist_drainable, (
+                    "a deferred rebind-slot hoist reached a non-draining leaf "
+                    "emitter")
+                state.hoist_lines.append(line)
     return slot
 
 
@@ -1764,6 +1781,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             lhs_r = state.temps.create(e.lhs_temp_cpp, lhs_r)
         if e.truthy_mode is TruthinessMode.RECORD_LEN:
             truthy = f"(::tpy::__len__({lhs_r}) != 0)"
+        elif e.truthy_mode is TruthinessMode.RECORD_BOOL:
+            truthy = f"::tpy::__bool__({lhs_r})"
         elif e.truthy_mode is TruthinessMode.NONEMPTY:
             truthy = f"(!{lhs_r}.empty())"
         elif e.truthy_mode is TruthinessMode.ALWAYS_TRUE:
@@ -1810,6 +1829,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"({inner}.has_value())" if e.negate else f"(!{inner}.has_value())"
         if e.union_monostate:
             # Union binding: the monostate holds test (_gen_binop's union arm).
+            # A wrapper binding reads the variant through `.value`
+            # (VariantAccess.variant_expr's wrapper indirection).
+            if e.union_wrapper:
+                inner = f"{inner}.value"
             check = f"std::holds_alternative<std::monostate>({inner})"
             return f"(!{check})" if e.negate else f"({check})"
         op = "!=" if e.negate else "=="
@@ -1830,6 +1853,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"::tpy::__bool__({inner})"
         if e.mode is TruthinessMode.RECORD_LEN:
             return f"(::tpy::__len__({inner}) != 0)"
+        if e.mode is TruthinessMode.PTR_TRUTHY:
+            return f"::tpy::ptr_truthy({inner})"
         raise THIRCodeGenError(f"unknown truthiness mode: {e.mode}")
     if isinstance(e, THIROptViewArg):
         # `_maybe_convert_opt_view_param`'s same-TPy-type ARG split: the
@@ -2157,6 +2182,11 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     # covered, not just the rebind-slot one lowering knows about.
     saved_hoists = state.hoist_lines
     state.hoist_lines = []
+    # ... and must not leak through an active sgen hoist_sink either: a
+    # rebind slot inside THIS lambda drains at THIS prologue, not the
+    # enclosing generator lambda's.
+    saved_sink = state.hoist_sink
+    state.hoist_sink = None
     body_buf = io.StringIO()
     try:
         # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
@@ -2169,6 +2199,7 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
             out.write(f"{INDENT * (indent_level + 1)}{content}\n")
     finally:
         state.hoist_lines = saved_hoists
+        state.hoist_sink = saved_sink
         (state.finally_frames, state.return_cpp, state.loop_depth,
          state.switch_depth, state.loop_break_labels,
          state.loop_else_labels, state.rebind_slots,
@@ -3096,7 +3127,10 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     inner2 = INDENT * (indent_level + 2)
     state.match_counter += 1
     end_label = f"__match_end_{state.match_counter}"
-    out.write(f"{indent}switch ({subject}.index()) {{\n")
+    # A wrapper subject dispatches through its `.value` variant member
+    # (both the switch head and the get positions), like the unguarded tier.
+    variant = f"{subject}.value" if stmt.wrapper_value else subject
+    out.write(f"{indent}switch ({variant}.index()) {{\n")
     state.switch_depth += 1
     deref = "*" if stmt.is_ptr_variant else ""
     for arm in stmt.arms:
@@ -3108,7 +3142,7 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}case {arm.labels[0]}: {{\n")
             if alias is not None:
                 out.write(f"{inner}auto& {alias} = "
-                          f"{deref}std::get<{arm.labels[0]}>({subject});\n")
+                          f"{deref}std::get<{arm.labels[0]}>({variant});\n")
         use_scope = len(arm.entries) > 1
         bind_indent = inner2 if use_scope else inner
         for entry in arm.entries:
@@ -3143,12 +3177,12 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                                else subject)
                         _emit_match_binding(out, entry.binding, rhs,
                                             body_indent)
-                _emit_stmts(out, entry.body, lvl, state)
+                _emit_match_arm_body(out, entry, lvl, state)
                 out.write(f"{INDENT * lvl}goto {end_label};\n")
                 out.write(f"{bind_indent}}}\n")
             else:
                 lvl = indent_level + (2 if use_scope else 1)
-                _emit_stmts(out, entry.body, lvl, state)
+                _emit_match_arm_body(out, entry, lvl, state)
                 out.write(f"{INDENT * lvl}goto {end_label};\n")
             if use_scope:
                 out.write(f"{inner}}}\n")
@@ -3700,9 +3734,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.btuple_slot_locals.add(stmt.name)
             out.write(f"{indent}std::optional<{stmt.btuple_slot_cpp}> "
                       f"__slot_{slot};\n")
-            out.write(f"{indent}{stmt.cpp_type} {name} = "
-                      f"::tpy::tuple_to_pointer<{stmt.cpp_type}>"
-                      f"(__slot_{slot}.emplace({init_cpp}));\n")
+            if stmt.btuple_opt_borrow_cpp is not None:
+                # The OPTIONAL-borrow-tuple decl: the alias wraps through
+                # the optional spelling (cpp_type IS that spelling).
+                out.write(
+                    f"{indent}{stmt.cpp_type} {name} = {stmt.cpp_type}"
+                    f"{{::tpy::tuple_to_pointer<"
+                    f"{stmt.btuple_opt_borrow_cpp}>"
+                    f"(__slot_{slot}.emplace({init_cpp}))}};\n")
+            else:
+                out.write(f"{indent}{stmt.cpp_type} {name} = "
+                          f"::tpy::tuple_to_pointer<{stmt.cpp_type}>"
+                          f"(__slot_{slot}.emplace({init_cpp}));\n")
         else:
             # Render before flushing: the init may register arg temps, whose
             # decls the AST flushes between the source comment and the
@@ -3887,6 +3930,18 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             out.write(f"{indent}{name} = "
                       f"&*({stmt.val_cpp} = {value_cpp});\n")
+        elif stmt.kind is PtrSlotKind.OPT_FIELD_RVALUE:
+            # Storage-form Optional FIELD off an rvalue receiver: write the
+            # decl-site rebind slot INLINE and lift the pointer off the
+            # assignment result, so the whole optional outlives the
+            # receiver temporary.
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            slot = _use_rebind_slot(state, stmt.name)
+            assert slot is not None, (
+                "OPT_FIELD_RVALUE reseat without its decl-site rebind slot")
+            out.write(f"{indent}{name} = ::tpy::optional_to_ptr("
+                      f"{state.slot_prefix}_{slot} = {value_cpp});\n")
         elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
             # Reseat of an OPT_STORAGE_CALL-declared name: re-fill the slot
             # registered at the decl, re-lift the pointer (`__slot_1 =
@@ -4015,9 +4070,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             slot = _use_rebind_slot(state, stmt.target.name)
             assert slot is not None, "btuple emplace reseat without a slot"
             state.btuple_slot_locals.add(stmt.target.name)
-            out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                      f"::tpy::tuple_to_pointer<{stmt.btuple_borrow_cpp}>"
-                      f"(__slot_{slot}.emplace({v}));\n")
+            if stmt.btuple_opt_cpp is not None:
+                out.write(
+                    f"{indent}{escape_cpp_name(stmt.target.name)} = "
+                    f"{stmt.btuple_opt_cpp}{{::tpy::tuple_to_pointer<"
+                    f"{stmt.btuple_borrow_cpp}>"
+                    f"(__slot_{slot}.emplace({v}))}};\n")
+            else:
+                out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
+                          f"::tpy::tuple_to_pointer<{stmt.btuple_borrow_cpp}>"
+                          f"(__slot_{slot}.emplace({v}));\n")
             _witness("btuple.reseat_emplace_emit")
         elif (isinstance(stmt.target, THIRName)
                 and stmt.target.name not in state.union_slot_locals
@@ -4324,6 +4386,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 # A later rvalue write reuses this slot (the AST's
                 # rebind_slots registration at the same point).
                 state.rebind_slots[name] = state.slot_counter
+            elif bind == "unwrap_ref":
+                # Wrapper-reference element: the capture's slot is a live
+                # `X&`; unwrap_ref hands back that reference to alias.
+                out.write(f"{indent}{cpp}& {escape_cpp_name(name)} = "
+                          f"::tpy::unwrap_ref({get});\n")
+            elif bind == "ptr_variant":
+                # Own[A | B] element: the capture holds the VALUE variant,
+                # so the target lifts per element into the pointer variant.
+                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                          f"::tpy::to_ptr_variant({get});\n")
             elif bind == "move":
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"std::move({get});\n")
@@ -4448,8 +4520,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRParamCopy):
         # Mutable owned copy of a reassigned const-ref param; the signature
         # (AST-emitted) renamed the param to `__param_{name}`.
-        out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
-                  f"__param_{stmt.name};\n")
+        init = stmt.init_cpp or f"__param_{stmt.name}"
+        out.write(f"{indent}{stmt.cpp_type} {stmt.name} = {init};\n")
     elif isinstance(stmt, THIROverloadDefault):
         # Short-stub omitted impl param as a default-initialized local.
         out.write(f"{indent}{stmt.cpp_type} {stmt.name} = "
@@ -4576,8 +4648,14 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
         return f"::tpy::print_optional_val<::tpy::print_bool, {a.opt_inner_cpp}>({inner})"
     if a.print_form is PrintForm.OPT_VAL_FLOAT:
         return f"::tpy::print_optional_val<::tpy::print_float, {a.opt_inner_cpp}>({inner})"
+    if a.print_form is PrintForm.OPT_VAL_FMT:
+        return (f"::tpy::print_optional_val<{a.opt_fmt_cpp}, "
+                f"{a.opt_inner_cpp}>({inner})")
     if a.print_form is PrintForm.OPT_PTR:
         return f"::tpy::print_optional({inner})"
+    if a.print_form is PrintForm.OPT_PTR_FMT:
+        return (f"::tpy::print_optional<{a.opt_fmt_cpp}, "
+                f"{a.opt_inner_cpp}>({inner})")
     return inner
 
 
@@ -4884,7 +4962,8 @@ class SimpleGenLeafEmitter:
                  temps: 'TempSink | None' = None,
                  with_counter: 'ModuleCounter | None' = None,
                  try_counter: 'ModuleCounter | None' = None,
-                 finally_guard_counter: 'ModuleCounter | None' = None) -> None:
+                 finally_guard_counter: 'ModuleCounter | None' = None,
+                 hoist_sink: 'Callable[[str], None] | None' = None) -> None:
         self._body = body
         self._state = _EmitState(comments or _NO_COMMENTS,
                                  temps=temps or TempSink(),
@@ -4892,7 +4971,8 @@ class SimpleGenLeafEmitter:
                                  try_counter=try_counter or ModuleCounter(),
                                  finally_guard_counter=(finally_guard_counter
                                                         or ModuleCounter()),
-                                 hoist_drainable=False)
+                                 hoist_drainable=False,
+                                 hoist_sink=hoist_sink)
 
     def emit_init(self, out: TextIO, indent_level: int) -> None:
         """Emit the pre-loop init block -- the seam replacement for the

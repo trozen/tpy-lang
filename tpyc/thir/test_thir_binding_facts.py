@@ -260,19 +260,23 @@ class TestUnmirroredLocalBindings:
     """Bindings a statement arm creates whose form is NOT the declared type's
     primary repr -- the shape class behind the union-element divergence."""
 
-    def test_optional_element_loop_var_fenced(self):
+    def test_optional_element_loop_var_registers_storage_form(self):
         # The Optional twin of the union-element divergence: iterating
         # `list[A | None]` binds the STORAGE form (`std::optional<A>`, which
         # `register_loop_var_storage_form` records in
         # storage_form_optional_locals), while the declared element type reads
-        # as a pointer-repr Optional. Fence: the for-each element family.
+        # as a pointer-repr Optional. THIR mirrors the registration (const
+        # twin included), so the loop routes rather than fencing the body.
         src = (_RECORD
                + "def f(xs: list[A | None]) -> Int32:\n"
                + "    total = 0\n"
                + "    for x in xs:\n"
                + "        if x is not None:\n            total += x.v\n"
                + "    return total\n")
-        _assert_body_fenced(src, "f")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        fallback = _assert_identical(src)
+        assert not [k for k in fallback if k.startswith("body:")], fallback
 
     def test_ptr_variant_unpack_target_fenced(self):
         # `_gen_tuple_unpack` lifts a union element to the POINTER variant and

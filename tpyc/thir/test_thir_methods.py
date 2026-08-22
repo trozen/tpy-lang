@@ -3703,7 +3703,8 @@ class TestProtocolNameAtStubArg:
     def test_extend_own_elem_iterable_routes(self):
         # The Own-element Iterable slot with a PROTOCOL-TYPED arg binds
         # bare (`::tpy::list_extend(target, items)` -- the own_iter
-        # last-use rewrite never applies to a protocol binding).
+        # last-use rewrite never applies to a protocol binding; the slot
+        # passes `_protocol_arg_slot`, so the ordinary bare row admits it).
         from .testutil import (_lower_ctx_witnessed, _fn as _fn_l)
         src = (
             "from typing import Iterable\n"
@@ -3713,7 +3714,8 @@ class TestProtocolNameAtStubArg:
             "    target.extend(items)\n")
         thir, wit = _lower_ctx_witnessed(src)
         assert _fn_l(thir, "extend_from") is not None
-        assert wit.get("protoarg.own_elem_proto_name", 0) >= 1
+        assert wit.get("protoarg.bare", 0) >= 1
+        assert not wit.get("call.own_iter_arg")
 
     def test_inst_proto_name_arg_routes(self):
         # `list(items)` on the protocol param renders bare in construct<>.

@@ -62,17 +62,13 @@ from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
-                          _lower_borrow_tuple_literal, _lower_tuple_literal,
-                          _lower_generic_tuple_literal, _lower_copy_record)
-from .functions import (_check_callable_structure, _iter_thir,
-                        _needs_held_back_slot, _seed_global_scope)
+                          _lower_yield_tuple_literal, _lower_copy_record)
+from .functions import _check_callable_structure, _seed_global_scope
 from ...type_def_registry import is_dict, is_list, is_set
 from ...typesys import is_protocol_type
 from ...modules.type_resolution import is_native_iterable
 from .predicates import (
     _f1_record,
-    _generic_value_tuple_return,
-    _value_tuple_nested,
     _field_receiver_ok,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -112,6 +108,14 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
         return True
     if isinstance(u, OwnType):
         u = unwrap_readonly(u.wrapped)
+        if isinstance(u, TypeParamRef):
+            # An `Own[T]` yield slot (`Iterator[Own[T]]`, `yield copy(x)`):
+            # the skeleton's slot is the same `std::optional<T>` a bare-T
+            # yield gets (Own resolves to plain T by value) and the leaf
+            # bind stays type-neutral -- the Own-ness lives entirely in the
+            # skeleton's `std::move(__val)` move-out, shared with the
+            # Own[F1-record] family below.
+            return bool(_witness("sgen.yield_own_tparam"))
     return _f1_record(u, analyzer)
 
 
@@ -163,14 +167,6 @@ def lower_simple_generator(func: TpyFunction, analyzer, render_type,
             render_resolve=render_resolve)
     except ThirUnsupported as ex:
         return _reject(ex.reason)
-    if body is not None:
-        # A pre-declared rebind slot's declaration is held back for the
-        # enclosing body's prologue to drain. This leaf emitter has no drain
-        # point (the AST skeleton owns the lambda), so the declaration would
-        # never be written -- fall back rather than emit an undeclared slot.
-        stmts = list(body.init) + list(body.pre_yield) + list(body.post_yield)
-        if any(_needs_held_back_slot(n) for n in _iter_thir(stmts)):
-            return _reject("sgen.rebind_slot_hoist")
     return body
 
 
@@ -432,23 +428,14 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 _witness("sgen.tuple_yield_elem_lift")
             elif not isinstance(yv_src, TpyTupleLiteral):
                 raise ThirUnsupported("sgen.tuple_yield_source")
-            elif _generic_value_tuple_return(yt_bare,
-                                             lc.analyzer) is not None:
-                # A GENERIC tuple yield (`yield (i, x)` at
-                # `tuple[Int32, T]`): the spelled brace-init with
-                # per-element to_val_or_ptr wraps -- the resumable
-                # generic-tuple return's exact builder.
-                yv = _lower_generic_tuple_literal(
-                    yv_src, yt_bare, lc, body_declared)
-                _witness("sgen.tuple_yield_generic")
-            elif yt_bare.has_pointer_repr_element():
-                yv = _lower_borrow_tuple_literal(
-                    yv_src, yt_bare, lc, body_declared)
             else:
-                vt = _value_tuple_nested(yt_bare, lc.analyzer)
-                if vt is None:
-                    raise ThirUnsupported("sgen.tuple_yield_source")
-                yv = _lower_tuple_literal(yv_src, vt, lc, body_declared)
+                # The literal-vs-builder selection shared with the
+                # resumable tuple-yield ladder (borrow / generic / spelled
+                # value literal incl. Own-record storage elements).
+                yv = _lower_yield_tuple_literal(
+                    yv_src, yt_bare, lc, body_declared,
+                    generic_face="sgen.tuple_yield_generic",
+                    reject="sgen.tuple_yield_source")
             _witness("sgen.tuple_yield")
         else:
             # `yield copy(p)` -- the shared copy-construct row (`Point(p)`)

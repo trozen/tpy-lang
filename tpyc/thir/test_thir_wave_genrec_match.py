@@ -3,9 +3,8 @@
 through the `_wrapper_union_like` accessor. The whole match flow is
 duck-keyed (`needs_wrapper()` / `wrapper_info()`), so the rekey is the
 classifier only; members index via the type's own `alternatives()` in
-template ordering. Boundaries: the wrapper slice stays NAME-only and
-unguarded-only, and a PLAIN union subject keeps the bare-variant render
-(no `.value`)."""
+template ordering. Boundaries: the wrapper slice stays NAME-only,
+and a PLAIN union subject keeps the bare-variant render (no `.value`)."""
 
 from ..codegen_cpp import CodeGenOptions
 from .testutil import (
@@ -64,35 +63,49 @@ class TestGenrecMatchRoutes:
 
 
 class TestGenrecMatchBoundaries:
-    # The wrapper slice is NAME-only and unguarded-only: a guarded genrec
-    # subject and a FIELD genrec subject both fold back byte-identically.
-    SRC = (
+    """The wrapper slice is NAME-only. A GUARDED genrec subject routes since
+    the guarded-union dispatch hooks landed, so only the FIELD subject is
+    still a boundary here."""
+
+    GUARDED_SRC = (
+        _TREE
+        + "def guarded_genrec(t: Tree[int], n: Int32) -> Int32:\n"
+        + "    match t:\n"
+        + "        case int() as v if n > 0:\n            return v\n"
+        + "        case _:\n            return -1\n"
+    )
+
+    FIELD_SRC = (
         _TREE
         + "class Holder:\n"
         + "    t: 'Tree[int]'\n"
         + "    def __init__(self, t: 'Tree[int]') -> None:\n"
         + "        self.t = t\n"
-        + "def guarded_genrec(t: Tree[int], n: Int32) -> Int32:\n"
-        + "    match t:\n"
-        + "        case int() as v if n > 0:\n            return v\n"
-        + "        case _:\n            return -1\n"
         + "def field_subject(h: Holder) -> Int32:\n"
         + "    match h.t:\n"
         + "        case int() as v:\n            return v\n"
         + "        case _:\n            return 0\n"
-        + "def main() -> None:\n"
-        + "    print(guarded_genrec(5, 1))\n"
-        + "    print(field_subject(Holder(7)))\n"
-        + "main()\n"
     )
 
-    def test_guarded_and_field_subjects_stay_ast(self):
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
+    def test_guarded_genrec_subject_routes(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.GUARDED_SRC,
+                                                  comments=False)
+        # Still the wrapper `.value` hop -- the guard rides on top of the
+        # same variant dispatch, it does not pick a different tier.
+        assert "switch (__match_subject_1.value.index())" in cpp
+
+    def test_field_genrec_subject_stays_ast(self):
+        _assert_byte_identical(self.FIELD_SRC)
+        compiler, modules = _compile(self.FIELD_SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=True,
                                    comment_line_numbers=False,
                                    thir_codegen=True))
-        assert compiler._thir_fallback.get("body:stmt.match") == 2, (
-            compiler._thir_fallback)
+        # EXACT dict: the match body is the claim; the ctor MIL reject is the
+        # fixture's own unrelated residue and is spelled out so a change to
+        # either side fails here.
+        assert dict(compiler._thir_fallback) == {
+            "body:stmt.match": 1,
+            "ctor:ctor.mil_field.recursivealiasinstance.name": 1,
+        }, compiler._thir_fallback

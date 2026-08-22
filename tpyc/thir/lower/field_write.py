@@ -87,6 +87,8 @@ from .predicates import (
     _f1_record,
     _f1_tuple,
     _f1_tuple_field_write_ok,
+    _nested_storage_tuple,
+    _nested_tuple_field_literal_write_ok,
     _f2b_optional_field_write_ok,
     _field_decl_type,
     _field_receiver_ok,
@@ -96,6 +98,7 @@ from .predicates import (
     _plain_container_read,
     _resolved_bytes_value,
     _resolved_str_value,
+    _storage_tuple_write_source,
     _value_opt_owned_str,
     _value_opt_scalar,
     _value_tuple,
@@ -198,6 +201,41 @@ def _container_name_field_write_ok(
             and _witness("field_write.container_name"))
 
 
+def _container_narrowed_optptr_field_write_ok(
+        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
+        narrowed: AbstractSet[str], analyzer) -> bool:
+    """`self.items = items` where `items` is a NARROWED ptr-repr
+    `Optional[container]` PARAM: the binding is a `T*`, so the value position
+    derefs and the field copies (`this->items = (*items);`). Keyed on the
+    OCCURRENCE type being non-Optional -- an UN-narrowed source would need a
+    null check the plain copy omits. The field itself is a PLAIN container:
+    an `Optional[container]` field takes the `ptr_to_optional` lift row."""
+    v = stmt.value
+    if not (isinstance(v, TpyName) and v.name in pointers
+            and v.name in declared and v.name not in narrowed):
+        return False
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return False
+    ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(stmt.target))))
+    if not (is_dict(ft) or is_list(ft) or is_set(ft)):
+        return False
+    dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
+    if not (isinstance(dt, OptionalType) and dt.uses_pointer_repr()):
+        return False
+    # The occurrence must be PROVEN non-None (sema retypes the read to the
+    # inner); an Optional occurrence keeps rejecting.
+    ot = analyzer.get_expr_type(v)
+    otu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ot)))
+           if ot is not None else None)
+    if isinstance(otu, OptionalType) or otu is None:
+        return False
+    inner = unwrap_readonly(dt.inner)
+    return bool(((is_dict(ft) and is_dict(inner))
+                 or (is_list(ft) and is_list(inner))
+                 or (is_set(ft) and is_set(inner))))
+
+
 @dataclass(frozen=True)
 class _OptNonePlan:
     """`recv.opt = None` at an Optional FIELD: storage is `std::optional<T>`
@@ -286,6 +324,16 @@ class _ValueFieldPlan:
     bytes_ft: TpyType | None = None
 
 
+def _opt_callable_field(ftype) -> bool:
+    """An `Optional[Callable]` field slot (`std::optional<std::function>`
+    by value): the operator= absorbs the bare callable-name render the
+    plain Callable field row gets."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ftype)))
+         if ftype is not None else None)
+    return (isinstance(u, OptionalType)
+            and _callable_value(unwrap_readonly(u.inner)))
+
+
 def _classify_value(stmt: TpyAssign, lc: _LowerCtx,
                     declared: dict[str, TpyType],
                     pointers: AbstractSet[str]) -> _ValueFieldPlan | None:
@@ -304,6 +352,12 @@ def _classify_value(stmt: TpyAssign, lc: _LowerCtx,
             # (`self.callback = add_offset;` -- std::function copies the
             # closure bare). NAMES only; other sources are unwitnessed.
             or (_callable_value(ftype)
+                and isinstance(_peel_coerce(stmt.value), TpyName))
+            # ... and the Optional[Callable] FIELD flavor (`self.on_event
+            # = cb;` -- `std::optional<std::function<..>>`'s operator=
+            # absorbs the same bare name; None rides the opt-none family
+            # ahead of this chain). Witnessed at the lower row.
+            or (_opt_callable_field(ftype)
                 and isinstance(_peel_coerce(stmt.value), TpyName))):
         plan = _ValueFieldPlan(_ValueRender.PLAIN, ftype)
     elif ((_value_opt_scalar(ftype, analyzer) is not None
@@ -349,6 +403,8 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
                           value=bval, loc=loc)
     if plan.render is _ValueRender.VALUE_OPT:
         _witness("field_write.value_opt_scalar")
+    elif _opt_callable_field(plan.ftype):
+        _witness("field_write.opt_callable_name")
     return THIRAssign(
         target=_lower_field_write_target(stmt, lc, declared),
         value=_slot_literal_retype(
@@ -531,6 +587,9 @@ class _ContainerFieldPlan:
     renders the plain container field gets)."""
     container_ft: bool  # raw list/dict/set ftype -- the copy() row's guard
     ftype: TpyType
+    # A NARROWED ptr-repr Optional[container] source: the binding is a `T*`,
+    # so the value position derefs before the field copies.
+    deref_src: bool = False
 
 
 def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
@@ -539,16 +598,19 @@ def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
                         ) -> _ContainerFieldPlan | None:
     analyzer = lc.analyzer
     narrowed = lc.narrow.narrowed.keys()
+    deref_src = _container_narrowed_optptr_field_write_ok(
+        stmt, declared, pointers, narrowed, analyzer)
     if not (_container_field_write_ok(stmt, declared, analyzer)
             or _container_copy_field_write_ok(stmt, declared, pointers,
                                               analyzer)
             or _container_name_field_write_ok(stmt, declared, pointers,
-                                              narrowed, analyzer)):
+                                              narrowed, analyzer)
+            or deref_src):
         return None
     ftype = analyzer.get_expr_type(stmt.target)
     return _ContainerFieldPlan(
         container_ft=bool(is_list(ftype) or is_dict(ftype) or is_set(ftype)),
-        ftype=ftype)
+        ftype=ftype, deref_src=deref_src)
 
 
 def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
@@ -574,6 +636,14 @@ def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
         return THIRAssign(
             target=_lower_field_write_target(stmt, lc, declared),
             value=_lower_expr(stmt.value, lc, declared), loc=loc)
+    if plan.deref_src:
+        # A NARROWED ptr-repr Optional[container] source: the `T*` binding
+        # derefs and the field copies (`this->items = (*items);`).
+        _witness("field_write.container_narrowed_optptr")
+        return THIRAssign(
+            target=_lower_field_write_target(stmt, lc, declared),
+            value=replace(_lower_expr(stmt.value, lc, declared), deref=True),
+            loc=loc)
     # The name row: bare copy (`field = v;`) or `std::move(v)` at an owned
     # local's last use. The shared tail's lift/whole-Optional arms are inert
     # for container ftypes; its Optional-inner convert target serves the
@@ -624,12 +694,26 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
                      and ftype.uses_pointer_repr())
     union_field = (not isinstance(ftype, OptionalType)
                    and _eligible_ptr_union(ftype, lc.analyzer) is not None)
+    # An Own[container] param NAME (the property-setter shape the container
+    # gate names): the write IS its routed read -- `this->_items =
+    # std::move(v);` -- so the own_read fence (which guards bare reads with
+    # no arm) does not apply at this sink.
+    _ts_own_container = False
+    if isinstance(tail_src, TpyName) and tail_src.name in declared:
+        _ts_b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            declared[tail_src.name])))
+        _ts_own = unwrap_optional_own(_ts_b)
+        if _ts_own is not None:
+            _ts_in = unwrap_readonly(_ts_own.wrapped)
+            _ts_own_container = bool(is_list(_ts_in) or is_dict(_ts_in)
+                                     or is_set(_ts_in) or is_array(_ts_in))
     lowered = _lower_expr(
         tail_src, lc, declared,
         use=(_ExprUse(result=_ExprResultUse.RECEIVER)
              if ptr_src
              else _ExprUse(ptr_opt_lift=ptr_opt_field,
                            union_value_lift=union_field)),
+        allow_unrouted_name=_ts_own_container,
         # A FIELD source of the same Optional is consumed WHOLE (the
         # `std::optional<T>` member copies bare); the read must not take the
         # narrowing deref a value position gets.
@@ -677,6 +761,7 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
 class _TupleRow(Enum):
     LITERAL = auto()      # spelled value-form brace-init
     BORROW_NAME = auto()  # borrow tuple param: the `tuple_to_storage` lift
+    STORAGE_SRC = auto()  # subscript / field / storage name: bare copy
 
 
 @dataclass(frozen=True)
@@ -697,6 +782,7 @@ def _classify_tuple(stmt: TpyAssign, lc: _LowerCtx,
                     pointers: AbstractSet[str]) -> _TupleFieldPlan | None:
     analyzer = lc.analyzer
     if not (_value_tuple_field_literal_write_ok(stmt, declared, analyzer)
+            or _nested_tuple_field_literal_write_ok(stmt, declared, analyzer)
             or _f1_tuple_field_write_ok(stmt, declared,
                                         lc.storage_tuple_locals, analyzer)):
         return None
@@ -708,15 +794,45 @@ def _classify_tuple(stmt: TpyAssign, lc: _LowerCtx,
         ft_tuple = (None if vt_field is not None
                     else _f1_tuple(ftype, analyzer))
         slot_t = vt_field if vt_field is not None else ft_tuple
+        # A NESTED-storage tuple literal assigns its bare spelled
+        # brace-init (no outer wrap -- the outer has no borrow form);
+        # nested members carry their own per-level lifts.
+        nested_t = (None if slot_t is not None
+                    else _nested_storage_tuple(ftype, analyzer))
+        if slot_t is None:
+            slot_t = nested_t
         if slot_t is None:
             return None
         return _TupleFieldPlan(_TupleRow.LITERAL, ftype, slot_t,
-                               value_tuple=vt_field is not None)
+                               value_tuple=(vt_field is not None
+                                            or nested_t is not None))
+    ft = _f1_tuple(ftype, analyzer)
+    if ft is not None and _storage_tuple_write_source(
+            stmt.value, ft, lc.storage_tuple_locals, analyzer):
+        return _TupleFieldPlan(_TupleRow.STORAGE_SRC, ftype)
     return _TupleFieldPlan(_TupleRow.BORROW_NAME, ftype)
 
 
 def _lower_tuple_field(stmt: TpyAssign, plan: _TupleFieldPlan, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc) -> THIRAssign:
+    if plan.row is _TupleRow.STORAGE_SRC:
+        # A storage-form source copies bare into the field's own storage
+        # (`this->pair = ::tpy::__getitem__(items, 0);` / `= other.pair;`
+        # / `= g_pair;`) -- `needs_tuple_storage_lift` is False, no wrap.
+        v = stmt.value
+        if isinstance(v, TpyFieldAccess):
+            fvalue: THIRExpr = _lower_field_source(v, lc, declared)
+        elif isinstance(v, TpySubscript):
+            fvalue = _lower_expr(
+                v, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.STORAGE,
+                             tuple_source=True))
+        else:  # a storage-form tuple name (loop var / seeded global)
+            fvalue = _lower_expr(v, lc, declared)
+        _witness("field_write.tuple_storage_copy")
+        return THIRAssign(
+            target=_lower_field_write_target(stmt, lc, declared),
+            value=fvalue, loc=loc)
     if plan.row is _TupleRow.LITERAL:
         lit = _lower_tuple_literal(stmt.value, plan.slot_t, lc, declared)
         _witness("field_write.tuple_literal")
@@ -824,6 +940,50 @@ def _lower_opt_lift_field(stmt: TpyAssign, plan: _OptLiftPlan, lc: _LowerCtx,
 
 
 @dataclass(frozen=True)
+class _AnyFieldPlan:
+    """An `Any` FIELD write: the AST's default field assign with the value's
+    sema-inserted `into_any` coerce rendered by `_lower_into_any`'s `{0}`
+    template (`h.payload = ::tpy::make_any(n);`; a movable inner name's last
+    use moves the whole make_any value, mirroring `_maybe_move`), or an
+    already-Any NAME copied bare. Same value slice as the Any-dict setitem
+    row:
+    placeholder-transparent inners only (bare declared name / str/int
+    literal); container-literal inners stay AST."""
+    ftype: TpyType
+
+
+def _classify_any(stmt: TpyAssign, lc: _LowerCtx,
+                  declared: dict[str, TpyType],
+                  pointers: AbstractSet[str]) -> _AnyFieldPlan | None:
+    analyzer = lc.analyzer
+    ftype = analyzer.get_expr_type(stmt.target)
+    if not _statements._is_any_type(ftype):
+        return None
+    narrowed = lc.narrow.narrowed.keys()
+    if _statements._any_write_value_shape(stmt.value, declared, pointers,
+                                          narrowed, analyzer) is None:
+        return None
+    if not _field_receiver_ok(stmt.target, declared, analyzer):
+        return None
+    return _AnyFieldPlan(ftype)
+
+
+def _lower_any_field(stmt: TpyAssign, plan: _AnyFieldPlan, lc: _LowerCtx,
+                     declared: dict[str, TpyType], loc) -> THIRAssign:
+    _witness("field_write.any")
+    value = _lower_expr(stmt.value, lc, declared)
+    if _is_move_source(stmt.value, lc):
+        # The AST's `_maybe_move` peels the coerce: a movable inner name's
+        # last use moves the whole make_any value (`h.payload =
+        # std::move(::tpy::make_any(n));` -- not inert, Any owns storage).
+        value = THIRMove(result_type=plan.ftype, value=value,
+                         form=Form.STORAGE, loc=loc)
+    return THIRAssign(
+        target=_lower_field_write_target(stmt, lc, declared),
+        value=value, loc=loc)
+
+
+@dataclass(frozen=True)
 class _ResidualPlan:
     """The shapes the value family's render rows do not claim but whose
     predicates admit: a generic record's type-param `T` field (a plain
@@ -866,6 +1026,7 @@ _FAMILIES: list[tuple[Callable, Callable]] = [
     (_classify_tuple, _lower_tuple_field),
     (_classify_union, _lower_union_field),
     (_classify_opt_lift, _lower_opt_lift_field),
+    (_classify_any, _lower_any_field),
     (_classify_residual, _lower_residual_field),
 ]
 

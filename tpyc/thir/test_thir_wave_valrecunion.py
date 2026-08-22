@@ -506,10 +506,12 @@ class TestModuleQualifiedCtorArgTemp:
         assert faces.get("coerce.span_array_literal", 0) == 0
         _assert_byte_identical(src)
 
-    def test_qualified_ctor_at_mutated_ctor_slot_still_defers(self, tmp_path):
-        # The module-qualified ctor slice is const-slot-only: at a MUTATED
-        # ctor ref slot the rec ArgTemp's init would dead-end at the marker
-        # result gate, so admission rejects the shape honestly.
+    def test_qualified_ctor_at_mutated_ctor_slot_routes(self, tmp_path):
+        # This slot was fenced const-only on the claim that the rec
+        # ArgTemp's init "would dead-end at the marker result gate". The
+        # temp is a storage decl sink (`R __tmp_N = <init>;`), so the init
+        # just needed the STORAGE result use -- with it the whole
+        # `_record_rvalue_temp_arg` slice lowers at a mutated slot too.
         lib = self._setup(tmp_path)
         src = ("from pkg import sub\nfrom tpy import Int32\n"
                "class W:\n"
@@ -519,8 +521,13 @@ class TestModuleQualifiedCtorArgTemp:
                "        self.n = r.n\n"
                "def f() -> None:\n"
                "    print(W(sub.Rec(Int32(7))).n)\n")
-        thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
-        assert _fn(thir, "f") is None
+        thir, faces = _lower_ctx_witnessed(src, extra_lib_dirs=[lib])
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.ctor_mut_rvalue", 0) >= 1
+        out = self._emit(src, lib, True)
+        assert out == self._emit(src, lib, False)
+        assert ("::tpyapp::pkg::sub::Rec __tmp_1 = "
+                "::tpyapp::pkg::sub::Rec(7);" in out)
 
     def test_conformer_ctor_rvalue_at_generic_structural_slot(self):
         # A handwritten-conformer CTOR rvalue at a generic callee's

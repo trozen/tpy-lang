@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _CELL = (
@@ -61,6 +62,72 @@ class TestOwnOptRecordSlot:
         cpp = _assert_byte_identical(src)
         assert "if ((u.has_value()))" in cpp[1]
         assert "(*u).get().val" in cpp[1]
+
+
+_BOX = (
+    "from tpy import Int32, Own\n"
+    "class Box:\n"
+    "    v: Int32\n"
+    "    def __init__(self, v: Int32) -> None:\n"
+    "        self.v = v\n"
+    "    def get(self, k: Int32) -> Int32:\n"
+    "        return self.v + k\n"
+    "def find(k: Int32) -> Own[Box] | None:\n"
+    "    if k > 0:\n"
+    "        return Box(k)\n"
+    "    return None\n"
+)
+
+
+class TestStorageOptRecvMethodArgs:
+    """The narrowed storage-optional receiver's ARG gate: the shape gate
+    resolves `(*m)` to the inner record, so the arg gate must resolve the
+    same receiver -- otherwise the registry lookup misses and every
+    argument rejects silently (a zero-arg call routed, `m.get(1)` did
+    not)."""
+
+    def test_narrowed_local_recv_with_args_routes(self):
+        src = (_BOX
+               + "def use(k: Int32) -> None:\n"
+               + "    m = find(k)\n"
+               + "    if m is None:\n"
+               + "        return\n"
+               + "    print(m.get(2))\n"
+               + "def main() -> None:\n"
+               + "    use(3)\n"
+               + "main()\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "(*m).get(2)" in cpp[1]
+
+    def test_own_optional_param_recv_with_args_routes(self):
+        # The PARAM twin of the local slot -- same `(*m)` deref receiver.
+        src = (_BOX
+               + "def use(m: Own[Box] | None) -> None:\n"
+               + "    if m is None:\n"
+               + "        return\n"
+               + "    print(m.get(3))\n"
+               + "def main() -> None:\n"
+               + "    use(Box(1))\n"
+               + "main()\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "(*m).get(3)" in cpp[1]
+
+    def test_free_call_record_arg_stays_ast(self):
+        # The FREE-call arg twin is a different gate: the narrowed
+        # storage-opt NAME at a record param slot keeps rejecting
+        # (call.arg_shape.record_f1), so the receiver resolution above must
+        # not be read as a general admission of the narrowed name.
+        src = (_BOX
+               + "def take(b: Box) -> Int32:\n"
+               + "    return b.v\n"
+               + "def use(k: Int32) -> None:\n"
+               + "    m = find(k)\n"
+               + "    if m is None:\n"
+               + "        return\n"
+               + "    print(take(m))\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+        _assert_byte_identical(src)
 
 
 class TestAccessorReceiverOptFieldWrite:

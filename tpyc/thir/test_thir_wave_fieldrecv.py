@@ -275,6 +275,87 @@ class TestPtrDerefRecordRetReceiver:
         assert _fn(thir, "use") is None
 
 
+class TestPtrValueFieldReceiver:
+    """The Ptr rows: a Ptr[T]-value FIELD method receiver
+    (`self.ptr.__deref__()`), and the field read/write over a
+    Ptr-RETURNING call receiver (`h.get().value`)."""
+
+    _SRC = (
+        "from tpy import Int32, Ptr, readonly, take_ptr\n"
+        "class Data:\n"
+        "    value: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.value = v\n"
+        "class Holder:\n"
+        "    p: Ptr[Data]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.p = Ptr[Data]()\n"
+        "    def get(self) -> Ptr[Data]:\n"
+        "        return self.p\n"
+        "    @readonly\n"
+        "    def read(self) -> Int32:\n"
+        "        return self.p.__deref__().value\n"
+    )
+
+    def test_ptr_field_deref_receiver_routes(self):
+        # `self.p.__deref__().value` / `h.p.__deref__().value`: the Ptr
+        # field receiver composes the Ptr/@cpp_template family; the
+        # deref call renders `::tpy::deref_check(this->p)` / `(h.p)`.
+        src = (self._SRC
+               + "def use(h: Holder) -> Int32:\n"
+               + "    return h.p.__deref__().value\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert _fn(thir, "read") is not None
+        assert w.get("method.recv.ptr_field", 0) >= 2
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_call_recv_field_read_routes(self):
+        # `h.get().value` -> `::tpy::deref_check(h.get()).value`: the
+        # field arm wraps the Ptr call result like a Ptr NAME's.
+        src = (self._SRC
+               + "def use(h: Holder) -> Int32:\n"
+               + "    return h.get().value\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("field.ptr_value", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_call_recv_field_write_routes(self):
+        # The write twin: `h.get().value = 5` ->
+        # `::tpy::deref_check(h.get()).value = 5;`.
+        src = (self._SRC
+               + "def use(h: Holder) -> None:\n"
+               + "    h.get().value = 5\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is not None
+        _assert_routes_byte_identical(src)
+
+    def test_ptr_null_ctor_arg_stays_ast(self):
+        # BOUNDARY: `Ptr[T]()` at an ARG slot is outside the MIL's
+        # STORAGE thread -- the call-use gate keeps the body AST.
+        src = (self._SRC
+               + "def use_ptr(q: Ptr[Data]) -> Int32:\n"
+               + "    return q.__deref__().value\n"
+               + "def use(h: Holder) -> Int32:\n"
+               + "    return use_ptr(Ptr[Data]())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+    def test_nonvalue_ptr_field_receiver_stays_ast(self):
+        # BOUNDARY: a Ptr pointee outside _eligible_ptr_value (StrView)
+        # does not take the ptr-field receiver row.
+        src = ("from tpy import Int32, Ptr, StrView\n"
+               "class Cell:\n"
+               "    q: Ptr[StrView]\n"
+               "    def __init__(self, q: Ptr[StrView]) -> None:\n"
+               "        self.q = q\n"
+               "def use(c: Cell) -> None:\n"
+               "    print(c.q.__deref__())\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "use") is None
+
+
 class TestIterProtoRefUnpack:
     _SRC = (_POINT
             + "def use(ps: list[Point]) -> None:\n"

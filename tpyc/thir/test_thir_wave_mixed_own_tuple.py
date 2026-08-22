@@ -92,3 +92,102 @@ class TestMixedOwnTupleBoundaries:
         assert _fn(thir, "main") is None
         assert not faces.get("call.own_tuple_pass")
         _assert_byte_identical(src)
+
+
+class TestMixedOwnStorageSinks:
+    """Mixed-own-CALL sources at storage sinks -- every owning sink
+    materializes the borrowed half via the NON-move
+    `tuple_to_storage<S>(make_mixed(b))` (`_mixed_own_storage_source`)."""
+
+    _MK = _HDR + (
+        "def make_mixed(b: Box) -> tuple[Own[Box], Box]:\n"
+        "    return (Box(1), b)\n"
+    )
+
+    def test_storage_sinks_route_byte_identical(self):
+        src = self._MK + (
+            "def in_list(b: Box) -> Int32:\n"
+            "    xs = [make_mixed(b)]\n"
+            "    return xs[0][1].n\n"
+            "def in_dict(b: Box) -> Int32:\n"
+            "    d = {1: make_mixed(b)}\n"
+            "    return d[1][1].n\n"
+            "def via_append(b: Box) -> Int32:\n"
+            "    xs: list[tuple[Box, Box]] = []\n"
+            "    xs.append(make_mixed(b))\n"
+            "    return xs[0][1].n\n"
+            "def via_setitem(b: Box) -> Int32:\n"
+            "    d: dict[Int32, tuple[Box, Box]] = {}\n"
+            "    d[1] = make_mixed(b)\n"
+            "    return d[1][1].n\n"
+            "def main() -> None:\n"
+            "    print(in_list(Box(2)), in_dict(Box(2)))\n"
+            "    print(via_append(Box(2)), via_setitem(Box(2)))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>"
+                "(make_mixed(b)));" in cpp)
+        assert ("::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<"
+                "std::tuple<Box, Box>>(make_mixed(b)));" in cpp)
+
+    def test_mixed_call_positions_route(self):
+        # The mixed render survives in the call result and the ternary:
+        # subscript-on-call receivers spell `->`, the whole-local lift at a
+        # borrow-tuple param spells tuple_to_pointer, the ternary decl
+        # composes both arms bare.
+        src = self._MK + (
+            "def take(t: tuple[Box, Box]) -> Int32:\n"
+            "    return t[0].n + t[1].n\n"
+            "def read_direct(b: Box) -> Int32:\n"
+            "    return make_mixed(b)[1].n\n"
+            "def pass_whole(b: Box) -> Int32:\n"
+            "    p = make_mixed(b)\n"
+            "    n = take(p)\n"
+            "    p[1].n = 50\n"
+            "    return n + b.n\n"
+            "def via_ternary(b: Box, c: Box, flag: bool) -> Int32:\n"
+            "    p = make_mixed(b) if flag else make_mixed(c)\n"
+            "    return p[1].n\n"
+            "def main() -> None:\n"
+            "    print(read_direct(Box(7)))\n"
+            "    print(pass_whole(Box(7)))\n"
+            "    print(via_ternary(Box(2), Box(3), True))\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::get<1>(make_mixed(b))->n;" in cpp
+        assert ("take(::tpy::tuple_to_pointer<std::tuple<const Box*, "
+                "const Box*>>(p))" in cpp)
+        assert "auto p = ((flag) ? (make_mixed(b)) : (make_mixed(c)));" in cpp
+
+    def test_mixed_name_at_container_elem_still_defers(self):
+        # Boundary: a mixed LOCAL name has no witnessed container-element
+        # render (the sink would need the whole tuple_to_storage over the
+        # name) -- the call-shaped predicate must not capture it.
+        src = self._MK + (
+            "def name_in_list(b: Box) -> Int32:\n"
+            "    p = make_mixed(b)\n"
+            "    xs = [p]\n"
+            "    return xs[0][1].n\n"
+            "def main() -> None:\n"
+            "    print(name_in_list(Box(2)))\n"
+            "main()\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "name_in_list") is None
+        _assert_byte_identical(src)
+
+    def test_own_container_elem_mixed_call_still_defers(self):
+        # Boundary: an `Own[list]`-element mixed call stays outside the F1
+        # slice at the storage sinks too (the container-literal twin of the
+        # pass-row pins above).
+        src = _HDR + (
+            "def make_lc() -> tuple[Own[list[Int32]], Own[Box]]:\n"
+            "    return ([1, 2], Box(3))\n"
+            "def lc_in_list() -> Int32:\n"
+            "    ys = [make_lc()]\n"
+            "    return len(ys)\n"
+            "def main() -> None:\n"
+            "    print(lc_in_list())\n"
+            "main()\n")
+        thir, _faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "lc_in_list") is None
+        _assert_byte_identical(src)

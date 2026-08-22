@@ -30,8 +30,10 @@ from ...parse.nodes import (
     TpyNoneLiteral,
     TpyPassStmt,
     TpySetLiteral,
+    TpySlice,
     TpyStmt,
     TpyStrLiteral,
+    TpySubscript,
     TpyTry,
     TpyTupleLiteral,
     TupleElemCapture,
@@ -90,6 +92,7 @@ from ...codegen_cpp.forms import LocalBinding
 from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
+    view_to_owned_conv,
     is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
@@ -110,6 +113,7 @@ from ..nodes import (
     THIRFormConvert,
     THIRFunction,
     THIRFunctionLayout,
+    THIRGenExpr,
     THIRIf,
     THIRLiteral,
     THIRMilInit,
@@ -147,6 +151,8 @@ from .predicates import (
     _f1_record,
     _method_rvalue_f1_record,
     _f1_tuple,
+    _mixed_own_storage_source,
+    _nested_storage_tuple,
     _field_receiver_ok,
     _is_borrow_ptr_local,
     _is_borrow_tuple_source,
@@ -169,6 +175,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _container_lit_elem_ok,
     _builtin_container_type,
     _container_literal_shape_ok,
     _ctor_shape_ok,
@@ -202,8 +209,6 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     candidates whose per-stub specializations are the same body modulo the
     (AST-owned) signature:
 
-    - `generic_stub`: a stub has a protocol-/Fn-typed param (the synthesized
-      template header, whose call site is not the plain named call);
     - `arity`: a stub is shorter than the impl (missing-param default locals);
     - `ret_mismatch`: stub return types differ from the impl's (the return
       arm strips/validates per-stub coercions);
@@ -220,8 +225,6 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     Tags extend the dot-hierarchical drilldown convention (like
     `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
     (which is fallback.py's auto-composed form, never hand-built)."""
-    if any(_stub_has_template_param(fi) for fi in stubs):
-        return "sig.overload_set.generic_stub"
     if not allow_arity and any(len(fi.params) != len(func.params)
                                for fi in stubs):
         return "sig.overload_set.arity"
@@ -248,8 +251,14 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
 def _stub_has_template_param(fi) -> bool:
     """A stub whose PARAMS force the template-header path: a protocol- or
     Fn-typed param (bare or under readonly/Own/Optional shells) synthesizes
-    type params, and its call site is not the plain named call the call arms
-    admit -- unmirrored per-stub territory.
+    type params.
+
+    The caller only WITNESSES this (`fn.overload_template_stub`): the header
+    is signature -- AST-printed, like declared type params -- and the stub
+    body lowers against its protocol-typed params through the ordinary arms.
+    The CALL side is where the shape still rejects (checks.py's
+    `_stub_template_param`): a template stub is not the plain named call the
+    call gate admits.
 
     Declared type params are NOT part of this: `template<...>` is signature,
     written by the AST printer, and the specialization bodies lower through
@@ -377,11 +386,15 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
     return-coercion increments); every other sub-reason keeps rejecting
     with its tag. Literal-only groups take their own reduced admission
     (impl-signature emission, so the arity/narrow/ret classifiers here
-    don't apply)."""
+    don't apply).
+
+    A protocol-param (template) stub is NOT a disqualifier: the template
+    header is signature (AST-printed, like declared type params), and the
+    stub's body lowers against the stub's protocol-typed params through
+    the ordinary arms (the protocol-param loop included)."""
     stubs = analyzer.overload_groups.get(id(func)) or []
-    if any(_stub_has_template_param(fi) for fi in stubs) \
-            or _stub_has_template_param(func):
-        raise ThirUnsupported("sig.overload_set.generic_stub")
+    if any(_stub_has_template_param(fi) for fi in stubs):
+        _witness("fn.overload_template_stub")
     if overload_stubs_are_literal_only(stubs, func):
         if stub is not None:
             _admit_literal_only_stub(func, analyzer, stub)
@@ -594,11 +607,11 @@ def _param_reassign_copies(func: TpyFunction,
     order): `{to_cpp} {name} = __param_{name};`, no source comment. The AST's
     signature-side rename (`gen_params`' `__param_` branch) keys on the same
     scan.reassigned + param_needs_copy_for_reassign facts, so the renamed
-    param and the prologue stay paired. Routed: copies whose init is the
-    plain `__param_x` read (BigInt, String). Rejected: view-family params
-    (str/bytes, Optional thereof) -- their copy respells the local's FORM
-    (view param -> owned local via `_view_owned_copy_expr`), a shift the
-    name-read arms do not model. Non-value params cannot be reassigned at
+    param and the prologue stay paired. Two init shapes: the plain
+    `__param_x` read (BigInt, String), and the view-family respell
+    (str/bytes, Optional thereof) -- the copy respells the LOCAL owned
+    (`std::string(__param_p)` / the make_optional split) while body reads
+    keep their view-form renders. Non-value params cannot be reassigned at
     all (sema rejects the rebind), so no other copy shape arises."""
     scan = analyzer.function_scan_results.get(id(func))
     if scan is None or not scan.reassigned:
@@ -614,10 +627,25 @@ def _param_reassign_copies(func: TpyFunction,
             continue
         opt_inner = pt.inner if isinstance(pt, OptionalType) else None
         fam = view_family_for_type(opt_inner if opt_inner is not None else pt)
+        init_cpp = None
         if fam is not None:
-            raise ThirUnsupported("sig.param_reassign_copy")
+            # A view-family param's copy respells the LOCAL owned
+            # (`std::string p = std::string(__param_p);` / the Optional
+            # make_optional split). Body reads keep their view-form
+            # renders -- the owned local converts implicitly at every
+            # view sink, exactly as on the AST path (its read model is
+            # param-type-keyed, never respelled).
+            conv = view_to_owned_conv(fam.owned_type)
+            pref = f"__param_{escape_cpp_name(name)}"
+            if opt_inner is not None:
+                init_cpp = (f"{pref} ? std::make_optional("
+                            f"{conv}(*{pref})) : std::nullopt")
+            else:
+                init_cpp = f"{conv}({pref})"
+            _witness("fn.param_copy_viewfam")
         copies.append(THIRParamCopy(name=escape_cpp_name(name),
-                                    cpp_type=pt.to_cpp()))
+                                    cpp_type=pt.to_cpp(),
+                                    init_cpp=init_cpp))
     if copies:
         _witness("fn.param_copy")
     return tuple(copies)
@@ -868,6 +896,13 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
             # arms (bare whole-optional, narrowed `(*g)`, unproven
             # deref_optional_check).
             lc.value_opt_bindings[n] = ValueOptKind.SCALAR
+        elif _f1_tuple(params_set.get(n), analyzer) is not None:
+            # A read-only F3 tuple global is a namespace-scope STORAGE
+            # lvalue: register it with the storage-form tuple names so its
+            # reads tag STORAGE (bare copy at storage sinks, the
+            # tuple_to_pointer lift at borrow-tuple param slots) instead of
+            # the borrow default a declared ptr-repr tuple name gets.
+            lc.storage_tuple_locals.add(n)
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is
@@ -1269,6 +1304,11 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
                 and _param_type(src.name) == bare)
     if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
             and _f1_record(bare.inner, analyzer)):
+        # `None` stores the storage-form nullopt (`{std::nullopt, ..}` --
+        # the spelled literal is the STORAGE tuple, so the element is the
+        # optional's own empty value, not the borrow nullptr).
+        if isinstance(elem, TpyNoneLiteral):
+            return True
         return (isinstance(elem, TpyName)
                 and _param_type(elem.name) == bare.inner)
     return False
@@ -1507,6 +1547,19 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                 and _storage_form_tuple_return(
                     stmt.value.resolved_function_info)):
             return True
+        # A whole storage-tuple ELEMENT read stores bare too
+        # (`pair(::tpy::__getitem__(items, 0))` -- a subscript is a
+        # storage-form source, same needs_tuple_storage_lift verdict).
+        if (isinstance(stmt.value, TpySubscript)
+                and not isinstance(stmt.value.index, TpySlice)
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(stmt.value)))) == ft_tuple):
+            return True
+        # A MIXED-own-tuple call stores via the NON-move tuple_to_storage
+        # (`t(::tpy::tuple_to_storage<S>(make_mixed(b)))`).
+        if _mixed_own_storage_source(stmt.value, ft_tuple, frozenset(),
+                                     analyzer) is not None:
+            return True
         # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
         # (the body field-write arm's MIL sibling). No copy()-unwrap: a
         # `copy()` of a pointer-repr tuple takes the AST's storage-form
@@ -1529,6 +1582,20 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if isinstance(source, TpyTupleLiteral):
             return True
         return False
+    nt = _nested_storage_tuple(ftype, analyzer)
+    if nt is not None:
+        # A NESTED-storage tuple literal stores its bare spelled brace-init
+        # (`q(std::tuple<...>{1, ::tpy::tuple_to_storage<S2>(..)})`); the
+        # nested members replay the wrap decision per level through the
+        # container-literal elem recursion.
+        lit = stmt.value
+        while isinstance(lit, TpyCoerce):
+            lit = lit.expr
+        return (isinstance(lit, TpyTupleLiteral)
+                and _container_lit_elem_ok(
+                    lit, ftype, declared, analyzer, threaded=True,
+                    forced=True, allow_record=True, allow_nested=True,
+                    allow_optional=True))
     oc_inner = _mil_optional_container_inner(ftype)
     if oc_inner is not None:
         source = _unwrap_copy(stmt.value, analyzer)
@@ -1583,6 +1650,12 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                 unwrap_ref_type(unwrap_send_sync(ftype.inner)))
         if _value_opt_view(ftype, analyzer) is not None:
             return _opt_view_arg_shim(dt, ftype, analyzer)
+        if _value_tuple(unwrap_readonly(ftype.inner), analyzer) is not None:
+            # A value-TUPLE inner copies bare from the same-typed param
+            # (`tup(tup)`): borrow and storage coincide for a value tuple, so
+            # the param slot and the field spell the same
+            # `std::optional<std::tuple<...>>` and no lift renders.
+            return dt == ftype
         return False
     if _span_value(ftype):
         # A `std::span<T>` field copies bare from a same-typed span param
@@ -2219,6 +2292,15 @@ def _lower_ctor_mil_init(
         return THIRMilInit(field_cpp=field_cpp,
                            value=THIRLiteral(result_type=ftype, value=None,
                                              form=Form.VALUE, loc=loc))
+    if (_eligible_ptr_value(ftype, analyzer)
+            and isinstance(source, TpyCall) and source.call_type is not None):
+        # `Ptr[T]()` into a `Ptr[T]` cell: the MIL direct-init IS a storage
+        # sink, so thread STORAGE use past the call-use gate; the render is
+        # the position-independent typed nullptr (ctor.ptr_null).
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_expr(source, lc, declared,
+                              use=_ExprUse(result=_ExprResultUse.STORAGE)))
     if (isinstance(unwrap_readonly(ftype), NoneType)
             and isinstance(source, TpyNoneLiteral)):
         # None into the NoneType cell: the STORAGE literal spells the
@@ -2316,6 +2398,11 @@ def _lower_ctor_mil_init(
                 e = lit.elements[i]
                 slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     ft_tuple.element_types[i])))
+                if isinstance(e, TpyNoneLiteral):
+                    # `std::nullopt` in the storage-spelled inner literal.
+                    return THIRLiteral(result_type=slot, value=None,
+                                       form=Form.STORAGE,
+                                       loc=getattr(e, "loc", None))
                 src = _unwrap_copy(e, analyzer)
                 if (src is e and isinstance(e, TpyName)
                         and _is_move_source(e, lc, own_param_names)):
@@ -2359,6 +2446,32 @@ def _lower_ctor_mil_init(
                     stmt.value, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
                                  tuple_source=True, allow_temps=True)))
+        if isinstance(stmt.value, TpySubscript):
+            # The storage-tuple element read stores bare
+            # (`pair(::tpy::__getitem__(items, 0))`).
+            _witness("mil.tuple_storage_subscript")
+            return THIRMilInit(
+                field_cpp=field_cpp,
+                value=_lower_expr(
+                    stmt.value, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                 tuple_source=True)))
+        _mil_mixed = _mixed_own_storage_source(
+            stmt.value, _f1_tuple(ftype, analyzer), frozenset(), analyzer)
+        if _mil_mixed is not None:
+            # The MIXED-own-tuple call: the same NON-move materialization
+            # (`t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(
+            # make_mixed(b)))`).
+            _witness("mil.tuple_storage_mixed_call")
+            return THIRMilInit(
+                field_cpp=field_cpp,
+                value=THIRFormConvert(
+                    result_type=ftype,
+                    value=_lower_expr(
+                        _mil_mixed, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.VALUE,
+                                     btuple_slot=True)),
+                    form=Form.STORAGE, move=False, loc=loc))
         # F3: the borrow pointer-repr tuple param stores via
         # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
         # bare borrow-name source).
@@ -2379,6 +2492,16 @@ def _lower_ctor_mil_init(
             return THIRMilInit(field_cpp=field_cpp, value=value)
         _witness("mil.value_tuple_name")
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
+    nt = _nested_storage_tuple(ftype, analyzer)
+    if nt is not None and isinstance(source, TpyTupleLiteral):
+        # The nested-storage tuple literal: the bare spelled brace-init,
+        # per-level lifts inside (the shared literal render).
+        _witness("mil.nested_tuple_literal")
+        try:
+            value = _lower_tuple_literal(source, nt, lc, declared)
+        except ThirUnsupported:
+            raise ThirUnsupported(_mil_reject_detail(stmt, analyzer)) from None
+        return THIRMilInit(field_cpp=field_cpp, value=value)
     if isinstance(ftype, OptionalType):
         oc_inner = _mil_optional_container_inner(ftype)
         if isinstance(source, TpyNoneLiteral):
@@ -2413,6 +2536,10 @@ def _lower_ctor_mil_init(
             # A value-repr Optional[str/bytes] field <- a borrow
             # `optional<view>` param: the arg-split shim, the same
             # `view_to_owned_conv` render the call-arg THIROptViewArg emits.
+            # The shim names its source, so the render carries its own
+            # shape precondition rather than trusting the gate's.
+            if not isinstance(source, TpyName):
+                raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
             _witness("mil.optview_shim")
             v = THIROptViewArg(result_type=ftype, name=source.name,
                                form=Form.VALUE, loc=loc)
@@ -2595,11 +2722,12 @@ def _needs_held_back_slot(node) -> bool:
 
     Such a declaration is drained at the prologue of the body being emitted. A
     body rendered into a C++ lambda needs that drain INSIDE the lambda (the
-    enclosing prologue is outside its capture list), which the AST path supplies
-    and the leaf emitters do not -- so a body reaching one of those contexts
-    must fall back rather than emit a declaration nothing writes. Mirrors
-    `_rejects_global_slot`: every emit site calling `_declare_rebind_slot` must
-    be represented here."""
+    enclosing prologue is outside its capture list): the nested-def emitter
+    buffers and prepends, and the SGEN leaf routes into the ctx's nested
+    hoist scope (its hoist_sink); what remains guarded here is the
+    cross-scope `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
+    `_rejects_global_slot`: every emit site calling `_declare_rebind_slot`
+    must be represented here."""
     if isinstance(node, THIRPtrLocalDecl):
         return node.needs_rebind_slot
     if isinstance(node, THIRVarDecl):
@@ -2700,6 +2828,11 @@ def _rejects_global_slot(node) -> bool:
         # The F2d two-slot rvalue pointer-local allocates an init AND a rebind
         # slot; it carries no `slot_cpp`, so the tail below cannot see it.
         return node.cpp_local_representation is LocalBinding.REBIND_SLOT
+    if isinstance(node, THIRGenExpr):
+        # `slot_cpp` here is the make_generator YIELD-slot spelling
+        # (`optional<slot>`), not a `__slot_N` allocation -- _emit_genexpr
+        # calls next_slot() nowhere.
+        return False
     return bool(getattr(node, "slot_cpp", None))
 
 
@@ -2753,6 +2886,15 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             lc.global_ptr_slots.add(name)
             lc.pointers.add(name)
             lc.prescan.global_slots = lc.prescan.global_slots | {name}
+        elif _f1_tuple(gt, analyzer) is not None:
+            # A pointer-repr F3 tuple global is a namespace-scope STORAGE
+            # value (`std::tuple<std::optional<T>, ..> g;` -- tuples are
+            # value types, never pointer slots). Register it with the
+            # storage-form tuple names so the btuple-local reseat cannot
+            # mis-key it as a borrow local (which would emit the borrow
+            # literal bare, skipping the tuple_to_storage lift -- ill-formed
+            # C++); its top-level write takes the storage-global arm.
+            lc.storage_tuple_locals.add(name)
     for name, ft in (final_types or {}).items():
         # A `Final` global lives at namespace scope as a `const T` and is
         # never assignable, so it only needs to READ bare -- seeded like the

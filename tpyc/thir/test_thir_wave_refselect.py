@@ -129,9 +129,9 @@ class TestRecordSelect:
                 "(__logical_slot_1.emplace(Box(9)), &*__logical_slot_1)));"
                 in cpp[1])
 
-    def test_bool_dunder_record_stays_ast(self):
-        # A record with __bool__ takes the ::tpy::__bool__ truthy render --
-        # unwitnessed, the body must keep falling back.
+    def test_bool_dunder_record_routes(self):
+        # A record with __bool__ takes the ::tpy::__bool__ truthy render
+        # over the aliasing ternary.
         src = ("from tpy import Int32\n"
                "class B:\n"
                "    n: Int32\n"
@@ -143,8 +143,30 @@ class TestRecordSelect:
                "    c = a or b\n"
                "    print(c.n)\n"
                "def main() -> None:\n    f(B(1), B(2))\nmain()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("binop.select_bool_dunder", 0) == 1
+        cpp = _assert_byte_identical(src)
+        assert "B& c = (::tpy::__bool__(a) ? a : b);" in cpp[1]
+
+    def test_bool_dunder_rvalue_rhs_logical_slot(self):
+        # __bool__ truthy composes with the hoisted-slot rvalue RHS.
+        src = ("from tpy import Int32\n"
+               "class B:\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "    def __bool__(self) -> bool:\n"
+               "        return self.n > 0\n"
+               "def f(a: B) -> None:\n"
+               "    c = a or B(9)\n"
+               "    print(c.n)\n"
+               "def main() -> None:\n    f(B(1))\nmain()\n")
+        assert _fn(_lower_ctx(src), "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert ("B& c = (*(::tpy::__bool__(a) ? &(a) : "
+                "(__logical_slot_1.emplace(B(9)), &*__logical_slot_1)));"
+                in cpp[1])
 
     def test_call_lhs_operand_stays_ast(self):
         # A call-expression LHS is outside the Name/nested-select/literal

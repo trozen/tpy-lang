@@ -19,8 +19,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
-                       _assert_byte_identical)
+from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn, _thir_ctx,
+                       _assert_byte_identical, _assert_routes_byte_identical)
 
 
 def _body(thir, name: str) -> str:
@@ -78,13 +78,19 @@ class TestLenElementSubscript:
                 in _body(thir, "f"))
         _assert_byte_identical(src)
 
-    def test_slice_arg_stays_ast(self):
+    def test_slice_arg_routes_via_native_row(self):
         # A slice yields a fresh container RVALUE, not an element lvalue --
-        # the gate must not claim it.
+        # the element gate must not claim it. It routes through its OWN row
+        # instead, the native slice-subscript arg (`__len__(::tpy::
+        # list_slice(m, ..))`), witnessed apart from the element face.
         src = ("from tpy import Int32\n"
                "def f(m: list[list[Int32]]) -> Int32:\n"
                "    return len(m[0:2])\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.native_slice_subscript")
+        assert "subscript.container_elem" not in faces
+        _assert_routes_byte_identical(src)
 
     def test_doubly_nested_element_stays_ast(self):
         # `m[0][1]`: the receiver is itself an element subscript, which the
@@ -191,15 +197,22 @@ class TestGateBoundaries:
     An unproven-Optional RECEIVER is NOT pinned here because the shape is
     unreachable: sema rejects subscripting a nullable container before
     lowering ever sees it, so the runtime-check guard the deleted per-sink
-    bypasses skipped has no witness to assert on. The slice and doubly-nested
-    exclusions below are the ones this gate actually decides.
+    bypasses skipped has no witness to assert on. A single slice at the len
+    sink routes through the native slice-subscript arg row (its own row,
+    not this gate); the double-slice exclusion below is the reject this
+    boundary still decides.
     """
 
-    def test_slice_result_rejects_at_the_len_sink(self):
+    def test_double_slice_still_rejects_at_the_len_sink(self):
+        # The outer slice's RECEIVER is itself a slice result; the
+        # slice-shape resolver takes a one-level receiver, so the shape
+        # stays AST -- asserted by the EXACT fallback tally.
         src = ("from tpy import Int32\n"
-               "def f(m: list[list[Int32]]) -> Int32:\n"
-               "    return len(m[0:2])\n")
-        assert _fn(_lower_ctx(src), "f") is None
+               "def f(m: list[Int32]) -> Int32:\n"
+               "    return len(m[0:4][0:2])\n")
+        ctx, fallback = _thir_ctx(src)
+        assert not ctx.thir_functions
+        assert fallback == {"body:stmt.return:subscript.slice_shape": 1}
 
 
 class TestElemRowsDictSetFlavors:

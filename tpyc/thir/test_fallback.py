@@ -163,17 +163,17 @@ def test_arm_residual_noop_without_active_compiler(monkeypatch):
 
 
 _SRC = (
-    "from typing import Iterator\n"
-    "from tpy import Array, Int32\n"
+    "from tpy import Int32\n"
     "async def af() -> None:\n"
     "    pass\n"
-    "def gen() -> Iterator[tuple[Int32, Int32]]:\n"
-    "    yield (1, 2)\n"
-    "def comp(src: Array[Int32, 3]) -> Int32:\n"
-    # UNPACK comp over a generator call: the genfac comp arm takes only
-    # unpack-less value-yielding sources -- this shape stays AST
-    "    xs = [a + b for a, b in gen()]\n"
-    "    return len(xs)\n"
+    "def pair(a: Int32) -> tuple[Int32, Int32]:\n"
+    "    return (a, a + 1)\n"
+    "def comp(xs: list[Int32]) -> Int32:\n"
+    # Value-tuple element from a plain CALL: the list-comp element ladder
+    # takes tuple LITERAL / bare NAME / mixed-own CALL sources only -- this
+    # shape stays AST
+    "    ys = [pair(a) for a in xs]\n"
+    "    return len(ys)\n"
     "def ok(n: Int32) -> Int32:\n"
     "    return n + 1\n"
 )
@@ -191,12 +191,15 @@ def test_end_to_end_first_reject_reasons():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    fb = compiler._thir_fallback
-    assert fb.get("body:sig.async") == 1
-    # The comprehension local is the first-rejecting statement; the landmark
-    # scan names the frontier, not the host statement shape.
-    assert fb.get("body:expr.list_comp") == 1
-    assert "ok" in routed
+    # The comprehension is the first-rejecting construct; the landmark scan
+    # names the frontier, not the host statement shape. EXACT dict: a routed
+    # body recording nothing is part of the claim, and a get()-style probe
+    # would keep passing after a widening flips one of these shapes.
+    assert compiler._thir_fallback == {
+        "body:sig.async": 1,
+        "body:expr.list_comp": 1,
+    }
+    assert routed == ["pair", "ok"]
 
 
 def test_function_lowering_reject_falls_back_without_scope_residue():
@@ -796,10 +799,13 @@ def test_for_each_spannable_protocol_param_routes_begin_end():
     assert fn is not None
 
 
-def test_for_each_own_elem_protocol_param_still_defers():
-    # An `Own[...]`-ELEMENT protocol loop takes the consuming element render
-    # on the AST path -- must keep deferring (corpus caught the divergence on
-    # auto_move/consuming_iterable_own_param mid-wave).
+def test_for_each_own_elem_protocol_param_routes():
+    # An `Own[...]`-ELEMENT protocol loop: the same universal-loop bind
+    # (loop_var_binding peels Own) plus the consuming movable-locals seed
+    # keyed off stmt.elem_type -- routed since the cell-A widening
+    # (byte-identity pinned by test_thir_protocols'
+    # test_own_iterable_slot_routes_consuming_wrap and the flipped
+    # auto_move/consuming_iterable_own_param corpus case).
     compiler, entry, f = _fn_body(
         "from tpy import Int32, Own\n"
         "from typing import Iterable\n"
@@ -817,7 +823,7 @@ def test_for_each_own_elem_protocol_param_still_defers():
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
             fold_attempt("body")
-    assert fn is None
+    assert fn is not None
 
 
 def test_for_each_native_iterable_protocol_param_routes_begin_end():

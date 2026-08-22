@@ -2127,30 +2127,33 @@ class TestMilTailFamilies:
                "main()\n")
         _assert_routes_byte_identical(src)
 
-    def test_optional_bytearray_field_lift_defers_at_source(self):
-        # The gate admits the same lift with a `bytearray` inner (a
-        # NominalType with no type args, claimed by neither the F1-record nor
-        # the container arm), but the SOURCE lowering of the
-        # `bytearray | None` param name has no row -- so the ctor still falls
-        # back, one reject deeper. Pins where the chain actually stops.
+    def test_optional_bytearray_field_lifts(self):
+        # `bytearray` is in the WIDE Optional-pointee class, so the
+        # `bytearray | None` param binds a `T*` like any other pointee and
+        # the MIL takes the same inner-agnostic `ptr_to_optional` lift.
         src = ("class Bag:\n"
                "    buf: bytearray | None\n"
                "    def __init__(self, buf: bytearray | None) -> None:\n"
                "        self.buf = buf\n")
-        assert self._fallback(src) == {"ctor:name.optional_ptr_read": 1}
-        _assert_byte_identical(src)
+        assert self._fallback(src) == {}
+        hpp, cpp = _assert_byte_identical(src)
+        assert "buf(::tpy::ptr_to_optional(buf))" in hpp + cpp
 
-    def test_value_repr_optional_tuple_field_stays_ast(self):
-        # BOUNDARY: the lift is gated on the field's POINTER repr. A
-        # value-repr `Optional[tuple]` field from a same-typed param has no
-        # MIL arm and keeps the whole ctor on the AST path.
+    def test_value_repr_optional_tuple_field_copies_bare(self):
+        # A value-repr `Optional[value tuple]` field takes the bare
+        # same-typed copy, NOT the pointer lift: borrow and storage coincide
+        # for a value tuple, so param slot and field spell the same
+        # `std::optional<std::tuple<...>>`.
         src = ("from tpy import Int32\n"
                "class Bag:\n"
                "    tup: tuple[Int32, Int32] | None\n"
                "    def __init__(self, tup: tuple[Int32, Int32] | None) -> None:\n"
                "        self.tup = tup\n")
-        assert _lower_ctor(src, "Bag") is None
-        _assert_byte_identical(src)
+        assert _lower_ctor(src, "Bag") is not None
+        hpp, cpp = _assert_byte_identical(src)
+        out = hpp + cpp
+        assert "tup(tup)" in out
+        assert "ptr_to_optional(tup)" not in out
 
     def test_type_param_tuple_field_move_routes(self):
         # A `tuple[A, B]` of type params: no tuple classifier claims the

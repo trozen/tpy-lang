@@ -212,6 +212,40 @@ class TestSlicedOutShapes:
         assert witnesses.get("sgen.body") == 1
         assert not any("sgen." in k for k in fallback)
 
+    def test_own_tparam_yield_routes(self):
+        # An `Own[T]`-open yield slot (`Iterator[Own[T]]`, `yield copy(x)`):
+        # the skeleton's slot is the same `std::optional<T>` a bare-T yield
+        # gets and the move-out is the skeleton's -- the leaf stays
+        # type-neutral (sgen.yield_own_tparam).
+        src = ("from tpy import Int32, Comparable, Own, copy\n"
+               + "from typing import Iterator\n\n"
+               + "def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:\n"
+               + "    for x in xs:\n"
+               + "        yield copy(x)\n\n"
+               + "def main() -> None:\n"
+               + "    nums: list[Int32] = [3, 1]\n"
+               + "    print(list(each(nums)))\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.body") == 1
+        assert witnesses.get("sgen.yield_own_tparam") == 1
+        assert not any("sgen." in k for k in fallback)
+
+    def test_own_optional_tparam_yield_defers(self):
+        # BOUNDARY: `Own[T] | None` wraps the slot in Optional machinery the
+        # skeleton pairing does not mirror -- keeps the sgen.yield_type
+        # reject.
+        src = ("from tpy import Int32, Comparable, Own, copy\n"
+               + "from typing import Iterator\n\n"
+               + "def each[T: Comparable](xs: list[T])"
+               + " -> Iterator[Own[T] | None]:\n"
+               + "    for x in xs:\n"
+               + "        yield copy(x)\n\n"
+               + "def main() -> None:\n"
+               + "    nums: list[Int32] = [3, 1]\n"
+               + "    for v in each(nums):\n"
+               + "        print(v is None)\nmain()\n")
+        assert _sgen_fallback(src).get("sgen.yield_type")
+
     def test_str_yield_routes(self):
         # A str yield whose source is the OWNED param capture: the skeleton's
         # optional<std::string> slot absorbs the bare render.
@@ -601,6 +635,88 @@ class TestTupleYield:
         assert witnesses.get("sgen.tuple_yield", 0) >= 1
         assert not fallback
 
+    def test_own_tuple_literal_yield_and_unpack_route(self):
+        # An Own-record-element tuple literal at a STORAGE yield slot spells
+        # the plain value brace-init; the consuming for-head unpack copies
+        # the head mutably and moves the owned element out of the copy.
+        from .testutil import _assert_routes_byte_identical
+        src = (self._BOX.replace("from tpy import Int32, Int64",
+                                 "from tpy import Int32, Int64, Own")
+               + "def g(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:\n"
+               + "    for i in range(n):\n"
+               + "        yield (i, Box(i * 10))\n\n"
+               + "def main() -> None:\n"
+               + "    total = 0\n"
+               + "    for i, b in g(3):\n"
+               + "        total = total + i + b.val\n"
+               + "    print(total)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::tuple<int32_t, Box>{i, Box(" in _hpp + cpp
+        assert "auto __tup_1 = __for_tup_0;" in cpp
+        assert "Box b = std::move(std::get<1>(__tup_1));" in cpp
+
+    def test_nested_own_tuple_yield_cref_target_routes(self):
+        # The nested sibling: the inner own-record tuple target binds
+        # `const std::tuple<..>&` off the const head (a storage element).
+        # BigInt elements: the const-ref rung keys sema's expensive-copy
+        # is_const_ref stamp, which cheap-scalar siblings don't get.
+        from .testutil import _assert_routes_byte_identical
+        src = ("from tpy import Own\nfrom typing import Iterator\n\n"
+               + "class Box:\n"
+               + "    val: int\n"
+               + "    def __init__(self, v: int) -> None:\n"
+               + "        self.val = v\n\n"
+               + "def g(n: int) -> Iterator["
+               + "tuple[int, tuple[int, Own[Box]]]]:\n"
+               + "    for i in range(n):\n"
+               + "        yield (i, (i, Box(i * 5)))\n\n"
+               + "def main() -> None:\n"
+               + "    total = 0\n"
+               + "    for i, pair in g(3):\n"
+               + "        total = total + pair[1].val\n"
+               + "    print(total)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, default_int="BigInt")
+        assert "const auto& __tup_1 = __for_tup_0;" in cpp
+        assert ("const std::tuple<::tpy::BigInt, Box>& pair = "
+                "std::get<1>(__tup_1);") in cpp
+
+    def test_nested_own_tuple_value_copy_target_stays_ast(self):
+        # BOUNDARY: with CHEAP scalar elements sema does NOT stamp
+        # is_const_ref on the nested tuple target, and the AST binds it as
+        # a plain VALUE copy (`std::tuple<int32_t, Box> pair =
+        # std::get<1>(...);`) -- an unmirrored bind; the body stays AST.
+        src = (self._BOX.replace("from tpy import Int32, Int64",
+                                 "from tpy import Int32, Int64, Own")
+               + "def g(n: Int32) -> Iterator["
+               + "tuple[Int32, tuple[Int32, Own[Box]]]]:\n"
+               + "    for i in range(n):\n"
+               + "        yield (i, (i, Box(i * 5)))\n\n"
+               + "def main() -> None:\n"
+               + "    total = 0\n"
+               + "    for i, pair in g(3):\n"
+               + "        total = total + pair[1].val\n"
+               + "    print(total)\nmain()\n")
+        _witnesses, fallback = _assert_identical(src)
+        assert fallback == {"body:stmt.for_each:iter.call.generator": 1}, \
+            fallback
+
+    def test_discarded_own_element_still_copies_head(self):
+        # A DISCARDED owned element still makes the head a mutable copy
+        # (the AST keys the copy on the ELEMENT flags, not the targets).
+        from .testutil import _assert_routes_byte_identical
+        src = (self._BOX.replace("from tpy import Int32, Int64",
+                                 "from tpy import Int32, Int64, Own")
+               + "def g(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:\n"
+               + "    for i in range(n):\n"
+               + "        yield (i, Box(i * 10))\n\n"
+               + "def main() -> None:\n"
+               + "    total = 0\n"
+               + "    for i, _ in g(3):\n"
+               + "        total = total + i\n"
+               + "    print(total)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "auto __tup_1 = __for_tup_0;" in cpp
+
     def test_name_tuple_yield_stays_ast(self):
         # A yielded tuple NAME (a loop var) is not the literal shape --
         # falls back (byte-identical via fallback).
@@ -617,6 +733,41 @@ class TestTupleYield:
                + "    print(b.val)\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
         assert fallback, "expected the name-source tuple yield to fall back"
+
+
+class TestRebindSlotDrain:
+    """A rebind slot reserved inside the peephole lambda drains at the
+    LAMBDA prologue: the leaf emitter routes the held-back decl into the
+    ctx's nested hoist scope, which the skeleton's _lambda_body_sink
+    flushes -- the AST path's own drain point."""
+
+    _PT = (_ITER
+           + "class Point:\n"
+           + "    x: Int32\n"
+           + "    def __init__(self, x: Int32) -> None:\n"
+           + "        self.x = x\n\n")
+
+    def test_rebind_slot_in_lambda_routes(self):
+        from .testutil import _assert_routes_byte_identical
+        src = (self._PT
+               + "def g(n: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        p = Point(0)\n"
+               + "        p = Point(i)\n"
+               + "        yield p.x\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for u in g(3):\n        print(u)\nmain()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        both = _hpp + cpp
+        assert "std::optional<Point> __slot_2;" in both
+        assert "p = &*(__slot_2 = Point(i));" in both
+        # The decl lands INSIDE the lambda, before the rebind that uses it.
+        assert both.index("std::optional<Point> __slot_2;") \
+            < both.index("p = &*(__slot_2 = Point(i));")
+        assert both.index("::tpy::make_generator") < both.index(
+            "std::optional<Point> __slot_2;")
 
 
 class TestYieldCopyRecord:

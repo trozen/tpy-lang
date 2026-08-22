@@ -475,18 +475,19 @@ class TestNativePropertyContainerArg:
         assert w.get("arg.native_property_container", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_alias_decl_of_property_still_defers(self):
-        # `xs = f.items` binds a REF_ALIAS on the AST path -- the len-arg
-        # arm is native-slot-scoped and must not touch the decl sink, where
-        # a bare copy would break aliasing.
+    def test_alias_decl_of_property_routes(self):
+        # `xs = f.items` binds a REF_ALIAS on the AST path; the REF_ALIAS
+        # property row of the borrow-local binding mirrors it, so the decl
+        # routes without a bare copy (the append through xs stays visible
+        # to f.items).
         src = self._SRC + (
             "def alias_mutate(f: Foo) -> None:\n"
             "    xs = f.items\n"
             "    xs.append(9)\n"
             "    print(len(f.items))\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "alias_mutate") is None
-        _assert_byte_identical(src)
+        assert _fn(thir, "alias_mutate") is not None
+        _assert_routes_byte_identical(src)
 
 
 class TestBytesSplitIterableAndValueOptResults:

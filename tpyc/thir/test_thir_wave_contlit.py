@@ -631,13 +631,17 @@ class TestNestedTupleElement:
             "print(take([(\"a\", (\"b\", (\"c\", Node(1))))]))")
         _assert_routes_byte_identical(src)
 
-    def test_nested_name_member_still_defers(self):
-        # A nested-tuple NAME member is the borrow-intermediate frontier --
-        # the body keeps the AST path.
-        from .testutil import _fn, _lower_ctx
+    def test_nested_name_member_routes(self):
+        # A same-typed nested-tuple NAME member routes: `inner`'s fresh-ctor
+        # decl owns its members (a STORAGE binding), so the member copies
+        # BARE into the outer brace -- no wrap on either path (the
+        # borrow-intermediate fence this pin used to hold was removed by
+        # the nested-storage tuple cell, dualgen-verified).
+        from .testutil import _assert_routes_byte_identical
         src = self._SRC.replace(
             "    print(take([(\"a\", (\"b\", Node(1)))]))\n",
             "    inner = (\"b\", Node(1))\n"
             "    print(take([(\"a\", inner)]))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::tuple<std::string, std::tuple<std::string, Node>>"
+                "{\"a\", inner}" in cpp)

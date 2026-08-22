@@ -36,18 +36,20 @@ inside THIR emit -- a cell).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import fields as dc_fields, replace
 
 from ..fallback import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
 from ..faces import witness as _witness
-from ...binding_audit import publish_thir as publish_binding_facts
+from ...binding_audit import (acknowledge_binding_partial as publish_ack,
+                              publish_thir as publish_binding_facts)
 from ..nodes import (
     THIRDynIsinstanceMulti,
     THIRAssign,
     THIRCoroHandleMove,
     THIRExpr,
     THIRFieldAccess,
+    THIRFormConvert,
     THIRFrameSlotWrite,
     THIRNoOpStmt,
     THIRIfExpr,
@@ -71,15 +73,18 @@ from ...parse.nodes import (
     TpyIfExpr,
     TpyMethodCall,
     TpyName,
+    TpyNamedExpr,
     TpyNoneLiteral,
     TpyReturn,
     TpyStrLiteral,
     TpyStmt,
+    TpySubscript,
     TpyTupleLiteral,
     TpyTupleUnpack,
     TpyVarDecl,
 )
 from ...typesys import (
+    AnyType,
     ConcreteCoroType,
     IntLiteralType,
     NominalType,
@@ -115,12 +120,10 @@ from .checks import (
 from .context import _ExprResultUse, _ExprUse, _LowerCtx, ValueOptKind
 from .expressions import (
     _poly_cast_checks,
-    _lower_borrow_tuple_literal,
     _lower_call_arg,
     _lower_expr,
-    _lower_generic_tuple_literal,
     _lower_truthy,
-    _lower_tuple_literal,
+    _lower_yield_tuple_literal,
     _slot_literal_retype,
     _strip_slot_leaf_deref,
 )
@@ -145,6 +148,7 @@ from .predicates import (
     _generic_value_tuple_return,
     _narrowed_opt_field_read,
     _optional_ptr_borrow,
+    _optional_ptr_borrow_wide,
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
@@ -158,7 +162,6 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_view,
     _value_tuple,
-    _value_tuple_nested,
     _value_tuple_return,
 )
 from .statements import (
@@ -324,6 +327,12 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     # await-slot key: `Own[readonly[P]]` never takes the adapter renders.
     if (isinstance(unwrapped, OwnType)
             and is_dyn_protocol(unwrapped.wrapped)):
+        return True
+    # An `Any` param is a bare `::tpy::Any` value field (position-blind
+    # copy capture, skeleton); leaf reads gate per-shape at the Any arms
+    # (truthiness rides the shared to_bool render). Any LOCALS keep
+    # res.local_storage.
+    if isinstance(unwrapped, AnyType):
         return True
     # A pointer-repr union param's frame field is the SAME pointer-variant
     # shape as the sync param (`std::variant<A*, B*>`), so reads, isinstance
@@ -491,41 +500,109 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
     return None
 
 
-def _rebinds_narrowed(stmts, names: 'frozenset[str]') -> bool:
-    """A direct rebind of a narrowed name anywhere in a BB's leaf subtree
-    (including non-suspending compounds) un-narrows MID-BB, while the scope
-    this pass installs is entry-level for the whole BB -- so such a BB must
-    fall back. Field/subscript writes mutate THROUGH the alias and keep the
-    narrowing. The generic body walk over-matches unknown compound kinds
-    on purpose: a false positive only costs AST fallback."""
+def _rebound_names(stmts, names: 'frozenset[str]') -> 'set[str]':
+    """The subset of `names` directly rebound anywhere in a BB's leaf
+    subtree (including non-suspending compounds). Field/subscript writes
+    mutate THROUGH the alias and keep the narrowing. The generic body walk
+    over-matches unknown compound kinds on purpose: a false positive only
+    costs AST fallback."""
+    out: set[str] = set()
     for s in stmts:
         if isinstance(s, TpyVarDecl):
             if s.name in names:
-                return True
+                out.add(s.name)
         elif isinstance(s, (TpyAssign, TpyAugAssign)):
             if isinstance(s.target, TpyName) and s.target.name in names:
-                return True
+                out.add(s.target.name)
         elif isinstance(s, TpyTupleUnpack):
-            if any(t in names for t in s.targets if t is not None):
-                return True
+            out |= {t for t in s.targets if t is not None and t in names}
         elif isinstance(s, TpyDelVar):
-            if any(n in names for n in s.names):
-                return True
+            out |= {n for n in s.names if n in names}
         elif isinstance(s, (rcfg.WithEnter, rcfg.AsyncWithSetup)):
             if s.item.target in names:
-                return True
+                out.add(s.item.target)
         for attr in ("then_body", "else_body", "body", "orelse",
                      "finally_body"):
             b = getattr(s, attr, None)
-            if b and _rebinds_narrowed(b, names):
-                return True
+            if b:
+                out |= _rebound_names(b, names)
         for h in getattr(s, "handlers", None) or ():
-            if h.body and _rebinds_narrowed(h.body, names):
-                return True
+            if h.body:
+                out |= _rebound_names(h.body, names)
         for c in getattr(s, "cases", None) or ():
-            if c.body and _rebinds_narrowed(c.body, names):
-                return True
+            if c.body:
+                out |= _rebound_names(c.body, names)
+    return out
+
+
+def _rebinds_narrowed(stmts, names: 'frozenset[str]') -> bool:
+    return bool(_rebound_names(stmts, names))
+
+
+def _expr_reads_name(e, names: 'frozenset[str]') -> bool:
+    """Any bare NAME read of `names` anywhere under `e`."""
+    if isinstance(e, TpyName):
+        return e.name in names
+    for f in dc_fields(e):
+        v = getattr(e, f.name)
+        if isinstance(v, TpyExpr) and _expr_reads_name(v, names):
+            return True
+        if isinstance(v, list):
+            for item in v:
+                if isinstance(item, TpyExpr) and _expr_reads_name(item, names):
+                    return True
     return False
+
+
+def _narrow_kill_plan(stmts, names: 'frozenset[str]'
+                      ) -> 'dict[int, frozenset[str]] | None':
+    """Per-statement narrow-KILL map for a BB whose leaves rebind narrowed
+    names: {id(stmt): killed} for TOP-LEVEL simple rebinds (VarDecl / Assign
+    / TupleUnpack) whose own value does not READ the killed name -- the
+    write targets the raw variant, so the leaves past the kill read the
+    bare binding, exactly where the AST drops the narrowing. None = an
+    unmirrorable shape (a rebind nested in a compound, a with/aug target,
+    a value reading the killed name, a del) -- the BB falls back whole.
+    {} = no rebind at all."""
+    plan: dict[int, frozenset[str]] = {}
+    for s in stmts:
+        killed: set[str] = set()
+        value = None
+        if isinstance(s, TpyVarDecl):
+            if s.name in names:
+                killed.add(s.name)
+                value = s.init
+        elif isinstance(s, TpyAugAssign):
+            if isinstance(s.target, TpyName) and s.target.name in names:
+                return None  # reads its own target
+        elif isinstance(s, TpyAssign):
+            if isinstance(s.target, TpyName) and s.target.name in names:
+                killed.add(s.target.name)
+                value = s.value
+        elif isinstance(s, TpyTupleUnpack):
+            killed |= {t for t in s.targets if t is not None and t in names}
+            value = s.value
+        elif isinstance(s, TpyDelVar):
+            if any(n in names for n in s.names):
+                return None
+        elif isinstance(s, (rcfg.WithEnter, rcfg.AsyncWithSetup)):
+            if s.item.target in names:
+                return None
+        if _rebinds_narrowed(
+                [b for attr in ("then_body", "else_body", "body", "orelse",
+                                "finally_body")
+                 for b in (getattr(s, attr, None) or ())]
+                + [st for h in (getattr(s, "handlers", None) or ())
+                   for st in (h.body or ())]
+                + [st for c in (getattr(s, "cases", None) or ())
+                   for st in (c.body or ())], names):
+            return None
+        if killed:
+            if value is not None and _expr_reads_name(value,
+                                                      frozenset(killed)):
+                return None
+            plan[id(s)] = frozenset(killed)
+    return plan
 
 
 def _resume_narrow_envs(cfg: 'rcfg.CFG',
@@ -575,6 +652,15 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
             continue
         bb = cfg.blocks[bb_id]
         t = bb.terminator
+        # A rebind of a narrowed name anywhere in this BB kills its fact on
+        # every OUT edge (the AST stops re-establishing it too -- the
+        # dead-alias case entries carry only sema's stamped facts, which
+        # already dropped the killed name). The BB's own entry env keeps the
+        # fact for the leaves BEFORE the rebind; _lower_bb pops it at the
+        # rebinding leaf.
+        killed = _rebound_names(bb.stmts, frozenset(env))
+        if killed:
+            env = {v: a for v, a in env.items() if v not in killed}
 
         def _arm(target: int, outer: dict) -> None:
             if target in case_entry_ids:
@@ -746,6 +832,16 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
         elif isinstance(lowered_it, THIRName) and lowered_it.deref:
             _witness("res.for_narrowed_opt_src")
             lowered_it = replace(lowered_it, deref=False)
+        elif (isinstance(lowered_it, THIRName)
+                and isinstance(it, TpyName) and it.name in lc.pointers
+                and _optional_ptr_borrow_wide(declared.get(it.name),
+                                              analyzer) is not None):
+            # A narrowed PTR-repr container local (`P* h` -- the OPT_PTR
+            # container flavor): no skeleton unwrap exists for the pointer
+            # form, so the LEAF carries the deref (`((*h)).begin()`); the
+            # ITERABLE name row lowers it bare, so re-add it here.
+            _witness("res.for_narrowed_opt_ptr_src")
+            lowered_it = replace(lowered_it, deref=True)
         else:
             raise ThirUnsupported("res.for_narrowed_optional")
     region_exprs[id(it)] = lowered_it
@@ -1093,6 +1189,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # -- the skeleton's pointer_form_unpack_targets seeding.
         unpack_ptr_targets.update(f_info.pointer_form_unpack_targets)
     frame_slots: set[str] = set()
+    mixed_tuple_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
     erased_handle_locals: set[str] = set()
     borrow_tuple_locals: set[str] = set()
@@ -1188,6 +1285,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 alias_ptr_locals.add(lname)
                 continue
             return _reject("res.local_storage")
+        if kind is _K.MIXED_TUPLE_SLOT:
+            # The owning slot of a MIXED tuple (`frame_slot<std::tuple<Box,
+            # Box*>>`): writes emplace like any frame_slot; element reads
+            # split per element off the deref'd slot -- `.` for the owned
+            # element, `->` for the borrowed pointer -- keyed on the
+            # ELEMENT types exactly like the sync mixed alias's chooser
+            # (`_subscript_yields_borrow_ptr`). The AST's storage_form /
+            # own_borrow memberships feed only ITS chooser; THIR reads the
+            # element forms directly, so neither is mirrored -- the partial
+            # is acknowledged for the binding-fact join.
+            frame_slots.add(lname)
+            mixed_tuple_slots.add(lname)
+            continue
         if kind is _K.SOURCE_FORM_SLOT:
             # The field's payload comes from the iteration source, so the
             # slot holds whichever form the trait picked; reads go through
@@ -1200,9 +1310,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # are bare `=` from P*-shaped sources -- the local twin of the
             # Optional-ptr param admission. Kept OUT of ptr_frame_locals:
             # the loop-var-only arms (advance admission, value-yield deref,
-            # record-yield names) must not see it. The admission predicate
-            # is narrower than the placement (container inners reject).
-            if _optional_ptr_borrow(ltype, analyzer) is not None:
+            # record-yield names) must not see it. CONTAINER inners join
+            # the F1 records at this LOCAL arm only (`const std::vector<
+            # int32_t>* h;` -- the optional_to_ptr bind + `(*h)` for-head
+            # deref); `_optional_ptr_borrow` itself stays narrow -- many
+            # binding-level consumers key F1 renders on it.
+            _opt_b = _optional_ptr_borrow(ltype, analyzer)
+            if _opt_b is None:
+                _ow = _optional_ptr_borrow_wide(ltype, analyzer)
+                if _ow is not None:
+                    _oi = unwrap_readonly(_ow.inner)
+                    if is_list(_oi) or is_dict(_oi) or is_set(_oi):
+                        _opt_b = _ow
+            if _opt_b is not None:
                 opt_ptr_locals.add(lname)
                 continue
             return _reject("res.local_storage")
@@ -1446,6 +1566,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
     lc.opt_tuple_holders = frozenset(opt_tuple_holders)
     lc.opt_ptr_frame_locals = frozenset(opt_ptr_locals)
+    for _mts in mixed_tuple_slots:
+        publish_ack(lc, "storage_tuple_locals", _mts)
     lc.oneshot_lift_locals = frozenset(rstate.one_shot_lift_names)
     # value_tuple_locals stay IN plain_frame_fields deliberately: they are
     # bare member fields whose reassign is the same plain `name = expr;`
@@ -1694,6 +1816,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # The driver's per-BB restore record, live while its _lower_bb runs;
     # _apply_leaf_post_if records the declared-types it overrides into it.
     postif_saved: 'list[dict[str, TpyType | None] | None]' = [None]
+    # Per-BB narrow-KILL map ({id(stmt): killed names}) installed by the BB
+    # loop; _lower_bb pops the alias + restores the declared union at the
+    # rebinding leaf (the AST un-narrows at the same point).
+    narrow_kill: 'list[dict[int, frozenset[str]] | None]' = [None]
 
     def _flat_narrowing_assert(stmt: TpyStmt) -> bool:
         """A top-level narrowing (or re-assert bump) `assert isinstance`:
@@ -1742,6 +1868,24 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     def _lower_bb(bb: 'rcfg.BB') -> None:
         for stmt in bb.stmts:
+            _nk = narrow_kill[0]
+            _kills = _nk.get(id(stmt)) if _nk else None
+            if _kills:
+                # Statement-ordered narrow kill: the rebind writes the raw
+                # variant, so this and every later leaf in the BB reads the
+                # bare union binding. The case-entry re-establish alias the
+                # skeleton emitted stays (dead on both paths).
+                saved = postif_saved[0]
+                for _kv in _kills:
+                    lc.narrow.narrowed.pop(_kv, None)
+                    lc.narrow.subject_union.pop(_kv, None)
+                    if saved is not None and _kv in saved:
+                        _kt0 = saved[_kv]
+                        if _kt0 is None:
+                            declared.pop(_kv, None)
+                        else:
+                            declared[_kv] = _kt0
+                _witness("res.narrow_kill")
             if isinstance(stmt, (rcfg.WithEnter, rcfg.AsyncWithSetup)):
                 # Sync + async with: only the manager expression renders; the
                 # bind wrap / __enter__ / __aenter__ yields are skeleton.
@@ -1947,36 +2091,41 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     unwrap_ref_type(unwrap_send_sync(yt)), ReadonlyType)
                 yv_src = ys.value
                 if isinstance(yv_src, TpyTupleLiteral):
-                    if yt_bare.has_pointer_repr_element():
-                        yield_values[id(ys)] = _lower_borrow_tuple_literal(
-                            yv_src, yt_bare, lc, declared,
-                            target_readonly=target_ro)
-                    else:
-                        # A GENERIC tuple literal (>=1 TypeParamRef element)
-                        # renders the spelled `val_or_ptr_t<T>` brace-init
-                        # with `to_val_or_ptr` element wraps -- the return
-                        # arm's generic builder at the yield slot.
-                        gt = _generic_value_tuple_return(yt_bare, analyzer)
-                        if gt is not None:
-                            yield_values[id(ys)] = \
-                                _lower_generic_tuple_literal(
-                                    yv_src, gt, lc, declared)
-                            _witness("res.btuple_yield_generic")
-                        else:
-                            # The VALUE-tuple path must pass the same nested
-                            # value-tuple predicate its decl/return callers
-                            # gate on.
-                            vt = _value_tuple_nested(yt_bare, analyzer)
-                            if vt is None:
-                                raise ThirUnsupported(
-                                    "res.btuple_yield_source")
-                            yield_values[id(ys)] = _lower_tuple_literal(
-                                yv_src, vt, lc, declared)
+                    # The literal-vs-builder selection shared with the sgen
+                    # tuple-yield ladder (borrow / generic / spelled value
+                    # literal incl. Own-record storage elements).
+                    yield_values[id(ys)] = _lower_yield_tuple_literal(
+                        yv_src, yt_bare, lc, declared,
+                        generic_face="res.btuple_yield_generic",
+                        reject="res.btuple_yield_source",
+                        target_readonly=target_ro)
                 elif (isinstance(yv_src, TpyName)
                         and (yv_src.name in borrow_tuple_locals
                              or _bare_yield_tuple_name_ok(
                                  yv_src.name, lc, declared))):
                     yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                elif (isinstance(yv_src, TpySubscript)
+                        and yt_bare.has_pointer_repr_element()
+                        and isinstance(yv_src.obj, TpyName)
+                        and yv_src.obj.name in declared
+                        and is_list(_sub_ct := unwrap_readonly(
+                            unwrap_ref_type(unwrap_send_sync(
+                                declared[yv_src.obj.name]))))
+                        and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                            _sub_ct.type_args[0]))) == yt_bare):
+                    # A container-ELEMENT source (`yield items[0]`): the
+                    # storage element lifts to the slot's borrow form --
+                    # `return tuple_to_pointer<std::tuple<int32_t, Box*>>(
+                    # ::tpy::__getitem__((*items), 0));` -- the sgen
+                    # elem-lift arm's resumable twin (the frame-slot deref
+                    # rides the name read).
+                    yield_values[id(ys)] = THIRFormConvert(
+                        result_type=yt_bare,
+                        value=_lower_expr(yv_src, lc, declared,
+                                          subscript_prechecked=True),
+                        form=Form.BORROW, move=False,
+                        loc=getattr(yv_src, "loc", None))
+                    _witness("res.btuple_yield_elem_lift")
                 else:
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
@@ -2003,6 +2152,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         form=Form.BORROW,
                         loc=getattr(yv_src, "loc", None))
                     _witness("res.yield_container_ternary")
+                    return
+                if isinstance(yv_src, TpyNamedExpr):
+                    # A walrus at the container yield slot delegates to the
+                    # frame-walrus dispatch (`return (x = &((*buf)), *x);`)
+                    # -- the comma tail hands out the alias's deref lvalue,
+                    # and un-landed walrus legs reject inside the dispatch.
+                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    _witness("res.yield_container_walrus")
                     return
                 if not (isinstance(yv_src, TpyName)
                         and yv_src.name in lc.frame_slots):
@@ -2034,6 +2191,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                     _witness("res.yield_record_field")
+                    return
+                if (isinstance(yv_src, TpyCall)
+                        and isinstance(unwrap_readonly(unwrap_ref_type(
+                            unwrap_send_sync(yt))), OwnType)
+                        and _ctor_shape_ok(yv_src, analyzer)):
+                    # A CTOR call at an OWN record yield slot (`yield
+                    # Node(i)` at `Iterator[Own[Node]]`): the storage ctor
+                    # render lands bare (`return Node(i);`). OWN slots only
+                    # -- sema forbids a borrow-record ctor yield.
+                    yield_values[id(ys)] = _lower_expr(
+                        yv_src, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE))
+                    _witness("res.yield_own_ctor")
                     return
                 if not (isinstance(yv_src, TpyName)
                         and (yv_src.name in lc.frame_slots
@@ -2158,11 +2328,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         for v, f in bb.entry_narrowings.items():
             if v not in env or env[v][0] is not f:
                 raise ThirUnsupported("res.narrowed_resume")
-        saved_narrow = lc.narrow
+        # Restore by VALUE snapshot: an arm-scoped install inside this BB
+        # (branch_scope restores by REPLACING lc.narrow with a clean copy)
+        # leaves the pre-BB object itself mutated, so an identity restore
+        # would carry the last arm's alias into every later BB.
+        saved_narrow = lc.narrow.snapshot()
         saved_decl: 'dict[str, TpyType | None]' = {}
         if env:
-            if _rebinds_narrowed(bb.stmts, frozenset(env)):
+            _kill_plan = _narrow_kill_plan(bb.stmts, frozenset(env))
+            if _kill_plan is None:
                 raise ThirUnsupported("res.narrowed_resume")
+            narrow_kill[0] = _kill_plan or None
             # Narrowed-BB scope: this BB's leaves lower with narrowed reads
             # renamed to the extraction alias live at its emit position and
             # retyped to the fact (the env fact, not the stamped one -- an
@@ -2189,6 +2365,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             _lower_bb(bb)
         finally:
             postif_saved[0] = None
+            narrow_kill[0] = None
             lc.narrow = saved_narrow
             for v, t0 in saved_decl.items():
                 if t0 is None:
