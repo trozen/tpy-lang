@@ -181,6 +181,76 @@ class TestContainerSubscriptRead:
             + "    return d[k]\n")
         assert _fn(thir_d, "g") is not None
 
+    def test_enum_dict_key_routes(self):
+        # The enum KEY twin of the enum-element row above: `dict[Color, V]` /
+        # `set[Color]` key-position renders are key-type-neutral (the member
+        # spelling `Color::Red` from the shared enum_cpp_name, a variable
+        # bare), so literals, subscript reads/writes, del and key iteration
+        # all route.
+        src = (self._ENUM + _PRELUDE
+               + "def read(m: dict[Color, Int32], c: Color) -> Int32:\n"
+               + "    return m[c]\n"
+               + "def write(m: dict[Color, Int32], c: Color) -> None:\n"
+               + "    m[c] = 1\n"
+               + "    del m[c]\n"
+               + "def keys(m: dict[Color, Int32]) -> Int32:\n"
+               + "    t = 0\n"
+               + "    for k in m:\n        t += m[k]\n"
+               + "    return t\n"
+               + "def main():\n"
+               + "    d = {Color.Red: 1, Color.Blue: 2}\n"
+               + "    print(read(d, Color.Red) + keys(d))\n"
+               + "    write(d, Color.Green)\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+        thir = _lower_ctx(src)
+        sub = _fn(thir, "read").body[0].value
+        assert isinstance(sub, THIRSubscript) and sub.form is Form.VALUE
+        assert isinstance(sub.index, THIRName) and sub.index.name == "c"
+
+    def test_enum_set_method_receiver_routes(self):
+        # `set[Color]` as a METHOD-CALL receiver: the enum arg renders bare at
+        # every method arg/result position (`out.insert(c)`), the same slice
+        # the list/dict-value enum element already rides.
+        src = (self._ENUM + _PRELUDE
+               + "def build(cs: list[Color]) -> Color:\n"
+               + "    out: set[Color] = set()\n"
+               + "    for c in cs:\n        out.add(c)\n"
+               + "    out.discard(Color.Blue)\n"
+               + "    out.remove(Color.Red)\n"
+               + "    v = out.pop()\n"
+               + "    out.clear()\n"
+               + "    return v\n"
+               # the list arg goes through a local: a container LITERAL at a
+               # call arg is a separate un-lowered shape (call.arg_shape.container)
+               + "def main():\n"
+               + "    cs = [Color.Red, Color.Green]\n"
+               + "    print(build(cs).name)\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+        cpp = _module_cpp(src, thir=True)
+        assert "out.insert(c);" in cpp
+        assert "::tpy::set_remove(out, Color::Red);" in cpp
+
+    def test_enum_keyed_dict_comprehension_still_defers(self):
+        # BOUNDARY: the dict-COMPREHENSION key rides its own narrow slice
+        # (`_comp_slot_ok`), not the widened `_dict_key_shape_ok`. An enum key
+        # there still rejects the body -- a reject-unit, so byte-identity IS
+        # the claim.
+        src = (self._ENUM + _PRELUDE
+               + "def f(cs: list[Color]) -> Int32:\n"
+               + "    d = {c: 1 for c in cs}\n"
+               + "    return len(d)\n"
+               + "def main():\n    print(f([Color.Red]))\nmain()\n")
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=True,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        assert compiler._thir_fallback == {"body:expr.dict_comp": 1}
+
     def test_value_opt_scalar_element_read_routes(self):
         # A value-repr Optional-scalar element read into a value-opt decl slot
         # (`y: Int32 | None = xs[0]`) routes byte-identically via the
@@ -5307,9 +5377,10 @@ class TestNarrowedOptDictWrite:
         assert _fn(thir, "f") is None
         _assert_byte_identical(src)
 
-    def test_narrowed_opt_list_local_stays_ast(self):
-        # A LOCAL (not a param) is not in the pointer BINDING set, so the
-        # narrowed-inner leg must not fire; the decl arm rejects the body.
+    def test_narrowed_opt_list_local_routes(self):
+        # A slot-hoisted LOCAL is a pointer BINDING just like a param, so the
+        # narrowed-inner leg keys on it the same way and the deref render is
+        # the same `(*lst)`.
         src = ("from tpy import Int32\n"
                "def f() -> None:\n"
                "    lst: list[Int32] | None = [1, 2, 3]\n"
@@ -5319,9 +5390,12 @@ class TestNarrowedOptDictWrite:
                "def main() -> None:\n"
                "    f()\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) == 1
+        assert faces.get("decl.opt_slot_container_literal", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<int32_t>* lst = &__slot_1;" in cpp
+        assert "::tpy::__getitem__((*lst), 0)" in cpp
 
 
 class TestElemFieldChainSetitem:

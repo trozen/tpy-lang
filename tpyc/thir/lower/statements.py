@@ -299,6 +299,7 @@ from .predicates import (
     _single_member_of_family,
     _f1_tuple,
     _renders_own_borrow_tuple,
+    _mixed_own_btuple_call,
     _nested_storage_tuple,
     _optional_borrow_tuple,
     _own_stripped_tuple_eq,
@@ -451,6 +452,7 @@ from .checks import (
     _covariant_record_upcast_ok,
     _print_arg_form,
     _print_arg_ok,
+    _print_tuple_opt_ternary,
     _wrap_print_form,
     _opt_strview_to_str_own_elem_arg,
     _print_optptr_form,
@@ -2589,6 +2591,8 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
                           lc: '_LowerCtx', witness_tag: str,
                           opt_storage: 'AbstractSet[str]' = frozenset(),
                           borrow_tuple: 'AbstractSet[str]' = frozenset(),
+                          branch_borrow_tuple: 'AbstractSet[str]' = (
+                              frozenset()),
                           pointer: 'AbstractSet[str]' = frozenset(),
                           const_pointer: 'AbstractSet[str]' = frozenset(),
                           ptr_null: 'AbstractSet[str]' = frozenset()
@@ -2605,9 +2609,11 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
     of the value render; names in `borrow_tuple` (for-each hoisted ptr-repr
     tuple loop vars) predecl the borrow form (`std::tuple<..., T*> name;`),
     registered into `declared` only -- reads key on the declared TupleType
-    like the if-cascade's borrow-tuple arm; names in `pointer` (with-family
-    borrow-only hoists -- hoisted with-as targets) predecl the pointer
-    local (`T* name;`), mirroring the if cascade's non-slot pointer row."""
+    like the if-cascade's borrow-tuple arm, while `branch_borrow_tuple` is
+    the branch-BOUND sibling that also carries the mixed-own and const
+    registrations; names in `pointer` (with-family borrow-only hoists --
+    hoisted with-as targets) predecl the pointer local (`T* name;`),
+    mirroring the if cascade's non-slot pointer row."""
     hoist_decls: list[tuple[str, str]] = []
     for name, raw in hoists.items():
         if name in declared:
@@ -2623,6 +2629,13 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             declared[name] = vtype
             hoist_decls.append((name, vtype.to_cpp_return()))
             _witness("foreach.hoist_borrow_tuple")
+            continue
+        if name in branch_borrow_tuple:
+            vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
+            hoist_decls.append(_borrow_tuple_hoist_entry(
+                name, vtype, declared, lc, "try.hoist_mixed_own_tuple",
+                None))
+            _witness("try.hoist_borrow_tuple")
             continue
         if name in pointer:
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
@@ -2878,6 +2891,47 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
                     for s in srcs))
 
 
+def _borrow_tuple_hoist_entry(name: str, var_type: 'TupleType',
+                              declared: dict[str, TpyType],
+                              lc: '_LowerCtx', mixed_witness: str,
+                              hoist_slots: 'list[tuple[str, str]] | None'
+                              ) -> tuple[str, str]:
+    """One branch-BOUND borrow-form tuple hoist predecl (`std::tuple<...,
+    T*> name;`, default-constructed null pointers) plus its read model: the
+    local aliases whichever arm's source bound it, and reads key on the
+    declared ptr-repr TupleType like a borrow-tuple param's. Shared by the
+    if cascade and the try family so the registrations cannot drift.
+    `hoist_slots` collects the chain-head rebind slot an OWNING tuple-call
+    source needs (`std::optional<std::tuple<...>> __slot_N;`); a caller whose
+    admission passes `owning_call_ok=False` has no such source and passes
+    None."""
+    analyzer = lc.analyzer
+    bt_srcs = _borrow_tuple_binding_sources(name, lc) or ()
+    if hoist_slots is not None and any(
+            _btuple_owning_call_init(s, analyzer) for s in bt_srcs):
+        hoist_slots.append((name, var_type.to_cpp()))
+        lc.rebind_slot_locals.add(name)
+    if any(isinstance(s, (TpyCall, TpyMethodCall))
+           and _renders_own_borrow_tuple(
+               s, lc.own_borrow_tuple_locals, analyzer)
+           for s in bt_srcs):
+        # A MIXED-call-bound hoist keeps the per-element arrow: the local
+        # holds the hybrid render, so `std::get<1>(p)->val`. The decl arm's
+        # registration, moved to the predecl because each branch body is a
+        # plain reseat, never a decl.
+        lc.own_borrow_tuple_locals.add(name)
+        acknowledge_binding_partial(lc, "storage_tuple_locals", name)
+        _witness(mixed_witness)
+    # The element const-ness comes from the whole-body fixpoint
+    # (`const Box*` when nothing mutates through the local), same verdict
+    # the reseat renders target.
+    lc.ensure_borrow_tuple_const()
+    declared[name] = var_type
+    return (name, var_type.to_cpp_return_const()
+            if name in lc.const_borrow_tuple_locals
+            else var_type.to_cpp_return())
+
+
 def _optional_storage_hoist_entry(name: str, var_type: TpyType,
                                   declared: dict[str, TpyType],
                                   lc: '_LowerCtx') -> tuple[str, str]:
@@ -3009,42 +3063,19 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
             # whichever arm's source bound it; reads key on the declared
             # ptr-repr TupleType like a borrow-tuple param's, reseats take
             # the borrow-literal / tuple_to_pointer arms. Deferred rungs
-            # reject via the shared admission; inner scopes via the
-            # registration-scope rule above.
-            if in_branch or not _borrow_tuple_hoist_ok(
+            # reject via the shared admission. An INNER-scope if rides too:
+            # the predecl is emitted at the if, so its C++ scope IS the
+            # branch-local `declared` copy the name registers into, and the
+            # classification sets it touches are branch-scoped -- the AST's
+            # LocalScopeSnap pops the same names at the same point.
+            if not _borrow_tuple_hoist_ok(
                     name, var_type, lc, owning_call_ok=True,
                     mixed_call_ok=True):
                 note_detail("if.hoist_type")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            # An OWNING tuple-call source (`t = make_pair(9)`) emplaces
-            # into the name's rebind slot; pre-decl it at the chain head
-            # (`std::optional<std::tuple<...>> __slot_N;`) like the
-            # ptr-Optional rvalue hoists.
-            bt_srcs = _borrow_tuple_binding_sources(name, lc) or ()
-            if any(_btuple_owning_call_init(s, analyzer) for s in bt_srcs):
-                hoist_slots.append((name, var_type.to_cpp()))
-                lc.rebind_slot_locals.add(name)
-            if any(isinstance(s, (TpyCall, TpyMethodCall))
-                   and _renders_own_borrow_tuple(
-                       s, lc.own_borrow_tuple_locals, analyzer)
-                   for s in bt_srcs):
-                # A MIXED-call-bound hoist keeps the per-element arrow: the
-                # local holds the hybrid render, so `std::get<1>(p)->val`.
-                # The decl arm's registration, moved to the predecl because
-                # each branch body is a plain reseat, never a decl.
-                lc.own_borrow_tuple_locals.add(name)
-                acknowledge_binding_partial(
-                    lc, "storage_tuple_locals", name)
-                _witness("if.hoist_mixed_own_tuple")
-            # The element const-ness comes from the whole-body fixpoint
-            # (`const Box*` when nothing mutates through the local), same
-            # verdict the reseat renders target.
-            lc.ensure_borrow_tuple_const()
-            hoist_decls.append((name,
-                                var_type.to_cpp_return_const()
-                                if name in lc.const_borrow_tuple_locals
-                                else var_type.to_cpp_return()))
-            declared[name] = var_type
+            hoist_decls.append(_borrow_tuple_hoist_entry(
+                name, var_type, declared, lc, "if.hoist_mixed_own_tuple",
+                hoist_slots))
             _witness("if.hoist_borrow_tuple")
             continue
         if isinstance(var_type, NominalType) and is_dyn_protocol(var_type):
@@ -3952,6 +3983,38 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
                                  allow_whole_optional=True,
                                  field_prechecked=True),
                 cpp_type=lc.render_type(pointee), is_const=is_const, loc=loc)
+        if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                                  TpySetLiteral)):
+            # A container LITERAL init at a pointer-repr Optional[container]
+            # slot: the same `T __slot_N = init; T* x = &__slot_N;` render as
+            # the record rvalue, only the literal's own spelling differs --
+            # the AST threads the OPTIONAL and `_gen_array_literal` unwraps it
+            # itself, so a bare list brace self-describes (dict/set literals
+            # spell their container ctor already). A reseat-needing name takes
+            # the inline `&*(__slot_N = ...)` rebind render instead, so it
+            # stays out (the shared `_opt_slot_rvalue_shape` reseat sites do
+            # NOT admit literals).
+            if needs_rebind or not _container_literal_shape_ok(
+                    stmt.init, pointee, analyzer):
+                note_detail("decl.opt_slot_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            init = _lower_expr(stmt.init, lc, declared,
+                               use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                            allow_temps=True),
+                               target_type=pointee)
+            if isinstance(stmt.init, TpyArrayLiteral):
+                if not isinstance(init, THIRContainerLiteral):
+                    # The prefix has nowhere to live; reject rather than let a
+                    # `replace` TypeError escape the per-body fallback.
+                    note_detail("decl.opt_slot_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                init = replace(init, typed_brace_cpp=lc.render_type(pointee))
+            _witness("decl.opt_slot_container_literal")
+            return THIRPtrLocalDecl(
+                name=stmt.name, resolved_type=vtype,
+                kind=PtrSlotKind.OPT_RVALUE, init=init,
+                cpp_type=lc.render_type(pointee), needs_rebind_slot=False,
+                is_const=is_const, loc=loc)
         if not _opt_slot_rvalue_shape(stmt.init, pointee, analyzer):
             # An Optional[@dynamic P] local from a CONFORMER ctor rvalue:
             # the slot types at the rvalue's class (inheriting -- the
@@ -6785,19 +6848,7 @@ def _lower_btuple_reassigned_decl(stmt: TpyVarDecl, vtu: TupleType,
     (materializing would copy the borrowed half). Every other init shape of
     the reassigned family rides the `decl.btuple_*` arm above; None falls
     the caller through."""
-    src = stmt.init
-    while isinstance(src, TpyCoerce):
-        src = src.expr
-    if not isinstance(src, (TpyCall, TpyMethodCall)):
-        return None
-    cfi = src.resolved_function_info
-    crt = getattr(cfi, "return_type", None) if cfi else None
-    cru = (unwrap_readonly(unwrap_send_sync(crt))
-           if crt is not None else None)
-    if cru is None or isinstance(cru, OwnType):
-        return None
-    src_bt = _f1_tuple(lc.analyzer.get_expr_type(src), lc.analyzer)
-    if src_bt is None or not src_bt.is_mixed_own():
+    if not _mixed_own_btuple_call(stmt.init, lc.analyzer):
         return None
     lc.ensure_borrow_tuple_const()
     elem_const = stmt.name in lc.const_borrow_tuple_locals
@@ -14355,6 +14406,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         raise ThirUnsupported(stmt_reject_reason(stmt))
     hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
     opt_storage_hoists: set[str] = set()
+    btuple_hoists: set[str] = set()
     pointer_hoists: set[str] = set()
     const_pointer_hoists: set[str] = set()
     for name, raw in hoists.items():
@@ -14377,6 +14429,16 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         var_type = unwrap_ref_type(raw)
         var_type = (resolve_pending_container(var_type, lc.analyzer)
                     or var_type)
+        # The if cascade's borrow-form tuple hoist (`std::tuple<..., T*>
+        # p;`), sibling row -- this predecl sits AT the try, so its C++
+        # scope matches. An OWNING tuple-call source is left out: its
+        # reseat needs a chain-head rebind slot the try has nowhere to put.
+        if (isinstance(var_type, TupleType)
+                and var_type.has_pointer_repr_element()
+                and _borrow_tuple_hoist_ok(name, var_type, lc,
+                                           mixed_call_ok=True)):
+            btuple_hoists.add(name)
+            continue
         flavor = _opt_storage_hoist_flavor(name, var_type, lc)
         if flavor is None:
             opt_storage_hoists.add(name)
@@ -14407,6 +14469,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
             raise ThirUnsupported(stmt_reject_reason(stmt))
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc, "try.hoist_decl",
                                         opt_storage=opt_storage_hoists,
+                                        branch_borrow_tuple=btuple_hoists,
                                         pointer=pointer_hoists,
                                         const_pointer=const_pointer_hoists)
     body_terminates = try_terminates_ignoring_finally(stmt)
@@ -14965,6 +15028,15 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             at = lc.analyzer.get_expr_type(a)
             atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
             resolved_t = _resolve_pending_tuple_elems(atu, lc.analyzer)
+            if _print_tuple_opt_ternary(a, atu, lc.analyzer) is not None:
+                # An Optional-TERNARY element: the family predicate admits
+                # nothing but VALUE element slots beside it, so the AST's slot
+                # ladder gives every element VALUE mode and the literal takes
+                # the storage spelling whatever the other elements' value
+                # category is -- the borrow ladder has no arm to pick here.
+                _witness("print.opt_ternary_tuple_arg")
+                return THIRPrintArg(
+                    _lower_tuple_literal(a, resolved_t, lc, declared), wrap)
             if a.elements and all(is_rvalue_source(lc.analyzer, el)
                                   for el in a.elements):
                 # The print sink threads no target, so the AST's slot ladder

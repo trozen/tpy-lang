@@ -52,6 +52,7 @@ from ..fallback import (
 from ..nodes import (
     Form,
     THIRAssign,
+    THIRContainerLiteral,
     THIRExpr,
     THIRFieldAccess,
     THIRFormConvert,
@@ -66,6 +67,7 @@ from .checks import (
     _class_const_write_target_ok,
     _container_copy_field_write_ok,
     _container_field_write_ok,
+    _optional_container_storage_inner,
     _optional_record_field_inner,
     _optional_record_field_upcast_write_ok,
     _optional_record_field_write_ok,
@@ -590,6 +592,9 @@ class _ContainerFieldPlan:
     # A NARROWED ptr-repr Optional[container] source: the binding is a `T*`,
     # so the value position derefs before the field copies.
     deref_src: bool = False
+    # The container inner of a storage-form `Optional[container]` ftype --
+    # the literal row's lowering target (the AST's own Optional unwrap).
+    opt_inner: TpyType | None = None
 
 
 def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
@@ -610,7 +615,9 @@ def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
     ftype = analyzer.get_expr_type(stmt.target)
     return _ContainerFieldPlan(
         container_ft=bool(is_list(ftype) or is_dict(ftype) or is_set(ftype)),
-        ftype=ftype, deref_src=deref_src)
+        ftype=ftype, deref_src=deref_src,
+        opt_inner=_optional_container_storage_inner(unwrap_readonly(
+            unwrap_ref_type(unwrap_send_sync(ftype)))))
 
 
 def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
@@ -632,6 +639,26 @@ def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
     # lvalue.
     if isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                TpySetLiteral)):
+        if plan.opt_inner is not None:
+            # A storage-form `std::optional<C>` field: lowered against the
+            # INNER (threading the Optional would derive the element targets
+            # from it). A bare list brace-init additionally self-describes --
+            # the optional's converting ctor has no type to deduce from
+            # `{10, 20}`; dict/set literals spell their container already.
+            value = _lower_expr(stmt.value, lc, declared,
+                                target_type=plan.opt_inner)
+            if isinstance(stmt.value, TpyArrayLiteral):
+                if not isinstance(value, THIRContainerLiteral):
+                    # The prefix has nowhere to live; reject rather than let a
+                    # `replace` TypeError escape the per-body fallback.
+                    note_detail("assign.field_write_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                value = replace(value,
+                                typed_brace_cpp=lc.render_type(plan.opt_inner))
+            _witness("field_write.opt_container_lit")
+            return THIRAssign(
+                target=_lower_field_write_target(stmt, lc, declared),
+                value=value, loc=loc)
         _witness("field_write.container_lit")
         return THIRAssign(
             target=_lower_field_write_target(stmt, lc, declared),

@@ -339,6 +339,8 @@ from .predicates import (
     _value_tuple,
     _value_tuple_element_ok,
     _value_tuple_nested,
+    _opt_ternary_tuple_arm_ok,
+    _storage_opt_ternary_elem,
     _value_union_temp_slot,
     _var_decl_type,
 )
@@ -756,6 +758,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # gates the wrap-bearing str inner.
         if not (allow_optional and threaded and isinstance(su, OptionalType)):
             return note_detail("container_lit.elem.optional") if note else False
+        if _storage_opt_ternary_elem(e, analyzer):
+            return True
         if su.uses_pointer_repr():
             # A record-inner Optional element: the container STORAGE slot is
             # `std::optional<P>` (value), NOT the borrow-form `P*` that
@@ -792,6 +796,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             return True
         return note_detail("container_lit.elem.tparam") if note else False
     if fam == "union":
+        if _storage_opt_ternary_elem(e, analyzer):
+            return True
         # A VALUE-union element slot (`std::variant<...>`): literal elements
         # convert implicitly and render BARE on both paths (`{1, "two"}`
         # into `std::vector<std::variant<int32_t, std::string>>`).
@@ -2375,6 +2381,31 @@ def _optional_record_field_upcast_write_ok(
         analyzer.get_expr_type(v))))
     return _covariant_record_upcast_ok(vt, ft.inner, analyzer)
 
+def _container_storage_field(t) -> bool:
+    """A builtin-container FIELD type the container-literal slices admit: a
+    list / dict / set / Array instantiation. Span stays out (a Span field
+    aliasing the source is a lifetime shape these slices do not open; sema
+    rejects the useful forms anyway)."""
+    if not isinstance(t, TpyType) or not getattr(t, "type_args", None):
+        return False
+    return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
+
+
+def _optional_container_storage_inner(t) -> 'TpyType | None':
+    """The CONTAINER inner of an `Optional[list/dict/set/Array]` FIELD, or
+    None -- the type a container literal is classified and lowered against at
+    a field slot, mirroring `_gen_array_literal`'s own Optional unwrap.
+
+    No `uses_pointer_repr()` guard: that predicate answers for the BORROW
+    positions (params/returns/locals), where a non-value inner takes `T*`;
+    a field slot is storage form and spells `std::optional<C>` regardless.
+    Reading the borrow verdict here would reject every container inner."""
+    if not isinstance(t, OptionalType):
+        return None
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t.inner)))
+    return inner if _container_storage_field(inner) else None
+
+
 def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                               analyzer) -> bool:
     """A container-literal field write `recv.field = [...] / {...}` off an
@@ -2384,7 +2415,11 @@ def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     spelled empty list, the `::tpy::ordered_map<K, V>(...)` /
     `ordered_set<T>(...)` constructor forms) with no move wrap (a literal is
     never a movable name). Element admission is the shared
-    container-literal slice."""
+    container-literal slice.
+
+    A storage-form `Optional[container]` ftype takes the same render one
+    unwrap down -- the field is a `std::optional<C>` and the literal is
+    classified against C."""
     if not isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                    TpySetLiteral)):
         return False
@@ -2393,6 +2428,13 @@ def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return False
     ftype = unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(analyzer.get_expr_type(stmt.target))))
+    oc_inner = _optional_container_storage_inner(ftype)
+    if oc_inner is not None:
+        # A storage-form `std::optional<C>` field: the AST threads the FIELD
+        # type and `_gen_array_literal` unwraps the Optional itself, so the
+        # literal is classified (and lowered) against the INNER -- element
+        # targets derived from the Optional would diverge.
+        return _container_literal_shape_ok(stmt.value, oc_inner, analyzer)
     return _container_literal_shape_ok(stmt.value, ftype, analyzer)
 
 def _container_copy_field_write_ok(stmt: TpyAssign,
@@ -11994,6 +12036,40 @@ def _print_optval_form(
         return PrintForm.OPT_VAL_FMT, inner_cpp, fmt
     return PrintForm.OPT_VAL, None, None
 
+def _print_tuple_opt_ternary(a: 'TpyTupleLiteral', rt: 'TpyType | None',
+                             analyzer) -> 'TupleType | None':
+    """A printed tuple LITERAL carrying an Optional-TERNARY element -- the
+    astuple expansion over an `Optional[dataclass]` field. Deliberately NOT a
+    widening of `_value_tuple_nested`, whose 28 call sites include reads and
+    receivers this render says nothing about: the Optional element slot is
+    admitted only where the element EXPRESSION is the ternary whose storage
+    wrap renders it, so nothing but the shape `_lower_value_opt_ternary_arm`
+    emits gets in. Every other element stays a plain value-tuple element."""
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    if not isinstance(u, TupleType):
+        return None
+    if len(u.element_types) != len(a.elements):
+        return None
+    found = False
+    for el, et in zip(a.elements, u.element_types):
+        if _storage_opt_ternary_elem(el, analyzer):
+            found = True
+            continue
+        if not (_value_tuple_element_ok(et, analyzer)
+                or _value_tuple_nested(et, analyzer) is not None):
+            return None
+        # The same view->owned element split `_opt_ternary_tuple_arm_ok`
+        # keeps out of the ternary's own arm, on the PRINTED tuple's slots.
+        eu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+        if isinstance(eu, TupleType):
+            if not _opt_ternary_tuple_arm_ok(el, eu, analyzer):
+                return None
+        elif ((_resolved_str_value(et, analyzer) is not None
+               or _resolved_bytes_value(et, analyzer) is not None)
+                and not isinstance(el, TpyFieldAccess)):
+            return None
+    return u if found else None
+
 def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
                      analyzer) -> 'PrintForm | None':
     """The kind-keyed printer wrap for a container / value-tuple / F1-record
@@ -12089,6 +12165,8 @@ def _wrap_print_form(a: TpyExpr, declared: dict[str, TpyType],
         if isinstance(rt, TupleType) and rt.has_pointer_repr_element():
             return PrintForm.TUPLE
         if _value_tuple_nested(rt, analyzer) is not None:
+            return PrintForm.TUPLE
+        if _print_tuple_opt_ternary(a, rt, analyzer) is not None:
             return PrintForm.TUPLE
         return None
     if isinstance(a, TpySubscript):

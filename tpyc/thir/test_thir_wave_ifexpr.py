@@ -205,9 +205,16 @@ class TestPtrOptTernaryCallArmRoutes:
 
 class TestContainerElemTernaryStaysOut:
     # BOUNDARY: a ternary ELEMENT inside a container literal of optional
-    # elements must not take the BORROW normalization (the AST's
-    # in_container_element carve-out renders storage there); the element
-    # gate keeps the body on the AST path.
+    # elements must not take the BORROW normalization -- the AST's
+    # in_container_element carve-out renders storage there.
+    #
+    # That AST render is BROKEN for this shape and the element gate is what
+    # keeps THIR away from it: `std::optional<Box>(p)` over a `const Box*`
+    # param arm does not compile (the union twin of the carve-out lifts its
+    # arms via to_value_variant; the Optional twin never got that row). A
+    # RECORD-inner Optional is therefore outside the element-ternary family
+    # -- only the dict and value-tuple inners, whose arms are self-contained
+    # values, are admitted (test_thir_wave_optternary_elem.py).
     SRC = (
         _PRE +
         "def build(p: Box | None, h: Holder, c: bool) -> None:\n"

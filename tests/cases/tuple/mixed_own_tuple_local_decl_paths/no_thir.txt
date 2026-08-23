@@ -1,5 +1,0 @@
-The MIXED owned+borrow tuple's rebind and if-hoist sinks route; the
-try-hoist and walrus sinks are not built, and the loop-carried body needs
-the if-hoist's in_branch scope fence lifted (a recorded design fork:
-THIR's hoist registration is function-scoped, so an inner-scope predecl
-would leak past its block).

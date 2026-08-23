@@ -4494,6 +4494,10 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
             # Optionals (`Box | None`) stay out -- their element form is a
             # borrow.
             or _value_opt_scalar(e, analyzer) is not None
+            # An ENUM element (`tuple[Color, Int64]` -> `std::tuple<Color,
+            # int64_t>`): a value scalar in C++ terms -- borrow and storage
+            # forms coincide, so `std::get<N>(t)` reads it bare.
+            or _eligible_enum(e, analyzer) is not None
             or isinstance(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(e))), AnyType))
 
@@ -4828,6 +4832,64 @@ def _value_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
                 or _value_tuple_nested(e, analyzer) is not None):
             return None
     return t
+
+def _storage_opt_ternary_result(rtype: 'TpyType | None',
+                                analyzer) -> 'OptionalType | None':
+    """An Optional TERNARY result at an IMMEDIATE container-element position,
+    where the slot is the `std::optional<T>` STORAGE form whatever
+    `uses_pointer_repr()` says -- `_gen_if_expr`'s `in_container_element`
+    carve-out, which wraps both arms in the spelled optional. Restricted to
+    the two inners whose arms are self-contained VALUES (a dict's
+    `ordered_map<K, V>({...})`, a value tuple's spelled brace). Every other
+    inner -- a record above all -- has arms that can render in BORROW form,
+    and the AST's wrap over such an arm is ill-formed C++."""
+    if rtype is None:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+    if not isinstance(u, OptionalType):
+        return None
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(u.inner)))
+    if isinstance(inner, OwnType):
+        return None
+    if is_dict(inner) or _value_tuple_nested(inner, analyzer) is not None:
+        return u
+    return None
+
+
+def _opt_ternary_tuple_arm_ok(arm: TpyExpr, vt: 'TupleType', analyzer) -> bool:
+    """A value-tuple LITERAL arm of a container-element Optional ternary whose
+    brace-init cannot take the view->owned element copy. That copy fires when
+    the element SLOT resolved to an owned str/bytes while the SOURCE reads as
+    a view (a `str` PARAM is exactly that pair) -- the AST spells the source
+    bare inside the tuple, so admitting one would byte-diverge. A FIELD read is
+    immune: its slot IS the member's own resolved type, so the forms agree,
+    and it is what the `astuple()` expansion emits."""
+    if not (isinstance(arm, TpyTupleLiteral)
+            and len(arm.elements) == len(vt.element_types)):
+        return False
+    for el, et in zip(arm.elements, vt.element_types):
+        eu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+        if isinstance(eu, TupleType):
+            if not _opt_ternary_tuple_arm_ok(el, eu, analyzer):
+                return False
+        elif (_resolved_str_value(et, analyzer) is not None
+                or _resolved_bytes_value(et, analyzer) is not None):
+            if not isinstance(el, TpyFieldAccess):
+                return False
+    return True
+
+
+def _storage_opt_ternary_elem(e: TpyExpr, analyzer) -> bool:
+    """An Optional-result TERNARY container element (the asdict/astuple
+    expansion's `{...} if f.has_value() else None`). `_gen_if_expr` renders it
+    against its OWN type and ignores the element target, so the SLOT plays no
+    part -- an Optional slot and a union slot holding it take the identical
+    `std::optional<T>(<arm>)` render, absorbed by the storage slot or the
+    variant's converting ctor. Arm shapes gate in `_lower_if_expr`."""
+    return (isinstance(e, TpyIfExpr)
+            and _storage_opt_ternary_result(
+                analyzer.get_expr_type(e), analyzer) is not None)
+
 
 def _decl_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The tuple-literal DECL sink's widened element family: everything
@@ -5421,6 +5483,9 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
                     or _value_opt_scalar(el, analyzer) is not None
                     or _value_tuple_nested(el, analyzer) is not None
+                    # An enum element is a value scalar in C++ terms:
+                    # `std::get<N>(t)` reads it bare in every value sink.
+                    or _eligible_enum(el, analyzer) is not None
                     # A `Ptr[T]` element is a pointer VALUE (`T*`, copied
                     # like a scalar): `std::get<N>(t)` reads it bare; the
                     # member-access wrap (deref_check / `->`) belongs to the
@@ -5701,6 +5766,12 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             # literal key keeps THIR's default owned spelling
             # (`bytes_literal_owned`) -- key-type-neutral renders.
             or is_bytes_type(kb)
+            # An ENUM key (`dict[Color, Int64]` / `set[Color]`): the enum
+            # value renders bare like a scalar in every key position (a
+            # member spelling `Color::RED` from the shared `enum_cpp_name`,
+            # a variable bare), so the key-type-neutral renders hold.
+            # `Own[enum]` stays out -- `_eligible_enum` does not peel Own.
+            or _eligible_enum(kb, analyzer) is not None
             # An open-T key inside a generic body (`dict[T, int]` under
             # `[T: Hashable]`): the key renders by name per instantiation
             # and every consumer render is key-type-neutral; a T index is
@@ -5953,6 +6024,12 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
                                unwrap_send_sync(args[0]))))
                            or is_bytes_view_type(unwrap_readonly(
                                unwrap_ref_type(unwrap_send_sync(args[0]))))
+                           # An ENUM element (`set[Color]`): the value
+                           # renders bare like a scalar at every method
+                           # arg/result position (`out.insert(c)`), the same
+                           # slice `_container_value_leaf_read` already
+                           # admits for a list/dict-value enum element.
+                           or _eligible_enum(args[0], analyzer) is not None
                            # An open-T element (`set[T]` in a generic body):
                            # the method receiver renders bare; per-method
                            # args and results still gate (the list family's
@@ -6779,6 +6856,26 @@ def _renders_own_borrow_tuple(e: TpyExpr, own_locals: 'AbstractSet[str]',
     if isinstance(e, TpyName):
         return e.name in own_locals
     return False
+
+
+def _mixed_own_btuple_call(e: TpyExpr, analyzer) -> bool:
+    """`e` is a CALL whose result already IS the mixed own+borrow borrow
+    render (`std::tuple<A, B*>`) -- owned elements by value, borrowed ones
+    pointing at storage the caller keeps alive -- so a borrow-form sink binds
+    it directly, with no slot and no lift (materializing would copy the
+    borrowed half). An `Own[...]`-declared return is excluded: that one is
+    consumed whole and rides the owned-slot arms."""
+    while isinstance(e, TpyCoerce):
+        e = e.expr
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
+        return False
+    fi = e.resolved_function_info
+    rt = getattr(fi, "return_type", None) if fi is not None else None
+    if rt is None or isinstance(unwrap_readonly(unwrap_send_sync(rt)),
+                                OwnType):
+        return False
+    bt = _f1_tuple(analyzer.get_expr_type(e), analyzer)
+    return bt is not None and bt.is_mixed_own()
 
 
 def _mixed_own_storage_source(e: TpyExpr, slot: 'TupleType',

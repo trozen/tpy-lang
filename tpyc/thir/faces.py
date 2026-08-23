@@ -185,6 +185,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_btuple",           # non-reassigned borrow-tuple walrus:
                                     # `std::tuple<..., T*> t;` + borrow
                                     # literal / tuple_to_pointer lift
+    "expr.walrus_btuple_mixed_call",  # ... off a MIXED own+borrow tuple
+                                    # CALL: binds directly, no lift
     "assign.btuple_elem_field",     # scalar field write through a borrow-
                                     # tuple element (std::get<N>(t)->f = v)
     "assign.value_opt_target",      # registered value-opt NAME target: a
@@ -709,6 +711,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Container-literal FIELD write: the decl-init literal render assigned
     # into the field lvalue (`this->xs = {n};` / the ordered_map ctor form).
     "field_write.container_lit",
+    # The same literal into a STORAGE-form `Optional[container]` field
+    # (`this->items = std::vector<T>{10, 20};`) -- lowered against the
+    # Optional's INNER, the list brace self-describing for the optional ctor.
+    "field_write.opt_container_lit",
     # Str-family FIELD write from a name/literal: the bare
     # `recv.field = s;` (operator=(string_view), no view->owned wrap).
     "field_write.str_slice",        # `self.s = x[1:3]` -- a str SLICE value
@@ -1800,6 +1806,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Slot-hoist Optional local, F1-record rvalue init: `T __slot_N = ...;
     # T* x = &__slot_N;` (+ the rebind-slot pre-decl).
     "decl.opt_slot_rvalue",
+    # Slot-hoist Optional local, container-LITERAL init:
+    # `std::vector<T> __slot_N = std::vector<T>{1, 2}; std::vector<T>* x =
+    # &__slot_N;` (the list brace self-describes; dict/set spell their ctor).
+    "decl.opt_slot_container_literal",
     "decl.opt_slot_proto_rvalue",   # Optional[dyn P] conformer rvalue slot
     # Owned-optional record slot from a storage-optional-returning call
     # (`std::optional<Rc<T>> upgraded = w.upgrade();`); the name registers
@@ -2012,6 +2022,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.value_opt",             # value-repr Optional ternary: both
                                     # arms wrapped in the spelled optional
     "ifexpr.value_opt_scalar_name",  # ... one of those arms a scalar name
+    "ifexpr.storage_opt_elem",      # container-ELEMENT Optional ternary: the
+                                    # storage wrap even at pointer repr
+    "ifexpr.storage_opt_dict_arm",  # ... a dict-literal arm
+    "ifexpr.storage_opt_tuple_arm",  # ... a value-tuple-literal arm
+    "print.opt_ternary_tuple_arg",   # printed tuple literal with one
+                                    # of those ternaries as an element
     "ret.value_opt_view_ternary",   # that ternary at the opt-view return
     "name.storage_opt_whole",       # storage-optional unpack target read
                                     # whole (bare std::optional lvalue)
@@ -2083,6 +2099,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.hoist_decl",               # sema-hoisted plain-value predecls
     "try.hoist_const_ptr",          # const borrow-decl hoist -> const T* name;
     "try.body_terminates",          # normal-path finally copy elided
+    "try.hoist_borrow_tuple",       # branch-bound ptr-repr tuple predecl at
+                                    # the try (the if cascade's sibling row)
+    "try.hoist_mixed_own_tuple",    # ... whose sources are MIXED own+borrow
+                                    # tuple CALLS: per-element arrow reads
     "try.finally_terminates",       # raise/return-ending finally: no rethrow
     # if/elif/else (lowering, per statement).
     "if.hoist_decl",                # sema-hoisted plain-value branch predecls

@@ -176,6 +176,8 @@ from .context import (
 )
 from .checks import (
     _container_lit_elem_ok,
+    _container_storage_field,
+    _optional_container_storage_inner,
     _builtin_container_type,
     _container_literal_shape_ok,
     _ctor_shape_ok,
@@ -1233,29 +1235,6 @@ def _mil_reject_detail(stmt: 'TpyAssign', analyzer) -> str:
     return f"ctor.mil_field.{fam}.{kind}"
 
 
-def _mil_container_field(t) -> bool:
-    """A builtin-container field type whose MIL init the container slice
-    admits: a list / dict / set / Array instantiation. Span stays out (a
-    Span field aliasing a MIL source is a lifetime shape this slice does
-    not open; sema rejects the useful forms anyway)."""
-    if not isinstance(t, TpyType) or not getattr(t, "type_args", None):
-        return False
-    return is_list(t) or is_dict(t) or is_set(t) or is_array(t)
-
-def _mil_optional_container_inner(t) -> 'TpyType | None':
-    """The CONTAINER inner of an `Optional[list/dict/set/Array]` FIELD, or
-    None -- the type a MIL container literal is classified and lowered
-    against, mirroring `_gen_array_literal`'s own Optional unwrap.
-
-    No `uses_pointer_repr()` guard: that predicate answers for the BORROW
-    positions (params/returns/locals), where a non-value inner takes `T*`;
-    a field slot is storage form and spells `std::optional<C>` regardless.
-    Reading the borrow verdict here would reject every container inner."""
-    if not isinstance(t, OptionalType):
-        return None
-    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t.inner)))
-    return inner if _mil_container_field(inner) else None
-
 def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
                            declared: dict[str, TpyType], lc: _LowerCtx, *,
                            own_params: 'set[str]' = frozenset()) -> bool:
@@ -1427,7 +1406,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             dt = declared.get(source.name)
             return _is_type_param_slot(dt) or _own_type_param_slot(dt)
         return False
-    if _mil_container_field(ftype):
+    if _container_storage_field(ftype):
         source = _unwrap_copy(stmt.value, analyzer)
         if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             # The MIL is a target-threaded position like a decl init (the AST
@@ -1452,7 +1431,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             own = unwrap_optional_own(pt)
             if own is not None:
                 pt = own.wrapped
-            return _mil_container_field(pt) and pt.to_cpp() == ftype.to_cpp()
+            return _container_storage_field(pt) and pt.to_cpp() == ftype.to_cpp()
         if (isinstance(source, TpyCall) and len(source.args) <= 1
                 and not source.kwargs
                 and isinstance(source.func, TpyName)
@@ -1604,7 +1583,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                     lit, ftype, declared, analyzer, threaded=True,
                     forced=True, allow_record=True, allow_nested=True,
                     allow_optional=True))
-    oc_inner = _mil_optional_container_inner(ftype)
+    oc_inner = _optional_container_storage_inner(ftype)
     if oc_inner is not None:
         source = _unwrap_copy(stmt.value, analyzer)
         if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
@@ -2261,7 +2240,7 @@ def _lower_ctor_mil_init(
     loc = getattr(stmt, "loc", None)
     field_cpp = escape_cpp_name(stmt.target.field)
     source = _unwrap_copy(stmt.value, analyzer)
-    if (_mil_container_field(ftype) and isinstance(source, TpyCall)
+    if (_container_storage_field(ftype) and isinstance(source, TpyCall)
             and not source.args and not source.kwargs):
         # `self.items = list()` -> `items(std::vector<T>())`: the AST threads
         # the FIELD type as the target, so the spelling comes from the field
@@ -2273,7 +2252,7 @@ def _lower_ctor_mil_init(
             value=THIRCall(result_type=ftype, callee=source.func.name,
                            args=(), cpp_template=f"{lc.render_type(ftype)}()",
                            loc=loc))
-    if _mil_container_field(ftype):
+    if _container_storage_field(ftype):
         _witness("mil.container_literal"
                  if isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
                                         TpySetLiteral))
@@ -2511,7 +2490,7 @@ def _lower_ctor_mil_init(
             raise ThirUnsupported(_mil_reject_detail(stmt, analyzer)) from None
         return THIRMilInit(field_cpp=field_cpp, value=value)
     if isinstance(ftype, OptionalType):
-        oc_inner = _mil_optional_container_inner(ftype)
+        oc_inner = _optional_container_storage_inner(ftype)
         if isinstance(source, TpyNoneLiteral):
             _witness("mil.optional_none")
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
@@ -2597,7 +2576,7 @@ def _lower_ctor_mil_init(
         value=_lower_expr(
             source, lc, declared,
             field_prechecked=isinstance(source, TpyFieldAccess),
-            target_type=(ftype if _mil_container_field(ftype) else None)))
+            target_type=(ftype if _container_storage_field(ftype) else None)))
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method / ctor feed. The qname is

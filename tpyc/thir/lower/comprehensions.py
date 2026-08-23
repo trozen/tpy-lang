@@ -56,6 +56,7 @@ from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
 from .predicates import (
     _mixed_own_storage_source,
+    _storage_opt_ternary_elem,
     _call_iterable_lvalue,
     _dict_view_iterable_ok,
     _genfac_like_call,
@@ -518,6 +519,14 @@ def _comp_lowering_route(
                                                           unwrap_send_sync(
                                                               args[0]))),
                                                   TupleType))
+                                          # ... an Optional-result TERNARY
+                                          # element (the asdict/astuple
+                                          # recursion into a
+                                          # `list[Optional[DC]]` field),
+                                          # node-gated like the other
+                                          # shape-sensitive families.
+                                          or _storage_opt_ternary_elem(
+                                              init.element_expr, analyzer)
                                           # ... and the MIXED-own-tuple CALL
                                           # source (the non-move
                                           # tuple_to_storage elem row).
@@ -552,6 +561,10 @@ def _comp_lowering_route(
                         and isinstance(
                             unwrap_readonly(unwrap_ref_type(
                                 unwrap_send_sync(args[1]))), TupleType))
+                    # The list leg's Optional-TERNARY row on the VALUE slot
+                    # (the asdict recursion into a `dict[str, Optional[DC]]`
+                    # field).
+                    or _storage_opt_ternary_elem(init.value_expr, analyzer)
                     # The list leg's mixed-own CALL row on the VALUE slot.
                     or (isinstance(
                             _mcd_b := unwrap_readonly(unwrap_ref_type(

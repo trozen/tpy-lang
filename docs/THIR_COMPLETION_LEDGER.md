@@ -12358,6 +12358,11 @@ were miscompiles that the target case could never witness. The
 STATEMENT-side marker-chain peel -- the verbatim `macro_expansion` mirror
 the scout proposed leaves a void `@inline` expansion rejecting at VALUE.
 
+**SUPERSEDED 2026-08-23** (see the marker-floor entry at the end of this
+file): five of these eight are cleared and three of the blocking reasons
+below were wrong when written. Kept as the dated record of what was
+believed at the time.
+
 **THE REMAINING 8 MARKERS ARE THE BLOCKED SET, NOT THE UNGROUND SET.**
 Six corpus, two interop:
 
@@ -12529,6 +12534,21 @@ over-stated endpoint above, a miscount of filed BUGS entries, a dropped
 item, and two omissions. All are fixed above. Write the record, then
 falsify it.
 
+**Corpus coverage added.** `tests/cases/enum/enum_container_positions`
+pins an enum at all three newly-routed container positions (dict key, set
+element, value-tuple element). That combination had NO corpus case on
+either path before -- the AST always supported it and nothing tested it.
+Routes clean, CPython parity, no markers.
+
+**This entry was fact-checked before the branch was handed over**, and
+did not survive its own thesis: six defects, including the headline claim
+above, which originally read "every recorded blocking reason was wrong,
+six for six". Two of the six had no record to be wrong about, and the one
+record that WAS exact had been miscounted as wrong. A BUGS count, the
+tooling diagnosis, two extern-C overreaches and a size estimate were also
+off. Write the record, then falsify it -- and be most suspicious of the
+claim that flatters the session.
+
 **Mirror pairs to consolidate at cutover, updated.** Add
 `_narrowed_ptr_opt_recv` / `_narrowed_ptr_opt_name` <-> the AST's
 narrowed-Optional unwrap in `_gen_subscript` and
@@ -12536,3 +12556,152 @@ narrowed-Optional unwrap in `_gen_subscript` and
 copies with different repr gates scattered across four sites; THIR has
 one extracted pair. A future unification belongs on the AST side and is
 a behavior-risk refactor, not a cleanup.
+
+
+### The marker floor: six recorded blockers, six wrong (2026-08-23)
+
+Branch `markers-zero-0823`, base `bc0729398`. **Markers 6 -> 1, dial
+3738/3742 -> 3741/3742.** Suite green with full exec: 12581 passed, 3741
+built+run, 0 byte-diff divergences, 0 move-verdict divergences over 987
+joined nodes, 0 binding-fact gaps over 11855 bodies. Five read-only
+scouts, four implementer lanes in isolated worktrees, five review
+specialists. NO generated C++ snapshot changed anywhere -- every cleared
+case was already emitting byte-identical AST output through fallback.
+
+**The record was unreliable, but score it honestly: of the six markers,
+THREE had a recorded reason that was wrong when written, ONE was stale,
+and TWO had no recorded reason at all -- only a grouping line.** No
+`no_thir.txt` records a reason; five of the six carry nothing but
+`--thir-classify` boilerplate. The reasons live in this ledger and in
+TODO.md, which is exactly why they went unchecked for so long:
+
+- `interop/class_properties` -- recorded as blocked, carried untouched
+  across three pushes. It was STALE: zero fallback, zero ratchet total,
+  clean byte-diff including the `_ext.cpp` glue. Deleting the file was
+  the entire fix.
+- `tuple/mixed_own_tuple_local_decl_paths` -- recorded as the one
+  remaining DESIGN FORK, needing function-scoped hoist registration. The
+  rationale was MISATTRIBUTED: it quoted the comment on
+  `if.hoist_inner_scope`, which guards `is_nonvalue_flavor` (dyn-protocol
+  / plain-nonvalue / ptr-repr Optional). A ptr-repr `TupleType` is none of
+  those, so the case never reached that fence -- it rejected exactly 38
+  lines lower at a separate `in_branch` disjunct. No fork; three
+  INDEPENDENT sinks, ~30 lines of new logic plus a shared-helper
+  extraction (+116/-51 across four files).
+- `interop/container_exposed_elements` -- recorded as interop work. It is
+  not: a plain non-`@export` scratch with a module-local `IntEnum`
+  rejects at the identical sites. Four ordinary clauses in
+  `predicates.py`, nothing in `tpyc/interop/` participating.
+- `records/dataclass_asdict_optional` -- recorded as unschedulable, "at
+  least three hidden blockers, two of them storage-vs-borrow FORM
+  questions, re-price against the form work". Measured: 22 bodies, ONE
+  falls back; five independent gates; ONE form question, and it is
+  THREADING an already-decided AST fact, not a new concept. One wave.
+- `none_safety/optional_container_literal` -- **the one record that was
+  EXACT.** TODO.md named `decl.opt_slot_source` and
+  `assign.field_write_shape`; two render rows fixed exactly those two.
+  (A scout reported "5 sites" by counting rejecting source lines rather
+  than rows -- a reminder that a re-measurement can also be wrong.)
+- `native/extern_c_str_param` -- the one recorded reason that HELD. It is
+  genuine by-design residue, and the correct action is to NOT clear it
+  (below).
+
+**The instrument, stated plainly: reject tags name the FIRST raise, not
+the blocker population.** Every one of the above was established by
+reading a tag instead of bisecting. The technique that works is to stub
+the rejecting node and re-probe until the population stops growing -- in
+a SCRATCH copy or an in-process monkeypatch, never in the shared
+checkout. One scout stubbed tracked files directly and contaminated four
+concurrent agents' measurements; the tree was reverted, re-probed to
+exact baseline, and every affected finding re-verified unchanged, but
+that was luck. The brief now says where to stub.
+
+**A tooling gap hid two markers for three pushes.** Every probe script
+ENUMERATES `tests/cases` only (`discover_cases()`, or a hard-coded
+`tests/cases/<case>` in `probe_sites.py` and `sites_multi.py`), so no
+interop case was ever reached. The gap is ENUMERATION, not resolution:
+handed the directory, `_case_entry.entry_src` resolves an interop case
+correctly. The scripts did not error -- they simply never looked, which
+reads as "nothing to see". Two further traps:
+`probe_file.py` omits `no_main`, so its emit is not the one the harness
+compares; and it patches `note_detail` on only `expressions`/`statements`,
+so gates raising from `checks.py` report `[None]` -- the decisive
+`method.set.add` detail was invisible until that was fixed. Closed by
+`.claude/skills/tpy-thir-wave/scripts/probe_interop.py`, verified against
+the real harness across all 34 interop cases before landing.
+
+**MARKER ARITHMETIC IS NOT FLIP ARITHMETIC.** A lane on the previous push
+cleared one marker and shipped a new regression case carrying its own
+`no_thir.txt` -- net zero, plus an inflated dial denominator. Check new
+cases for markers before claiming a delta.
+
+**What the blast sweep caught that no flip proof could.** The asdict
+lane's sweep found a still-open pre-existing THIR divergence -- a
+str-view element in a printed value-tuple takes a spurious owned copy,
+on a shape that ROUTES today -- and then established that its own new
+rows would have imported that defect into two further positions. Both
+were proven divergent before it narrowed the rows to exclude non-field
+str/bytes elements. Without the sweep this branch would have tripled a
+defect's footprint with every gate green.
+
+**An architectural ceiling, correctly refused.** Threading the
+"immediate element of an Optional container" fact wanted a 19th
+`_ExprUse` boolean; `test_thir_core.py` fails that BY DESIGN and directs
+the author to fold into a sink-kind enum. The lane declined to make that
+call and used the documented per-call `_lower_expr` keyword instead (the
+`cond_eager` precedent), plus one `_LowerCtx` bool used only to reject
+deeper positions. Review confirmed no enum refactor is owed: this is a
+single-position fact, not a recurring sink-kind axis.
+
+**`native/extern_c_str_param` stays marked, deliberately.** Clearing it
+means mirroring a render proven wrong AT RUNTIME: a linked driver returns
+`f_eq("hello") == 0` because the C ABI respells str params as
+`const char*` while the body renders ABI-blind, so `s == "hello"`
+compares addresses. The silent set is wider than BUGS.md recorded --
+param-to-param compare, `in` tuples, and `match` on a C-ABI str param is
+entirely DEAD (`!=` and orderings were already recorded). One loud bug is
+unfiled -- TPy calling its own export with a `str`; the `__param_s`
+reassign is a fourth face of the family already filed at BUGS.md
+349/350/355. The fix is AST-side (~10 lines: rename the param in the
+`extern "C"` definition, materialize a `string_view` at entry), after
+which the marker clears as a consequence -- or, under the better shape
+(an ordinary namespaced function plus an `extern "C"` shim), the fence
+simply deletes with ZERO THIR work. **The "settled at cutover" label is
+doing no work**: the `const char*` respell is a signature decision, and
+per Gate D3 the signature printer stays in `codegen_cpp` permanently, so
+cutover does not MOVE it. What cutover does force is the body-side fence:
+Gate D3 item 7 makes `ThirUnsupported` an ICE, so the reject at
+`functions.py:581` must be gone by then. The label is still doing the
+wrong work -- it parks a live miscompile behind a milestone that will
+demand the fence's removal without fixing the render underneath.
+
+**Four BUGS entries filed** (plus one TODO entry), each reproduced
+independently before filing -- two loud C++ build failures the front-end
+says nothing about (the
+mixed own+borrow walrus double-decl; the Optional container-element
+ternary arm with no lift, whose union twin lifts via `to_value_variant`),
+and two byte-diff divergences, one of them LIVE (the print-tuple copy
+above). The
+ternary entry has a second facet: the AST's element-position flag is
+sticky over the subtree, so a ternary at a nested BORROW position takes
+the wrap too. THIR declines to mirror either facet.
+
+**Corpus coverage added.** `tests/cases/enum/enum_container_positions`
+pins an enum at all three newly-routed container positions (dict key, set
+element, value-tuple element). That combination had NO corpus case on
+either path before -- the AST always supported it and nothing tested it.
+Routes clean, CPython parity, no markers.
+
+**This entry was fact-checked before the branch was handed over**, and
+did not survive its own thesis: six defects, including the headline claim
+above, which originally read "every recorded blocking reason was wrong,
+six for six". Two of the six had no record to be wrong about, and the one
+record that WAS exact had been miscounted as wrong. A BUGS count, the
+tooling diagnosis, two extern-C overreaches and a size estimate were also
+off. Write the record, then falsify it -- and be most suspicious of the
+claim that flatters the session.
+
+**Mirror pairs to consolidate at cutover, updated.** Add
+`_borrow_tuple_hoist_entry` <-> the AST's if/try hoist predecl logic, and
+`_optional_container_storage_inner` <-> `_gen_array_literal`'s own
+Optional unwrap. Both are hand-maintained lockstep mirrors today.

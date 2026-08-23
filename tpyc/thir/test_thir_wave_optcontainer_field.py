@@ -165,3 +165,122 @@ class TestConstStorageOptLoopVar:
         out = hpp + cpp
         assert "first = ::tpy::optional_to_ptr(it);" in out
         assert "const P* first = nullptr;" in out
+
+
+class TestOptionalContainerLiteralSlots:
+    """A container LITERAL at the two `Optional[container]` STORAGE seams:
+    the pointer-repr local slot (`T __slot_N = T{..}; T* x = &__slot_N;`) and
+    the storage-form `std::optional<C>` field (`this->f = C{..};`).
+
+    Both thread the container INNER (the AST's own Optional unwrap in
+    `_gen_array_literal`) and self-describe a bare list brace -- neither
+    `optional<C>`'s converting ctor nor a nested element target can deduce a
+    type from `{10, 20}`. An EMPTY literal at either seam is a sema error
+    (un-inferable element type), so no unit exists for it.
+    """
+
+    _SRC = (
+        "from tpy import Int32, Array\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+        "class Bag:\n"
+        "    li: list[Int32] | None\n"
+        "    di: dict[str, Int32] | None\n"
+        "    se: set[Int32] | None\n"
+        "    nested: list[list[Int32]] | None\n"
+        "    recs: list[P] | None\n"
+        "    arr: Array[Int32, 3] | None\n"
+        "    def __init__(self) -> None:\n"
+        "        self.li = None\n"
+        "        self.di = None\n"
+        "        self.se = None\n"
+        "        self.nested = None\n"
+        "        self.recs = None\n"
+        "        self.arr = None\n"
+        "    def fill(self) -> None:\n"
+        "        self.li = [1, 2]\n"
+        "        self.di = {\"k\": 3}\n"
+        "        self.se = {4, 5}\n"
+        "        self.nested = [[1], [2, 3]]\n"
+        "        self.recs = [P(7)]\n"
+        "        self.arr = [1, 2, 3]\n"
+        "def decls() -> None:\n"
+        "    a: list[Int32] | None = [1, 2]\n"
+        "    b: dict[str, Int32] | None = {\"k\": 3}\n"
+        "    c: set[Int32] | None = {4, 5}\n"
+        "    d: list[list[Int32]] | None = [[1], [2, 3]]\n"
+        "    e: list[P] | None = [P(7)]\n"
+        "    if a is not None and b is not None and c is not None:\n"
+        "        print(len(a), len(b), len(c))\n"
+        "    if d is not None and e is not None:\n"
+        "        print(len(d), e[0].x)\n"
+        "def main() -> None:\n"
+        "    decls()\n"
+        "    g = Bag()\n"
+        "    g.fill()\n"
+        "    if g.li is not None and g.arr is not None:\n"
+        "        print(len(g.li), len(g.arr))\n"
+        "main()\n"
+    )
+
+    def test_slot_and_field_literals_route(self):
+        _assert_routes_byte_identical(self._SRC)
+        out, wit, fell = _gen_witnessed(self._SRC)
+        assert not fell, fell
+        assert wit.get("decl.opt_slot_container_literal", 0) == 5
+        assert wit.get("field_write.opt_container_lit", 0) == 6
+        # The slot line self-spells the list brace; dict/set literals already
+        # spell their container ctor.
+        assert ("std::vector<int32_t> __slot_1 = "
+                "std::vector<int32_t>{1, 2};") in out
+        assert "std::vector<int32_t>* a = &__slot_1;" in out
+        assert ("::tpy::ordered_map<std::string, int32_t> __slot_2 = "
+                "::tpy::ordered_map<std::string, int32_t>({{\"k\", 3}});") in out
+        assert ("::tpy::ordered_set<int32_t> __slot_3 = "
+                "::tpy::ordered_set<int32_t>({4, 5});") in out
+        assert "this->li = std::vector<int32_t>{1, 2};" in out
+        assert ("this->di = ::tpy::ordered_map<std::string, int32_t>"
+                "({{\"k\", 3}});") in out
+        assert "this->se = ::tpy::ordered_set<int32_t>({4, 5});" in out
+        assert "this->recs = std::vector<P>{P(7)};" in out
+        assert "this->arr = std::array<int32_t, 3>{1, 2, 3};" in out
+
+    def test_nested_literal_threads_the_inner_not_the_optional(self):
+        # The discriminator for threading the INNER: targeting the Optional
+        # leaves the nested element with no container target and the brace
+        # picks up an extra level (`{{{1}, {2, 3}}}`).
+        out, _wit, fell = _gen_witnessed(self._SRC)
+        assert not fell, fell
+        assert ("std::vector<std::vector<int32_t>> __slot_4 = "
+                "std::vector<std::vector<int32_t>>{{1}, {2, 3}};") in out
+        assert ("this->nested = std::vector<std::vector<int32_t>>"
+                "{{1}, {2, 3}};") in out
+
+    def test_literal_decl_with_rvalue_reseat_keeps_rejecting(self):
+        # BOUNDARY: an rvalue-reassigned name owes a function-top
+        # `std::optional<T>` rebind pre-decl and reseats through
+        # `&*(__slot_N = ..)`; the slot render this arm emits would drop the
+        # pre-decl. The METHOD-call reseat is itself routable, so this is a
+        # real discriminator, not a shape masked by a later fallback.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class F:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+            "    def make(self) -> Own[list[Int32]]:\n"
+            "        return [self.n, self.n]\n"
+            "def go(f: F) -> None:\n"
+            "    a: list[Int32] | None = [1, 2]\n"
+            "    if a is not None:\n"
+            "        print(len(a))\n"
+            "    a = f.make()\n"
+            "    if a is not None:\n"
+            "        print(len(a))\n"
+            "def main() -> None:\n"
+            "    go(F(3))\n"
+            "main()\n"
+        )
+        _out, _wit, fell = _gen_witnessed(src)
+        assert fell == {"body:stmt.var_decl:decl.opt_slot_source": 1}, fell
+        _assert_byte_identical(src)

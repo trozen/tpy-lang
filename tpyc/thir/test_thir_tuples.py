@@ -459,6 +459,75 @@ class TestTupleSubscriptRead:
         assert "std::tuple<int32_t, int32_t> t = h.pair();" in thir_cpp
 
 
+class TestEnumTupleElement:
+    """An enum is a value scalar in C++ terms, so `tuple[Color, Int32]` is a
+    plain `std::tuple<Color, int32_t>`: borrow and storage forms coincide and
+    `std::get<N>(t)` reads the element bare. The family gate
+    (`_value_tuple_element_ok`) and the per-element read gate
+    (`_tuple_subscript_value_read`) are a PAIR -- either alone leaves the read
+    rejecting."""
+
+    _ENUM = ("from enum import Enum\n"
+             "class Color(Enum):\n    Red = 0\n    Green = 1\n    Blue = 2\n"
+             "class Point:\n"
+             "    def __init__(self, x: Int32):\n        self.x = x\n")
+
+    _SRC = (_PRELUDE + _ENUM
+            + "def read0(t: tuple[Color, Int32]) -> Color:\n    return t[0]\n"
+            + "def read1(t: tuple[Color, Int32]) -> Int32:\n    return t[1]\n"
+            + "def make() -> tuple[Color, Int32]:\n    return (Color.Green, 7)\n"
+            + "def decl() -> Int32:\n"
+            + "    t = (Color.Blue, 4)\n"
+            + "    return t[1]\n"
+            + "def nested(t: tuple[tuple[Color, Int32], Int32]) -> Int32:\n"
+            + "    return t[0][1]\n"
+            + "def main() -> None:\n"
+            + "    print(read1((Color.Red, 5)) + decl() + nested(((Color.Red, 1), 2)))\n"
+            + "    print(read0(make()).name)\n"
+            + "main()\n")
+
+    def test_routes_byte_identical(self):
+        _assert_routes_byte_identical(self._SRC)
+
+    def test_element_read_is_value_form(self):
+        thir = _lower_ctx(self._SRC)
+        sub = _fn(thir, "read0").body[0].value
+        assert isinstance(sub, THIRSubscript) and sub.index.value == 0
+        assert sub.form is Form.VALUE
+        assert isinstance(sub.receiver, THIRName) and sub.receiver.name == "t"
+
+    def test_emits_bare_std_get(self):
+        compiler, modules = _compile(self._SRC)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                    thir_codegen=True))
+        assert "std::tuple<Color, int32_t>" in cpp
+        assert "return std::get<0>(t);" in cpp
+
+    def test_mixed_record_element_tuple_not_a_value_tuple(self):
+        # BOUNDARY: an enum element must not drag a POINTER-REPR sibling into
+        # the value-tuple family -- `tuple[Color, Point]` keeps its distinct
+        # borrow form (`std::tuple<Color, Point*>`) and stays on the F1 rung.
+        from .lower.predicates import _value_tuple
+        from ..compilation_context import activate_compiler
+        src = (_PRELUDE + self._ENUM
+               + "def f(t: tuple[Color, Point]) -> Int32:\n    return t[1].x\n"
+               + "def g(t: tuple[Color, Int32]) -> Int32:\n    return t[1]\n")
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            analyzer = compiler.modules[entry.name].analyzer
+            fns = {f.name: f for f in entry.ast.functions}
+            mt = fns["f"].params[0][1]
+            pt = fns["g"].params[0][1]
+            # borrow and storage genuinely differ here, so admitting it as a
+            # value tuple would emit the wrong element spelling
+            assert mt.has_pointer_repr_element()
+            assert _value_tuple(mt, analyzer) is None
+            # the all-value sibling IS claimed -- the assertion above is not
+            # passing for a trivial reason (e.g. an unresolved param type)
+            assert _value_tuple(pt, analyzer) is not None
+
 
 class TestTupleSubscriptReadEmit:
     def _cpp(self, src: str, thir: bool):

@@ -309,6 +309,7 @@ from .predicates import (
     _mixed_own_borrow_tuple,
     _mixed_own_storage_source,
     _renders_own_borrow_tuple,
+    _mixed_own_btuple_call,
     _wrapper_ref_tuple_return,
     _ptr_optional_tuple,
     _unbound_self_field_ok,
@@ -461,6 +462,8 @@ from .predicates import (
     _eligible_value_union,
     _value_tuple_element_ok,
     _value_tuple_nested,
+    _opt_ternary_tuple_arm_ok,
+    _storage_opt_ternary_result,
     _tuple_compare_pair,
     _ptr_tuple_field_compare_pair,
     _ptr_tuple_literal_compare_pair,
@@ -4450,7 +4453,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 array_retype: bool = True,
                 error_return_raw: bool = False,
                 er_expr_unwrap: bool = False,
+                elem_storage: bool = False,
                 target_type: TpyType | None = None) -> THIRExpr:
+    # `elem_storage` is the IMMEDIATE container-element / dict key-value /
+    # tuple-element position, where an Optional-result ternary renders the
+    # VALUE spelling (`std::optional<T>(<arm>)`) even at pointer repr because
+    # the element STORAGE slot is the value optional -- the AST's
+    # `in_container_element` carve-out in `_gen_if_expr`. A per-call lowering
+    # mode like `cond_eager`, NOT an _ExprUse flag: it is consumed at the
+    # ternary dispatch below and never propagates, and the AST context it
+    # mirrors is sticky in a way whose deeper reach is a defect
+    # (`_LowerCtx.in_container_elem` rejects those positions instead).
     # `allow_temps` admits the arg-temp rows for THIS expression's args only
     # when it is a free call: set by the five flushable statement positions
     # over their direct value, never propagated into subexpressions (each of
@@ -6552,11 +6565,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and need_predecl
                 and not wal_owned_tuple):
             # Non-reassigned borrow-tuple walrus (`(t := (1, b))` /
-            # `(t := items[0])`): predecl `std::tuple<..., T*> t;` + the
-            # plain assign -- a literal renders borrow-form, a storage
-            # lvalue subscript lifts via tuple_to_pointer (the btuple
-            # reseat arm's value split). Reassigned (rebind-slot) walruses
-            # and rvalue-call sources stay AST.
+            # `(t := items[0])` / `(p := make_mixed(b))`): predecl
+            # `std::tuple<..., T*> t;` + the plain assign -- a literal
+            # renders borrow-form, a storage lvalue subscript lifts via
+            # tuple_to_pointer (the btuple reseat arm's value split), and a
+            # MIXED own+borrow CALL already IS the local's shape, so it
+            # binds directly. Reassigned (rebind-slot) walruses and OWNING
+            # tuple-call sources stay AST.
             if contains_pending_leaf(vtu) or any(
                     isinstance(t_, (PendingViewType, IntLiteralType,
                                     FloatLiteralType))
@@ -6577,6 +6592,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     value=_lower_expr(e.value, lc, declared,
                                       subscript_prechecked=True),
                     form=Form.BORROW, loc=loc)
+            elif _mixed_own_btuple_call(e.value, analyzer):
+                # No const-element rung: the borrow-tuple const fixpoint
+                # only records REASSIGNED / HOISTED targets, and sema
+                # rejects a walrus re-bind of a non-value local outright --
+                # so a target reaching here is never const.
+                lowered_value = _lower_expr(
+                    e.value, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.VALUE,
+                                 btuple_slot=True, allow_temps=True))
+                _witness("expr.walrus_btuple_mixed_call")
             else:
                 note_detail("walrus.btuple_src")
                 raise ThirUnsupported("expr.walrus")
@@ -6745,6 +6770,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # for C++ ternary deduction -- the value-repr sibling; arm
                 # shapes gate in _lower_if_expr.
                 or _value_opt_ternary_result(rtype, analyzer) is not None
+                # The container-ELEMENT storage flavor of the same wrap: at
+                # the immediate element slot even a pointer-repr Optional
+                # renders `std::optional<T>(<arm>)` on both arms.
+                or (elem_storage
+                    and _storage_opt_ternary_result(rtype, analyzer)
+                    is not None)
                 # A plain F1-record ternary of lvalue arms renders bare (an
                 # lvalue when both arms are lvalues -- the Own-slot copy /
                 # REF_ALIAS sources); arm shapes gate in _lower_if_expr.
@@ -6767,7 +6798,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             note_detail("ifexpr.result_type")
             raise ThirUnsupported("expr.ifexpr")
         return _lower_if_expr(e, rtype, lc, declared, loc,
-                              cond_temps_ok=use.allow_temps)
+                              cond_temps_ok=use.allow_temps,
+                              elem_storage=elem_storage)
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
             # An expression callee (`make_adder(10)(5)`, `fns[i](x)`): every
@@ -10236,13 +10268,32 @@ def _lower_ru_elem(x: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
 
 
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
-                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
-                          retype_scalars: bool = True,
-                          suppress_move: bool = False,
-                          field_str_ok: bool = False,
-                          tuple_elem: bool = False,
-                          frame_bare_tuple: bool = False,
-                          allow_temps: bool = False) -> THIRExpr:
+                          lc: '_LowerCtx', declared: dict[str, TpyType],
+                          **kwargs) -> THIRExpr:
+    """`_lower_container_elem_impl` under the container-element context flag,
+    the scoping half of the AST's `_container_element_context`. Only the
+    IMMEDIATE element gets the storage-render grant (`elem_storage`, a per-call
+    lowering mode that is consumed at the ternary dispatch and never
+    propagates); the flag set here marks the whole subtree so a deeper Optional
+    ternary can REJECT instead of guessing between the AST's leaked storage
+    wrap and the pointer render."""
+    saved = lc.in_container_elem
+    lc.in_container_elem = True
+    try:
+        return _lower_container_elem_impl(e, slot, lc, declared, **kwargs)
+    finally:
+        lc.in_container_elem = saved
+
+
+def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
+                               lc: '_LowerCtx',
+                               declared: dict[str, TpyType], *,
+                               retype_scalars: bool = True,
+                               suppress_move: bool = False,
+                               field_str_ok: bool = False,
+                               tuple_elem: bool = False,
+                               frame_bare_tuple: bool = False,
+                               allow_temps: bool = False) -> THIRExpr:
     """Lower one container-literal element / dict key / dict value into its
     slot. A view-form str source (BORROW -- a string_view param/local, a slice,
     a StrView-returning call) into an owned `std::string` slot copies
@@ -10597,6 +10648,7 @@ def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
     el = _lower_expr(
         e, lc, declared, use=_ExprUse(indirect_read=True,
                                       allow_temps=allow_temps),
+        elem_storage=True,
         container_threaded=retype_scalars,
         field_owned_str_ok=((field_str_ok or _vu_field)
                             and isinstance(e, TpyFieldAccess)))
@@ -14905,6 +14957,24 @@ def _lower_value_opt_ternary_arm(arm: TpyExpr, vopt: 'OptionalType',
         # Optional and stays out, so no deref hazard is reachable.
         inner = _lower_expr(arm, lc, declared)
         _witness("ifexpr.value_opt_scalar_name")
+    elif isinstance(arm, TpyDictLiteral) and is_dict(
+            _vodi := unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(vopt.inner)))):
+        # A dict-literal arm renders its self-describing
+        # `ordered_map<K, V>({...})` against the Optional's INNER (the AST
+        # branch target is the ternary's own Optional and `_gen_dict_literal`
+        # reads the literal's own sema type, so the inner is what both paths
+        # spell); the wrap lands it in the optional.
+        inner = _lower_expr(arm, lc, declared, target_type=_vodi)
+        _witness("ifexpr.storage_opt_dict_arm")
+    elif (isinstance(arm, TpyTupleLiteral)
+          and (_vot := _value_tuple_nested(vopt.inner, lc.analyzer))
+          is not None
+          and _opt_ternary_tuple_arm_ok(arm, _vot, lc.analyzer)):
+        # The value-tuple sibling: the spelled brace (`std::tuple<int32_t,
+        # int32_t>{a, b}`) against the Optional's inner tuple.
+        inner = _lower_tuple_literal(arm, _vot, lc, declared)
+        _witness("ifexpr.storage_opt_tuple_arm")
     else:
         note_detail("ifexpr.value_opt_arm")
         raise ThirUnsupported("expr.ifexpr")
@@ -15071,7 +15141,8 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
 
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                    declared: dict[str, TpyType], loc, *,
-                   cond_temps_ok: bool = False) -> THIRIfExpr:
+                   cond_temps_ok: bool = False,
+                   elem_storage: bool = False) -> THIRIfExpr:
     """`a if c else b` -> `((cond) ? (then) : (else))`, _gen_if_expr's render.
     The arm slot is the ternary's OWN resolved type (`branch_target =
     result_type` -- the consumer's target is ignored), so the target-typed
@@ -15099,7 +15170,18 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # before the statement); the ARMS evaluate lazily and never get it.
     cond = _lower_truthy(e.condition, lc, declared, temps_ok=cond_temps_ok)
     result_t = slot if slot is not None else rtype
-    popt = _optional_ptr_borrow_wide(result_t, analyzer)
+    sopt = (_storage_opt_ternary_result(result_t, analyzer)
+            if elem_storage else None)
+    popt = (None if sopt is not None
+            else _optional_ptr_borrow_wide(result_t, analyzer))
+    if popt is not None and lc.in_container_elem:
+        # Inside a container element but NOT the immediate element: the AST's
+        # `in_container_element` is sticky, so it wraps this ternary in the
+        # value optional too -- over a `T*` arm, which does not compile.
+        # Neither render can be mirrored (one is ill-formed, the other
+        # byte-diverges), so the position rejects.
+        note_detail("ifexpr.nested_container_elem")
+        raise ThirUnsupported("expr.ifexpr")
     if popt is not None:
         # Pointer-repr Optional result: each arm normalizes to `T*` so the
         # C++ ?: operands match (_gen_if_expr's _ptr_optional_branch); the
@@ -15110,7 +15192,8 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _witness("ifexpr.ptr_opt")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW, loc=loc)
-    vopt = _value_opt_ternary_result(result_t, analyzer)
+    vopt = (sopt if sopt is not None
+            else _value_opt_ternary_result(result_t, analyzer))
     if vopt is not None:
         # A VALUE-repr Optional result: both arms wrap in the spelled
         # optional for C++ ternary deduction (mismatched arm types
@@ -15121,7 +15204,8 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                                             declared, loc)
         orelse = _lower_value_opt_ternary_arm(e.else_expr, vopt, cpp, lc,
                                               declared, loc)
-        _witness("ifexpr.value_opt")
+        _witness("ifexpr.storage_opt_elem" if sopt is not None
+                 else "ifexpr.value_opt")
         return THIRIfExpr(result_type=vopt, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE, loc=loc)
     u_res = _eligible_ptr_union_wide(

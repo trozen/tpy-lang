@@ -701,7 +701,8 @@ class _LowerCtx:
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
                  "const_storage_tuple_locals", "frame_slots",
-                 "resumable_leaf_mode", "nested_returns", "in_finally_helper",
+                 "resumable_leaf_mode", "in_container_elem",
+                 "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
                  "coro_handle_slots", "frame_local_types",
                  "value_tuple_frame_locals",
@@ -1024,6 +1025,12 @@ class _LowerCtx:
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
         self.resumable_leaf_mode = False
+        # True anywhere inside a container-element subtree. The AST's
+        # `in_container_element` is sticky the same way, but its Optional
+        # ternary carve-out is only CORRECT at the immediate element (a
+        # pointer-form arm deeper in renders ill-formed C++), so this flag
+        # exists to REJECT those positions, not to mirror the render.
+        self.in_container_elem = False
         # Returns nested in leaf compounds (THIRResumableReturn), collected
         # here so `lower_resumable` can register their values into the body's
         # `return_values` table (the seam's id(ast)-keyed lookup).
