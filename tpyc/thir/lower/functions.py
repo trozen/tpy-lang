@@ -2834,7 +2834,11 @@ def _rejects_global_slot(node) -> bool:
                                  # at module scope (slot_static/slot_prefix
                                  # in the emit arm), so it survives
                                  # `__tpy_init` like GLOBAL_RVALUE's.
-                                 PtrSlotKind.DYN_PROTOCOL)
+                                 PtrSlotKind.DYN_PROTOCOL,
+                                 # A hoisted global's optional slot rides
+                                 # the hoist lines, spelled with the same
+                                 # slot_static/slot_prefix pair.
+                                 PtrSlotKind.GLOBAL_HOIST_RVALUE)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     if isinstance(node, THIRVarDecl):

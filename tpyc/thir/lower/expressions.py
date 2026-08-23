@@ -417,6 +417,8 @@ from .predicates import (
     _record_getitem_key,
     _subscript_index_and_tuple,
     _subscript_container_recv_type,
+    _narrowed_ptr_opt_name,
+    _narrowed_ptr_opt_recv,
     _template_init_call_fi,
     _view_ctor_bare_source,
     _array_literal_ctor_source,
@@ -588,6 +590,7 @@ from .checks import (
     _copy_open_elem_arg,
     _lambda_routable,
     _subscript_over_container_subscript_ok,
+    _subscript_over_narrowed_opt_subscript_ok,
     _field_over_field_ok,
     _free_callee_kind,
     _fstring_arg_wrap,
@@ -5682,6 +5685,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           # keep the borrow-form-seam reject.
                           or (use.result is _ExprResultUse.BORROW_BIND
                               and _record_getitem_rvalue_arg(e, analyzer)))
+                # A None-narrowed pointer-repr `Optional[record]` NAME reads
+                # its deref (`(*g)[i]`), the same shape the container arm's
+                # `_optrecv_deref` row renders one sink over.
+                rec_optrecv = _narrowed_ptr_opt_name(e.obj, declared,
+                                                     lc.pointers)
                 if not (ret_ok and _record_getitem_idx_recv_ok(
                         e, declared, analyzer, lc.pointers,
                         # A pointer-slot GLOBAL receiver derefs
@@ -5689,10 +5697,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         # plain pointer LOCALS keep the exclusion.
                         ptr_recv_ok=(isinstance(e.obj, TpyName)
                                      and e.obj.name
-                                     in lc.prescan.global_slots))):
+                                     in lc.prescan.global_slots),
+                        opt_ptr_recv_ok=rec_optrecv)):
                     note_detail("subscript.record_getitem")
                     raise ThirUnsupported("subscript.record_getitem", detail=True)
                 _witness("subscript.record_getitem")
+                if rec_optrecv:
+                    _witness("subscript.narrowed_ptr_opt_recv")
                 return THIRSubscript(
                     result_type=rtype,
                     receiver=_lower_expr(
@@ -5702,7 +5713,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         # pinned-consumer admission keys on RECEIVER use.
                         use=(_ExprUse(result=_ExprResultUse.RECEIVER)
                              if _module_var_recv(e.obj, declared, analyzer)
-                             else _ExprUse()),
+                             else _ExprUse(indirect_read=rec_optrecv)),
                         field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                     # A runtime-BigInt key against a FIXED-int key param
                     # narrows here exactly as at a container read
@@ -5716,6 +5727,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     loc=loc)
             recv_t = _subscript_container_recv_type(
                 e.obj, declared, analyzer, narrowed_ok=True)
+            # A None-narrowed ptr-repr Optional[container] NAME receiver reads
+            # through the `(*recv)` deref (_optrecv_deref below), so the family
+            # and element checks key on the narrowed INNER -- the setitem
+            # sibling's row, one sink over.
+            _nptr_recv = _narrowed_ptr_opt_recv(e.obj, recv_t, lc.pointers)
+            if _nptr_recv is not None:
+                recv_t = _nptr_recv
             recv_peeled = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 recv_t))) if recv_t is not None else None)
             own_recv = isinstance(recv_peeled, OwnType)
@@ -5875,11 +5893,29 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         analyzer.get_expr_type(recv), analyzer) is not None)
             bytes_ok = (
                 bytes_recv_ok and _eligible_scalar(rtype) and index_ok)
+            # A `bytearray` receiver spells the SAME @native free-function
+            # dunder as bytes (`::tpy::bytes_getitem(b, i)`) -- only the WRITE
+            # side has its own bytearray_* natives. Name / clean-field
+            # receivers, the bytes rows' slice; `recv_peeled` already carries
+            # the None-narrowed pointer-repr unwrap (`(*b)[i]`).
+            bytearray_ok = (
+                isinstance(e.obj, (TpyName, TpyFieldAccess))
+                and not own_recv
+                and recv_peeled is not None
+                and is_bytearray_type(recv_peeled)
+                and _eligible_scalar(rtype) and index_ok
+                and bool(_witness("subscript.bytearray_recv")))
             # `m[i][j]`: the receiver `m[i]` is a nested-container borrow lvalue
             # (a subscript the one-level recv-type resolver rejects), indexed
             # again -> nested `__getitem__`. Emit lowers it prechecked below.
             nested_ok = (
-                _subscript_over_container_subscript_ok(e, declared, analyzer)
+                (_subscript_over_container_subscript_ok(e, declared, analyzer)
+                 # ... and the same nest off a None-narrowed ptr-repr
+                 # `Optional[container]` name (`rows[-1][-1]` -> the inner
+                 # read derefs `(*rows)`).
+                 or (_subscript_over_narrowed_opt_subscript_ok(
+                         e, declared, analyzer, lc.pointers)
+                     and bool(_witness("subscript.narrowed_opt_nested"))))
                 and ret_ok and index_ok)
             # An F1-record element read in a RECEIVER position (a member-access
             # receiver, or the inner of a `&c[i]` address-of coercion): the
@@ -6037,6 +6073,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and bool(_witness("subscript.borrow_tuple_elem")))
 
             if not (container_ok or call_recv_ok or str_ok or bytes_ok
+                    or bytearray_ok
                     or nested_ok
                     or tuple_elem_src_ok or tuple_elem_borrow_ok
                     or record_recv_ok or tuple_elem_recv or proto_ok
@@ -6139,14 +6176,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("subscript.ru_narrowed_nonmap")
             form = Form.BORROW
             _witness("subscript.ru_narrowed_recv")
-        _optrecv_deref = (
-            isinstance(e.obj, TpyName) and e.obj.name in lc.pointers
-            and isinstance(
-                (_ord := unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared.get(e.obj.name)))))
-                if e.obj.name in declared else None,
-                OptionalType)
-            and _ord.uses_pointer_repr())
+        _optrecv_deref = _narrowed_ptr_opt_name(e.obj, declared, lc.pointers)
+        if _optrecv_deref:
+            _witness("subscript.narrowed_ptr_opt_recv")
         return THIRSubscript(
             result_type=rtype,
             receiver=_lower_expr(
@@ -11446,7 +11478,10 @@ def _container_call_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
                  or (frame_capturing and is_readonly_ref_param(pr)))):
         return None
     slot = unwrap_readonly(pr)
-    if not (is_list(slot) or is_dict(slot) or is_set(slot)):
+    # bytearray is a reference-type container like the three above: its
+    # `std::vector<uint8_t>` rvalue hoists the same `__tmp_N` ref-param temp.
+    if not (is_list(slot) or is_dict(slot) or is_set(slot)
+            or is_bytearray_type(slot)):
         return None
     at = analyzer.get_expr_type(a)
     atb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -13714,8 +13749,9 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                   subscript_prechecked=True),
                 addr_of=True, loc=loc)
         if opt_face == 'container_temp':
-            # A container LITERAL at the Optional[container] slot: the
-            # spelled typed temp + address-of lift
+            # A container LITERAL -- or a container-returning rvalue CALL --
+            # at the Optional[container] slot: the spelled typed temp +
+            # address-of lift
             # (`::tpy::ordered_map<...> __tmp_N = ...; f(&(__tmp_N));`).
             if not temp_args:
                 raise ThirUnsupported(
@@ -13732,6 +13768,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 # bare brace render.
                 lit = replace(lit, typed_brace_cpp=lc.render_type(inner_ct))
             _witness("optptr.container_temp")
+            if isinstance(a, TpyCall):
+                _witness("optptr.container_call_temp")
             return THIRArgTemp(result_type=inner_ct,
                                cpp_type=lc.render_type(inner_ct),
                                init=lit, addr_of=True,

@@ -4125,7 +4125,16 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
     polymorphic subclass rvalue retyping a record slot."""
     analyzer = lc.analyzer
     vtype = declared.get(stmt.name)
-    if stmt.init is None or vtype is None or stmt.name in lc.prescan.hoisted:
+    # `check_escape` hoists the SOURCE of a `g2 = g1` binding, which makes
+    # that global's slot re-assignable: the AST swaps the plain
+    # `static T __global_slot_N = init;` decl for a function-top
+    # `static std::optional<T> __global_slot_N;` and lifts the write through
+    # it. `is_hoisted` is read at exactly ONE place in
+    # `_gen_pointer_local_rebind` -- its first-rvalue branch -- so every
+    # other arm below stays hoist-independent and the flag is consumed at
+    # this driver's tail, not at its dispatch.
+    hoisted = stmt.name in lc.prescan.hoisted
+    if stmt.init is None or vtype is None:
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     # `resolve_type` mirror: a ptr-repr Optional global's slot carries the
@@ -4182,6 +4191,15 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             # (the BUGS.md `iter(c)` self-copy entry) -- that oracle must
             # keep falling back, not get mirrored; combinator rvalues
             # (map/zip) are unwitnessed and stay out with it.
+            if hoisted:
+                # `iter(xs)` is an rvalue, so a HOISTED name would take the
+                # optional-slot render -- spelled `static auto
+                # __global_slot_N;` here, which is not the AST's. Mirror-
+                # defensive, not load-bearing: binding a second name to a
+                # structural-protocol global (what hoists it) is itself a
+                # codegen error today, so the shape has no witness to pin.
+                note_detail("top_level.global_hoist_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
             init = _lower_expr(stmt.init, lc, declared,
                                use=_ExprUse(allow_temps=True))
             _witness("top_level.global_slot_proto")
@@ -4347,11 +4365,25 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     if stmt.name in lc.global_slot_assigned:
+        if hoisted:
+            # A hoisted global's slot is an OPTIONAL, so its reuse render is
+            # `&*(slot = ..)`, not GLOBAL_REBIND's plain `&(slot = ..)`.
+            note_detail("top_level.global_hoist_shape")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
         _witness("top_level.global_slot_reuse")
         return THIRPtrLocalRebind(name=stmt.name,
                                   kind=PtrSlotKind.GLOBAL_REBIND,
                                   value=init, loc=loc)
     lc.global_slot_assigned.add(stmt.name)
+    if hoisted:
+        # `in_branch` is deliberately NOT consulted: it drops the `static` on
+        # the in-place GLOBAL_RVALUE decl, but a hoist line keys off
+        # `slots.global_scope` and keeps it in both paths.
+        lc.unhandled_hoists.discard(stmt.name)
+        _witness("top_level.global_hoist_slot")
+        return THIRPtrLocalRebind(
+            name=stmt.name, kind=PtrSlotKind.GLOBAL_HOIST_RVALUE,
+            value=init, val_cpp=lc.render_type(slot_t), loc=loc)
     _witness("top_level.global_slot")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype,
@@ -8045,6 +8077,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             result_type=st_bare,
                             value=_lower_borrow_tuple_literal(
                                 stmt.init, st_ft, lc, declared),
+                            form=Form.STORAGE, move=False, loc=loc),
+                        loc=loc)
+                _tg_mixed = _mixed_own_storage_source(
+                    stmt.init, st_ft, frozenset(), analyzer)
+                if _tg_mixed is not None:
+                    # A MIXED-own-tuple CALL hands back `std::tuple<Box, Box*>`
+                    # by value; the owning global slot materializes its
+                    # borrowed half through the same NON-move lift the ctor
+                    # MIL and field-write siblings use
+                    # (`g = ::tpy::tuple_to_storage<S>(make_mixed((*v)));`).
+                    _witness("top_level.tuple_global_mixed_call")
+                    return THIRAssign(
+                        target=THIRName(result_type=st_bare, name=stmt.name,
+                                        loc=loc),
+                        value=THIRFormConvert(
+                            result_type=st_bare,
+                            value=_lower_expr(
+                                _tg_mixed, lc, declared,
+                                use=_ExprUse(result=_ExprResultUse.VALUE,
+                                             btuple_slot=True,
+                                             allow_temps=True)),
                             form=Form.STORAGE, move=False, loc=loc),
                         loc=loc)
                 note_detail("top_level.tuple_global_source")

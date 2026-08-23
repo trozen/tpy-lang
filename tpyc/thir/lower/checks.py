@@ -305,6 +305,7 @@ from .predicates import (
     _unown_type_args,
     _str_concat_operand,
     _subscript_container_recv_type,
+    _narrowed_ptr_opt_recv,
     _tparam_value,
     _tuple_subscript_container_elem_read,
     _tuple_subscript_value_read,
@@ -1381,6 +1382,38 @@ def _subscript_over_container_subscript_ok(e: TpyExpr,
             and e.slice_function_info is None
             and not isinstance(e.index, TpySlice)
             and _container_ref_alias_elem_subscript(e.obj, locals_, analyzer))
+
+def _subscript_over_narrowed_opt_subscript_ok(e: TpyExpr,
+                                              locals_: dict[str, TpyType],
+                                              analyzer,
+                                              pointers) -> bool:
+    """`rows[i][j]` where `rows` is a None-narrowed pointer-repr
+    `Optional[container]` NAME: the same nested `__getitem__` nest as
+    `_subscript_over_container_subscript_ok`, except the inner receiver
+    resolves through the `(*rows)` deref the name arm renders. Kept apart from
+    the shared `_borrow_elem_subscript_shape` because that shell has no access
+    to the pointer BINDING set the deref render keys on."""
+    if not (isinstance(e, TpySubscript)
+            and not e.needs_optional_runtime_check
+            and e.slice_function_info is None
+            and not isinstance(e.index, TpySlice)):
+        return False
+    inner = e.obj
+    if not (isinstance(inner, TpySubscript)
+            and not inner.needs_optional_runtime_check
+            and inner.slice_function_info is None
+            and not isinstance(inner.index, TpySlice)):
+        return False
+    recv_t = _narrowed_ptr_opt_recv(
+        inner.obj,
+        _subscript_container_recv_type(inner.obj, locals_, analyzer,
+                                       narrowed_ok=True),
+        pointers)
+    if recv_t is None or not _container_ref_alias_elem(recv_t, analyzer):
+        return False
+    return (_bigint_index_disposition(inner.index,
+                                      analyzer.get_expr_type(inner.obj),
+                                      analyzer) != "reject")
 
 def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
                          analyzer) -> bool:
@@ -2800,12 +2833,10 @@ def _setitem_target_ok(
             return note_detail("setitem.recv.name_shape")
     recv_t = _subscript_container_recv_type(recv, declared, analyzer,
                                             narrowed_ok=True)
-    _rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
-            if recv_t is not None else None)
-    if (isinstance(_rtu, OptionalType) and _rtu.uses_pointer_repr()
-            and isinstance(recv, TpyName) and recv.name in pointers):
-        # The family check below reads the narrowed INNER container.
-        recv_t = _rtu.inner
+    # The family check below reads the narrowed INNER container.
+    _nptr = _narrowed_ptr_opt_recv(recv, recv_t, pointers)
+    if _nptr is not None:
+        recv_t = _nptr
     if recv_t is None:
         # A nested container-element subscript receiver (`d[k][i] = v`): the
         # inner `d[k]` is a container/Array-element borrow lvalue written into.

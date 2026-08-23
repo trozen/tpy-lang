@@ -1141,6 +1141,17 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # union-typed `::tpy::__str__` visitor
     "subscript.ru_narrowed_recv",   # subscript off a narrowed wrapper-union
                                     # receiver -> the fi-fallback bare recv[idx]
+    "subscript.narrowed_ptr_opt_recv",  # subscript off a None-narrowed
+                                    # ptr-repr Optional[container] name (read
+                                    # or write target) -> the `(*recv)` deref
+    "subscript.narrowed_opt_nested",  # `rows[i][j]` off a None-narrowed
+                                    # ptr-repr Optional[container] name -> the
+                                    # nested __getitem__ over the `(*rows)` deref
+    "subscript.bytearray_recv",     # `b[i]` off a bytearray name/field ->
+                                    # the bytes @native dunder bytes_getitem
+    "optptr.container_call_temp",   # container-returning rvalue CALL at an
+                                    # Optional[container] slot -> the typed
+                                    # `__tmp_N` hoist + `&(__tmp_N)`
     "narrow.opt_field_test",        # `self.f is [not] None` -> the storage-form
                                     # `.has_value()` compare over the bare member
     "narrow.ptr_field_test",        # `s.p is [not] None` on a `Ptr[T]` field ->
@@ -2860,8 +2871,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "top_level.global_slot_comp",   # comp init renders its stmt-expr inside
                                     # the static slot line
     "top_level.global_slot_reuse",  # `g = &(__global_slot_N = init);`
+    # A HOISTED global's initializing write: the slot is an optional on
+    # the hoist lines (`g = &*(__global_slot_N = init);`).
+    "top_level.global_hoist_slot",
     "top_level.tuple_storage_global",  # F3 tuple global write: the borrow
                                     # literal under the tuple_to_storage lift
+    # The same global written from a MIXED-own-tuple CALL: the call renders
+    # bare under the same non-move lift.
+    "top_level.tuple_global_mixed_call",
     "top_level.global_null",        # `g = nullptr;`
     # A BORROW-returning method call at a global slot: the slot points AT
     # the callee-owned storage (`pt = &(points->load(0));`), no slot alloc.

@@ -31,7 +31,7 @@ void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<
     // # separate pre-existing gap; this test focuses on the narrowed-local
     // # aug-assign + subscript-LHS fixes.
     // print(x, y, lst[0])
-    std::cout << ::tpy::print_optional_val(x) << " " << ::tpy::print_optional_val(y) << " " << (*lst)[0] << "\n";
+    std::cout << ::tpy::print_optional_val(x) << " " << ::tpy::print_optional_val(y) << " " << ::tpy::__getitem__((*lst), 0) << "\n";
 }
 
 // def local_path() -> None:

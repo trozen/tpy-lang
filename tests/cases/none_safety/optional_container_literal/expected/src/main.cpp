@@ -9,7 +9,7 @@ void take_list(const std::vector<::tpy::BigInt>* lst) {
     // if lst is not None:
     if ((lst != nullptr)) {
         // print(lst[0])
-        std::cout << (*lst)[0] << "\n";
+        std::cout << ::tpy::__getitem__((*lst), 0) << "\n";
     // else:
     } else {
         // print("None list")
@@ -57,7 +57,7 @@ void local_init() {
     // if lst is not None and d is not None and s is not None:
     if ((((lst != nullptr) && (d != nullptr)) && (s != nullptr))) {
         // print(lst[0], len(d), len(s))
-        std::cout << (*lst)[0] << " " << ::tpy::__len__((*d)) << " " << ::tpy::__len__((*s)) << "\n";
+        std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__len__((*d)) << " " << ::tpy::__len__((*s)) << "\n";
     }
 }
 

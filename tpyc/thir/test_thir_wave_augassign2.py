@@ -110,11 +110,11 @@ class TestAugAssignLongTail:
         assert _fn(thir, "main") is not None
         _assert_byte_identical(src)
 
-    def test_record_aug_setitem_slice_stays_ast(self):
-        # The slice exclusion: `items[0:2] += ..` never admits the aug
-        # pair (sema rejects it anyway; the gate's exclusion is the
-        # mirror) -- exercised as the closest expressible sibling, an
-        # Optional-checked receiver keeping the whole body back.
+    def test_record_aug_setitem_narrowed_opt_recv_routes(self):
+        # A None-narrowed ptr-repr Optional record receiver: both halves of
+        # the aug pair spell the `(*items)` deref. (Was the stand-in for the
+        # slice exclusion, which sema rejects and so cannot be written here;
+        # that exclusion now lives only in the gate.)
         src = ("from tpy import Int32\n"
                "from tplib import ArrayList\n"
                "def use(items: ArrayList[Int32, 4] | None) -> None:\n"
@@ -126,5 +126,10 @@ class TestAugAssignLongTail:
                "    use(a)\n"
                "    print(a[0])\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "use") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("setitem.record_aug", 0) == 1
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) >= 1
+        cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::__setitem__((*items), 0, "
+                "::tpy::add_check<int32_t>((*items)[0], 5));" in cpp[1])

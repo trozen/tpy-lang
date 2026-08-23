@@ -2493,6 +2493,14 @@ class StatementGenerator:
         obj = self.expressions._maybe_unwrap_narrowed_optional(
             subscript.obj, obj, is_indirect)
         obj_type = self.types.get_resolved_type(subscript.obj)
+        # The receiver string was unwrapped above, but the TYPE must be too, or
+        # the __getitem__ lookup below misses and the read half of the
+        # read-modify-write drops to a raw operator[] inside an otherwise
+        # checked write. Mirrors _gen_subscript.
+        if isinstance(obj_type, OptionalType):
+            analyzed = self.ctx.get_expr_type(subscript.obj)
+            if not isinstance(analyzed, OptionalType):
+                obj_type = obj_type.inner
         index_type = self.ctx.get_expr_type(subscript.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if is_indirect else obj

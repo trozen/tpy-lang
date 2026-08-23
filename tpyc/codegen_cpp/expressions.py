@@ -6226,8 +6226,14 @@ class ExpressionGenerator:
 
         obj_type = self.types.get_resolved_type(expr.obj)
 
-        # When narrowed from Optional, use inner type for method lookup
-        if isinstance(obj_type, OptionalType) and not obj_type.uses_pointer_repr():
+        # When narrowed from Optional, use inner type for method lookup. Both
+        # reprs need this: keying the fi lookup on the pointer-repr Optional
+        # misses and drops to the raw operator[] below, which skips index
+        # normalization (a list misreads a negative index) and the KeyError
+        # path (a dict default-inserts), and is ill-formed on a const receiver.
+        # `_gen_aug_assign_subscript_code` carries the same unwrap for the
+        # read half of `x[i] += v`; the two must agree.
+        if isinstance(obj_type, OptionalType):
             analyzed = self.ctx.get_expr_type(expr.obj)
             if not isinstance(analyzed, OptionalType):
                 obj_type = obj_type.inner

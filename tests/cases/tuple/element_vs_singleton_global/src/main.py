@@ -13,8 +13,10 @@
 # The two tuple globals carry NO annotation on purpose: `# tpyc: ok` would
 # assert the silence is intended, when it is the defect. diag.txt pins it.
 #
-# When the global slot learns the borrow form the local already uses, all three
-# should print 42 and this case's expectations change.
+# CPython prints 42 43 44. When the global slot learns the borrow form the
+# local already uses, the scalar and the all-borrow tuple reach 42 43; the
+# mixed form reaches 44 only if it stops taking storage, which is an open
+# question -- so expect 42 43 2 or 42 43 44 depending on how that lands.
 from tpy import Int32, Own
 
 

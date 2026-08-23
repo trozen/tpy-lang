@@ -1404,10 +1404,11 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
             return f"{recv}[{idx}]"
         return f"{recv}[static_cast<std::size_t>({idx})]"
     rt = unwrap_qualifiers(e.receiver.result_type)
-    if is_bytes_type(rt) or is_bytes_view_type(rt):
+    if is_bytes_type(rt) or is_bytes_view_type(rt) or is_bytearray_type(rt):
         # bytes' `__getitem__(Int32)` is a @native free-function dunder, not
         # the containers' checked `::tpy::__getitem__` template -- mirrors
         # _gen_subscript's fi dispatch (get_type_method_fi -> the native arm).
+        # bytearray shares that dunder (its own natives are the WRITE side).
         return f"::tpy::bytes_getitem({recv}, {idx})"
     return f"::tpy::__getitem__({recv}, {idx})"
 
@@ -3989,6 +3990,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Lvalue-name reseat: address-of the bare storage read.
             out.write(f"{indent}{name} = "
                       f"&({_emit_expr(stmt.value, state)});\n")
+        elif stmt.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE:
+            # Initializing write of a HOISTED pointer-slot global: the slot
+            # is re-assignable, so it rides the hoist lines as a
+            # `static std::optional<T> __global_slot_N;` and the write lifts
+            # through it. No assert_local_slot -- the hoist line spells the
+            # scope's own prefix + static, like RECORD_HOISTED.
+            val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            slot = state.next_slot()
+            assert state.hoist_drainable, (
+                "GLOBAL_HOIST_RVALUE hoist reached a non-draining leaf "
+                "emitter")
+            state.hoist_lines.append(
+                f"{state.slot_static}std::optional<{stmt.val_cpp}> "
+                f"{state.slot_prefix}_{slot};")
+            out.write(f"{indent}{name} = "
+                      f"&*({state.slot_prefix}_{slot} = {val_cpp});\n")
+            _witness("top_level.global_hoist_slot")
         elif stmt.kind is PtrSlotKind.GLOBAL_NULL:
             out.write(f"{indent}{name} = nullptr;\n")
             _witness("top_level.global_null")

@@ -5240,8 +5240,9 @@ class TestSetAugNameValue:
 class TestNarrowedOptDictWrite:
     """A None-narrowed ptr-repr Optional[container] NAME receiver WRITES
     through the deref (`__setitem__((*d), k, v)` -- the setitem gate
-    proves it, the target lowers prechecked). Bare READS keep their
-    bounds-safe fence (the direct `(*lst)[0]` render is a future cell)."""
+    proves it, the target lowers prechecked) and READS through the same
+    deref (`::tpy::__getitem__((*lst), 0)`). An UNPROVEN receiver keeps
+    its deref_check fence."""
 
     def test_narrowed_opt_dict_write_routes(self):
         src = ("def scan(d: dict[str, str] | None) -> int:\n"
@@ -5256,17 +5257,67 @@ class TestNarrowedOptDictWrite:
                "main()\n")
         _assert_routes_byte_identical(src)
 
-    def test_narrowed_opt_list_read_stays_ast(self):
-        # The READ flavor's bounds-safe direct render is unmirrored.
+    def test_narrowed_opt_list_read_routes(self):
         src = ("from tpy import Int32\n"
                "def f(lst: list[Int32] | None) -> None:\n"
                "    if lst is None:\n"
                "        return\n"
                "    lst[0] = 5\n"
-               "    print(lst[0])\n"
+               "    print(lst[-1])\n"
                "def main() -> None:\n"
                "    f([1])\n"
                "    f(None)\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        # Twice: the write TARGET's receiver takes the same deref.
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) == 2
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        # The checked dunder over the deref -- a raw `(*lst)[-1]` would
+        # misindex instead of normalizing.
+        assert "::tpy::__getitem__((*lst), -1)" in cpp
+        assert "::tpy::__setitem__((*lst), 0, 5);" in cpp
+
+    def test_narrowed_opt_dict_read_routes(self):
+        # The dict flavor: the checked dunder raises KeyError where the raw
+        # `operator[]` would default-insert.
+        src = ("from tpy import Int32\n"
+               "def f(d: dict[Int32, Int32] | None) -> None:\n"
+               "    if d is None:\n"
+               "        return\n"
+               "    print(d[1])\n"
+               "def main() -> None:\n"
+               "    f({1: 2})\n"
+               "    f(None)\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__getitem__((*d), 1)" in cpp
+
+    def test_unproven_opt_list_read_stays_ast(self):
+        # No narrowing: the read carries needs_optional_runtime_check and
+        # rejects at subscript.optional_check, keeping the deref_check render.
+        src = ("from tpy import Int32\n"
+               "def f(lst: list[Int32] | None) -> None:\n"
+               "    print(lst[0])\n"
+               "def main() -> None:\n"
+               "    f([1])\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
+
+    def test_narrowed_opt_list_local_stays_ast(self):
+        # A LOCAL (not a param) is not in the pointer BINDING set, so the
+        # narrowed-inner leg must not fire; the decl arm rejects the body.
+        src = ("from tpy import Int32\n"
+               "def f() -> None:\n"
+               "    lst: list[Int32] | None = [1, 2, 3]\n"
+               "    if lst is None:\n"
+               "        return\n"
+               "    print(lst[0])\n"
+               "def main() -> None:\n"
+               "    f()\n"
                "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
@@ -5687,3 +5738,285 @@ class TestNestedArrayCtorAndChainedSubscript:
         assert _fn(thir, "f") is not None
         cpp = _assert_byte_identical(src)
         assert "std::array<int32_t, 2>& row = " in cpp[1]
+
+
+class TestNarrowedOptRecordGetitem:
+    """A None-narrowed ptr-repr `Optional[record]` NAME receiver spells the
+    record's bare `operator[]` over the deref (`(*g)[i]`) -- the container
+    arm's `_optrecv_deref` row one sink over. The row keys on the pointer
+    BINDING set, which is what the deref render itself keys on, so a LOCAL
+    whose ptr-slot decl put it in that set gets the same deref; an UNPROVEN
+    receiver keeps its runtime check."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Grid:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 3\n"
+        "    def __len__(self) -> Int32:\n"
+        "        return self.n\n"
+        "    def __getitem__(self, i: Int32) -> Int32:\n"
+        "        return i * 2\n"
+        "def read(g: Grid | None) -> None:\n"
+        "    if g is None:\n"
+        "        return\n"
+        "    for i in range(len(g)):\n"
+        "        print(g[i])\n"
+        "def main() -> None:\n"
+        "    read(Grid())\n"
+        "    read(None)\n"
+        "main()\n")
+
+    def test_narrowed_opt_record_getitem_routes(self):
+        _thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert faces.get("subscript.record_getitem", 0) >= 1
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert "(*g)[i]" in cpp
+
+    def test_narrowed_opt_record_str_key_routes(self):
+        src = (
+            "class Table:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def __getitem__(self, k: str) -> int:\n"
+            "        return len(k)\n"
+            "def read(t: Table | None) -> None:\n"
+            "    if t is None:\n"
+            "        return\n"
+            "    print(t[\"abc\"])\n"
+            "def main() -> None:\n"
+            "    read(Table())\n"
+            "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert '(*t)["abc"]' in cpp
+
+    def test_narrowed_opt_record_local_routes(self):
+        # A ptr-SLOT local lands in the pointer binding set (`Grid* g =
+        # &__slot_1;`), so it takes the same deref as a param -- unlike the
+        # container sibling, whose local rejects one arm earlier at its decl.
+        src = (
+            "from tpy import Int32\n"
+            "class Grid:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def __getitem__(self, i: Int32) -> Int32:\n"
+            "        return i * 2\n"
+            "def read() -> None:\n"
+            "    g: Grid | None = Grid()\n"
+            "    if g is None:\n"
+            "        return\n"
+            "    print(g[0])\n"
+            "def main() -> None:\n"
+            "    read()\n"
+            "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("subscript.narrowed_ptr_opt_recv", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "(*g)[0]" in cpp
+
+    def test_unnarrowed_opt_record_getitem_stays_ast(self):
+        # No narrowing: the read carries needs_optional_runtime_check, which
+        # the record-getitem gate rejects outright (the AST keeps deref_check).
+        src = (
+            "from tpy import Int32\n"
+            "class Grid:\n"
+            "    def __init__(self) -> None:\n"
+            "        pass\n"
+            "    def __getitem__(self, i: Int32) -> Int32:\n"
+            "        return i * 2\n"
+            "def read(g: Grid | None) -> None:\n"
+            "    print(g[0])\n"
+            "def main() -> None:\n"
+            "    read(Grid())\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "read") is None
+        _assert_byte_identical(src)
+
+
+class TestNarrowedOptNestedSubscript:
+    """`rows[i][j]` off a None-narrowed ptr-repr `Optional[container]` NAME:
+    the nested checked dunder over the `(*rows)` deref. The nested WRITE
+    target keeps its own receiver reject."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "def read(rows: list[list[Int32]] | None) -> None:\n"
+        "    if rows is None:\n"
+        "        return\n"
+        "    print(rows[-1][-1])\n"
+        "def main() -> None:\n"
+        "    read([[1, 2], [3, 4]])\n"
+        "    read(None)\n"
+        "main()\n")
+
+    def test_narrowed_opt_nested_read_routes(self):
+        _thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert faces.get("subscript.narrowed_opt_nested", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert ("::tpy::__getitem__(::tpy::__getitem__((*rows), -1), -1)"
+                in cpp)
+
+    def test_narrowed_opt_nested_dict_of_dict_routes(self):
+        src = (
+            "from tpy import Int32\n"
+            "def read(m: dict[str, dict[str, Int32]] | None) -> None:\n"
+            "    if m is None:\n"
+            "        return\n"
+            "    print(m[\"a\"][\"b\"])\n"
+            "def main() -> None:\n"
+            "    read({\"a\": {\"b\": 5}})\n"
+            "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("subscript.narrowed_opt_nested", 0) == 1
+        _assert_routes_byte_identical(src)
+
+    def test_narrowed_opt_nested_write_target_stays_ast(self):
+        # The setitem gate has no narrowed-nested row: the write target's
+        # subscript receiver still rejects (`setitem.recv.subscript`).
+        src = (
+            "from tpy import Int32\n"
+            "def write(rows: list[list[Int32]] | None) -> None:\n"
+            "    if rows is None:\n"
+            "        return\n"
+            "    rows[0][1] = 9\n"
+            "def main() -> None:\n"
+            "    write([[1, 2]])\n"
+            "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "write") is None
+        _assert_byte_identical(src)
+
+
+class TestBytearraySubscriptRead:
+    """A `bytearray` subscript READ spells the same @native free-function
+    dunder as bytes (`::tpy::bytes_getitem(b, i)`); only the WRITE side has
+    its own `bytearray_*` natives. Name and clean-field receivers, plus the
+    None-narrowed pointer-repr deref; an `Own[bytearray]` param keeps the
+    bare-name reject its `len` sibling pins."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Holder:\n"
+        "    data: bytearray\n"
+        "    def __init__(self, d: bytearray) -> None:\n"
+        "        self.data = d\n"
+        "def plain(b: bytearray) -> None:\n"
+        "    print(b[-1])\n"
+        "def narrowed(b: bytearray | None) -> None:\n"
+        "    if b is None:\n"
+        "        return\n"
+        "    print(b[0])\n"
+        "def field(h: Holder) -> None:\n"
+        "    print(h.data[0])\n"
+        "def main() -> None:\n"
+        "    ba = bytearray(b\"abc\")\n"
+        "    plain(ba)\n"
+        "    narrowed(ba)\n"
+        "    field(Holder(bytearray(b\"pqr\")))\n"
+        "main()\n")
+
+    def test_bytearray_subscript_read_routes(self):
+        _thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert faces.get("subscript.bytearray_recv", 0) == 3
+        _hpp, cpp = _assert_routes_byte_identical(self._SRC)
+        assert "::tpy::bytes_getitem(b, -1)" in cpp
+        assert "::tpy::bytes_getitem((*b), 0)" in cpp
+        assert "::tpy::bytes_getitem(h.data, 0)" in cpp
+
+    def test_own_bytearray_param_subscript_stays_ast(self):
+        # BOUNDARY: the Own param slot's bare name read is position-pinned
+        # elsewhere; the bytearray row declines it rather than widening a
+        # second axis at once.
+        src = ("from tpy import Own\n"
+               "def take(b: Own[bytearray]) -> None:\n"
+               "    print(b[0])\n"
+               "def main() -> None:\n"
+               "    take(bytearray(b\"ab\"))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "take") is None
+        _assert_byte_identical(src)
+
+    def test_list_subscript_keeps_checked_template(self):
+        # The bytearray dispatch must not leak into the container families.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[Int32]) -> None:\n"
+               "    print(xs[-1])\n"
+               "def main() -> None:\n"
+               "    f([1, 2])\n"
+               "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__getitem__(xs, -1)" in cpp
+        assert "bytes_getitem" not in cpp
+
+
+class TestContainerCallArgTemp:
+    """A container-returning rvalue CALL hoists the `__tmp_N` ref-param temp:
+    for a plain container slot (the `argtemp.container_call` row, now
+    including bytearray) and for a pointer-repr `Optional[container]` slot
+    (the literal face's call sibling -- `&(__tmp_N)`)."""
+
+    def test_bytearray_call_rvalue_plain_slot_routes(self):
+        src = ("def take(b: bytearray) -> None:\n"
+               "    print(len(b))\n"
+               "def main() -> None:\n"
+               "    take(bytearray(b\"abc\"))\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("argtemp.container_call", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<uint8_t> __tmp_1 = ::tpy::bytes_copy(" in cpp
+        assert "take(__tmp_1);" in cpp
+
+    def test_container_call_rvalue_optional_slot_routes(self):
+        src = ("from tpy import Int32, Own\n"
+               "def mk() -> Own[list[Int32]]:\n"
+               "    return [1, 2, 3]\n"
+               "def take(xs: list[Int32] | None) -> None:\n"
+               "    if xs is None:\n"
+               "        return\n"
+               "    print(len(xs))\n"
+               "def main() -> None:\n"
+               "    take(mk())\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("optptr.container_call_temp", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<int32_t> __tmp_1 = mk();" in cpp
+        assert "take(&(__tmp_1));" in cpp
+
+    def test_bytearray_call_rvalue_optional_slot_routes(self):
+        src = ("def take(b: bytearray | None) -> None:\n"
+               "    if b is None:\n"
+               "        return\n"
+               "    print(len(b))\n"
+               "def main() -> None:\n"
+               "    take(bytearray(b\"abc\"))\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("optptr.container_call_temp", 0) == 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::vector<uint8_t> __tmp_1 = ::tpy::bytes_copy(" in cpp
+        assert "take(&(__tmp_1));" in cpp
+
+    def test_name_arg_at_optional_slot_takes_no_temp(self):
+        # BOUNDARY: an LVALUE name at the same slot is the temp-free 'name'
+        # face -- the call row must not claim it.
+        src = ("from tpy import Int32\n"
+               "def take(xs: list[Int32] | None) -> None:\n"
+               "    if xs is None:\n"
+               "        return\n"
+               "    print(len(xs))\n"
+               "def main() -> None:\n"
+               "    ys: list[Int32] = [1]\n"
+               "    take(ys)\n"
+               "main()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("optptr.container_call_temp", 0) == 0
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "take(&(ys));" in cpp

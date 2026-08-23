@@ -647,19 +647,21 @@ class TestBytearrayRvalueCtorArg:
         assert ("Holder h = Holder(::tpy::bytes_copy("
                 "::tpy::bytes_literal(\"xy\", 2)));" in cpp[1])
 
-    def test_free_call_rvalue_stays_ast(self):
-        # BOUNDARY, and the reason the row is ctor-scoped: at a FREE call the
-        # AST hoists `std::vector<uint8_t> __tmp_N = ...;` and passes the temp.
-        # Admitting the shape in the shared pass-through predicate would emit
-        # the bare form here and diverge.
+    def test_free_call_rvalue_takes_the_argtemp(self):
+        # The row stays ctor-scoped: at a FREE call the AST hoists
+        # `std::vector<uint8_t> __tmp_N = ...;` and passes the temp, which is
+        # the ArgTemp row's job -- the bare pass-through must NOT claim it.
         src = (self._HOLDER
                + "def f() -> None:\n"
                + "    print(take(bytearray(b\"xy\")))\n"
                + "f()\n")
         thir, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.bytearray_rvalue", 0) == 0
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        assert w.get("argtemp.container_call", 0) == 1
+        cpp = _assert_routes_byte_identical(src)
+        assert ("std::vector<uint8_t> __tmp_1 = ::tpy::bytes_copy("
+                "::tpy::bytes_literal(\"xy\", 2));" in cpp[1])
+        assert "take(__tmp_1)" in cpp[1]
 
     def test_own_ctor_slot_stays_ast(self):
         # BOUNDARY: an `Own[bytearray]` slot is the move family, not this

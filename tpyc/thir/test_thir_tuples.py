@@ -3851,6 +3851,17 @@ _F3_GLOBAL_RECORDS = (
 )
 
 
+# @nocopy makes a silent copy of the reference element at the global slot a
+# build error, so the identity lift below is pinned as aliasing, not copying.
+_F3_NOCOPY_GLOBAL_RECORDS = (
+    "from tpy import Int32, nocopy\n"
+    "@nocopy\n"
+    "class Cell:\n"
+    "    v: Int32\n"
+    "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
+)
+
+
 class TestF3TupleGlobal:
     def test_top_level_storage_global_write_routes_lifted(self):
         # THE WRONG-KEY REGRESSION PIN (dualgen-proven latent
@@ -3912,6 +3923,114 @@ class TestF3TupleGlobal:
         assert top is None
         assert fell == {
             "top_level:stmt.var_decl:top_level.tuple_global_source": 1}
+
+    def test_top_level_storage_global_fresh_literal_routes_identity_lift(self):
+        # The IDENTITY sub-shape of the same arm: every element of the
+        # literal is fresh, so `_gen_tuple_literal` already spelled the
+        # STORAGE form and the lift's type argument equals the literal's
+        # own. Admitted but unwitnessed until this pin -- the converting
+        # sibling above cannot fail if the identity row regresses to a bare
+        # literal (or to the borrow spelling, which would be ill-formed).
+        src = (
+            _F3_NOCOPY_GLOBAL_RECORDS
+            + "g: tuple[Int32, Cell] = (1, Cell(2))\n"
+            + "def main() -> None:\n"
+            + "    g[1].v = 9\n    print(g[0])\n    print(g[1].v)\n"
+            + "main()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None and fell == {}
+        assert faces.get("top_level.tuple_storage_global")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>("
+                "std::tuple<int32_t, Cell>{1, Cell(2)});" in cpp)
+
+    def test_top_level_all_value_global_takes_no_lift(self):
+        # Boundary: an all-VALUE tuple global has no pointer-repr element,
+        # so the storage-global arm must not claim it at all -- it stays on
+        # the plain decl row and the literal is assigned bare.
+        src = (
+            "from tpy import Int32\n"
+            "gv: tuple[Int32, Int32] = (1, 2)\n"
+            "def main() -> None:\n    print(gv[0])\n"
+            "main()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None and fell == {}
+        assert not faces.get("top_level.tuple_storage_global")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "gv = std::tuple<int32_t, int32_t>{1, 2};" in cpp
+        assert "tuple_to_storage" not in cpp
+    def test_top_level_mixed_own_call_source_routes_lifted(self):
+        # A MIXED-own-tuple CALL returns `std::tuple<Box, Box*>` by value;
+        # the owning global slot materializes its borrowed half through the
+        # same NON-move `tuple_to_storage` the ctor MIL and field-write
+        # siblings use.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class B:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "def make_mixed(b: B) -> tuple[Own[B], B]:\n"
+            "    return (B(1), b)\n"
+            "v = B(2)\n"
+            "g: tuple[B, B] = make_mixed(v)\n"
+            "def main() -> None:\n"
+            "    print(g[0].x, g[1].x)\n"
+            "main()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None
+        assert fell == {}
+        assert faces.get("top_level.tuple_global_mixed_call")
+        _hpp, cpp = _assert_byte_identical(src)
+        assert ("g = ::tpy::tuple_to_storage<std::tuple<B, B>>("
+                "make_mixed((*v)));" in cpp)
+
+    def test_top_level_mixed_own_method_source_routes_lifted(self):
+        # The method flavor of the same row -- the receiver deref is the
+        # only difference, and it must not change the lift.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class B:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "class M:\n"
+            "    b: B\n"
+            "    def __init__(self, b: B) -> None:\n        self.b = b\n"
+            "    def pair(self) -> tuple[Own[B], B]:\n"
+            "        return (B(9), self.b)\n"
+            "v = B(2)\n"
+            "m = M(v)\n"
+            "g: tuple[B, B] = m.pair()\n"
+            "def main() -> None:\n"
+            "    print(g[0].x, g[1].x)\n"
+            "main()\n")
+        top, faces, fell = _top_level(src)
+        assert top is not None
+        assert fell == {}
+        assert faces.get("top_level.tuple_global_mixed_call")
+        _hpp, cpp = _assert_byte_identical(src)
+        assert ("g = ::tpy::tuple_to_storage<std::tuple<B, B>>("
+                "m->pair());" in cpp)
+
+    def test_top_level_own_tuple_return_source_defers(self):
+        # Boundary: an `Own[tuple[..]]`-returning call is already STORAGE
+        # form, so the AST stores it BARE (no lift). That is a different
+        # render and the mixed-call row must not claim it.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class B:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+            "def make_own() -> Own[tuple[B, B]]:\n"
+            "    return (B(1), B(2))\n"
+            "g: tuple[B, B] = make_own()\n"
+            "def main() -> None:\n"
+            "    print(g[0].x, g[1].x)\n"
+            "main()\n")
+        top, _faces, fell = _top_level(src)
+        assert top is None
+        assert fell == {
+            "top_level:stmt.var_decl:top_level.tuple_global_source": 1}
+        _assert_byte_identical(src)
 
     def test_global_read_at_borrow_tuple_param_lifts_const(self):
         # A seeded read-only F3 tuple global at a const borrow-tuple param

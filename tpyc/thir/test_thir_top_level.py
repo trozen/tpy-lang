@@ -903,9 +903,10 @@ class TestGlobalContainerPrint:
 
 class TestGlobalAddrLocal:
     """The address-of catch-all for a plain LOCAL lvalue at a global slot
-    write -- the desugared top-level tuple unpack (`a = &(__unpack_0_0);`);
-    a SUBCLASS-typed local keeps the same-type reject (the polymorphic
-    arm's business)."""
+    write -- the desugared top-level tuple unpack (`a = &(__unpack_0_0);`).
+    A SUBCLASS source is NOT this arm: a pointer-slot GLOBAL source copies
+    bare through `global_ptr_copy`, which is type-blind because the C++
+    upcast is implicit."""
 
     def test_unpack_alias_routes(self):
         src = (
@@ -922,7 +923,12 @@ class TestGlobalAddrLocal:
         _hpp, cpp = _assert_byte_identical(src)
         assert "a = &(__unpack_0_0);" in cpp
 
-    def test_subclass_source_defers(self):
+    def test_subclass_global_source_copies_bare(self):
+        # `g: Base = s0` binds a SECOND name to `s0`, which hoists `s0` --
+        # so this fixture pinned the whole top level as deferred while the
+        # subclass write itself was never the reason. Both writes route:
+        # the hoisted slot for `s0`, the bare pointer copy for `g`
+        # (`Sub*` -> `Base*` upcasts implicitly).
         src = (
             "from tpy import Int32\n"
             "class Base:\n"
@@ -935,10 +941,13 @@ class TestGlobalAddrLocal:
             "s0 = Sub(1)\n"
             "g: Base = s0\n"
             "print(g.n)\n")
-        _assert_byte_identical(src)
-        top, _wit, fb = _top_level(src)
-        assert top is None
-        assert any("global_slot_shape" in k for k in fb), fb
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "g = s0;" in cpp
+        top, wit, fb = _top_level(src)
+        assert top is not None
+        assert fb == {}
+        assert wit.get("top_level.global_ptr_copy", 0) >= 1
+        assert wit.get("top_level.global_hoist_slot", 0) >= 1
 
 
 class TestGlobalSlotBranchWrites:

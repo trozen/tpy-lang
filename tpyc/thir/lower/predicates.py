@@ -5503,16 +5503,19 @@ def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
 def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                                 locals_: dict[str, TpyType], analyzer,
                                 pointers: 'AbstractSet[str]', *,
-                                ptr_recv_ok: bool = False) -> bool:
+                                ptr_recv_ok: bool = False,
+                                opt_ptr_recv_ok: bool = False) -> bool:
     """The record-getitem subscript arm's index/receiver admission, written
     once for the subscript arm and the field-over-getitem gate: a scalar
     index (a runtime-BigInt one against a fixed-int key param carries the
     `.to_fixed_check` narrow the arm applies) or a str value, off a declared
     non-pointer NAME or clean-field receiver
-    (pointer-local receivers render `(*p)[...]` -- excluded). An UNPROVEN
-    Optional receiver keeps its runtime check on the AST path (explicit
-    here rather than relying on `_record_getitem_key`'s unwrap staying
-    narrow)."""
+    (pointer-local receivers render `(*p)[...]`, so a caller admits them only
+    by opting in -- `ptr_recv_ok` for a module-var slot, `opt_ptr_recv_ok` for
+    a None-narrowed pointer-repr Optional -- and rendering the deref itself).
+    An UNPROVEN Optional receiver keeps its runtime check on the AST path
+    (explicit here rather than relying on `_record_getitem_key`'s unwrap
+    staying narrow)."""
     if sub.needs_optional_runtime_check:
         return False
     idx_type = analyzer.get_expr_type(sub.index)
@@ -5528,7 +5531,8 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                            analyzer) != "reject"))
               or _resolved_str_value(idx_type, analyzer) is not None)
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
-                and (sub.obj.name not in pointers or ptr_recv_ok))
+                and (sub.obj.name not in pointers or ptr_recv_ok
+                     or opt_ptr_recv_ok))
                or (isinstance(sub.obj, TpyFieldAccess)
                    and _field_receiver_ok(sub.obj, locals_, analyzer))
                # A module-attr GLOBAL receiver (`os.environ[k]`): renders
@@ -6428,6 +6432,43 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
         # module-variable arm's `(*slot)` deref.
         return analyzer.get_expr_type(recv)
     return None
+
+
+def _narrowed_ptr_opt_recv(recv: TpyExpr, recv_t: 'TpyType | None',
+                           pointers) -> 'TpyType | None':
+    """The narrowed INNER container of a None-narrowed pointer-repr
+    `Optional[container]` NAME receiver, or None.
+
+    The name binds `T*` and the subscript renders through the `(*recv)`
+    deref, so the family / element / dunder checks downstream must key on
+    the inner container -- keying on the Optional misses `__getitem__` and
+    drops to the raw `operator[]`. The un-narrowed flavor carries
+    `needs_optional_runtime_check` and rejects upstream, so reaching here
+    implies sema's proof. Gated on the pointer BINDING set, which is what
+    the deref render itself keys on.
+    """
+    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
+           if recv_t is not None else None)
+    if (isinstance(rtu, OptionalType) and rtu.uses_pointer_repr()
+            and isinstance(recv, TpyName) and recv.name in pointers):
+        return rtu.inner
+    return None
+
+
+def _narrowed_ptr_opt_name(recv: TpyExpr, declared: dict[str, TpyType],
+                           pointers) -> bool:
+    """The `declared`-typed twin of `_narrowed_ptr_opt_recv`: a NAME bound to a
+    pointer-repr `Optional[T]` whose subscript reads through the `(*recv)`
+    deref. Used where the receiver family is resolved off the DECLARED slot
+    (the record-getitem arm, the general subscript emit) rather than off the
+    container-receiver resolver."""
+    if not (isinstance(recv, TpyName) and recv.name in pointers
+            and recv.name in declared):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        declared[recv.name])))
+    return isinstance(t, OptionalType) and t.uses_pointer_repr()
+
 
 def _record_method_with_parents(ri, name: str, analyzer):
     """`ri.get_method(name)` with the parent-traversing fallback: an
@@ -9221,6 +9262,19 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
             # `&(__tmp_N)`. Flushable positions only.
             if _scalar_temp_arg_value(a, inner, analyzer):
                 return 'scalar_temp'
+            # A CONTAINER-returning rvalue call at a container pointee
+            # (`read(bytearray(b"abc"))` at a `bytearray | None` slot): the
+            # literal face's call sibling -- the AST arm is pointee- and
+            # source-blind and hoists the same typed temp + `&(__tmp_N)`.
+            # Rvalue sources only: a borrow return is already an lvalue whose
+            # address the AST takes without a temp.
+            at_c = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+                    if at is not None else None)
+            if (at_c is not None and at_c == inner
+                    and (is_list(inner) or is_dict(inner) or is_set(inner)
+                         or is_bytearray_type(inner))
+                    and is_rvalue_source(analyzer, a)):
+                return 'container_temp'
             return None
         at = analyzer.get_expr_type(a)
         if at == inner:

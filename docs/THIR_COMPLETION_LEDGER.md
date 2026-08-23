@@ -12418,3 +12418,121 @@ the previous entry stand (`_renders_own_borrow_tuple`, the `_value_opt_*`
 AST's `_is_str_view_at_runtime`: THIR now deliberately re-derives the
 AST's resolved-type form test, and this branch proved the two halves
 drift silently when only one resolves.
+
+
+### The AST-first subscript fix and the last two blocked markers (2026-08-23)
+
+Branch `ast-fix-0823`, base `486521878`. **Markers 8 -> 6, dial 3733/3739
+-> 3738/3742.** Suite green with full exec: 12546 passed, 3741 built+run,
+0 byte-diff divergences, 0 move-verdict divergences over 987 joined
+nodes, 0 binding-fact gaps over 11846 joined bodies. Three scouts, four implementer lanes (three in isolated
+worktrees), seven review specialists plus a meta-review.
+
+**This entry supersedes the next-actions list of the 2026-08-22/23 push.**
+That list named five items. Two are done, and two of its premises were
+false. Corrected record:
+
+- `none_safety/narrowed_local_optional_reads` -- FLIPPED. The AST defect
+  was real and is fixed.
+- `tuple/element_vs_singleton_global` -- FLIPPED, and **it was never
+  AST-bug-blocked.** The ledger recorded it as sitting on the
+  tuple-of-reference-type global borrow slot. Deletion-bisection showed
+  that shape already lowered; the real blockers were two ordinary
+  lowering arms (a hoisted pointer-slot global, and an F3 tuple global
+  from a mixed-own call). The borrow-slot bug remains open and HIGH, but
+  it is not on the marker's critical path.
+- `none_safety/optional_container_literal` -- STILL MARKED, and its
+  recorded blocker is now wrong too. The subscript defect it was filed
+  under is fixed and its snapshot moved, but it did not flip: two
+  unrelated arms remain, `decl.opt_slot_source` and
+  `assign.field_write_shape`.
+- The C-ABI str story and the function-scoped hoist registration fork are
+  untouched and still open, as is re-pricing
+  `records/dataclass_asdict_optional` against the storage-vs-borrow form
+  work -- the fifth item of that list, dropped from an earlier draft of
+  this entry.
+
+**The lesson: a blocked-marker attribution is a HYPOTHESIS, and this
+ledger was the thing asserting it.** Three of the six recorded blocking
+reasons were wrong -- not stale, wrong at the time of writing. Each was
+established by reading a reject tag rather than by bisecting the case.
+The tags name the FIRST raise, not the blocker, and a case's marker
+survives for whatever reason is cheapest to believe. Bisect before
+recording a blocking reason, and write down the instrument used.
+
+**The AST defect.** A narrowed pointer-repr `Optional[container]`
+subscript READ rendered a raw `(*lst)[i]`: the `__getitem__` fi lookup
+ran on the un-unwrapped `Optional`, missed, and fell through to
+`operator[]`. Silent CPython wrong-answer divergence -- `lst[-1]`
+returned garbage, a missing dict key printed a default AND silently
+inserted it, and a `readonly[dict] | None` receiver emitted C++ that did
+not compile at all. Filed TWICE (both entries now removed). The filed
+scope was also incomplete: `_gen_aug_assign_subscript_code` had no
+`obj_type` unwrap at all, so `x[i] += v` emitted a raw read nested inside
+a checked write. Two edits, and the churn was measured -- codegen run
+twice in-process over every non-error case -- at exactly 3 hunks in 2
+files, with the stock arm reproducing committed snapshots byte-for-byte.
+A THIRD pre-existing expected file moved --
+`element_vs_singleton_global/expected/diag.txt` -- from that case's
+comment edit shifting a warning's line number, not from the fix.
+
+**Three THIR-side corrections the lanes made to their own briefs.** The
+THIR fix site named in TODO.md was unsound to widen: the `(*recv)` deref
+render keys on `lc.pointers`, which a narrowed LOCAL is never in -- it is
+seeded from params, pointer-slot globals, imported slots and match
+captures, but not from ordinary locals -- so the local would have been
+handed the inner container with no deref. The real site
+was the already-landed setitem sibling, extracted so both sides share it.
+A minimality claim ("this arm is unreachable") was false for one of two
+arms. And a scout's blocking statement was off by one -- the rejecting
+statement was the one BEFORE the one named, poisoned by sema hoisting.
+
+**Instrument note.** Four blockers in the new regression case were each
+NOT what their tag implied: a plain un-narrowed probe showed two of the
+four shapes already routed, making them whole-family gaps (bytearray had
+no subscript READ row at all) rather than Optional-receiver gaps.
+
+**Marker arithmetic is not flip arithmetic.** The first subscript lane
+cleared one marker and shipped a new regression case carrying its own
+`no_thir.txt` -- net zero, plus an inflated dial denominator. A
+newly-authored case that cannot route is a marker like any other. The
+follow-up cleared all four of its blockers rather than splitting the
+case.
+
+**Three BUGS entries filed, three removed.** Removed: the identity
+`tuple_to_storage` divergence, closed by `99484958f` and confirmed by
+bisection plus an independent dualgen -- now pinned by a corpus case and
+a routing-asserting unit, since it had been admitted-but-unwitnessed.
+Filed: a pointer-repr tuple local whose literal RHS value-captures an
+owned element emits ill-formed C++ at decl and reassign (the trigger is
+the element's CAPTURE, not its freshness; the repair is a design fork);
+a 3-deep nested container literal at a pointer-repr Optional arg slot
+gaining a brace level under THIR (the body ROUTES, so it is a live
+contract violation invisible only for want of a case); and the
+share-storage warning asserting "rebound on each iteration" at module
+scope, where there is no iteration. Two claims inside the tuple-global
+entry were corrected in place: its "dead temporary" reason for
+mixed-stays-storage (the owned element is by value in a static-lifetime
+object, so nothing dangles), and its predicted post-fix output -- though
+the SECOND correction was itself over-stated and has been re-hedged. The
+entry's original `42 43 44` is what CPython prints and what full parity
+requires; `42 43 2` follows only if the mixed-stays-storage carve-out
+survives the re-justification this same entry now demands. The endpoint
+is conditional on that decision, and calling the original figure false
+was wrong.
+
+**This entry was itself fact-checked before the branch was handed over,**
+on the principle that produced it: a record nobody verified is exactly
+what cost the previous push. The check found six defects in this text --
+a wrong technical claim about `lc.pointers` (repeated into TODO.md), the
+over-stated endpoint above, a miscount of filed BUGS entries, a dropped
+item, and two omissions. All are fixed above. Write the record, then
+falsify it.
+
+**Mirror pairs to consolidate at cutover, updated.** Add
+`_narrowed_ptr_opt_recv` / `_narrowed_ptr_opt_name` <-> the AST's
+narrowed-Optional unwrap in `_gen_subscript` and
+`_gen_aug_assign_subscript_code`. The AST keeps that unwrap as two
+copies with different repr gates scattered across four sites; THIR has
+one extracted pair. A future unification belongs on the AST side and is
+a behavior-risk refactor, not a cleanup.

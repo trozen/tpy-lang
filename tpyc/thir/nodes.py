@@ -1713,6 +1713,11 @@ class PtrSlotKind(Enum):
     GLOBAL_REBIND = auto()
     GLOBAL_NULL = auto()
     GLOBAL_PTR_COPY = auto()
+    # The HOISTED flavor of GLOBAL_RVALUE: `check_escape` hoisted this
+    # global, so its slot must stay re-assignable -- a function-top
+    # `static std::optional<T> __global_slot_N;` the write lifts through
+    # (`g = &*(__global_slot_N = init);`). `val_cpp` carries the pointee T.
+    GLOBAL_HOIST_RVALUE = auto()
 
 
 @dataclass(frozen=True)
