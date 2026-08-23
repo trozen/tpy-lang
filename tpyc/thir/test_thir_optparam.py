@@ -1684,15 +1684,17 @@ class TestValueRecordOptionalBinding:
                + "print(use(Fixed(4)))\n")
         _assert_routes_byte_identical(src)
 
-    def test_tuple_inner_optional_still_defers(self):
-        # BOUNDARY: a value-repr optional with a non-record VALUE inner
-        # (tuple) is outside the value-record row and must keep deferring.
+    def test_tuple_inner_optional_routes_on_its_own_row(self):
+        # A value-repr optional with a value-TUPLE inner is outside the
+        # value-record row, but it has its own (`name.opt_vtuple_*`): the
+        # has_value None test over the bare binding and the narrowed
+        # `(*tz)` deref under std::get.
         src = ("from tpy import Int64\n"
                "def use(tz: \"tuple[Int64, Int64] | None\" = None) -> Int64:\n"
                "    if tz is None:\n"
                "        return -1\n"
                "    return tz[0]\n"
                "print(use((3, 4)))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "if ((!tz.has_value())) {" in cpp
+        assert "std::get<0>((*tz))" in cpp

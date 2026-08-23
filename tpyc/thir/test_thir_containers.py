@@ -365,14 +365,32 @@ class TestMethodCall:
                   "    a: list[str] = []\n    f(a, \"y\")\n    print(a[0])\n"
                   "main()\n")
 
-    def test_str_owned_local_arg_ineligible(self):
+    def test_str_owned_local_arg_routes(self):
         # An owned-str STORAGE source (a concat result) takes gen_call_arg's
-        # copy+move-temp cascade the bare/convert emit does not reproduce -> AST.
-        thir = _lower(
-            "from tpy import Int32\n"
-            + "def f(xs: list[str], a: str, b: str) -> None:\n"
-            + "    t = a + b\n    xs.append(t)\n")
+        # copy+move-temp cascade -- the OWNED form of the name, told from a
+        # view by `declared` + `param_names`; a plain-function local renders
+        # exactly like an owned global here.
+        src = ("from tpy import Int32\n"
+               "def f(xs: list[str], a: str, b: str) -> None:\n"
+               "    t = a + b\n    xs.append(t)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.own_str", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "std::string __tmp_1{t};" in cpp
+        assert "xs.push_back(std::move(__tmp_1));" in cpp
+
+    def test_bytes_owned_local_arg_stays_ast(self):
+        # BOUNDARY: the bytes sibling is a different render -- the AST passes
+        # an owned bytes lvalue BARE at an `Own[bytes]` element slot
+        # (`xs.push_back(t);`, gen_call_arg's inline_template lvalue skip,
+        # which only str is carved out of), so the owned-str row must not
+        # generalize across the payload.
+        src = ("def f(xs: list[bytes], a: bytes, b: bytes) -> None:\n"
+               "    t = a + b\n    xs.append(t)\n")
+        thir = _lower(src)
         assert _fn(thir, "f") is None
+        _assert_byte_identical(src)
 
     def test_str_view_local_arg_routes(self):
         # A VIEW-form str local into an Own[str] slot materializes an owned copy
@@ -627,15 +645,105 @@ class TestContainerLiteralLocal:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
-    def test_lazy_list_repeat_stays_ast(self):
-        # A LAZY `ListRepeatType`-resolved repeat (variable count, unmutated,
-        # len-only) stays on the AST path -- the lowering arm routes only the
-        # materialized-list and Array shapes (a lazy local passed to a protocol
-        # would crash render_type on its pending arg type; see the arm's TODO).
-        thir = _lower(
-            _PRELUDE
-            + "def f(n: Int32) -> Int32:\n    xs = [0] * n\n    return len(xs)\n")
-        assert _fn(thir, "f") is None
+    def test_lazy_list_repeat_routes(self):
+        # A LAZY `ListRepeatType`-resolved repeat (variable count, unmutated):
+        # the decl spells the range object and the init drops the from_range
+        # wrap the materialized shapes carry.
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs = [0] * n\n    return len(xs)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert ("::tpy::repeat_range<int32_t> xs = "
+                "::tpy::repeat_range<int32_t>(n, {0});") in cpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["decl.list_repeat_slot"] == 1
+        assert faces["list_repeat.lazy"] == 1
+
+    def test_lazy_repeat_for_head_and_print_route(self):
+        # The lazy local as a for-head iterable (the universal `__iter__`
+        # loop over the lvalue capture) and as a print arg (ListPrinter).
+        src = (_PRELUDE
+               + "def f(n: Int32) -> None:\n"
+               + "    r = [1] * n\n"
+               + "    for v in r:\n        print(v)\n"
+               + "    print(r)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "auto& __src_0 = r;" in cpp
+        assert "::tpy::ListPrinter(r)" in cpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["foreach.list_repeat_local"] == 1
+
+    def test_lazy_repeat_free_call_protocol_arg_routes(self):
+        # A repeat RVALUE at a FREE call's structural-protocol slot hoists
+        # the un-spelled `auto __tmp_N` structural temp.
+        src = (_PRELUDE
+               + "from typing import Iterable\n"
+               + "def consume(items: Iterable[Int32]) -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    for v in items:\n        total += v\n"
+               + "    return total\n"
+               + "def f() -> Int32:\n    return consume([3] * 4)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "auto __tmp_1 = ({" in cpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["argtemp.list_repeat_proto"] == 1
+
+    def test_lazy_variable_count_protocol_arg_routes(self):
+        # The VARIABLE-count sibling: the arg stays a lazy repeat_range, so
+        # the temp holds the range object rather than the array aggregate.
+        src = (_PRELUDE
+               + "from typing import Iterable\n"
+               + "def consume(items: Iterable[Int32]) -> Int32:\n"
+               + "    total: Int32 = 0\n"
+               + "    for v in items:\n        total += v\n"
+               + "    return total\n"
+               + "def f(n: Int32) -> Int32:\n    return consume([3] * n)\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "auto __tmp_1 = ::tpy::repeat_range<int32_t>(n, {3});" in cpp
+
+    def test_lazy_repeat_method_arg_stays_ast(self):
+        # The AST's METHOD arg loop passes the repeat INLINE (no temp), so
+        # the free-call admission must not reach the method position.
+        src = (_PRELUDE
+               + "from typing import Iterable\n"
+               + "class Sink:\n    total: Int32\n"
+               + "    def __init__(self) -> None:\n        self.total = 0\n"
+               + "    def take(self, items: Iterable[Int32]) -> None:\n"
+               + "        for v in items:\n            self.total += v\n"
+               + "def f() -> Int32:\n"
+               + "    s = Sink()\n    s.take([5] * 3)\n    return s.total\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert compiler._thir_fallback == {"body:expr.method_call": 1}
+        _assert_byte_identical(src)
+
+    def test_reassigned_lazy_repeat_stays_ast(self):
+        # A REBOUND lazy local is a pointer-local on the AST path
+        # (`repeat_range<T>* r = &__slot_N;`), not the plain spelled copy.
+        src = (_PRELUDE
+               + "def f(flag: bool, n: Int32) -> Int32:\n"
+               + "    r = [1] * n\n"
+               + "    if flag:\n        r = [2] * n\n"
+               + "    return len(r)\n")
+        assert _fn(_lower(src), "f") is None
+        _assert_byte_identical(src)
+
+    def test_lazy_repeat_dyn_protocol_arg_stays_ast(self):
+        # A @dynamic slot takes the adapter machinery, not the structural
+        # temp -- the admission excludes it.
+        src = (_PRELUDE
+               + "from tpy import dynamic\n"
+               + "from typing import Protocol\n"
+               + "@dynamic\n"
+               + "class DynSized(Protocol):\n"
+               + "    def __len__(self) -> Int32: ...\n"
+               + "def dyn_len(d: DynSized) -> Int32:\n    return len(d)\n"
+               + "def f(n: Int32) -> Int32:\n    return dyn_len([1] * n)\n")
+        assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
 
     def test_list_repeat_materialized_routes(self):
         # A materialized `list[T] = [v] * n` -> from_range(repeat_range(...)).

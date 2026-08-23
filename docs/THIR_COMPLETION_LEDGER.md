@@ -12146,3 +12146,275 @@ cutover, a change to either side must touch both.
 pass** (flagged in the four-wave entry, unchanged here): both install
 per-arm state on `lc.narrow` that the resume-env walk must restore
 exactly, and the later waves added more hook modes on top of it.
+
+### The final marker-tail push (2026-08-22/23)
+
+Dial **3724/3739 -> 3733/3739**, corpus markers 15 -> 6, interop markers
+unchanged at 2 -- **17 markers -> 8**. Nine flips:
+`bytes/bytes_optional_param_borrow`,
+`auto_move/auto_consuming_ctor_user`,
+`protocols/protocol_generic_arg_infer_compound_return`,
+`pascal/m17_with_stmt`, `list/list_repeat_lazy`,
+`argparse/custom_type`, `str/fstr_decompose`,
+`iterators/iterable_long_str_elems`, `tplib/json_model_nested`. Marker
+count re-measured with `find tests -name no_thir.txt` (6 under
+`tests/cases`, 2 under `tests/interop`), not carried from a wave report;
+the dial is the comp-phase figure from the branch's last full green run
+(12509 passed, 0 byte-diffs, 0 move-verdict divergences, 0 binding-fact
+gaps), and the review-round commit that followed it flipped no case.
+Zero snapshot churn: not one `expected/` file changed across the whole
+branch.
+
+Three read-only scouts partitioned the tail (small-arms, shape-widening,
+macro-family); two grew as lane branches and merged back; an adjudicator,
+a cell-G implementer, a `json_model_nested` implementer, a completeness
+verifier and a review round followed on the integration branch.
+
+**EVERY MIGRATABLE CASE IN THE CORPUS IS NOW DONE.** The eight survivors
+are not a backlog of un-ground shapes -- each is blocked on an AST-side
+fix or a design decision, enumerated at the bottom of this entry. This is
+the end of the grind loop as a way of moving the dial.
+
+**THE ADJUDICATION: WHEN TWO SCOUTS DISAGREE, MEASURE A DISCRIMINATOR
+MATRIX -- DO NOT PICK THE MORE CONFIDENT REPORT.** The owned-`str` NAME
+at an `Own[str]` slot drew CONTRADICTORY keys from two scouts (one:
+thread `global_readonly` so a GLOBAL can be told from a LOCAL; the other:
+no global-vs-local difference exists, so key it shape-blind). An
+adjudicator ran 8 sources x 3 positions through the AST oracle and
+measured **both wrong**. The owned global, the owned plain-function local
+and the `Own[str]` param all render `std::string __tmp_N{x};` + move;
+`StrView` names, view locals and bare `str` params take the S1 inline
+`std::string(x)` convert. The real key is **owned-form vs view-form**,
+which `declared`/`locals_` plus `param_names` already answer --
+`global_readonly` is never consulted. The matrix bought three things a
+verdict-pick could not:
+
+- **A third lockstep site both scouts missed.** `_own_move_source_slice`
+  calls the shared predicate with NO `locals_`; leaving it alone made a
+  frame-promoted local's last use diverge (the bare `std::move(t)` the
+  AST emits inside a resumable frame became a copy temp). Threading
+  `declared` + `param_names` there is what makes the row byte-identical.
+- **A reproduced miscompile in the "cheap" option.** Widening only the
+  GATE, not the renders, dropped the copy temp entirely
+  (`xs.push_back(NEEDLE)` where the AST hoists and moves) plus the
+  knock-on temp-counter shift. `_own_lvalue_temp_slot` is the SHARED
+  verdict for gate and render; they move together or not at all.
+- **The correct disposition of three committed fences.** One scout had
+  called `test_str_owned_local_arg_ineligible` "THE boundary pin, it MUST
+  still reject". It fences a shape the AST renders identically to the
+  global: keeping it rejecting is what would have made the row wrong.
+
+The same matrix also fenced the row: at an `Own[bytes]` slot the AST
+passes an owned name BARE (`str` is carved out of `gen_call_arg`'s
+`inline_template` lvalue skip), so the bytes sibling stays rejecting on
+its own render and got a new boundary pin.
+
+**THE MIRROR WAS INCOMPLETE IN A SECOND WAY, AND ONLY A FAILED FLIP
+PREDICTION FOUND IT.** The adjudicated key reads the RAW declared type.
+The AST's own form test (`_is_str_view_at_runtime`) reads the RESOLVED
+type, so a name declared `PendingStrType` -- neither `String` nor `str`
+-- was invisible to the mirror. The macro lane had predicted
+`tplib/json_model_nested` would flip on the merge with cell G "with no
+further work"; it did not. **A prediction that a case will flip on merge
+is a testable claim: test it, and when it fails, diagnose rather than
+assume the merge was incomplete.** Instrumenting the predicate took one
+spy run and named the exact binding (`__elem_13`, declared
+`PendingStrType(var_id=8)`, oracle render identical to cell G's). The fix
+resolves the pending binding through `_resolve_pending_view` at the form
+check. Not macro-specific: reproduced hand-written, an `@error_return`
+callee's str result bound in a `while` body, which is the shape that
+leaves a predeclared local pending.
+
+Behind it sat a SECOND blocker the macro lane had reported as cleared.
+Its report folded json rows 3/4/5 into one `field_recv_ok=True` flag
+flip; rows 3 and 4 were, row 5 (the value-opt TUPLE fence) was merely
+SHADOWED by the `Own[str]` reject and re-surfaced the moment the first
+cell landed. **A reject that disappears when an earlier reject is fixed
+was never cleared -- it was hidden.** Clearing it needed six load-bearing
+legs (an is-None gate leg and its `value_repr` classifier twin -- ablate
+the classifier alone and the result is a DIVERGENCE, a pointer compare
+where the AST spells `has_value()`, not a reject; the whole-binding NAME
+write, the narrowed deref read, the value-tuple pass-through arg row, and
+a `_resolve_tuple_pending` call at the literal's result type).
+
+**THE GATE SET HAS A STRUCTURAL BLIND SPOT: A THIR-ONLY CRASH.** The
+completeness verification of the raw-vs-resolved mirror family found the
+var-decl fallthrough spelling `stmt.resolved_type.to_cpp()` raw, where
+the AST spells through `type_to_cpp` and resolves pending slots first.
+`e = src(); tup = (e, 1)` off a `str`-returning call compiles on the AST
+path and RAISES on the THIR one. **A crash is neither a fallback nor a
+byte-diff, so the ratchet and the corpus byte-diff are both blind to it**
+-- and the move-verdict and binding-fact joins never run on a body that
+died at emit. Only an adversarial probe found it, and it was pre-existing
+on master (verified against a `git archive` snapshot). Record this
+alongside the standing note that a fallback emits byte-identical AST:
+the gate set catches divergence and fallback, and nothing in it catches a
+THIR-only crash on a shape no corpus case reaches.
+
+That audit is also the clearest evidence to date that **a
+positive-polarity gate over a raw type is safe and a negative-polarity
+one is not**: across 1144 sampled cases exactly ONE family predicate
+flipped on resolution (`is_array` at the `len()` walrus leg, which
+rejects and falls back -- reject-valid, never a divergence), and every
+raw `isinstance(..., NominalType)` site that flips is conjoined with a
+record/protocol test that is False for the str/bytes/list families. One
+site (`_user_iterator_iterable`) answers YES on the resolved type, and
+there the raw read is PROTECTIVE: resolving it would let the universal
+`::tpy::__iter__` route claim a str loop.
+
+**"UNCONSTRUCTIBLE" MUST BE COMPILED, NOT ASSERTED.** The MIL 1-arg
+container-ctor widening admits all four container names; the lane pinned
+`list`/`set`/`reversed` and skipped `dict(pairs)` on the judgment that
+sema rejects it. The review round compiled it: it routes, byte-
+identically, and had been a silently-admitted arm with no test. The
+sibling judgment held -- `Array(x)` really is sema-rejected in every
+one-arg spelling -- so that one is recorded in the module docstring
+rather than as an unfalsifiable pin. The asymmetry is the lesson: a
+same-shaped "cannot be built" claim was right once and wrong once, and
+the only thing that separated them was a compile.
+
+The same round raised a `@native_c` boundary that asserted only `assert
+fell` (satisfied by a fallback for any unrelated reason) to an exact
+fallback dict plus a face-absence assertion, and pinned the
+`is_dyn_protocol` exclusion in `_native_protocol_field_arg`, which had no
+boundary pin in either of its two positions -- ablating it routes the
+body and DIVERGES, so the fence is load-bearing and was untested.
+
+**A VACUOUS PROBE READS EXACTLY LIKE A PASS.** The verifier's first
+`argtemp.optptr_container_literal` probe reported clean. It was not: an
+unrelated `Array[Int32, 2] | None` row in the same body rejected, fell
+the WHOLE body back, and every other row in it re-emitted through the
+AST. Re-run split (one shape per body, `fallback: {}` asserted) it
+compared what it claimed to compare. **A probe must report what it
+actually compared, not that it found no difference** -- and an exact
+empty fallback dict is the cheapest way to say so.
+
+That arm was in fact diverging, and the shape of the miss is instructive:
+the committed pin used a DICT literal, and dict/set literals render
+self-describing (`ordered_map<K,V>({{..}})`), so the pin could not see
+the LIST-only divergence (`__tmp_1 = {1, 2, 3}` against the AST's
+`std::vector<int32_t>{1, 2, 3}`). **A boundary pin on the wrong sibling
+of a family is not weaker coverage, it is zero coverage.** The related
+"BigInt elements may not even compile" worry did NOT hold on compiling it
+(`BigInt(int32_t)` is not explicit) -- a spelling divergence, not latent
+wrong code, and worth stating because the wrong severity guess would have
+routed it to BUGS.md instead of a same-branch fix.
+
+**A NON-BYTE-DIFF GATE EARNED ITS KEEP.** The macro lane recorded a
+`field_recv_ok` docstring as stale after dualgen AND the corpus byte-diff
+both came back clean. The BINDING-FACT JOIN then failed
+(`storage_tuple_locals in __json_encode__: missing __kv_38`) -- exactly
+what the docstring predicted. Root cause: the tuple-unpack for-head
+branch never performed the storage-form loop-var registration the AST
+does for EVERY for head; the single-var branch did. Only the docstring's
+"name-receiver-keyed" wording was inaccurate; the fact was right. Two
+gates agreeing is not three.
+
+**SCOUT PREMISES FALSIFIED AGAIN -- INCLUDING TWO THIS LEDGER RECORDED.**
+The scout-locates-the-reject / implementer-discovers-the-shape pattern
+held for a second push, and this time two of the falsified premises were
+written down here as follow-up guidance for exactly this work:
+
+- **`pascal/m17_with_stmt` did NOT need the record-spelling slice
+  widened.** The previous entry recorded `_f1_record` as False for
+  `PStr[255]`. Measured at the raise, it is **True** (the raw-`int` type
+  arg passes `_f1_record_type_arg_ok`); the whole blocker was that the
+  result ladder admits `_f1_record` at RECEIVER / ITERABLE / BORROW_BIND
+  / SUSPEND but not at VALUE, and the fix is one result row on the
+  type-ctor arg loop, verbatim sibling of the free-call ladder's.
+- **The `render_type` crash that blocked `list/list_repeat_lazy` no
+  longer existed.** The recorded reason for parking the case ("routing
+  the lazy decl exposes a latent crash; the fix belongs at the
+  protocol-arg boundary") had already been closed by an earlier
+  `resolve_pending_container`. Nothing verified it before the case was
+  re-opened. **A recorded blocker is a measurement with a timestamp;
+  re-probe it before letting it park a case for another wave.**
+- **Macro-generated bodies pose NO structural problem for THIR.** The
+  three "macro family" cases are three DISJOINT tracks, not one shared
+  blocker -- an optional-slot reseat plus a pointer-local record copy; an
+  `@inline` driver/expansion pair plus three marker-arg rows and a
+  `@native` record ctor; and a dict-view for-head flag. The family name
+  was a grouping convenience that read as a shared cause.
+- **Three `json_model_nested` rows were ONE flag flip.** Per-field
+  ablation isolated them correctly as symptoms and then presented them as
+  three independent rows; `field_recv_ok=True` cleared all three.
+
+Two more premises fell inside the lanes: the whole-optional/container
+branch the scout wanted carried over into the type-ctor row is
+UNCONSTRUCTIBLE (sema rejects `str(h.opt)`, `str(h.bs)`, `Span(h.xs)`
+before lowering sees them) and would have been dead code; and the lazy
+list-repeat print leg does NOT need `resolve_pending_container` -- the
+declared binding is already resolved, and the `pendinglisttype` tag that
+suggested otherwise came from `analyzer.get_expr_type`, which is
+diagnostic-only. A textbook lossy tag.
+
+**Two wrong KEYS caught by the blast sweep, not by the flip case.** The
+list-repeat protocol-arg admission first landed in the position-shared
+protocol gate, where the AST's METHOD arg loop passes a repeat INLINE
+while the free-call loop hoists a temp; and the decl row first admitted
+REBOUND lazy locals, which the AST binds through a pointer slot. Both
+were miscompiles that the target case could never witness. The
+`fstr_expansion` arm likewise needed the consumer's `use` threaded plus a
+STATEMENT-side marker-chain peel -- the verbatim `macro_expansion` mirror
+the scout proposed leaves a void `@inline` expansion rejecting at VALUE.
+
+**THE REMAINING 8 MARKERS ARE THE BLOCKED SET, NOT THE UNGROUND SET.**
+Six corpus, two interop:
+
+- **AST-bug-blocked oracles** (the fix belongs AST-side first, per the
+  migration contract): `none_safety/narrowed_local_optional_reads` and
+  `none_safety/optional_container_literal`, both on the raw `(*lst)[i]`
+  subscript defect -- THIR renders the CORRECT checked read and diverges
+  against a wrong oracle. `tuple/element_vs_singleton_global` sits on the
+  tuple-of-reference-type global borrow slot, whose snapshot pins
+  wrong-but-shipping output (a silent copy where CPython aliases).
+- **By-design residue**: `native/extern_c_str_param` stays marked on
+  `sig.linkage_c_abi`; the C-ABI str story is decided at cutover, and
+  BUGS.md carries the wrong-code entry that decision must resolve.
+- **One design fork**: `tuple/mixed_own_tuple_local_decl_paths`. The
+  rebind and if-hoist sinks route; `loop_carried` needs the if-hoist's
+  `in_branch` scope fence lifted, which requires THIR's hoist
+  registration to be FUNCTION-scoped rather than registering into the
+  enclosing scope's `declared` copy. The try-hoist and walrus sinks stay
+  deliberately unbuilt: the case cannot flip without the fork, and an
+  admitted-but-caseless arm carries its own fixtures for no dial movement.
+- **Deliberately unscheduled**: `records/dataclass_asdict_optional`, one
+  giant macro-expanded body whose first raise hides at least three more.
+  Two of them are storage-vs-borrow FORM questions, not arm widenings --
+  THIR classifies `dict[str, Int32] | None` as pointer-repr and
+  normalizes the ternary arms to `T*`, while the AST at that container-
+  ELEMENT position emits the value/storage spelling. Re-price it against
+  the form work, not against the arm ladder.
+- **Two interop markers**, `class_properties` and
+  `container_exposed_elements`, untouched by this push as by the last.
+
+So the next dial movement is not a wave. It is: fix the two AST subscript
+defects and the tuple-global borrow slot; decide the C-ABI str story;
+decide function-scoped hoist registration; and re-price the asdict body
+against the storage-vs-borrow work.
+
+**Five BUGS entries filed, each reproduced before filing** -- four
+approved in the review round, one (the str self-append divergence) raised
+by the applier and carried on the same terms. Two of the crashes hit BOTH
+paths: an unannotated tuple local carrying a pending-str element inside a
+GENERATOR body fails the resumable-frame pending assertion (sema-level,
+identical on both paths), and the same tuple one nesting level out
+(`ts = [(e, 1)]`, `o = (e, 1) if c else None`) raises
+`PendingStrType should be resolved before codegen` on the AST path too --
+only the DECL's own type is spelled through the resolving helper, so a
+composite one level down reaches a bare `to_cpp()`. The third crash is
+THIR-only and latent (a nested tuple LITERAL spelling its own result type
+bare). The remaining two are a loud reject-valid (`",".join([e])` with a
+pending-str element fails `Iterable[str]` conformance) and a byte-diff
+divergence where **the AST is the accident and the fix is still
+AST-side**: `x = x + y` on an `@error_return`-unwrap-seeded str local
+folds to `+=` on THIR where the AST emits `str_concat`, because the AST's
+reassign arm reads a `ctx.var_types` entry that was never populated. Per
+the contract that is its own change-set, not a THIR patch.
+
+**Mirror pairs to consolidate at cutover, updated.** The two carried from
+the previous entry stand (`_renders_own_borrow_tuple`, the `_value_opt_*`
+/ `_optional_print_formatter` set). Add `_owned_form_str_name` <-> the
+AST's `_is_str_view_at_runtime`: THIR now deliberately re-derives the
+AST's resolved-type form test, and this branch proved the two halves
+drift silently when only one resolves.

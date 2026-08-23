@@ -15,6 +15,7 @@ from .testutil import (
     _assert_routes_byte_identical,
     _compile,
     _entry,
+    _lower_ctx_witnessed,
 )
 
 
@@ -70,10 +71,10 @@ class TestPendingViewOwnCtorArg:
         fell = _thir_fallbacks(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
 
-    def test_owned_str_name_at_own_str_slot_keeps_rejecting(self):
-        # The OWNED-str slot's NAME source stays out (the local view/owned
-        # form split is a separate render axis; only FIELD reads are
-        # witnessed there) -- the view widening must not have opened it.
+    def test_owned_str_name_at_own_str_slot_takes_the_owned_temp(self):
+        # The OWNED-str slot's NAME source takes the OWNED copy temp
+        # (`std::string __tmp_1{t};`), not the VIEW brace-init the two rows
+        # above pin -- the form split the row keys on, both halves live.
         src = (
             "from tpy import Own\n"
             "def sink(x: Own[str]) -> None:\n"
@@ -84,8 +85,9 @@ class TestPendingViewOwnCtorArg:
             "    sink(t)\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
-        assert any(k.startswith("body:") for k in fell), fell
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "std::string __tmp_1{t};" in cpp
+        assert "sink(std::move(__tmp_1))" in cpp
 
 
 class TestOwnTupleMovableNameReturn:
@@ -130,3 +132,65 @@ class TestOwnTupleMovableNameReturn:
         )
         fell = _thir_fallbacks(src)
         assert "body:stmt.return:return.tuple_source" in fell, fell
+
+
+class TestPendingStrOwnFormSplit:
+    """A str local whose binding is still a `PendingStrType` -- the form is
+    only in the resolved type, which is what the AST reads. The OWNED
+    resolution takes this family's copy temp, the VIEW resolution the S1
+    inline convert; the pair pins the split at the same slot."""
+
+    _PRELUDE = (
+        "from tpy import Own, StrView, error_return, ReturnException\n"
+        "class E(ReturnException):\n"
+        "    pass\n"
+    )
+
+    OWNED_SRC = _PRELUDE + (
+        "@error_return(E)\n"
+        "def rd() -> str:\n"
+        "    return \"ab\"\n"
+        "@error_return(E)\n"
+        "def go() -> Own[list[str]]:\n"
+        "    xs: list[str] = []\n"
+        "    e = rd()\n"
+        "    xs.append(e)\n"
+        "    return xs\n"
+        "def main() -> None:\n"
+        "    print(1)\n"
+        "main()\n"
+    )
+
+    VIEW_SRC = _PRELUDE + (
+        "@error_return(E)\n"
+        "def rdv() -> StrView:\n"
+        "    return \"ab\"\n"
+        "@error_return(E)\n"
+        "def go() -> Own[list[str]]:\n"
+        "    xs: list[str] = []\n"
+        "    e = rdv()\n"
+        "    xs.append(e)\n"
+        "    return xs\n"
+        "def main() -> None:\n"
+        "    print(1)\n"
+        "main()\n"
+    )
+
+    def test_owned_resolved_pending_takes_the_copy_temp(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.OWNED_SRC)
+        assert "std::string e;" in cpp
+        assert "std::string __tmp_1{e};" in cpp
+        assert "xs.push_back(std::move(__tmp_1));" in cpp
+
+    def test_owned_resolved_pending_witnesses_the_own_str_temp(self):
+        _thir, faces = _lower_ctx_witnessed(self.OWNED_SRC)
+        assert faces.get("argtemp.own_str", 0) >= 1, faces
+
+    def test_view_resolved_pending_keeps_the_inline_convert(self):
+        # The boundary: same slot, same statement shape, VIEW resolution --
+        # the AST spells the S1 `std::string(e)` convert with no temp, so
+        # the owned row must not claim it.
+        _hpp, cpp = _assert_routes_byte_identical(self.VIEW_SRC)
+        assert "std::string_view e;" in cpp
+        assert "xs.push_back(std::string(e));" in cpp
+        assert "__tmp_1{e}" not in cpp

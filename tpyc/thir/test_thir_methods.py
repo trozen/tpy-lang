@@ -2486,17 +2486,21 @@ class TestOwnedStrRvalueElementArg:
         out = self._cpp(self.SRC, thir=True)
         assert "xs.push_back((::tpy::str_concat(s, \" world\")));" in out
 
-    def test_owned_str_local_arg_stays_ast(self):
-        # An owned str LOCAL (STORAGE lvalue) still rides the AST's
-        # copy+move-temp cascade.
+    def test_owned_str_local_arg_routes(self):
+        # An owned str LOCAL (STORAGE lvalue) rides the copy+move-temp
+        # cascade at the Own[str] element slot -- the owned form of the
+        # name, which `declared` + `param_names` separate from a view.
         src = (
             "def app(xs: list[str], s: str):\n"
             "    owned = s.upper()\n"
             "    owned = owned.lower()\n"
             "    xs.append(owned)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "app") is None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "app") is not None
+        assert faces.get("argtemp.own_str", 0) >= 1
+        out = self._cpp(src, thir=True)
+        assert out == self._cpp(src, thir=False)
+        assert "std::string __tmp_1{owned};" in out
 
 
 class TestFreeCallResultReceiver:
@@ -2852,6 +2856,43 @@ class TestOptionalPtrContainerMethodArgs:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
+
+    _LIST_SRC = (
+        "from tpy import Int32\n"
+        "class L:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n"
+        "        self.n = 0\n"
+        "    def take(self, xs: list[Int32] | None) -> Int32:\n"
+        "        if xs is not None:\n"
+        "            self.n += len(xs)\n"
+        "        return self.n\n"
+        "    def take2(self, xs: list[list[Int32]] | None) -> Int32:\n"
+        "        if xs is not None:\n"
+        "            self.n += len(xs)\n"
+        "        return self.n\n"
+    )
+
+    def test_list_literal_temp_spells_its_container_type(self):
+        # The LIST sibling of the dict row above. `_gen_optional_ptr_arg`
+        # renders this temp's init through the SPELLED container ctor; the
+        # bare `{1, 2, 3}` brace is the DECL-slot render and does not
+        # belong here. Dict/set spell themselves, so only the list brace
+        # needs the prefix -- and the dict row above cannot catch a
+        # regression in it.
+        src = (self._LIST_SRC
+               + "def f(l: L) -> None:\n"
+               + "    print(l.take([1, 2, 3]))\n"
+               + "    print(l.take2([[4], [5, 6]]))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.optptr_container_literal", 0) >= 2
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert ("std::vector<int32_t> __tmp_1 = "
+                "std::vector<int32_t>{1, 2, 3};") in cpp
+        assert "l.take(&(__tmp_1))" in cpp
+        assert ("std::vector<std::vector<int32_t>> __tmp_2 = "
+                "std::vector<std::vector<int32_t>>{{4}, {5, 6}};") in cpp
 
 
 class TestOptionalPtrContainerNameArg:
@@ -3815,6 +3856,54 @@ class TestStrBytesFieldWriteValueShapes:
                "        if s is not None:\n            self.name = s\n")
         assert self._fallback(src) == {
             "body:stmt.assign:assign.field_write_shape": 1}
+        _assert_byte_identical(src)
+
+
+class TestBytesLiteralValueOptMethodArg:
+    """The record-method twin of the ctor ladder's
+    `bytes_literal_value_opt` row: a bytes LITERAL at a value-repr
+    `Optional[bytes]` method slot renders the bare owned literal and the
+    optional's converting ctor absorbs it."""
+
+    _HOLDER = ("class Holder:\n    n: Int32\n"
+               "    def __init__(self) -> None:\n        self.n = 0\n")
+
+    def test_bytes_literal_value_opt_method_arg_routes(self):
+        src = ("from tpy import Int32\n" + self._HOLDER
+               + "    def store(self, b: bytes | None) -> None:\n"
+               + "        if b is not None:\n            self.n += len(b)\n"
+               + "def main() -> None:\n    h = Holder()\n"
+               + "    h.store(b\"abc\")\n    h.store(None)\n"
+               + "    print(h.n)\n")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("method.bytes_literal_value_opt", 0) == 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert '::tpy::bytes_literal_owned("abc", 3)' in hpp + cpp
+
+    def test_bytes_literal_own_method_slot_stays_ast(self):
+        # BOUNDARY: an `Own[bytes]` slot is not an Optional at all -- the
+        # row keys on a value-repr Optional inner, so this must keep
+        # rejecting.
+        src = ("from tpy import Int32, Own\n" + self._HOLDER
+               + "    def take(self, b: Own[bytes]) -> None:\n"
+               + "        self.n += len(b)\n"
+               + "def main() -> None:\n    h = Holder()\n"
+               + "    h.take(b\"fghi\")\n    print(h.n)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
+        _assert_byte_identical(src)
+
+    def test_bytes_literal_view_inner_opt_slot_stays_ast(self):
+        # BOUNDARY: a VIEW inner (`optional<span<const uint8_t>>`) takes the
+        # arg-split shim, not the owned literal render -- the predicate
+        # demands an owned `bytes` inner.
+        src = ("from tpy import Int32, BytesView\n" + self._HOLDER
+               + "    def peek(self, b: BytesView | None) -> None:\n"
+               + "        if b is not None:\n            self.n += len(b)\n"
+               + "def main() -> None:\n    h = Holder()\n"
+               + "    h.peek(b\"abc\")\n    print(h.n)\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "main") is None
         _assert_byte_identical(src)
 
 

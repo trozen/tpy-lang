@@ -1145,9 +1145,11 @@ class TestOpenValueTupleCallReturn:
                 "::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t "
                 "{ return std::get<1>(p); });" in cpp[0])
 
-    def test_generic_call_at_local_decl_stays_ast(self):
-        # BOUNDARY: the same call bound to a LOCAL is a different sink -- the
-        # decl slot has its own gates and does not take the bare return row.
+    def test_generic_call_at_local_decl_routes(self):
+        # The decl sink has its own gate, and the open-T tuple decl slot now
+        # fills it: `std::tuple<T, int32_t> t = ...` is the plain spelled
+        # copy like a value tuple's, so the bare return row composes here.
+        # The record-ELEMENT sibling below still fences the family.
         src = ("from tpy import Int32\n"
                "def pick[T](a: tuple[T, Int32], b: tuple[T, Int32]) -> Int32:\n"
                "    t = min(a, b, key=lambda p: p[1])\n"
@@ -1156,9 +1158,10 @@ class TestOpenValueTupleCallReturn:
                "    print(pick((\"a\", 3), (\"b\", 1)))\n"
                "main()\n")
         thir, w = _lower_ctx_witnessed(src)
-        assert w.get("call.open_value_tuple_ret", 0) == 0
-        assert _fn(thir, "pick") is None
-        _assert_byte_identical(src)
+        assert w.get("decl.open_t_tuple_slot", 0) == 1
+        assert w.get("call.open_value_tuple_ret", 0) == 1
+        assert _fn(thir, "pick") is not None
+        _assert_routes_byte_identical(src)
 
     def test_record_element_stays_ast(self):
         # BOUNDARY: `tuple[T, Box]` is not an OPEN VALUE tuple -- the concrete
@@ -3559,10 +3562,10 @@ class TestOwnedBytesTupleFamily:
     # test_thir_wave_needs_copy.py (TestOwnViewfamParamReads).
 
     def test_owned_str_name_keeps_temp_row(self):
-        # BOUNDARY: an OWNED (non-view) str name at the Own[str] slot is
-        # NOT the inline view conv -- it keeps the copy+move temp cascade
-        # (falls back where the flush is unverified).
-        from .testutil import _fn as _fn_l, _lower_ctx
+        # An OWNED (non-view) str name at the Own[str] free-call slot is NOT
+        # the inline view conv -- it takes the copy+move temp cascade, and
+        # the row is position-blind (same render as the method slot).
+        from .testutil import _fn as _fn_l, _lower_ctx_witnessed
         src = (
             "from tpy import Own\n"
             "def take(s: Own[str]) -> int:\n"
@@ -3570,8 +3573,11 @@ class TestOwnedBytesTupleFamily:
             "def use() -> int:\n"
             "    t = \"hey\" + \"!\"\n"
             "    return take(t) + len(t)\n")
-        thir = _lower_ctx(src)
-        assert _fn_l(thir, "use") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn_l(thir, "use") is not None
+        assert faces.get("argtemp.own_str", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "std::string __tmp_1{t};" in cpp
 
 
 class TestGenericTupleFamily:

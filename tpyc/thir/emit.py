@@ -1343,6 +1343,9 @@ def _emit_list_repeat(e: THIRListRepeat, state: _EmitState) -> str:
         # repeat_range's count is int32_t; a BigInt count checks-converts.
         count = f"{count}.to_fixed_check<int32_t>()"
     range_expr = f"::tpy::repeat_range<{e.elem_cpp}>({count}, {{{elems}}})"
+    if e.lazy:
+        # Unmaterialized: the range object IS the value.
+        return range_expr
     return f"::tpy::from_range<{e.result_cpp}>({range_expr})"
 
 

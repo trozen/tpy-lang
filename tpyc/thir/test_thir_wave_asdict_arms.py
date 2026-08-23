@@ -113,11 +113,12 @@ class TestAsdictArms:
         assert _fn(thir, "show") is not None
         _assert_byte_identical(src)
 
-    def test_field_receiver_dict_view_for_head_still_defers(self):
-        # The FOR-HEAD flavor stays out: its storage-tuple loop-var
-        # registration is name-receiver-keyed, and routing without it was
-        # caught as a binding-fact gap (tplib/json_model_nested). The comp
-        # route has no such registration (it lowers its own unpack vars).
+    def test_field_receiver_dict_view_for_head_routes(self):
+        # CONVERTED: the FOR-HEAD flavor routes now. Its unpack branch was
+        # missing the storage-form loop-var registration the AST performs
+        # for every for head, which showed up as a binding-fact gap
+        # (tplib/json_model_nested) rather than a byte diff; supplying it
+        # is what let the field receiver open here.
         src = _HDR + (
             "class H:\n"
             "    m: dict[str, Int32]\n"
@@ -130,8 +131,9 @@ class TestAsdictArms:
             "    show(H({'a': 1}))\n"
         )
         thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is None
-        _assert_byte_identical(src)
+        assert _fn(thir, "show") is not None
+        out = "".join(_assert_byte_identical(src))
+        assert "::tpy::dict_items(h.m)" in out
 
     def test_dict_literal_tuple_member_routes(self):
         # The dict_tuple shape: asdict over a dataclass with a

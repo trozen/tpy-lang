@@ -113,3 +113,73 @@ class TestRefTargetLongTail:
         thir = _lower_ctx(src)
         assert _fn(thir, "bump") is not None
         _assert_byte_identical(src)
+
+
+class TestFieldReceiverItemsUnpack:
+    """`for k, v in self.<field>.items():` -- the FIELD-receiver flavor of
+    the tuple-unpack for head. The same loop over a NAME binding already
+    routed; the view render is receiver-blind (`::tpy::dict_items(
+    this->meta)`) and the unpack targets bind off the lifted borrow tuple,
+    not off a receiver-keyed registration. Corpus witness:
+    `tplib/json_model_nested`."""
+
+    _SRC = (
+        "from tpy import Int32\n"
+        "class Bag:\n"
+        "    meta: dict[str, Int32]\n"
+        "    lists: dict[str, list[Int32]]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.meta = {}\n"
+        "        self.lists = {}\n"
+        "    def sum_meta(self) -> Int32:\n"
+        "        total = 0\n"
+        "        for k, v in self.meta.items():\n"
+        "            total += v + Int32(len(k))\n"
+        "        return total\n"
+        "    def sum_lists(self) -> Int32:\n"
+        "        total = 0\n"
+        "        for k, xs in self.lists.items():\n"
+        "            total += Int32(len(k)) + Int32(len(xs))\n"
+        "        return total\n"
+        "def main() -> None:\n"
+        "    b = Bag()\n"
+        "    print(b.sum_meta())\n"
+        "    print(b.sum_lists())\n"
+        "main()\n"
+    )
+
+    def test_scalar_and_ref_target_field_items_route(self):
+        out = "".join(_assert_routes_byte_identical(self._SRC))
+        assert "::tpy::dict_items(this->meta)" in out
+        # The container-VALUE target still takes the ref-target unpack off
+        # the lifted borrow tuple -- the field receiver changes only where
+        # the view comes from.
+        assert ("::tpy::tuple_to_pointer<std::tuple<std::string_view, "
+                "const std::vector<int32_t>*>>") in out
+        assert "::tpy::unwrap_ref(::tpy::tuple_elem_ref(" in out
+
+    _SINGLE_SRC = (
+        "from tpy import Int32\n"
+        "class Bag2:\n"
+        "    meta: dict[str, Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.meta = {}\n"
+        "    def total(self) -> Int32:\n"
+        "        n = 0\n"
+        "        for v in self.meta.values():\n"
+        "            n += v\n"
+        "        return n\n"
+        "def main() -> None:\n"
+        "    print(Bag2().total())\n"
+        "main()\n"
+    )
+
+    def test_single_var_field_view_head_stays_ast(self):
+        # BOUNDARY: the SINGLE-VAR for head keeps rejecting a field
+        # receiver -- its storage-tuple loop-var registration is
+        # name-receiver-keyed, so the flag stays off there. Identity is the
+        # claim: the body falls back.
+        from .testutil import _thir_ctx
+        _ctx, fell = _thir_ctx(self._SINGLE_SRC)
+        assert fell == {"body:stmt.for_each:iter.method_call_shape": 1}, fell
+        _assert_byte_identical(self._SINGLE_SRC)

@@ -1246,6 +1246,110 @@ class TestCopyReseatRows:
         _assert_byte_identical(src)
 
 
+class TestOptSlotStorageReseatSource:
+    """The `reseat.opt_rvalue` source lowers at STORAGE (the slot IS the
+    storage sink, `&*(__slot_N = <rvalue>)`) like its `opt_storage_field`
+    sibling -- a record-returning marker call rejects at the default VALUE
+    use. Corpus witness: argparse/custom_type's `Tag.from_arg(tok)`."""
+
+    _T = ("from tpy import Int32, Own\n"
+          "class Tag:\n"
+          "    n: Int32\n"
+          "    def __init__(self, n: Int32) -> None:\n"
+          "        self.n = n\n"
+          "    @staticmethod\n"
+          "    def from_arg(n: Int32) -> Own[Tag]:\n"
+          "        return Tag(n)\n")
+
+    _SRC = (_T
+            + "def pick(flag: bool, n: Int32) -> Int32:\n"
+            + "    t: Tag | None = None\n"
+            + "    if flag:\n"
+            + "        t = Tag.from_arg(n)\n"
+            + "    else:\n"
+            + "        t = Tag(n + 1)\n"
+            + "    if t is None:\n        return 0\n"
+            + "    return t.n\n"
+            + "def main() -> None:\n"
+            + "    print(pick(True, 3))\n"
+            + "main()\n")
+
+    def test_own_static_call_reseat_routes(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "pick") is not None
+        assert faces.get("reseat.opt_rvalue")
+        out = "".join(_assert_routes_byte_identical(self._SRC))
+        assert "= Tag::from_arg(n));" in out
+
+    def test_none_reseat_beside_it_still_routes(self):
+        # BLAST-SWEEP neighbour: the None reseat of the same slot shares
+        # the arm's predecl but takes the OPT_NONE rebind, unaffected by
+        # the source-use change.
+        src = (self._T
+               + "def clear(flag: bool, n: Int32) -> Int32:\n"
+               + "    t: Tag | None = Tag(n)\n"
+               + "    if flag:\n        t = None\n"
+               + "    if t is None:\n        return -1\n"
+               + "    return t.n\n"
+               + "def main() -> None:\n"
+               + "    print(clear(True, 5))\n"
+               + "main()\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "clear") is not None
+        assert faces.get("reseat.opt_none")
+        _assert_routes_byte_identical(src)
+
+
+class TestCopyPointerLocalRecord:
+    """`copy(p)` over a POINTER-LOCAL record source: the general
+    `{arg_type}(gen_expr_deref(arg))` tail spells the deref
+    (`Point((*saved))`), which `_lower_copy_record`'s bare `T(x)` row
+    excludes by construction. Corpus witness: argparse/custom_type's
+    `Tag input = Tag((*__tpy_argparse_acc_input));`."""
+
+    _P = ("import tpy\n"
+          "from tpy import Int32\n"
+          "class Point:\n"
+          "    x: Int32\n"
+          "    def __init__(self, x: Int32) -> None:\n"
+          "        self.x = x\n")
+
+    _HOISTED = (_P
+                + "def hoisted_copy() -> Int32:\n"
+                + "    saved: Point = Point(0)\n"
+                + "    for i in range(3):\n"
+                + "        p: Point = Point(i)\n"
+                + "        saved = p\n"
+                + "    dup = tpy.copy(saved)\n"
+                + "    return dup.x\n"
+                + "def main() -> None:\n"
+                + "    print(hoisted_copy())\n"
+                + "main()\n")
+
+    def test_pointer_local_record_copy_routes(self):
+        thir, faces = _lower_ctx_witnessed(self._HOISTED)
+        assert _fn(thir, "hoisted_copy") is not None
+        assert faces.get("call.copy_record_ptr")
+        out = "".join(_assert_routes_byte_identical(self._HOISTED))
+        assert "Point dup = Point((*saved));" in out
+
+    def test_plain_record_name_copy_at_the_qualified_tail_defers(self):
+        # BOUNDARY (dualgen-probed): a NON-pointer record NAME reaches the
+        # same qualified tail with no deref, and the row is deliberately
+        # keyed on the pointer-local flavor -- `_lower_copy_record`'s
+        # `T(x)` row owns that shape at the sinks that intercept it, and
+        # this decl sink is not one of them.
+        src = (self._P
+               + "def plain_copy(src: Point) -> Int32:\n"
+               + "    dup = tpy.copy(src)\n"
+               + "    return dup.x\n"
+               + "def main() -> None:\n"
+               + "    print(plain_copy(Point(5)))\n"
+               + "main()\n")
+        assert _fn(_lower_ctx(src), "plain_copy") is None
+        assert "Point dup = Point(src);" in "".join(
+            _assert_byte_identical(src))
+
 
 class TestPtrValueHoistAndTernary:
     """`Ptr[T]` as a first-class T* VALUE at the if-hoist predecl and the

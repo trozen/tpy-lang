@@ -45,6 +45,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.ifexpr_iterable_lower",  # ... and its dedicated lowering leg
     "argtemp.list_repeat",          # list-repeat rvalue into a container
                                     # ref slot: the AST is_temporary hoist
+    "argtemp.list_repeat_proto",    # ADMISSION of a list-repeat rvalue at
+                                    # a STATIC structural-protocol slot;
+                                    # the shared structural temp renders it
     "argtemp.cond_eager",           # NON-deferring temp in a conditional
                                     # operand: the eager statement hoist
     "argtemp.cond_defer_audited",   # audited deferring temp in a
@@ -500,6 +503,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`UInt32.trunc(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
+    "call.fstr_expansion",          # `@inline` METHOD call -> the substituted
+                                    # body expression, rendered in place
     "call.dyn_hasattr",             # runtime hasattr probe -> the try/catch
                                     # stmt-expr over `obj.__getattr__(name)`
     "call.dyn_getattr_default",     # getattr(obj, name, default) -> the
@@ -852,6 +857,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr_stmt.macro_discard",      # void stmt-position macro expansion
                                     # (setattr/delattr builtins) dispatched
                                     # with the DISCARD use
+    "expr_stmt.marker_chain",       # void stmt-position @inline/macro marker
+                                    # CHAIN peeled to its renderer (DISCARD)
     # A base-init arg beyond the scalar row: str name/literal, None,
     # IntLiteralType digits, record / Optional-ptr / Own param names --
     # all the target-less bare renders of _extract_base_inits.
@@ -1203,6 +1210,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.builtin_value_record_ret",   # builtin ValueType record return, bare at storage
     "decl.dyn_own_erased_call",        # already-erased Own[dyn] call decl (unique_ptr spelled)
     "decl.builtin_value_record_slot",  # builtin ValueType record decl, plain spelled copy
+    "decl.list_repeat_slot",        # lazy `[v] * n` decl slot: the
+                                    # spelled `repeat_range<T>` copy
     "decl.coro_frame_rebind",       # concrete coro handle rebind (emplace / move pair)
     "decl.coro_frame_local",        # async-factory local: the concrete
                                     # frame in optional storage (erasure
@@ -1292,6 +1301,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.tuple_union_elem",   # nested tuple literal w/ union elements
     "containerlit.union_narrowed_elem",  # narrowed alias at a value-union
                                     # slot -> bare member (`{__a, ..}`)
+    "list_repeat.lazy",             # `[v] * n` kept unmaterialized: the
+                                    # bare repeat_range, no from_range wrap
     # A spanlike coerce over an array-literal inner: the helper wraps the
     # make_array-typed brace init (`as_mut_span(std::array<T, N>{...})`).
     "coerce.span_array_literal",
@@ -1571,6 +1582,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # value-opt view slot (target-less loop)
     "arg.container_field_marker",   # container field read bound bare at a
                                     # marker callee's container ref slot
+    "arg.record_field_marker",      # F1-record field read bound bare at a
+                                    # marker callee's record ref slot
+    "arg.record_borrow_ret_marker", # T&-returning record call bound bare at
+                                    # a marker callee's record ref slot
+    "arg.btuple_literal_marker",    # tuple literal at a marker callee's
+                                    # pointer-repr tuple slot (borrow builder)
+    "mil.native_ctor",              # ctor MIL field init from a plain @native
+                                    # record ctor (`_logger(::ns::H(name))`)
     "arg.own_tparam_method_rvalue", # Own[T] method rvalue bare at the same
                                     # open Own[T] method slot
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
@@ -1578,6 +1597,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare dunder call)
     "arg.bytes_owned_literal",      # bytes literal at an Own[bytes] element
                                     # slot -> the owned literal render
+    "arg.own_enum_elem",            # enum name bare at an Own[enum] container
+                                    # element slot (value payload, no temp)
     "arg.own_ptr_value",            # ptr value at an Own[Ptr] element slot
     "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
                                     # element slot -> spelled value render
@@ -1728,6 +1749,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.copy_container",
     # `copy(span)` of a Span NAME -> `std::span<T>(span)` (a view copy).
     "call.copy_span",
+    # `copy(acc)` of a POINTER-LOCAL record source -> `Tag((*acc))` (the
+    # general tail over gen_expr_deref's indirect read).
+    "call.copy_record_ptr",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
     # `copy(big)` of a scalar NAME -> `::tpy::BigInt(big)` (the same
@@ -1983,6 +2007,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "name.opt_btuple_whole",        # nullable borrow-tuple local: the bare
                                     # optional binding (None test)
     "name.opt_btuple_deref",        # ... and the narrowed `(*t)` deref read
+    "name.opt_vtuple_whole",        # value-repr Optional[value tuple] local:
+                                    # the bare optional (None test / write)
+    "name.opt_vtuple_deref",        # ... and the narrowed `(*t)` deref read
     "optptr.storage_name_lift",     # that name at a T* slot:
                                     # ::tpy::optional_to_ptr(p)
     "genexpr.unpack",               # genexpr tuple-unpack head (per-target
@@ -2316,6 +2343,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
+    "arg.type_ctor_protocol_field",  # the same bare member read on the
+                                    # TYPE-CTOR arg loop (str(p.name))
     "arg.native_value_tuple_field",  # value-tuple field passed whole at a
                                     # native tuple slot (tuple_to_str(f))
     "arg.native_slice_subscript",   # list/Span slice subscript inline at a
@@ -2403,6 +2432,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "iter.narrowed_opt_container_view",
     "foreach.genexpr_iterable",   # genexpr iterable: the make_generator
                                   # lambda's rvalue owning capture
+    "foreach.list_repeat_local",  # lazy repeat local iterable: the
+                                  # universal loop over the lvalue capture
     "print.opt_ptr_call",         # ptr-repr Optional-returning call print
                                   # arg: print_optional over the bare T*
                                   # call result
@@ -2524,6 +2555,16 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # slot (the owned literal spelling)
     "ctor.bytes_literal_value_opt",  # ... and into a value-repr
                                     # Optional[bytes] slot
+    "method.bytes_literal_value_opt",  # ... the record-method twin of that
+                                    # row (`h.store(b"abc")`)
+    "gentuple.field_elem",          # `self.<field>` at an open-T generic
+                                    # tuple-literal element slot
+    "decl.open_t_tuple_slot",       # `tuple[T, Int32]` decl slot inside a
+                                    # generic body: the plain spelled copy
+    "method.protocol_open_t_tuple_ret",  # open-T tuple RESULT of a
+                                    # protocol method (`s.pair()`)
+    "arg.open_t_tuple_literal",     # tuple literal at an open-T tuple arg
+                                    # slot -> the generic val_or_ptr builder
     "ctor.tuple_literal_value_opt",  # tuple literal (spelled brace-init)
                                     # into a value-repr Optional[tuple] slot
     "ctor.bytearray_rvalue",        # bytearray-returning call bare into a

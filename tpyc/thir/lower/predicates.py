@@ -4517,6 +4517,36 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _open_t_tuple_slot(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """A tuple carrying an OPEN type-param element inside a generic body
+    (`tuple[T, Int32]` -> `std::tuple<T, int32_t>`), or None: the AST
+    spells the BARE `T` at the decl slot, so borrow and storage coincide
+    there and the decl is the plain spelled copy like a value tuple's.
+
+    Distinct from `_value_tuple` (no open element) and from
+    `_own_record_tuple` (per-element `Own[record]`), so it gets its own
+    predicate rather than widening either -- both are read at sinks whose
+    render depends on the element being CLOSED.
+
+    NOTE the decl spelling is narrower than the producer's: a protocol
+    method returns `std::tuple<val_or_cptr_t<T>, int32_t>`, which coincides
+    with `std::tuple<T, int32_t>` only for a value `T`. Sema blocks the
+    non-value instantiation (a record arg fails protocol conformance), so
+    this mirrors the AST exactly and adds no reach."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType) or t.has_pointer_repr_element():
+        return None
+    open_elem = False
+    for e in t.element_types:
+        if isinstance(unwrap_readonly(unwrap_send_sync(e)), TypeParamRef):
+            open_elem = True
+            continue
+        if not _value_tuple_element_ok(e, analyzer):
+            return None
+    return t if open_elem else None
+
 def _tuple_has_own_element(t: 'TupleType') -> bool:
     """Any `Own[...]` element at any depth through nested tuples."""
     for e in t.element_types:
@@ -7579,6 +7609,11 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             and not (isinstance(operand, TpyName)
                      and _value_opt_span(locals_.get(operand.name),
                                          analyzer) is not None)
+            # A value-repr `Optional[value tuple]` binding
+            # (`std::optional<std::tuple<...>>`): the same has_value test.
+            and not (isinstance(operand, TpyName)
+                     and _value_opt_tuple(locals_.get(operand.name),
+                                          analyzer) is not None)
             # An `Optional[String]` binding (`std::optional<std::string>`):
             # the same has_value test over the bare name.
             and not (isinstance(operand, TpyName)
@@ -8855,9 +8890,42 @@ def _own_bytes_identity_move_slot(a: TpyExpr, ptype: TpyType | None,
     return w if isinstance(c, TpyName) else None
 
 
+def _owned_form_str_name(a: TpyExpr, locals_: 'dict[str, TpyType] | None',
+                         param_names: 'AbstractSet[str]',
+                         analyzer=None) -> bool:
+    """An OWNED-form str NAME -- the AST's `_is_str_view_at_runtime` read in
+    the negative. A declared `String` binding is owned outright; a `str`
+    binding is owned unless it is a PARAMETER, whose slot is the
+    `std::string_view` the view rows convert from. Global-vs-local is not
+    the axis (both render the same copy temp), so `declared` holding module
+    globals alongside locals is harmless here.
+
+    The AST reads the form off the RESOLVED type, so a binding still held as
+    a `PendingStrType` (a str local first assigned inside a nested block
+    keeps its unresolved type in `declared`) must be resolved here too --
+    sema's usage resolution is final pre-lowering. Without an `analyzer` to
+    resolve through, a pending binding has no form and stays out."""
+    if not isinstance(a, TpyName) or locals_ is None:
+        return False
+    t = locals_.get(a.name)
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_send_sync(t))
+    if isinstance(t, PendingViewType):
+        if analyzer is None or t.family is not STR_FAMILY:
+            return False
+        t = _resolve_pending_view(t, analyzer)
+        if t is None:
+            return False
+    if is_string_type(t):
+        return True
+    return is_str_type(t) and a.name not in param_names
+
+
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer,
-                          locals_: 'dict[str, TpyType] | None' = None
+                          locals_: 'dict[str, TpyType] | None' = None,
+                          param_names: 'AbstractSet[str]' = frozenset()
                           ) -> TpyType | None:
     """Slot/shape verdict for the Own-slot copy+move row -- a NAME / eligible
     field read (possibly coerce-wrapped, see below) into a plain `Own[T]`
@@ -8909,7 +8977,13 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
             # An identity chain means source and slot payload share one C++
             # type (what the AST's render==name test certifies), so the
             # peeled name stands in for the at-check below.
-            return w if _eligible_scalar(w) else None
+            if _eligible_scalar(w):
+                return w
+            # A `String`-typed local (`t = a + b`) reaches an `Own[str]` slot
+            # under a String->str identity coerce; its owned form takes the
+            # same copy temp the bare owned name below does.
+            return w if (is_str_type(w) and _owned_form_str_name(
+                bare, locals_, param_names, analyzer)) else None
         # FIELD inner: the AST test never runs, the copy temp is
         # unconditional and its init carries the (possibly wrapping) chain
         # render; str is the witnessed payload.
@@ -8939,18 +9013,19 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # (`dropped.append(self.label)`): the copy temp declares the owned
         # type (`std::string __tmp_N{this->label};`) -- the view->owned
         # conversion the AST's `is_any_str_type` branch spells. Of the str
-        # NAMES only the `Own[str]` PARAM is admitted (an owned
-        # `std::string` lvalue whose binding form is position-independent:
-        # `kept.append(v)` hoists the same typed copy temp + move); other
-        # str names stay out -- their local view/owned form split is a
-        # separate render axis (view names take the S1 inline convert row).
+        # NAMES the OWNED-form ones are admitted -- an `Own[str]` param, or
+        # any owned-declared name (`_owned_form_str_name`) -- because their
+        # binding form is position-independent: `kept.append(v)` hoists the
+        # same typed copy temp + move in every ladder. VIEW-form names stay
+        # out: they take the S1 inline `std::string(name)` convert row.
         if not isinstance(a, TpyFieldAccess):
             if (locals_ is not None and isinstance(a, TpyName)
                     and (ovp := _own_viewfam_param(
                         locals_.get(a.name))) is not None
                     and is_str_type(ovp)):
                 return w
-            return None
+            return w if _owned_form_str_name(a, locals_, param_names,
+                                             analyzer) else None
         return w if (isinstance(at, NominalType)
                      and (is_str_type(at) or is_str_view_type(at)
                           or is_string_type(at))) else None
@@ -10036,12 +10111,11 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
         # The FIELD-receiver flavor (`::tpy::dict_items(d.items)` -- the
         # asdict dict recursion), DECLARED-type keyed like the C3 field
         # iterable. ON at the COMP callers (the comp route and the
-        # method-call arm's `iterable_override`, which must agree); OFF at
-        # the FOR-HEAD callers, whose storage-tuple loop-var registration
-        # is name-receiver-keyed -- routing there without it surfaced as a
-        # binding-fact join failure in tplib/json_model_nested's
-        # __json_encode__. Opening the for-head needs that registration
-        # widened with this flag, together.
+        # method-call arm's `iterable_override`, which must agree) and at
+        # the tuple-unpack FOR-HEAD, whose targets bind off the lifted
+        # borrow tuple rather than a receiver-keyed registration. OFF at
+        # the single-var for-head, whose storage-tuple loop-var
+        # registration is name-receiver-keyed.
         if not _field_receiver_ok(e.obj, locals_, analyzer):
             return False
         recv_t = _field_decl_type(e.obj, locals_, analyzer)

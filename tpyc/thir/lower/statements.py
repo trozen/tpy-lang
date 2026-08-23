@@ -80,6 +80,7 @@ from ...typesys import (
     LiteralTag,
     LiteralType,
     LiteralValue,
+    ListRepeatType,
     NominalType,
     NoneType,
     OptionalType,
@@ -284,6 +285,7 @@ from .predicates import (
     _container_rvalue_select,
     _native_iter_value_slot,
     _own_record_tuple,
+    _open_t_tuple_slot,
     _tuple_has_own_element,
     _tuple_local_ptr_elem_subscript,
     _union_elem_value_tuple,
@@ -354,6 +356,7 @@ from .predicates import (
     _plain_method_fi_ok,
     _param_is_const,
     _value_opt_scalar,
+    _value_opt_tuple,
     _value_opt_string_owned,
     _value_opt_str,
     _value_opt_owned_view,
@@ -1545,7 +1548,8 @@ def _for_tuple_unpack_route(
         # `for k, v in d.items():` -- the items view is an rvalue capture.
         if (isinstance(it, TpyMethodCall)
                 and _dict_view_iterable_ok(it, declared, analyzer,
-                                           methods=("items",))):
+                                           methods=("items",),
+                                           field_recv_ok=True)):
             it_type = analyzer.get_expr_type(it)
             iterable_lvalue = False
         else:
@@ -1897,6 +1901,12 @@ def _for_iter_proto_route(
                     u, tparam_bounds, analyzer):
                 return None
             _witness("foreach.open_t_param")
+        elif isinstance(u, ListRepeatType):
+            # A LAZY repeat local (`r = [10] * n; for v in r:`): the
+            # `::tpy::repeat_range<T>` binding is a plain C++ lvalue the
+            # universal loop captures by reference, like a user-iterator
+            # name -- it has no begin/end peephole on the AST path.
+            _witness("foreach.list_repeat_local")
         elif (not isinstance(u, NominalType) or u.is_protocol
                 or not _user_iterator_iterable(u, analyzer)):
             return None
@@ -8222,8 +8232,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 reseat_value = _lower_copy_record(stmt.init, lc, declared,
                                                   loc=loc)
                 if reseat_value is None:
-                    reseat_value = _lower_expr(stmt.init, lc, declared,
-                                               target_type=decl_u.inner)
+                    # The slot IS the storage sink (`&*(__slot_N = <rvalue>)`),
+                    # so the source lowers at STORAGE like its
+                    # `reseat.opt_storage_field` sibling -- the default VALUE
+                    # use rejects a record-returning marker call here.
+                    reseat_value = _lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                     allow_temps=True),
+                        target_type=decl_u.inner)
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
@@ -9607,6 +9624,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or (_builtin_value_record(vtype, analyzer)
                         and _witness("decl.builtin_value_record_slot"))
                     or _protocol_auto_slot(vtype)
+                    # A LAZY list-repeat slot (`x = [7] * n` never
+                    # materialized): `::tpy::repeat_range<int32_t> x =
+                    # <init>;` -- the plain spelled copy like a scalar's.
+                    # The materialized families ride the container-literal
+                    # decl path instead. A REBOUND name is a pointer-local
+                    # on the AST path (`repeat_range<T>* r = &__slot_N;`),
+                    # so it is excluded exactly as the container-literal
+                    # decl gate excludes its own.
+                    or (isinstance(vtype, ListRepeatType)
+                        and stmt.name not in lc.prescan.reassigned
+                        and stmt.name not in lc.prescan.hoisted
+                        and stmt.name not in lc.prescan.move_through
+                        and _witness("decl.list_repeat_slot"))
                     # An OwnIter/CopyIter slot (`oi = own_iter(src)`):
                     # the TypeDef spells `auto`, the special-builtin init
                     # render carries the concrete type.
@@ -9617,6 +9647,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
                     # is the plain spelled copy like a value tuple.
                     or _own_record_tuple(vtype, analyzer) is not None
+                    # ... and the OPEN-T tuple slot (`p = s.pair()` on a
+                    # `tuple[T, Int32]` protocol result): the AST spells the
+                    # bare `std::tuple<T, int32_t>` copy the same way.
+                    or (_open_t_tuple_slot(vtype, analyzer) is not None
+                        and _witness("decl.open_t_tuple_slot"))
                     # A `None`-annotated unit slot (`local: None = x`):
                     # `std::monostate local = x;` -- borrow and storage
                     # coincide (monostate has no borrow form), so the decl
@@ -9858,6 +9893,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
               or lc.value_opt_bindings.get(stmt.name)
               is ValueOptKind.RECORD):
             cpp_type = lc.render_type(vtype)
+        elif isinstance(vtype, TupleType):
+            # A tuple slot spells its elements RESOLVED: the emit fallthrough's
+            # bare `to_cpp()` RAISES on a PendingViewType element (`tup = (e, 1)`
+            # off a pending-str local) and renders an IntLiteralType as its
+            # value. Mirrors the AST decl exactly -- `resolve_int_literals` (the
+            # helper's per-element half) then `type_to_cpp`, whose own recursion
+            # reaches a pending element nested in an inner tuple.
+            cpp_type = lc.render_type(_resolve_tuple_pending(vtype, analyzer))
         else:
             cpp_type = None
         return THIRVarDecl(
@@ -10492,7 +10535,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 loc=loc)
         tgt_whole_opt = (
             isinstance(stmt.target, TpyName)
-            and lc.value_opt_bindings.get(stmt.target.name) is not None
+            and (lc.value_opt_bindings.get(stmt.target.name) is not None
+                 # The value-repr Optional[value TUPLE] binding carries no
+                 # registered kind (its reads ride the binding-type
+                 # predicate), and a NAME write consumes it whole just the
+                 # same -- so the unproven-READ fence must not see it here.
+                 or _value_opt_tuple(declared.get(stmt.target.name),
+                                     analyzer) is not None)
             and _witness("assign.value_opt_target"))
         return THIRAssign(
             target=_lower_expr(stmt.target, lc, declared,
@@ -13548,6 +13597,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                  else head_bind),
                     source_wrap_cpp=head_wrap_cpp,
                     loc=getattr(up, "loc", None))
+                # The AST registers the loop var's storage form for EVERY
+                # for head (`register_loop_var_storage_form` in
+                # `_gen_loop_body`), unpack or not: a pointer-repr-tuple
+                # element over a native-iterable source binds STORAGE and
+                # the unpack head lifts it through `tuple_to_pointer`. The
+                # unpack branch used to skip it -- invisible to the
+                # byte-diff (no arm in this shape consults the set), caught
+                # by the binding-fact join.
+                _up_it = unwrap_readonly(
+                    analyzer.get_expr_type(stmt.iterable))
+                _up_et = (unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(et))) if et is not None else None)
+                if (_up_it is not None
+                        and is_native_iterable(_up_it, analyzer.registry)
+                        and isinstance(_up_et, TupleType)
+                        and _up_et.has_pointer_repr_element()
+                        and _borrow_tuple_local_type(
+                            stmt.var, declared,
+                            lc.storage_tuple_locals) is None):
+                    lc.storage_tuple_locals.add(stmt.var)
+                    if _iteration_yields_const(stmt.iterable, lc, analyzer):
+                        lc.const_storage_tuple_locals.add(stmt.var)
                 _pfb = lc.in_for_body
                 lc.in_for_body = stmt.elem_type is not None or _pfb
                 try:
@@ -14089,8 +14160,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                              end_value=end_value, sink_expr=sink_expr,
                              flush=print_flush, loc=loc)
         narrowed = lc.narrow.narrowed.keys()
-        if (isinstance(stmt.expr, TpyCall)
-                and isinstance(stmt.expr.macro_expansion, TpyMethodCall)):
+        # An `@inline` call renders its substituted body in place, and that
+        # body is itself a `@call_macro` call -- peel the marker chain the
+        # AST's gen_expr recursion walks (fstr_expansion on a method node,
+        # macro_expansion on a call node) so the renderer below is reached
+        # at STATEMENT position. Without the peel the inner markers lower
+        # through the expression ladders, which drop the DISCARD use.
+        macro_src = stmt.expr
+        chain_peeled = False
+        while True:
+            if (isinstance(macro_src, TpyMethodCall)
+                    and isinstance(macro_src.fstr_expansion,
+                                   (TpyCall, TpyMethodCall))):
+                macro_src = macro_src.fstr_expansion
+            elif (isinstance(macro_src, TpyCall)
+                    and isinstance(macro_src.macro_expansion, TpyCall)):
+                macro_src = macro_src.macro_expansion
+            else:
+                break
+            chain_peeled = True
+        if (isinstance(macro_src, TpyCall)
+                and isinstance(macro_src.macro_expansion, TpyMethodCall)):
             rt = analyzer.get_expr_type(stmt.expr)
             if rt is None or isinstance(rt, VoidType):
                 # A void statement-position macro expansion (the setattr /
@@ -14098,7 +14188,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # the expression macro arm drops the DISCARD use (a void
                 # method call rejects in value position), so the expansion
                 # dispatches here in statement position instead.
-                exp = stmt.expr.macro_expansion
+                if chain_peeled:
+                    _witness("expr_stmt.marker_chain")
+                exp = macro_src.macro_expansion
                 if (exp.method == "__setattr__" and len(exp.args) == 2
                         and isinstance(exp.args[0], TpyStrLiteral)
                         and isinstance(exp.args[1], TpyCoerce)):
@@ -14120,7 +14212,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     expr=_flush_witness(
                         "flush.expr_stmt",
                         _lower_expr(
-                            stmt.expr.macro_expansion, lc, declared,
+                            macro_src.macro_expansion, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.DISCARD,
                                          allow_temps=True))),
                     loc=loc)

@@ -327,6 +327,7 @@ from .predicates import (
     _unwrap_own,
     _unown_type_args,
     _own_record_tuple,
+    _open_t_tuple_slot,
     _protocol_auto_slot,
     _is_borrow_form_name,
     _is_type_param_slot,
@@ -616,6 +617,7 @@ from .checks import (
     _container_slot_call_rvalue_arg,
     _native_container_call_arg,
     _native_record_call_arg,
+    _borrow_ret_record_marker_arg,
     _optional_ptr_arg,
     _required_protocol_union_slot,
     _union_ctor_temp_arg,
@@ -1199,7 +1201,11 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
 
 def _record_ctor_shape_supported(e: TpyCall, lc: '_LowerCtx',
                                  use: _ExprUse) -> bool:
-    if _ctor_shape_ok(e, lc.analyzer):
+    # `native_ok` at the DIRECT sink only (decl / value slot): a @native
+    # record ctor rvalue at a NESTED ARG position has no witness and its
+    # construction/temp semantics are outside the ctor-rvalue arg slice.
+    if _ctor_shape_ok(e, lc.analyzer,
+                      native_ok=use.record_ctor is _RecordCtorUse.DIRECT):
         return True
     # The instantiation render (`type_to_cpp(call_type)(args)`) is
     # position-independent on the AST path, so NESTED_ARG positions admit it
@@ -1326,7 +1332,8 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     slice; the flushable copy half stays DIRECT-only) and `_lower_call_arg`'s
     Own-slot arm (which picks THIRMove on the same facts), so the two cannot
     drift."""
-    if (_own_lvalue_temp_slot(a, ptype, lc.analyzer) is None
+    if (_own_lvalue_temp_slot(a, ptype, lc.analyzer, declared,
+                              lc.prescan.param_names) is None
             and _own_bytes_identity_move_slot(a, ptype, lc.analyzer) is None):
         return False
     # The AST's `_maybe_move` peels coerces before the last-use check, so an
@@ -1493,7 +1500,8 @@ def _record_ctor_arg_supported(
                 or (temps_ok
                     and _own_lvalue_arg(
                         arg, param_type, declared,
-                        frozenset(lc.narrow.narrowed), analyzer)
+                        frozenset(lc.narrow.narrowed), analyzer,
+                        lc.prescan.param_names)
                     and _witness("ctor.own_arg"))
                 # The temp-free move-source slice also serves the flush-LESS
                 # direct position (`[Box(h1)]` -- a ctor element in a container
@@ -3750,6 +3758,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                           # the same has_value test over the bare name.
                           or _value_opt_span(declared[operand.name],
                                              lc.analyzer) is not None
+                          # A value-repr `Optional[value tuple]` binding:
+                          # the same has_value test over the bare name.
+                          or _value_opt_tuple(declared[operand.name],
+                                              lc.analyzer) is not None
                           # A value-repr `Optional[str/bytes]` binding --
                           # including a VIEW-inner LOCAL, which carries no
                           # registered kind (its narrowed read differs from
@@ -4593,15 +4605,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported(
                     "name.optspan_unproven_read", detail=True)
             if _value_opt_tuple(binding_type, analyzer) is not None:
-                # Same for the value-tuple kind.
+                # The value-tuple kind's NARROWED read is routed by the arm
+                # below; an UN-narrowed whole read outside the
+                # whole-optional positions is still unwitnessed -- keep it
+                # out, like the span kind above.
                 raise ThirUnsupported(
                     "name.opttuple_unproven_read", detail=True)
-        if (not allow_whole_optional
-                and _value_opt_tuple(binding_type, analyzer) is not None
-                and not isinstance(unwrap_readonly(rtype), OptionalType)):
-            # A NARROWED value-opt-tuple read derefs `(*tup)` on the AST
-            # path -- unmirrored, like the span kind below.
-            raise ThirUnsupported("name.opttuple_narrowed_read", detail=True)
         if (not allow_whole_optional
                 and _value_opt_span(binding_type, analyzer) is not None
                 and not isinstance(unwrap_readonly(rtype), OptionalType)):
@@ -4711,6 +4720,23 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             form=(Form.BORROW if _obt_narrowed
                                   else Form.STORAGE),
                             deref=_obt_narrowed, loc=loc)
+        if _value_opt_tuple(binding_type, analyzer) is not None:
+            # A value-repr `Optional[value tuple]` local
+            # (`std::optional<std::tuple<int32_t, int32_t, std::string>>`):
+            # a NARROWED occurrence (sema retyped the read to the tuple)
+            # derefs `(*coord)` -- the std::get / arg-slot consumers read
+            # the bare tuple; a whole-optional read (the None test, the
+            # whole-binding write) stays the bare optional. The value-tuple
+            # twin of the nullable BORROW-tuple arm above.
+            _vot_narrowed = (
+                not isinstance(unwrap_readonly(rtype), OptionalType)
+                and not allow_whole_optional)
+            _witness("name.opt_vtuple_deref" if _vot_narrowed
+                     else "name.opt_vtuple_whole")
+            return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
+                            form=(Form.BORROW if _vot_narrowed
+                                  else Form.STORAGE),
+                            deref=_vot_narrowed, loc=loc)
         if e.name in lc.storage_opt_locals:
             # A storage-optional comp/genexpr unpack target (`auto& p =
             # std::get<0>(t);` -- the storage_form_optional_locals mirror):
@@ -7202,8 +7228,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # member-NAME union) whose ctor renders are BARE on the AST
                     # path.
                     flush_slot = (
-                        _own_lvalue_temp_slot(a, p.type, lc.analyzer,
-                                              declared) is not None
+                        _own_lvalue_temp_slot(
+                            a, p.type, lc.analyzer, declared,
+                            lc.prescan.param_names) is not None
                         or _union_ctor_temp_arg(a, p.type, lc.analyzer)
                         or _protocol_arg_slot(p.type) is not None
                         # The member-valued VALUE-union temp (`std::variant
@@ -7697,6 +7724,22 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # expansion over a bare str-family arg.
                     note_detail("call.type_ctor.owned_str_arg")
                     raise ThirUnsupported("expr.call")
+                if _native_protocol_field_arg(a, p.type, analyzer):
+                    # The free-call ladder's protocol-field row, mirrored:
+                    # this loop calls `_lower_call_arg` with the protocol
+                    # pre-arms OFF (such a slot renders bare here), so the
+                    # bare member read at a still-protocol template slot
+                    # (`str(p.name)` -> `std::string(::tpy::__str__(
+                    # p->name))`) would otherwise fall to the generic tail.
+                    # No whole-optional/container leg like the free-call
+                    # row's: sema rejects an Optional / container / bytes
+                    # arg at every type-ctor slot, so only the record and
+                    # open-T member reads can arrive here.
+                    _witness("arg.type_ctor_protocol_field")
+                    lowered_args.append(_lower_expr(
+                        a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)))
+                    continue
                 # `str(a)` on a union binding renders `::tpy::__str__(a)` --
                 # the resolved overload's slot consumes the WHOLE union
                 # (a same-union param, or a protocol whose template deduces
@@ -7888,13 +7931,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             elem_type = analyzer.ctx.default_int_type
             if is_list(result_type):
                 result_type = make_list(elem_type)
+        lazy = isinstance(result_type, ListRepeatType)
         if (elem_type is None or result_type is None
-                or not (is_list(result_type) or is_array(result_type))):
-            # Materialized list + Array only. A lazy `ListRepeatType` result
-            # (`x = [v]*n` kept unmaterialized) stays on the AST path: a lazy
-            # local passed to a protocol param crashes render_type on its still-
-            # pending arg type (a pre-existing latent crash, TODO). A pending /
-            # off-family result also falls back here rather than reaching an
+                or not (is_list(result_type) or is_array(result_type)
+                        or lazy)):
+            # Materialized list + Array + the LAZY repeat_range. A pending /
+            # off-family result falls back here rather than reaching an
             # unresolved .to_cpp().
             raise ThirUnsupported("expr.list_repeat")
         elements = tuple(
@@ -7912,10 +7954,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 array_size_cpp=str(result_type.type_args[1]), loc=loc)
         count = _lower_expr(e.count, lc, declared)
         count_bigint = is_big_int_type(analyzer.get_expr_type(e.count))
+        if lazy:
+            _witness("list_repeat.lazy")
         return THIRListRepeat(
             result_type=result_type, elements=elements, count=count,
-            count_bigint=count_bigint, elem_cpp=elem_cpp,
-            result_cpp=result_type.to_cpp(), loc=loc)
+            count_bigint=count_bigint, elem_cpp=elem_cpp, lazy=lazy,
+            result_cpp="" if lazy else result_type.to_cpp(), loc=loc)
     if isinstance(e, (TpyArrayLiteral, TpySetLiteral)):
         container_type = target_type or rtype
         if not _container_literal_shape_ok(
@@ -8035,6 +8079,20 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             loc=loc,
         )
     if isinstance(e, TpyMethodCall):
+        if e.fstr_expansion is not None:
+            # An `@inline` METHOD call: sema stores the substituted body's
+            # expression here (a FREE `@inline` call sets `macro_expansion`
+            # instead), and the AST renders it in place ahead of everything
+            # else in the method branch -- target-less, unlike its
+            # macro_expansion neighbour. The expansion IS this node's value,
+            # so it inherits the consumer's use (a void `@inline` body at a
+            # statement needs the DISCARD sink). Witness AFTER it lowers:
+            # `_witness` has no rollback, so witnessing first would mark the
+            # face for a body that then raises and falls back.
+            fstr_lowered = _lower_expr(e.fstr_expansion, lc, declared,
+                                       use=use)
+            _witness("call.fstr_expansion")
+            return fstr_lowered
         er_fi = e.resolved_function_info
         if (not er_expr_unwrap and not error_return_raw and er_fi is not None
                 and er_fi.error_return_type is not None):
@@ -8876,11 +8934,22 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and _optional_ptr_container_literal_arg(
                             a, mcont, lc.analyzer)):
                     inner = unwrap_readonly(mcont.inner)
+                    minit = _lower_expr(a, lc, declared, target_type=inner,
+                                        use=_NESTED_ARG_USE)
+                    # `_gen_optional_ptr_arg` renders this temp's init through
+                    # the SPELLED container ctor; a bare `{...}` brace-init
+                    # would be the decl-slot render, not this one. The dict /
+                    # set / empty-list spellings are already self-describing,
+                    # so only the non-empty list brace needs the prefix.
+                    if (isinstance(minit, THIRContainerLiteral)
+                            and minit.typed_brace_cpp is None
+                            and is_list(inner)):
+                        minit = replace(
+                            minit, typed_brace_cpp=lc.render_type(inner))
                     _witness("argtemp.optptr_container_literal")
                     return THIRArgTemp(
                         result_type=inner, cpp_type=lc.render_type(inner),
-                        init=_lower_expr(a, lc, declared, target_type=inner,
-                                         use=_NESTED_ARG_USE),
+                        init=minit,
                         addr_of=True, form=Form.BORROW,
                         loc=getattr(a, "loc", None))
             # A generator/coro factory METHOD borrows its ref args in the
@@ -8936,7 +9005,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # receiver admits no Own slots). A blanket temp_args would
             # re-shape the record-rvalue / union temp rows, whose method
             # renders are BARE on the AST path.
-            own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer, declared)
+            own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer,
+                                               declared,
+                                               lc.prescan.param_names)
             own_flush = (temp_args and not proto_recv
                          and ((own_slot_w is not None
                                # A cpp_template stub binds lvalues natively
@@ -10608,7 +10679,10 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             field_str_ok=True)
 
     return THIRTupleLiteral(
-        result_type=slot,
+        # The spelling resolves pending elements: `to_cpp` does not, so a
+        # slot carrying a str element's `PendingStrType` would raise at
+        # emit (the AST spells from the ELEMENTS' resolved types instead).
+        result_type=_resolve_tuple_pending(slot, lc.analyzer),
         elements=tuple(lower_element(i) for i in range(len(e.elements))),
         loc=getattr(e, "loc", None))
 
@@ -11033,6 +11107,17 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     # not the to_val_or_ptr wrap -- lvalue reads only.
                     and not is_rvalue_source(analyzer, elem)):
                 elem_ok = True
+            if (not elem_ok and isinstance(elem, TpyFieldAccess)
+                    # A `self.value` read at the open slot (`return
+                    # (self.value, Int32(1))`): an lvalue like the name read,
+                    # so the to_val_or_ptr wrap consumes it identically. An
+                    # rvalue field source (property getter) takes the AST's
+                    # owned-slot else-arm, and a movable one takes
+                    # `_maybe_move` -- both excluded like the name row's.
+                    and not is_rvalue_source(analyzer, elem)
+                    and not _is_move_source(elem, lc)):
+                _witness("gentuple.field_elem")
+                elem_ok = True
             if not elem_ok:
                 note_detail("gentuple.elem_source")
                 raise ThirUnsupported("expr.tuple_literal")
@@ -11250,6 +11335,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         if not _generic_plain_arg_ok(
                 a, ptype, subst, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
+                param_names=lc.prescan.param_names,
                 storage_tuple_locals=frozenset(lc.storage_tuple_locals)):
             raise ThirUnsupported("expr.call")
         peeled = _peel_coerce(a)
@@ -12415,6 +12501,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                         ReadonlyType),
                     rvalue_ok=True,
                     elem_temps=temp_args or nested_temps)
+            if _open_t_tuple_slot(pslot, lc.analyzer) is not None:
+                # An OPEN-T tuple slot (`s.consume((v, Int32(2)))` at
+                # `tuple[T, Int32]`): the element slot is `val_or_ptr_t<T>`,
+                # decided at instantiation, so the generic builder spells
+                # the wrap -- the same render its return/yield sinks use.
+                _witness("arg.open_t_tuple_literal")
+                return _lower_generic_tuple_literal(a, pslot, lc, declared)
             vt = _value_tuple_nested(pslot, lc.analyzer)
             if vt is not None:
                 _witness("btuple.value_arg")
@@ -13274,7 +13367,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # retag below. The MOVE half is position-independent (no flush needed),
     # so it runs outside `temp_args` too -- the `heap_take(value)` ctor-MIL
     # shape; the copy half still needs the flush (gate-enforced).
-    ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer, declared)
+    ow = _own_lvalue_temp_slot(a, ptype, lc.analyzer, declared,
+                               lc.prescan.param_names)
     if ow is None:
         # The MOVE-ONLY bytes-identity coerce slot (bytearray->bytes over a
         # name): serves the last-use move arm below exclusively -- the
@@ -13565,6 +13659,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # slot (`os.path.samestat(s, os.stat(d))`): BORROW_BIND so the
         # inner call's rvalue record result is admitted; only fires for
         # gate-admitted shapes (the tail would reject the record result).
+        return _lower_expr(a, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args))
+    if (marker_arg and isinstance(a, (TpyCall, TpyMethodCall))
+            and _borrow_ret_record_marker_arg(a, ptype, lc.analyzer)):
+        # The BORROW-returning twin of the row above (`log_dispatch(
+        # svc.get_logger(), ...)`): the `T&` result binds the `T&` slot
+        # bare, so it needs the same BORROW_BIND result use -- the plain
+        # method gate's `record_ret` is off at VALUE / NESTED_ARG.
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
@@ -13875,8 +13978,8 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                 loc=getattr(a, "loc", None)))
         else:
             flush_slot = (
-                _own_lvalue_temp_slot(a, p.type, analyzer,
-                                      declared) is not None
+                _own_lvalue_temp_slot(a, p.type, analyzer, declared,
+                                      lc.prescan.param_names) is not None
                 or _union_ctor_temp_arg(a, p.type, analyzer)
                 or _protocol_arg_slot(p.type) is not None
                 # The optional-ptr 'ctor' face's ArgTemp, gate-admitted
@@ -14182,6 +14285,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
             cpp_template=f"{stu.to_cpp()}({{0}})",
             loc=loc)
     _copy_ptr_ok = False
+    _copy_rec_ptr_ok = False
     if (isinstance(src, TpyName) and src.name in lc.pointers
             and src.name not in lc.narrow.narrowed):
         # An OPT_PTR container pointer-local source (`copy(acc)` on the
@@ -14198,6 +14302,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # slot (declared plain container, the argparse accumulator).
         _copy_ptr_ok = (is_list(_cp_du) or is_dict(_cp_du)
                         or is_set(_cp_du))
+        _copy_rec_ptr_ok = _f1_record(_cp_du, analyzer)
     if ((is_list(stu) or is_dict(stu) or is_set(stu))
             and (not (isinstance(src, TpyName)
                       and (src.name in lc.pointers
@@ -14215,6 +14320,22 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                 src, lc, declared,
                 use=(_COPY_SRC_USE if isinstance(src, TpyFieldAccess)
                      else _ExprUse(result=_ExprResultUse.STORAGE))),),
+            cpp_template=f"{stu.to_cpp()}({{0}})",
+            loc=loc)
+    if _copy_rec_ptr_ok and _f1_record(stu, analyzer):
+        # `copy(acc)` of a POINTER-LOCAL record source (the argparse
+        # rebind-slot accumulator): the name read derefs, so the general
+        # tail spells `Tag((*acc))`. Only this flavor lands here -- a bare
+        # record NAME is `_lower_copy_record`'s `T(x)` row, which every
+        # supporting sink intercepts before the generic call tail.
+        # A record binding is bare at every other use (the `->` rides the
+        # member arms), so only the explicit gen_expr_deref position spells
+        # the indirection.
+        _witness("call.copy_record_ptr")
+        return THIRCall(
+            result_type=rtype, callee=callee,
+            args=(_lower_expr(src, lc, declared,
+                              use=_ExprUse(indirect_read=True)),),
             cpp_template=f"{stu.to_cpp()}({{0}})",
             loc=loc)
     if (isinstance(stu, NominalType) and is_str_type(stu)

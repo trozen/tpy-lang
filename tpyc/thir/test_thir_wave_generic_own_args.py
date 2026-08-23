@@ -14,7 +14,7 @@ BigInt slots need. Rows pinned here:
    spelled value render; a pointer-repr element takes the CONSUMING
    storage lift (tuple_to_storage_move over the borrow build);
  * a str literal into a substituted `Own[str]` slot binds bare; an owned
-   str NAME stays AST (boundary);
+   str NAME takes the copy+move temp instead;
  * the `Own[@dynamic P]` erasure rows fire on generic callees too -- the
    structural-conformer `::tpy::make_adapter<P>(...)` wrap and the
    async-factory wrap at an `Own[Cancellable[T]]` slot.
@@ -173,16 +173,22 @@ class TestGenericOwnStrSlot:
         assert faces["arg.own_str_slot"] >= 1
         _assert_byte_identical(src)
 
-    def test_owned_str_name_stays_ast(self):
-        # An owned STORAGE str local rides the AST's copy+move cascade --
-        # the literal-only row must not capture it.
+    def test_owned_str_name_takes_the_copy_temp(self):
+        # An owned STORAGE str local at the SUBSTITUTED Own[str] slot takes
+        # the copy+move temp, not the literal row's bare bind -- the owned
+        # form, told from a view by `declared` + `param_names`.
         src = _SINK + (
             "def f() -> None:\n"
             "    words: list[str] = []\n"
             "    w: str = \"apple\" + \"x\"\n"
             "    sink(words, w)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("argtemp.own_str", 0) >= 1
+        body = _body(thir, "f")
+        assert "std::string __tmp_1{w};" in body
+        assert "sink<std::string>(words, std::move(__tmp_1))" in body
         _assert_byte_identical(src)
 
 

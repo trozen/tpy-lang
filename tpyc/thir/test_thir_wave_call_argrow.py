@@ -1247,6 +1247,191 @@ class TestOpenTypeParamProtocolFieldArg:
         _assert_byte_identical(self.SRC)
 
 
+class TestTypeCtorProtocolFieldArg:
+    """A record / open-T field at the still-PROTOCOL slot of a TYPE-CTOR
+    callee (`str(p.name)` -> `std::string(::tpy::__str__(p->name))`). The
+    type-ctor arg loop calls `_lower_call_arg` with the protocol pre-arms
+    OFF (such a slot renders bare), so it needs the free-call ladder's
+    protocol-field row of its own."""
+
+    SRC = _PRELUDE + (
+        "from tpy import StrView, nocopy, Own\n"
+        "class Bag:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __str__(self) -> StrView:\n"
+        "        return \"bag\"\n"
+        "@nocopy\n"
+        "class NCBag:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __str__(self) -> StrView:\n"
+        "        return \"nc\"\n"
+        "class Holder:\n"
+        "    b: Bag\n"
+        "    nc: NCBag\n"
+        "    def __init__(self, b: Bag, nc: Own[NCBag]) -> None:\n"
+        "        self.b = b\n"
+        "        self.nc = nc\n"
+        "def probe(h: Holder) -> None:\n"
+        "    print(str(h.b))\n"
+        "    print(str(h.nc))\n"
+        "def main() -> None:\n"
+        "    probe(Holder(Bag(1), NCBag(2)))\n"
+        "main()\n"
+    )
+
+    def test_record_fields_route_at_the_str_ctor(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC, comments=False)
+        assert "std::string(::tpy::__str__(h.b))" in cpp
+        # The @nocopy field proves the row BINDS rather than copies.
+        assert "std::string(::tpy::__str__(h.nc))" in cpp
+
+    def test_witnesses_the_type_ctor_row(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces["arg.type_ctor_protocol_field"] == 2
+
+    def test_open_type_param_field_routes(self):
+        # The predicate's open-T leg reached from the type-ctor loop.
+        src = _PRELUDE + (
+            "from typing import Protocol\n"
+            "from tpy import StrView\n"
+            "class Stringy(Protocol):\n"
+            "    def __str__(self) -> StrView: ...\n"
+            "class Msg:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def __str__(self) -> StrView:\n"
+            "        return \"msg\"\n"
+            "class Container[T: Stringy]:\n"
+            "    value: T\n"
+            "    def __init__(self, value: T) -> None:\n"
+            "        self.value = value\n"
+            "    def describe(self) -> None:\n"
+            "        print(str(self.value))\n"
+            "def main() -> None:\n"
+            "    Container(Msg(2)).describe()\n"
+            "main()\n"
+        )
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces["arg.type_ctor_protocol_field"] == 1
+        assert faces["arg.native_protocol_open_field"] == 1
+        _assert_routes_byte_identical(src, comments=False)
+
+    def test_user_structural_protocol_slot_stays_ast(self):
+        # A USER structural-protocol slot takes the adapter/ArgTemp path,
+        # not the bare member read -- the row must not capture it.
+        src = _PRELUDE + (
+            "from typing import Protocol\n"
+            "from tpy import StrView\n"
+            "class Greeter(Protocol):\n"
+            "    def hello(self) -> StrView: ...\n"
+            "class Eng:\n"
+            "    tag: StrView\n"
+            "    def __init__(self, tag: StrView) -> None:\n"
+            "        self.tag = tag\n"
+            "    def hello(self) -> StrView:\n"
+            "        return self.tag\n"
+            "class Box2:\n"
+            "    e: Eng\n"
+            "    def __init__(self, e: Eng) -> None:\n"
+            "        self.e = e\n"
+            "def greet(g: Greeter) -> None:\n"
+            "    print(g.hello())\n"
+            "def run(b: Box2) -> None:\n"
+            "    greet(b.e)\n"
+            "def main() -> None:\n"
+            "    run(Box2(Eng(\"hi\")))\n"
+            "main()\n"
+        )
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert compiler._thir_fallback == {
+            "body:stmt.expr_stmt:field.result_type": 1}
+        _assert_byte_identical(src)
+
+    def test_union_type_arg_record_field_stays_ast(self):
+        # A generic-record field with a UNION type-arg is outside the F1
+        # slice; the str() ctor slot must keep rejecting it.
+        src = _PRELUDE + (
+            "from tpy import StrView\n"
+            "class Holder[T]:\n"
+            "    item: T\n"
+            "    def __init__(self, item: T) -> None:\n"
+            "        self.item = item\n"
+            "    def __str__(self) -> StrView:\n"
+            "        return \"h\"\n"
+            "class Box:\n"
+            "    h: Holder[Int32 | str]\n"
+            "    def __init__(self, h: Holder[Int32 | str]) -> None:\n"
+            "        self.h = h\n"
+            "    def show(self) -> None:\n"
+            "        print(str(self.h))\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "show") is None
+        assert not faces.get("arg.type_ctor_protocol_field")
+        _assert_byte_identical(src)
+
+
+class TestDynProtocolRecordFieldBoundary:
+    """The `is_dyn_protocol` exclusion on `_native_protocol_field_arg`'s
+    record-field row -- the predicate both the native/template arg ladder and
+    the type-ctor loop read.
+
+    A @dynamic protocol slot takes the adapter machinery, not the bare member
+    read, so the row must keep rejecting it. Ablation-checked: deleting the
+    exclusion routes this body and DIVERGES, so the fence is load-bearing
+    rather than decorative."""
+
+    SRC = (
+        "from tpy import Int32, StrView, dynamic\n"
+        "from tpy.extern import native\n"
+        "from typing import Protocol\n"
+        "@dynamic\n"
+        "class Pet(Protocol):\n"
+        "    def noise(self) -> StrView: ...\n"
+        "class Dog:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def noise(self) -> StrView:\n"
+        "        return \"woof\"\n"
+        "@native('my_ns::speak')\n"
+        "def speak(p: Pet) -> None: ...\n"
+        "class Box:\n"
+        "    d: Dog\n"
+        "    def __init__(self, d: Dog) -> None:\n"
+        "        self.d = d\n"
+        "def run(b: Box) -> None:\n"
+        "    speak(b.d)\n"
+    )
+
+    def test_dyn_protocol_slot_stays_ast(self):
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        compiler, modules = _compile(self.SRC)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        assert compiler._thir_fallback == {"body:expr.call": 1}
+        _assert_byte_identical(self.SRC)
+
+    def test_no_record_field_witness(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert not faces.get("arg.protocol_record_field")
+        assert not faces.get("arg.native_protocol_field")
+
+
 class TestNativeProtocolTupleLiteralArg:
     """A tuple LITERAL at a native callee's protocol slot whose elements are
     all values or RVALUES: the monomorphized slot threads no target, so the

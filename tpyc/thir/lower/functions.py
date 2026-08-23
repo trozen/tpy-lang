@@ -1110,7 +1110,13 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
                     and _witness("mil.own_param_copy"))
         return _f1_record(dt, analyzer)
     if isinstance(source, TpyCall):
-        return _record_rvalue_source_shape(source, analyzer)
+        # The MIL is the second position-gated sink for a plain `@native`
+        # record ctor (`self._logger = LogHandle(name)` ->
+        # `_logger(::mylog::LogHandle(name))`): the field-type side already
+        # admits native records (`_f1_record`), only the source shape gated.
+        return (_record_rvalue_source_shape(source, analyzer)
+                or (_ctor_shape_ok(source, analyzer, native_ok=True)
+                    and _witness("mil.native_ctor")))
     # An Own-returning METHOD-call rvalue (`self.shared = Rc.new(Val(0))` ->
     # `shared(Rc<Val>::new_<Val>(Val(0)))`): the same direct construct; the
     # method-call lowering validates callee/args recursively.
@@ -1447,17 +1453,19 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             if own is not None:
                 pt = own.wrapped
             return _mil_container_field(pt) and pt.to_cpp() == ftype.to_cpp()
-        if (isinstance(source, TpyCall) and not source.args
+        if (isinstance(source, TpyCall) and len(source.args) <= 1
                 and not source.kwargs
                 and isinstance(source.func, TpyName)
                 and source.func.name in ("list", "dict", "set", "Array")):
-            # The empty-container ctor call (`self.items = list()` ->
-            # `items(std::vector<T>())`): the AST's target-threaded
-            # `gen_expr(source, fld_type)` spells the FIELD's container type
-            # and default-constructs it, so the element types come from the
-            # field, not from the call. Zero-arg only -- any argument would
-            # be a range/iterable construction with its own render.
-            # `Array()` joins them: `data(std::array<T, N>())`.
+            # The container ctor call (`self.items = list()` ->
+            # `items(std::vector<T>())`, `self.items = list(src)` ->
+            # `items(::tpy::construct<std::vector<T>>(src))`): the AST's
+            # target-threaded `gen_expr(source, fld_type)` spells the FIELD's
+            # container type either way, so the element types come from the
+            # field, not from the call. `Array()` joins them:
+            # `data(std::array<T, N>())`. The single argument rides the
+            # ordinary call lowering, which raises on any arg shape it does
+            # not mirror.
             return True
         return False
     pu = _eligible_ptr_union(ftype, analyzer)
@@ -2666,10 +2674,14 @@ def iter_module_callables(module: TpyModule, analyzer):
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
     gen_method_def; so is the unemitted @overload clone, which has no body on
-    either path. Excluding it HERE rather than at each driver is what keeps a
-    third consumer (the dump) from reporting it as un-routed."""
+    either path, and the `skip_codegen` (@inline) callable, whose body sema
+    never analyzed -- lowering it would walk a body with empty `expr_types`.
+    Excluding them HERE rather than at each driver is what keeps a third
+    consumer (the dump) from reporting them as un-routed."""
     dead_clones = unemitted_overload_clones(module, analyzer)
     for func in module.functions:
+        if func.skip_codegen:
+            continue
         yield func, None
     for record in module.records:
         self_type = _method_self_type(record, analyzer)
@@ -2677,7 +2689,8 @@ def iter_module_callables(module: TpyModule, analyzer):
             continue
         init = record.init_method
         for method in record.methods:
-            if method is not init and id(method) not in dead_clones:
+            if (method is not init and not method.skip_codegen
+                    and id(method) not in dead_clones):
                 yield method, self_type
 
 def iter_module_constructors(module: TpyModule, analyzer):

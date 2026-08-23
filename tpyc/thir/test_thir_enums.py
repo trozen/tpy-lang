@@ -442,3 +442,62 @@ class TestNestedEnum:
         assert ("Message::Kind y = "
                 "::tpy::EnumUtil<Message::Kind>::from_value(n);") in cpp
         assert "static_cast<int32_t>(y)" in cpp
+
+
+class TestOwnEnumContainerElement:
+    """An enum NAME / member access / field read at an `Own[enum]` CONTAINER
+    element slot (`roles.append(r)` on `list[Role]`): Own on a value type is
+    a no-op spelling and the Own cascade's copy temp never fires for a value
+    payload, so the insert renders the bare expression. Corpus witness:
+    `tplib/json_model_nested`'s `list[Role]` field."""
+
+    _SRC = _ENUM_PRELUDE + (
+        "class Holder:\n"
+        "    r: Color\n"
+        "    def __init__(self, r: Color) -> None:\n"
+        "        self.r = r\n"
+        "def build(h: Holder, n: Int32) -> Int32:\n"
+        "    roles: list[Color] = []\n"
+        "    r = Color.RED if n > 0 else Color.GREEN\n"
+        "    roles.append(r)\n"
+        "    roles.append(Color.GREEN)\n"
+        "    roles.append(h.r)\n"
+        "    return Int32(len(roles))\n"
+        "def main() -> None:\n"
+        "    print(build(Holder(Color.RED), 1))\n"
+        "main()\n"
+    )
+
+    def test_name_member_and_field_sources_route_bare(self):
+        thir, faces = _lower_ctx_witnessed(self._SRC)
+        assert _fn(thir, "build") is not None
+        assert faces.get("arg.own_enum_elem")
+        from .testutil import _assert_routes_byte_identical
+        out = "".join(_assert_routes_byte_identical(self._SRC))
+        assert "roles.push_back(r);" in out
+        assert "roles.push_back(Color::GREEN);" in out
+        assert "roles.push_back(h.r);" in out
+
+    _RECORD_SRC = _ENUM_PRELUDE + (
+        "class Box:\n"
+        "    v: Int32\n"
+        "    def __init__(self, v: Int32) -> None:\n"
+        "        self.v = v\n"
+        "def build(b: Box) -> Int32:\n"
+        "    xs: list[Box] = []\n"
+        "    xs.append(b)\n"
+        "    return Int32(len(xs))\n"
+        "def main() -> None:\n"
+        "    print(build(Box(1)))\n"
+        "main()\n"
+    )
+
+    def test_record_element_is_not_claimed_by_this_row(self):
+        # BOUNDARY: a REFERENCE-type element at the same `Own[T]` slot is
+        # not a value payload. It is admitted (by the Own cascade's own
+        # rows, which own the move/copy verdict there) -- the point is that
+        # THIS row must not be what admits it, or an enum-shaped key would
+        # silently take over a slot whose render can hoist a temp.
+        _thir, faces = _lower_ctx_witnessed(self._RECORD_SRC)
+        assert "arg.own_enum_elem" not in faces
+        _assert_byte_identical(self._RECORD_SRC)

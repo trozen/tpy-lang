@@ -981,7 +981,9 @@ class THIRListRepeat(THIRExpr):
       `__rep_N` index draws the per-function `iter_counter` at EMIT (matching
       the AST's single `iter_counter` draw), so it is NOT baked into the node.
 
-    The lazy `ListRepeatType` shape stays on the AST path (rejected at lowering).
+    - lazy `ListRepeatType` -> the bare `repeat_range` (no `from_range` wrap):
+      the unmaterialized `[v] * n` binding.
+
     `count_bigint` appends `.to_fixed_check<int32_t>()` (repeat_range's count is
     int32_t). `count`/`result_cpp` are unused by the Array shape (the size rides
     `array_size_cpp` in the template)."""
@@ -991,6 +993,7 @@ class THIRListRepeat(THIRExpr):
     elem_cpp: str = ""
     result_cpp: str = ""
     array_size_cpp: str = ""
+    lazy: bool = False
 
 
 @dataclass(frozen=True)
