@@ -12,6 +12,7 @@ from ..typesys import (
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType, VoidType,
+    is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     RecursiveAliasInstanceType,
     collapse_tuple_own_elements, type_contains_own,
@@ -4123,6 +4124,20 @@ class StatementAnalyzer:
                     stmt.linkage = VarLinkage.NATIVE_C
                 else:
                     stmt.linkage = VarLinkage.NATIVE
+                if is_c_binding:
+                    # Emitted verbatim as `extern "C" <type> <name>;` -- the
+                    # array form emits the POINTEE as the element type, so
+                    # that is what has to be spellable in C there.
+                    checked = stmt.type
+                    if is_array and isinstance(checked, PtrType):
+                        checked = checked.pointee
+                    if not is_c_abi_allowed(checked):
+                        raise self.ctx.error(
+                            f"native_global '{stmt.name}': type "
+                            f"'{checked}' {C_ABI_TYPE_ERROR}; "
+                            f"{c_abi_type_hint(checked)}",
+                            stmt
+                        )
                 stmt.native_name = native_name
                 stmt.init = None
                 return

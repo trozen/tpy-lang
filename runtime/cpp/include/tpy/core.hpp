@@ -610,6 +610,26 @@ void destroy_at(T* p) {
 }
 
 /**
+ * Borrow an owned string as a null-terminated C string.
+ *
+ * A free function rather than a spliced `.c_str()`: the parameter applies
+ * the standard conversion, so a string literal or a `string_view`-formed
+ * argument materializes a proper `std::string` bound to the parameter
+ * instead of producing `"lit".c_str()`, which does not compile.
+ *
+ * The result borrows `s`'s buffer, so it outlives the call only if `s`
+ * does -- an argument converted at the call site dies with the
+ * full-expression.
+ *
+ * The cast is well-defined because uint8_t is unsigned char on every
+ * platform in scope, which the aliasing rules exempt; it would be UB on
+ * one where uint8_t is an extended integer type instead.
+ */
+inline const uint8_t* cstr(const std::string& s) noexcept {
+    return reinterpret_cast<const uint8_t*>(s.c_str());
+}
+
+/**
  * Heap-allocate a T and move-construct it from `value` (combined alloc+init).
  * The std::unique_ptr<T> overload below covers the abstract-@dynamic case
  * where the caller has already heap-allocated; it just releases the handle.

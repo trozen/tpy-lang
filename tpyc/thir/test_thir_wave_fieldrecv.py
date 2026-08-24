@@ -6,6 +6,10 @@ the property-getter record receiver."""
 
 from __future__ import annotations
 
+import pytest
+
+from ..diagnostics import SemanticError
+
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
@@ -414,18 +418,20 @@ class TestExportCBodies:
         assert _fn(thir, "app_init") is not None
         _assert_byte_identical(self._SRC)
 
-    def test_str_param_export_stays_ast(self):
-        # A str-family param respells `const char*` in the C signature and
-        # the AST renders its body reads ABI-blind -- the slice stays out
-        # until cutover decides the str story.
+    def test_str_param_export_is_rejected(self):
+        # A str param has no C spelling: the signature would respell it
+        # `const char*` while the body reads it as a view. Sema rejects the
+        # signature outright, so no such body reaches lowering at all --
+        # this is a reject-unit, not a fallback pin.
         src = (
             "from tpy.extern import export\n"
             "@export(binding=\"C\")\n"
             "def take_name(name: str) -> None:\n"
             "    print(len(name))\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "take_name") is None
+        with pytest.raises(SemanticError,
+                           match="not representable in the C ABI"):
+            _lower_ctx(src)
 
 
 _METERS = (

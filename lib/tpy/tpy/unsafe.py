@@ -1,9 +1,11 @@
 # tpy: native_module
 from typing import overload
 from tpy.extern import native, cpp_template
-from tpy import Ptr, Own, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, StrView, Char, Array, readonly
+from tpy import Ptr, Own, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, StrView, String, Char, Array, readonly
 
-# unsafe_ptr: get a raw pointer from a container or string
+# unsafe_ptr: get a raw pointer from a container or string. The `str`
+# overload points at view storage that is NOT null-terminated -- use
+# unsafe_cstr() when handing a string to a C function.
 @overload
 @cpp_template("{0}.data()")
 def unsafe_ptr(s: str) -> Ptr[readonly[Char]]: ...
@@ -179,6 +181,22 @@ def unsafe_str_view(p: Ptr[readonly[Char]], size: UInt32) -> StrView: ...
 # call (strerror, inet_ntop, gai_strerror, ...).
 @cpp_template("std::string(reinterpret_cast<const char*>({0}))")
 def unsafe_str_from_cstr(p: Ptr[readonly[UInt8]]) -> str: ...
+
+# unsafe_cstr: borrow an owned String as a null-terminated C string. The
+# outbound half of the unsafe_str_from_cstr pair. The String parameter
+# names the form that is actually safe to borrow -- owned, so its buffer
+# is null-terminated and outlives the call -- but it does not ENFORCE it:
+# a str argument converts, and what the pointer then addresses is the
+# conversion's temporary.
+#
+# The result borrows the argument's buffer and, like every unsafe_ptr
+# overload, is not tracked: it stays valid only as long as that buffer
+# does. Passing a `str` (or a literal) converts, so the string the pointer
+# points into dies with the enclosing expression -- hold the pointer past
+# that statement only when the argument was a String the caller owns, and
+# only while that String is neither mutated nor reallocated.
+@native("tpy::cstr")
+def unsafe_cstr(s: String) -> Ptr[readonly[UInt8]]: ...
 
 # unsafe_str_from_buf: build an owned TPy str from a raw byte buffer of
 # `size` bytes. No null terminator required. Typical use: decode the

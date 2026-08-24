@@ -2754,6 +2754,84 @@ CLASSVAR_INNER_TYPE_ERROR = (
 )
 
 
+C_ABI_TYPE_ERROR = "is not representable in the C ABI"
+
+
+def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
+    """Allow-list for types tpyc renders into an `extern "C"` signature.
+
+    The gate exists because a C caller has to be able to spell the
+    declaration: anything outside this set either emits a C++ type no C
+    header can express (`std::vector&`, `::tpy::BigInt`, a `T&`
+    reference) or is ABI-incompatible while still compiling, which is a
+    silent break rather than a build error. `None` is admitted in return
+    position only -- that is `void`.
+    """
+    from .type_def_registry import (is_fixed_int_type, is_bool_type,
+                                    is_char_type, is_float_category,
+                                    is_enum_type, enum_info_of)
+    t = unwrap_readonly(typ)
+    if isinstance(t, PtrType):
+        # Deliberately unconditional in the pointee: a pointer is an opaque
+        # handle at the ABI, whatever it addresses. The C++ spelling of the
+        # pointee still appears in the declaration, so a C consumer writes
+        # `void*` for anything it cannot name. The array form of
+        # native_global checks the pointee instead, because there the
+        # pointee IS the emitted element type rather than a handle.
+        return True
+    if (is_fixed_int_type(t) or is_bool_type(t)
+            or is_char_type(t) or is_float_category(t)):
+        return True
+    if is_enum_type(t):
+        # A @native enum names a real C enum; a TPy-declared one lowers to
+        # a namespaced C++ `enum class` with no C spelling.
+        info = enum_info_of(t)
+        return info is not None and info.is_native
+    # `-> None` resolves to VoidType; NoneType is the annotation spelling.
+    return is_return and isinstance(t, (VoidType, NoneType))
+
+
+def c_abi_type_hint(typ: 'TpyType') -> str:
+    """Remedy clause naming the manual spelling for a rejected type.
+
+    Generic advice ("use Ptr[T]") is useless for the two families users
+    actually hit, so int and the str/buffer families get their own.
+    """
+    from .type_def_registry import is_big_int_type, is_enum_type
+    t = unwrap_readonly(typ)
+    if is_big_int_type(t):
+        return "use a fixed-width integer type (Int32, Int64, ...)"
+    if is_any_str_type(t):
+        return ("use Ptr[readonly[UInt8]] and convert with "
+                "tpy.unsafe.unsafe_str_from_cstr() / unsafe_cstr()")
+    if is_byte_buffer_c_abi(t):
+        return "use Ptr[readonly[UInt8]] plus an explicit length parameter"
+    if is_sequence_c_abi(t):
+        return "use Ptr[T] plus an explicit length parameter"
+    if is_enum_type(t):
+        return "declare the enum @native so it names a real C enum"
+    if isinstance(t, NominalType) and t.is_user_record:
+        # Steering a by-value C struct at Ptr[S] would be actively wrong:
+        # extern "C" does not mangle, so the call links and the callee reads
+        # a struct where a pointer was passed.
+        return ("pass it as Ptr[T] -- a struct crosses a C boundary by "
+                "pointer, and a by-value struct parameter cannot be "
+                "expressed there")
+    return "pass it as Ptr[T]"
+
+
+def is_byte_buffer_c_abi(t: 'TpyType') -> bool:
+    """Byte buffers -- their C spelling is `const uint8_t*` plus a length."""
+    from .type_def_registry import is_bytes_type, is_bytearray_type
+    return is_bytes_type(t) or is_bytearray_type(t)
+
+
+def is_sequence_c_abi(t: 'TpyType') -> bool:
+    """Element sequences -- `T*` plus a length on the C side."""
+    from .type_def_registry import is_list, is_span, is_array
+    return is_list(t) or is_span(t) or is_array(t)
+
+
 def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
     """Optimize str to StrView in Final type annotations.
 

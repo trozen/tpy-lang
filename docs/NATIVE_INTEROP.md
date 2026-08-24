@@ -323,6 +323,8 @@ def app_tick(dt: float) -> None:
 
 The function must have a body (not `...`). The optional string argument specifies the C symbol name. `binding="C"` is required.
 
+Every type in the signature must be C-representable -- see "C-linkage signatures" under [Supported types](#supported-types). In particular `str`, `bytes`, containers and TPy classes are rejected; strings and buffers cross as `Ptr[readonly[UInt8]]` and are converted explicitly.
+
 Generated C++:
 
 ```cpp
@@ -491,6 +493,9 @@ All `@native` function calls (C++ linkage) emit their symbol absolute-qualified 
 | `native_global()` inside a function | `can only be used at module level` |
 | `native_global()` without type annotation | `requires a type annotation` |
 | `@export` in `native_module` | `@export not allowed in native_module` |
+| Non-C-representable type in a `binding="C"` signature | `is not representable in the C ABI` (plus a per-family remedy) |
+| `*args` on a `binding="C"` function | `variadic parameters are not supported on a C-linkage function` |
+| Non-C-representable type on a `binding="C"` `native_global` | `is not representable in the C ABI` |
 
 ## Supported types
 
@@ -517,6 +522,42 @@ BEFORE the conversion -- the same validate-in-BigInt-first discipline used
 for record field stores applies to native-call arguments (see the timestamp
 guard in `lib/tpy/datetime.py::_from_epoch_us` for the pattern; the missing
 guard there was a review-caught uncatchable-panic bug).
+
+### C-linkage signatures
+
+The table above is the C++-linkage surface. A `binding="C"` signature -- `@native(binding="C")`, `@export(binding="C")`, `native_global(..., binding="C")` -- is emitted verbatim into an `extern "C"` declaration, so it is restricted further: sema rejects any type a C caller cannot spell.
+
+**Permitted:** fixed-width integers (`Int8`..`UInt64`), `Float32`, `float`, `bool`, `Char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
+
+**Rejected:** `int` (`BigInt`), `str` / `StrView` / `String`, `bytes` / `bytearray`, `list` / `Span` / `Array`, `tuple`, `Optional`, unions, TPy classes, a plain (non-`@native`) enum, a `@native(binding="C")` struct passed **by value** (it emits `S&`, a C++ reference), `Own[S]` (`S&&`), and `*args`.
+
+Without the gate these emitted C++ types no C header can express (`const ::tpy::BigInt&`, `std::vector<int32_t>&`, `::SDL_Rect&`) or -- worse -- a signature that compiled and then silently misbehaved: a `str` param respells to `const char*` at the signature while the body still renders against `std::string_view`, so `s == "hello"` compared the incoming pointer against a literal's address and was always false.
+
+**`@native(binding="C")` class fields and stub methods are deliberately not gated.** tpyc emits nothing for them -- they mirror a declaration the author's own C header owns -- so they stay under the ordinary `@native` "the author asserts the C side" contract. The gate covers only what tpyc itself writes into an `extern "C"` declaration.
+
+#### Strings and buffers by hand
+
+There is no marshaling layer, so the conversion is explicit and visible in the signature. A C string crosses as `Ptr[readonly[UInt8]]`, converted through `tpy.unsafe`:
+
+```python
+from tpy import Int32, Ptr, String, UInt8, readonly
+from tpy.extern import export, native
+from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
+
+@export(binding="C")
+def greet(name: Ptr[readonly[UInt8]]) -> None:
+    print(unsafe_str_from_cstr(name))    # const char* -> owned str
+
+@native("puts", binding="C")
+def puts(s: Ptr[readonly[UInt8]]) -> Int32: ...
+
+def shout(msg: String) -> None:
+    puts(unsafe_cstr(msg))               # String -> null-terminated const char*
+```
+
+`unsafe_cstr` takes `String` (owned), not `str`, because only the owned form carries the null terminator `std::string` guarantees; `unsafe_ptr`'s `str` overload points into view storage that has none. The returned pointer is valid only while the `String` lives, so bind the string to a name before the call rather than building it inline.
+
+A byte buffer or a sequence takes the ordinary C shape, written out: `Ptr[readonly[UInt8]]` / `Ptr[T]` plus an explicit length parameter. Generating that shape (and the return direction, which needs an ownership policy) is the deferred marshaling work tracked in `TODO.md`.
 
 ---
 
@@ -562,14 +603,12 @@ def qsort(base: Ptr[None], count: Int32, size: Int32,
            cmp: CCallback[[Ptr[readonly[None]], Ptr[readonly[None]]], Int32]) -> None: ...
 ```
 
-### Native enums
-
-Import C/C++ enum types with value mapping.
-
 ### Variadic C functions
 
 Support for `printf`-style variadic calls (design TBD).
 
 ### String and buffer marshaling
 
-Automatic conversion between TPy types and C types at the FFI boundary (e.g., `str` -> `const char*`, `list[T]` -> `T*, size_t`).
+Automatic conversion between TPy types and C types at the FFI boundary, in both the argument and the return direction (`str` <-> `const char*`, `bytes` / `list[T]` <-> `T*, size_t`).
+
+Half of this once existed by accident and has been withdrawn: a `str` param on a `binding="C"` function respelled to `const char*` in the signature while the body kept rendering against `std::string_view`, which miscompiled string reads silently. A signature respell alone is therefore not the feature -- a real conversion has to run on both sides of the call. Those types are rejected outright today (see "C-linkage signatures"), and the designed replacement is a generated wrapper function rather than an entry prologue, since only a wrapper can change arity (`bytes` -> `(const uint8_t*, size_t)`) or marshal a return value. Tracked in `TODO.md`.

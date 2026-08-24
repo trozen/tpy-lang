@@ -52,7 +52,6 @@ from ...typesys import (
     CONST_PARAMS_METHODS,
     IntLiteralType,
     RecursiveAliasInstanceType,
-    is_any_str_type,
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
@@ -572,14 +571,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     if func.linkage != FunctionLinkage.DEFAULT:
         if func.linkage is not FunctionLinkage.EXPORT_C:
             raise ThirUnsupported("sig.linkage")
-        # An @export(binding="C") BODY renders like a plain function's (the
-        # driver owns the extern "C" signature). The C ABI respells ONLY
-        # str-family params (`const char*` -- gen_c_params), and the AST
-        # renders their body READS ABI-blind -- a divergence the str-param
-        # slice keeps on the AST path until cutover decides the str story.
-        for _n, _ptype in func.params:
-            if isinstance(_ptype, TpyType) and is_any_str_type(_ptype):
-                raise ThirUnsupported("sig.linkage_c_abi")
+        # An @export(binding="C") BODY renders like a plain function's --
+        # the driver owns the extern "C" signature, and sema has already
+        # confined its params to types with a C spelling, none of which the
+        # body reads differently from their plain-function form.
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
     # place) gets a mutable owned copy hoisted by the AST prologue

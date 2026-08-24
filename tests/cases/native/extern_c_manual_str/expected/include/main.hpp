@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-extern "C" int32_t puts(const char* s);
-extern "C" void greet(const char* name);
+void main();
+
+extern "C" void tpy_log(const uint8_t* msg);
+extern "C" int32_t greet(const uint8_t* name);
 
 void __tpy_init();
 } // namespace tpyapp::main

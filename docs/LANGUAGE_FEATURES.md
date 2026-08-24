@@ -1091,7 +1091,7 @@ Restrictions:
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `Rc[T]` / `Weak[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer with a non-owning companion (`tplib/rc.py`). One heap allocation per `Rc.new`: the cell is generic `_RcCell[U]`, derived from a `@dynamic _RcCellBase` protocol, and holds strong/weak counters plus an inline `UninitStorage[U]` payload. Rc holds two pointers (`_cell: Ptr[_RcCellBase]` for refcount + virtual dispatch, `_payload: Ptr[T]` for fast deref -- aliases into the cell's inline storage). Cell virtuals are *fused* (`incr_strong`, `release_strong`, `try_incr_strong`, `incr_weak`, `release_weak`) so each Rc/Weak op dispatches at most one vcall; `release_strong` does the strong-zero -> drop_payload -> decrement-collective-weak chain in one call, preserving the invariant that a nested `Weak.__del__` triggered by the payload destructor sees `weak >= 2` and can't free the cell. Cell deallocation defers until the last `Weak` drops (weak reaches 0), so `Weak.upgrade()` can safely check `strong > 0` against still-valid memory and return `Rc[T] | None`. `@nocopy` at the TPy level: deliberate sharing is always explicit via `Rc.clone()`, `Rc.downgrade()`, `Weak.clone()`, or `Weak.upgrade()`. `Rc[T]` implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. `Weak[T]` deliberately does NOT implement `Deref` -- access must go through `upgrade()` so callers handle the "payload already dropped" case. `Rc[T]` is `Covariant[T]`: `Rc[Parrot]` -> `Rc[Pet]` works for inheritance conformers (the converting move ctor transfers `_cell` and upcasts `_payload` via standard C++ pointer upcast). For `@dynamic` protocol P, both structural and inheritance conformers work via the `Rc.new[U: T]` factory: `r: Rc[Pet] = Rc.new(Parrot(...))` (inheritance: cell is `_RcCell<Parrot>`, payload upcasts `Parrot*` -> `Pet*`) and `r: Rc[Pet] = Rc.new(Cat(...))` (structural: codegen substitutes the method-level type-arg `U -> Adapter<Pet, Cat>` so the cell is `_RcCell<Adapter<Pet, Cat>>`; Adapter inherits Pet, so `Adapter<Pet, Cat>*` upcasts cleanly to `Pet*`). The structural-conformer path is driven by a *representational-use* mark recorded on the canonical `FunctionInfo` during body analysis (the body coerces `Ptr[U] -> Ptr[T]` via `cell.storage.ptr()`) and read by codegen at the call site. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. `_cell` is declared `unsafe_interior_mutable[Ptr[_RcCellBase]]` -- the refcount is bookkeeping outside the readonly boundary (the std::shared_ptr const-copy pattern) -- so `clone`/`downgrade`/`upgrade`/`Weak.clone` are `@auto_readonly`: callable on a `readonly[Rc[T]]` handle (e.g. cloning an `Rc` field inside a `@readonly` method), and from a readonly handle they yield a readonly-payload handle (`Own[Rc[readonly[T]]]`), so readonly can't be laundered into mutable `T`. Dunder surface on Rc mirrors `Box[T]`: `__str__`, `__repr__`, plus `__eq__` (content equality, delegates to `T.__eq__`, gated on `T: Equatable`), `__lt__`/`__le__`/`__gt__`/`__ge__` (gated on `T: Comparable`), and `__hash__` (gated on `T: Hashable`). Cycles between two strong `Rc` handles still leak (the canonical fix is to wire one edge of the cycle as `Weak`; see `weak_cycle_breaks` test). `Rc`'s refcount is non-atomic (single-threaded by construction, so it's `!Send`/`!Sync` for free from its raw-pointer fields); the atomic sibling is `Arc[T]` (`tplib/arc.py`, shipped). Construct via `Rc.new(value)`; the `Rc(other)` sharing-ctor shape is still blocked by a sema bug filed in `BUGS.md`. `dict[K, Rc[T]]` literal initialization works (`d = {"a": r.clone(), ...}` lowers via `tpy::make_ordered_map`, preserving move semantics for the @nocopy value). `Rc[T]` is rejected as a `set` element / `dict` key with a precise diagnostic -- hash-table-backed containers store keys in `std::pair<const K, ...>` and require copy-constructible K, which `@nocopy` cannot satisfy. Import: `from tplib import Rc` for the strong-handle surface; `Weak` lives only at `tplib.rc.Weak` (not re-exported flat) so the future `Arc[T]` companion at `tplib.arc.Weak` can take the same bare name without collision -- mirrors `std::rc::Weak` vs `std::sync::Weak` in Rust. Use `from tplib.rc import Rc, Weak` when both handles are needed.
 - **Working**: `Arc[T]` / `Weak[T]` -- atomic-refcount sibling of `Rc`/`Weak` (`tplib/arc.py`), a near-clone whose only behavioral delta is that the strong/weak counters are `Atomic[UInt32]`, so handles can be moved and shared across threads. `Arc[T]` is `Send + Sync` exactly when `T` is both (Rust's `Arc<T>` rule), via the conditional `@unsafe_send(if_params_send=True, if_params_sync=True)` / `@unsafe_sync(...)` override -- the handle's raw-pointer fields make it structurally non-Send, and the conditional lifts it only for the type args that make it sound. No constructor gate: `Arc[non-Send-Sync]` is a legal *non-Send* value (like Rust's `Arc<Rc<_>>`), rejected only where it crosses a thread boundary (`spawn`), with a why-not chain that names the offending type parameter and the marker it lacks. Refcount ordering follows `std::sync::Arc`: clone `fetch_add(1, Relaxed)`; drop `fetch_sub(1, Release)` + an `Acquire` fence on the final decrement before the payload destructor; `upgrade` a CAS loop with `Acquire`. Everything else -- the fused `@dynamic _ArcCellBase` cell, `UninitStorage[U]` payload, `Deref[T]`, `Covariant[T]`, the dunder surface, `@auto_readonly` clone/downgrade, `Weak.upgrade() -> Arc[T] | None` after the last strong drop -- mirrors `Rc` exactly. Composes with V1 `tpy.thread.spawn`: `arc.clone()` into a `@nocopy` task's field carries shared state across the spawn boundary with no closures (`tests/cases/threading/arc_spawn`). Import: `from tplib.arc import Arc, Weak` -- deliberately NOT re-exported from `tplib` (that would pull the atomic runtime into every `from tplib import ...` consumer, against the "pay nothing if you don't use threads" principle); `Weak` coexists with `tplib.rc.Weak`. Built on the general `Atomic[T: AnyFixedInt]` primitive (`tpy.atomic`).
-- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
+- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_str_from_cstr`, `unsafe_cstr`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`, `UninitStorage[T]`)
 - **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Flows through the type system uniformly: auto-inserted on function params/returns, preserved on non-reassigned locals, returned by field access and subscript. Detects implicit copies when storing borrowed references into fields/containers (complemented by `needs_copy_warning` for owned lvalue copies). Also drives lambda trailing return types (`-> T&`) and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.
 - **Planned**: `ConstRef[T]` -> `const T&` (explicit annotation; automatic const qualification via mutation inference already covers most cases -- see Parameter Passing Convention)
@@ -1928,6 +1928,19 @@ sv: StrView = unsafe_str_view(p, UInt32(5))   # Ptr[Char], UInt32 -> StrView
 ```
 
 Generates `std::string_view(p, size)` in C++. Also accepts `ConstPtr[Char]`. The caller must ensure the pointer remains valid for the lifetime of the returned view.
+
+**`unsafe_str_from_cstr`** / **`unsafe_cstr`** -- convert between a TPy string and a null-terminated C string:
+
+```python
+from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
+
+def handle(p: Ptr[readonly[UInt8]]) -> None:
+    name = unsafe_str_from_cstr(p)      # const char* -> owned str (copies)
+    reply = String("hi " + name)
+    c_sink(unsafe_cstr(reply))          # String -> const uint8_t*, borrowed
+```
+
+`unsafe_str_from_cstr` copies up to the first `\0`, so the result is independent of the source buffer. `unsafe_cstr` takes `String` rather than `str` because only the owned form is null-terminated -- `unsafe_ptr` on a `str` yields a view pointer with no terminator. Its result borrows the argument's buffer and is untracked, like every `unsafe_ptr` overload: passing a `str` or a literal converts, so the buffer dies with the enclosing expression. These are the supported way to move strings across a `binding="C"` boundary, where the string types themselves are rejected.
 
 **`unsafe_alloc`** / **`unsafe_alloc_n`** -- allocate raw memory for one or N elements:
 
@@ -5625,6 +5638,38 @@ def game_tick(time: Int32) -> None:
 
 Cross-module imports of native functions work normally -- the compiler re-declares extern symbols in each module.
 
+### C-Linkage Signature Types (Working)
+
+A `binding="C"` signature is emitted verbatim into an `extern "C"` declaration, so every type in it has to be one a C caller can spell. Sema enforces an allow-list on `@native(binding="C")`, `@export(binding="C")`, and `native_global(..., binding="C")`:
+
+- **Permitted:** fixed-width integers (`Int8`..`UInt64`), `Float32`, `float`, `bool`, `Char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
+- **`Ptr[T]` is unconditional in the pointee** -- a pointer is an opaque handle at the ABI whatever it addresses, so `Ptr[list[Int32]]` is accepted and emits `std::vector<int32_t>*` into the declaration. That spelling is C++, not C: a C consumer declares `void*` for any pointee it cannot name. The gate constrains what crosses *by value*, not what a pointer may address.
+- **Rejected:** `int` (`BigInt`), `str` / `StrView` / `String`, `bytes` / `bytearray`, `list` / `Span` / `Array`, `tuple`, `Optional`, unions, TPy classes, a plain (non-`@native`) enum, a `@native(binding="C")` struct passed **by value** (it emits `S&`, a C++ reference) and `Own[S]` (`S&&`). `*args` is rejected too -- variadic C functions are not supported.
+
+Without the gate these passed *by value* as C++ types no C header can express (`const ::tpy::BigInt&`, `std::vector<int32_t>&`, `::SDL_Rect&`) or -- worse -- a signature that compiled and silently misbehaved: a `str` param respells to `const char*` at the signature while the body still renders against `std::string_view`, so `s == "hello"` became a raw pointer comparison that is always false.
+
+`@native(binding="C")` class fields and stub methods are deliberately **not** gated: tpyc emits nothing for them (they mirror a declaration the author's C header owns), so they keep the ordinary `@native` "the author asserts the C side" contract. Only what tpyc itself writes into an `extern "C"` declaration is checked.
+
+There is no marshaling layer, so a string or buffer is converted by hand. A C string crosses as `Ptr[readonly[UInt8]]` plus the `tpy.unsafe` pair:
+
+```python
+from tpy import Int32, Ptr, String, UInt8, readonly
+from tpy.extern import export, native
+from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
+
+@export(binding="C")
+def greet(name: Ptr[readonly[UInt8]]) -> None:
+    print(unsafe_str_from_cstr(name))    # const char* -> owned str
+
+@native("puts", binding="C")
+def puts(s: Ptr[readonly[UInt8]]) -> Int32: ...
+
+def shout(msg: String) -> None:
+    puts(unsafe_cstr(msg))               # String -> null-terminated const char*
+```
+
+`unsafe_cstr` takes `String` (owned), not `str`: only the owned form carries the null terminator, while `unsafe_ptr`'s `str` overload points into view storage that has none. Its result is valid only while the `String` lives, so bind the string to a name before the call rather than building it inline. Byte buffers and sequences take the same hand-written shape -- `Ptr[readonly[UInt8]]` / `Ptr[T]` plus an explicit length parameter.
+
 ### Inline C++ templates -- `@cpp_template` (Working)
 
 `@cpp_template("<C++ expression>")` binds a bodyless function/method to an inline C++ expression. Placeholders substitute textually: `{self}` (receiver) and positional `{0}`, `{1}`, ... (arguments) are *runtime values*; `{cpp}` (return-type spelling) and named type params `{T}` are *types*, resolved before argument expansion. `{{`/`}}` emit literal braces.
@@ -5915,6 +5960,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 **Not yet supported:**
 - `@export(binding="C")` class -- export TPy struct for C (planned)
 - C header generation (`--emit-c-header`) (planned)
+- Automatic marshaling at a C boundary -- `str` <-> `const char*`, `bytes` / `list[T]` <-> `(T*, size_t)`, in both the argument and the return direction. Those types are rejected by the C-linkage type gate today; convert by hand (planned)
 
 ---
 

@@ -264,6 +264,17 @@ def unsafe_transfer_ownership(p):
     return val
 
 
+def unsafe_cstr(s: str):
+    """Borrow an owned String as a null-terminated C string."""
+    return _ConstPtr(s)
+
+
+def unsafe_str_from_cstr(p) -> str:
+    """Read a null-terminated C string into an owned str."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    return obj if isinstance(obj, str) else ''.join(obj)
+
+
 def unsafe_str_view(p, size: int) -> str:
     """Create a string view from a Ptr[Char] and length."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj

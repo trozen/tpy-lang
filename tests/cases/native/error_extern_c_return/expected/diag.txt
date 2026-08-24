@@ -1,0 +1,1 @@
+main.py:7: error: return type 'str' is not representable in the C ABI; use Ptr[readonly[UInt8]] and convert with tpy.unsafe.unsafe_str_from_cstr() / unsafe_cstr()

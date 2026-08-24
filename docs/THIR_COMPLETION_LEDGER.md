@@ -12705,3 +12705,68 @@ claim that flatters the session.
 `_borrow_tuple_hoist_entry` <-> the AST's if/try hoist predecl logic, and
 `_optional_container_storage_inner` <-> `_gen_array_literal`'s own
 Optional unwrap. Both are hand-maintained lockstep mirrors today.
+
+## 2026-08-23 -- the C-ABI residue, closed from the AST side (markers 1 -> 0)
+
+The last `no_thir.txt` in the corpus was `native/extern_c_str_param`,
+held by the `sig.linkage_c_abi` fence: a `binding="C"` signature respells
+str-family params to `const char*` (`gen_c_params`) while the body
+renders against `std::string_view`, so THIR declined to mirror a seam
+whose AST side was wrong. `s == "hello"` compiled to a raw pointer
+comparison that is always false.
+
+**The fence was not the thing to fix, and neither was the render.** Sema
+never checked that a C-linkage signature holds types a C caller can
+spell, and `str` was only the loudest face -- `int` emits
+`const ::tpy::BigInt&`, `list[T]` emits `std::vector<T>&`, a
+`@native(binding="C")` struct by value emits `S&`, and every one of those
+compiled silently inside `extern "C"`. A representability gate
+(`is_c_abi_allowed` in typesys, hooked at `register_function` and at
+`native_global`) makes the whole class a compile error, after which the
+fence is unreachable and deletes.
+
+**Marker arithmetic, honestly.** This closed the last marker without
+migrating a body: the case that carried it no longer exists (it is an
+`error_` case now), and the two new positive cases route with no
+fallback. Zero snapshot churn on any existing case.
+
+**A design claim that was wrong until compiled.** The design report put
+the blast radius at one case. It was five -- `-> None` resolves to
+`VoidType`, not `NoneType`, so every `@export(binding="C") ... -> None`
+case failed the new gate until the return check accepted both. Reasoning
+about a type's identity is not the same as compiling it.
+
+**Deliberately not gated:** `@native(binding="C")` class fields and stub
+methods. tpyc emits nothing for them, so they stay under the documented
+"the author asserts the C side" `@native` contract. The rule is exactly
+"police what tpyc itself writes into an `extern "C"` declaration".
+
+**Deferred, filed in TODO.md:** the marshaling wrappers (the only shape
+that can express arity-changing marshaling and returns) and
+`@export(binding="C")` classes.
+
+**A claim in this branch's own commit log is wrong.** The review-round
+commit says converting `unsafe_cstr` from `@cpp_template` to `@native`
+made "both faces go away". Only one did. The ill-formed-literal face
+(`"lit".c_str()`) is closed; the coercion-temporary face is
+RE-EXPRESSED, not fixed -- `unsafe_cstr(v)` for a `str`-typed `v` still
+materializes a `std::string` bound to the helper's `const std::string&`,
+and the pointer dies with the full expression. It is now valid C++ that
+dangles instead of invalid C++ that did not build, which for the
+literal shape trades a loud failure for a silent one.
+
+That trade was taken deliberately: the INTENDED spelling
+(`c_fn(unsafe_cstr(x))`, consumed in place) went from "does not compile"
+to correct, and the regressed cell is a misuse of an `unsafe_` primitive
+whose sibling already behaves that way on master -- `unsafe_ptr(s + "x")`
+dangles silently there today. The family-wide property is filed in
+BUGS.md rather than papered over at this one call site. Two reviewers
+called it Critical and one declined; the deciding evidence was the
+pre-existing sibling, which none of the three had.
+
+**Second review round, and why it was needed.** The first round could not
+review its own fix commit, and it never dispatched a runtime-cpp
+specialist because `runtime/` was empty when it ran -- the fix then ADDED
+a hand-written C++ helper. A review round's output needs its own round;
+the bucket that was empty at classification time is exactly the one that
+grows.

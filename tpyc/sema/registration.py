@@ -29,6 +29,7 @@ from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     ReadonlyType, InteriorMutableType,
+    is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
     type_contains_own,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span, make_varargs,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
@@ -3542,6 +3543,31 @@ class TypeRegistrar:
                     func
                 )
             self.ctx.extern_symbols[symbol] = func.name
+
+        # C-linkage signatures are emitted verbatim into an `extern "C"`
+        # declaration, so every type in them has to be one a C caller can
+        # spell. Outside the allow-list the emit is either ill-formed C++
+        # or -- worse -- compiles to a signature no C caller can call.
+        if fi_linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXPORT_C):
+            for pname, ptype in resolved_params:
+                if not is_c_abi_allowed(ptype):
+                    raise self.ctx.error(
+                        f"parameter '{pname}': type '{ptype}' "
+                        f"{C_ABI_TYPE_ERROR}; {c_abi_type_hint(ptype)}",
+                        func
+                    )
+            if func.vararg_name is not None:
+                raise self.ctx.error(
+                    f"'*{func.vararg_name}': variadic parameters are not "
+                    f"supported on a C-linkage function",
+                    func
+                )
+            if not is_c_abi_allowed(resolved_return, is_return=True):
+                raise self.ctx.error(
+                    f"return type '{resolved_return}' {C_ABI_TYPE_ERROR}; "
+                    f"{c_abi_type_hint(resolved_return)}",
+                    func
+                )
 
         # If the Compiler pre-populated a skeleton FunctionInfo for
         # `func.name` (so cycle peers' bind_imports could find it

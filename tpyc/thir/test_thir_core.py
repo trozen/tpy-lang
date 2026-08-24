@@ -1635,6 +1635,18 @@ class TestPrintStmt:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
+    def test_export_c_body_routes_through_thir(self):
+        # A binding="C" body is confined by sema to types with a C spelling,
+        # none of which the body reads differently from a plain function's,
+        # so it lowers like one. Routing is the claim: byte identity alone
+        # is satisfied by a whole-body fallback.
+        src = ("from tpy.extern import export\n"
+               + "from tpy import Int32, Char, Ptr\n"
+               + "@export(binding=\"C\")\n"
+               + "def ext(n: Int32, c: Char, p: Ptr[Int32]) -> Int32:\n"
+               + "    if n > 0:\n        return n\n    return Int32(0)\n")
+        _assert_routes_byte_identical(src)
+
     def test_desugar_shares_one_source_comment(self):
         # A tuple-unpack desugars to several assigns on one source line; only the
         # first carries the source comment (no_source_comment set on the rest), so
