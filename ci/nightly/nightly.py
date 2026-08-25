@@ -6,7 +6,9 @@ fresh container per config (sharing the compile-reuse caches -- stdlib .o /
 PCH / ccache / uv -- across configs and nights via a named docker volume);
 an `ssh` row (the native-macOS backend) instead runs over SSH. Container
 rows pass --force-exec so every case actually builds+links+runs every night
-(the result-skip cache must never make the nightly incremental).
+(the result-skip cache must never make the nightly incremental). A `script`
+row runs one ratchet command instead of the suite and is judged by its exit
+code.
 
 Stdlib-only; runs on the host under the system python3 (no uv needed).
 Invoked by cron via cron-nightly.sh, which handles flock + git pull.
@@ -116,6 +118,14 @@ def container_script(cfg: dict, smoke: bool) -> str:
     config's toolchain.
     """
     extras = "".join(f" --extra {e}" for e in cfg.get("uv_extras", []))
+    setup = ["set -euo pipefail", "cp -r /repo /work", "cd /work",
+             f"uv sync --quiet{extras}"]
+    if cfg.get("script"):
+        # A `script` row runs one command instead of the suite (e.g. the THIR
+        # stdlib fallback ratchet). It writes no junit, so run_config reads the
+        # verdict off the exit code -- the command must be a ratchet, not a
+        # report, or the row is decoration.
+        return "\n".join(setup + [cfg["script"]])
     pytest_args = [f"--junitxml=/out/junit-{cfg['name']}.xml"]
     # --no-exec rows need no C++ toolchain, so `cxx` is optional for them.
     if cfg.get("cxx"):
@@ -124,6 +134,11 @@ def container_script(cfg: dict, smoke: bool) -> str:
         # CPython-version axis: comp + cpy only, no C++ build (parity is
         # toolchain-independent). --no-exec rules out --force-exec.
         pytest_args.append("--no-exec")
+    elif cfg.get("no_exec"):
+        # Front-end-only axis (e.g. the THIR stdlib oracle): the comp phase is
+        # the whole point, so skip both the C++ build and CPython parity --
+        # the toolchain and version rows already own those.
+        pytest_args += ["--no-exec", "--no-cpy"]
     else:
         # C++-toolchain rows: force every build+run and skip cpy -- the
         # version axis owns parity, so re-checking it here is redundant.
@@ -131,13 +146,7 @@ def container_script(cfg: dict, smoke: bool) -> str:
     pytest_args += cfg.get("pytest_args", [])
     if smoke:
         pytest_args += ["-k", SMOKE_FILTER]
-    return "\n".join([
-        "set -euo pipefail",
-        "cp -r /repo /work",
-        "cd /work",
-        f"uv sync --quiet{extras}",
-        f"uv run pytest {shlex.join(pytest_args)}",
-    ])
+    return "\n".join(setup + [f"uv run pytest {shlex.join(pytest_args)}"])
 
 
 def export_source(dest: Path) -> None:
@@ -310,6 +319,14 @@ def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
         res.duration_s = time.monotonic() - start
         return res
     res.duration_s = time.monotonic() - start
+
+    if cfg.get("script"):
+        # No junit from a script row: its exit code IS the verdict.
+        res.status = "pass" if rc == 0 else "test-failures"
+        if rc != 0:
+            res.failed = 1
+            res.detail = f"script exited {rc}"
+        return res
 
     junit = out_dir / f"junit-{cfg['name']}.xml"
     if junit.exists():

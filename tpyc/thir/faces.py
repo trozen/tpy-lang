@@ -1096,6 +1096,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
+    "narrow.binop_param",           # same wrap at a resolved binop's fixed-int
+                                    # param slot (_convert_to_fixed_int_arg)
+    "narrow.fstring_arg",           # runtime-BigInt f-string arg -> the
+                                    # `({0}).to_string()` row (same declared-
+                                    # type key, no to_fixed_check)
     "narrow.wrapper_union",         # F6 isinstance on a recursive-alias wrapper
                                     # union subject -> holds/get via `.value`
     "narrow.folded_isinstance",     # F1 isinstance on an already-narrowed
@@ -1179,6 +1184,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_storage",
     "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
+    "ret.record_methodcall_value",  # ... at a VALUE-record slot (by-value ret)
     "ret.record_deref_coerce",      # `return ptr` (Ptr[T] local/param) at the
                                     # borrow return -> `deref_check(ptr)`
     "ret.record_self",              # `return self` -> `return (*this);`
@@ -2210,6 +2216,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A scalar value into a bare `T` method slot (a pending deferred
     # generic's raw params): bare render, `val_or_ref_t<T>` binds by value.
     "method.tparam_scalar_arg",
+    # ... and its still-OPEN sibling: a param typed as the SAME `T` as the
+    # slot forwards bare (`Atomic[T].store` -> `_raw.store(value, order)`).
+    "method.tparam_open_pass_arg",
     # A borrow-tuple method result at the `auto` btuple decl slot
     # (`auto p = m.pair(c);`) -- the record-method twin of call.btuple_slot.
     "method.btuple_slot",

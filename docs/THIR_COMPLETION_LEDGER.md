@@ -4052,6 +4052,14 @@ which a type-param receiver does not have.
   gate D4's open hole, and A5 is the reason it has to close first -- a
   stdlib routing wave would otherwise be grinding a number no oracle checks.
 
+  **The hole is CLOSED as of 2026-08-25** (see the 2026-08-25 entry at the
+  end of this file). `--thir-stdlib` supplied the oracle from 2026-07-28 on,
+  but as an opt-in flag with no CI row it was not a gate and it silently
+  rotted back to 49 failing cases. There are now two: the always-on
+  `tests/test_thir_stdlib_gate.py` (import-only floor, every plain pytest)
+  and a `thir-stdlib` nightly row (the wide corpus form). The FLOOR caveat
+  above is also retired -- see the same entry for the measurement.
+
 ### Gate D4 -- post-cutover verification (2026-07-28, decided)
 
   The question the inventory left open: what replaces the dual-path byte-diff
@@ -4821,9 +4829,41 @@ none of it moves the dial, and body-lowering waves cannot invalidate it):
 
 1. A1: `no_thir.txt` markers -> 0 (dial 2773/3632, 859 left at this
    writing) -- the standing wave work.
-2. A5: stdlib fallback -> 0 (289 at the 2026-07-28 baseline), then
-   re-measure with a using corpus -- the baseline is a FLOOR (import-only
-   entry programs never attempt monomorphizations or resumable frames).
+2. A5: stdlib fallback -> 0. **Do not maintain a running count here** -- it
+   moves with every cell and a hand-copied figure in a checklist item is
+   stale on arrival (this line has already carried three wrong numbers).
+   `scripts/thir_migration/thir_stdlib_fallback.py` IS the number; re-run it.
+   **Count BODIES, not distinct names.** The tracked figure was a
+   name-collapsed count and under-reported by 24: `thir_stdlib_fallback.py`'s
+   `merge_module` keys on the BARE body name, so overloads and a method name
+   shared across several records in one module collapse to their worst
+   sighting. Deleting the AST body emitter needs each BODY routed, so the
+   name-collapsed number is not the gate.
+   Dated snapshot, per body: **195 fallback / 1050 routed / 2843 classified,
+   2026-08-25 at `09c3f8000`** (`tests/test_thir_stdlib_gate.py`, which
+   ratchets it pre-merge). The name-collapsed view of the same tree reads
+   171 / 828 / 999, and master `4ad40383c` reads 189 / 810 collapsed; the
+   2026-07-28 baseline of 289 is also collapsed. Cross-check: applying the
+   collapse to the per-body sweep reproduces 171 / 828 exactly.
+   **Never subtract two of these from each other.** Always quote the tree,
+   the instrument AND the key -- this line alone has now carried four
+   figures that were not comparable.
+   Per-module detail belongs in the dated entries below, not here.
+
+   **Beware the counting key when comparing figures across instruments.**
+   `thir_stdlib_fallback.py` dedupes by `(module, name)`, worst sighting
+   winning; a per-body-instance count (overload specializations listed
+   separately) reads higher for the same tree. Two numbers from different
+   keys are not a delta.
+
+   The "re-measure with a using corpus" instruction is CONSUMED and the FLOOR
+   caveat is RETIRED for the fallback count: a 495-case corpus sweep found
+   ZERO fallback bodies the import-only sweep had not already seen, and the
+   reason is mechanical -- `iter_module_callables` attempts each callable
+   once per module, so instantiation count cannot change the body
+   POPULATION. (The caveat still stands for DIVERGENCE, which is
+   emission-driven.) The prerequisite -- zero divergence -- is met and now
+   gated; see the 2026-08-25 entry.
 3. Interop corpus: its own dial to migrated (tallied separately).
 4. The skeleton call-site inventory above, ground to zero.
 5. `faces.py` call-site increment fix (an arm that witnesses before it can
@@ -12770,3 +12810,321 @@ specialist because `runtime/` was empty when it ran -- the fix then ADDED
 a hand-written C++ helper. A review round's output needs its own round;
 the bucket that was empty at classification time is exactly the one that
 grows.
+
+## 2026-08-25 -- the stdlib oracle: rotted, fixed, and gated
+
+Branch `thir-stdlib-routing`. Closes the D4 stdlib-oracle hole and puts a
+permanent gate under it. Prerequisite for cutover item 2 (A5), which could
+not honestly start while the oracle it grinds against was red.
+
+### What was broken
+
+`--thir-stdlib` reported **49 failing cases**. All 49 were witnesses of ONE
+hunk: `lib/tpy/_datetime_parse.py:447` in `_strptime_impl`, where THIR
+dropped `.to_fixed_check<int32_t>()` on a subscript index. Cross-checked
+arithmetically -- 54 cases import `datetime`/`zoneinfo`/`requests`, minus 3
+`error_*` (never reach codegen) and 2 comment-only hits = exactly 49.
+
+**The harness reports only the FIRST diverging module per case**, so "every
+failure names `_datetime_parse`" was not evidence it was the only one. A
+separate sweep of all 88 non-macro `lib/tpy` modules, both paths, full
+byte-diff, was needed to establish that it genuinely was.
+
+### Root cause: two type oracles
+
+Sema caches a type per name OCCURRENCE. Codegen declares the C++ slot from
+the variable's FINAL retro-widened type in `ctx.var_types`. Every AST
+checked-narrow arm keys on the declared type (`TypeResolver.get_resolved_type`,
+whose `is_runtime_bigint` IGNORES the `expr_type` it is handed and re-reads
+`get_resolved_type`); every THIR narrow arm keyed on
+`analyzer.get_expr_type(node)`. A literal-seeded local later widened to `int`
+therefore read a stale `Int32` in THIR and lost the narrow.
+
+Fixed by generalizing the helper that already threaded the declared map for
+the mixed-sign compare gate (`_operand_type` -> `_declared_type`, plus
+`_narrow_key_type`/`_has_widened_int_name`) and re-keying every checked-narrow
+sink on it: subscript read/`__setitem__`/`__delitem__`, slice bound, enum
+`from_value` arg, `FixedInt += BigInt` (name and element), `__contains__`
+needle, resolved-binop param slot, f-string arg.
+
+### Three things the diagnosis got wrong, each caught by a different gate
+
+1. **"The cast is lost in the boolean-context operand path."** False. Line
+   442 in the same function is also a boolean-context operand, inside an
+   `and`-chain, and KEEPS the cast. Instrumentation at both sites showed the
+   difference is the type oracle per occurrence, not the syntactic position.
+   The structural hypothesis came from reading the surface shape; two
+   independent measurements refuted it.
+2. **"Row 8 (call-arg narrow) is a same-gap-by-reading, unwitnessed."** It
+   was witnessed -- `b + p` against a user dunder's `Int32` param diverged
+   live. Found only by the blast sweep, not by the analysis.
+3. **A row that was not in the survey at all** (resolved-binop param slot)
+   needed its own arm and face.
+
+### The parent defect, found by the sibling survey
+
+The narrow family was a SYMPTOM. `p = 0; q = p + 1; p = gi()` emits
+`int32_t q = ::tpy::add_check<int32_t>(p, 1);` against a `::tpy::BigInt p`
+slot -- a hard g++ error on valid TPy. The retro-widen writer
+(`sema/local_deduction.py`) updates `ctx.var_types`/scope/namespace without
+invalidating the `expr_types` already recorded. The checked-narrow arms only
+dodged it by asking the other oracle. **BOTH codegen paths share the defect,
+so no byte-diff can ever see it** -- only a C++ build does. Filed HIGH in
+BUGS.md with two consumers (`[x] * n` repeat count, builtin overload
+selection on `chr`/`abs`).
+
+Consequence for this branch: composite-over-widened-local sinks REJECT
+(`_NARROW_UNMIRRORED`) rather than mirror, because the AST's render for them
+is ill-formed. Those reject legs become removable once the parent is fixed.
+This is the "do not mirror an AST accident" rule applied deliberately, and it
+means this change ADDS fallback legs while removing divergence.
+
+### The review found the same bug class surviving in two gates
+
+`_record_getitem_idx_recv_ok` (`predicates.py`) and `_user_record_setitem_ok`
+(`checks.py`) kept a LEADING short-circuit on the stale per-occurrence type,
+ahead of the correctly-keyed disposition call -- so a composite index over a
+widened local against a user-record `__getitem__`/`__setitem__` was ADMITTED
+where it must reject, dropping the narrow with the body ROUTED (`fallback:
+{}`). `_narrow_bigint_index`'s own docstring asserts "'reject' never reaches
+lowering (the gates exclude it)"; that invariant was false at exactly these
+two gates. **Pre-existing, not introduced here** -- before this branch the
+same shape diverged at the arm instead of the gate.
+
+Worth recording HOW it was found: the `safety-model` specialist's dispatch
+table was EMPTY for this diff (no `sema/`, `typesys.py`, `codegen_cpp/`,
+`runtime/` touched) and it was dispatched anyway, on the grounds that the
+change is about whether an overflow guard is emitted. It returned the only
+Critical in the round. The dispatch table is a floor, not a ceiling.
+
+### Measurement corrections
+
+- **Stdlib fallback re-measured at `189 fallback / 810 routed / 999
+  candidates / 31 modules with fallback`** by
+  `scripts/thir_migration/thir_stdlib_fallback.py` at master `4ad40383c`,
+  against the stale 289 from 2026-07-28. Checklist item 2 updated to point at
+  the instrument.
+
+  **A 213-body figure appeared in the first draft of this entry and was
+  WRONG** -- it came from a scratch instrument whose dedup key and candidate
+  population both differ from the committed script's (`942 routed` and
+  `32 of 88 modules` likewise do not reproduce; the committed script yields a
+  999-candidate population on either tree). It is recorded here rather than
+  quietly deleted because the error is the one this very entry warns about
+  two paragraphs up: **two numbers from different counting keys are not a
+  delta.** Quote the instrument and the tree with every figure.
+- **The FLOOR caveat on the fallback count is retired.** Two independent
+  corpus sweeps found zero fallback bodies the import-only sweep had not
+  already seen -- one over 495 cases (the stdlib-oracle scout) and one over
+  90 entry programs chosen to cover every module that has a fallback (the
+  triage scout); they differ in corpus selection, not in result. The reason
+  is mechanical: `iter_module_callables` attempts each callable once per
+  module, so instantiation count cannot change the body POPULATION. The
+  caveat still holds for DIVERGENCE, which is emission-driven.
+- **The pin ablation was under-reported.** The implementer's note said
+  "reverting the key made 3 of 12 fail"; re-running it against the full
+  shared helper gives **12 of 18**. The 3/12 figure came from ablating only
+  the earlier subscript-only sub-commit. Recorded here because the commit
+  messages cannot be corrected.
+
+### The gate (the actual deliverable)
+
+Divergences had been ground 436 -> 0 on 2026-07-29 and left to an opt-in
+flag. `99484958f` then admitted a body carrying a mirror that had always
+been wrong, and nothing noticed for three days. Verified mechanically: the
+flag defaults False, `pyproject.toml` addopts is only `-n auto`, there is no
+`.github/`, and none of the 13 `ci/nightly/configs.json` rows passed it.
+
+Two gates now:
+- `tests/test_thir_stdlib_gate.py` -- runs in every plain `uv run pytest`.
+  One entry importing every non-macro `lib/tpy` module, emitted both ways and
+  byte-diffed. ~6s, no toolchain. One mega-entry rather than 88 separate ones
+  is both 12x faster AND strictly wider, since each module is emitted with
+  the union of instantiations its siblings request. Self-checking: floors on
+  modules/compares/emitting-modules/bytes and a macro-detector sanity bound,
+  ablation-proven to fail when the sweep stops covering (a past harness in
+  this repo printed IDENTICAL having compared ZERO files).
+- A `thir-stdlib` nightly row -- the wide corpus form, reaching the generic
+  monomorphizations and resumable frames the import-only floor cannot.
+
+**The general lesson, which is not about this bug: a metric ground to zero
+and then left to an opt-in flag is a metric that will silently rot.** The
+gate is the deliverable; the divergence fix is the occasion for it.
+
+## 2026-08-25 -- stdlib routing cells 1-2 (fallback 189 -> 171, THIS branch's delta is 18)
+
+Two cells against the stdlib fallback backlog, the first work on cutover
+item 2 since the oracle was gated. Branch `thir-stdlib-routing`.
+
+**The delta is 18 bodies, measured on both trees with the committed
+instrument:** master `4ad40383c` = 189 fallback / 810 routed; branch = 171 /
+828. Three modules move: `tpy.atomic` 14 -> 2, `datetime` 13 -> 8, and
+`tplib.array_list` 13 -> 12 (a free rider from the open-tparam row, claimed
+by neither cell).
+
+**A "289 -> 171" framing was used repeatedly while this branch was in
+flight and is WRONG by roughly 6x.** 289 is the 2026-07-28 baseline; the
+drop from 289 to 189 is a month of other work already on master. Attributing
+it here would credit this branch with 118 bodies it did not move. Recorded
+because a readiness second opinion caught it only by re-running the
+instrument against BOTH trees -- two full review rounds did not, since no
+reviewer was asked to check the baseline. **A delta claim needs both
+endpoints measured on the same instrument; a remembered baseline is not an
+endpoint.**
+
+**Stdlib cells are not corpus cells.** There is no `no_thir.txt` and no
+ratchet for stdlib, so the dial does not move and the metric is the fallback
+count. Stdlib only routes under `thir_all_modules`. The standing hazard: the
+arm you widen is SHARED with user modules, where the ratchet and byte-diff
+ARE live -- a stdlib win that de-migrates a user case is a net loss, so every
+cell verifies both sides.
+
+### Cell 1 -- `tpy.atomic` (14 -> 2 bodies)
+
+All 7 method-call bodies (`store`, `exchange`, `fetch_add/sub/and/or/xor`)
+rejected at ONE shape: arg 0, a param still typed as the OPEN `T` at a bare
+`T` slot in `_record_method_arg_ok`. The neighbouring row admits a RESOLVED
+scalar into a `T` slot; the still-open sibling was missing. New row
+`_open_tparam_pass_arg` + face `method.tparam_open_pass_arg`, params-only,
+same-`T`-only, TYPE-kind only.
+
+**The `MemoryOrder` default-arg was NOT the blocker** -- the obvious guess
+from reading the API. `load()` (order-only) already routed. Decoded by a
+stdlib-scoped `probe_loc` sibling; the committed `probe_loc.py` is case-only
+and never lifts `thir_all_modules`, so the shared-raise tag stayed lossy
+until the instrument was extended.
+
+Second row: `_forced_const_dropped`. THIR's inplace-dunder forced-const
+mirror in `_param_is_const` was FLAT where sema's `decide_param_const` has
+directly-mutated and addr-escaping short-circuits -- which is precisely why
+the `sig.inplace_dunder_mutated_param` reject existed. Mirroring the
+short-circuits let the reject be deleted.
+
+A third leg (reassigned copy-for-reassign) was written and then DELETED as
+dead: no discriminating case is constructible, since the
+`param_needs_copy_for_reassign` types are value types whose
+`param_cpp_formatter` renders identically regardless of the const decision,
+and `bytearray` rebinding is already sema-rejected. Independently
+re-verified in review rather than taken on the author's word -- a leg
+dropped on a wrong "unconstructible" argument is how a real safety property
+gets deleted.
+
+### Cell 2 -- `datetime` (13 -> 8 bodies, site EMPTIED)
+
+`body:stmt.return:return.record_source.methodcall.borrow` is now 0. One
+render row for the return itself -- but the site could not reach zero on
+that alone: two adjacent PRE-EXISTING defects sat in `ZoneInfo.fromutc`'s
+tail and became visible only once the body started routing.
+
+1. `_post_if_narrow_fact` was return-terminated only, where `_gen_if` and
+   THIR's own `_poly_post_if_fact` twin both accept `(TpyReturn, TpyRaise)`
+   -- an arm out of sync with its own sibling. A guard-and-raise narrow lost
+   its persistent extraction alias.
+2. `f(self)` at a VALUE-union arg slot is THIR wrong code: bare `this` into
+   a by-value `std::variant` where the AST hoists from the deref'd receiver.
+   FENCED, not fixed -- the retag site sat in the concurrent lane's file.
+   Filed in BUGS.md with the retag site named so the fence dies with it.
+
+The blast sweep CHANGED THE GATE KEY: a `ret_record_borrow` can be a
+`RecursiveAliasInstanceType` whose `is_value_type()` reads through its
+substituted body, so the arm keys on `isinstance(..., NominalType) and
+is_value_type()`, not on value-ness alone. Found by a neighbour probe, not
+by the witness.
+
+### Orchestration lessons
+
+- **Partitioning concurrent lanes BY FILE was wrong.** Both lanes needed
+  `predicates.py` and `faces.py`, assigned to neither. One lane had to stage
+  hunk-by-hunk to avoid sweeping the other's in-flight work into its commit.
+  Partition by SEAM, and expect the shared predicate file to be contended.
+- **A shared-tree gate run cannot attribute its own failure.** One lane hit
+  a stdlib-gate failure, ablated its own rows, saw it persist, and correctly
+  concluded it belonged to the other lane.
+- **Site counts taken per-body-instance over-count.** Both cells' briefs
+  overstated their body counts (10 vs 7, 14 vs 12) because the ranking was
+  built on per-instance rows while the instrument dedupes by
+  `(module, name)`. Rank on the instrument's key.
+- A converted pin's comment was WRONG AT TIME OF WRITING (it asserted
+  raise-arm ifs produce no post-if fact on either path; the AST always
+  accepted raise). Second time on this branch that a fence's stated reason
+  did not survive checking -- read the fence, do not trust its comment.
+
+### Follow-ups opened
+
+`decide_param_const` is the canonical shared function and THIR re-derives
+its branches by hand instead of calling it; two independent drifts are now
+known in that one mirror (the forced-const flatness fixed here, and
+`_param_is_const`'s missing `is_ref_param()` filter, filed LOW). Folding
+the THIR verdict through `decide_param_const` is the unification.
+
+Next cell identified but NOT improvised: the free-call/ctor flavor at a
+value-record slot still cannot hoist arg temps -- it rides
+`_record_rvalue_source_shape` into the temp-free borrow-block passthrough
+and rejects at `expr.call`. Blast radius is much larger than cell 2's, since
+every value-record ctor return currently routes through the borrow block.
+
+## 2026-08-25 -- stdlib checks moved pre-merge, and the metric was wrong
+
+User call, and the reasoning is worth keeping: **nightly is not regression
+prevention.** The divergence this branch opened with landed on master and sat
+three days; a nightly row would have caught it a day after it landed, with
+other work already stacked on top. For a migration in its endgame that is
+archaeology, not protection.
+
+### What moved
+
+- **The wide stdlib oracle is DEFAULT-ON.** Every case routes lib/tpy through
+  THIR and byte-diffs it against the same run's AST output. `--no-thir-stdlib`
+  opts out for fast local iteration; `--thir-stdlib` stays accepted as a
+  no-op/force so scripts and the nightly row are unaffected.
+- **The fallback ratchet is pre-merge**, folded into
+  `tests/test_thir_stdlib_gate.py`'s existing mega-entry compile. Both
+  properties now come from ONE compile: **5.61s -> 5.57s**, against ~64s for
+  the standalone sweep it replaces. Free.
+- Snapshot regeneration auto-offs the oracle silently, but an EXPLICIT
+  `--thir-stdlib` with `--update-snapshots` still errors -- "on by default"
+  and "on because you typed it" are deliberately distinguishable.
+
+### The cost was measured, not remembered
+
+`+14.0s of 273.3s = +5.1%` comp-only, both runs on this tree, 12665 passed
+each. **The 10-15% recorded in conftest and CLAUDE.md since 2026-07-30 was
+stale by 2-3x.** A dedup design was drafted to avoid the cost and then
+DISCARDED once measured -- building a content-addressed cache to save 14s is
+exactly the premature front-end optimization CLAUDE.md forbids. Measure
+first; the design you do not build is the cheapest one.
+
+### The metric itself was wrong -- 171 was never the cutover number
+
+Folding the ratchet in surfaced it: `thir_stdlib_fallback.py`'s
+`merge_module` keys on the **bare body name**, so overloads and a method name
+shared across several records in one module collapse to their worst sighting.
+Per BODY the tree reads **195 fallback / 1050 routed / 2843 classified**;
+the collapsed view reads 171 / 828 / 999. Applying the collapse to the
+per-body data reproduces 171 / 828 exactly, so the two are reconciled -- but
+deleting the AST body emitter needs each BODY routed, and **A5 has been
+under-reported by 24 bodies.** Checklist item 2 now states the per-body
+figure and names the key.
+
+**This is the FOURTH counting-key error in one session** (per-instance vs
+per-key site rankings, a scratch instrument's 213, a remembered 289 baseline
+misattributing 118 bodies, and now a name-collapsed A5). Every one was
+plausible, and every one was caught by re-measuring rather than by reasoning.
+The standing rule earned four times over: **a number is only meaningful with
+its tree, its instrument AND its key; two numbers from different keys are
+never a delta.**
+
+### Ratchet design notes
+
+The fallback ratchet fails open in one direction -- a BROKEN sweep classifies
+fewer bodies and reads as progress -- so it asserts floors on bodies, routed
+count and modules classified BEFORE comparing the number, and both the
+ratchet and the floor were demonstrated failing rather than assumed. Same
+guard, same reason as the byte-diff gate's compare-count floors, which exist
+because a past harness in this repo printed IDENTICAL having compared ZERO
+files.
+
+The two gates are COMPLEMENTARY, not redundant: the wide oracle reaches
+generic monomorphizations and resumable frames but only for modules some case
+IMPORTS, at those cases' option sets; the mega-entry gate covers EVERY module
+in lib/tpy including any nothing imports yet. Neither contains the other.

@@ -377,7 +377,9 @@ from .predicates import (
     _record_getitem_idx_recv_ok,
     _own_bytes_identity_move_slot,
     _own_lvalue_temp_slot,
-    _operand_type,
+    _declared_type,
+    _narrow_key_type,
+    _NARROW_UNMIRRORED,
     _peel_coerce,
     _type_family_tag,
     _plain_member_call_markers_ok,
@@ -2022,7 +2024,7 @@ def _bytes_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
     if (fi is None or e.typed_dict_in_field is not None
             or not fi.native_function or not fi.native_name):
         return False
-    rt = _operand_type(e.right, declared, analyzer)
+    rt = _declared_type(e.right, declared, analyzer)
     if rt is None or _resolved_bytes_value(rt, analyzer) is None:
         return False
     recv = e.right
@@ -2044,7 +2046,7 @@ def _bytes_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
             return False
     elif not isinstance(recv, TpyBytesLiteral):
         return False
-    lt = _operand_type(e.left, declared, analyzer)
+    lt = _declared_type(e.left, declared, analyzer)
     if lt is None:
         return False
     return (_resolved_bytes_value(lt, analyzer) is not None
@@ -2064,7 +2066,7 @@ def _str_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
             or e.resolved_contains is not None
             or e.typed_dict_in_field is not None):
         return False
-    rt = _operand_type(e.right, declared, analyzer)
+    rt = _declared_type(e.right, declared, analyzer)
     if rt is None:
         return False
     bare_rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
@@ -2085,7 +2087,7 @@ def _str_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
         pass
     elif not isinstance(recv, TpyStrLiteral):
         return False
-    lt = _operand_type(e.left, declared, analyzer)
+    lt = _declared_type(e.left, declared, analyzer)
     if lt is None:
         return False
     return (_eligible_char(lt)
@@ -2309,7 +2311,7 @@ def _narrowed_opt_operand(e: TpyExpr, t: 'TpyType | None', lc: '_LowerCtx',
     """The compare gate's operand type for a NARROWED value-opt scalar name:
     its read renders the `(*x)` deref (the name arm's deref-on-narrow), so
     the gate must judge the inner scalar, not the declared Optional binding
-    (`_operand_type` returns the latter). Un-narrowed reads keep the
+    (`_declared_type` returns the latter). Un-narrowed reads keep the
     declared type -- sema rejects a bare Optional compare anyway."""
     if not (isinstance(e, TpyName) and _value_opt_scalar_binding(e.name, lc)):
         return t
@@ -2438,7 +2440,7 @@ def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
                           analyzer) -> str:
     fam = ""
     for operand in (e.left, e.right):
-        t = _operand_type(operand, declared, analyzer)
+        t = _declared_type(operand, declared, analyzer)
         if t is None:
             continue
         t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -2610,7 +2612,7 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     render would take the conversion cast, a COPY that breaks aliasing."""
     analyzer = lc.analyzer
 
-    def _operand_type(side: TpyExpr) -> 'TpyType':
+    def _ref_operand_type(side: TpyExpr) -> 'TpyType':
         t = analyzer.get_expr_type(side)
         tu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
               if t is not None else None)
@@ -2631,7 +2633,7 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
             lowered = replace(lowered, typed_brace_cpp=lc.render_type(side_t))
         return lowered
 
-    lt = _operand_type(e.left)
+    lt = _ref_operand_type(e.left)
     rec = analyzer.registry.get_record_for_type(lt)
     if rec is None:
         rej("valuesel.ref_lhs")
@@ -2653,7 +2655,7 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     rhs_rvalue = is_rvalue_source(analyzer, e.right)
     if not rhs_rvalue and not isinstance(e.right, TpyName):
         rej("valuesel.ref_shape")
-    rt = _operand_type(e.right)
+    rt = _ref_operand_type(e.right)
     # The lhs arm binds/aliases as the result type (`&(lhs)` / the bare
     # ternary arm), so its render must match; the rvalue RHS is
     # target-blind (the emplace converts), while an inline lvalue RHS
@@ -2872,10 +2874,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and isinstance(e.right, TpyName)
                     and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(
-                            _operand_type(e.left, declared, analyzer)))))
+                            _declared_type(e.left, declared, analyzer)))))
                     and _protocol_auto_slot(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(
-                            _operand_type(e.right, declared, analyzer)))))):
+                            _declared_type(e.right, declared, analyzer)))))):
                 _witness("binop.protocol_raw")
                 return THIRBinOp(
                     result_type=(rtype if rtype is not None
@@ -2890,9 +2892,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and isinstance(e.left, TpyName)
                     and isinstance(e.right, TpyName)
                     and _resolved_scalar(
-                        _operand_type(e.left, declared, analyzer), analyzer)
+                        _declared_type(e.left, declared, analyzer), analyzer)
                     and _resolved_scalar(
-                        _operand_type(e.right, declared, analyzer),
+                        _declared_type(e.right, declared, analyzer),
                         analyzer)):
                 # A resolver-less SCALAR binop (a post-sema function macro
                 # synthesizes `a + b` after sema's binop resolution): the
@@ -2912,8 +2914,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     or not rb.method.native_name):
                 reject()
             bt = _resolved_bytes_value(rtype, analyzer)
-            lt = _operand_type(e.left, declared, analyzer)
-            rt = _operand_type(e.right, declared, analyzer)
+            lt = _declared_type(e.left, declared, analyzer)
+            rt = _declared_type(e.right, declared, analyzer)
             # A bytearray RESULT resolves the same native bytes_concat /
             # bytes_repeat dunder as bytes, so it takes the bytes-family
             # arms below rather than the container ladder -- the only
@@ -2979,8 +2981,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                           and _resolved_scalar(lt, analyzer)):
                     reject()
         elif e.op == "+" and _is_string_owned(rtype):
-            lt = _operand_type(e.left, declared, analyzer)
-            rt = _operand_type(e.right, declared, analyzer)
+            lt = _declared_type(e.left, declared, analyzer)
+            rt = _declared_type(e.right, declared, analyzer)
             l_narrow = (not _str_concat_operand(e.left, lt, analyzer)
                         and _opt_view_narrowed_concat_operand(e.left, lc))
             r_narrow = (not _str_concat_operand(e.right, rt, analyzer)
@@ -3006,8 +3008,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # other an int count. The resolved __mul__/__rmul__ cpp_template
             # (`::tpy::str_repeat({self}, {0})`) renders through the operator
             # arm; is_reverse pins the str into {self} for the reversed form.
-            lt = _operand_type(e.left, declared, analyzer)
-            rt = _operand_type(e.right, declared, analyzer)
+            lt = _declared_type(e.left, declared, analyzer)
+            rt = _declared_type(e.right, declared, analyzer)
             # A Char-typed str side (`c * 3` -> `str_repeat(char_to_str(c),
             # 3)`) rides the resolved overload's operand wrapper, like the
             # concat arm's char leg.
@@ -3108,8 +3110,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 and not (rb.method.native_function
                          and rb.method.native_name)):
             reject()
-        _lt_raw = _operand_type(e.left, declared, analyzer)
-        _rt_raw = _operand_type(e.right, declared, analyzer)
+        _lt_raw = _declared_type(e.left, declared, analyzer)
+        _rt_raw = _declared_type(e.right, declared, analyzer)
         lt = _narrowed_opt_operand(e.left, _lt_raw, lc, analyzer)
         rt = _narrowed_opt_operand(e.right, _rt_raw, lc, analyzer)
         # A condition-scope-narrowed union NAME operand gates and renders
@@ -3194,8 +3196,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # unchanged for the operand path above).
             return _lower_value_select(e, rtype, lc, declared, loc,
                                        temps_ok=logical_rhs_temps)
-        lt = _operand_type(e.left, declared, analyzer)
-        rt = _operand_type(e.right, declared, analyzer)
+        lt = _declared_type(e.left, declared, analyzer)
+        rt = _declared_type(e.right, declared, analyzer)
         if (lt is None or not is_bool_type(lt)
                 or rt is None or not is_bool_type(rt)):
             # A bool RESULT over non-bool operands takes the AST's direct
@@ -3265,7 +3267,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # `x in (a, b, ...)` / `not in`: a tuple-literal membership expands to an
         # OR-chain of `==` compares (no `__contains__`). Value-comparable
         # (scalar / str) needle + elements only, so each `==` renders plainly.
-        lt = _operand_type(e.left, declared, analyzer)
+        lt = _declared_type(e.left, declared, analyzer)
         left_scalar = lt is not None and _resolved_scalar(lt, analyzer)
         left_str = (lt is not None
                     and _resolved_str_value(lt, analyzer) is not None)
@@ -3289,14 +3291,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         pass
     elif e.op in _MEMBERSHIP_OPS:
         fi = e.resolved_contains
-        lt = _operand_type(e.left, declared, analyzer)
+        lt = _declared_type(e.left, declared, analyzer)
         if fi is None:
             # No resolved `__contains__` member (`readonly[set]` strips it;
             # list/array/span have none): the AST's `is_native_in` fallback
             # renders `std::ranges::contains(recv, x)`. Any native NativeIterable
             # receiver (set/list/array/span) with a scalar / owned-str needle;
             # the universal iterator-loop form is a later rung.
-            rt = _operand_type(e.right, declared, analyzer)
+            rt = _declared_type(e.right, declared, analyzer)
             rt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
                        if rt is not None else None)
             rec = (analyzer.registry.get_record_for_type(rt_bare)
@@ -3611,10 +3613,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # the checked call-arg narrow (an int literal stays bare, like
             # the AST's literal exemption).
             pt = unwrap_readonly(e.resolved_contains.params[0].type)
+            needle_key = _narrow_key_type(e.left, declared, analyzer)
+            if needle_key is _NARROW_UNMIRRORED:
+                reject()
             if (is_fixed_int_type(pt)
                     and not isinstance(e.left, TpyIntLiteral)
-                    and _runtime_bigint(analyzer.get_expr_type(e.left),
-                                        analyzer)):
+                    and _runtime_bigint(needle_key, analyzer)):
                 needle = THIRCoerce(
                     result_type=pt, expr=needle,
                     coercion_name=_BIGINT_NARROW,
@@ -3978,6 +3982,30 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                                           TpyFieldAccess)),
                 rslot, lc)
         if e.resolved_binop is not None:
+            # `_convert_to_fixed_int_arg` at the resolved binop's PARAM slot:
+            # a BigInt operand against a declared fixed-int param takes the
+            # checked narrow (an int literal stays bare). The BigInt test keys
+            # on the DECLARED type, so a retro-widened literal-seeded local
+            # narrows here too.
+            _pside = e.left if e.resolved_binop.is_reverse else e.right
+            _pslot = lslot if e.resolved_binop.is_reverse else rslot
+            _pt = unwrap_readonly(_pslot) if _pslot is not None else None
+            if is_fixed_int_type(_pt) and not isinstance(_pside, TpyIntLiteral):
+                _pkey = _narrow_key_type(_pside, declared, analyzer)
+                if _pkey is _NARROW_UNMIRRORED:
+                    reject()
+                if is_big_int_type(_pkey):
+                    _narrowed = THIRCoerce(
+                        result_type=_pt,
+                        expr=(left if e.resolved_binop.is_reverse else right),
+                        coercion_name=_BIGINT_NARROW,
+                        wrap=f"({{0}}).to_fixed_check<{_pt.to_cpp()}>()",
+                        loc=loc)
+                    _witness("narrow.binop_param")
+                    if e.resolved_binop.is_reverse:
+                        left = _narrowed
+                    else:
+                        right = _narrowed
             # A container-literal operand of a LIST binop cannot deduce from
             # a bare brace-init, so it spells its type (`std::vector<T>{x}`)
             # -- the AST's is_list(receiver_type) literal prefix.
@@ -5550,11 +5578,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # `_gen_slice_bound`: a runtime-BigInt bound appends the
                 # `.to_fixed_check<int32_t>()` narrow (non-literal only --
                 # the gate rejects literal BigInt bounds, whose AST render
-                # is ill-formed).
+                # is ill-formed). The BigInt test keys on the DECLARED type,
+                # like `is_runtime_bigint`.
                 if b is None:
                     return None
+                key = _narrow_key_type(b, declared, analyzer)
+                if key is _NARROW_UNMIRRORED:
+                    note_detail("slice.bound_widened_local")
+                    raise ThirUnsupported("expr.subscript", detail=True)
                 lowered = _lower_expr(b, lc, declared)
-                if not _runtime_bigint(analyzer.get_expr_type(b), analyzer):
+                if not _runtime_bigint(key, analyzer):
                     return lowered
                 _witness("narrow.slice_bound")
                 return THIRCoerce(result_type=INT32, expr=lowered,
@@ -5734,7 +5767,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # gate admits every disposition but 'reject'.
                     index=_narrow_bigint_index(
                         _lower_expr(e.index, lc, declared), e.index,
-                        analyzer.get_expr_type(e.obj), analyzer, loc),
+                        analyzer.get_expr_type(e.obj), analyzer, loc,
+                        declared),
                     record_getitem=True,
                     form=Form.BORROW if opt_ptr_ret else Form.VALUE,
                     loc=loc)
@@ -5769,7 +5803,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and bool(_witness("subscript.container_elem")))
             index_ok = (
                 _bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
-                                          analyzer) != "reject")
+                                          analyzer, declared) != "reject")
             ret_ok = (
                 nested_container_elem or
                 _resolved_scalar(rtype, analyzer)
@@ -6223,7 +6257,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 _narrow_bigint_index(
                     _lower_expr(e.index, lc, declared,
                                 use=_ExprUse(allow_temps=use.allow_temps)),
-                    e.index, idx_obj_type, analyzer, loc),
+                    e.index, idx_obj_type, analyzer, loc, declared),
                 (_ivk if (_ivk := view_key_target(unwrap_readonly(
                      unwrap_ref_type(unwrap_send_sync(idx_obj_type)))))
                  is not None and is_bytes_view_type(_ivk) else None)),
@@ -6260,7 +6294,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     note_detail("fstring.conversion")
                     raise ThirUnsupported("expr.fstring")
                 wrap = _fstring_arg_wrap(part.expr, analyzer, part.conversion,
-                                         part.format_spec is not None)
+                                         part.format_spec is not None,
+                                         declared)
                 if wrap is _FSTRING_INELIGIBLE:
                     note_detail("fstring.arg_wrap")
                     raise ThirUnsupported("expr.fstring")
@@ -7087,8 +7122,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("call.enum_from_value.shape")
                 raise ThirUnsupported("expr.call")
             enum_arg_type = analyzer.get_expr_type(e.args[0])
+            # The narrow keys on the DECLARED type (`is_runtime_bigint`), so a
+            # retro-widened literal-seeded local narrows here too.
+            enum_narrow_key = _narrow_key_type(e.args[0], declared, analyzer)
             if (not _resolved_scalar(enum_arg_type, analyzer)
-                    or (_runtime_bigint(enum_arg_type, analyzer)
+                    or enum_narrow_key is _NARROW_UNMIRRORED
+                    or (_runtime_bigint(enum_narrow_key, analyzer)
                         and _const_index(
                             _unwrap_lit_coerce(e.args[0])) is not None)):
                 note_detail("call.enum_from_value.arg")
@@ -7101,7 +7140,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             spelled = enum_cpp_name(e.enum_from_value,
                                     analyzer.ctx.module_name)
             arg = _lower_expr(e.args[0], lc, declared)
-            if _runtime_bigint(analyzer.get_expr_type(e.args[0]), analyzer):
+            if _runtime_bigint(enum_narrow_key, analyzer):
                 _witness("narrow.enum_arg")
                 einfo = enum_info_of(e.enum_from_value)
                 assert einfo is not None

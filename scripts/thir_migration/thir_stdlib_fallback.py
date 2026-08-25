@@ -13,13 +13,22 @@ One entry program per stdlib module (`import <mod>`), so transitive deps are
 covered and a module that fails to compile standalone costs only itself. Bodies
 are deduped by (module, name) across entries, worst sighting winning.
 
-FLOOR, not a total: an import-only entry instantiates almost nothing, and
-resumable frames plus generic monomorphizations only attempt lowering at
-emission time. The reject-reason MIX is representative; the count is a lower
-bound.
+Not a floor, despite the import-only entries: `iter_module_callables` attempts
+each callable once per module, so the body population cannot grow with
+instantiation count. Two independent corpus sweeps (495 cases; 90 entry
+programs) added zero bodies over this one.
+
+The COUNT is nonetheless an undercount, for a different reason: `merge_module`
+keys on the bare body name, so overloads and a method name shared across records
+collapse within a module. tests/test_thir_stdlib_gate.py folds this same
+classification into its one mega-entry compile and counts every body (195 vs the
+171 here), which is the number that has to reach zero before the AST body emitter
+can be deleted. That gate runs in every plain `uv run pytest`; this script stays
+the per-body JSON dump and the standalone sweep, still armed with
+`--max-fallback` by the nightly `thir-stdlib-fallback` row.
 
 Usage: uv run python scripts/thir_migration/thir_stdlib_fallback.py \
-           [--out out.json] [--modules a,b]
+           [--out out.json] [--modules a,b] [--max-fallback N]
 """
 
 from __future__ import annotations
@@ -42,6 +51,15 @@ from tpyc.thir.fallback import is_bodyless_binding  # noqa: E402
 from tpyc.thir.lower import iter_module_callables, iter_module_constructors  # noqa: E402
 
 LIB = get_lib_dir() / "tpy"
+# Default under the gitignored build-output dir: at the REPO ROOT this JSON
+# and its `_a5_tmp/` entry programs are untracked files one careless
+# `git add` away from landing in a commit.
+DEFAULT_OUT = REPO / "__tpyc__" / "thir_stdlib_fallback.json"
+# Self-check floor for the armed ratchet. Hard-coded well below the measured
+# corpus (88 modules as of 2026-08-25) rather than tracking it, so it never
+# needs touching -- see tests/test_thir_stdlib_gate.py's MIN_MODULES, the same
+# guard for the same reason.
+MIN_MODULES_MEASURED = 60
 
 
 def stdlib_module_names() -> list[str]:
@@ -139,6 +157,25 @@ def merge_module(merged: dict, mod: str, bodies: list[dict]) -> None:
             slot[b["name"]] = b
 
 
+def ratchet_exit_code(total_fallback: int, max_fallback: 'int | None',
+                      modules_measured: 'int | None' = None) -> int:
+    """Process exit code for the measured fallback count.
+
+    A ratchet, not a report: EXCEEDING the threshold is the failure, so a run
+    that improves the number stays green without anyone editing the config
+    (lowering the threshold is a deliberate, reviewed edit).
+
+    `modules_measured` closes the ratchet's blind spot: a sweep that breaks
+    measures FEWER bodies, so the count falls and the ratchet reads the
+    breakage as progress."""
+    if max_fallback is None:
+        return 0
+    if (modules_measured is not None
+            and modules_measured < MIN_MODULES_MEASURED):
+        return 1
+    return 1 if total_fallback > max_fallback else 0
+
+
 def run_entry(source: str, tmpdir: Path, tag: str) -> tuple[dict, list[str]]:
     """Compile one entry program with THIR forced on for EVERY module."""
     src_file = tmpdir / f"entry_{tag}.py"
@@ -164,12 +201,17 @@ def run_entry(source: str, tmpdir: Path, tag: str) -> tuple[dict, list[str]]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="a5_stdlib_fallback.json")
+    ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--modules", default=None,
                     help="comma-separated subset (default: every lib/tpy module)")
+    ap.add_argument("--max-fallback", type=int, default=None,
+                    help="ratchet: exit non-zero if the measured fallback "
+                         "count exceeds N (nightly arms this)")
     args = ap.parse_args()
 
-    tmpdir = Path(args.out).resolve().parent / "_a5_tmp"
+    out_path = Path(args.out).resolve()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmpdir = out_path.parent / "_a5_tmp"
     tmpdir.mkdir(parents=True, exist_ok=True)
 
     names = (args.modules.split(",") if args.modules else stdlib_module_names())
@@ -203,7 +245,7 @@ def main() -> int:
         "modules": {m: sorted(b.values(), key=lambda x: x["name"])
                     for m, b in merged.items()},
     }
-    Path(args.out).write_text(json.dumps(payload, indent=1))
+    out_path.write_text(json.dumps(payload, indent=1))
 
     counts: dict[str, int] = {}
     reasons: dict[str, int] = {}
@@ -224,7 +266,27 @@ def main() -> int:
     print("\ntop modules by fallback:", file=sys.stderr)
     for m, c in sorted(per_mod_fb.items(), key=lambda kv: -kv[1])[:25]:
         print(f"  {c:5d}  {m}", file=sys.stderr)
-    return 0
+
+    total_fb = counts.get("fallback", 0)
+    # The module floor is a FULL-sweep self-check: a `--modules` subset run
+    # measures a handful by design, and floor-failing that would only teach
+    # people to pass a lower threshold.
+    measured = None if args.modules else len(merged)
+    rc = ratchet_exit_code(total_fb, args.max_fallback, measured)
+    if args.max_fallback is not None:
+        print(f"\nfallback ratchet: {total_fb} fallback vs max "
+              f"{args.max_fallback} over {len(merged)} modules -- "
+              f"{'REGRESSED' if rc else 'ok'}", file=sys.stderr)
+        if measured is not None and measured < MIN_MODULES_MEASURED:
+            print(f"  only {len(merged)} modules measured (expected >= "
+                  f"{MIN_MODULES_MEASURED}): the sweep broke, so the count is "
+                  f"not comparable", file=sys.stderr)
+        if entry_errors or module_errors:
+            print(f"  entry errors: {len(entry_errors)}  module errors: "
+                  f"{len(module_errors)}", file=sys.stderr)
+    if rc:
+        print(f"  json: {out_path}", file=sys.stderr)
+    return rc
 
 
 if __name__ == "__main__":

@@ -231,6 +231,7 @@ from .predicates import (
     _folded_neg_int_literal,
     _is_bytes_family,
     _is_type_param_slot,
+    _open_tparam_pass_arg,
     _container_tparam_elem,
     _span_slot,
     _is_string_owned,
@@ -294,6 +295,8 @@ from .predicates import (
     _is_range_call,
     _range_counter_type,
     _runtime_bigint,
+    _narrow_key_type,
+    _NARROW_UNMIRRORED,
     _scalar_pass_through_slot,
     _range_object_value,
     _slice_object_type,
@@ -1323,7 +1326,7 @@ def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
     if recv_t is None or not elem_family(recv_t, analyzer):
         return False
     return (_bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
-                                      analyzer) != "reject")
+                                      analyzer, locals_) != "reject")
 
 def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                                        analyzer) -> bool:
@@ -1419,7 +1422,7 @@ def _subscript_over_narrowed_opt_subscript_ok(e: TpyExpr,
         return False
     return (_bigint_index_disposition(inner.index,
                                       analyzer.get_expr_type(inner.obj),
-                                      analyzer) != "reject")
+                                      analyzer, locals_) != "reject")
 
 def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
                          analyzer) -> bool:
@@ -2914,7 +2917,7 @@ def _setitem_target_ok(
             or _setitem_widened_family_ok(recv_t, analyzer)):
         return note_detail("setitem.family")
     if (_bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
-                                  analyzer) == "reject"):
+                                  analyzer, declared) == "reject"):
         return note_detail("setitem.index")
     return True
 
@@ -3021,10 +3024,11 @@ def _user_record_setitem_ok(
     `::tpy::__setitem__(recv, key, v);` (checked, never operator[]). Mirrors the
     user-record `__getitem__` READ arm's receiver / key checks: a bare in-scope
     name or one-level field receiver, a value-scalar or str key (a
-    runtime-BigInt key only against a BigInt key param -- no narrow on either
-    path; a fixed-int key param takes the `.to_fixed_check` narrow, AST). The value slot is a value scalar / Char / enum / Ptr -- the bare-render
-    families the checked setitem template forwards unchanged (str/bytes/record
-    value slots, whose AST render adds an owned-copy / storage lift, stay AST)."""
+    runtime-BigInt key against a fixed-int key param carries the same
+    `.to_fixed_check` narrow the READ arm applies). The value slot is a value
+    scalar / Char / enum / Ptr -- the bare-render families the checked setitem
+    template forwards unchanged (str/bytes/record value slots, whose AST render
+    adds an owned-copy / storage lift, stay AST)."""
     sub = stmt.target
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return False
@@ -3046,17 +3050,21 @@ def _user_record_setitem_ok(
         return False
     idx_type = analyzer.get_expr_type(sub.index)
     # The write target lowers through the record_getitem READ arm, which
-    # already applies `_narrow_bigint_index` -- so a runtime-BigInt key
-    # against a FIXED-int key param takes the same `.to_fixed_check<T>()`
-    # narrow here as it does on a read (`p[k] = 9` ->
-    # `::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9)`). Only the
-    # 'reject' disposition (an out-of-int32-range literal headed for a
-    # narrow) stays out, exactly as on the read side.
+    # applies `_narrow_bigint_index` itself -- so a runtime-BigInt key against
+    # a FIXED-int key param takes the same `.to_fixed_check<T>()` narrow here
+    # as it does on a read (`p[k] = 9` ->
+    # `::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9)`), and this call
+    # is REDUNDANT today: the read gate rejects every index this one would.
+    # It is kept because both gates must answer one index question, and pinned
+    # by test_thir_record_subscript_gate_parity (nothing else can observe the
+    # two parting -- a divergence here emits byte-identical C++). Like the read
+    # side, it runs UNCONDITIONALLY: the disposition keys the BigInt half on
+    # the DECLARED type, so a per-occurrence pre-test would short-circuit past
+    # it for a composite over a retro-widened local.
     idx_ok = ((_resolved_scalar(idx_type, analyzer)
-               and (not _runtime_bigint(idx_type, analyzer)
-                    or _bigint_index_disposition(
-                           sub.index, analyzer.get_expr_type(sub.obj),
-                           analyzer) != "reject"))
+               and _bigint_index_disposition(
+                       sub.index, analyzer.get_expr_type(sub.obj),
+                       analyzer, declared) != "reject")
               or _resolved_str_value(idx_type, analyzer) is not None)
     if not idx_ok:
         return False
@@ -10872,6 +10880,12 @@ def _record_method_arg_ok(
             or (_is_type_param_slot(ptype)
              and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
              and _witness("method.tparam_scalar_arg"))
+            # ... and the still-OPEN sibling: a param typed as the same `T`
+            # as the slot forwards bare (`self._raw.store(value, order)` in
+            # `Atomic[T].store`), the shape resolving only at instantiation.
+            or (_open_tparam_pass_arg(a, ptype, locals_, analyzer,
+                                      param_names)
+             and _witness("method.tparam_open_pass_arg"))
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
             or _int_literal_bigint_arg(a, ptype, locals_, analyzer)
             or _str_pass_through_arg(a, ptype, locals_, analyzer)
@@ -12531,7 +12545,8 @@ def _fstring_container_call_arg(a: TpyExpr, analyzer) -> bool:
     return _nonvalue_container_ret(analyzer.get_expr_type(a))
 
 def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
-                      has_spec: bool) -> 'str | None | object':
+                      has_spec: bool,
+                      declared: dict[str, TpyType]) -> 'str | None | object':
     """The Python-compatible formatting wrapper for one interpolated f-string
     arg, as a positional `{0}` template (None = pass through bare) -- the
     mirrored subset of `_gen_fstring`'s per-arg table -- or `_FSTRING_INELIGIBLE`
@@ -12556,6 +12571,9 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
     else:
         t = analyzer.get_expr_type(a)
         if t is None:
+            return _FSTRING_INELIGIBLE
+        bigint_key = _narrow_key_type(a, declared, analyzer)
+        if bigint_key is _NARROW_UNMIRRORED:
             return _FSTRING_INELIGIBLE
         ctmpl = container_to_str_template(t)
         if ctmpl is not None:
@@ -12586,6 +12604,14 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 row = "::tpy::float_to_str(static_cast<double>({0}))"
             else:
                 row = "::tpy::float_to_str({0})"
+        elif _runtime_bigint(bigint_key, analyzer) and not has_spec:
+            # A runtime BigInt formats via `.to_string()`, keyed on the
+            # DECLARED type like the AST's `is_runtime_bigint` -- a
+            # retro-widened literal-seeded local takes this row even though
+            # sema types the occurrence Int32. Placed at the AST chain's own
+            # position, ahead of the 8-bit-int and enum casts.
+            _witness("narrow.fstring_arg")
+            row = "({0}).to_string()"
         elif _eligible_enum(t, analyzer) is not None:
             row = "static_cast<int>({0})"
         elif isinstance(unwrap_readonly(unwrap_ref_type(
@@ -12616,10 +12642,6 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 tr = int_traits_of(rt)
                 row = ("static_cast<int>({0})"
                        if tr is not None and tr.bits == 8 else None)
-            elif is_big_int_type(rt):
-                # A runtime BigInt (concrete, or an IntLiteral under a BigInt
-                # module default) formats via `.to_string()` (the bigint row).
-                row = "({0}).to_string()"
     if row is _FSTRING_INELIGIBLE:
         return _FSTRING_INELIGIBLE
     if conv == FSTRING_CONV_REPR:

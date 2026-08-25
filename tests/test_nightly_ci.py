@@ -5,13 +5,28 @@ plumbing is validated end-to-end by `nightly.py --smoke`; these cover the
 decisions an unattended night makes about what to run and report."""
 
 import importlib.util
+import json
+import shlex
 from pathlib import Path
 
-_NIGHTLY_PATH = (Path(__file__).resolve().parent.parent
-                 / "ci" / "nightly" / "nightly.py")
+_REPO = Path(__file__).resolve().parent.parent
+_NIGHTLY_PATH = _REPO / "ci" / "nightly" / "nightly.py"
 _spec = importlib.util.spec_from_file_location("tpy_nightly", _NIGHTLY_PATH)
 nightly = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(nightly)
+
+_FALLBACK_PATH = (_REPO / "scripts" / "thir_migration"
+                  / "thir_stdlib_fallback.py")
+_fb_spec = importlib.util.spec_from_file_location("tpy_thir_stdlib_fallback",
+                                                  _FALLBACK_PATH)
+fallback_script = importlib.util.module_from_spec(_fb_spec)
+_fb_spec.loader.exec_module(fallback_script)
+
+
+def _configs() -> list[dict]:
+    return json.loads(
+        (_NIGHTLY_PATH.parent / "configs.json").read_text())["configs"]
+
 
 _JUNIT = """<?xml version="1.0" encoding="utf-8"?>
 <testsuites>
@@ -165,3 +180,118 @@ def test_unavailable_config_short_circuits(tmp_path: Path) -> None:
     assert "OK" in subject                      # unavailable is not a FAIL
     assert "unavailable" in body
     assert "activates once installed" in body
+
+
+def test_container_script_no_exec_row_is_front_end_only() -> None:
+    """A `no_exec` row (the THIR stdlib oracle) runs comp only: --no-exec (so
+    never --force-exec, which conflicts), --no-cpy, no --cxx -- and its
+    pytest_args ride through verbatim."""
+    s = nightly.container_script(
+        {"name": "thir-stdlib", "no_exec": True,
+         "pytest_args": ["--thir-stdlib"]}, smoke=False)
+    assert "--no-exec" in s and "--no-cpy" in s and "--thir-stdlib" in s
+    assert "--force-exec" not in s and "--cxx" not in s
+    # --thir-stdlib errors out when combined with either of these
+    # (conftest `_thir_flag_conflict`).
+    assert "--update-snapshots" not in s and "--no-thir" not in s
+
+
+def test_configs_json_rows_keep_their_phase_selection() -> None:
+    """Regression guard for the `no_exec` generalization: every committed row
+    still gets exactly the flags it got before the key existed -- comp+cpy for
+    the CPython axis, forced build+run for everything else, and comp-only for
+    rows that opt in explicitly."""
+    for cfg in _configs():
+        if "ssh" in cfg or cfg.get("script"):
+            continue
+        s = nightly.container_script(cfg, smoke=False)
+        if cfg.get("cpython"):
+            expect = {"--no-exec"}
+        elif cfg.get("no_exec"):
+            expect = {"--no-exec", "--no-cpy"}
+        else:
+            expect = {"--force-exec", "--no-cpy"}
+        got = {f for f in ("--no-exec", "--no-cpy", "--force-exec") if f in s}
+        assert got == expect, f"{cfg['name']}: {got} != {expect}"
+
+
+def test_script_row_runs_its_command_instead_of_the_suite() -> None:
+    """A `script` row replaces the pytest invocation entirely (it has no junit)
+    while keeping the container setup -- repo copy + `uv sync` -- so the command
+    runs against the row's own synced venv."""
+    s = nightly.container_script(
+        {"name": "ratchet", "script": "uv run python tool.py --max-thing 3"},
+        smoke=False)
+    assert "uv run python tool.py --max-thing 3" in s
+    assert "uv run pytest" not in s
+    assert "uv sync" in s and "cp -r /repo /work" in s
+
+
+def test_script_row_verdict_comes_from_the_exit_code(monkeypatch,
+                                                     tmp_path: Path) -> None:
+    """The ratchet's teeth: a script row with no junit is red when the command
+    exits non-zero and green when it exits 0. Without this the row could run
+    every night and never be able to fail."""
+    cfg = {"name": "thir-stdlib-fallback", "script": "true"}
+    for rc, expect_ok in ((0, True), (1, False)):
+        monkeypatch.setattr(
+            nightly, "_run_docker",
+            lambda c, s, o, sm, r, l, t, _rc=rc: _rc)
+        res = nightly.run_config(cfg, tmp_path, tmp_path, timeout=1,
+                                 smoke=False, refresh=False)
+        assert res.ok is expect_ok, (rc, res.status, res.detail)
+    assert res.status == "test-failures" and "exited 1" in res.detail
+    # ... and a red row is named in the report, not silently tallied.
+    _subject, body = nightly.format_report([res], "abc1234", smoke=False,
+                                           pull_failed=False)
+    assert "thir-stdlib-fallback" in body and "exited 1" in body
+
+
+def test_thir_stdlib_fallback_row_is_an_armed_ratchet() -> None:
+    """The stdlib FALLBACK number -- the cutover metric the routing work moves
+    -- must stay measured by a row that can fail. Guards all three ways it
+    could silently stop working: the row disappearing, the script path
+    rotting, and `--max-fallback` being dropped (leaving a report that always
+    exits 0)."""
+    row = next((c for c in _configs()
+                if c["name"] == "thir-stdlib-fallback"), None)
+    assert row is not None, "the stdlib fallback ratchet row was removed"
+    argv = shlex.split(row["script"])
+    script = next(a for a in argv if a.endswith(".py"))
+    assert (_REPO / script).exists(), f"{script} moved; the row runs nothing"
+    assert "--max-fallback" in argv, (
+        "the row measures without a threshold -- a report, not a ratchet")
+    threshold = int(argv[argv.index("--max-fallback") + 1])
+    # The VALUE is pinned in tests/test_thir_stdlib_gate.py, against what this
+    # script's own counting key measures on the tree -- it rides that gate's
+    # compile rather than paying a ~64s sweep here.
+    assert threshold >= 0
+
+
+def test_fallback_ratchet_exit_code() -> None:
+    """Exceeding the threshold fails; matching or beating it passes (so
+    progress never needs a config edit), and an unarmed run always passes."""
+    assert fallback_script.ratchet_exit_code(171, 171) == 0
+    assert fallback_script.ratchet_exit_code(170, 171) == 0
+    assert fallback_script.ratchet_exit_code(172, 171) == 1
+    assert fallback_script.ratchet_exit_code(9999, None) == 0
+
+
+def test_fallback_ratchet_fails_a_broken_sweep() -> None:
+    """The ratchet's blind spot: a sweep that stops measuring reports FEWER
+    fallbacks and so reads as progress. A module floor turns that into red."""
+    floor = fallback_script.MIN_MODULES_MEASURED
+    assert fallback_script.ratchet_exit_code(0, 171, floor - 1) == 1
+    assert fallback_script.ratchet_exit_code(0, 171, floor) == 0
+    # A `--modules` subset run passes no count -- it measures a handful by
+    # design, and floor-failing it would just teach people to lower the bar.
+    assert fallback_script.ratchet_exit_code(0, 171, None) == 0
+
+
+def test_fallback_script_defaults_out_of_the_repo_root() -> None:
+    """Its JSON + entry-program scratch are untracked; defaulting them to the
+    repo root put them one careless `git add` from a commit. `__tpyc__/` is
+    gitignored at every level."""
+    out = fallback_script.DEFAULT_OUT
+    assert "__tpyc__" in out.parts
+    assert out.parent.parent == fallback_script.REPO

@@ -139,6 +139,7 @@ from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     reads_storage_form_optional,
 )
+from ...codegen_cpp.param_const import decide_param_const
 from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
@@ -631,6 +632,36 @@ def _own_type_param_slot(t: 'TpyType | int | None') -> bool:
         return False
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return isinstance(inner, OwnType) and _is_type_param_slot(inner.wrapped)
+
+def _open_tparam_pass_arg(a: 'TpyExpr', ptype: 'TpyType | None',
+                          locals_: 'dict[str, TpyType]', analyzer,
+                          param_names: 'AbstractSet[str]') -> bool:
+    """A PARAM still typed as the SAME open type-param as the slot it feeds
+    (`self._raw.store(value, order)` inside `Atomic[T].store`): both sides
+    spell `param_val_or_ref_t<T>`, so the forward is bare on both paths --
+    the slot's C++ shape is only fixed at instantiation, so no borrow /
+    storage lift can attach here, and a `param_val_or_ref_t<T>` binding is a
+    reference, never a move source.
+
+    Params only, and same-`T` only: a LOCAL of open type could be a movable
+    last-use source, and a different open param (or a resolved arg type)
+    reopens the conversion question this row does not answer. INT-kind
+    params are `std::size_t` values and keep their own rows."""
+    if not (isinstance(a, TpyName) and a.name in param_names):
+        return False
+    if not isinstance(ptype, TpyType):
+        return False
+    slot = unwrap_readonly(unwrap_ref_type(ptype))
+    if not (isinstance(slot, TypeParamRef) and slot.kind is TypeParamKind.TYPE):
+        return False
+    bound = locals_.get(a.name)
+    if not isinstance(bound, TpyType):
+        return False
+    if unwrap_readonly(unwrap_ref_type(bound)) != slot:
+        return False
+    occ = analyzer.get_expr_type(a)
+    return (isinstance(occ, TpyType)
+            and unwrap_readonly(unwrap_ref_type(occ)) == slot)
 
 def _value_record_member(m: 'TpyType') -> bool:
     """A non-generic user VALUE-record union member (`Fixed` in `Fixed | Zone
@@ -1494,18 +1525,23 @@ def _elif_link(stmt: TpyIf) -> 'TpyIf | None':
 def _post_if_narrow_fact(
         stmt: TpyIf, info, narrowed: 'set[str] | dict[str, str]',
 ) -> TpyType | None:
-    """The early-return implicit-else fact: when the then-body terminates with
-    a return and there is no else block, code after the if is the else branch,
-    and the AST emits a persistent statement-level extraction (`_gen_if`'s
-    post-narrowing arm, `_narrows_to_union_member` + not-already-narrowed).
-    `narrowed` is the active narrowing scope (eligibility's set / lowering's
-    alias map -- only membership is read). Returns the member fact or None."""
+    """The early-EXIT implicit-else fact: when the then-body terminates with a
+    return OR a raise and there is no else block, code after the if is the else
+    branch, and the AST emits a persistent statement-level extraction
+    (`_gen_if`'s post-narrowing arm, `_narrows_to_union_member` +
+    not-already-narrowed). The raise flavor is the same arm on the AST side and
+    in `_poly_post_if_fact`'s twin -- a guard-and-raise
+    (`if not isinstance(tz, ZoneInfo) or tz != self: raise ...`) leaves the
+    subject narrowed exactly like the return flavor. `narrowed` is the active
+    narrowing scope (eligibility's set / lowering's alias map -- only membership
+    is read). Returns the member fact or None."""
     var, u, _members, folded = info
     if folded or stmt.else_body or not stmt.else_type_facts:
         return None
     if var in narrowed:
         return None
-    if not (stmt.then_body and isinstance(stmt.then_body[-1], TpyReturn)):
+    if not (stmt.then_body
+            and isinstance(stmt.then_body[-1], (TpyReturn, TpyRaise))):
         return None
     return _narrow_fact_member(u, stmt.else_type_facts, var)
 
@@ -2155,6 +2191,49 @@ def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
 
 _BIGINT_NARROW = "bigint_narrow"  # synthetic THIRCoerce tag (not a sema coercion)
 
+# The narrow-key answer for a shape whose AST render this slice does not mirror.
+_NARROW_UNMIRRORED = object()
+
+
+def _has_widened_int_name(e: TpyExpr, declared: dict[str, TpyType],
+                          analyzer) -> bool:
+    """True when a NAME whose declared type is a runtime BigInt but whose
+    per-occurrence type is not sits inside `e` where codegen's
+    `get_resolved_type` would recompute the result from it (the arithmetic
+    binop and ternary arms recurse into operands; comparisons and coercions
+    stop at sema's type). Such a composite is where the AST itself emits
+    ill-formed C++ -- `p + 1` on a retro-widened `p` renders
+    `add_check<int32_t>(p, 1)` against a `BigInt p` -- so the slice rejects
+    rather than mirroring the accident."""
+    if isinstance(e, TpyName):
+        d = declared.get(e.name)
+        return (d is not None and _runtime_bigint(d, analyzer)
+                and not _runtime_bigint(analyzer.get_expr_type(e), analyzer))
+    if isinstance(e, TpyBinOp):
+        if e.op in ("==", "!=", "<", ">", "<=", ">="):
+            return False
+        return (_has_widened_int_name(e.left, declared, analyzer)
+                or _has_widened_int_name(e.right, declared, analyzer))
+    if isinstance(e, TpyIfExpr):
+        return (_has_widened_int_name(e.then_expr, declared, analyzer)
+                or _has_widened_int_name(e.else_expr, declared, analyzer))
+    return False
+
+
+def _narrow_key_type(e: TpyExpr, declared: dict[str, TpyType],
+                     analyzer) -> 'TpyType | None | object':
+    """The type the AST's `is_runtime_bigint` keys on at a checked-narrow
+    position -- `get_resolved_type`, which reads a NAME's DECLARED type. Only
+    the name arm is mirrored: a COMPOSITE over a retro-widened local returns
+    `_NARROW_UNMIRRORED` and the caller must reject."""
+    if not isinstance(e, TpyName) and _has_widened_int_name(e, declared,
+                                                            analyzer):
+        return _NARROW_UNMIRRORED
+    t = _declared_type(e, declared, analyzer)
+    # `get_resolved_type` strips readonly at every arm, and the consumers here
+    # test the bare int type.
+    return unwrap_readonly(t) if t is not None else None
+
 def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
     """Strip sema's int-literal slot coercions (fixed-int / BigInt targets) so
     literal-shape checks see the digit token the AST renders."""
@@ -2164,7 +2243,8 @@ def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
     return e
 
 def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
-                              analyzer) -> 'str | TpyType':
+                              analyzer,
+                              declared: dict[str, TpyType]) -> 'str | TpyType':
     """How a subscript index renders when its type half is a runtime BigInt --
     gen_index_expr's decision, written once so the gates and the wrap sites
     cannot drift. obj_type is the receiver (its declared key/index type picks
@@ -2181,8 +2261,15 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
         already carries its own);
       * 'reject' -- an out-of-int32-range literal headed for a narrow: the
         AST renders the BigInt ctor wrap inside the narrow, a shape the
-        literal emit does not reproduce."""
-    if not _runtime_bigint(analyzer.get_expr_type(index), analyzer):
+        literal emit does not reproduce.
+
+    The type half keys on the DECLARED type (`_declared_type`), like the AST's
+    `is_runtime_bigint` -- a literal-seeded local widened to BigInt by a later
+    assignment still types Int32 at this occurrence."""
+    key = _narrow_key_type(index, declared, analyzer)
+    if key is _NARROW_UNMIRRORED:
+        return "reject"
+    if not _runtime_bigint(key, analyzer):
         return "bare"
     narrow = (INT32 if obj_type is None
               else bigint_index_narrow_type(obj_type, analyzer))
@@ -2200,11 +2287,12 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
     return "bare" if narrow is None else narrow
 
 def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None',
-                         analyzer, loc) -> 'THIRExpr':
+                         analyzer, loc,
+                         declared: dict[str, TpyType]) -> 'THIRExpr':
     """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<T>()`
     narrow when its disposition says so (reads, del-item); 'reject' never
     reaches lowering (the gates exclude it)."""
-    disp = _bigint_index_disposition(e, obj_type, analyzer)
+    disp = _bigint_index_disposition(e, obj_type, analyzer, declared)
     if isinstance(disp, str):
         return idx
     _witness("narrow.subscript_index")
@@ -5589,11 +5677,14 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
         # (`moved[0].name`); the AST renders it at the default int.
         idx_type = resolve_int_literals(idx_type,
                                         analyzer.ctx.default_int_for_literal)
+    # The disposition runs UNCONDITIONALLY: it keys the BigInt half on the
+    # DECLARED type, so a per-occurrence pre-test here would short-circuit
+    # past it for a composite over a retro-widened local and admit a shape
+    # whose narrow this slice does not mirror.
     idx_ok = ((_resolved_scalar(idx_type, analyzer)
-               and (not _runtime_bigint(idx_type, analyzer)
-                    or _bigint_index_disposition(
-                           sub.index, analyzer.get_expr_type(sub.obj),
-                           analyzer) != "reject"))
+               and _bigint_index_disposition(
+                       sub.index, analyzer.get_expr_type(sub.obj),
+                       analyzer, locals_) != "reject")
               or _resolved_str_value(idx_type, analyzer) is not None)
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
                 and (sub.obj.name not in pointers or ptr_recv_ok
@@ -7153,6 +7244,18 @@ def _value_tuple_field_literal_write_ok(stmt: TpyAssign,
     return (len(stmt.value.elements) == len(vt.element_types)
             and not _tuple_literal_has_ref_elements(stmt.value, vt))
 
+def _owning_fi(func: TpyFunction, analyzer,
+               record_name: str | None) -> 'FunctionInfo | None':
+    """The registry FunctionInfo a callable's param verdicts live on -- on the
+    owning record for a method, in the function registry otherwise. `[-1]` is
+    codegen's own last-overload pick (`_get_method_mutated_params`)."""
+    if record_name is not None:
+        ri = analyzer.registry.get_record(record_name)
+        overloads = ri.get_method_overloads(func.name) if ri is not None else None
+    else:
+        overloads = analyzer.registry.get_function(func.name)
+    return overloads[-1] if overloads else None
+
 def _param_const_verdict(name: str, func: TpyFunction, analyzer,
                          record_name: str | None, attr: str) -> bool:
     """Whether param `name` is in the function's `attr` verdict set
@@ -7164,12 +7267,7 @@ def _param_const_verdict(name: str, func: TpyFunction, analyzer,
     list (getter + setter); [-1] is safe only because a getter has no
     non-self params (this lookup is never consulted for it) and the setter's
     non-value param is forced Own[...] (routing around const entirely)."""
-    if record_name is not None:
-        ri = analyzer.registry.get_record(record_name)
-        overloads = ri.get_method_overloads(func.name) if ri is not None else None
-    else:
-        overloads = analyzer.registry.get_function(func.name)
-    fi = overloads[-1] if overloads else None
+    fi = _owning_fi(func, analyzer, record_name)
     verdict = getattr(fi, attr, None) if fi is not None else None
     if not verdict:
         return False
@@ -7214,15 +7312,43 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     `mutated_params`), so the resulting not-const is a safe default, not a
     divergence. Inplace dunders (`__iadd__` ...) take the AST's FORCED
     const-params verdict (`use_const_params` via CONST_PARAMS_METHODS --
-    a codegen-side force sema's `const_borrow_params` does not record);
-    the mutated-param slice the force does NOT cover (decide_param_const's
-    directly_mutated short-circuit) is rejected at the sig check, so the
-    flat force here is exact for every admitted body."""
+    a codegen-side force sema's `const_borrow_params` does not record),
+    minus the slices `decide_param_const` short-circuits out from under
+    the force -- see `_forced_const_dropped`."""
     if (func.is_method and func.name in CONST_PARAMS_METHODS
             and name != "self"):
-        return True
+        return not _forced_const_dropped(name, func, analyzer, record_name)
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "const_borrow_params")
+
+def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
+                          record_name: str | None) -> bool:
+    """The slices `decide_param_const` drops const for even when the caller
+    forces it (`const_params=True`, the inplace-dunder body set) -- asked of
+    the canonical decision itself rather than re-derived here. Its
+    `reassigned_params` short-circuit is left unfed on purpose: a reassigned
+    copy-for-reassign param has no observable counterpart here, since every
+    copy-for-reassign type is either a value type, which the AST's body set
+    never admits, or a reference type sema forbids rebinding.
+    `is_ptr_variant_union` is likewise unfed -- under a forced const both of
+    its branches agree on `signature_const`, and only the deep axis splits.
+
+    `Atomic[T].__iadd__` is the shape that needs it: `other` forwards into a
+    body-less @native stub, so mutation propagation marks it mutated and the
+    AST emits the param non-const while a flat force would call it const."""
+    ptype = next((t for n, t in func.params if n == name), None)
+    idx = next((i for i, (n, _) in enumerate(func.params) if n == name), None)
+    fi = _owning_fi(func, analyzer, record_name)
+    if ptype is None or idx is None or fi is None:
+        return False
+    return not decide_param_const(
+        ptype,
+        index=idx,
+        pname=name,
+        mutated_params=fi.mutated_params,
+        addr_escapes_params=fi.addr_escapes_params or frozenset(),
+        const_params=True,
+    ).signature_const
 
 def _const_borrow_name(name: str, lc) -> bool:
     """The AST `_is_const_borrow_source` mirror for a bare name: a param
@@ -7386,12 +7512,15 @@ def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
         return _f1_const_rooted_source(obj, func, analyzer, const_locals, record_name)
     return False
 
-def _operand_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
-    # The operand's resolved type for the mixed-sign comparison gate. For a
-    # local/param name use the tracked resolved type -- codegen's get_resolved_type
-    # reads ctx.var_types, which holds e.g. a retro-widened literal-seeded local's
-    # final type (UInt64), whereas analyzer.get_expr_type returns the pre-widen
-    # seed (Int32). Using the seed would over-exclude same-sign-after-widen loops.
+def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
+    # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type, not
+    # sema's per-occurrence cache. ctx.var_types holds a retro-widened
+    # literal-seeded local's FINAL type (a later `p = <int>` widens `p = 0` to
+    # BigInt), whereas analyzer.get_expr_type returns the pre-widen seed
+    # (Int32). Every render keyed on the declared type must read this: the
+    # mixed-sign comparison gate would over-exclude same-sign-after-widen
+    # loops, and the checked-narrow family (`.to_fixed_check<T>()`) would DROP
+    # a narrow the AST emits -- ill-formed C++ at a BigInt subscript index.
     if isinstance(e, TpyName):
         t = locals_.get(e.name)
         if t is not None:
@@ -8370,6 +8499,25 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # (`x: A | B = A(); f(x)`) is still the variant in C++ and passes bare (no
     # temp) -- it rides `_union_pass_through_arg`, not this member-valued row.
     if isinstance(a, TpyName):
+        if a.name == "self":
+            # `f(self)` at a value-union slot: the AST hoists the temp from
+            # the DEREF'd receiver (`__tmp_N = (*this);`) while the temp row's
+            # init lowers the bare receiver read (`this`) -- the retag the
+            # ordinary arg tail applies has no twin inside the ArgTemp. Decline
+            # here so the gate and the temp row decline together and the body
+            # stays on the AST path, rather than spelling a raw `Record*` into
+            # a by-value variant slot.
+            #
+            # The retag alone does NOT let this fence go: applying it at both
+            # ArgTemp rows makes the two known witnesses byte-identical, but
+            # admitting the shape then admits WHOLE BODIES carrying a second,
+            # unrelated gap -- `datetime.ZoneInfo.fromutc` diverges on the
+            # post-if narrow alias, because `_chain_post_if_fact` reads the
+            # CONDITION shape while the AST's post-narrowing arm is
+            # condition-blind (it reads else_type_facts), so an or-chain with a
+            # NEGATED isinstance leaf (`if not isinstance(tz, Z) or tz != self:
+            # raise`) silently emits no alias instead of rejecting.
+            return None
         dt = locals_.get(a.name)
         dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
               if dt is not None else None)

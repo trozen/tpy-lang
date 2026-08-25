@@ -3578,6 +3578,17 @@ class Compiler:
         reasons from."""
         return self._thir_reject_by_node
 
+    def generate_code_and_thir(self, compiled: CompiledModule,
+                               options: CodeGenOptions | None = None
+                               ) -> 'tuple[tuple[str, str], CodeGenContext]':
+        """Sources AND the codegen ctx they were emitted from, in ONE pass.
+
+        A caller wanting both properties of a single emission (the stdlib gate
+        byte-diffs the sources and classifies routing off the same ctx) would
+        otherwise pay a second full pass whose routing need not even match."""
+        sources, codegen = self._generate_to_strings(compiled, options)
+        return sources, codegen.ctx
+
     def collect_thir(self, compiled: CompiledModule,
                      options: CodeGenOptions | None = None
                      ) -> 'CodeGenContext':
@@ -3587,8 +3598,8 @@ class Compiler:
         lowering produced, and a resumable body only lowers at frame emission
         (its CFG needs live codegen state), so re-lowering standalone would
         show something codegen never used."""
-        _sources, codegen = self._generate_to_strings(compiled, options)
-        return codegen.ctx
+        _sources, ctx = self.generate_code_and_thir(compiled, options)
+        return ctx
 
     def _propagate_package_directives(self) -> None:
         """Reserved for future package-level directive propagation.

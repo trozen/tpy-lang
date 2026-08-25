@@ -376,6 +376,8 @@ from .predicates import (
     _value_opt_view,
     _is_range_call,
     _runtime_bigint,
+    _narrow_key_type,
+    _NARROW_UNMIRRORED,
     _range_object_value,
     _slice_object_type,
     _nested_owned_tuple_call_ret,
@@ -616,7 +618,7 @@ def _any_dict_subscript_shape_ok(
             analyzer):
         return False
     return _bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
-                                     analyzer) != "reject"
+                                     analyzer, declared) != "reject"
 
 def _typed_dict_write_target(
         sub: 'TpyExpr', declared: dict[str, TpyType], pointers: set[str],
@@ -10840,9 +10842,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # `({0}).to_fixed_check<T>()` BEFORE the binop substitution (sema
         # resolved the binop over the target width) -- mirrored as the
         # per-side operand cast. Same predicates as _gen_aug_assign_code's.
+        # The value's BigInt-ness keys on the DECLARED type (the AST reads
+        # get_resolved_type), so a retro-widened literal-seeded local narrows
+        # here too; a composite over one is unmirrored and rejects.
+        aug_value_key = _narrow_key_type(stmt.value, declared, analyzer)
+        if aug_value_key is _NARROW_UNMIRRORED:
+            raise ThirUnsupported("stmt.aug_assign:widened_value")
         right_cast = None
         if (is_fixed_int_type(cast_t)
-                and is_big_int_type(analyzer.get_expr_type(stmt.value))):
+                and is_big_int_type(aug_value_key)):
             _witness("narrow.aug_value")
             right_cast = ("({0}).to_fixed_check<"
                           f"{cast_t.to_cpp()}>()")
@@ -11593,6 +11601,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if copy_row is not None:
                 _witness("ret.copy_record")
                 return THIRReturn(value=copy_row, loc=loc)
+        # Set when the record ladder admits a source at a VALUE-record borrow
+        # slot whose render is the by-value one: it must skip the borrow
+        # block's `T&` passthrough and ride the generic tail instead.
+        value_record_ret = False
         if (stmt.value is not None
                 and (lc.prescan.ret_record_borrow is not None
                      or lc.prescan.ret_record_storage is not None)):
@@ -11608,6 +11620,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # STORAGE lowering runs the method call's own receiver / fi /
                 # arg / result gates, so admission here is shape-shallow.
                 record_ok = bool(_witness("ret.record_methodcall"))
+            elif (isinstance(lc.prescan.ret_record_borrow, NominalType)
+                  and lc.prescan.ret_record_borrow.is_value_type()
+                  and isinstance(stmt.value, TpyMethodCall)
+                  and is_rvalue_source(analyzer, stmt.value)):
+                # `return datetime.now()` at a VALUE-record slot: `-> datetime`
+                # is spelled like a borrow return but a value record is
+                # returned BY VALUE, so the render is the STORAGE arm's bare
+                # call, not the borrow block's `T&` passthrough -- and the
+                # value flushes its arg temps at the return line, which the
+                # passthrough's temp-free lowering cannot do. The value-ness of
+                # the slot is the whole discriminator: a non-value record's
+                # `T&` slot could not bind a call rvalue at all. The free-call
+                # sibling already rides `_record_rvalue_source_shape` here.
+                # NominalType only: a recursive-alias instance slot can also
+                # read value-typed (its substituted body decides), but its
+                # wrapper-struct render is a different row.
+                value_record_ret = True
+                record_ok = bool(_witness("ret.record_methodcall_value"))
             elif (lc.prescan.ret_record_borrow is not None
                   and lc.prescan.has_self
                   and isinstance(stmt.value, TpyName)
@@ -11775,7 +11805,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 ptr_val = THIRMove(result_type=ptr_val.result_type,
                                    value=ptr_val, form=ptr_val.form, loc=loc)
             return THIRReturn(value=ptr_val, loc=loc)
-        if lc.prescan.ret_record_borrow is not None and stmt.value is not None:
+        if (lc.prescan.ret_record_borrow is not None and stmt.value is not None
+                and not value_record_ret):
             # The record borrow-return sources beyond a bare name: `return
             # self` derefs the receiver pointer (`return (*this);`, the AST's
             # indirect-name arm); `return recv.field` renders the bare
@@ -12912,7 +12943,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                              and _witness("delitem.container")))
                     and _bigint_index_disposition(
                             sub.index, analyzer.get_expr_type(sub.obj),
-                            analyzer) != "reject"):
+                            analyzer, declared) != "reject"):
                 raise ThirUnsupported("stmt.del_item:recv_or_index")
             if user_del:
                 _witness("delitem.user_record")
@@ -12934,7 +12965,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                       _narrow_bigint_index(_lower_expr(sub.index, lc, declared),
                                            sub.index,
                                            analyzer.get_expr_type(sub.obj),
-                                           analyzer, loc)),
+                                           analyzer, loc, declared)),
                 loc=loc))
         if len(calls) == 1:
             return THIRExprStmt(expr=calls[0], loc=loc)

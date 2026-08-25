@@ -1,0 +1,10 @@
+a
+1
+10 0
+1
+bcd
+a
+8
+1
+Color.Green
+1

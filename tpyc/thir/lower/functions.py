@@ -49,7 +49,6 @@ from ...binding_audit import publish_thir as publish_binding_facts
 from ...prescan import scan_reassigned_vars
 from ...typesys import (
     AnyType,
-    CONST_PARAMS_METHODS,
     IntLiteralType,
     RecursiveAliasInstanceType,
     is_dyn_protocol,
@@ -452,23 +451,11 @@ def _check_callable_structure(func: TpyFunction, analyzer,
             raise ThirUnsupported("sig.receiver_record")
         # Inplace dunders (__iadd__ ...) admit: the AST's forced-const param
         # verdict (CONST_PARAMS_METHODS) is mirrored by `_param_is_const`'s
-        # forced arm, and the mandatory `return self` renders `return
-        # *this;` through the record-self return arm (the T& return type is
-        # SKELETON -- the signature emitter's is_inplace_dunder branch).
-        # The force applies only to UNMUTATED, NON-escaping params:
-        # decide_param_const drops const for a genuinely mutated param
-        # (directly_mutated short-circuit) AND for an addr-escaping one
-        # (`self.p = Ptr(other)`), verdicts the flat forced arm cannot
-        # see -- reject both slices. ([-1] is the same last-overload
-        # pick `_param_const_verdict` documents.)
-        if func.name in CONST_PARAMS_METHODS and self_type is not None:
-            in_ri = analyzer.registry.get_record_for_type(self_type)
-            in_ov = (in_ri.get_method_overloads(func.name)
-                     if in_ri is not None else None)
-            in_fi = in_ov[-1] if in_ov else None
-            if in_fi is not None and (in_fi.mutated_params
-                                      or in_fi.addr_escapes_params):
-                raise ThirUnsupported("sig.inplace_dunder_mutated_param")
+        # forced arm -- including the slices decide_param_const drops the
+        # force for (`_forced_const_dropped`) -- and the mandatory `return
+        # self` renders `return *this;` through the record-self return arm
+        # (the T& return type is SKELETON -- the signature emitter's
+        # is_inplace_dunder branch).
         # @readonly on a @staticmethod emits with the readonly verdicts dropped
         # (`gen_method_def` branches on `is_const and not is_static`): the const
         # overload and forced-const params are signature-only, emitted by the AST

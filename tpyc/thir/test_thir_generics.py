@@ -11,7 +11,7 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRReturn
 from .testutil import (
-    _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
+    _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed, _thir_ctx,
     _assert_byte_identical,
 )
 
@@ -1668,4 +1668,129 @@ class TestOwnProtoContainerArg:
                "main()\n")
         _ctx, fallback = _thir_ctx(src)
         assert fallback == {"body:name.own_read": 1}, fallback
+        _assert_byte_identical(src)
+
+
+class TestOpenTparamMethodArg:
+    """A param still typed as the SAME open `T` as the record-method slot it
+    feeds -- `tpy.atomic`'s `Atomic[T].store` -> `_raw.store(value, order)`.
+    Both sides spell `param_val_or_ref_t<T>`, so the forward is bare."""
+
+    _WITNESS = (
+        "from tpy import Int32\n"
+        "class Inner[T]:\n"
+        "    v: T\n"
+        "    def __init__(self, v: T) -> None:\n"
+        "        self.v = v\n"
+        "    def put(self, value: T) -> None:\n"
+        "        self.v = value\n"
+        "class Node:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "class Outer[T]:\n"
+        "    _in: Inner[T]\n"
+        "    def __init__(self, v: T) -> None:\n"
+        "        self._in = Inner[T](v)\n"
+        "    def put(self, value: T) -> None:\n"
+        "        self._in.put(value)\n"
+        "def main() -> None:\n"
+        "    a = Outer[Int32](1)\n"
+        "    a.put(7)\n"
+        "    b = Outer[Node](Node(2))\n"
+        "    b.put(Node(8))\n"
+        "    print(a._in.v, b._in.v.n)\n"
+        "main()\n")
+
+    def test_open_tparam_arg_routes_byte_identical(self):
+        # Both instantiations emit from the one template body, so the row is
+        # exercised at a value-type AND a reference-type `T` at once.
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(self._WITNESS)
+
+    def test_open_tparam_arg_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(self._WITNESS)
+        assert faces.get("method.tparam_open_pass_arg", 0) >= 1
+
+    def test_readonly_tparam_slot_routes(self):
+        # `readonly[T]` peels to the same bare `T` slot, and the callee's
+        # const verdict changes no render on either path.
+        src = (
+            "from tpy import Int32, readonly\n"
+            "class Sink[T]:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def peek(self, value: readonly[T]) -> None:\n"
+            "        self.n += 1\n"
+            "class Holder[T]:\n"
+            "    s: Sink[T]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.s = Sink[T](0)\n"
+            "    def ro_slot(self, value: T) -> None:\n"
+            "        self.s.peek(value)\n"
+            "def main() -> None:\n"
+            "    h = Holder[Int32]()\n"
+            "    h.ro_slot(5)\n"
+            "    print(h.s.n)\n"
+            "main()\n")
+        from .testutil import _assert_routes_byte_identical
+        _assert_routes_byte_identical(src)
+
+    def test_field_source_at_tparam_slot_still_defers(self):
+        # Params only: a FIELD read at the same bare `T` slot is not a
+        # param-binding pass-through and keeps rejecting.
+        src = (
+            "from tpy import Int32\n"
+            "class Inner[T]:\n"
+            "    v: T\n"
+            "    def __init__(self, v: T) -> None:\n"
+            "        self.v = v\n"
+            "    def put(self, value: T) -> None:\n"
+            "        self.v = value\n"
+            "class Outer[T]:\n"
+            "    _in: Inner[T]\n"
+            "    cur: T\n"
+            "    def __init__(self, v: T) -> None:\n"
+            "        self._in = Inner[T](v)\n"
+            "        self.cur = v\n"
+            "    def field_src(self) -> None:\n"
+            "        self._in.put(self.cur)\n"
+            "def main() -> None:\n"
+            "    o = Outer[Int32](1)\n"
+            "    o.field_src()\n"
+            "    print(o._in.v)\n"
+            "main()\n")
+        _ctx, fallback = _thir_ctx(src)
+        assert fallback == {"body:expr.method_call": 1}, fallback
+        _assert_byte_identical(src)
+
+    def test_own_tparam_source_at_bare_slot_still_defers(self):
+        # Same-`T` only, on the SPELLING as well as the name: an `Own[T]`
+        # param at a bare `T` slot is a move source, so the bare forward
+        # this row licenses is not the answer. A genuinely DIFFERENT open
+        # param (`U` into a `T` slot) cannot reach the predicate -- sema
+        # rejects the call -- so this is the constructible witness that the
+        # bound-equals-slot check is load-bearing.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Inner[T]:\n"
+            "    v: T\n"
+            "    def __init__(self, v: T) -> None:\n"
+            "        self.v = v\n"
+            "    def put(self, value: T) -> None:\n"
+            "        self.v = value\n"
+            "class Outer[T]:\n"
+            "    _in: Inner[T]\n"
+            "    def __init__(self, v: T) -> None:\n"
+            "        self._in = Inner[T](v)\n"
+            "    def put_own(self, value: Own[T]) -> None:\n"
+            "        self._in.put(value)\n"
+            "def main() -> None:\n"
+            "    o = Outer[Int32](1)\n"
+            "    o.put_own(9)\n"
+            "    print(o._in.v)\n"
+            "main()\n")
+        _ctx, fallback = _thir_ctx(src)
+        assert fallback == {"body:expr.method_call": 1}, fallback
         _assert_byte_identical(src)

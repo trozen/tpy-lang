@@ -755,7 +755,7 @@ class CompileResult:
     # still gets an overlay. Byte-compared to the same AST-authored snapshot as
     # all_modules -- so the AST (oracle) and THIR paths are both checked per run.
     thir_modules: list[tuple[str, Path | None, Path | None]] | None = None
-    # --thir-stdlib only: per non-local (lib/tpy + stdlib) module, the AST and
+    # Stdlib oracle only: per non-local (lib/tpy + stdlib) module, the AST and
     # THIR generated paths from THIS run: (name, ast_hpp, ast_cpp, thir_hpp,
     # thir_cpp). Stdlib emission has no committed snapshot anywhere, so the
     # same-run AST output is its only available oracle (cutover gate D4).
@@ -1269,8 +1269,8 @@ def pytest_addoption(parser):
             "AST snapshots; no_thir.txt only exempts a case from the RATCHET "
             "(it may fall back bodies), not from the diff. This flag ignores "
             "the markers entirely: no ratchet anywhere, plus the whole-corpus "
-            "faces/shapes coverage metrics, and it implies --thir-stdlib (the "
-            "stdlib oracle rides every measurement run). Pair with --no-exec "
+            "faces/shapes coverage metrics. The stdlib oracle rides every run "
+            "by default now, measurement runs included. Pair with --no-exec "
             "for a fast comp-only run. Off (and conflicting) under "
             "--update-snapshots (snapshots must be AST-authored)."
         ),
@@ -1302,13 +1302,24 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help=(
-            "Also route lib/tpy + the stdlib through THIR and byte-diff the "
-            "result against the SAME RUN's AST output (cutover gate A5/D4: "
-            "stdlib emission has no committed snapshot, so this is its only "
-            "oracle). Nothing is written to expected/. Implied by "
-            "--thir-codegen. Costs ~10-15% wall on a comp-only run (the extra "
-            "codegen pass over the stdlib modules) -- pair with --no-exec, "
-            "and with -k for a subset."
+            "No-op: the stdlib oracle is ON BY DEFAULT. Kept so existing "
+            "scripts, docs and the nightly row keep working -- and so that "
+            "asking for it explicitly alongside --update-snapshots / --no-thir "
+            "still errors instead of being silently ignored. Use "
+            "--no-thir-stdlib to turn it off."
+        ),
+    )
+    parser.addoption(
+        "--no-thir-stdlib",
+        action="store_true",
+        default=False,
+        help=(
+            "Turn OFF the stdlib oracle: by default lib/tpy + the stdlib are "
+            "also routed through THIR and byte-diffed against the SAME RUN's "
+            "AST output (stdlib emission has no committed snapshot, so this is "
+            "its only oracle -- nothing else can catch it diverging). Costs "
+            "~5% wall on a comp-only run (+14.0s of 273.3s); drop it for fast "
+            "local iteration."
         ),
     )
     parser.addoption(
@@ -1381,11 +1392,28 @@ def _thir_flag_conflict(config, updating: bool) -> str | None:
     if config.getoption("--no-thir") and forcing:
         return ("--no-thir conflicts with --thir-codegen / --thir-classify / "
                 "--thir-check-flip: it disables THIR, they force it on")
+    # Only an EXPLICIT --thir-stdlib errors here. The oracle is on by DEFAULT,
+    # so the same combination reached without typing the flag must auto-off
+    # silently (_thir_stdlib_enabled) -- otherwise every snapshot regeneration
+    # would abort. Asking for something impossible still gets told.
     if config.getoption("--thir-stdlib") and (updating
                                               or config.getoption("--no-thir")):
         return ("--thir-stdlib needs THIR active: it conflicts with "
                 "--update-snapshots and --no-thir")
+    if config.getoption("--thir-stdlib") and config.getoption("--no-thir-stdlib"):
+        return "--thir-stdlib conflicts with --no-thir-stdlib (on vs off)"
     return None
+
+
+def _thir_stdlib_enabled(config, updating: bool) -> bool:
+    """Resolve the stdlib oracle's on/off state -- DEFAULT ON.
+
+    Extracted alongside _thir_flag_conflict so the default is unit-testable.
+    THIR being off at all wins silently (there is nothing to diff against);
+    an explicit --thir-stdlib in that company is caught as a conflict instead."""
+    if updating or config.getoption("--no-thir"):
+        return False
+    return not config.getoption("--no-thir-stdlib")
 
 
 def pytest_configure(config):
@@ -1425,11 +1453,7 @@ def pytest_configure(config):
         THIR_CLASSIFY_WRITE = True
     if config.getoption("--thir-check-flip"):
         THIR_CHECK_FLIP = True
-    # --thir-codegen implies the stdlib oracle: a whole-corpus measurement run
-    # should also check the only oracle stdlib emission has (~10-15% wall on a
-    # comp-only run, measured 2026-07-30).
-    if config.getoption("--thir-stdlib") or config.getoption("--thir-codegen"):
-        THIR_STDLIB = True
+    THIR_STDLIB = _thir_stdlib_enabled(config, updating)
     # ...and the arm-residual census, on the same footing as the face tally: a
     # deletion metric that needs an env var remembered is a metric that gets
     # forgotten. The walk covers fallback bodies only -- noise against a
@@ -1616,13 +1640,21 @@ def pytest_report_header(config):
     # where the failures are seen rather than in CLAUDE.md, which nobody opens
     # mid-run. The banner keeps the since-date: it tells a reader mid-run which
     # baseline they are being measured against.
-    stdlib_lines = []
     if THIR_STDLIB:
         stdlib_lines = [
-            f"{_LOG_PREFIX} thir stdlib oracle: ON -- lib/tpy + stdlib routed "
-            f"through THIR and diffed vs this run's AST output",
+            f"{_LOG_PREFIX} thir stdlib oracle: ON (default) -- lib/tpy + "
+            f"stdlib routed through THIR and diffed vs this run's AST output",
             f"{_LOG_PREFIX}   EXPECTED GREEN since 2026-07-29. A failure here "
             f"is a new divergence, not the old backlog.",
+        ]
+    elif not TEST_CODEGEN_OPTIONS.thir_codegen:
+        stdlib_lines = [
+            f"{_LOG_PREFIX} thir stdlib oracle: off (THIR is off this run)",
+        ]
+    else:
+        stdlib_lines = [
+            f"{_LOG_PREFIX} thir stdlib oracle: OFF (--no-thir-stdlib) -- "
+            f"stdlib THIR/AST byte-identity is UNCHECKED this run",
         ]
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
@@ -1634,10 +1666,10 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX}   --update-snapshots regenerate expected",
         f"{_LOG_PREFIX} thir: {thir_state}",
         f"{_LOG_PREFIX}   --no-thir          pure AST (no THIR overlay, no ratchet)",
-        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics + stdlib oracle",
+        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
         f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
         f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
-        f"{_LOG_PREFIX}   --thir-stdlib      also route lib/tpy + stdlib, diff vs AST",
+        f"{_LOG_PREFIX}   --no-thir-stdlib   drop the stdlib oracle (~5% faster)",
         *stdlib_lines,
     ]
 

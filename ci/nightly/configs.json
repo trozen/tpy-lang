@@ -79,6 +79,17 @@
       "cpython": "3.14"
     },
     {
+      "name": "thir-stdlib",
+      "base_image": "ubuntu:24.04",
+      "no_exec": true,
+      "pytest_args": ["--thir-stdlib"]
+    },
+    {
+      "name": "thir-stdlib-fallback",
+      "base_image": "ubuntu:24.04",
+      "script": "uv run python scripts/thir_migration/thir_stdlib_fallback.py --max-fallback 171"
+    },
+    {
       "name": "macos-native",
       "ssh": { "host": "tpy-nightly-mac", "workdir": "tpy-nightly-work" },
       "timeout": 21600

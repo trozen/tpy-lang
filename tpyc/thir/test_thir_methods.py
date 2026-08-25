@@ -897,10 +897,12 @@ class TestDunderMethods:
         assert _fn(thir, "__iadd__") is not None
         _assert_byte_identical(src)
 
-    def test_inplace_dunder_mutated_param_still_defers(self):
+    def test_inplace_dunder_mutated_param_routes(self):
         # A genuinely MUTATED non-self param: decide_param_const drops the
-        # forced const on the AST path (`Counter& other`), which the flat
-        # forced-const mirror cannot see -- the sig check rejects the body.
+        # forced const on the AST path (`Counter& other`), and
+        # `_forced_const_dropped` mirrors that short-circuit. The borrow
+        # local is what makes the verdict VISIBLE -- with a flat force the
+        # decl renders `const Counter& c`.
         src = (
             "from tpy import Int32\n"
             "class Counter:\n    n: Int32\n"
@@ -909,15 +911,16 @@ class TestDunderMethods:
             "    def __init__(self, total: Int32):\n        self.total = total\n"
             "    def __iadd__(self, other: Counter) -> Acc:\n"
             "        other.n = 99\n"
-            "        self.total += other.n\n"
+            "        c = other\n"
+            "        self.total += c.n\n"
             "        return self\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "__iadd__") is None
+        _assert_routes_byte_identical(src)
+        assert "Counter& c = other;" in self._emit_thir(src)
 
-    def test_inplace_dunder_addr_escaping_param_still_defers(self):
-        # An addr-ESCAPING param (`self.p = Ptr(other)`) also drops the
-        # AST's forced const (addr_escapes_params precedes the force in
-        # decide_param_const) -- the sig check rejects that slice too.
+    def test_inplace_dunder_addr_escaping_param_routes(self):
+        # An addr-ESCAPING param (`self.p = Ptr(other)`) drops the forced
+        # const too (addr_escapes_params precedes the force in
+        # decide_param_const) -- same mirror, same visible borrow decl.
         src = (
             "from tpy import Int32, Ptr\n"
             "class Counter:\n    n: Int32\n"
@@ -928,9 +931,36 @@ class TestDunderMethods:
             "        self.total = total\n"
             "    def __iadd__(self, other: Counter) -> Acc:\n"
             "        self.p = other\n"
+            "        c = other\n"
+            "        self.total += c.n\n"
             "        return self\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "__iadd__") is None
+        _assert_routes_byte_identical(src)
+        assert "Counter& c = other;" in self._emit_thir(src)
+
+    def test_inplace_dunder_unmutated_param_keeps_const(self):
+        # The other side of the split: an unmutated, non-escaping param keeps
+        # the force, so its borrow local IS const.
+        src = (
+            "from tpy import Int32\n"
+            "class Counter:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "class Acc:\n    total: Int32\n"
+            "    def __init__(self, total: Int32):\n        self.total = total\n"
+            "    def __iadd__(self, other: Counter) -> Acc:\n"
+            "        c = other\n"
+            "        self.total += c.n\n"
+            "        return self\n")
+        _assert_routes_byte_identical(src)
+        assert "const Counter& c = other;" in self._emit_thir(src)
+
+    @staticmethod
+    def _emit_thir(src: str) -> str:
+        compiler, modules = _compile(src)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        return hpp + cpp
 
 
 class TestStaticPropertyDunderEmit:

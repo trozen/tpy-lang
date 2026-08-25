@@ -60,6 +60,11 @@ def test_thir_flag_conflict() -> None:
     assert conflict(_StubConfig({"--thir-stdlib": True, "--no-thir": True}),
                     updating=False) is not None
 
+    # ...and asking for it on and off at once.
+    assert conflict(_StubConfig({"--thir-stdlib": True,
+                                 "--no-thir-stdlib": True}),
+                    updating=False) is not None
+
     # Non-conflicting combinations -> None.
     assert conflict(_StubConfig({}), updating=False) is None          # default
     assert conflict(_StubConfig({"--no-thir": True}), updating=False) is None
@@ -68,6 +73,29 @@ def test_thir_flag_conflict() -> None:
     assert conflict(_StubConfig({"--thir-stdlib": True}), updating=False) is None
     assert conflict(_StubConfig({"--thir-stdlib": True, "--thir-codegen": True}),
                     updating=False) is None
+    # The DEFAULT-derived overlay meeting --update-snapshots / --no-thir must
+    # NOT error -- it auto-offs (see test_thir_stdlib_default_on). Erroring here
+    # would abort every snapshot regeneration.
+    assert conflict(_StubConfig({"--no-thir-stdlib": True}), updating=True) is None
+    assert conflict(_StubConfig({}), updating=True) is None
+
+
+def test_thir_stdlib_default_on() -> None:
+    """The stdlib oracle is ON unless something turns it off. An opt-in oracle
+    is only as good as the flag people remember to pass, and stdlib emission has
+    no committed snapshot to fall back on -- so the DEFAULT carries the check
+    and every way off is explicit."""
+    on = conftest._thir_stdlib_enabled
+
+    assert on(_StubConfig({}), updating=False) is True
+    assert on(_StubConfig({"--thir-codegen": True}), updating=False) is True
+    # The explicit flag stays a no-op, not a second switch.
+    assert on(_StubConfig({"--thir-stdlib": True}), updating=False) is True
+
+    # The opt-out, and the two states with nothing to diff against.
+    assert on(_StubConfig({"--no-thir-stdlib": True}), updating=False) is False
+    assert on(_StubConfig({"--no-thir": True}), updating=False) is False
+    assert on(_StubConfig({}), updating=True) is False
 
 
 def _mode(**kw):
@@ -178,6 +206,53 @@ def test_unmarked_case_arms_the_ratchet(tmp_path: Path) -> None:
     assert result.success, result.diagnostics
     assert result.thir_modules, "unmarked case got no THIR overlay"
     assert result.thir_ratchet_fell == 0, "ratchet not armed for an unmarked case"
+
+
+def test_thir_stdlib_wiring_reaches_the_compile(request: pytest.FixtureRequest,
+                                                monkeypatch,
+                                                tmp_path: Path) -> None:
+    """The default-on decision has to survive two hops that nothing else pins:
+    pytest_configure must publish `_thir_stdlib_enabled`'s verdict as the
+    module-level THIR_STDLIB, and compile_with_diagnostics must turn that flag
+    into the both-paths module list test_case byte-compares.
+
+    Either hop breaking just stops the stdlib oracle running -- the corpus stays
+    green, because the oracle only ADDS a comparison. So a green suite is not
+    evidence; these assertions are. The flag is monkeypatched both ways so the
+    list is pinned to THIS switch, not merely to being non-empty."""
+    _require_thir()
+    updating = (bool(request.config.getoption("--update-snapshots"))
+                or conftest.UPDATE_EXPECTED)
+    assert conftest.THIR_STDLIB is conftest._thir_stdlib_enabled(
+        request.config, updating), (
+        "pytest_configure did not publish the resolver's verdict as THIR_STDLIB")
+
+    monkeypatch.setattr(conftest, "THIR_STDLIB", True)
+    on = _compile_fixture_case(tmp_path / "on", marked=False)
+    assert on.success, on.diagnostics
+    assert on.thir_lib_modules, (
+        "THIR_STDLIB is on but the compile handed test_case no stdlib module "
+        "pair -- the oracle compares nothing")
+    # ...and the pairs must actually be readable: test_case reads both sides of
+    # every non-None pair, so a list of unemitted paths would be an oracle that
+    # errors rather than compares. Declaration-only (`native_module`) modules
+    # emit nothing and carry no pair, which is why this counts rather than
+    # requiring one per module.
+    pairs = 0
+    for mod_name, ast_hpp, ast_cpp, thir_hpp, thir_cpp in on.thir_lib_modules:
+        for ast_path, thir_path in ((ast_hpp, thir_hpp), (ast_cpp, thir_cpp)):
+            if ast_path is None or thir_path is None:
+                continue
+            pairs += 1
+            assert ast_path.exists() and thir_path.exists(), (
+                f"{mod_name}: {ast_path} / {thir_path} not emitted")
+    assert pairs, "the stdlib oracle got module entries but no comparable file"
+
+    monkeypatch.setattr(conftest, "THIR_STDLIB", False)
+    off = _compile_fixture_case(tmp_path / "off", marked=False)
+    assert off.success, off.diagnostics
+    assert off.thir_lib_modules is None, (
+        "--no-thir-stdlib must leave the stdlib oracle off entirely")
 
 
 # --- tests/interop ext-exec overlay --------------------------------------

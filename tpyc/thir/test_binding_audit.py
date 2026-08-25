@@ -154,12 +154,19 @@ class TestBindingFactJoin:
     def test_disabled_records_nothing(self):
         compiler, modules = _compile(_SRC)
         entry = _entry(modules)
-        with activate_compiler(compiler):
-            compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=True))
-        assert compiler._binding_facts_ast == {}
-        assert compiler._binding_facts_thir == {}
+        # The harness turns the audit on process-globally, so this unit must
+        # establish the disabled state it is asserting about rather than
+        # inheriting whatever a sibling left behind.
+        binding_audit.set_enabled(False)
+        try:
+            with activate_compiler(compiler):
+                compiler.generate_code_to_strings(
+                    entry, options=CodeGenOptions(emit_source_comments=False,
+                                                  thir_codegen=True))
+            assert compiler._binding_facts_ast == {}
+            assert compiler._binding_facts_thir == {}
+        finally:
+            binding_audit.set_enabled(False)
 
 
 class TestAckSuppression:
