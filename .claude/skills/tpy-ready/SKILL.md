@@ -67,6 +67,7 @@ Compare the branch's *intent* (the conversation / commit messages) against what 
 - If `/tpy-review` has not been run on this branch, recommend running it before merge -- this gate assumes it has.
 - For findings already triaged: confirm every "handle now" item was actually fixed, and every "file and defer" item actually landed in `BUGS.md` / `TODO.md`.
 - Any unresolved manual review comments.
+- **MECHANICALLY check what is unreviewed -- do not answer this from memory.** Identify the SHA the last review round used as its base, then `git log --oneline <that-sha>..HEAD` and `git diff <that-sha> --stat`. **A review round can never cover its own output**, so the fixes it produced, the docs written from it, and everything after are unreviewed by construction, and each subsequent round pushes the frontier further behind HEAD. Report the range and its diffstat in the verdict even when it is empty. If it contains anything beyond trivial docs, say NOT READY and recommend another round over exactly that range -- a docs-only tail is a judgement call, but a code tail is not.
 
 ### 6. Retrospective -- would you build it this way again?
 

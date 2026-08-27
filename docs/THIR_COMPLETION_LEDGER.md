@@ -13128,3 +13128,322 @@ The two gates are COMPLEMENTARY, not redundant: the wide oracle reaches
 generic monomorphizations and resumable frames but only for modules some case
 IMPORTS, at those cases' option sets; the mega-entry gate covers EVERY module
 in lib/tpy including any nothing imports yet. Neither contains the other.
+
+## 2026-08-26 -- the arg-ladder fold, COMPLETE (367 cells, 189 rows, 12 families)
+
+Branch `thir-arg-table`, off master `750896122`. Cashes the standing
+stop-loss in the `/tpy-review` follow-ups entry: ten near-duplicate argument
+ladders, 352 row instances over 177 distinct shapes, **170 redundant copies =
+48% of all rows**, folded into one ordered `(row, sink_family)` table. The
+shape the stdlib backlog needs next was already spelled TEN different ways.
+
+Landed: `tpyc/thir/lower/arg_table.py` (shapes, the walk, `register_sink`, the
+audit join) plus four sinks -- view 11 rows, protocol 4, native 27, container
+42 + a 3-leg prologue. The precedent is one level up in the same file:
+`_METHOD_RECV_FAMILY_TABLE`, whose docstring is this design's thesis verbatim.
+
+**The fold is already doing its job, measurably:** `register_sink`'s
+import-time identity check caught **11 rows genuinely shared** across families
+-- proving reuse rather than coincidental duplication, which is the whole
+claim the design rested on.
+
+### What the implementation revised
+
+Four corrections to the approved design, all recorded in TODO.md: the tables
+had to stay in `checks.py` (import cycle); `stub_recv` was deliberately not
+carried (ambiguous value, and a guessed value in a new table reads as
+authoritative later); two shapes exist that the design never named
+(`_ArgSink.note` accepting a callable, `_ArgSink.pre` as a family prologue);
+and the measured row counts differ slightly from the estimates.
+
+`_ArgSink.pre` runs INSIDE `_walk` rather than in the caller, deliberately --
+in the caller it would have been the one part of the fold with a
+zero-comparison denominator in the audit join.
+
+### D-1 resolved: benign, and benign FOR A REASON
+
+`_own_lvalue_arg` is admitted at the container ladder with no `temps_ok`
+guard where four other ladders gate it. Verdict: benign. Mechanism: on a stub
+receiver `own_flush` collapses to `temp_args and is_str_type(ow)`, so every
+non-str `Own` payload is position-INVARIANT, and the one position-sensitive
+payload has its guard re-derived one layer down in `_lower_call_arg`
+(`call.own_str_no_flush`). Gate-reject and lowering-reject reach the same
+outcome -- the "no admission preflights" contract working as designed.
+
+**But it is benign only because of three neighbours** (the gate-top view
+fence, `_str_owned_slot_arg` running before it, `_own_move_source_slice`
+checked before the family gate). Transcribe the row without them and a view
+payload renders BARE where the AST hoists a temp -- position-independently.
+So for that ladder the migration rule is not "transcribe the row", it is
+"transcribe the row WITH its ordering constraints". A fold can convert a
+safe-in-context cell into wrong code without moving a single number until
+some future case exercises the shape.
+
+### The review found the hole in my own verification
+
+Three specialists came back clean, having verified rather than read -- one
+confirmed each `_legacy_<name>` body is BYTE-IDENTICAL to its pre-fold
+original via `git show`, which is what makes the audit join's baseline
+trustworthy at all.
+
+Then test-coverage found this: **the audit join is gated on a manually-set
+env var. Nothing in conftest or CI turns it on** -- unlike `move_audit`,
+which conftest enables for every run. Every "0 disagreements" figure quoted
+in a commit message came from a one-off local run, and the comparison counts
+are printed by an `atexit` hook rather than asserted, so a step that silently
+stopped comparing would print zero and fail nothing.
+
+**This is the same defect the immediately preceding branch existed to fix**,
+committed by the same author who wrote "a metric ground to zero and then left
+to an opt-in flag is a metric that will silently rot" into this file days
+earlier -- and worse, because that metric had at least been green once in CI.
+The lesson does not transfer by having been written down. It transfers by
+being wired to a gate.
+
+**That open question is now ANSWERED, and the answer was that the question
+was slightly wrong.** The join is migration SCAFFOLDING: it proves the fold
+changed nothing by comparing two implementations of one decision, and after
+the fold there is only one. A future wrong EDIT to the table is guarded by
+exactly what guarded the equivalent mistake in a ladder -- corpus byte-diff,
+face census, pins -- plus `register_sink`, which is strictly NEW protection
+(a shared row name reaching a different predicate is an IMPORT-TIME failure).
+So the join comes down with the ladders; what is worth adding before H is a
+property test over the WALK mechanism, not a permanent legacy canary.
+
+### Steps D-G, and the review that found the hole in the proof
+
+D split the marker ladder into THREE sinks by an ordered FILTER, so nine
+`own_ok and` prefixes DISAPPEARED rather than being transcribed. E folded the
+reference ladder the other nine were copied from (68 rows). F folded the
+generic ladder (27 + a 3-leg prologue). G folded the record-method ladder
+(66 rows).
+
+**`register_sink` has now proven 111 rows genuinely shared** across the nine
+families -- verified by OBJECT IDENTITY at import, not by name -- against
+**eight that looked shared but hold different predicates**, each now named
+separately with a pin preventing silent collapse. That ratio is the fold's
+argument in one line: most of the duplication was real, and the exceptions
+are visible instead of buried in ten or-chains.
+
+**The review round's finding was that the proof was never running.** The
+audit join was gated on a hand-set env var that nothing in conftest or CI
+turned on -- unlike `move_audit`, which conftest enables for every run. Every
+"zero disagreements" figure quoted in commits A-D came from one-off local
+runs, and the comparison counts were printed by an `atexit` hook rather than
+asserted. **This is the same defect the immediately preceding branch existed
+to fix**, committed by the same author who had just written "a metric left to
+an opt-in flag will silently rot" into this file. Fixed in `f1aefe200`:
+conftest enables it, and the stdlib gate asserts a non-zero comparison count
+for EVERY family in the sink registry (an accessor that existed only for
+this assertion and came down with it), derived from the registry so
+steps E-H are covered without editing the assertion. Cost measured before
+committing: +0.7%.
+
+Two things nearly negated that fix and were caught in the same pass: the
+detector's own failure message read `getattr(req.a, 'line', '?')` where
+`TpyExpr` carries `loc`, so a real disagreement would have printed `?`; and
+the test file's `finally: set_enabled(False)` would have DISARMED the
+detector for every corpus case sharing the xdist worker.
+
+### The design's predictions were estimates, four times over
+
+Row counts came in high at 37->35, 28->27, 43->42, and low at 26->27; the
+count was exact for the first time at G (66). More importantly, at F the
+design's STRUCTURAL claim -- that the generic ladder "collapses to substitute
+the slot, then run family plain minus/plus its listed cells" -- was false in
+three ways: the row ORDER diverges from the first row, **47 of plain's 68
+cells are simply absent**, and the "prologue" is two ~40-70 line rejecting
+branches. **Verify a design's shape against the code before building to it;
+building to a predicted shape is how a fold stops being a transcription.**
+
+Two practices became house patterns because something went slightly wrong
+once: **pin the ABSENT cells by name** (F did it for 47, G for 43, so a later
+step cannot fill a hole and call it transcription), and **name the tree you
+measured against** (a bug entry was corrected for upgrading "the stashed
+pre-fold tree" into a named master commit).
+
+
+### H1 and H2 -- the last ladder, then the scaffolding
+
+**H1** transcribed `_record_ctor_arg_supported`, the hardest of the ten: 62
+cells across TWO sinks (the ladder forks into a direct and a restricted
+nested tail, sharing cells in a DIFFERENT relative order -- not a subset
+filter), 25 new row names, and 35 cells reaching 29 pre-existing cells that
+`register_sink` validated cross-module at import.
+
+Its helpers took `lc: _LowerCtx` directly, where every row folded before read
+discrete fields -- and `arg_table.py` deliberately does not import
+`_LowerCtx` at all. The brief said EXTRACT the discrete facts and stop-and-
+report if the surface turned out large, rather than thread a raw `lc` and
+quietly convert the request object into a handle on the whole lowering
+context. The surface was **four facts** (`inline_narrowed`, `movable_locals`,
+`pointers`, `func_name`); each helper gained a `_facts` core that its
+`lc`-taking spelling now delegates to, so the two cannot drift. The
+extraction was verified behaviour-neutral BEFORE the table was built on it.
+
+Three shapes the table did not have were added rather than flattened. The
+one worth recording is **`_ArgRow.decisive`** -- a row that REJECTS mid-chain,
+where `pre` runs ahead of everything and a plain row can only admit. It could
+have been flattened to an admit-only row, but only via a disjointness
+argument (record slot vs str slot), which is exactly the reasoning the
+absence-preserving rule forbids. One cell in 367 uses it.
+
+**H2** deleted the scaffolding: ten `_legacy_*` ladders (1636 lines), the
+audit join (139), `_ArgReq.subst`, the harness wiring, and the join's own
+tests. **Deliberately split from H1** so the migration's most intricate
+transcription stayed provable by the join that proved the other nine, and so
+the removal of the safety net was reviewable and bisectable on its own. The
+alternative -- transcribe and delete in one commit -- would have reviewed the
+deletion of the evidence using the evidence.
+
+The teardown was not entirely scaffolding: 19 predicate imports in
+`expressions.py` had the legacy ctor ladder as their only consumer, and three
+test fixtures built `_ArgReq` positionally and broke on the field removal. An
+AST reference scan before and after confirmed no predicate was orphaned.
+
+### What the fold actually delivered, measured
+
+**71 of 189 rows (38%) are shared across two or more families, accounting for
+249 of the 367 cells** (fanout `[1:118, 2:26, 3:20, 4:8, 5:6, 6:5, 7:3,
+8:3]`). But **lead with what changed, not with the cell count** -- 367 cells
+replacing 352 row instances is not smaller, and stating it that way invites
+the objection that the win is a restatement. What actually changed:
+
+1. **Widening an already-shared shape is one edit instead of up to eight.**
+2. **`register_sink` makes silent cross-family divergence an IMPORT-time
+   failure** -- protection the ladders had no equivalent of.
+
+What did NOT change: **62% of rows are single-family**, and 134 named ABSENT
+cells prove how routine that is. Adding a shape to a family that lacks it is
+still one edit per family. And the enforcement is **nominal, not
+structural**: it binds only where someone chose to share a name, and its own
+assertion message hands the next author the escape hatch verbatim ("either
+share the adapter or give this cell its own row name") -- which is exactly
+how all eleven pinned shadow rows came to exist. The fold does not PREVENT
+re-divergence. It makes divergence **cost a name**, and makes it visible in
+one screen instead of buried across ten or-chains. That is a real win; it is
+not enforcement, and calling it enforcement would be the overclaim.
+
+Against that, **the fold exposed rows that shadow a shared name with a
+DIFFERENT predicate** -- each given its own name plus an `fn is not` pin so no
+later step can collapse them silently. Some are deliberate splits, some are
+drift; adjudicating which is post-fold work. The fold's real product is that
+the question is now askable.
+
+### What replaced the join, and an adjudication worth keeping
+
+A **mutation-tested** property test over the walk: an exhaustive sweep over
+synthetic sinks asserting not just the verdict but the exact ordered trace of
+guards and predicates run, the face census, and the reject tag. Seven
+independent mutations of `_walk` each fail it.
+
+**Two reviewers described the join as having covered predicate-LOGIC edits,
+and that was written into TODO.md as fact. It is wrong.** The join compared
+the table against the legacy ladder, and both called the SAME predicate
+functions -- the fold moved ladders, not predicates. An edit to a predicate
+changes both sides identically and the join stays green. It only ever
+protected the TRANSCRIPTION: order, membership, guards, capability filtering
+-- exactly what the property test, the row-order pins, the absent-cell pins
+and `register_sink` now cover. It took a third reviewer plus a grep of what
+the two sides actually called to notice that **a comparison between two
+callers of one function cannot detect a change to that function.**
+
+The genuinely uncovered class is narrower: an over- or under-admission for a
+shape no corpus case exercises -- already only caught by the byte-diff and
+the ratchet before the fold, never by the join.
+
+### One estimate that was badly wrong, corrected here
+
+The design records the payoff as extending a cell's value from `bool` to
+`(bool, verdict_token)`, and this file's earlier draft called it the "first
+post-fold change, where it repays twice." **It is not a small change.**
+Producing the token from `_walk` is trivial, but `_lower_call_arg`'s
+~1600-line render cascade independently re-invokes at least 8 of the same
+predicates the gate already ran (47 distinct `*_arg(` call sites) to decide
+HOW to render, rather than consuming any verdict the gate produced. Making
+the token useful means restructuring the renderer to dispatch off it -- **a
+second migration of comparable size to this fold.** Do not start it as a
+follow-up commit.
+
+
+### The caveat that belongs at the front, not the back
+
+**The fold removed duplication on the FAMILY axis and left it wholly intact
+on the GATE-vs-RENDER axis -- the same defect class the branch existed to
+kill, now the larger of the two, and unowned.** `_lower_call_arg`'s
+~1600-line cascade independently re-invokes at least 8 of the predicates the
+gate already ran, across 47 `*_arg(` call sites, to decide HOW to render
+rather than consuming any verdict the gate produced. Consuming it is a second
+migration of comparable size. A summary that ends at "ten ladders are one
+table" reads as more finished than the work is.
+
+### What the teardown cost, summed -- nobody summed it at the time
+
+Three separately-justified commits removed every mechanism able to measure
+the TABLE'S OWN COVERAGE: `_audit`/`_first_row`; the per-family reachability
+floor (whose docstring had argued for its own permanence -- "the gate saying
+the family has no witness ... is the thing worth knowing"); and finally
+`_SINKS`/`registered_families()`, reasoned as "there are no later steps --
+the fold is complete." **That reasoning is true of the FOLD and false of the
+TABLE**, whose whole purpose is to make the next arg work cheap.
+
+Reachability is a DIFFERENT question from transcription. The join proved the
+table matched the ladders; reachability proves the corpus can SEE the table
+at all. And the per-cell denominator -- how many of 367 cells any run
+witnesses -- was measurable for free the entire time (`_first_row` already
+returned the firing row) and was never measured before the tool was deleted,
+while the honest-guards paragraph simultaneously named "a shape no corpus
+case exercises" as the residual risk. **The instrument for the stated risk
+existed, was never pointed at it, and was thrown away.**
+
+The general form, which cost three separate mistakes on this branch: **a
+claim about what an instrument covers, believed without checking.** The join
+was assumed to be running when it was off; it was assumed to cover
+predicate-logic edits when it structurally could not; and its removal was
+assumed to cost only what it proved.
+
+**CLOSED, two commits later.** The reach floor was restored (per-family, the
+expected set derived from the registry so a future sink needs no edit) and the
+per-cell coverage measurement was finally taken: **the corpus witnesses 297 of
+367 cells** (stdlib sweep 75, corpus 289, union 297; 70 never decided by
+either). The floor demonstrably catches what the byte-diff cannot -- starving
+one family of arguments produced ZERO divergences, because the affected bodies
+fell back and the AST re-emitted them byte-identically. Per-cell coverage is
+REPORTED, not gated: a never-decided cell is often a legitimate transcribed
+absence, so a raw floor would cry wolf. Cost 168ns/verdict, ~0.009%.
+
+Two facts that measurement surfaced, both pre-existing and neither introduced
+here: the table's sole `decisive` cell decides ZERO arguments on both corpora
+(its pre-guard never passes), and **only 52 of 367 cells carry a face at all**
+-- so the standing zero-witness face census, the instrument this project leans
+on to find un-exercised arms, covers 14% of this table. A review checked the
+five families where the ownership-transfer row `own_move` is never decided and
+found the preceding rows test disjoint shapes, so it reads as genuine
+unreachability rather than an earlier cell shadowing a move decision -- but
+that is a static reading, and converting it to a checked fact needs an
+adversarial case per family. Recorded, unowned.
+
+### Two aftermath lessons, kept here rather than in CLAUDE.md
+
+**The tracking-label rule earned its place by recurring.** A review found one
+`D-1` citation in a code comment and it was fixed; the next round found eight
+more, plus one in a test NAME that a comment-only grep missed. The cause was
+upstream of the code: the briefs handed to implementers named the drifts by
+label, so the labels got written down. The rule now lives in CLAUDE.md as an
+invariant; this is the anecdote that produced it, which is exactly the kind of
+narrative that does not belong in a file loaded every session -- a point a
+reviewer made about the rule's own first draft, which embedded this tally.
+
+**There are now THREE coverage instruments over the same table** -- the face
+census, the fallback-reason tally, and arg-cell reach -- with distinct but
+overlapping purposes. Each is justified (reach is not journalled per lowering
+attempt, faces are; a verdict in a body that then falls back still decided
+something). Before adding a fourth, check whether it is genuinely a fourth
+QUESTION rather than a fourth mechanism for an existing one.
+
+**A better gate shape than the one shipped, if anyone revisits it:** per-cell
+coverage is reported, not gated, because a never-decided cell is often a
+legitimate transcribed absence and a raw floor would cry wolf. The middle
+ground nobody built is a RATCHET on the unreached SET -- pin today's unreached
+cells and fail only when a previously-reached cell drops out. That catches a
+regression without penalising a pre-existing deliberate gap.

@@ -44,8 +44,22 @@ from conftest import (
 
 from tpyc import get_lib_dir
 from tpyc.compiler import Compiler
+# The two table modules are imported for their SIDE EFFECT: a family exists
+# only once its `register_sink` call has run. conftest already pulls both in
+# transitively, but the expected set below is derived from the registry, so
+# an empty one would assert nothing -- naming them here keeps this gate from
+# depending on somebody else's import graph.
+from tpyc.thir.lower import arg_table, checks, expressions  # noqa: F401
 
 LIB_TPY = get_lib_dir() / "tpy"
+
+# The families the arg table has sinks for, snapshotted at COLLECTION time so
+# a unit test registering a throwaway sink (tpyc/thir/test_arg_table.py has
+# three) cannot join the set the reach floor demands. Derived from the
+# registry rather than listed, so a family a later sink adds is covered
+# without editing anything here.
+THIR_ARG_FAMILIES = arg_table.registered_families()
+THIR_ARG_CELLS = arg_table.registered_cells()
 
 # The routing classifier lives with the standalone sweep script rather than
 # being copied here: a new lowering kind must not be able to be taught to one
@@ -90,6 +104,11 @@ MAX_FALLBACK_BODIES = 195
 MIN_BODIES_CLASSIFIED = 2400
 MIN_ROUTED_BODIES = 900
 MIN_CLASSIFIED_MODULES = 70
+
+# Arg-table reach floor: the registry is the expected set, so this is only a
+# self-check that the set was snapshotted after the sinks registered. Well
+# below the 12 families the fold produced, and never needs touching.
+MIN_ARG_FAMILIES = 10
 
 MAX_REPORTED_DIVERGENCES = 10
 DIFF_CONTEXT = 2
@@ -176,6 +195,42 @@ def _fallback_report(per_module: dict[str, list[dict]]) -> str:
     lines += [f"  {c:5d}  {m}"
               for m, c in sorted(per_mod.items(), key=lambda kv: -kv[1])[:15]]
     return "\n".join(lines)
+
+
+def _assert_every_family_reached(compiler: Compiler) -> None:
+    """Every registered arg-table family is REACHED by the stdlib sweep.
+
+    Not the fold's audit join, which compared the table against the ladders
+    it replaced and is gone with them. That join proved a cell decides what
+    its ladder decided; this proves anything ever asks. Different questions,
+    and the second has no other reliable answer: an unreached family's
+    bodies fall back, a fallback emits the AST's own bytes, so the byte-diff
+    stays silent; the fallback ratchet notices only while it happens to
+    carry no slack; and only a minority of the table's cells carry a face,
+    so the zero-witness census covers some rows and no family as a whole.
+
+    Assert on the sweep that reaches all of them -- ~2800 stdlib bodies
+    through every callee shape the library uses, which no single corpus case
+    does. Non-zero, never a fixed count: the population moves with every
+    routing change. The family SET comes from the sink registry, so a step
+    that adds a sink is covered by this gate without touching it -- and if
+    the stdlib genuinely cannot reach a newly folded family, that is the gate
+    saying the family has no witness, which is the thing worth knowing.
+    """
+    assert len(THIR_ARG_FAMILIES) >= MIN_ARG_FAMILIES, (
+        f"only {len(THIR_ARG_FAMILIES)} arg-table families registered "
+        f"(expected >= {MIN_ARG_FAMILIES}) -- the snapshot was taken before "
+        f"the sink modules were imported, so this gate asserts nothing")
+    reached = arg_table.reached_families(compiler)
+    missing = [f for f in THIR_ARG_FAMILIES if f not in reached]
+    assert not missing, (
+        f"the arg table's {', '.join(missing)} family/families decided ZERO "
+        f"arguments over the whole stdlib sweep -- nothing dispatches to "
+        f"them here, so their cells are unexercised and an over- or "
+        f"under-admission in them has nothing pointed at it.\n"
+        f"Reached: {sorted(reached)}\n"
+        f"Check the gate that selects the sink still routes to it "
+        f"(tpyc/thir/lower/checks.py, tpyc/thir/lower/expressions.py).")
 
 
 def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
@@ -328,6 +383,8 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
     assert with_bodies >= MIN_CLASSIFIED_MODULES, (
         f"only {with_bodies} modules contributed any body (expected >= "
         f"{MIN_CLASSIFIED_MODULES})")
+
+    _assert_every_family_reached(compiler)
     if ratchet_problem:
         pytest.fail(ratchet_problem, pytrace=False)
 
@@ -358,3 +415,16 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
           f"fallback {fallback}/{MAX_FALLBACK_BODIES} over {classified} bodies "
           f"({routed} routed; {collapsed} under the nightly row's collapsed "
           f"key)")
+    # Per-CELL coverage is REPORTED, never asserted. A cell no sweep reaches
+    # is not a defect -- some are deliberate fences, some transcribe a ladder
+    # leg the stdlib has no shape for -- so a floor here would be a
+    # false-alarm generator. The number is a trend line, and having it at all
+    # is the point: the fold's own coverage question went unanswerable once
+    # its instruments came down.
+    _cells = arg_table.reached(compiler)
+    _decided = {(f, c.removeprefix("!")) for f, c in _cells
+                if c not in (arg_table.PROLOGUE_CELL, arg_table.NO_CELL)}
+    print(f"tpy| thir arg-table: {len(THIR_ARG_FAMILIES)} families all "
+          f"reached over {sum(_cells.values())} argument verdicts; "
+          f"{len(_decided & THIR_ARG_CELLS)}/{len(THIR_ARG_CELLS)} cells "
+          f"decided at least one")

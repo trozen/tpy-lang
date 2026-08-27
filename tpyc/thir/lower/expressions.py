@@ -147,6 +147,7 @@ from ...compilation_context import get_current_compiler
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ..fallback import ThirUnsupported, expr_kind_tag, note_detail
 from ..faces import witness as _witness
+from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...codegen_cpp.expressions import (ExpressionGenerator,
                                         _check_literal_chain,
                                         _check_literal_in,
@@ -436,10 +437,6 @@ from .predicates import (
     _tparam_value,
     _opt_view_arg_shim,
     _none_value_opt_arg,
-    _bytes_literal_value_opt_arg,
-    _str_literal_value_opt_arg,
-    _tuple_literal_value_opt_arg,
-    _value_opt_scalar_value_arg,
     _callable_value,
     _value_opt_callable,
     _value_opt_view_whole_arg,
@@ -522,6 +519,36 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 
 from .checks import (
+    _x_temps_ok,
+    _r_callable_value_pass,
+    _r_container_literal,
+    _r_copy_record_own,
+    _r_dyn_own_conformer,
+    _r_func_ref,
+    _r_lambda,
+    _r_none_unit,
+    _r_none_value_opt,
+    _r_opt_own_record_name,
+    _r_optional_ptr,
+    _r_own_container_literal,
+    _r_own_lvalue,
+    _r_own_move,
+    _r_own_optional_record_rvalue,
+    _r_own_record_rvalue,
+    _r_own_union_ctor,
+    _r_bytes_literal_value_opt,
+    _r_shared_pass_through,
+    _r_str_literal_value_opt,
+    _r_str_pass_through,
+    _r_tuple_literal,
+    _r_tuple_literal_value_opt,
+    _r_union_coerced_literal,
+    _r_union_ctor_temp,
+    _r_union_member_lift,
+    _r_union_pass_through,
+    _r_value_opt_scalar_value,
+    _r_value_record_rvalue,
+    _r_value_union_temp,
     _builtin_value_record,
     _alias_ref_container,
     _container_record_elem_subscript,
@@ -549,9 +576,7 @@ from .checks import (
     _container_lit_elem_ok,
     _container_literal_arg,
     _container_literal_method_arg,
-    _own_container_literal_arg,
     _own_container_instantiation_arg,
-    _tuple_literal_arg,
     _ref_param_dictset_literal_arg,
     _container_method_arg_ok,
     _stub_method_ret_ok,
@@ -590,7 +615,6 @@ from .checks import (
     _field_over_walrus_ok,
     _field_over_container_subscript_ok,
     _func_ref_routable,
-    _callable_value_pass_arg,
     _copy_record_own_arg,
     _copy_open_elem_arg,
     _lambda_routable,
@@ -626,21 +650,11 @@ from .checks import (
     _native_container_call_arg,
     _native_record_call_arg,
     _borrow_ret_record_marker_arg,
-    _optional_ptr_arg,
     _required_protocol_union_slot,
     _union_ctor_temp_arg,
-    _union_member_lift_arg,
-    _union_pass_through_arg,
-    _union_coerced_literal_arg,
     _own_union_call_pass_arg,
-    _own_union_ctor_arg,
     _own_union_storage_name_arg,
-    _own_lvalue_arg,
-    _own_move_arg,
     _own_dyn_method_rvalue_ok,
-    _value_record_rvalue_arg,
-    _own_optional_record_rvalue_arg,
-    _own_record_rvalue_arg,
     _protocol_slot_arg,
     _plain_call_arg_ok,
     _native_record_recv,
@@ -656,7 +670,6 @@ from .checks import (
     _method_rvalue_f1_record,
     _typed_dict_ctor_call,
     _native_ctx_manager_ok,
-    _shared_pass_through_arg,
     _str_owned_slot_arg,
     _bytes_owned_slot_arg,
     _own_bytes_literal_arg,
@@ -674,7 +687,6 @@ from .checks import (
     _recv_own_dyn,
     _recv_shape_reject,
     _value_tuple_pass_through_arg,
-    _value_union_temp_arg,
 )
 
 
@@ -1340,9 +1352,25 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     slice; the flushable copy half stays DIRECT-only) and `_lower_call_arg`'s
     Own-slot arm (which picks THIRMove on the same facts), so the two cannot
     drift."""
-    if (_own_lvalue_temp_slot(a, ptype, lc.analyzer, declared,
-                              lc.prescan.param_names) is None
-            and _own_bytes_identity_move_slot(a, ptype, lc.analyzer) is None):
+    return _own_move_source_slice_facts(
+        a, ptype, lc.analyzer, declared, lc.prescan.param_names,
+        lc.narrow.narrowed, lc.inline_narrowed, lc.movable_locals,
+        getattr(lc.func, "name", None))
+
+
+def _own_move_source_slice_facts(
+        a: TpyExpr, ptype: 'TpyType | None', analyzer,
+        declared: dict[str, TpyType],
+        param_names: 'set[str] | frozenset[str]',
+        narrowed: 'set[str] | frozenset[str]',
+        inline_narrowed,
+        movable_locals: 'set[str] | frozenset[str]',
+        func_name: 'str | None') -> bool:
+    """`_own_move_source_slice` over the discrete facts -- see
+    `_is_move_source_facts` for why the split exists."""
+    if (_own_lvalue_temp_slot(a, ptype, analyzer, declared,
+                              param_names) is None
+            and _own_bytes_identity_move_slot(a, ptype, analyzer) is None):
         return False
     # The AST's `_maybe_move` peels coerces before the last-use check, so an
     # all-identity chain over a movable name moves the same way the bare
@@ -1350,7 +1378,7 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     bare = _peel_coerce(a)
     if not isinstance(bare, TpyName) or bare.name == "self":
         return False
-    if (bare.name in lc.narrow.narrowed or bare.name in lc.inline_narrowed
+    if (bare.name in narrowed or bare.name in inline_narrowed
             or bare.name not in declared):
         return False
     # No value-type filter: movability alone decides, because the working set
@@ -1359,7 +1387,7 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
     # await-bound scalar IS -- and the AST moves it here. Filtering by payload
     # type instead of trusting the set is what made `asyncio_queue`'s
     # `out.append(x)` render bare against the AST's `std::move(x)`.
-    return _is_move_source(a, lc)
+    return _is_move_source_facts(a, movable_locals, analyzer, func_name)
 
 
 def _template_arg_unreferenced(kind: 'tuple[str, str] | None',
@@ -1383,9 +1411,21 @@ def _own_opt_ptr_name_move_arg(a: TpyExpr, ptype: 'TpyType | None',
     under `std::move`; a non-last-use occurrence takes the AST's Own-slot copy
     -TEMP cascade (`Holder(std::move(__tmp_N))`), an entirely different render,
     so it stays a reject."""
-    slot = _own_opt_ptr_name_arg(a, ptype, declared,
-                                 frozenset(lc.narrow.narrowed), lc.analyzer)
-    if slot is None or not _is_move_source(a, lc):
+    return _own_opt_ptr_name_move_arg_facts(
+        a, ptype, declared, frozenset(lc.narrow.narrowed), lc.analyzer,
+        lc.movable_locals, getattr(lc.func, "name", None))
+
+
+def _own_opt_ptr_name_move_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', declared: dict[str, TpyType],
+        narrowed: 'set[str] | frozenset[str]', analyzer,
+        movable_locals: 'set[str] | frozenset[str]',
+        func_name: 'str | None') -> 'OptionalType | None':
+    """`_own_opt_ptr_name_move_arg` over the discrete facts -- see
+    `_is_move_source_facts` for why the split exists."""
+    slot = _own_opt_ptr_name_arg(a, ptype, declared, narrowed, analyzer)
+    if slot is None or not _is_move_source_facts(a, movable_locals, analyzer,
+                                                 func_name):
         return None
     return slot
 
@@ -1425,351 +1465,539 @@ def _bytearray_rvalue_ctor_arg(arg: TpyExpr, ptype: TpyType | None,
     return bool(is_bytearray_type(at))
 
 
-def _record_ctor_arg_supported(
-        arg: TpyExpr, param_type: TpyType, index: int, fi,
-        lc: '_LowerCtx', declared: dict[str, TpyType], use: _ExprUse) -> bool:
-    # fi is None for a TypedDict ctor (no synthetic constructor fi; params
-    # come from the registry's init_params, which carry no mutation facts).
-    analyzer = lc.analyzer
-    mutation_unknown = fi is not None and fi.mutated_params is None
-    mutated = (fi.mutated_params if fi is not None else None) or frozenset()
-    is_mutated = index in mutated
-    if use.record_ctor is not _RecordCtorUse.NESTED_ARG or use.allow_temps:
-        # temps_ok tracks whether THIS ctor position flushes. DIRECT threads
-        # its own allow_temps; a RECORD_TEMP source ctor flushes at the
-        # enclosing statement too when it was reached via the flush-enabled
-        # recursion (`_RECORD_TEMP_FLUSH_USE`), so `use.allow_temps` is the
-        # single source of truth for both. A NESTED_ARG ctor with the ridden
-        # flush right (allow_temps threads through call-shaped args) gates
-        # like DIRECT -- its temps flush at the same enclosing statement;
-        # the restricted branch below serves only flush-less nested slots.
-        temps_ok = use.allow_temps
-        if (temps_ok and is_mutated
-                and isinstance(arg, (TpyArrayLiteral, TpyDictLiteral,
-                                     TpySetLiteral))
-                and _container_literal_arg(arg, param_type, analyzer)):
-            # A container LITERAL at a MUTATED ctor ref slot: the mutable
-            # ref cannot bind a prvalue, so the AST hoists the temp
-            # (`std::vector<T> __tmp_N = {..}; Holder(__tmp_N)`) --
-            # rendered (and witnessed) at the ctor loop's argtemp row. A
-            # const slot keeps the inline brace-init arm.
-            return True
-        if _str_pass_through_arg(
-                arg, param_type, declared, analyzer, mutated=is_mutated):
-            _witness("ctor.str_arg")
-            return True
-        if _own_opt_container_ptr_arg(arg, param_type, lc, declared) \
-                is not None:
-            # witnessed at the render row (arg.own_opt_container_move)
-            return True
-        if _own_str_literal_arg(arg, param_type):
-            _witness("ctor.own_str_literal")
-            return True
-        if _own_bytes_literal_arg(arg, param_type):
-            _witness("ctor.own_bytes_literal")
-            return True
-        return (_shared_pass_through_arg(
-                    arg, param_type, declared, analyzer, mutated=is_mutated)
-                or (_bytearray_rvalue_ctor_arg(arg, param_type, analyzer)
-                    and _witness("ctor.bytearray_rvalue"))
-                # A scalar VALUE into a value-repr Optional[scalar] ctor slot
-                # renders bare (the implicit std::optional ctor); `None` rides
-                # the row below -- mirrors the method-arg loop.
-                or _value_opt_scalar_value_arg(arg, param_type, analyzer)
-                or (_value_opt_pass_arg(arg, param_type, declared,
-                                        lc.narrow.narrowed, analyzer)
-                    and _witness("ctor.value_opt_pass_arg"))
-                # A str LITERAL into a value-repr Optional[str] ctor slot
-                # (the total=False TypedDict face) renders bare the same way.
-                or _str_literal_value_opt_arg(arg, param_type)
-                # ... and its bytes / value-tuple siblings: the owned bytes
-                # literal and the spelled tuple brace-init both convert into
-                # the optional slot in place.
-                or (_bytes_literal_value_opt_arg(arg, param_type)
-                    and _witness("ctor.bytes_literal_value_opt"))
-                or (_tuple_literal_value_opt_arg(arg, param_type, analyzer)
-                    and _witness("ctor.tuple_literal_value_opt"))
-                or _none_value_opt_arg(arg, param_type, analyzer) is not None
-                # `Box(None)`: the unit ctor arg renders the bare
-                # `std::monostate{}` like the marker-call row.
-                or _none_unit_arg(arg, param_type) is not None
-                # A nested open-T instantiation inside a generic body
-                # (`self.inner = Box[T](value)`): a NAME bound to the same
-                # bare T passes the form-neutral slot bare, the ctor-face
-                # sibling of the nested generic call rule.
-                or _tparam_name_pass_arg(arg, param_type, declared)
-                # The Own-slot cascade rows, mirrored from the free/method
-                # plain-arg loop: the temp-free last-use move lands in any
-                # position; the copy half hoists `__tmp_N` and so needs the
-                # enclosing flush point (temps_ok), exactly like the
-                # record-rvalue temp row below.
-                or (_own_move_arg(arg, param_type, declared, analyzer)
-                    and _witness("ctor.own_arg"))
-                or (temps_ok
-                    and _own_lvalue_arg(
-                        arg, param_type, declared,
-                        frozenset(lc.narrow.narrowed), analyzer,
-                        lc.prescan.param_names)
-                    and _witness("ctor.own_arg"))
-                # The temp-free move-source slice also serves the flush-LESS
-                # direct position (`[Box(h1)]` -- a ctor element in a container
-                # literal): `std::move(name)` is position-independent, exactly
-                # the NESTED tail's admission.
-                or (not temps_ok
-                    and _own_move_source_slice(arg, param_type, lc, declared)
-                    and _witness("ctor.own_arg"))
-                # A record/container-returning CALL rvalue into an Own slot
-                # (`Appender(data.clone(), ..)`): binds the T&& slot inline,
-                # exactly the free/method plain-arg row -- same predicate,
-                # same bare render in `_lower_call_arg`'s Own-slot arms.
-                or _own_record_rvalue_arg(arg, param_type, declared, analyzer)
-                # The pointer-repr Optional NAME half of the
-                # Own[Optional[record]] slot: rebuild null-safely, then move
-                # in. The ctor-rvalue half is `_own_optional_record_rvalue_arg`
-                # further down this chain.
-                or _own_opt_ptr_name_move_arg(arg, param_type, lc,
-                                              declared) is not None
-                # ... and the Optional[Own[record]] BY-VALUE slot sibling:
-                # a ptr-repr Optional NAME lifts via ptr_to_optional_move
-                # at a movable last use (`Boxed(tmp)`).
-                or (_opt_own_ptr_opt_name_arg(arg, param_type, declared,
-                                              analyzer) is not None
-                    and _is_move_source(arg, lc))
-                # A record NAME moved into an `Optional[Own[T]]` ctor slot
-                # (`Wrapper(p, tag)` at `Own[Point] | None` -- the by-value
-                # `std::optional<Point>` param absorbs the bare
-                # `std::move(p)`): the free/marker ladders' row; the shared
-                # lowering arm enforces the move verdict and rejects the
-                # copy shape.
-                or _opt_own_record_name_arg(arg, param_type, declared,
-                                            analyzer) is not None
-                # ... and its CONTAINER twin (`DictReader(buf, fn)` at
-                # `Own[list[str]] | None`): same bare move, one arm.
-                or (_opt_own_container_name_arg(arg, param_type, declared,
-                                                analyzer) is not None
-                    and _witness("ctor.opt_own_container_name"))
-                # `copy(name)` of a plain record into a same-nominal
-                # `Own[record]` ctor slot (`Holder(copy(b))` ->
-                # `Holder(Box(b))`): the copy-construct rvalue binds the
-                # T&& slot -- the free/method gates' row.
-                or _copy_record_own_arg(arg, param_type, analyzer)
-                # `copy(src[i])` of an open-T element into an `Own[T]` slot
-                # (`Owned(copy(src[0]))` -> `Owned<T>(T(__getitem__(src,
-                # 0)))`): the generic copy tail around the element read.
-                or _copy_open_elem_arg(arg, param_type, analyzer) is not None
-                # A BARE container-element subscript at a still-open ctor
-                # slot (`Bare(src[0])` -> `Bare<T>(__getitem__(src, 0))`):
-                # the element read binds the `const U&` slot directly --
-                # the free-call ladder's `call.generic_open_slot_elem`, one
-                # callee family over (same shared `_open_slot_match` rule).
-                or (isinstance(arg, TpySubscript)
-                    and _open_slot_match(analyzer.get_expr_type(arg),
-                                         param_type)
-                    and _witness("ctor.generic_open_slot_elem"))
-                # A func-ref / callable-value NAME into a Callable ctor slot
-                # (`Handler(double)` -> `Handler(double_)`): the free-call
-                # ladder's rows, same bare renders through the tail.
-                or _func_ref_routable(arg, analyzer)
-                # An async-def NAME at a Callable ctor slot
-                # (`Dispatcher(handle)`): the coroutine-factory wrapper
-                # lambda, the name arm's async_factory_wrap row.
-                or (isinstance(arg, TpyName)
-                    and _async_factory_wrap_cpp(
-                        arg, analyzer.get_expr_type(arg), lc) is not None)
-                or _callable_value_pass_arg(arg, declared, analyzer)
-                or (_field_read_ref_ctor_arg(arg, param_type, declared,
-                                             analyzer, mutated=is_mutated)
-                    and _witness("ctor.field_read_ref_arg"))
-                or (not is_mutated
-                    and _container_literal_arg(arg, param_type, analyzer)
-                    and _witness("ctor.container_literal_arg"))
-                # A list literal into an `Own[list]` ctor slot renders the
-                # same bare in-place brace (`Summer([1, 2, 3])` ->
-                # `Summer({1, 2, 3})` -- prvalue into the by-value Own slot),
-                # the qualcall row's ctor face.
-                or (_own_container_literal_arg(arg, param_type, analyzer)
-                    and _witness("ctor.container_literal_arg"))
-                # The @dataclass default_factory fill: an empty container
-                # instantiation into an `Own[container]` ctor slot renders
-                # the spelled default ctor (`Foo(std::vector<int32_t>(), 1)`).
-                or _own_container_instantiation_arg(arg, param_type,
-                                                    analyzer)
-                # The M4c wrapper-slot NAME row, mirrored from the free-call
-                # ladder: a same-wrapper NAME (non-generic alias or generic
-                # instance) binds the borrow ctor slot bare
-                # (`Summary(seed)` -> `Summary(seed)`).
-                or _ru_wrapper_name_arg(arg, param_type, declared,
-                                        frozenset(lc.narrow.narrowed))
-                # A scalar/str LITERAL into an `Own[wrapper]` ctor slot
-                # (`Holder(7)` at `Own[V]` -- `V&&` binds the converting-ctor
-                # prvalue): the bare target-less literal, no temp.
-                or (_ru_wrapper_own_literal_arg(arg, param_type, analyzer)
-                    is not None
-                    and _witness("ctor.ru_wrapper_own_literal"))
-                # A container literal into an `Own[genrec]` ctor slot: the
-                # ru-instance spelled render, inline (no temp).
-                or (_own_genrec_return(param_type) is not None
-                    and isinstance(arg, (TpyArrayLiteral, TpyDictLiteral))
-                    and _ru_instance_literal_ok(arg, analyzer))
-                # The pointer-variant union rows, mirrored from the plain
-                # arg loop: a member-typed record NAME / None lifts bare
-                # (`pv{&(name)}` -- temp-free); a member ctor RVALUE hoists a
-                # named temp and lifts its address (`pv{&__tmp_N}`), so it
-                # needs the enclosing flush point (temps_ok). Both lower
-                # through `_lower_union_arg_lift` in `_lower_call_arg`.
-                or _union_member_lift_arg(arg, param_type, declared, analyzer)
-                or (temps_ok
-                    and _union_ctor_temp_arg(arg, param_type, analyzer))
-                # The remaining free-call union rows, same lowering arms:
-                # an already-union NAME passes bare into a same-union slot
-                # (`Zoo(init_pet, ..)`); a coerced union literal renders its
-                # member; a member ctor RVALUE into an `Own[union]` slot
-                # binds the bare expansion (`Sink(A(7))`).
-                or (_union_pass_through_arg(arg, param_type, declared,
-                                            analyzer)
-                    and _witness("ctor.union_pass_arg"))
-                or _union_coerced_literal_arg(arg, param_type, declared,
-                                              analyzer)
-                or _own_union_ctor_arg(arg, param_type, declared, analyzer)
-                # A record/Span NAME into a slot whose non-None members are
-                # all PROTOCOLS (`ArrayList[Int32, 8](a)` / `(s)` -- `src:
-                # Iterable[Own[T]] | Spannable[T] | None`): both take the
-                # address-of lift (the arm in `_lower_call_arg`).
-                or (_protocol_union_arg(arg, param_type, declared,
-                                             analyzer) is not None
-                    and _witness("ctor.protocol_union_arg"))
-                # ... and its literal sibling: a container literal at the
-                # same nullable-protocol slot hoists the typed temp + addr
-                # lift (`Counter(["a", "x", "x"])`), so it needs the flush.
-                or (temps_ok
-                    and _protocol_union_literal_temp_arg(
-                        arg, param_type, analyzer) is not None)
-                # A record RVALUE into an `Own[record | None]` slot binds bare
-                # (`Outer("a", Inner(42))` -- prvalue -> optional<Inner>), the
-                # @dataclass Optional-record-field row.
-                or _own_optional_record_rvalue_arg(arg, param_type, analyzer)
-                # A record rvalue into a BY-VALUE record slot (a ValueType
-                # record param -- `timezone(timedelta(...), "IST")`): no ref
-                # param, no temp cascade, bare on both paths.
-                or _value_record_rvalue_arg(arg, param_type, analyzer)
-                # A member-valued arg into a VALUE-union ctor slot hoists the
-                # `std::variant<...> __tmp_N = v;` temp (`datetime(...,
-                # tzinfo=ist)`) -- the free-call arg-temp row, flush-gated.
-                or (temps_ok and _value_union_temp_arg(
-                    arg, param_type, declared,
-                    frozenset(lc.narrow.narrowed), analyzer))
-                # A tuple LITERAL at a tuple ctor slot: the borrow/value tuple
-                # builders own the per-element admission (a bad element raises
-                # inside lowering and falls the body back whole), exactly the
-                # free-call row -- the gate checks only the slot/arity pairing.
-                or _tuple_literal_arg(arg, param_type)
-                # A routable lambda into a Callable ctor slot renders its
-                # inline closure, temp-free -- the free-call ladder's row.
-                or (_lambda_routable(arg, analyzer)
-                    and _witness("ctor.lambda_arg"))
-                # The pointer-repr Optional slot faces (`n` into a `record |
-                # None` ctor param -> `&(n)`), mirroring the free-call gate's
-                # `_optional_ptr_arg` row: `_gen_record_ctor_args` runs the same
-                # `_gen_optional_ptr_arg` dispatch as the plain call loop. The
-                # temp-bearing 'ctor' face is temps_ok-gated like the rows above.
-                or _optional_ptr_arg(arg, param_type, declared, analyzer,
-                                     temps_ok=temps_ok)
-                # A protocol-conformer arg into a @dynamic/structural protocol
-                # ctor slot: a bare NAME / already-protocol lvalue passes
-                # through, and a @dynamic RVALUE hoists the adapter temp
-                # (`_gen_dynamic_protocol_arg` runs in the ctor loop too).
-                # A STRUCTURAL rvalue is ctor-inline on the AST path
-                # (`_gen_protocol_arg` hands single-required slots back to
-                # gen_call_arg, and the ctor loop has no structural temp
-                # arm) -- the shared temp row would diverge, so it rejects.
-                or ((_pslot := _protocol_arg_slot(param_type)) is not None
-                    and (isinstance(arg, TpyName)
-                         or is_dyn_protocol(_pslot))
-                    and _protocol_slot_arg(arg, param_type, declared,
-                                           analyzer, temps_ok=temps_ok))
-                # A concrete conformer into an `Own[@dynamic P]` ctor slot
-                # (`Box(Dog(...))`): the make_unique / make_adapter wrap,
-                # verdict-keyed via the shared classifier (the
-                # `_dyn_own_conformer_arg` row in `_lower_call_arg`).
-                or _dyn_own_conformer_arg(arg, param_type, declared,
-                                          analyzer) is not None
-                or (_record_rvalue_temp_arg(
-                        arg, param_type, declared, analyzer)
-                    and (temps_ok if is_mutated else True)))
+# ---------------------------------------------------------------------------
+# THE RECORD-CTOR ARG TABLE (see `arg_table.py` for the shapes and the
+# invariant; the other nine families' tables live in `checks.py`, beside
+# their predicates).
+#
+# TWO families, not one, and the ctor USE picks which: a DIRECT position --
+# every `X(...)` that is not an argument of another call, plus a nested one
+# that rode the enclosing statement's flush right in -- carries the full row
+# set; a NESTED position with no flush point carries the temp-FREE slice of
+# it, in its own order and behind a slot prologue the direct family has no
+# counterpart for. The shared cells reach the identical predicate, which
+# `register_sink` enforces across both modules.
+#
+# ORDER IS LOAD-BEARING: `witness` fires while the gate walks, so reordering
+# a family's rows changes the recorded face census even when admission is
+# unchanged.
+# ---------------------------------------------------------------------------
 
-    slot = unwrap_readonly(unwrap_ref_type(param_type))
+def _x_temps_and_mutated(req: _ArgReq) -> bool:
+    """The `temps_ok and is_mutated and` prefix: a MUTATED ref slot cannot
+    bind a prvalue, so its hoisted temp needs a statement to flush into."""
+    return req.temps_ok and req.mutated_slots
+
+
+def _x_not_temps_ok(req: _ArgReq) -> bool:
+    """The flush-LESS half of a row pair: the direct position takes the
+    copy+move cell above when it can flush, and only the temp-free move
+    slice when it cannot."""
+    return not req.temps_ok
+
+
+def _x_not_mutated(req: _ArgReq) -> bool:
+    """A const ref slot, which binds a container literal's prvalue inline --
+    the mutated slot takes the hoisted-temp cell at the top of the family."""
+    return not req.mutated_slots
+
+
+def _x_ctor_const_rvalue_slot(req: _ArgReq) -> bool:
+    """The gate of the one DECISIVE cell: an unmutated record-rvalue temp
+    slot. Once it fires, the two source shapes its cell names are the whole
+    answer -- anything else at that slot is refused, not passed on."""
+    return (_record_rvalue_temp_slot(req.a, req.ptype, req.analyzer)
+            is not None and not req.mutated_slots)
+
+
+def _x_ctor_str_source_allowed(req: _ArgReq) -> bool:
+    """The mutated-`String&` refusal, as this row's pre-guard: a mutated (or
+    unknown-mutation) `std::string&` slot takes no source here rather than
+    mirror the AST's known miscompile for it."""
+    slot_type = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(req.ptype)))
+    return not (isinstance(slot_type, NominalType)
+                and is_string_type(slot_type)
+                and (req.mutation_unknown or req.mutated_slots))
+
+
+def _r_mutated_container_literal(req: _ArgReq) -> bool:
+    return (isinstance(req.a, (TpyArrayLiteral, TpyDictLiteral,
+                               TpySetLiteral))
+            and _container_literal_arg(req.a, req.ptype, req.analyzer))
+
+
+def _r_own_opt_container_ptr(req: _ArgReq) -> bool:
+    return _own_opt_container_ptr_arg_facts(
+        req.a, req.ptype, req.locals_, req.pointers, req.analyzer,
+        req.movable_locals, req.func_name) is not None
+
+
+def _r_own_str_literal_bare(req: _ArgReq) -> bool:
+    # The BARE spelling: the registered `own_str_literal` peels the coerce
+    # off the argument and the ref/readonly wrappers off the slot, this cell
+    # does neither -- so the two admit different shapes and stay separate
+    # cells, as `str_literal_value_opt` and its `_coerced` twin do.
+    return _own_str_literal_arg(req.a, req.ptype)
+
+
+def _r_own_bytes_literal(req: _ArgReq) -> bool:
+    return _own_bytes_literal_arg(req.a, req.ptype)
+
+
+def _r_bytearray_rvalue_ctor(req: _ArgReq) -> bool:
+    return _bytearray_rvalue_ctor_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_value_opt_name_pass(req: _ArgReq) -> bool:
+    # Not the registered `value_opt_pass_through`: that one falls back to the
+    # analyzer for a name the body did not bind and excludes function refs,
+    # where this one requires the DECLARED binding. Near-duplicate shapes,
+    # not one shape -- reconciling them moves admissions, so it is not part
+    # of the fold.
+    return _value_opt_pass_arg(req.a, req.ptype, req.locals_, req.narrowed,
+                               req.analyzer)
+
+
+def _r_tparam_name_pass(req: _ArgReq) -> bool:
+    return _tparam_name_pass_arg(req.a, req.ptype, req.locals_)
+
+
+def _r_own_move_source_slice(req: _ArgReq) -> bool:
+    return _own_move_source_slice_facts(
+        req.a, req.ptype, req.analyzer, req.locals_, req.param_names,
+        req.narrowed, req.inline_narrowed, req.movable_locals, req.func_name)
+
+
+def _r_own_opt_ptr_name_move(req: _ArgReq) -> bool:
+    return _own_opt_ptr_name_move_arg_facts(
+        req.a, req.ptype, req.locals_, req.narrowed, req.analyzer,
+        req.movable_locals, req.func_name) is not None
+
+
+def _r_opt_own_ptr_opt_name_move(req: _ArgReq) -> bool:
+    return (_opt_own_ptr_opt_name_arg(req.a, req.ptype, req.locals_,
+                                      req.analyzer) is not None
+            and _is_move_source_facts(req.a, req.movable_locals, req.analyzer,
+                                      req.func_name))
+
+
+def _r_opt_own_container_name(req: _ArgReq) -> bool:
+    return _opt_own_container_name_arg(req.a, req.ptype, req.locals_,
+                                       req.analyzer) is not None
+
+
+def _r_copy_open_elem(req: _ArgReq) -> bool:
+    return _copy_open_elem_arg(req.a, req.ptype, req.analyzer) is not None
+
+
+def _r_generic_open_slot_elem(req: _ArgReq) -> bool:
+    return (isinstance(req.a, TpySubscript)
+            and _open_slot_match(req.analyzer.get_expr_type(req.a), req.ptype))
+
+
+def _r_async_factory_wrap(req: _ArgReq) -> bool:
+    return (isinstance(req.a, TpyName)
+            and _async_factory_wrap_cpp_facts(
+                req.a, req.analyzer.get_expr_type(req.a),
+                req.analyzer) is not None)
+
+
+def _r_field_read_ref_ctor(req: _ArgReq) -> bool:
+    return _field_read_ref_ctor_arg(req.a, req.ptype, req.locals_,
+                                    req.analyzer, mutated=req.mutated_slots)
+
+
+def _r_own_container_instantiation(req: _ArgReq) -> bool:
+    return _own_container_instantiation_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_ru_wrapper_name_no_alias(req: _ArgReq) -> bool:
+    # No `analyzer`, where the registered `ru_wrapper_name` passes one: the
+    # alias-placeholder resolution inside the predicate no-ops without it, so
+    # this cell admits strictly less. Transcribed as found -- widening it is
+    # a change of its own.
+    return _ru_wrapper_name_arg(req.a, req.ptype, req.locals_, req.narrowed)
+
+
+def _r_ru_wrapper_own_literal(req: _ArgReq) -> bool:
+    return _ru_wrapper_own_literal_arg(req.a, req.ptype,
+                                       req.analyzer) is not None
+
+
+def _r_own_genrec_literal(req: _ArgReq) -> bool:
+    return (_own_genrec_return(req.ptype) is not None
+            and isinstance(req.a, (TpyArrayLiteral, TpyDictLiteral))
+            and _ru_instance_literal_ok(req.a, req.analyzer))
+
+
+def _r_protocol_union(req: _ArgReq) -> bool:
+    return _protocol_union_arg(req.a, req.ptype, req.locals_,
+                               req.analyzer) is not None
+
+
+def _r_protocol_union_literal_temp(req: _ArgReq) -> bool:
+    return _protocol_union_literal_temp_arg(req.a, req.ptype,
+                                            req.analyzer) is not None
+
+
+def _r_protocol_slot_ctor(req: _ArgReq) -> bool:
+    # The shared `protocol_slot` cell RESTRICTED to a bare NAME or a
+    # @dynamic slot: a STRUCTURAL rvalue is ctor-inline on the AST path
+    # (`_gen_protocol_arg` hands single-required slots back to gen_call_arg
+    # and the ctor loop has no structural temp arm), so the shared cell
+    # would diverge here.
+    pslot = _protocol_arg_slot(req.ptype)
+    return (pslot is not None
+            and (isinstance(req.a, TpyName) or is_dyn_protocol(pslot))
+            and _protocol_slot_arg(req.a, req.ptype, req.locals_,
+                                   req.analyzer, temps_ok=req.temps_ok))
+
+
+def _r_record_rvalue_temp_ctor(req: _ArgReq) -> bool:
+    # Neither the free ladder's `record_rvalue_temp` (which takes
+    # `upcast_ok=True`, a CHILD-typed temp) nor the record-method's factory
+    # cell: same-nominal, and flush-gated only at a MUTATED slot -- a const
+    # ref slot binds the rvalue inline with no temp to flush. The guard sits
+    # inside the cell because the ladder evaluated it AFTER the shape, and
+    # the shape predicate witnesses as it runs.
+    return (_record_rvalue_temp_arg(req.a, req.ptype, req.locals_,
+                                    req.analyzer)
+            and (req.temps_ok if req.mutated_slots else True))
+
+
+def _r_const_rvalue(req: _ArgReq) -> bool:
+    if not isinstance(req.a, TpyCall):
+        return False
+    arg_fi = req.a.resolved_function_info
+    if arg_fi is not None and arg_fi.is_constructor:
+        return _ctor_shape_ok(req.a, req.analyzer)
+    return _record_rvalue_call_shape(req.a, req.analyzer)
+
+
+def _r_str_pass_through_unmutated(req: _ArgReq) -> bool:
+    # `mutated=False` hardcoded, like the record-method ladder's
+    # `optional_ptr_no_temp`: the nested tail refuses a mutated String slot
+    # outright in this row's pre-guard rather than passing the fact down.
+    return _str_pass_through_arg(req.a, req.ptype, req.locals_, req.analyzer)
+
+
+def _pre_ctor_nested_slot_family(req: _ArgReq) -> 'bool | None':
+    """The nested tail's slot prologue: an `Own[scalar]` or plain scalar slot
+    is DECIDED here -- a resolved scalar source passes, anything else is
+    refused rather than falling through to the rows. A no-op spelling on a
+    value type, so the by-value slot takes the scalar bare exactly as a plain
+    slot does. Returns None for every other slot, which is what puts the row
+    tuple in play at all."""
+    slot = unwrap_readonly(unwrap_ref_type(req.ptype))
     if isinstance(slot, OwnType) and _eligible_scalar(
             unwrap_readonly(slot.wrapped)):
-        # Own[scalar] is a no-op spelling on a value type: the by-value slot
-        # takes the resolved scalar bare, exactly like the plain slot.
-        return (_resolved_scalar(analyzer.get_expr_type(arg), analyzer)
+        return (_resolved_scalar(req.analyzer.get_expr_type(req.a),
+                                 req.analyzer)
                 and _witness("ctor.own_scalar_peel"))
     if _eligible_scalar(slot):
-        return _resolved_scalar(analyzer.get_expr_type(arg), analyzer)
-    if _own_str_literal_arg(arg, param_type):
+        return _resolved_scalar(req.analyzer.get_expr_type(req.a),
+                                req.analyzer)
+    return None
+
+
+_CTOR_ARG_SINK = register_sink(_ArgSink(
+    family="record_ctor",
+    # The reject detail belongs to the CALLER: the three ctor gates tag their
+    # own (`call.ctor_arg.<family>` / `ctor.arg.<family>`), and `note_detail`
+    # is set-if-empty, so a tail spelled here would take their tag.
+    note=None,
+    # The one family that consults the callee's mutation facts, and it does
+    # so per ARGUMENT: `arg_ok` folds this flag with the caller's
+    # `is_mutated`. The sibling families mirror the same AST render without
+    # the rule; turning it on for them moves which bodies route, so it is a
+    # change of its own.
+    mutated_slots=True,
+    rows=(
+        # A container LITERAL at a MUTATED ctor ref slot: the mutable ref
+        # cannot bind a prvalue, so the AST hoists the temp
+        # (`std::vector<T> __tmp_N = {..}; Holder(__tmp_N)`) -- rendered
+        # (and witnessed) at the ctor loop's argtemp row. A const slot keeps
+        # the inline brace-init arm, further down.
+        _ArgRow("mutated_container_literal", _r_mutated_container_literal,
+                extra=_x_temps_and_mutated),
+        _ArgRow("str_pass_through", _r_str_pass_through, face="ctor.str_arg"),
+        # Witnessed at the render row (arg.own_opt_container_move), not here.
+        _ArgRow("own_opt_container_ptr", _r_own_opt_container_ptr),
+        _ArgRow("own_str_literal_bare", _r_own_str_literal_bare,
+                face="ctor.own_str_literal"),
+        _ArgRow("own_bytes_literal", _r_own_bytes_literal,
+                face="ctor.own_bytes_literal"),
+        _ArgRow("shared_pass_through", _r_shared_pass_through),
+        _ArgRow("bytearray_rvalue_ctor", _r_bytearray_rvalue_ctor,
+                face="ctor.bytearray_rvalue"),
+        # A scalar VALUE into a value-repr Optional[scalar] ctor slot
+        # renders bare (the implicit std::optional ctor); `None` rides the
+        # row below -- mirrors the method-arg loop.
+        _ArgRow("value_opt_scalar_value", _r_value_opt_scalar_value),
+        _ArgRow("value_opt_name_pass", _r_value_opt_name_pass,
+                face="ctor.value_opt_pass_arg"),
+        # A str LITERAL into a value-repr Optional[str] ctor slot (the
+        # total=False TypedDict face) renders bare the same way.
+        _ArgRow("str_literal_value_opt", _r_str_literal_value_opt),
+        # ... and its bytes / value-tuple siblings: the owned bytes literal
+        # and the spelled tuple brace-init both convert into the optional
+        # slot in place.
+        _ArgRow("bytes_literal_value_opt", _r_bytes_literal_value_opt,
+                face="ctor.bytes_literal_value_opt"),
+        _ArgRow("tuple_literal_value_opt", _r_tuple_literal_value_opt,
+                face="ctor.tuple_literal_value_opt"),
+        _ArgRow("none_value_opt", _r_none_value_opt),
+        # `Box(None)`: the unit ctor arg renders the bare `std::monostate{}`
+        # like the marker-call row.
+        _ArgRow("none_unit", _r_none_unit),
+        # A nested open-T instantiation inside a generic body
+        # (`self.inner = Box[T](value)`): a NAME bound to the same bare T
+        # passes the form-neutral slot bare, the ctor-face sibling of the
+        # nested generic call rule.
+        _ArgRow("tparam_name_pass", _r_tparam_name_pass),
+        # The Own-slot cascade rows, mirrored from the free/method plain-arg
+        # loop: the temp-free last-use move lands in any position; the copy
+        # half hoists `__tmp_N` and so needs the enclosing flush point,
+        # exactly like the record-rvalue temp row at the end.
+        _ArgRow("own_move", _r_own_move, face="ctor.own_arg"),
+        _ArgRow("own_lvalue", _r_own_lvalue, extra=_x_temps_ok,
+                face="ctor.own_arg"),
+        # The temp-free move-source slice also serves the flush-LESS direct
+        # position (`[Box(h1)]` -- a ctor element in a container literal):
+        # `std::move(name)` is position-independent, exactly the NESTED
+        # family's admission.
+        _ArgRow("own_move_source_slice", _r_own_move_source_slice,
+                extra=_x_not_temps_ok, face="ctor.own_arg"),
+        # A record/container-returning CALL rvalue into an Own slot
+        # (`Appender(data.clone(), ..)`): binds the T&& slot inline, exactly
+        # the free/method plain-arg row -- same predicate, same bare render
+        # in `_lower_call_arg`'s Own-slot arms.
+        _ArgRow("own_record_rvalue", _r_own_record_rvalue),
+        # The pointer-repr Optional NAME half of the Own[Optional[record]]
+        # slot: rebuild null-safely, then move in. The ctor-rvalue half is
+        # `own_optional_record_rvalue` further down.
+        _ArgRow("own_opt_ptr_name_move", _r_own_opt_ptr_name_move),
+        # ... and the Optional[Own[record]] BY-VALUE slot sibling: a
+        # ptr-repr Optional NAME lifts via ptr_to_optional_move at a movable
+        # last use (`Boxed(tmp)`).
+        _ArgRow("opt_own_ptr_opt_name_move", _r_opt_own_ptr_opt_name_move),
+        # A record NAME moved into an `Optional[Own[T]]` ctor slot
+        # (`Wrapper(p, tag)` at `Own[Point] | None` -- the by-value
+        # `std::optional<Point>` param absorbs the bare `std::move(p)`): the
+        # free/marker ladders' row; the shared lowering arm enforces the
+        # move verdict and rejects the copy shape.
+        _ArgRow("opt_own_record_name", _r_opt_own_record_name),
+        # ... and its CONTAINER twin (`DictReader(buf, fn)` at
+        # `Own[list[str]] | None`): same bare move, one arm.
+        _ArgRow("opt_own_container_name", _r_opt_own_container_name,
+                face="ctor.opt_own_container_name"),
+        # `copy(name)` of a plain record into a same-nominal `Own[record]`
+        # ctor slot (`Holder(copy(b))` -> `Holder(Box(b))`): the
+        # copy-construct rvalue binds the T&& slot -- the free/method
+        # gates' row.
+        _ArgRow("copy_record_own", _r_copy_record_own),
+        # `copy(src[i])` of an open-T element into an `Own[T]` slot
+        # (`Owned(copy(src[0]))` -> `Owned<T>(T(__getitem__(src, 0)))`):
+        # the generic copy tail around the element read.
+        _ArgRow("copy_open_elem", _r_copy_open_elem),
+        # A BARE container-element subscript at a still-open ctor slot
+        # (`Bare(src[0])` -> `Bare<T>(__getitem__(src, 0))`): the element
+        # read binds the `const U&` slot directly -- the free-call ladder's
+        # `call.generic_open_slot_elem`, one callee family over (same
+        # shared `_open_slot_match` rule).
+        _ArgRow("generic_open_slot_elem", _r_generic_open_slot_elem,
+                face="ctor.generic_open_slot_elem"),
+        # A func-ref / callable-value NAME into a Callable ctor slot
+        # (`Handler(double)` -> `Handler(double_)`): the free-call ladder's
+        # rows, same bare renders through the tail.
+        _ArgRow("func_ref", _r_func_ref),
+        # An async-def NAME at a Callable ctor slot (`Dispatcher(handle)`):
+        # the coroutine-factory wrapper lambda, the name arm's
+        # async_factory_wrap row.
+        _ArgRow("async_factory_wrap", _r_async_factory_wrap),
+        _ArgRow("callable_value_pass", _r_callable_value_pass),
+        _ArgRow("field_read_ref_ctor", _r_field_read_ref_ctor,
+                face="ctor.field_read_ref_arg"),
+        _ArgRow("container_literal", _r_container_literal,
+                extra=_x_not_mutated, face="ctor.container_literal_arg"),
+        # A list literal into an `Own[list]` ctor slot renders the same bare
+        # in-place brace (`Summer([1, 2, 3])` -> `Summer({1, 2, 3})` --
+        # prvalue into the by-value Own slot), the qualcall row's ctor face.
+        _ArgRow("own_container_literal", _r_own_container_literal,
+                face="ctor.container_literal_arg"),
+        # The @dataclass default_factory fill: an empty container
+        # instantiation into an `Own[container]` ctor slot renders the
+        # spelled default ctor (`Foo(std::vector<int32_t>(), 1)`).
+        _ArgRow("own_container_instantiation", _r_own_container_instantiation),
+        # The M4c wrapper-slot NAME row, mirrored from the free-call ladder:
+        # a same-wrapper NAME (non-generic alias or generic instance) binds
+        # the borrow ctor slot bare (`Summary(seed)` -> `Summary(seed)`).
+        _ArgRow("ru_wrapper_name_no_alias", _r_ru_wrapper_name_no_alias),
+        # A scalar/str LITERAL into an `Own[wrapper]` ctor slot
+        # (`Holder(7)` at `Own[V]` -- `V&&` binds the converting-ctor
+        # prvalue): the bare target-less literal, no temp.
+        _ArgRow("ru_wrapper_own_literal", _r_ru_wrapper_own_literal,
+                face="ctor.ru_wrapper_own_literal"),
+        # A container literal into an `Own[genrec]` ctor slot: the
+        # ru-instance spelled render, inline (no temp).
+        _ArgRow("own_genrec_literal", _r_own_genrec_literal),
+        # The pointer-variant union rows, mirrored from the plain arg loop:
+        # a member-typed record NAME / None lifts bare (`pv{&(name)}` --
+        # temp-free); a member ctor RVALUE hoists a named temp and lifts its
+        # address (`pv{&__tmp_N}`), so it needs the enclosing flush point.
+        # Both lower through `_lower_union_arg_lift` in `_lower_call_arg`.
+        _ArgRow("union_member_lift", _r_union_member_lift),
+        _ArgRow("union_ctor_temp", _r_union_ctor_temp, extra=_x_temps_ok),
+        # The remaining free-call union rows, same lowering arms: an
+        # already-union NAME passes bare into a same-union slot
+        # (`Zoo(init_pet, ..)`); a coerced union literal renders its member;
+        # a member ctor RVALUE into an `Own[union]` slot binds the bare
+        # expansion (`Sink(A(7))`).
+        _ArgRow("union_pass_through", _r_union_pass_through,
+                face="ctor.union_pass_arg"),
+        _ArgRow("union_coerced_literal", _r_union_coerced_literal),
+        _ArgRow("own_union_ctor", _r_own_union_ctor),
+        # A record/Span NAME into a slot whose non-None members are all
+        # PROTOCOLS (`ArrayList[Int32, 8](a)` / `(s)` -- `src:
+        # Iterable[Own[T]] | Spannable[T] | None`): both take the address-of
+        # lift (the arm in `_lower_call_arg`).
+        _ArgRow("protocol_union", _r_protocol_union,
+                face="ctor.protocol_union_arg"),
+        # ... and its literal sibling: a container literal at the same
+        # nullable-protocol slot hoists the typed temp + addr lift
+        # (`Counter(["a", "x", "x"])`), so it needs the flush.
+        _ArgRow("protocol_union_literal_temp", _r_protocol_union_literal_temp,
+                extra=_x_temps_ok),
+        # A record RVALUE into an `Own[record | None]` slot binds bare
+        # (`Outer("a", Inner(42))` -- prvalue -> optional<Inner>), the
+        # @dataclass Optional-record-field row.
+        _ArgRow("own_optional_record_rvalue", _r_own_optional_record_rvalue),
+        # A record rvalue into a BY-VALUE record slot (a ValueType record
+        # param -- `timezone(timedelta(...), "IST")`): no ref param, no temp
+        # cascade, bare on both paths.
+        _ArgRow("value_record_rvalue", _r_value_record_rvalue),
+        # A member-valued arg into a VALUE-union ctor slot hoists the
+        # `std::variant<...> __tmp_N = v;` temp (`datetime(..., tzinfo=ist)`)
+        # -- the free-call arg-temp row, flush-gated.
+        _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+        # A tuple LITERAL at a tuple ctor slot: the borrow/value tuple
+        # builders own the per-element admission (a bad element raises
+        # inside lowering and falls the body back whole), exactly the
+        # free-call row -- the gate checks only the slot/arity pairing.
+        _ArgRow("tuple_literal", _r_tuple_literal),
+        # A routable lambda into a Callable ctor slot renders its inline
+        # closure, temp-free -- the free-call ladder's row.
+        _ArgRow("lambda", _r_lambda, face="ctor.lambda_arg"),
+        # The pointer-repr Optional slot faces (`n` into a `record | None`
+        # ctor param -> `&(n)`), mirroring the free-call gate's row:
+        # `_gen_record_ctor_args` runs the same `_gen_optional_ptr_arg`
+        # dispatch as the plain call loop, and the temp-bearing 'ctor' face
+        # is flush-gated inside the predicate.
+        _ArgRow("optional_ptr", _r_optional_ptr),
+        # A protocol-conformer arg into a @dynamic/structural protocol ctor
+        # slot: a bare NAME / already-protocol lvalue passes through, and a
+        # @dynamic RVALUE hoists the adapter temp (`_gen_dynamic_protocol_arg`
+        # runs in the ctor loop too).
+        _ArgRow("protocol_slot_ctor", _r_protocol_slot_ctor),
+        # A concrete conformer into an `Own[@dynamic P]` ctor slot
+        # (`Box(Dog(...))`): the make_unique / make_adapter wrap,
+        # verdict-keyed via the shared classifier.
+        _ArgRow("dyn_own_conformer", _r_dyn_own_conformer),
+        _ArgRow("record_rvalue_temp_ctor", _r_record_rvalue_temp_ctor),
+    )))
+
+
+_CTOR_NESTED_ARG_SINK = register_sink(_ArgSink(
+    family="record_ctor_nested",
+    note=None,
+    mutated_slots=True,
+    pre=_pre_ctor_nested_slot_family,
+    # A flush-less nested ctor position (`f(Holder(x))` inside an expression
+    # that is not a statement): every admitted cell renders TEMP-FREE, which
+    # is the whole rule the family expresses. It is not a prefix of the
+    # direct family's tuple -- the shared cells sit in a different order and
+    # the two decisive slot blocks have no direct-family counterpart.
+    rows=(
         # Temp-free bare render, so the nested position admits it too.
-        _witness("ctor.own_str_literal")
-        return True
-    if _none_value_opt_arg(arg, param_type, analyzer) is not None:
-        # `Dog(None)` nested in a call arg: the STORAGE-form
-        # `std::nullopt` is temp-free and position-independent, so the
-        # nested position admits it like the direct loop.
-        _witness("ctor.nested_none_value_opt")
-        return True
-    if _str_literal_value_opt_arg(arg, param_type):
+        _ArgRow("own_str_literal_bare", _r_own_str_literal_bare,
+                face="ctor.own_str_literal"),
+        # `Dog(None)` nested in a call arg: the STORAGE-form `std::nullopt`
+        # is temp-free and position-independent, so the nested position
+        # admits it like the direct family.
+        _ArgRow("none_value_opt", _r_none_value_opt,
+                face="ctor.nested_none_value_opt"),
         # ... and the str-literal sibling (`Dog("rex")` at `str | None`):
         # the bare literal binds the optional's converting ctor, equally
         # temp-free.
-        _witness("ctor.nested_none_value_opt")
-        return True
-    if _own_record_rvalue_arg(arg, param_type, declared, analyzer):
-        # Temp-free like the const-rvalue row below (the rvalue binds the
+        _ArgRow("str_literal_value_opt", _r_str_literal_value_opt,
+                face="ctor.nested_none_value_opt"),
+        # Temp-free like the const-rvalue cell below (the rvalue binds the
         # T&& slot inline), so the nested position admits it too.
-        return True
-    if (_own_move_arg(arg, param_type, declared, analyzer)
-            and _witness("ctor.own_arg")):
+        _ArgRow("own_record_rvalue", _r_own_record_rvalue),
         # The temp-free last-use move (`std::move(name)`) is
         # position-independent, so the nested position admits it too; the
         # flushable copy half stays DIRECT-only.
-        return True
-    if _own_move_source_slice(arg, param_type, lc, declared):
+        _ArgRow("own_move", _r_own_move, face="ctor.own_arg"),
         # A body-movable local at its last use: lowering's Own-slot arm
-        # picks the temp-free `std::move(name)` (`Producer(tx, 0)` nested
-        # in `spawn(...)`), so the nested position admits exactly the
+        # picks the temp-free `std::move(name)` (`Producer(tx, 0)` nested in
+        # `spawn(...)`), so the nested position admits exactly the
         # move-source slice of the copy+move row.
-        _witness("ctor.own_arg")
-        return True
-    if _dyn_own_conformer_arg(arg, param_type, declared,
-                              analyzer) is not None:
+        _ArgRow("own_move_source_slice", _r_own_move_source_slice,
+                face="ctor.own_arg"),
         # The make_unique / make_adapter conformer wraps are temp-free
         # in-place renders (`Box(Box(Dog(..)))` -- the inner Box's Dog arg),
         # so the nested position admits them like the rvalue rows above.
-        return True
-    if _value_record_rvalue_arg(arg, param_type, analyzer):
+        _ArgRow("dyn_own_conformer", _r_dyn_own_conformer),
         # A record rvalue into a BY-VALUE record slot renders bare
         # (`timezone(timedelta(...))` -- no ref param, no temp), so the
-        # nested position admits it like the direct loop.
-        return True
-    if (_record_rvalue_temp_slot(arg, param_type, analyzer) is not None
-            and not is_mutated):
-        if not isinstance(arg, TpyCall):
-            return False
-        arg_fi = arg.resolved_function_info
-        if arg_fi is not None and arg_fi.is_constructor:
-            if not _ctor_shape_ok(arg, analyzer):
-                return False
-        elif not _record_rvalue_call_shape(arg, analyzer):
-            return False
-        _witness("ctor.const_rvalue_arg")
-        return True
-    slot_type = unwrap_send_sync(slot)
-    if (isinstance(slot_type, NominalType) and is_string_type(slot_type)
-            and (mutation_unknown or is_mutated)):
-        return False
-    if not _str_pass_through_arg(arg, param_type, declared, analyzer):
-        return False
-    _witness("ctor.str_arg")
-    return True
+        # nested position admits it like the direct family.
+        _ArgRow("value_record_rvalue", _r_value_record_rvalue),
+        # DECISIVE: an unmutated record-rvalue temp slot is answered HERE.
+        # The ladder spelled it as an early `return`, so a source that is
+        # not one of the two ctor/call shapes is REFUSED rather than falling
+        # through to the str row below it.
+        _ArgRow("const_rvalue", _r_const_rvalue,
+                extra=_x_ctor_const_rvalue_slot, face="ctor.const_rvalue_arg",
+                decisive=True),
+        _ArgRow("str_pass_through_unmutated", _r_str_pass_through_unmutated,
+                extra=_x_ctor_str_source_allowed, face="ctor.str_arg"),
+    )))
+
+
+def _record_ctor_arg_supported(
+        arg: TpyExpr, param_type: TpyType, index: int, fi,
+        lc: '_LowerCtx', declared: dict[str, TpyType], use: _ExprUse) -> bool:
+    """Rows: `_CTOR_ARG_SINK` / `_CTOR_NESTED_ARG_SINK`.
+
+    A NESTED_ARG position that carries the enclosing statement's flush right
+    (`use.allow_temps`, threaded through call-shaped args, and set on the
+    RECORD_TEMP recursion) gates as a DIRECT one -- its temps flush at the
+    same statement. The restricted family serves only flush-less nested
+    slots.
+    """
+    # fi is None for a TypedDict ctor (no synthetic constructor fi; params
+    # come from the registry's init_params, which carry no mutation facts).
+    mutation_unknown = fi is not None and fi.mutated_params is None
+    mutated = (fi.mutated_params if fi is not None else None) or frozenset()
+    direct = (use.record_ctor is not _RecordCtorUse.NESTED_ARG
+              or use.allow_temps)
+    return arg_ok(
+        _CTOR_ARG_SINK if direct else _CTOR_NESTED_ARG_SINK,
+        arg, param_type, declared, lc.analyzer,
+        param_names=lc.prescan.param_names,
+        narrowed=frozenset(lc.narrow.narrowed),
+        # `temps_ok` tracks whether THIS ctor position flushes. DIRECT
+        # threads its own allow_temps; a RECORD_TEMP source ctor flushes at
+        # the enclosing statement too when it was reached via the
+        # flush-enabled recursion, so `use.allow_temps` is the single source
+        # of truth for both (and is False for the restricted family).
+        temps_ok=use.allow_temps,
+        index=index, is_mutated=index in mutated,
+        mutation_unknown=mutation_unknown,
+        inline_narrowed=lc.inline_narrowed,
+        movable_locals=lc.movable_locals,
+        pointers=lc.pointers,
+        func_name=getattr(lc.func, "name", None))
 
 
 def _require_method_call_arg(
@@ -4390,6 +4618,14 @@ def _async_factory_wrap_cpp(e: 'TpyName', target: 'TpyType | None',
     Own / non-value params move into the by-value frame-factory slot; value
     scalars pass through. None when the ref/slot is not that shape (a
     direct `await factory()` position never reaches the fn-ref value arm)."""
+    return _async_factory_wrap_cpp_facts(e, target, lc.analyzer)
+
+
+def _async_factory_wrap_cpp_facts(e: 'TpyName', target: 'TpyType | None',
+                                  analyzer) -> 'str | None':
+    """`_async_factory_wrap_cpp` over the analyzer alone -- the lowering
+    context was the only thing it needed one for, and the arg table carries
+    discrete facts rather than the context."""
     fi = e.function_ref_info
     if fi is None or not fi.is_async:
         return None
@@ -4401,11 +4637,11 @@ def _async_factory_wrap_cpp(e: 'TpyName', target: 'TpyType | None',
     ret = target.return_type
     if not (isinstance(ret, OwnType) and is_dyn_protocol(ret.wrapped)):
         return None
-    qual = lookup_imported(lc.analyzer.ctx.module_attributes, e.name,
+    qual = lookup_imported(analyzer.ctx.module_attributes, e.name,
                            SymbolKind.FUNCTION)
     factory = (qualified_cpp_name(*qual) if qual is not None
                else escape_cpp_name(e.name))
-    base_cpp = dynamic_base_name(ret.wrapped, lc.analyzer)
+    base_cpp = dynamic_base_name(ret.wrapped, analyzer)
     params = []
     forwards = []
     for i, ptype in enumerate(target.param_types):
@@ -12412,6 +12648,18 @@ def _own_opt_container_ptr_arg(a: TpyExpr, ptype: 'TpyType | None',
     MOVING the slot pointee --
     `std::move(p ? std::optional<V>(std::move(*p)) : std::nullopt)`.
     Returns the inner container type or None."""
+    return _own_opt_container_ptr_arg_facts(
+        a, ptype, declared, lc.pointers, lc.analyzer, lc.movable_locals,
+        getattr(lc.func, "name", None))
+
+
+def _own_opt_container_ptr_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', declared: dict[str, TpyType],
+        pointers: 'set[str] | frozenset[str]', analyzer,
+        movable_locals: 'set[str] | frozenset[str]',
+        func_name: 'str | None') -> 'TpyType | None':
+    """`_own_opt_container_ptr_arg` over the discrete facts -- see
+    `_is_move_source_facts` for why the split exists."""
     pt = (unwrap_readonly(unwrap_send_sync(ptype))
           if isinstance(ptype, TpyType) else None)
     if not isinstance(pt, OwnType):
@@ -12422,7 +12670,7 @@ def _own_opt_container_ptr_arg(a: TpyExpr, ptype: 'TpyType | None',
     inner = unwrap_readonly(ot.inner)
     if not (is_list(inner) or is_dict(inner) or is_set(inner)):
         return None
-    if not (isinstance(a, TpyName) and a.name in lc.pointers):
+    if not (isinstance(a, TpyName) and a.name in pointers):
         return None
     dt = declared.get(a.name)
     dtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
@@ -12434,7 +12682,7 @@ def _own_opt_container_ptr_arg(a: TpyExpr, ptype: 'TpyType | None',
     # routing; a still-live source hoists a temp instead (unmirrored).
     # Checked HERE so the gate and the render key one predicate -- the
     # split version admitted shapes the render then rejected.
-    if not _is_move_source(a, lc):
+    if not _is_move_source_facts(a, movable_locals, analyzer, func_name):
         return None
     return inner
 
@@ -15695,13 +15943,27 @@ def _is_move_source(value: TpyExpr, lc: _LowerCtx,
     F2b/F2e write/return case -- only an F2d REBIND_SLOT local is owned there); the
     ctor MIL passes `own_param_names` instead (M3b-move), since no locals exist yet at
     MIL time (the MIL runs before the body) and its movable sources are the Own params."""
-    names = lc.movable_locals if movable_names is None else movable_names
+    if movable_names is None:
+        return _is_move_source_facts(value, lc.movable_locals, lc.analyzer,
+                                     getattr(lc.func, "name", None))
+    inner = _peel_coerce(value)
+    # See the AST twin: the MIL's own param set has no counterpart to join.
+    return (isinstance(inner, TpyName)
+            and inner.name in movable_names
+            and id(inner) in lc.analyzer.ctx.all_last_uses)
+
+
+def _is_move_source_facts(value: TpyExpr,
+                          movable_locals: 'set[str] | frozenset[str]',
+                          analyzer, func_name: 'str | None') -> bool:
+    """`_is_move_source`'s DEFAULT (movable-locals) question over the discrete
+    facts rather than the lowering context, so the arg table can ask it: the
+    table carries facts, never the context. `_is_move_source` delegates here
+    so the two cannot answer differently."""
     inner = _peel_coerce(value)
     verdict = (isinstance(inner, TpyName)
-               and inner.name in names
-               and id(inner) in lc.analyzer.ctx.all_last_uses)
-    # See the AST twin: the MIL's own param set has no counterpart to join.
-    if movable_names is None and isinstance(inner, TpyName):
-        move_audit.record("thir", inner, verdict,
-                          func=getattr(lc.func, "name", None))
+               and inner.name in movable_locals
+               and id(inner) in analyzer.ctx.all_last_uses)
+    if isinstance(inner, TpyName):
+        move_audit.record("thir", inner, verdict, func=func_name)
     return verdict

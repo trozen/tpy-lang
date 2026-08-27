@@ -53,6 +53,8 @@ class _TestCompilerContext:
     _binding_facts_thir: dict[int, tuple] = field(default_factory=dict)
     _binding_ast_open: tuple | None = None
     _binding_journal: set[int] | None = None
+    _thir_arg_reached: dict[tuple[str, str], int] = field(
+        default_factory=dict)
 
 
 @pytest.fixture(autouse=True)

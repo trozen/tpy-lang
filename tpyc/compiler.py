@@ -704,6 +704,11 @@ class Compiler:
         # distinct-shape complement of the body-weighted routed count. Only ever
         # written under --thir-codegen.
         self._thir_shapes: dict[str, dict[str, int]] = {}
+        # Arg-table reach tally (thir/lower/arg_table.py): (family, cell) ->
+        # count of arguments that cell DECIDED. The stdlib gate asserts every
+        # registered family is reached; the cell keys are the coverage
+        # measurement over the table.
+        self._thir_arg_reached: dict[tuple[str, str], int] = {}
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
