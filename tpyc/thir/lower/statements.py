@@ -250,6 +250,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _generic_value_tuple_return,
     _own_opt_storage_binding,
     _comp_shadow_pointers,
     _borrow_tuple_param_elem_subscript,
@@ -358,6 +359,7 @@ from .predicates import (
     _param_is_const,
     _value_opt_scalar,
     _value_opt_tuple,
+    _value_opt_bytes,
     _value_opt_string_owned,
     _value_opt_str,
     _value_opt_owned_view,
@@ -371,9 +373,13 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
+    _coerce_disposition,
+    _str_name_form,
+    _bytes_name_form,
     _resolved_viewfam_value,
     _view_inner_value_opt,
     _value_opt_view,
+    _value_opt_view_ret_src,
     _is_range_call,
     _runtime_bigint,
     _narrow_key_type,
@@ -387,8 +393,10 @@ from .predicates import (
     _span_slot,
     _str_field_value_read,
     _wrap_view_owned_sink,
+    _owned_copy_sink,
     _str_self_append_rhs,
     _type_family_tag,
+    _type_param_value_slot,
     _peel_coerce,
     _subscript_container_recv_type,
     _record_has_delitem,
@@ -400,6 +408,7 @@ from .predicates import (
     _value_tuple_global,
     _decl_tuple_nested,
     _tuple_container_elem_read,
+    _tuple_literal_has_ref_elements,
     _value_tuple_nested,
     _var_decl_type,
 )
@@ -1186,7 +1195,8 @@ def _for_each_container_route(
         # `Own[list[str]]`) -- all rvalues (owning `auto __obj_N =` capture,
         # iterable_lvalue=False).
         dict_view = _dict_view_iterable_ok(
-            it, declared, analyzer, methods=("values", "keys", "items"))
+            it, declared, analyzer, methods=("values", "keys", "items"),
+            field_recv_ok=True)
         str_list_method = _str_list_method_iterable_ok(
             it, declared, analyzer)
         if dict_view or str_list_method:
@@ -2580,6 +2590,11 @@ def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
             or _resolved_bytes_value(vtype, analyzer) is not None
             or _is_string_owned(vtype)
             or _eligible_value_union(vtype) is not None
+            # A VALUE tuple predecls the same default-constructed slot
+            # (`std::tuple<std::string, int32_t> peer;`); its later assigns
+            # ride the value-tuple reassign rows. Pointer-repr tuples alias
+            # their sources and take the borrow-tuple hoist instead.
+            or _value_tuple(vtype, analyzer) is not None
             or _slice_object_type(vtype)
             # A VALUE-record hoist (`z = ZoneInfo(key)` inside a try):
             # the AST's plain-value arm predecls the default-constructed
@@ -5156,6 +5171,54 @@ def _owned_view_opt_whole_src(stmt: TpyVarDecl, vtype: 'TpyType | None',
     return True
 
 
+def _viewfam_name_fits_opt_slot(e: TpyExpr, slot: 'OptionalType',
+                                lc: _LowerCtx,
+                                declared: dict[str, TpyType],
+                                narrowed, pointers) -> bool:
+    """A str/bytes NAME whose bare read already has the slot's inner C++
+    shape, so it lands in a value-repr `Optional[view-family]` return
+    through the optional's converting ctor.
+
+    The form axis is what decides it, and it comes from the same
+    `_str_name_form` / `_bytes_name_form` rules the name READ arm uses: an
+    OWNED-inner slot (`std::optional<std::string>`) takes a STORAGE name
+    (an owned local, an `Own[str]` param) and a VIEW-inner slot
+    (`std::optional<std::string_view>`) takes a BORROW one. The crossed
+    pair is excluded in both directions -- a view into an owned inner does
+    not convert at all, and an owned local into a view inner would hand
+    back a dangling view.
+
+    An IDENTITY coerce over the name is seen through -- sema attaches
+    `string_to_str` to an owned local at a `str` slot and it renders as a
+    passthrough. A MATERIALIZING coerce is not: its render is the
+    view->owned wrap, which the bare name does not carry.
+
+    Narrowed occurrences and pointer locals are excluded: their reads
+    render a deref, not the bare name."""
+    analyzer = lc.analyzer
+    if (isinstance(e, TpyCoerce)
+            and _coerce_disposition(e) == "identity"):
+        e = e.expr
+    if not (isinstance(e, TpyName) and e.name in declared
+            and e.name not in narrowed and e.name not in pointers):
+        return False
+    t = analyzer.get_expr_type(e)
+    view_inner = _view_inner_value_opt(slot)
+    st = _resolved_str_value(t, analyzer)
+    if st is not None:
+        if _value_opt_str(slot, analyzer) is None:
+            return False
+        form = _str_name_form(e.name, st, lc.prescan.param_names,
+                              lc.prescan.owned_viewfam_params)
+    else:
+        bt = _resolved_bytes_value(t, analyzer)
+        if bt is None or _value_opt_bytes(slot, analyzer) is None:
+            return False
+        form = _bytes_name_form(e.name, bt, lc.prescan.param_names,
+                                lc.prescan.owned_viewfam_params)
+    return (form is Form.BORROW) == view_inner
+
+
 def _lower_scoped_stmts(body, lc: _LowerCtx,
                         declared: dict[str, TpyType], *,
                         branch_decls_ok: bool = False,
@@ -7105,9 +7168,9 @@ def _lower_overload_folded_if(
         try:
             cond = _lower_truthy(node.condition, lc, declared,
                                  temps_ok=(i == 0))
-        except ThirUnsupported:
-            note_detail("if.overload_live_cond")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
+        except ThirUnsupported as ex:
+            raise ThirUnsupported(stmt_reject_reason(
+                stmt, f"if.overload_live_cond:{ex.reason}")) from None
         body = _lower_stmts(node.then_body, lc, declared,
                             in_branch=True, loop_depth=loop_depth)
         branches.append((cond, body))
@@ -7714,7 +7777,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             cpp_type=lc.render_type(
                                 unwrap_readonly(vtype.inner)),
                             loc=loc)
-                    if not fn_top:
+                    # A branch-FIRST decl has nowhere to place a hoist line, so
+                    # only the flavor that needs none may lower in position: a
+                    # null pointer-local (`T* form = nullptr;`), whose reseats
+                    # are all lvalue lifts. An RVALUE reseat wants the rebind
+                    # slot this decl would have to pre-declare, and the F1
+                    # rvalue init wants its own `__slot_N` storage.
+                    if not fn_top and not (
+                            (stmt.init is None
+                             or isinstance(stmt.init, TpyNoneLiteral))
+                            and stmt.name not in lc.prescan.rvalue_reassigned):
                         note_detail("decl.branch_slot_type")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                     # Slot-hoist Optional pointer-local (None / rvalue init).
@@ -9569,9 +9641,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 try:
                     binit = _lower_borrow_tuple_literal(
                         stmt.init, slot_bt, lc, declared)
-                except ThirUnsupported:
-                    note_detail("decl.tuple_literal_shape")
-                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+                except ThirUnsupported as ex:
+                    raise ThirUnsupported(stmt_reject_reason(
+                        stmt,
+                        f"decl.tuple_literal_shape:{ex.reason}")) from None
                 declared[stmt.name] = slot_bt
                 _witness("btuple.decl")
                 return THIRVarDecl(
@@ -9590,10 +9663,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     try:
                         winit = _lower_tuple_literal(stmt.init, wide_t, lc,
                                                      declared)
-                    except ThirUnsupported:
-                        note_detail("decl.tuple_literal_shape")
-                        raise ThirUnsupported(
-                            stmt_reject_reason(stmt)) from None
+                    except ThirUnsupported as ex:
+                        raise ThirUnsupported(stmt_reject_reason(
+                            stmt,
+                            f"decl.tuple_literal_shape:{ex.reason}")) from None
                     cpp = "auto" if wide_t.has_ref_elements() else None
                     if (wide_t.has_pointer_repr_element()
                             # A WRAPPER-member tuple owns its members too
@@ -9621,9 +9694,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("decl.tuple_literal")
             try:
                 init = _lower_tuple_literal(stmt.init, tuple_t, lc, declared)
-            except ThirUnsupported:
-                note_detail("decl.tuple_literal_shape")
-                raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+            except ThirUnsupported as ex:
+                raise ThirUnsupported(stmt_reject_reason(
+                    stmt, f"decl.tuple_literal_shape:{ex.reason}")) from None
             if storage_record:
                 # The local OWNS its elements, so downstream subscript / name
                 # reads stay storage (`.field`, no `->`/pointer lift) -- register
@@ -9680,6 +9753,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # <std::string> cmd = acc;`) takes the same bare copy,
                     # gated to genuinely whole-optional sources.
                     or _value_opt_scalar(vtype, analyzer) is not None
+                    # ... and the value-TUPLE inner (`use_auth = auth` at
+                    # `tuple[str, str] | None`): the same bare
+                    # `std::optional<std::tuple<...>>` copy. Its reads route
+                    # only WHOLE (has_value test, same-optional pass), which
+                    # the name arms already gate.
+                    or (_value_opt_tuple(vtype, analyzer) is not None
+                        and _witness("decl.value_opt_tuple_slot"))
                     or _owned_view_opt_whole_src(stmt, vtype, lc)
                     or (_view_inner_opt_call_slot(stmt, vtype, lc)
                         and _witness("decl.view_inner_opt_call"))
@@ -9729,6 +9809,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # rows; the init and reads gate at their own arms.
                     or (_builtin_value_record(vtype, analyzer)
                         and _witness("decl.builtin_value_record_slot"))
+                    # An OPEN type-param slot (`T newitem = copy(heap[pos])`):
+                    # the plain spelled copy, its C++ shape deferred to
+                    # instantiation. `T` is a plain non-value type, so the
+                    # indirection rules apply in full: a reassigned / hoisted /
+                    # move-through name and a non-rvalue source each bind an
+                    # alias (`T* v = &__slot_N;`, `T& b = a;`) instead, and
+                    # those renders are their own rows.
+                    or (_type_param_value_slot(vtype)
+                        and stmt.name not in lc.prescan.reassigned
+                        and stmt.name not in lc.prescan.hoisted
+                        and stmt.name not in lc.prescan.move_through
+                        and stmt.init is not None
+                        and is_rvalue_source(analyzer, stmt.init)
+                        and _witness("decl.type_param_slot"))
                     or _protocol_auto_slot(vtype)
                     # A LAZY list-repeat slot (`x = [7] * n` never
                     # materialized): `::tpy::repeat_range<int32_t> x =
@@ -9823,7 +9917,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # `optional<string>`) takes the same bare whole-optional copy
                 # (`flat = rec.key;`), gated to genuinely whole-optional
                 # sources (`_owned_view_opt_whole_src`).
+                # ... and the value-TUPLE slot, whose whole-optional copy is
+                # the same bare one.
                 opt_slot = (_value_opt_scalar(vtype, analyzer) is not None
+                            or _value_opt_tuple(vtype, analyzer) is not None
                             or _owned_view_opt_whole_src(stmt, vtype, lc))
                 # On a reassignment the sink is the TARGET's existing slot:
                 # only an optional binding takes the whole-optional copy; a
@@ -10468,6 +10565,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = _lower_tuple_literal(stmt.value, eu, lc, declared)
                 _witness("setitem.nested_tuple_literal")
+            elif (isinstance(eu, TupleType)
+                    and _value_tuple(eu, analyzer) is not None):
+                # VALUE tuple value slot (`self._store[lk] = (key, value)` on
+                # `dict[str, tuple[str, str]]`): borrow and storage coincide,
+                # so the spelled brace-init stores directly with no lift and
+                # each element carries its own view->owned copy -- the same
+                # render the value-tuple FIELD write and decl slots spell.
+                # A ref-element literal picks the AST's borrow ladder instead
+                # and stays out, as do non-literal sources.
+                if not (isinstance(stmt.value, TpyTupleLiteral)
+                        and len(stmt.value.elements) == len(eu.element_types)
+                        and not _tuple_literal_has_ref_elements(stmt.value,
+                                                                eu)):
+                    note_detail("setitem.value_tuple_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                value = _lower_tuple_literal(stmt.value, eu, lc, declared)
+                _witness("setitem.value_tuple_literal")
             elif _eligible_ptr_union(eu, analyzer) is not None:
                 # Value-variant union element: a same-union borrow NAME lifts
                 # via `::tpy::to_value_variant<...>` (copy); a NARROWED member
@@ -10586,6 +10700,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # trivially destructible, so the move is not inert).
                     value = THIRMove(result_type=eu, value=value,
                                      form=Form.STORAGE, loc=loc)
+                elif (not _owned_copy_sink(value, elem_t, analyzer)
+                      and isinstance(stmt.value, TpyName)
+                      and _is_move_source(stmt.value, lc)):
+                    # `_maybe_move` at the element sink: a movable local's last
+                    # use is stolen, not copied. The owned-copy sink below is
+                    # the exception the AST carves out at this same position --
+                    # there the operand is a trivially-copyable VIEW, not the
+                    # binding the name reads, so moving it would both be inert
+                    # and name the wrong object. The verdict must not even be
+                    # ASKED there: the AST does not ask either, and a THIR-only
+                    # query leaves the move-verdict join nothing to compare.
+                    value = THIRMove(result_type=value.result_type, value=value,
+                                     form=value.form, loc=loc)
                 elem_str = _resolved_str_value(elem_t, analyzer)
                 if (value.form is Form.BORROW and elem_str is not None
                         and is_str_type(elem_str)):
@@ -11277,6 +11404,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             use=_ExprUse(result=_ExprResultUse.STORAGE,
                                          allow_temps=True))),
                     loc=loc)
+            elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                    and is_rvalue_source(analyzer, stmt.value)
+                    and stmt.value.resolved_function_info is not None
+                    and _storage_optional_return_wide(
+                        stmt.value.resolved_function_info.return_type,
+                        analyzer) == ret_opt):
+                # A call whose result IS the whole storage optional forwards
+                # bare (`return Pattern(p, f).search(s);`): the callee already
+                # produced the slot's own C++ type as a prvalue, so there is
+                # nothing to lift and no move to spell. The guard runs the
+                # callee's DECLARED return through the same fact that built
+                # this slot -- sema strips `Own` off a call's result type, so
+                # comparing result types would read a ptr-repr `Optional[W]`
+                # callee as matching an `Own[Optional[W]]` slot and forward a
+                # `W*` into a `std::optional<W>`.
+                _witness("ret.storage_opt_whole_rvalue")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        _lower_expr(
+                            stmt.value, lc, declared,
+                            use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                         allow_temps=True))),
+                    loc=loc)
             elif (isinstance(stmt.value, TpyName)
                     and stmt.value.name in lc.optional_locals
                     and _own_storage_opt_param(
@@ -11293,6 +11444,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else:
                 if not _is_borrow_ptr_local(
                         stmt.value, declared, pointers):
+                    note_detail("return.storage_opt_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = THIRFormConvert(result_type=ret_opt,
                                         value=_lower_expr(stmt.value, lc, declared),
@@ -11579,11 +11731,35 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     is not None):
                 # A SLICE source at a VIEW-inner return (`-> StrView | None`):
                 # the slice render IS a view, so it lands bare in the
-                # `std::optional<std::string_view>` slot. VIEW inner only --
-                # an OWNED inner (`-> str | None`) needs a view->owned copy
-                # the AST does not emit there (a filed wrong-code shape), so
-                # that pair must keep falling back.
+                # `std::optional<std::string_view>` slot. The arm keys on a
+                # BARE subscript because that is the only form reaching it:
+                # at an OWNED inner (`-> str | None`) sema wraps the slice in
+                # the view->owned coercion, so the render belongs to that
+                # coercion (`std::string(::tpy::str_slice(...))`), not here.
                 _witness("ret.value_opt_view_slice")
+                return THIRReturn(
+                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
+            if _value_opt_view_ret_src(stmt.value, ret_vopt_view, analyzer):
+                # A call / method-call / subscript RESULT at the value-repr
+                # optional slot: the whole optional passes through, and an
+                # inner value of the slot's own form is absorbed by the
+                # optional's converting ctor. Either way the render is the
+                # source's own, gated at its own arms.
+                _witness("ret.value_opt_view_result")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        _lower_expr(stmt.value, lc, declared,
+                                    use=_ExprUse(allow_temps=True),
+                                    allow_whole_optional=True)),
+                    loc=loc)
+            if _viewfam_name_fits_opt_slot(stmt.value, ret_vopt_view, lc,
+                                           declared, narrowed, pointers):
+                # A str/bytes NAME whose read already has the inner's C++
+                # shape: the optional's converting ctor absorbs it, so the
+                # name returns bare. C++ implicit-moves a by-value return
+                # of a named local, so no move is spelled here either.
+                _witness("ret.value_opt_view_name")
                 return THIRReturn(
                     value=_lower_expr(stmt.value, lc, declared), loc=loc)
             if not isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
@@ -11928,6 +12104,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and _witness("ret.container_literal"))
             elif isinstance(source, TpyCall):
                 container_ok = bool(_witness("ret.container_call"))
+            elif (isinstance(source, TpyMethodCall)
+                    and is_rvalue_source(analyzer, source)):
+                # The method-call twin of the free-call leg above
+                # (`return path.split('/')`). Rvalue only: a
+                # borrow-returning method aliases its receiver, and
+                # filling a by-value container slot from that alias is a
+                # copy the bare passthrough does not spell.
+                container_ok = bool(_witness("ret.container_method_call"))
             elif isinstance(source, TpyListRepeat):
                 # `return [label] * 3` -- the repeat arm renders the
                 # from_range build target-typed by the storage slot (the
@@ -12048,9 +12232,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if isinstance(source, TpyTupleLiteral):
                 try:
                     value = _lower_tuple_literal(source, ret_vt, lc, declared)
-                except ThirUnsupported:
-                    note_detail("return.tuple_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt)) from None
+                except ThirUnsupported as ex:
+                    raise ThirUnsupported(stmt_reject_reason(
+                        stmt, f"return.tuple_source:{ex.reason}")) from None
                 _witness("ret.tuple_literal")
                 return THIRReturn(value=value, loc=loc)
         ret_wrt = lc.prescan.ret_wrapper_ref_tuple
@@ -12336,11 +12520,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _ow_ctor = (_record_rvalue_source_shape(ow_src, analyzer)
                         and _f1_record(analyzer.get_expr_type(ow_src),
                                        analyzer))
-            if not (_ow_name or _ow_ctor
+            # A call whose result IS the slot's wrapper (`return loads(s)`):
+            # a prvalue of the return type itself, so it forwards bare with
+            # no converting-ctor step. The rvalue test does NOT screen out a
+            # borrow-returning wrapper-union callee -- it answers "not a C++
+            # ref" for every union return, including a bare non-generic
+            # wrapper that really does hand back a reference. The bare
+            # forward stays correct only because the AST emits the same
+            # implicit copy there; if that test learns to tell the two
+            # apart, this arm needs its own screen rather than inheriting
+            # one.
+            _ow_call = (isinstance(ow_src, (TpyCall, TpyMethodCall))
+                        and is_rvalue_source(analyzer, ow_src)
+                        and _wrapper_union_like(_ow_u, analyzer) == ret_ow)
+            if not (_ow_name or _ow_ctor or _ow_call
                     or _resolved_scalar(_ow_t, analyzer)):
                 note_detail("return.own_wrapper_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.own_wrapper_member")
+            _witness("ret.own_wrapper_call" if _ow_call
+                     else "ret.own_wrapper_member")
         ret_wb = lc.prescan.ret_wrapper_borrow
         if stmt.value is not None and ret_wb is not None:
             # A wrapper BORROW return (`Expr&` / `const Expr&`): NAME
@@ -12356,16 +12554,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         if stmt.value is not None and ret_sgt is not None:
             # The SYNC generic-tuple return: a tuple LITERAL renders the
             # spelled brace-init with per-element `to_val_or_ptr` wraps
-            # (the resumable arm's exact builder); every other source
-            # stays a named reject (the untargeted renders differ).
-            if not isinstance(stmt.value, TpyTupleLiteral):
+            # (the resumable arm's exact builder).
+            if isinstance(stmt.value, TpyTupleLiteral):
+                _witness("ret.generic_tuple_literal")
+                return THIRReturn(
+                    value=_lower_generic_tuple_literal(stmt.value, ret_sgt, lc,
+                                                       declared),
+                    loc=loc)
+            # A CALL rvalue whose own return slot is the SAME generic tuple
+            # already carries that spelling, so no element wrap applies and
+            # it returns bare through the position-blind tail. Every other
+            # source stays a named reject (the untargeted renders differ).
+            if not (isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                    and _generic_value_tuple_return(
+                        analyzer.get_expr_type(stmt.value), analyzer)
+                    == ret_sgt):
                 note_detail("return.generic_tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.generic_tuple_literal")
-            return THIRReturn(
-                value=_lower_generic_tuple_literal(stmt.value, ret_sgt, lc,
-                                                   declared),
-                loc=loc)
+            _witness("ret.generic_tuple_call")
         if stmt.value is not None and lc.prescan.ret_genrec is not None:
             # An `Own[Tree[Int32]]` return: the wrapper struct returns by
             # value. A container literal takes the ru-instance spelled
@@ -12791,14 +12997,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             try:
                 condition = _lower_truthy(stmt.condition, lc, declared,
                                           temps_ok=True)
-            except ThirUnsupported:
+            except ThirUnsupported as ex:
                 c = stmt.condition
                 if isinstance(c, TpyBinOp):
                     lf = _type_family_tag(analyzer.get_expr_type(c.left),
                                           analyzer)
                     rf = _type_family_tag(analyzer.get_expr_type(c.right),
                                           analyzer)
-                    note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}")
+                    # The operand families classify the condition's shape;
+                    # the caught reason names what actually blocked. Without
+                    # it the tag buckets unrelated operand shapes together
+                    # and reads as one cluster. A reason the operand already
+                    # recorded itself wins over both (set-if-empty).
+                    note_detail(f"if.cond_binop.{c.op}.{lf}_{rf}:{ex.reason}")
                 else:
                     _kind_detail("cond.", c)
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -13043,12 +13254,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             try:
                 condition = _lower_truthy(stmt.condition, lc, declared,
                                           temps_ok=True)
-            except ThirUnsupported:
-                raise ThirUnsupported("stmt.while") from None
+            except ThirUnsupported as ex:
+                # The landmark names the loop head; the condition's own reason
+                # rides it, or the tag names this catcher instead of the
+                # construct that blocked.
+                raise ThirUnsupported(f"stmt.while:{ex.reason}") from None
             if _cond_mixed_walrus_temps(condition):
                 # The AST keeps the legacy single-eval flush for the mixed
                 # shape (BUGS residual) -- fall back rather than restructure.
-                raise ThirUnsupported("stmt.while")
+                raise ThirUnsupported("stmt.while:while.mixed_walrus_temps")
             _literal_fact_fence(stmt.then_type_facts, stmt,
                                 "while.literal_fact")
             body = _lower_scoped_stmts(

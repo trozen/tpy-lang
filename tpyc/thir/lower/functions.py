@@ -2456,8 +2456,10 @@ def _lower_ctor_mil_init(
             _witness("mil.value_tuple_literal")
             try:
                 value = _lower_tuple_literal(source, vt, lc, declared)
-            except ThirUnsupported:
-                raise ThirUnsupported(_mil_reject_detail(stmt, analyzer)) from None
+            except ThirUnsupported as ex:
+                raise ThirUnsupported(
+                    f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}"
+                ) from None
             return THIRMilInit(field_cpp=field_cpp, value=value)
         _witness("mil.value_tuple_name")
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
@@ -2468,8 +2470,9 @@ def _lower_ctor_mil_init(
         _witness("mil.nested_tuple_literal")
         try:
             value = _lower_tuple_literal(source, nt, lc, declared)
-        except ThirUnsupported:
-            raise ThirUnsupported(_mil_reject_detail(stmt, analyzer)) from None
+        except ThirUnsupported as ex:
+            raise ThirUnsupported(
+                f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}") from None
         return THIRMilInit(field_cpp=field_cpp, value=value)
     if isinstance(ftype, OptionalType):
         oc_inner = _optional_container_storage_inner(ftype)

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
-    _lower_ctx_witnessed, _fn, _compile, _entry,
+    _lower_ctx_witnessed, _fn, _compile, _entry, _assert_rejects_at,
     _assert_routes_byte_identical,
 )
 
@@ -88,8 +88,8 @@ class TestOpenSlotLambdaAndElem:
         assert cpp_a == cpp_t
         # Exactly ONE body falls back -- keys, rejected at the call whose
         # lambda arg the gate refuses; pick's own body stays clean.
-        assert dict(c._thir_fallback) == {"body:expr.call": 1}, \
-            c._thir_fallback
+        _assert_rejects_at(dict(c._thir_fallback), "body:expr.call",
+                           "call.generic_arg_shape", count=1)
 
 
 class TestOpenSlotElemBoundary:
@@ -111,7 +111,8 @@ class TestOpenSlotElemBoundary:
             "    print(use(Cell(4)))\n"
             "main()\n")
         w, fallback = _assert_identical(src)
-        assert "body:expr.call" in fallback
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.arg_shape.generic")
 
 
 class TestNestedTupleNameAtTSlot:

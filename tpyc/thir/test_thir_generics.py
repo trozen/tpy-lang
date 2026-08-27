@@ -12,7 +12,7 @@ from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRReturn
 from .testutil import (
     _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed, _thir_ctx,
-    _assert_byte_identical,
+    _assert_byte_identical, _assert_rejects_at,
 )
 
 
@@ -1762,7 +1762,8 @@ class TestOpenTparamMethodArg:
             "    print(o._in.v)\n"
             "main()\n")
         _ctx, fallback = _thir_ctx(src)
-        assert fallback == {"body:expr.method_call": 1}, fallback
+        _assert_rejects_at(fallback, "body:expr.method_call",
+                           "method.arg_shape")
         _assert_byte_identical(src)
 
     def test_own_tparam_source_at_bare_slot_still_defers(self):
@@ -1792,5 +1793,6 @@ class TestOpenTparamMethodArg:
             "    print(o._in.v)\n"
             "main()\n")
         _ctx, fallback = _thir_ctx(src)
-        assert fallback == {"body:expr.method_call": 1}, fallback
+        _assert_rejects_at(fallback, "body:expr.method_call",
+                           "method.arg_shape")
         _assert_byte_identical(src)

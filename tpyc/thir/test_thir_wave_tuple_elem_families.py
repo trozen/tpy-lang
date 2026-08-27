@@ -26,8 +26,8 @@ element beside a wrapper (record / str), which keeps rejecting.
 
 from __future__ import annotations
 
-from .testutil import (_assert_routes_byte_identical, _lower_ctx_witnessed,
-                       _thir_ctx)
+from .testutil import (_assert_rejects_at, _assert_routes_byte_identical,
+                       _lower_ctx_witnessed, _thir_ctx)
 
 _PETS = (
     "from tpy import Int32, nocopy\n"
@@ -301,8 +301,8 @@ class TestWrapperRefElementTuple:
             "main()\n"
         )
         _ctx, fell = _thir_ctx(record_src)
-        assert fell == {"body:stmt.return:return.slot_type": 1,
-                        "body:expr.call": 1}, fell
+        _assert_rejects_at(fell, "body:stmt.return", "return.slot_type")
+        _assert_rejects_at(fell, "body:expr.call", "call.ret_type.tuple")
         str_src = pre + (
             "def pair(t: Tree[Int32], s: str) -> tuple[Tree[Int32], str]:\n"
             "    return (t, s)\n"

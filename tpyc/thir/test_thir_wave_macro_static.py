@@ -92,13 +92,15 @@ class TestMacroStaticOverloadLookup:
 
     def test_same_named_free_overload_set_does_not_gate_the_static(
             self, tmp_path):
-        from .testutil import _thir_ctx
+        from .testutil import _rejects_at, _thir_ctx
         ctx, fb = _thir_ctx(COLLIDE_MAIN,
                             extra_lib_dirs=_with_macro(tmp_path))
         names = {f.name for f in ctx.thir_functions.values()}
         assert "field_count" in names
         # Only the FREE overload impl stays back, and for its own reason.
-        assert not any(k.endswith("sig.overload_set.arity") for k in fb), fb
+        # Matched on the landmark: the arity gate may record a blocking
+        # shape after it, which a whole-key test would stop seeing.
+        assert not _rejects_at(fb, "body:sig.overload_set.arity"), fb
 
 
 class TestFreeCallableWithFlagStillRejects:

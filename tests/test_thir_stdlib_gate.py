@@ -88,21 +88,25 @@ MAX_MACRO_MODULES = 20
 
 # The fallback ratchet: stdlib bodies THIR cannot lower. EXCEEDING this fails;
 # beating it passes, so routing progress never needs a config edit (lowering the
-# number is a deliberate, reviewed one). Measured 2026-08-25.
+# number is a deliberate, reviewed one). Measured 2026-08-27.
 #
-# 195, not the 171 the standalone sweep reports: that script merges its per-entry
+# 60, not the 52 the standalone sweep reports: that script merges its per-entry
 # results with `merge_module`, which keys on the BARE body name, so every
 # same-named body in a module (overloads, one method name across several records)
 # collapses to its worst sighting. Deleting the AST body emitter needs each BODY
 # routed, not each distinct name, so this counts them. Cross-check: collapsing
-# this sweep the same way reproduces 171 / 828 routed exactly.
-MAX_FALLBACK_BODIES = 195
+# this sweep the same way reproduces the script's number exactly.
+MAX_FALLBACK_BODIES = 60
 # The ratchet's blind spot: a sweep that stops classifying reports FEWER
 # fallbacks and so reads as progress. Assert on the work done, not just on the
-# number -- same guard, same reason, as the script's MIN_MODULES_MEASURED. Well
-# below the measured 2843 bodies / 1050 routed over 88 body-bearing modules.
+# number -- same guard, same reason, as the script's MIN_MODULES_MEASURED.
+# Measured: 2843 bodies, 1185 routed over 88 body-bearing modules.
+#
+# The routed floor is a RATCHET at the measured value, not slack: left loose it
+# drifts behind, and a floor hundreds of bodies below the truth cannot catch the
+# regression it exists for. Re-arm it with the fallback ceiling, not after.
 MIN_BODIES_CLASSIFIED = 2400
-MIN_ROUTED_BODIES = 900
+MIN_ROUTED_BODIES = 1185
 MIN_CLASSIFIED_MODULES = 70
 
 # Arg-table reach floor: the registry is the expected set, so this is only a

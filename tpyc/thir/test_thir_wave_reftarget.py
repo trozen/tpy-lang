@@ -174,12 +174,39 @@ class TestFieldReceiverItemsUnpack:
         "main()\n"
     )
 
-    def test_single_var_field_view_head_stays_ast(self):
-        # BOUNDARY: the SINGLE-VAR for head keeps rejecting a field
-        # receiver -- its storage-tuple loop-var registration is
-        # name-receiver-keyed, so the flag stays off there. Identity is the
-        # claim: the body falls back.
-        from .testutil import _thir_ctx
-        _ctx, fell = _thir_ctx(self._SINGLE_SRC)
-        assert fell == {"body:stmt.for_each:iter.method_call_shape": 1}, fell
-        _assert_byte_identical(self._SINGLE_SRC)
+    def test_single_var_field_view_head_routes(self):
+        # The SINGLE-VAR for head takes the same field receiver: the
+        # loop-var storage registration keys on the ITERABLE TYPE, not on
+        # the receiver's node kind, so a field view registers exactly as a
+        # name view does.
+        out = "".join(_assert_routes_byte_identical(self._SINGLE_SRC))
+        assert "::tpy::dict_values(this->meta)" in out
+
+    _CHAIN_SRC = (
+        "from tpy import Int32\n"
+        "class Inner:\n"
+        "    meta: dict[str, Int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.meta = {}\n"
+        "class Bag3:\n"
+        "    inner: Inner\n"
+        "    def __init__(self) -> None:\n"
+        "        self.inner = Inner()\n"
+        "    def total(self) -> Int32:\n"
+        "        n = 0\n"
+        "        for v in self.inner.meta.values():\n"
+        "            n += v\n"
+        "        return n\n"
+        "def main() -> None:\n"
+        "    print(Bag3().total())\n"
+        "main()\n"
+    )
+
+    def test_two_level_field_chain_receiver_stays_ast(self):
+        # BOUNDARY: the view row admits a ONE-level field read; a chained
+        # receiver is a different render family and keeps rejecting.
+        from .testutil import _assert_rejects_at, _thir_ctx
+        _ctx, fell = _thir_ctx(self._CHAIN_SRC)
+        _assert_rejects_at(fell, "body:stmt.for_each",
+                           shape="iter.method_call_shape")
+        _assert_byte_identical(self._CHAIN_SRC)

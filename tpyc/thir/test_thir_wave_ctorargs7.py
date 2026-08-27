@@ -5,8 +5,10 @@ and the tuple-field print form."""
 
 from __future__ import annotations
 
+from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
 )
 
 _ITEM = (
@@ -244,6 +246,72 @@ class TestValueOptPassCtorArg:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert w.get("ctor.value_opt_pass_arg", 0) >= 1
+        _assert_byte_identical(src)
+
+
+_ZONE = (
+    "from tpy import Int32, Own\n"
+    "class Zone:\n"
+    "    off: Int32\n"
+    "    name: str | None\n"
+    "    def __init__(self, off: Int32, name: str | None = None) -> None:\n"
+    "        self.off = off\n"
+    "        self.name = name\n"
+)
+
+
+class TestValueOptMemberCtorArg:
+    # The datetime `timezone(off, tz_intern.name_at(id))` shape: a
+    # member-typed source at a value-repr Optional ctor slot. Both ctor
+    # families reach the marker ladder's row now -- the optional's
+    # converting ctor absorbs the bare member render, temp-free, which is
+    # also what makes it admissible at the NESTED position.
+    # One shape per case: a fixture carrying BOTH sources passes whole while
+    # admission narrows to either one of them, since routing is asserted over
+    # the module rather than per statement.
+    def test_member_call_rvalue_source_routes(self):
+        src = _ZONE + (
+            "def label(i: Int32) -> str:\n"
+            "    return \"UTC\"\n"
+            "def show(z: Own[Zone]) -> Int32:\n"
+            "    return z.off\n"
+            "def main() -> None:\n"
+            "    print(show(Zone(1, label(1))))\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_member_name_source_routes(self):
+        src = _ZONE + (
+            "def mk(off: Int32, zname: str) -> Own[Zone]:\n"
+            "    return Zone(off, zname)\n"
+            "def main() -> None:\n"
+            "    print(mk(2, \"CET\").off)\n"
+            "main()\n")
+        _assert_routes_byte_identical(src)
+
+    def test_data_field_source_stays_ast(self):
+        # A data FIELD read at the same slot keeps rejecting: only the
+        # type-level enum-member read has a fixed spelling, while a data
+        # field could be a narrowed optional whose AST render passes the
+        # WHOLE optional.
+        src = _ZONE + (
+            "class Cfg:\n"
+            "    label: str\n"
+            "    def __init__(self, label: Own[str]) -> None:\n"
+            "        self.label = label\n"
+            "def mk(off: Int32, c: Cfg) -> Own[Zone]:\n"
+            "    return Zone(off, c.label)\n"
+            "def main() -> None:\n"
+            "    print(mk(2, Cfg(\"CET\")).off)\n"
+            "main()\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
+                           "call.ctor_arg.optional")
         _assert_byte_identical(src)
 
 

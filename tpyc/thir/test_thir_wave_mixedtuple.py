@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_rejects_at,
     _assert_routes_byte_identical,
 )
 
@@ -151,5 +152,6 @@ class TestMixedOwnTupleFrameSlot:
                + "        print(v)\n"
                + "main()\n")
         _ctx, fallback = _thir_ctx(src)
-        assert fallback == {"resumable:expr.call": 1}, fallback
+        _assert_rejects_at(fallback, "resumable:expr.call",
+                           "call.arg_shape.tuple")
         _assert_byte_identical(src)

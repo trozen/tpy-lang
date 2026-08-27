@@ -146,19 +146,19 @@ class TestChainedBytesElemRead:
         assert ("::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)"
                 in cpp[1])
 
-    def test_outer_slice_index_stays_out(self):
-        # The chained face admits scalar BYTE reads only: a SLICE of the
-        # bytes element is a view result, not an eligible scalar -- the
-        # body falls back whole.
+    def test_outer_slice_index_takes_the_slice_arm(self):
+        # The chained face admits scalar BYTE reads only, so a SLICE of the
+        # bytes element is not its shape -- it is the slice arm's, over the
+        # same element read as receiver.
         src = ("def peek(app: list[bytes]) -> None:\n"
                "    print(len(app[0][1:]))\n"
                "def main() -> None:\n"
                "    xs: list[bytes] = [b\"hi\"]\n"
                "    peek(xs)\n"
                "main()\n")
-        thir, _ = _lower_ctx_witnessed(src)
-        assert _fn(thir, "peek") is None
-        _assert_byte_identical(src)
+        cpp = _assert_routes_byte_identical(src)[1]
+        assert ("::tpy::bytes_slice(::tpy::__getitem__(app, 0), "
+                "::tpy::BasicSlice{1, std::nullopt})") in cpp
 
     def test_two_level_nested_receiver_stays_out(self):
         # One nested step only: `m[0][0][0]` (a bytes element two container

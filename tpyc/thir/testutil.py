@@ -60,6 +60,59 @@ def _assert_no_fallback(compiler, source: str) -> None:
         f"source:\n{source}")
 
 
+def _rejects_at(reasons, landmark: str) -> bool:
+    """Whether any fallback reason rejects at `landmark`.
+
+    A reason may carry the blocking shape as a `:`-suffix, so testing a
+    landmark by exact key or exact equality goes VACUOUS the moment its gate
+    starts recording a detail: the bare string no longer appears in any form,
+    an absence assertion can never fail again, and the pin keeps passing while
+    testing nothing. Match on the landmark and let the suffix vary.
+
+    Takes either full keys (`body:stmt.assert`) or bare reasons (`expr.call`)
+    -- pass the landmark in whichever form the caller's helper returns."""
+    return any(r == landmark or r.startswith(landmark + ":") for r in reasons)
+
+
+def _assert_rejects_at(fallback, landmark: str, shape: str | None = None,
+                       count: int | None = None) -> None:
+    """Assert a boundary pin's body stayed on the AST path, at `landmark` and
+    -- when `shape` is given -- for exactly that blocking shape.
+
+    Pass the shape wherever the pin claims a NAMED reject. Landmark alone is
+    satisfied when the gate under test happily admitted and something
+    unrelated further down rejected instead, so a pin without it survives the
+    exact regression it exists to catch, and cannot distinguish "stays AST for
+    the reason claimed" from "stays AST at all". Omit it only where the claim
+    really is just "this lands on the fallback boundary rather than escaping".
+
+    Spelling the whole tally instead (`== {key: n}`) makes the pin fail
+    whenever any unrelated body in the fixture changes status, and the cheap
+    repair is to re-record whatever the run printed -- which is how a pin
+    stops asserting what it was written for. Claim only the landmark under
+    test.
+
+    `fallback` is a tally, a bare collection of reasons, or one reason;
+    `count` claims the number of rejecting bodies, and is worth spelling only
+    where multiplicity is itself the point."""
+    reasons = [fallback] if isinstance(fallback, str) else list(fallback)
+    matched = [r for r in reasons if _rejects_at([r], landmark)]
+    assert matched, (
+        f"nothing rejects at {landmark!r} -- the shape either routed or moved "
+        f"its reject elsewhere: {fallback!r}")
+    if shape is not None:
+        want = f"{landmark}:{shape}"
+        assert set(matched) == {want}, (
+            f"the reject at {landmark!r} is not {shape!r}, so the pin's "
+            f"named boundary is not what held: {fallback!r}")
+    if count is not None:
+        got = (sum(fallback[r] for r in matched)
+               if isinstance(fallback, dict) else len(matched))
+        assert got == count, (
+            f"expected {count} body/bodies rejecting at {landmark!r}, "
+            f"got {got}: {fallback!r}")
+
+
 def _lower_ctx_witnessed(source: str, extra_lib_dirs=None,
                          default_int: str = "Int32"):
     """_lower_ctx plus the per-face witness counts the run recorded

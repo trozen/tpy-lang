@@ -5,9 +5,13 @@ callable-field calls -- and the boundaries that must keep falling back."""
 
 from __future__ import annotations
 
+from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _assert_byte_identical,
+    _assert_rejects_at,
     _assert_routes_byte_identical,
+    _compile,
+    _entry,
     _fn,
     _lower_ctx,
     _lower_ctx_witnessed,
@@ -197,6 +201,76 @@ class TestNativeProtocolValueArg:
             "    print(h1 == h1, h2 == h2)\n"
         )
         assert _fn(_lower_ctx(src), "main") is not None
+        _assert_byte_identical(src)
+
+
+_OPEN_CELL = (
+    "from tpy import UInt64, Hashable, readonly\n"
+    "class Cell[T: Hashable]:\n"
+    "    v: T\n"
+    "    def __init__(self, v: T) -> None:\n"
+    "        self.v = v\n"
+    "    @readonly\n"
+    "    def get(self) -> T:\n"
+    "        return self.v\n"
+)
+
+
+class TestNativeProtocolOpenCallArg:
+    def test_open_t_method_rvalue_routes(self):
+        # The Box/Rc/Arc `__hash__` shape: the protocol slot monomorphizes
+        # to T, so the accessor call binds it inline.
+        src = _OPEN_CELL + (
+            "    def __hash__[T: Hashable](self) -> UInt64:\n"
+            "        return hash(self.get())\n"
+            "def main() -> None:\n"
+            "    c = Cell(5)\n"
+            "    print(hash(c))\n"
+            "main()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces["arg.native_protocol_open_call"] >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_open_t_free_call_rvalue_routes(self):
+        # A FREE call's open-T result at the same slot: the row is blind to
+        # the callee kind, since T carries the render either way.
+        src = (
+            "from tpy import UInt64, Hashable, Own, copy\n"
+            "def ident[T: Hashable](v: T) -> Own[T]:\n"
+            "    return copy(v)\n"
+            "def h[T: Hashable](v: T) -> UInt64:\n"
+            "    return hash(ident(v))\n"
+            "def main() -> None:\n"
+            "    print(h(7))\n"
+            "main()\n"
+        )
+        _assert_routes_byte_identical(src)
+
+    def test_union_returning_call_stays_ast(self):
+        # The same call shape at the same native protocol slot with a
+        # UNION result: only the open-T result is admitted, not calls in
+        # general -- the union arg keeps its own lift rung.
+        src = (
+            "from tpy import Int32\n"
+            "def pick(f: bool) -> Int32 | str:\n"
+            "    if f:\n"
+            "        return 1\n"
+            "    return \"a\"\n"
+            "def g(f: bool) -> None:\n"
+            "    print(repr(pick(f)))\n"
+            "def main() -> None:\n"
+            "    g(True)\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback),
+                           "body:stmt.expr_stmt", "call.native_arg.union")
         _assert_byte_identical(src)
 
 

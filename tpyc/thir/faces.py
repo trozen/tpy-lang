@@ -122,6 +122,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # storage via ptr_to_optional_move
     "arg.native_protocol_value",    # scalar/Char/str value at a native
                                     # protocol slot -> bare render (__hash__)
+    "arg.native_protocol_open_call",  # open-T CALL rvalue at the same slot
+                                    # -> bare (hash(self.get()) in a [T] body)
     "arg.native_union_name",        # union-typed name at a native protocol
                                     # slot -> bare (repr(a) over a variant)
     "arg.optview_identity_coerce",  # Optional view<->str identity coerce over
@@ -393,6 +395,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # -> the ru spelled render
     "ret.own_wrapper_member",       # scalar literal / member-container name
                                     # at Own[wrapper-union] -> bare
+    "ret.own_wrapper_call",         # `return loads(s)` -- a call already
+                                    # producing the slot's wrapper, bare
     "ret.wrapper_borrow",           # wrapper borrow return (`Expr&`): bare
                                     # param name / pointer deref source
     "call.wrapper_borrow_ret",      # wrapper-borrow-returning call composes
@@ -534,6 +538,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # over a bare `this->buf` THIRFieldAccess receiver, same emit as a bare-name
     # container receiver).
     "method.recv.container_field",
+    # Bytearray-field method receiver (`self.buffer.append(b)` -- the bytearray
+    # family over the bare member read, same emit as a bare-name receiver).
+    "method.recv.bytearray_field",
     # Container-element-record subscript method receiver (`xs[i].m()` -> the
     # user-record arm over a `::tpy::__getitem__(xs, i)` borrow lvalue, `.`
     # access -- never `->`, mirroring the field-access-off-subscript receiver).
@@ -546,6 +553,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # a storage tuple local, `.` -- the arrow keyed on
     # `_subscript_yields_borrow_ptr`, same as a field read over the element).
     "method.recv.tuple_record_elem",
+    # Tuple-element STR subscript receiver (`kv[0].lower()`): std::get<N>
+    # feeds the view family's receiver slot positionally.
+    "method.recv.tuple_str_elem",
     # Method-call method receiver (`a.b().c()` -> the user-record arm over an
     # inner-call receiver whose result is a plain non-pointer record, `.`
     # access; the inner call renders via the shared method lowering).
@@ -693,6 +703,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # non-move tuple_to_storage
     "setitem.nested_tuple_literal", # nested-storage tuple value slot: the
                                     # bare spelled literal, lifts inside
+    "setitem.value_tuple_literal",  # VALUE tuple value slot: the spelled
+                                    # brace-init stores directly, each
+                                    # element carrying its own view->owned
     "setitem.btuple_literal",       # ... a tuple LITERAL value: the borrow
                                     # tuple with plain lifts, same non-move
     "setitem.btuple_elem_pass",     # ... a same-tuple element read passes
@@ -721,12 +734,20 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (classifier row; shared bare STR emit)
     "field_write.str_ctor",         # `self.s = str()` -- the zero-arg str
                                     # ctor call (classifier row)
+    "field_write.str_call",         # str field <- a str-typed call rvalue
+                                    # (classifier row; shared bare STR emit)
     "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
                                     # `bytes | None`, narrowed here
     "field_write.bytes_slice",      # `self.b = x[1:3]` -- a bytes SLICE value
                                     # (classifier row; shared bytes_copy emit)
+    "field_write.bytes_binop",      # `self.b = self.b + c` -- the owned
+                                    # concat rvalue (classifier row)
+    "field_write.bytes_call",       # `self.b = bytes(...)` -- a bytes-typed
+                                    # call rvalue (classifier row)
     "field_write.opt_lift_tparam",  # pointer-repr `Optional[T]` field (T a
                                     # type param) <- borrow `T*` local
+    "field_write.default_ctor",     # `self.f = T()` at a T field -- the
+                                    # zero-arg construction prvalue
     "field_write.str",
     # Owned bytes FIELD write from a name/literal: a view source copies via
     # `::tpy::bytes_copy(...)`; an owned source lands bare.
@@ -1199,6 +1220,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `this->f` (std::optional<T>& ref return)
     "ret.storage_opt_rvalue",       # `return Coord(0, 0)` -> bare ctor into a
                                     # value-storage / Own Optional slot
+    "ret.storage_opt_whole_rvalue",  # `return f(x)` where f already returns
+                                    # the slot's own storage optional -- bare
     "ret.storage_opt_own_move",     # `return x` -- an Own[P|None] param
                                     # (std::optional<P>&&) moves out whole
     "decl.opt_own_param_lift",      # `y = x` off an Own[P|None] param: pure
@@ -1222,6 +1245,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.container_borrow",         # borrow-slot name/field returns bare
     "ret.container_literal",
     "ret.container_call",           # `return make_list(n);` -- bare call source
+    "ret.container_method_call",    # `return path.split('/');` -- the rvalue
+                                    # method-call twin of the bare call source
     "ret.container_repeat",         # `return [label] * 3;` -- the repeat
                                     # build target-typed by the slot
     "binop.contains_view_key",      # membership over a VIEW-keyed set/dict:
@@ -1283,6 +1308,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.value_opt_view_literal",
     "ret.value_opt_view_slice",  # a slice source at a VIEW-inner value-opt
                                     # return: the view render lands bare
+    "ret.value_opt_view_name",   # a str/bytes NAME whose form already
+                                    # matches the slot's inner -> bare
 
     # Container-literal element families (lowering; the widened
     # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch
@@ -1603,21 +1630,28 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.optview_whole_arg",     # whole Optional[str/bytes] name passed
                                     # bare at a user-record method's matching
                                     # value-opt view slot (target-less loop)
-    "arg.container_field_marker",   # container field read bound bare at a
-                                    # marker callee's container ref slot
+    "arg.container_field",          # container field read bound bare at a
+                                    # container ref slot
     "arg.record_field_marker",      # F1-record field read bound bare at a
-                                    # marker callee's record ref slot
+                                    # marker or record-method callee's
+                                    # record ref slot
     "arg.record_borrow_ret_marker", # T&-returning record call bound bare at
                                     # a marker callee's record ref slot
     "arg.btuple_literal_marker",    # tuple literal at a marker callee's
                                     # pointer-repr tuple slot (borrow builder)
     "mil.native_ctor",              # ctor MIL field init from a plain @native
                                     # record ctor (`_logger(::ns::H(name))`)
-    "arg.own_tparam_method_rvalue", # Own[T] method rvalue bare at the same
-                                    # open Own[T] method slot
+    "arg.own_tparam_call_rvalue",   # T-returning call rvalue bare at the
+                                    # same open Own[T] slot
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
                                     # the dyn-attr read mirror (result-blind
                                     # bare dunder call)
+    "arg.bytes_owned_name",         # owned-form bytes name bound bare at an
+                                    # Own[bytes] element slot (the template
+                                    # callee binds the lvalue natively)
+    "arg.bytes_owned_call",         # owned-bytes call rvalue bound bare at an
+                                    # Own[bytes] element slot (a prvalue has
+                                    # nothing to move from)
     "arg.bytes_owned_literal",      # bytes literal at an Own[bytes] element
                                     # slot -> the owned literal render
     "arg.own_enum_elem",            # enum name bare at an Own[enum] container
@@ -1767,6 +1801,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(x)` of an open-T source (lowering; the special-builtin arm's
     # general tail, `T(this->value)`).
     "call.copy_tparam",
+    # `copy(heap[pos])` of an open-T CONTAINER ELEMENT (lowering; the same
+    # general tail over a subscript read, `T(heap[pos])`).
+    "call.copy_tparam_elem",
     # `copy(x)` of a concrete container source (`copy(d.get(k, dflt))` ->
     # `std::vector<T>(<src>)`).
     "call.copy_container",
@@ -1999,6 +2036,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # return: `&(this->_value)` lift
     "ret.generic_tuple_literal",    # sync generic-tuple return literal:
                                     # to_val_or_ptr element wraps
+    "ret.generic_tuple_call",       # ... and the call rvalue of the SAME
+                                    # generic tuple, returned bare (no wrap)
     "ret.container_borrow_global",  # pointer-slot container global derefs
                                     # into the borrow return
     "ret.ptr_opt_subscript",        # container-element subscript at the
@@ -2355,6 +2394,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
     "subscript.value_union_elem",   # value-variant union element read
                                     # bare into its same-union sink
+    "subscript.value_tuple_elem",   # value-TUPLE container element read
+                                    # whole (the union row's sibling)
     "call.readonly_scalar_ret",     # readonly[scalar] call result -- a
                                     # const value copy, scalar everywhere
     "call.container_recv_ret",      # container call result consumed as
@@ -2934,6 +2975,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "yield.own_tuple_literal",      # Own-record-element tuple literal at
                                     # the sgen/resumable tuple yield slot:
                                     # the spelled storage brace-init
+    "decl.type_param_slot",         # bare open type-param decl slot
+                                    # (`T newitem = ...;`): plain spelled copy
+    "ret.value_opt_view_result",    # call/method-call/subscript result at a
+                                    # value-repr Optional[view] return slot
+    "decl.value_opt_tuple_slot",    # value-repr Optional[value tuple] decl
+                                    # slot: plain spelled copy
 })
 
 

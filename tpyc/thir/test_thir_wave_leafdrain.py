@@ -13,6 +13,7 @@ test_thir_wave_grind12.TestAwaitBoundCopyRoutes.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
     _compile,
     _entry,
 )
@@ -95,8 +96,9 @@ class TestCopyTempAtReturnSeamDefers:
     def test_defers_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert fb.get("resumable:expr.call") == 1, fb
+        _assert_rejects_at(dict(compiler._thir_fallback),
+                           "resumable:expr.call",
+                           "call.arg_shape.own_record_f1")
 
 
 class TestFrameSlotEmplaceTempRoutes:

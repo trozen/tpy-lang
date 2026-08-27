@@ -64,6 +64,7 @@ from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import (
     _borrow_tuple_local_type,
     _bytes_field_write_ok,
+    _default_ctor_field_write_ok,
     _class_const_write_target_ok,
     _container_copy_field_write_ok,
     _container_field_write_ok,
@@ -1044,6 +1045,29 @@ def _lower_residual_field(stmt: TpyAssign, plan: _ResidualPlan,
         value=fvalue, loc=loc)
 
 
+@dataclass(frozen=True)
+class _DefaultCtorPlan:
+    """`recv.field = T()` at a field of that same T: the construction prvalue
+    assigned bare. Nothing else to decide -- no source rows, no lift, no move
+    verdict -- so the plan is a marker."""
+
+
+def _classify_default_ctor(stmt: TpyAssign, lc: _LowerCtx,
+                           declared: dict[str, TpyType],
+                           pointers: AbstractSet[str]) -> _DefaultCtorPlan | None:
+    if not _default_ctor_field_write_ok(stmt, declared, lc.analyzer):
+        return None
+    return _DefaultCtorPlan()
+
+
+def _lower_default_ctor_field(stmt: TpyAssign, plan: _DefaultCtorPlan,
+                              lc: _LowerCtx, declared: dict[str, TpyType],
+                              loc) -> THIRAssign:
+    return THIRAssign(
+        target=_lower_field_write_target(stmt, lc, declared),
+        value=_lower_expr(stmt.value, lc, declared), loc=loc)
+
+
 _FAMILIES: list[tuple[Callable, Callable]] = [
     (_classify_opt_none, _lower_opt_none),
     (_classify_class_const, _lower_class_const),
@@ -1054,6 +1078,7 @@ _FAMILIES: list[tuple[Callable, Callable]] = [
     (_classify_union, _lower_union_field),
     (_classify_opt_lift, _lower_opt_lift_field),
     (_classify_any, _lower_any_field),
+    (_classify_default_ctor, _lower_default_ctor_field),
     (_classify_residual, _lower_residual_field),
 ]
 

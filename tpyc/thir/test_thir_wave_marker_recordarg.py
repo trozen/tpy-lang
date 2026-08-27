@@ -9,7 +9,7 @@ of them bare in place. Corpus witness: `str/fstr_decompose`.
 """
 
 from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
-                       _fn, _assert_byte_identical,
+                       _fn, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _thir_ctx,
                        _thir_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -157,7 +157,8 @@ class TestRecordLvalueAtMarkerRecordSlot:
         assert (_cpp(self._OWN_RET_SRC, tmp_path, thir=True)
                 == _cpp(self._OWN_RET_SRC, tmp_path, thir=False))
         _ctx, fell = _thir_ctx(self._OWN_RET_SRC, extra_lib_dirs=[tmp_path])
-        assert fell == {"body:expr.method_call": 1}, fell
+        _assert_rejects_at(fell, "body:expr.method_call",
+                           "method.qualcall.arg.own")
 
 
 class TestBorrowTupleLiteralAtMarkerSlot:

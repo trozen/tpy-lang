@@ -13,7 +13,8 @@ from __future__ import annotations
 from ..compilation_context import activate_compiler
 from .fallback import begin_attempt
 from .lower import iter_module_callables, lower_function
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _assert_rejects_at,
+                       _compile, _entry)
 
 
 def _reject_detail(src: str, fn_name: str):
@@ -162,4 +163,4 @@ class TestExprCalleeRoutes:
                + "    return mk(10)(5, **d)\n")
         routed, reason, _ = _reject_detail(src, "f")
         assert routed is False
-        assert reason == "expr.call"
+        _assert_rejects_at(reason, "expr.call", "call.expr_callee_shape")

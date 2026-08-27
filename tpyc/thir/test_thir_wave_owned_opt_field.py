@@ -10,6 +10,9 @@ which the byte-diff would report but a reader could mistake for cosmetic).
 """
 from __future__ import annotations
 
+from .testutil import (_assert_rejects_at,
+                       _assert_routes_byte_identical)
+
 PRE = (
     "from tpy import Int32, Own\n"
     "class Point:\n"
@@ -76,7 +79,19 @@ BORROW_CALL = PRE + (
     "    print(h.value is None)\n"
     "test()\n")
 
+# The param-NAME field write with nothing else in the module that can
+# reject: a sibling body's reject would stand in for this one's and the pin
+# would never test the write at all.
 PARAM_NAME = PRE + (
+    "def put(h: Holder, p: Own[Point] | None) -> None:\n"
+    "    h.value = p\n"
+    "def test() -> None:\n"
+    "    h = Holder()\n"
+    "    put(h, None)\n"
+    "    print(h.value is None)\n"
+    "test()\n")
+
+OWN_OPTIONAL_ARG = PRE + (
     "def put(h: Holder, p: Own[Point] | None) -> None:\n"
     "    h.value = p\n"
     "def test() -> None:\n"
@@ -140,14 +155,24 @@ class TestBorrowOptionalCallKeepsTheLift:
 
 
 class TestOwnedOptionalResidues:
-    """Both halves of the AST's arm the row deliberately does NOT mirror --
-    conservative, and pinned so a later widening is a visible change."""
+    """Where the arm stops. The param-NAME half is not residue at all -- it
+    routes on the same-repr field-write row -- so the boundary sits at the
+    nested receiver and at the same value in a call ARG slot."""
 
-    def test_own_optional_param_name_source_still_rejects(self):
+    def test_own_optional_param_name_source_routes(self):
         # The AST extends `is_owned_optional` to an `Own[...]`-typed param
-        # NAME; the row is call-only.
-        _wit, fb = _collect(PARAM_NAME)
-        assert any(k.endswith("expr.call") for k in fb), fb
+        # NAME. Both sides are `std::optional<Point>` here, so the same-repr
+        # row carries it and the call-only arm is never needed.
+        _assert_routes_byte_identical(PARAM_NAME)
+        wit, _fb = _collect(PARAM_NAME)
+        assert wit.get("field_write.optrec_name", 0) == 1
+
+    def test_own_optional_call_at_an_arg_slot_still_rejects(self):
+        # Where the boundary actually is: the same `Own[T] | None` value one
+        # position out, at a call ARG slot, has no row -- so the CALLER stays
+        # on the AST path while the field write itself routes.
+        _wit, fb = _collect(OWN_OPTIONAL_ARG)
+        _assert_rejects_at(fb, "body:expr.call", "call.arg_shape.optional")
 
     def test_nested_receiver_still_rejects(self):
         # `_field_receiver_ok` declines the chain one rung before the row.

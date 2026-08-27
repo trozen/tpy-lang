@@ -11,7 +11,7 @@ is CLAUDE.md's "THIR migration" section -- read it, do not re-derive it.
 ## Argument
 
 A blocker tag (`body:expr.call`) or a specific site (`expressions.py:6982`).
-No argument: pick the biggest tag from the last `probe_sites.py` run.
+No argument: pick the biggest tag from the fallback tally itself -- reject reasons now compose their blocking shape, so the tally names the shape without a probe. Fall back to `probe_sites.py` only for a tag whose reason is still bare.
 
 ## Standing directive
 
@@ -25,7 +25,7 @@ improvise.
 | Script | Job |
 |---|---|
 | `probe_corpus.py` | per-case blocker map -> `blockers.json`. ~5 min. Once per session. |
-| `probe_sites.py "<tag>"` | **where** that tag's sole-blocker cases actually reject, ranked. ~4 min. This picks the work. |
+| `probe_sites.py "<tag>"` | **where** that tag's sole-blocker cases actually reject, ranked. ~4 min. FALLBACK instrument: it exists because `expr.call` / `expr.method_call` carried no detail, and they now do. Reach for it only when a reason is bare. |
 | `sites_multi.py [prefix]` | per-case raise-site SETS over every marked case (soles AND multis) + a greedy set-cover ranking. The paying view when cases have several blockers; `probe_sites.py` only sees sole-blockers. |
 | `probe_one.py <case>...` | per-case fallback reasons + snapshot byte-diff. The per-edit smoke: a flip candidate prints CLEAN and IDENTICAL. |
 | `probe_loc.py <case>...` | every `ThirUnsupported` raised, with reason + source line. Decodes a lossy tag. |
@@ -81,7 +81,7 @@ discards its own work.
 
 ## Loop
 
-1. **Pick the site.** `probe_sites.py "<tag>"`; take the top row. Open two or
+1. **Pick the site.** Read it off the composed reason first; `probe_sites.py "<tag>"` only if the reason is bare. Take the top row. Open two or
    three of its cases AND their `expected/*.cpp` oracle before writing code.
 2. **Read the AST arm you are mirroring**, and grep the THIR tests for pins on
    that boundary. Grep by the construct/type SHAPE (the source pattern, the

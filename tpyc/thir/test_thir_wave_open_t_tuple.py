@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _lower_ctx_witnessed,
     _compile,
@@ -155,22 +156,8 @@ class TestOpenTTupleBoundaries:
                "    c = Pair[Int32](Int32(4), Int32(5))\n"
                "    print(relay(c))\n"
                "main()\n")
-        assert _fallback(src) == {"body:expr.method_call": 1}
-        _assert_byte_identical(src)
-
-    def test_open_t_tuple_result_at_a_return_stays_ast(self):
-        # BOUNDARY: the RESULT row admits the call for the decl sink; the
-        # composing positions still gate their own family. A `return
-        # s.pair()` rejects at the return's own generic-tuple source row.
-        src = (_CELL
-               + "def relay[T](s: HasPair[T]) -> tuple[T, Int32]:\n"
-               + "    return s.pair()\n"
-               + "def main() -> None:\n"
-               + "    c = Cell[Int32](Int32(42))\n"
-               + "    p = relay(c)\n    print(p[1])\n"
-               + "main()\n")
-        assert _fallback(src) == {
-            "body:stmt.return:return.generic_tuple_source": 1}
+        _assert_rejects_at(_fallback(src), "body:expr.method_call",
+                           "method.protocol.arg_shape")
         _assert_byte_identical(src)
 
     def test_open_t_tuple_result_at_a_print_stays_ast(self):
@@ -182,6 +169,54 @@ class TestOpenTTupleBoundaries:
                + "def main() -> None:\n"
                + "    c = Cell[Int32](Int32(42))\n    print(show(c))\n"
                + "main()\n")
-        assert _fallback(src) == {
-            "body:stmt.expr_stmt:print.arg.tuple_method_call": 1}
+        _assert_rejects_at(_fallback(src), "body:stmt.expr_stmt",
+                           "print.arg.tuple_method_call")
+        _assert_byte_identical(src)
+
+    def test_generic_tuple_call_at_the_matching_return_routes(self):
+        # The call rvalue's own return slot IS the enclosing return slot, so
+        # no element wrap applies and the value returns bare.
+        src = (_CELL
+               + "def relay[T](s: HasPair[T]) -> tuple[T, Int32]:\n"
+               + "    return s.pair()\n"
+               + "def main() -> None:\n"
+               + "    c = Cell[Int32](Int32(42))\n"
+               + "    p = relay(c)\n    print(p[1])\n"
+               + "main()\n")
+        _, wit = _lower_ctx_witnessed(src)
+        assert wit.get("ret.generic_tuple_call", 0) == 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return s.pair();" in hpp + cpp
+
+    def test_generic_tuple_name_at_the_matching_return_stays_ast(self):
+        # BOUNDARY: a NAME of the same generic tuple is an lvalue whose
+        # return render is the holder's, not the call rvalue's.
+        src = (_CELL
+               + "def relay[T](s: HasPair[T]) -> tuple[T, Int32]:\n"
+               + "    p = s.pair()\n"
+               + "    return p\n"
+               + "def main() -> None:\n"
+               + "    c = Cell[Int32](Int32(42))\n"
+               + "    q = relay(c)\n    print(q[1])\n"
+               + "main()\n")
+        _assert_rejects_at(_fallback(src), "body:stmt.return",
+                           "return.generic_tuple_source")
+        _assert_byte_identical(src)
+
+    def test_generic_tuple_field_at_the_matching_return_stays_ast(self):
+        # BOUNDARY, the other lvalue source: a member read of the same
+        # generic tuple.
+        src = ("from tpy import Int32\n"
+               "class Holder[T]:\n"
+               "    p: tuple[T, Int32]\n"
+               "    def __init__(self, v: T) -> None:\n"
+               "        self.p = (v, Int32(1))\n"
+               "    def get(self) -> tuple[T, Int32]:\n"
+               "        return self.p\n"
+               "def main() -> None:\n"
+               "    h = Holder[Int32](Int32(42))\n"
+               "    q = h.get()\n    print(q[1])\n"
+               "main()\n")
+        _assert_rejects_at(_fallback(src), "body:stmt.return",
+                           "return.generic_tuple_source")
         _assert_byte_identical(src)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _compile, _entry
+from .testutil import _assert_rejects_at, _compile, _entry
 
 _PRE = "from tpy import Int32, Int64\n\n"
 
@@ -717,7 +717,8 @@ class TestSlicedOutShapes:
                + "async def f[T](p: T | None) -> Int32:\n"
                + "    return 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.param_type") == 1
+        _assert_rejects_at(_res_fallback(src), "res.param_type",
+                           shape="optional", count=1)
 
     def test_any_param_routes(self):
         # An `Any` frame param is a bare `::tpy::Any` value field; the
@@ -3299,7 +3300,7 @@ class TestAliasBinds:
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         fb = _res_fallback(src)
-        assert fb.get("expr.method_call") == 1
+        _assert_rejects_at(fb, "expr.method_call", "method.ret_type")
         _assert_identical(src)
 
     def test_discarded_borrow_element_routes(self):
@@ -4454,7 +4455,7 @@ class TestAsyncLoopAndWith:
         # separate method / gate) -- so the case carries that one fallback.
         witnesses, fallback = _assert_identical(src)
         assert witnesses.get("res.async_with", 0) >= 1
-        assert set(fallback) <= {"resumable:res.param_type"}
+        assert set(fallback) <= {"resumable:res.param_type:none"}
 
     def test_async_for_local_iterator_routes(self):
         src = ("import asyncio\nfrom tpy import Int32\n\n"
@@ -5659,7 +5660,7 @@ class TestForNarrowedOptionalIterable:
                + "    print(asyncio.run(sum_l([1, 2, 3])))\nmain()\n")
         _assert_identical(src)
         fb = _res_fallback(src)
-        assert fb.get("res.param_type")
+        _assert_rejects_at(fb, "res.param_type", shape="optional")
 
 
 class TestAwaitOwnValueArgSlots:
@@ -5689,7 +5690,7 @@ class TestAwaitOwnValueArgSlots:
         # callee's own Own[Int32] frame param (res.param_type -- a body this
         # cell does not touch). An exact-set pin: any driver fallback adds a
         # different key and fails.
-        assert set(fallback) <= {"resumable:res.param_type"}
+        assert set(fallback) <= {"resumable:res.param_type:own_scalar"}
         _, _hpp, cpp = _gen(src, thir=True)
         assert "auto __tmp_1 = i;" in cpp
         assert "std::move(__tmp_1)" in cpp
@@ -5702,7 +5703,7 @@ class TestAwaitOwnValueArgSlots:
                + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
         witnesses, fallback = _assert_identical(src)
         # Same tolerated-set pin as the copy-temp flavor above.
-        assert set(fallback) <= {"resumable:res.param_type"}
+        assert set(fallback) <= {"resumable:res.param_type:own_scalar"}
         _, _hpp, cpp = _gen(src, thir=True)
         assert "__tmp_" not in cpp
 
@@ -6460,7 +6461,8 @@ class TestOwnDynParamFamily:
                "    return x\n\n\n"
                "def main() -> None:\n    pass\nmain()\n")
         fallback = _res_fallback(src)
-        assert fallback.get("res.param_type") == 1
+        _assert_rejects_at(fallback, "res.param_type",
+                           shape="own_generic", count=1)
         _assert_identical(src)
 
 
@@ -7856,7 +7858,8 @@ class TestFrameFieldWalrus:
                + "    for u in g(2):\n        print(u)\nmain()\n")
         witnesses, fallback = _assert_identical(src)
         assert not any("walrus_frame" in k for k in witnesses)
-        assert fallback == {"body:expr.call": 1}, fallback
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.native_arg.other")
 
     def test_frame_alias_walrus_pointer_name_source_stays_ast(self):
         # An alias walrus whose NAME source is itself a pointer local takes

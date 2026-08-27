@@ -2,15 +2,16 @@
 
 The field result row used to admit `String` only off a CALL receiver; every
 threading sink renders the same bare member read and composes its own wrap
-around it, so the row now takes the whole resolved str slice. Positions that
-do NOT thread the flag (a container-literal ELEMENT, a membership RECEIVER)
-keep rejecting -- their renders are unwitnessed, not identical-by-
-construction."""
+around it, so the row now takes the whole resolved str slice. A position that
+does NOT thread the flag (a container-literal ELEMENT) keeps rejecting -- its
+render is unwitnessed, not identical-by-construction."""
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
-                       _fn, _lower_ctx)
+from ..codegen_cpp.context import CodeGenOptions
+from .testutil import (_assert_byte_identical, _assert_rejects_at,
+                       _assert_routes_byte_identical, _compile, _entry, _fn,
+                       _lower_ctx)
 
 _REC = (
     "from tpy import String, Int32\n"
@@ -90,16 +91,76 @@ class TestStringFieldNonThreadingSinksReject:
         assert _fn(thir, "f") is None
         _assert_byte_identical(src)
 
-    def test_membership_receiver_stays_ast(self):
-        # BOUNDARY: only the NEEDLE side threads the flag -- the haystack
-        # receiver takes the `.find()` receiver render, unwitnessed for the
-        # owned member read.
-        src = (_REC
-               + "def f(r: R) -> None:\n"
-               + "    print(\"a\" in r.name)\n"
+
+_MEMB_REC = (
+    "from tpy import String, StrView\n"
+    "class R:\n"
+    "    name: str\n"
+    "    view: StrView\n"
+    "    owned: String\n"
+    "    def __init__(self, n: str) -> None:\n"
+    "        self.name = n\n"
+    "        self.view = \"sv\"\n"
+    "        self.owned = String(n)\n"
+)
+
+
+class TestMembershipReceiverField:
+    """The HAYSTACK side of `needle in s` -- `.find()` is taken off the bare
+    member read, so the receiver takes the same row the needle does."""
+
+    def test_str_field_receiver_routes(self):
+        src = (_MEMB_REC
+               + "def f(r: R) -> bool:\n"
+               + "    return \";\" in r.name\n"
                + "def main() -> None:\n"
-               + "    f(R(\"a\"))\n"
+               + "    print(f(R(\"a;b\")))\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "r.name.find(\";\")" in cpp
+
+    def test_view_field_receiver_routes(self):
+        src = (_MEMB_REC
+               + "def f(r: R) -> bool:\n"
+               + "    return \";\" in r.view\n"
+               + "def main() -> None:\n"
+               + "    print(f(R(\"a;b\")))\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "r.view.find(\";\")" in cpp
+
+    def test_owned_string_field_receiver_routes(self):
+        # The owned `String` member read is the same bare receiver -- no
+        # view materialization ahead of `.find`.
+        src = (_MEMB_REC
+               + "def f(r: R) -> bool:\n"
+               + "    return \";\" not in r.owned\n"
+               + "def main() -> None:\n"
+               + "    print(f(R(\"a;b\")))\n"
+               + "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "r.owned.find(\";\")" in cpp
+
+    def test_subscript_field_receiver_stays_ast(self):
+        # BOUNDARY: a field over a container SUBSCRIPT is not a receiver the
+        # membership gate admits, so widening the result row must not reach
+        # it -- the reject stays at the gate, one level out from the row.
+        src = (_MEMB_REC
+               + "class H:\n"
+               + "    items: list[R]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.items = [R(\"a;b\")]\n"
+               + "def f(h: H) -> bool:\n"
+               + "    return \";\" in h.items[0].name\n"
+               + "def main() -> None:\n"
+               + "    print(f(H()))\n"
+               + "main()\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback), "body:stmt.return",
+                           "binop.shape.in")
         _assert_byte_identical(src)

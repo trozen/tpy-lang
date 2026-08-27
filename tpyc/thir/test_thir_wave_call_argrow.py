@@ -6,25 +6,28 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _fn,
     _lower_ctx,
     _lower_ctx_witnessed,
+    _thir_ctx_witnessed,
 )
 
 
 def _fallback_reasons(src: str) -> set:
-    """The body-component fallback reasons, sans the `body:` prefix and any
-    statement-position qualifier. Lets a pin assert WHERE a body still
-    rejects -- the only honest claim for a widening that moves the reject
-    down a layer rather than routing the body."""
+    """The body-component fallback reasons, sans the `body:` position prefix
+    -- `landmark[:shape]`, the form `_assert_rejects_at` matches. Dropping
+    anything past the prefix would leave a pin unable to say WHERE a body
+    still rejects, which is the whole claim for a widening that moves the
+    reject down a layer rather than routing the body."""
     from ..codegen_cpp.context import CodeGenOptions
     from .testutil import _compile, _entry
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
-    return {k.split(":")[-1] for k in compiler._thir_fallback
+    return {k.split(":", 1)[1] for k in compiler._thir_fallback
             if k.startswith("body:")}
 
 
@@ -759,7 +762,8 @@ class TestBorrowTupleNameArgRows:
         )
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("arg.btuple_storage_name", 0) == 0
-        assert "call.arg_shape.tuple" in _fallback_reasons(src)
+        _assert_rejects_at(_fallback_reasons(src), "stmt.expr_stmt",
+                           "call.arg_shape.tuple")
         _assert_byte_identical(src)
 
 
@@ -784,15 +788,15 @@ class TestRecursiveUnionBorrowCallArg:
     )
 
     def test_the_arg_gate_admits_and_witnesses(self):
-        # The body still rejects downstream (the method-call RESULT gate has
-        # no recursive-union row yet), so the honest claim is that the ARG
-        # row no longer blocks -- `expr.call` is gone from the reasons.
-        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        # Witnessed through the codegen seeding, not a bare lowering: the
+        # `.get()` receiver rung only resolves with the generator's maps in
+        # place, so the bare lens rejects this body and would count the face
+        # off a run that never routed.
+        _ctx, faces, _fell = _thir_ctx_witnessed(self.SRC)
         assert faces["arg.recursive_union_borrow_call"] >= 1
-        assert "expr.call" not in _fallback_reasons(self.SRC)
 
-    def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
+    def test_routes_byte_identical(self):
+        _assert_routes_byte_identical(self.SRC)
 
     def test_plain_union_slot_is_not_claimed(self):
         # The boundary: a NON-recursive value union is a bare std::variant
@@ -1423,7 +1427,8 @@ class TestDynProtocolRecordFieldBoundary:
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=False,
                                    thir_codegen=True))
-        assert compiler._thir_fallback == {"body:expr.call": 1}
+        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
+                           "call.native_arg.record_f1_slot")
         _assert_byte_identical(self.SRC)
 
     def test_no_record_field_witness(self):
@@ -1570,7 +1575,8 @@ class TestNativeProtocolTupleLiteralBorrow:
             "    print(hash((b, Box(6))) == 0)\n"
             "main()\n"
         )
-        assert "btuple.proto_mixed" in _fallback_reasons(src)
+        _assert_rejects_at(_fallback_reasons(src), "stmt.expr_stmt",
+                           "btuple.proto_mixed")
         _assert_byte_identical(src)
 
     def test_nested_field_chain_still_defers(self):

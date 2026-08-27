@@ -492,6 +492,28 @@ def _wrap_view_owned_sink(value: 'THIRExpr | None',
     return value
 
 
+def _owned_copy_sink(value: 'THIRExpr | None', slot_type: 'TpyType | None',
+                     analyzer) -> bool:
+    """Whether the view->owned copy applies to `value` at an owned str/bytes
+    slot.
+
+    Resolves the slot through the analyzer before testing it, so it also
+    covers a slot whose str/bytes-ness is not spelled directly -- wider reach
+    than a bare type test, and the reason this cannot be folded into one.
+
+    A sink that also decides a last-use move has to ask it first: the AST
+    skips the move exactly where this copy applies, because what the copy
+    constructs from is a trivially-copyable VIEW, not the binding the source
+    name reads. Asking in the other order moves the wrong object."""
+    if value is None or value.form is not Form.BORROW or slot_type is None:
+        return False
+    st = _resolved_str_value(slot_type, analyzer)
+    if st is not None and is_str_type(st):
+        return True
+    bt = _resolved_bytes_value(slot_type, analyzer)
+    return bt is not None and is_bytes_type(bt)
+
+
 def _peel_stale_view_owned_coerce(init: TpyExpr, binding_t: TpyType | None,
                                   analyzer) -> TpyExpr:
     """gen_expr's stale-coerce identity arm, mirrored at the decl/reassign
@@ -619,6 +641,16 @@ def _is_type_param_slot(t: 'TpyType | int | None') -> bool:
     keys on this single shape."""
     return isinstance(t, TpyType) and isinstance(
         unwrap_readonly(unwrap_ref_type(t)), TypeParamRef)
+
+def _type_param_value_slot(t: 'TpyType | None') -> bool:
+    """A DECL slot spelled as a BARE TYPE-kind type-param (`T newitem = ...;`
+    inside a `[T]` template). Borrow and storage form coincide here because
+    neither exists yet: `T` is fixed only at instantiation, so the C++ template
+    traits pick the shape and the decl is the plain spelled copy a scalar's is.
+    Bare only -- an `Own[T]` slot is a move source and a `readonly[T]` /
+    `Ref[T]` wrapper spells its own decoration, both of which reopen the
+    question this row answers."""
+    return isinstance(t, TypeParamRef) and t.kind is TypeParamKind.TYPE
 
 def _own_type_param_slot(t: 'TpyType | int | None') -> bool:
     """True if `t` is `Own[T]` for a bare generic type-param `T` -- the
@@ -757,10 +789,13 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
     """A `Span[T]` DECL slot over a scalar or plain-record element
     (`std::span<Node> s = ::tpy::as_mut_span(b);`): the decl only spells the
     slot, and the local's own reads gate themselves, so the reference-element
-    span decls as the same plain copy the scalar one does. `_span_value` stays
-    the narrower READ/pass slice (element-dependent renders live there);
-    nested-span and other composite elements keep rejecting -- their reads
-    have no admitted arm to gate against."""
+    span decls as the same plain copy the scalar one does. An OPEN type-param
+    element (`Span[readonly[T]]` inside a `[T]` template) rides the same
+    argument one step earlier: the element's C++ shape is not chosen until
+    instantiation, so no borrow/storage lift can attach to the slot at all.
+    `_span_value` stays the narrower READ/pass slice (element-dependent renders
+    live there); nested-span and other composite elements keep rejecting --
+    their reads have no admitted arm to gate against."""
     if t is None:
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -770,7 +805,8 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
     if not args:
         return False
     elem = _peel_readonly(args[0])
-    return _eligible_scalar(elem) or _f1_record(elem, analyzer)
+    return (_eligible_scalar(elem) or _f1_record(elem, analyzer)
+            or _type_param_value_slot(elem))
 
 
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
@@ -2890,6 +2926,17 @@ def _method_rvalue_f1_record(init: 'TpyExpr | None', analyzer) -> bool:
             and _f1_record(analyzer.get_expr_type(init), analyzer)
             and is_rvalue_source(analyzer, init))
 
+def _binding_peel(t: TpyType) -> TpyType:
+    """The receiver-BINDING peel shared by the record-slice gate and the
+    declared-field lookup: strip the transparent wrappers, then `Own` -- an
+    `Own[T]` binding is by-value storage whose members read exactly like any
+    other binding's. ONE definition, because a receiver gate and a field-type
+    lookup that peel the same binding differently disagree about which
+    bindings have fields, and the gated consumers then reject silently."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return t.wrapped if isinstance(t, OwnType) else t
+
+
 def _f1_record(t: TpyType | None, analyzer) -> bool:
     """The byte-identical THIR record slice: any concrete user record whose
     `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` and whose field / method
@@ -2909,25 +2956,26 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
       every arg is itself in the byte-identical slice (`_f1_record_type_arg_ok`:
       scalar / F1-record / INT). This is the F5 rung's type-spelling half; the
       generic record's OWN templated bodies (TypeParamRef args) ride Stage B/C;
-    - `@builtin_type` records WITH real bodies whose TypeDef carries no
-      `cpp_formatter` (Poll; Waker stays excluded -- its static TypeDef DOES
-      carry a formatter): `to_cpp()` then falls through to the same
-      `{name}<{args}>` + `native_cpp_names` path as a user record, so the
-      spelling invariant holds; `builtin_type_key` keys TypeDef payload
-      dispatch, never body-position rendering. A formatter-carrying builtin
-      (`list` -> `std::vector`) has a different C++ shape entirely and is
-      excluded by the formatter check, not by name."""
+    - `@builtin_type` records WITH real bodies of RECORD category (Poll,
+      Waker): a RECORD-category TypeDef renders as a plain nominal type on
+      both paths -- either through `{name}<{args}>` + `native_cpp_names`
+      like a user record, or through a `cpp_formatter` the resolver falls
+      straight through to, since its non-formatter arms all key on a shape
+      a RECORD category does not have. `builtin_type_key` keys TypeDef
+      payload dispatch, never body-position rendering. The categories that
+      DO carry a divergent C++ shape (`list` -> `std::vector`, `dict_keys`
+      -> `::tpy::dict_keys_view`) are excluded by their category, not by
+      name and not by whether a formatter happens to be attached."""
     if t is None:
         return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        t = t.wrapped
+    t = _binding_peel(t)
     if not isinstance(t, NominalType):
         return False
     is_builtin_record = False
     if not t.is_user_record:
         td = type_def_of(t)
-        if (td is None or td.record is None or td.cpp_formatter is not None
+        if (td is None or td.record is None
+                or td.category is not TypeCategory.RECORD
                 or td.is_compile_time_only):
             return False
         is_builtin_record = True
@@ -2946,7 +2994,13 @@ def _record_class_binding(t: 'TpyType | None') -> bool:
     WITHOUT its spelling constraints (type args / qualification bound
     RENDERING, not arrow-ness). A formatter-carrying builtin
     (`list` -> `std::vector`) is NOT a record: its pointer binding (an F2d
-    rebound container) derefs at value positions like any other pointer."""
+    rebound container) derefs at value positions like any other pointer.
+
+    The formatter check is NARROWER than `_f1_record`'s category check, and
+    only reachability makes that safe: a name reaches `lc.pointers` through
+    the non-value-type binding forms, so a formatter-carrying RECORD-category
+    builtin can only arrive here once one exists that is not a ValueType.
+    Widen this to the category question at the same time as admitting one."""
     if not isinstance(t, TpyType):
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -4609,6 +4663,21 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _value_tuple_owned_str_elem(e: 'TpyExpr', analyzer) -> bool:
+    """An OWNED-str element read out of a value tuple (`pair[1]` on
+    `tuple[str, str]`): the element is a `std::string` held in the tuple's own
+    storage, so `std::get<N>(pair)` is an owned lvalue that binds a str slot
+    bare -- the view->owned copy a view-form source takes does not fire. The
+    element read's own arm renders it; this only answers the FORM question a
+    str sink has to ask before it decides whether to copy."""
+    if not isinstance(e, TpySubscript) or isinstance(e.index, TpySlice):
+        return False
+    if e.needs_optional_runtime_check or e.slice_function_info is not None:
+        return False
+    if _value_tuple(analyzer.get_expr_type(e.obj), analyzer) is None:
+        return False
+    return _owned_str_slot(analyzer.get_expr_type(e), analyzer)
+
 def _open_t_tuple_slot(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A tuple carrying an OPEN type-param element inside a generic body
     (`tuple[T, Int32]` -> `std::tuple<T, int32_t>`), or None: the AST
@@ -4764,6 +4833,31 @@ def _view_inner_value_opt(t: 'TpyType | None') -> bool:
         return False
     inner = unwrap_readonly(tb.inner)
     return is_str_view_type(inner) or is_bytes_view_type(inner)
+
+def _value_opt_view_ret_src(e: 'TpyExpr', ret_opt: 'OptionalType',
+                            analyzer) -> bool:
+    """A call / method-call / subscript RESULT that lands bare in a value-repr
+    `Optional[view-family]` return slot.
+
+    Two ways to land bare, both leaving the render to the source's own gates:
+    the callee already hands back the SAME optional (nothing to convert), or it
+    hands back an inner value whose owned-vs-view form already matches the
+    inner's, so the optional's converting constructor absorbs it. A form
+    MISMATCH (a view result into an OWNED inner) needs a materializing copy
+    this rung does not render, and sema spells that one as a coercion anyway."""
+    if not isinstance(e, (TpyCall, TpyMethodCall, TpySubscript)):
+        return False
+    st = analyzer.get_expr_type(e)
+    if not isinstance(st, TpyType):
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+    if isinstance(u, OptionalType):
+        return (_value_opt_view(u, analyzer) is not None
+                and u == unwrap_readonly(unwrap_send_sync(ret_opt)))
+    src_v = _resolved_viewfam_value(u, analyzer)
+    inner_v = _resolved_viewfam_value(unwrap_readonly(ret_opt.inner), analyzer)
+    return src_v is not None and src_v == inner_v
+
 
 def _value_opt_owned_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """A value-repr `Optional[view]` whose inner is an OWNED family (`str`/`bytes`,
@@ -5392,22 +5486,37 @@ def _container_record_elem_style_tuple_read(recv: 'TpySubscript',
                                             locals_: dict[str, TpyType],
                                             analyzer) -> bool:
     """The inner `pairs[0]` of a `pairs[0][0]` chain: a single-index
-    container-element read off a bare in-scope list/Array NAME whose
-    element is a value tuple -- the `__getitem__(pairs, 0)` lvalue the
-    outer `std::get<N>` consumes. Slices and non-name receivers stay
-    out (their own arms)."""
+    container-element read off a bare in-scope list/Array/dict NAME -- or
+    off a clean FIELD read of one (`self._store[lk][1]`) -- whose element
+    is a value tuple, the `__getitem__(pairs, 0)` lvalue the outer
+    `std::get<N>` consumes. The receiver only decides how the container
+    itself renders (`pairs` / `this->_store`, both bare lvalues), never
+    what the element read spells, so the two receiver shapes share this
+    verdict. Slices stay out (their own arms)."""
     if isinstance(recv.index, TpySlice) or recv.slice_function_info is not None:
         return False
-    if not isinstance(recv.obj, TpyName) or recv.obj.name not in locals_:
+    if isinstance(recv.obj, TpyName):
+        if recv.obj.name not in locals_:
+            return False
+        ct = locals_[recv.obj.name]
+    elif isinstance(recv.obj, TpyFieldAccess):
+        if not _field_receiver_ok(recv.obj, locals_, analyzer):
+            return False
+        ct = _field_decl_type(recv.obj, locals_, analyzer)
+    else:
         return False
-    ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        locals_[recv.obj.name])))
+    ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ct)))
     ct = _resolve_literal_seeded(ct, analyzer)
-    if not (is_list(ct) or is_array(ct)):
+    if not (is_list(ct) or is_array(ct) or is_dict(ct)):
         return False
     args = getattr(ct, "type_args", None)
     if not args:
         return False
+    # A dict holds its element in the SECOND type arg; list/Array in the first.
+    if is_dict(ct):
+        if len(args) < 2:
+            return False
+        args = args[1:]
     elem = resolve_int_literals(args[0],
                                 analyzer.ctx.default_int_for_literal)
     if _value_tuple_nested(elem, analyzer) is not None:
@@ -5546,6 +5655,12 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
         recv_t = resolve_int_literals(recv_t,
                                       analyzer.ctx.default_int_for_literal)
     if (_value_tuple_nested(recv_t, analyzer) is None
+            # A view element keeps a tuple out of `_value_tuple` because it
+            # pins the tuple LITERAL's render to static storage -- a
+            # constraint no element READ carries: `std::get<N>(t)` spells
+            # the same on both paths whatever the SIBLING elements are, and
+            # the element actually read is still gated below.
+            and _value_tuple_global(recv_t, analyzer) is None
             and _f1_tuple(recv_t, analyzer) is None
             # A per-element-Own record tuple (`tuple[Own[A], Int32]` ->
             # `std::tuple<A, int32_t>`): borrow and storage coincide, so
@@ -6511,7 +6626,7 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
         base = analyzer.get_expr_type(e.obj)
     if base is None:
         return None
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(base)))
+    rt = _binding_peel(base)
     if isinstance(rt, OptionalType):
         if rt.inner.is_value_type():
             return None
@@ -9154,20 +9269,45 @@ def _plain_or_opt_own_slot(ptype: TpyType | None) -> TpyType | None:
     return None
 
 
+def _owned_form_bytes_name(a: TpyExpr, locals_: 'dict[str, TpyType] | None',
+                           param_names: 'AbstractSet[str]',
+                           analyzer) -> bool:
+    """An OWNED-form bytes NAME -- `_owned_form_str_name`'s bytes twin, read
+    off the sema-resolved type. A `bytes` PARAM's slot is the
+    `std::span<const uint8_t>` view the copy rows convert from, unless the
+    signature declared it `Own[bytes]` (owned `std::vector<uint8_t>` by
+    value); everything else resolving to `bytes` is owned storage."""
+    if not isinstance(a, TpyName) or locals_ is None:
+        return False
+    if a.name not in locals_:
+        return False
+    at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
+    if at is None or not is_bytes_type(at):
+        return False
+    return (a.name not in param_names
+            or _own_viewfam_param(locals_.get(a.name)) is not None)
+
+
 def _own_bytes_identity_move_slot(a: TpyExpr, ptype: TpyType | None,
-                                  analyzer) -> 'TpyType | None':
+                                  analyzer, *,
+                                  locals_: 'dict[str, TpyType] | None' = None,
+                                  param_names: 'AbstractSet[str]' = frozenset()
+                                  ) -> 'TpyType | None':
     """The MOVE-ONLY bytes sibling of `_own_lvalue_temp_slot`'s identity-
     chain name branch: an all-identity coerce chain (bytearray->bytes) over
-    a NAME into a plain `Own[bytes]` slot. Serves ONLY the temp-free
-    last-use move (`push_back(std::move((*buf)))`); the non-move halves
-    stay unshared deliberately -- the AST passes a non-moved bytes lvalue
-    BARE to an inline_template callee, a render the copy-temp row would
-    diverge from, so the shared slot verdict must not see bytes."""
+    a NAME into a plain `Own[bytes]` slot -- or the BARE owned-form bytes
+    NAME at the same slot (`self._chunks.append(owned)` in a resumable body
+    -> `push_back(std::move(owned))`). Serves ONLY the temp-free last-use
+    move; the non-move halves stay unshared deliberately -- the AST passes
+    a non-moved bytes lvalue BARE to an inline_template callee, a render
+    the copy-temp row would diverge from, so the shared slot verdict must
+    not see bytes."""
     w = _plain_own_slot(ptype)
     if w is None or not is_bytes_type(unwrap_readonly(w)):
         return None
     if not isinstance(a, TpyCoerce):
-        return None
+        return w if _owned_form_bytes_name(a, locals_, param_names,
+                                           analyzer) else None
     c = a
     while isinstance(c, TpyCoerce):
         if _coerce_disposition(c, own_slot_arg=True) != "identity":
@@ -9278,8 +9418,13 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # reference the `T&&` slot cannot take, so `_maybe_move` never fires and
     # the cascade always hoists `auto __tmp_N = ((c) ? (a) : (b));` + the
     # move wrap. The move-source rows below all require a NAME, so widening
-    # the shape here cannot hand a ternary the temp-free render.
+    # the shape here cannot hand a ternary the temp-free render. A VALUE
+    # payload is excluded: its Own slot is a plain by-value param an lvalue
+    # binds directly, so the AST's copy arm (guarded on a non-value payload)
+    # never fires and the whole render is the bare ternary.
     if not isinstance(a, (TpyName, TpyFieldAccess, TpyIfExpr)):
+        return None
+    if isinstance(a, TpyIfExpr) and w.is_value_type():
         return None
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -9294,6 +9439,12 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         if at is not None:
             at = resolve_int_literals(at, analyzer.ctx.default_int_for_literal)
         return w if _eligible_scalar(at) else None
+    if _eligible_char(w):
+        # A `char` payload takes the plain `auto` copy temp like a fixed-int
+        # one; it is not an `_eligible_scalar` member only because a str
+        # literal in a Char slot renders as a target-typed char literal, and
+        # this row admits no literal source.
+        return w if _eligible_char(at) else None
     if is_str_type(w):
         # An owned-str slot fed by a str-family FIELD read
         # (`dropped.append(self.label)`): the copy temp declares the owned
@@ -10409,12 +10560,9 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     elif field_recv_ok and isinstance(e.obj, TpyFieldAccess):
         # The FIELD-receiver flavor (`::tpy::dict_items(d.items)` -- the
         # asdict dict recursion), DECLARED-type keyed like the C3 field
-        # iterable. ON at the COMP callers (the comp route and the
-        # method-call arm's `iterable_override`, which must agree) and at
-        # the tuple-unpack FOR-HEAD, whose targets bind off the lifted
-        # borrow tuple rather than a receiver-keyed registration. OFF at
-        # the single-var for-head, whose storage-tuple loop-var
-        # registration is name-receiver-keyed.
+        # iterable. A ONE-level field read only: a chained receiver is a
+        # different render family. Opt-in because the callers that do NOT
+        # render the view themselves must not see it.
         if not _field_receiver_ok(e.obj, locals_, analyzer):
             return False
         recv_t = _field_decl_type(e.obj, locals_, analyzer)

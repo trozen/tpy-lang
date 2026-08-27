@@ -5,23 +5,23 @@ from __future__ import annotations
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_rejects_at,
     _fn,
     _lower_ctx,
     _lower_ctx_witnessed,
 )
 
 
-def _fallback_reasons(src: str) -> set:
-    """The body-component fallback reasons, sans the `body:` prefix and any
-    statement-position qualifier -- the only honest claim for a widening that
-    moves a reject down a layer rather than routing the body."""
+def _fallbacks(src: str) -> dict:
+    """The body-component fallback tally -- the only honest claim for a
+    widening that moves a reject down a layer rather than routing the body."""
     from ..codegen_cpp.context import CodeGenOptions
     from .testutil import _compile, _entry
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
-    return {k.split(":")[-1] for k in compiler._thir_fallback
+    return {k: n for k, n in compiler._thir_fallback.items()
             if k.startswith("body:")}
 
 
@@ -268,7 +268,7 @@ class TestContainerLiteralInstantiation:
             "    print(len(d))\n"
         )
         _assert_byte_identical(src)
-        assert _fallback_reasons(src) == set()
+        assert _fallbacks(src) == {}
 
     def test_str_element_keeps_rejecting(self):
         # The boundary: a str element slot IS one the AST derives an element
@@ -278,7 +278,8 @@ class TestContainerLiteralInstantiation:
             "    a = list([\"x\", \"y\"])\n"
             "    print(a[0])\n"
         )
-        assert _fallback_reasons(src) == {"expr.call"}
+        _assert_rejects_at(_fallbacks(src), "body:expr.call",
+                           "call.inst_shape")
 
 
 _RVALUE_PRELUDE = _PRELUDE + (
@@ -341,7 +342,8 @@ class TestInstantiationCallRvalueArg:
         )
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("call.inst_call_rvalue_arg", 0) == 0
-        assert _fallback_reasons(src) == {"expr.call"}
+        _assert_rejects_at(_fallbacks(src), "body:expr.call",
+                           "call.inst_arg_shape")
 
 
 class TestDictTupleLiteralInstantiation:

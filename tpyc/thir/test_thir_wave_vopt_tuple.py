@@ -12,6 +12,7 @@ elements, which `to_cpp` does not do.
 
 from .testutil import (
     _assert_byte_identical,
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -101,6 +102,6 @@ class TestValueOptTupleLocal:
             "    print(f())\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
-        assert "body:expr.call" in fell, fell
+        _assert_rejects_at(_thir_fallbacks(src), "body:expr.call",
+                           "call.arg_shape.span")
         _assert_byte_identical(src)

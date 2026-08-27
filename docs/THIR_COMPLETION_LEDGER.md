@@ -13447,3 +13447,225 @@ legitimate transcribed absence and a raw floor would cry wolf. The middle
 ground nobody built is a RATCHET on the unreached SET -- pin today's unreached
 cells and fail only when a previously-reached cell drops out. That catches a
 regression without penalising a pre-existing deliberate gap.
+
+### Stdlib grind (2026-08-27): 171 -> 52 collapsed, 195 -> 60 per body
+
+FIVE batches, each followed by a full specialist review cycle. Ratchets ended
+at `MAX_FALLBACK_BODIES = 60` (per body), `--max-fallback 52` (collapsed), and
+`MIN_ROUTED_BODIES = 1185`. Routed 1050 -> 1185 per body; the -135 fallback and
++135 routed conserve exactly, so the drop is real routing rather than bodies
+falling out of classification.
+
+Batches one and two are described in detail below (they took it to 111 then 98
+collapsed); three through five are summarised at the end. That asymmetry is
+itself the entry's first lesson: the record was written after batch two and
+then not updated for three more, so it shipped claiming a result 46 bodies
+short of the truth until a readiness review caught it.
+
+Batch one: ten lowering cells, a corrected record predicate, a diagnostics
+repair, one wrong-code fix, and ~43 repaired test pins. Routed 828 -> 888
+(collapsed key).
+Full suite green with full exec: 12884 passed, 3745 cases built and run with
+nothing skipped via cache, 0 move-verdict divergences over 1010 joined nodes,
+0 binding-fact gaps, dial 3746/3746. Zero snapshot churn -- no
+`tests/cases/*/expected/` file changed, which is what byte-identity means when
+it holds.
+
+**The predicate that was wearing five tags.** `_f1_record` rejected any record
+whose TypeDef carries a `cpp_formatter`, and its docstring justified that with
+"a formatter means a different C++ shape entirely". True for `list ->
+std::vector`; false for `tpy.coro.Waker`, whose formatter returns
+`::tpystd::coro::Waker` -- exactly the record spelling. Of 33 formatter-carrying
+TypeDefs, Waker is the only one of RECORD category, so the exclusion was a
+Waker exclusion wearing a general shape. Two independent drills converged on it
+from opposite ends: one found Waker in 19 of the 70 bodies behind the two bare
+landmark tags, the other found that a tag reading `ctor.mil_field.nominal.call`
+was "not a MIL question at all" -- all five of its bodies were Waker. The gate
+now asks the category. Measured 25 collapsed bodies routed against an ablation
+that had predicted 30, which is the ordinary gap between a gate ablation and
+byte-identical flips: the ablation proves admission, not that the render
+matches.
+
+**A reject tag that discarded the answer it had already computed.** 70 bodies
+-- 41% of the backlog -- carried a bare `expr.call` / `expr.method_call`
+naming only the reject SITE. The detail existed: gates write a precise blocking
+shape into the compiler's detail slot at ~430 sites, but only `stmt.*` reasons
+ever composed it back. A ~10-line sibling of `stmt_reject_reason` split two
+opaque buckets into 33 actionable ones, and every one of the 62 remaining
+reasons now names a shape. This also retires the reason `probe_sites.py`
+existed: a four-minute traceback-instrumenting probe built around a one-line
+composition gap.
+
+**The wrong-code move, and why only one gate could see it.** A cell asked
+`_is_move_source` about the AST source NODE and treated a yes as licence to
+move the RENDERED value. Those coincide only when nothing converts in between;
+at an owned str/bytes element fed a view-form source the copy constructs from a
+trivially-copyable view, so the move named the wrong object. THIR emitted
+`std::string(std::move((*a)))` where the AST emits `std::string((*a))`.
+
+The move-verdict join reported **0 divergences over 0 joined nodes** for that
+case. The AST does not merely reach a different verdict there -- it never ASKS
+the move question, so there was nothing to join. The join compares decisions on
+shared nodes; wherever THIR asks a question the AST does not, it is structurally
+blind, and the byte-diff is the only remaining detector. That is the general
+statement of the hazard, and it is why the three gates are complementary rather
+than redundant. Fixed by asking the copy question first (`_owned_copy_sink`), so
+the move fires exactly where the copy does not. Two later audits, by different
+reviewers, each confirmed this was the only new move-deciding site on the
+branch.
+
+The proposed prophylactic is in `TODO.md`: any arm that both reads
+`.form`/ownership off the lowered value and decides a move should ship a
+routing pin with an explicit view-source-at-an-owned-slot case.
+
+**Five pins that could not fail, found by four unrelated routes.** A malformed
+`NominalType("Int32", "tpy.Int32")` -- the second positional is `type_args`,
+not `_module_qname` -- let a boundary pin pass even with its predicate widened
+to admit `list`. Two negative pins matched a bare landmark by exact key, so the
+suffix change retired them silently. One had been satisfied since it was
+written by an unrelated sibling body in its own fixture, never by the body its
+comment described. And one counted faces from `_lower_ctx_witnessed` (bare
+`lower_module`) while claiming a result about the codegen path -- the two
+DISAGREE about whether a body routes, so the face came from a run in which the
+body never routed. That last one is the "witnessed before it can raise" hazard
+one layer out: not the face incrementing early, but the LENS being one that
+raises.
+
+The shared repair is `testutil._rejects_at` / `_assert_rejects_at`: match the
+landmark, pass the shape wherever the pin claims a named reject. The whole-tally
+form (`fell == {tag: 1}`) was removed wherever touched -- it fails whenever any
+unrelated body in the fixture changes status, and the cheap repair is to
+re-record whatever the run printed, which is precisely how a pin stops asserting
+what it was written for.
+
+**`_record_class_binding` stays narrow, deliberately.** It still keys on the old
+formatter check while its sibling asks the category. An implementer widened it,
+measured zero effect, and reverted: `lc.pointers` holds only non-value-type
+bindings and the sole RECORD-category formatter-carrying type is a ValueType, so
+the shape is unreachable. A routing pin requires the face to be WITNESSED, and
+an unreachable shape cannot be -- widening it ships an untestable arm. A
+reviewer read the same divergence as an inconsistency worth closing now; the
+three-unit contract decides it. Its docstring records the invariant and the
+condition under which to widen.
+
+**`_builtin_value_record`: the retirement case is weaker than it first looked.**
+At three of its four sites it is spelled `_f1_record(x) or
+_builtin_value_record(x)`, and with `_f1_record` corrected two of its faces drop
+to zero witnesses -- which reads as proof it was only ever a workaround. It is
+not proof. `_f1_record`'s builtin path additionally requires
+`_f1_record_type_arg_ok` and excludes `is_compile_time_only`, neither of which
+the sibling checks; the zero-witness result is corpus-empirical, and Waker and
+Poll both happen to be non-generic. If it is retired, the evidence needed is an
+assert-backed equivalence over a GENERIC builtin value record, not a witness
+count. Left open as a user decision.
+
+**One new gate/render duplicate, landing immediately after the fold that
+existed to reduce them.** `_lower_call_arg` now also calls
+`_container_field_pass_arg` at render time, mirroring the arg-table row that
+already gated it, following the `_record_field_ref_arg` precedent on the line
+above. Not a new mechanism, but the next fold should know the debt grew by one.
+
+**An AST-path UAF, confirmed by building it.** A `-> StrView | None` fed an
+owned-str-returning CALL emits `return make(s);` into
+`std::optional<std::string_view>` -- a view onto a destroyed temporary. Built
+and run, it prints garbage while `len()` reports the correct length; CPython
+prints the string. `BUGS.md` had claimed the str side was "safe by
+construction", scoped to literals; the face is source-kind-dependent, not
+type-dependent. Entry widened and regraded MED. THIR keeps the shape rejecting,
+so the migration neither introduces nor inherits it.
+
+**Batch two: 111 -> 98 collapsed, 127 -> 112 per body**, six rows. A Char
+payload at an `Own[T]` copy-temp slot; a record field bound bare at a method's
+record ref slot; an owned bytes NAME bare at an `Own[bytes]` element slot, plus
+the bytes move slot widened from the bytearray coerce chain to a bare owned-form
+name; a value-tuple container element read whole; that element read through a
+container FIELD receiver and through a module GLOBAL; a matching generic-tuple
+call rvalue returned bare. The largest tag, `method.arg_shape`, went 15 -> 6.
+
+**The partition was mine and it was wrong.** The tuple cluster was handed to the
+lane owning `statements.py` on the theory that `subscript.tuple_shape` was a
+statement-position question, because it appeared under three different `stmt.*`
+prefixes. It is not: all five rejects are constructed at ONE site in the tuple
+subscript ladder, and the prefixes are composed afterwards by the statement
+chokepoint. Only 3 of 12 bodies raised in that lane's files. The lesson is about
+reading tags: a composed tag names the position where a reason was FORMATTED,
+not where it was decided, so partitioning by tag prefix partitions by the wrong
+thing.
+
+That lane also refused the one lever it did own -- passing `subscript_prechecked`
+from a var_decl sink -- because `faces.py` records that those per-sink bypasses
+were deliberately REPLACED by consumer-blind admission, precisely for skipping
+the gate's receiver guards. Re-adding one would have shown progress and
+reintroduced a removed design.
+
+**Two silent defects, both found by adversarial dual-generation rather than by
+any gate.** The `own_lvalue` row hoisted a copy temp for a ternary at an
+`Own[<value type>]` slot, where that slot is a plain by-value param an lvalue
+binds directly: the AST's copy arm never fires and the whole render is the bare
+conditional. Live for fixed ints; the corpus never reaches it. And
+`_field_decl_type` peeled readonly/Ref/Send-Sync but not `Own` while its partner
+`_field_receiver_ok` admitted an `Own[record]` binding, so every gate on that
+pair silently rejected an `Own`-param receiver's members -- a false negative,
+which is why nothing was ever wrong-coded by it and nothing caught it.
+
+**A pin passing for a reason its comment got wrong**, the ninth of the session:
+`test_own_bytes_param_at_owned_elem_slot_still_defers` asserted the AST hoists
+`auto __tmp_N = v;` for an `Own[bytes]` param. It does not and never did.
+
+**On the handed-off drill, three of its claims were wrong and re-derivation
+caught all three**: "3 bodies" was 1, "4 bodies" was not 4 clears (each revealed
+a different next blocker), and one body's diagnosed cause was simply not the
+cause -- the receiver WAS in `declared`; the real blocker was a `StrView` sibling
+element keeping the tuple out of the readable-element set. The lane was told to
+verify rather than trust, and that instruction is what made the hand-off safe.
+
+**Batches three, four and five: 98 -> 52 collapsed, 112 -> 60 per body.** Rows
+for value-tuple container elements and their field/global receivers; open-T
+copy over a subscript source; an open-T call result at a native protocol slot;
+the open-`Own[T]` rvalue row reached from the generic lane; a value-optional
+member at both ctor families; storage-optional and wrapper call forwarding at
+returns; a by-value container return from a method call; a record field at a
+method's record ref slot; an owned bytes name and an owned bytes call rvalue at
+`Own[bytes]` element slots; a Char payload at an `Own[T]` copy temp; str/bytes
+slices over a container element and over a call result; a raw `Ptr[T]` param
+and an `Own`-wrapped capture on resumable frames; a value-tuple predecl at a
+branch-chain hoist; a str field as a membership haystack; a pointer source at a
+flush-less nested ctor slot; a str tuple element as a method receiver.
+
+**Two wrong-code defects were fixed, and both had been live on master.** A
+`self` receiver at a user-record subscript emitted `this[...]` where the AST
+spells `(*this)[...]` -- C++ that does not compile. And the batch that found it
+also found that a `self` operand at a unary operator emits `-(this)`: still
+live, filed, and NOT fixed here, because the arm that would route the one
+stdlib body behind it was built, seen to expose the divergence, and reverted.
+
+**What the gates could not see, stated plainly, because it is the migration's
+central lesson.** Every defect this branch found was invisible to the suite.
+The wrong-code move was caught by the byte-diff alone -- the move-verdict join
+joined ZERO nodes there, because the AST never asks the move question at that
+position, and a join over zero nodes reports clean. The `self`-subscript and
+`-self` bugs were caught by generating shapes no committed case contains. Three
+further defects sit in the tree right now, unreachable until an ordinary row
+lands. Eleven test pins were found that could not fail, by eleven unrelated
+routes, every one green in a green suite.
+
+The corollary for whoever runs the next wave: **a green suite is evidence about
+the corpus, not about the compiler.** Budget adversarial dual-generation at
+every widened arm; it out-yielded ~32 specialist review passes on this branch.
+
+**Three method lessons, each of which cost a lane.**
+
+A composed reject tag names where a reason was FORMATTED, not where it was
+decided. `subscript.tuple_shape` appeared under three `stmt.*` prefixes and was
+built at one site in the subscript ladder; lanes partitioned by tag prefix were
+therefore given work that raises in a file they did not own. Resolve the raise
+site before cutting lanes.
+
+Grouping the tail by reason DETAIL rather than by composed tag looks like it
+reveals clusters. It does not: it reveals shared raise SITES. Four bodies under
+`field.result_type` were four different questions at four caller positions.
+
+An instrument fix is worth exactly the bodies currently sitting under the
+catcher's own tag -- a number countable before doing the work. The first such
+fix carried 70 bodies and turned two opaque buckets into 33. Later ones carried
+about one, and were done anyway because the first had paid so well.

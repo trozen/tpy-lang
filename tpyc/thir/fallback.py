@@ -343,6 +343,26 @@ def expr_kind_tag(e: object) -> str:
     return f"expr.{kind}"
 
 
+def call_reject_reason(base: str) -> str:
+    """The composed tag for a rejected CALL landmark (`expr.call` /
+    `expr.method_call`) -- the sibling of `stmt_reject_reason` for the reasons
+    that stand alone instead of composing onto a statement shape.
+
+    Without it a bare `expr.call` raise DISCARDS the detail its own reject arm
+    just recorded: the gates already name which receiver shape, argument row or
+    slot family blocked (`_recv_shape_reject`, the argument table's family
+    tails), but a bare landmark reason never reads that slot, so the tally
+    collapses every one of them into two opaque buckets.
+
+    CALL-TIME composition, like `stmt_reject_reason`: the detail is read off the
+    compiler when THIS function runs, so it must be called AT the raise, never
+    pre-evaluated into an argument ahead of the note_detail that should ride
+    it."""
+    compiler = get_current_compiler()
+    detail = compiler._thir_reject_detail if compiler is not None else None
+    return f"{base}:{detail}" if detail else base
+
+
 def stmt_reject_reason(stmt: TpyStmt, detail: str | None = None) -> str:
     """The composed tag for a statement lowering rejected:
     a landmark tag stands alone; a bare `stmt.*` shape picks up the

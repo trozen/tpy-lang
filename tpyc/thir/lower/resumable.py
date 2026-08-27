@@ -157,6 +157,7 @@ from .predicates import (
     _resolved_str_value,
     _slot_free_ptr_reseat_ok,
     _str_field_value_read,
+    _type_family_tag,
     _wrap_view_owned_sink,
     _unwrap_own,
     _value_opt_scalar,
@@ -270,6 +271,11 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
             or _resolved_bytes_value(t, analyzer) is not None):
         return True
     if _optional_ptr_borrow(t, analyzer) is not None:
+        return True
+    # A raw `Ptr[T]` param is a VALUE-kind capture, so the frame field is the
+    # bare `T*` the sync param already spells and every leaf read takes the
+    # sync pointer rows -- the same standing the Ptr LOCAL slot has.
+    if _eligible_ptr_value(t, analyzer):
         return True
     # Optional-view (str|None / bytes|None) params capture OWNED
     # (`std::optional<std::string>` field, the skeleton's OWNED_COPY
@@ -1037,7 +1043,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     for _pname, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
         if not _res_param_ok(pt, analyzer):
-            return _reject("res.param_type")
+            # The family names WHICH param slot blocked; the bare landmark
+            # collapses unrelated capture shapes into one tally line.
+            return _reject(f"res.param_type:{_type_family_tag(pt, analyzer)}")
     if is_generator:
         # The yielded element type gates a generator (its `return_type` is
         # `Iterator[T]`, not a value slot). Value scalars, a bare `T`, and
@@ -1062,6 +1070,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # return read the same predicate and keep their own slot rules.
         yt_valopt = _value_opt_yield_slot(yt_t)
         if not (_res_capture_ok(yt_t, analyzer)
+                # ... and the Own-peeled capture families: an `Own[T]` slot
+                # renders like the bare `T` it wraps, the ownership fact
+                # living in the consumer's loop-var binding exactly as it
+                # does for the container and record slots peeled below.
+                or _res_capture_ok(yt_tuple, analyzer)
                 or (yt_valopt is not None
                     and _res_capture_ok(yt_valopt.inner, analyzer))
                 or _resolved_str_value(yt_t, analyzer) is not None
@@ -2053,8 +2066,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         loc=getattr(t.cond, "loc", None))
                 else:
                     conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
-            except ThirUnsupported:
-                raise ThirUnsupported("res.cond") from None
+            except ThirUnsupported as ex:
+                # The landmark names the branch position; the condition's own
+                # reason rides it, or the tag names this catcher instead of
+                # the construct that blocked.
+                raise ThirUnsupported(f"res.cond:{ex.reason}") from None
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;
@@ -2289,8 +2305,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                             use=_ExprUse(result=_ExprResultUse.SUSPEND,
                                          allow_temps=True)),
                         lc)
-                except ThirUnsupported:
-                    raise ThirUnsupported("res.await_operand_shape") from None
+                except ThirUnsupported as ex:
+                    # The landmark names the suspend position; the operand's
+                    # own reason rides it, or the tag hides which construct
+                    # actually blocked.
+                    raise ThirUnsupported(
+                        f"res.await_operand_shape:{ex.reason}") from None
                 _witness("res.suspend_operand")
             else:
                 fi = operand.resolved_function_info

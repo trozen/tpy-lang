@@ -10,6 +10,7 @@ arrow folds into the deref, so the member access is `.`).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -71,12 +72,10 @@ class TestNativeIterMethodReturn:
             "main()\n"
         )
         fell = _thir_fallbacks(src)
-        # The reject moved INTO the structural-temp init's method-call
-        # lowering when the protocol call-rvalue leg landed (the arg gate
-        # now admits the hoist; the inner __iter__ call still rejects) --
-        # the stays-AST claim is unchanged, dualgen-verified identical.
-        assert ("body:expr.call" in fell
-                or "body:expr.method_call" in fell), fell
+        # The reject lands in the structural-temp init's method-call
+        # lowering, not at the free call: the arg gate admits the hoist and
+        # the inner __iter__ call is what still rejects.
+        _assert_rejects_at(fell, "body:expr.method_call", "method.ret_type")
 
 
 class TestConsumingPointerReceiver:

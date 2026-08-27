@@ -17,7 +17,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
-    _PRELUDE, _F1_RECORDS, _assert_byte_identical,
+    _PRELUDE, _F1_RECORDS, _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical,
 )
 
@@ -450,17 +450,20 @@ class TestMethodCall:
         assert "std::string __tmp_1{t};" in cpp
         assert "xs.push_back(std::move(__tmp_1));" in cpp
 
-    def test_bytes_owned_local_arg_stays_ast(self):
-        # BOUNDARY: the bytes sibling is a different render -- the AST passes
-        # an owned bytes lvalue BARE at an `Own[bytes]` element slot
-        # (`xs.push_back(t);`, gen_call_arg's inline_template lvalue skip,
-        # which only str is carved out of), so the owned-str row must not
-        # generalize across the payload.
+    def test_bytes_owned_local_arg_lands_bare(self):
+        # The bytes sibling is a different render, which is why it is its own
+        # row: the AST passes an owned bytes lvalue BARE at an `Own[bytes]`
+        # element slot (gen_call_arg's inline_template lvalue skip, which only
+        # str is carved out of), so the owned-str row must not generalize
+        # across the payload.
         src = ("def f(xs: list[bytes], a: bytes, b: bytes) -> None:\n"
                "    t = a + b\n    xs.append(t)\n")
-        thir = _lower(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.bytes_owned_name", 0) >= 1
+        assert not faces.get("argtemp.own_str")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "xs.push_back(t);" in cpp
 
     def test_str_view_local_arg_routes(self):
         # A VIEW-form str local into an Own[str] slot materializes an owned copy
@@ -787,7 +790,8 @@ class TestContainerLiteralLocal:
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=False,
                                    thir_codegen=True))
-        assert compiler._thir_fallback == {"body:expr.method_call": 1}
+        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
+                           "method.arg_shape")
         _assert_byte_identical(src)
 
     def test_reassigned_lazy_repeat_stays_ast(self):

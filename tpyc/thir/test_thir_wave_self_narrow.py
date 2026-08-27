@@ -21,7 +21,7 @@ import io
 
 from .emit import emit_thir_body
 from .testutil import (_lower_ctx, _fn, _assert_byte_identical, _compile,
-                       _entry)
+                       _entry, _rejects_at, _assert_rejects_at)
 from ..codegen_cpp import CodeGenOptions
 
 
@@ -113,9 +113,10 @@ class TestSelfPolymorphicNarrowing:
         # TUPLE-form cond keeps res.cond (the sibling tripwire below).
         assert _fn(_lower_ctx(_PETS), "assert_dog") is not None
         fb = _fallback(_PETS)
-        assert "body:stmt.assert" not in fb
-        assert fb.get("resumable:res.cond") == 1
-        assert "resumable:res.narrowed_resume" not in fb
+        assert not _rejects_at(fb, "body:stmt.assert")
+        _assert_rejects_at(fb, "resumable:res.cond",
+                           shape="truthy.call_nonbool", count=1)
+        assert not _rejects_at(fb, "resumable:res.narrowed_resume")
 
     def test_resumable_tuple_form_is_admitted_but_unreachable(self):
         # The TUPLE gate drops the `self` exclusion WITHOUT a resumable guard
@@ -124,4 +125,5 @@ class TestSelfPolymorphicNarrowing:
         # routes it today: the resumable condition lowering rejects first.
         # This pin is the tripwire -- if `res.cond` ever widens, the poly
         # admission behind it becomes live and needs its own byte-check.
-        assert _fallback(_PETS).get("resumable:res.cond") == 1
+        _assert_rejects_at(_fallback(_PETS), "resumable:res.cond",
+                           shape="truthy.call_nonbool", count=1)

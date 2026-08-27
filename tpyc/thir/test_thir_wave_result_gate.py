@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import io
 
+from ..codegen_cpp.context import CodeGenOptions
 from .emit import emit_thir_body
 from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
-                       _assert_byte_identical)
+                       _assert_byte_identical, _assert_rejects_at,
+                       _assert_routes_byte_identical, _compile, _entry)
 
 
 def _body(thir, name: str) -> str:
@@ -315,6 +317,72 @@ class TestCopyFaces:
         body = _body(thir, "apply")
         assert "return U(fn(init));" in body
         assert faces["call.copy_tparam"] >= 1
+        _assert_byte_identical(src)
+
+    def test_copy_of_open_t_container_element_routes(self):
+        # The heapq/random shift shape: `copy(xs[i])` off an open-T
+        # container, the generic tail over a subscript read.
+        src = (
+            "from tpy import Int32, Comparable, copy\n"
+            "def sift[T: Comparable](heap: list[T], pos: Int32) -> None:\n"
+            "    newitem: T = copy(heap[pos])\n"
+            "    heap[pos] = newitem\n"
+            "def main() -> None:\n"
+            "    xs = [3, 1, 2]\n"
+            "    sift(xs, 0)\n"
+            "    print(xs[0])\n"
+            "main()\n"
+        )
+        thir, faces = _lower_ctx_witnessed(src)
+        assert ("T newitem = T(::tpy::__getitem__(heap, pos));"
+                in _body(thir, "sift"))
+        assert faces["call.copy_tparam_elem"] >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_copy_of_open_t_element_receiver_shapes(self):
+        # The receivers the row admits past a plain list name: a dict, a
+        # nested container, and a tuple element (read through the
+        # `val_or_ptr_t<T>` traits, never as a bare pointer).
+        src = (
+            "from tpy import Int32, Comparable, copy\n"
+            "def d[T: Comparable](m: dict[Int32, T], k: Int32) -> None:\n"
+            "    m[k] = copy(m[k])\n"
+            "def n[T: Comparable](rows: list[list[T]], i: Int32) -> None:\n"
+            "    rows[i][0] = copy(rows[i][0])\n"
+            "def t[T: Comparable](pair: tuple[T, Int32]) -> Int32:\n"
+            "    first: T = copy(pair[0])\n"
+            "    return pair[1]\n"
+            "def main() -> None:\n"
+            "    m = {1: 2}\n"
+            "    d(m, 1)\n"
+            "    rows = [[3], [4]]\n"
+            "    n(rows, 0)\n"
+            "    pair = (5, 6)\n"
+            "    print(t(pair))\n"
+            "main()\n"
+        )
+        _assert_routes_byte_identical(src)
+
+    def test_copy_of_str_element_stays_ast(self):
+        # Same syntactic source, a CONCRETE payload: the str arm takes
+        # NAME sources only, so widening the open-T row must not open the
+        # subscript source for every payload family.
+        src = (
+            "from tpy import copy\n"
+            "def f() -> None:\n"
+            "    xs = [\"a\", \"b\"]\n"
+            "    v = copy(xs[0])\n"
+            "    print(v)\n"
+            "f()\n"
+        )
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
+                           "call.copy_source.str")
         _assert_byte_identical(src)
 
     def test_copy_of_span_name(self):

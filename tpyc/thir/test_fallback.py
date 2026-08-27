@@ -25,7 +25,7 @@ from .lower import (
     lower_function,
 )
 from .lower.predicates import _type_family_tag
-from .testutil import _compile, _entry
+from .testutil import _assert_rejects_at, _compile, _entry
 
 
 def test_note_and_fold_record_on_active_compiler():
@@ -285,7 +285,7 @@ def test_base_init_arg_lowering_reject_falls_back():
         if ctor is None:
             fold_attempt("ctor")
     assert ctor is None
-    assert compiler._thir_fallback.get("ctor:expr.call") == 1
+    _assert_rejects_at(compiler._thir_fallback, "ctor:expr.call", count=1)
 
 
 def test_global_lowering_reject_falls_back_at_sync_boundary():
@@ -687,7 +687,8 @@ def test_for_each_container_route_literal_arg_still_rejects():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback.get("body:expr.call") == 1
+    _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
+                       "call.arg_shape.container")
 
 
 def test_for_each_method_generator_call_routes():
@@ -745,7 +746,8 @@ def test_for_each_field_recv_generator_call_defers():
         if fn is None:
             fold_attempt("body")
     assert fn is None
-    assert compiler._thir_fallback.get("body:expr.method_call") == 1
+    _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
+                       "method.fi_kind")
 
 
 def test_for_each_user_iterator_name_routes():

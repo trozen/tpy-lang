@@ -11,6 +11,7 @@ The value-repr Optional ternary wraps both arms in the spelled optional.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
     _compile,
     _entry,
     _lower_ctx_witnessed,
@@ -233,5 +234,5 @@ class TestOptViewParamArgStaysOut:
     def test_defers_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert "body:expr.method_call" in fb, fb
+        _assert_rejects_at(dict(compiler._thir_fallback),
+                           "body:expr.method_call", "method.arg_shape")

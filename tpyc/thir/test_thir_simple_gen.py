@@ -348,7 +348,6 @@ class TestSlicedOutShapes:
         _assert_identical(src)
         fb = _sgen_fallback(src)
         assert not fb, fb
-        assert fb.get("expr.call") is None
 
     def test_generic_record_method_routes(self):
         # The generator METHOD on a generic record routes since the

@@ -29,6 +29,8 @@ If `$ARGUMENTS` is non-empty, use it; otherwise use `master`. Resolve to a stabl
 
 If there are uncommitted changes, the review covers both committed and uncommitted state (`git diff <BASE>` without a second ref).
 
+**On a branch reviewed more than once, keep the base FIXED at the branch point -- do not advance it to the previous round's output.** A diff EXCLUDES its base, so basing round N+1 on round N's fix commit means nobody ever reviews that commit: the fixes a review produces fall into the next review's blind spot, and the gap looks correct because each range starts exactly where the last one ended. One branch accumulated five such commits that way, one of them a render-path refactor. Cumulative diffs re-show approved hunks, which is a cheap skim next to a commit nobody reads. If a later round's cumulative diff really is too large, the alternative is a mandatory closing round scoped to the whole branch before `/prep-merge` -- not a moving base.
+
 ### 2. Classify changed files
 
 Run `git diff <BASE> --name-only` and bucket each path:

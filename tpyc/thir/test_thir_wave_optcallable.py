@@ -8,9 +8,10 @@ func-ref name at a marker call's slot. The narrowed read (`cb(x)` under
 
 from __future__ import annotations
 
+from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
-    _assert_routes_byte_identical,
+    _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
 )
 
 _PRELUDE = (
@@ -135,7 +136,7 @@ class TestMarkerContainerFieldAndOwnTparamArgs:
             "        heapq.heappush(self.heap, Entry(k))\n")
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "push") is not None
-        assert w.get("arg.container_field_marker", 0) >= 1
+        assert w.get("arg.container_field", 0) >= 1
         assert w.get("own.record_rvalue", 0) >= 1
         _assert_byte_identical(src)
 
@@ -157,7 +158,7 @@ class TestMarkerContainerFieldAndOwnTparamArgs:
         _assert_byte_identical(src)
 
 
-class TestOwnTparamMethodRvalueArg:
+class TestOwnTparamCallRvalueArg:
     def test_open_own_slot_same_t_method_rvalue_routes(self):
         # `self._st.init(ui, other._st.take(ui))` inside a generic record
         # body: the Own[T] prvalue binds the open Own[T] slot bare.
@@ -179,7 +180,7 @@ class TestOwnTparamMethodRvalueArg:
             "        self._n = other._n\n")
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "__move__") is not None
-        assert w.get("arg.own_tparam_method_rvalue", 0) >= 1
+        assert w.get("arg.own_tparam_call_rvalue", 0) >= 1
         _assert_byte_identical(src)
 
     def test_by_value_open_t_return_adjacent_shape(self):
@@ -206,6 +207,121 @@ class TestOwnTparamMethodRvalueArg:
             "    def dup_first(self) -> None:\n"
             "        self._st.init(self._n, self.peek(UInt32(0)))\n"
             "        self._n += 1\n")
+        _assert_byte_identical(src)
+
+    def test_free_call_rvalues_at_open_own_slot_route(self):
+        # The FREE-call half of the same row (the ArrayList shape):
+        # `copy(name)` and `make_default()` at the record's own open
+        # `Own[T]` method slot both render their prvalue inline.
+        src = (
+            "from tpy import UInt32, Own, copy, Default, make_default\n"
+            "from typing import Iterable\n"
+            "class Bag[T: Default]:\n"
+            "    items: list[T]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.items = []\n"
+            "    def push(self, value: Own[T]) -> None:\n"
+            "        self.items.append(value)\n"
+            "    def soak(self, src: Iterable[Own[T]]) -> None:\n"
+            "        for item in src:\n"
+            "            self.push(copy(item))\n"
+            "    def push_default(self) -> None:\n"
+            "        self.push(make_default())\n"
+            "def main() -> None:\n"
+            "    b = Bag[UInt32]()\n"
+            "    xs = [UInt32(1), UInt32(2)]\n"
+            "    b.soak(xs)\n"
+            "    b.push_default()\n"
+            "    print(len(b.items))\n"
+            "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("arg.own_tparam_call_rvalue", 0) >= 2
+        _assert_routes_byte_identical(src)
+
+    def test_subscript_source_stays_ast(self):
+        # A SUBSCRIPT at the same open `Own[T]` slot: the row's call shape
+        # is load-bearing (an element read is an lvalue the `T&&` slot
+        # cannot bind), so this must keep rejecting.
+        src = (
+            "from tpy import UInt32, Int32, Own, Default\n"
+            "class Bag[T: Default]:\n"
+            "    items: list[T]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.items = []\n"
+            "    def push(self, value: Own[T]) -> None:\n"
+            "        self.items.append(value)\n"
+            "    def echo(self, src: list[T], i: Int32) -> None:\n"
+            "        self.push(src[i])\n"
+            "def main() -> None:\n"
+            "    b = Bag[UInt32]()\n"
+            "    b.echo([UInt32(1)], 0)\n"
+            "    print(len(b.items))\n"
+            "main()\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback),
+                           "body:expr.method_call", "method.arg_shape")
+        _assert_byte_identical(src)
+
+
+_GENERIC_OWN_SLOT = (
+    "from tpy import Int32, Own\n"
+    "class Wrap[T]:\n"
+    "    x: T\n"
+    "    def __init__(self, x: Own[T]) -> None:\n"
+    "        self.x = x\n"
+    "def wrap[T](v: Own[T]) -> Own[Wrap[T]]:\n"
+    "    return Wrap(v)\n"
+    "class Outer[T]:\n"
+    "    items: list[T]\n"
+    "    def __init__(self, items: Own[list[T]]) -> None:\n"
+    "        self.items = items\n"
+)
+
+
+class TestGenericFreeCallOpenOwnSlotRvalue:
+    # The generic free callee's `Own[T]` slot reaches the SAME row as the
+    # record ladder above; its family settles open slots in a prologue, so
+    # the row is called there rather than restated.
+    def test_method_rvalue_at_generic_own_slot_routes(self):
+        src = _GENERIC_OWN_SLOT + (
+            "    def go(self) -> Own[Wrap[T]]:\n"
+            "        return wrap(self.items.pop())\n"
+            "def main() -> None:\n"
+            "    o = Outer([5, 6])\n"
+            "    w = o.go()\n"
+            "    print(w.x)\n"
+            "main()\n"
+        )
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("arg.own_tparam_call_rvalue", 0) >= 1
+        _assert_routes_byte_identical(src)
+
+    def test_ternary_of_rvalues_stays_ast(self):
+        # A TERNARY at the same slot: it binds as an lvalue reference the
+        # `T&&` slot cannot take, so the row's call shape is load-bearing
+        # and this must keep rejecting.
+        src = _GENERIC_OWN_SLOT + (
+            "    def go(self, f: bool) -> Own[Wrap[T]]:\n"
+            "        return wrap(self.items.pop() if f else self.items.pop(0))\n"
+            "def main() -> None:\n"
+            "    o = Outer([5, 6])\n"
+            "    w = o.go(True)\n"
+            "    print(w.x)\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
+                           "call.generic_arg_slot")
         _assert_byte_identical(src)
 
 
@@ -898,3 +1014,93 @@ class TestTypedDictMembershipCallReceiver:
             "        print(\"present\")\n"
             "f()\n")
         _assert_routes_byte_identical(src)
+
+
+class TestOwnedBytesNameAtOwnElementSlot:
+    """The OWNED-form half of the `Own[bytes]` element slot: the cpp_template
+    callee binds the lvalue natively, so the non-moved source renders bare
+    while its str twin at the same slot still hoists the view->owned temp."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Sink:\n"
+        "    chunks: list[bytes]\n"
+        "    def __init__(self) -> None:\n        self.chunks = []\n"
+        "    def write(self, data: bytes) -> Int32:\n"
+        "        owned: bytes = bytes(data)\n"
+        "        self.chunks.append(owned)\n"
+        "        return len(owned)\n"
+        "def main() -> None:\n"
+        "    s = Sink()\n"
+        "    print(s.write(b\"ab\"))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        assert "this->chunks.push_back(owned);" in cpp[0] + cpp[1]
+
+    def test_face_witnessed(self):
+        _, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("arg.bytes_owned_name", 0) == 1
+
+    def test_view_source_at_the_same_slot_keeps_its_convert(self):
+        # The move verdict is read off the LOWERED name, so the shape that
+        # must never reach it needs its own witness: a VIEW-form bytes
+        # PARAM at the identical slot materializes `::tpy::bytes_copy(x)`
+        # and can never render a move.
+        src = (
+            "from tpy import Int32\n"
+            "def use(data: bytes) -> Int32:\n"
+            "    bs: list[bytes] = []\n"
+            "    bs.append(data)\n"
+            "    return len(bs)\n"
+            "def main() -> None:\n"
+            "    print(use(b\"ab\"))\n"
+            "main()\n")
+        _, w = _lower_ctx_witnessed(src)
+        assert w.get("arg.own_bytes_slot", 0) == 1
+        assert not w.get("arg.bytes_owned_name")
+        cpp = _assert_routes_byte_identical(src)
+        assert "bs.push_back(::tpy::bytes_copy(data));" in cpp[1]
+
+    def test_movable_owned_name_moves(self):
+        # A frame-promoted owned local IS movable, and `_maybe_move` fires
+        # ahead of the template callee's lvalue skip -- the move slice takes
+        # that half, ahead of this row.
+        src = (
+            "import asyncio\n"
+            "from tpy import Int32\n"
+            "async def collect(src: bytes) -> Int32:\n"
+            "    xs: list[bytes] = []\n"
+            "    owned: bytes = bytes(src)\n"
+            "    await asyncio.sleep(0.0)\n"
+            "    xs.append(owned)\n"
+            "    return len(xs)\n"
+            "async def amain() -> None:\n"
+            "    print(await collect(b\"ab\"))\n"
+            "asyncio.run(amain())\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "(*xs).push_back(std::move(owned));" in cpp[1]
+
+    def test_record_method_own_bytes_slot_defers(self):
+        # BOUNDARY: a user method's `Own[bytes]` param is a real by-value
+        # C++ slot, not a template expansion, so the AST hoists the copy
+        # temp there -- a bare pass would diverge.
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(
+            "from tpy import Int32, Own\n"
+            "class Sink:\n"
+            "    n: Int32\n"
+            "    def __init__(self) -> None:\n        self.n = 0\n"
+            "    def put(self, b: Own[bytes]) -> None:\n"
+            "        self.n += len(b)\n"
+            "def feed(s: Sink, src: bytes) -> Int32:\n"
+            "    owned: bytes = bytes(src)\n"
+            "    s.put(owned)\n"
+            "    return s.n\n"
+            "def main() -> None:\n"
+            "    print(feed(Sink(), b\"ab\"))\n"
+            "main()\n")
+        _assert_rejects_at(fell, "body:expr.method_call",
+                           shape="method.arg_shape")

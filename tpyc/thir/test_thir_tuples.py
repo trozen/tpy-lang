@@ -1108,14 +1108,26 @@ class TestValueTupleSlots:
         assert _fn(thir, "pick") is not None
         assert _fn(thir, "make") is not None
 
-    def test_view_element_tuple_ineligible(self):
-        # A StrView element keeps the tuple outside the value family (the
-        # literal render pins static storage for view slots).
-        thir = _lower(
+    def test_view_element_tuple_scalar_read_routes_literal_does_not(self):
+        # A StrView element keeps the tuple outside the value family, but
+        # the constraint is the LITERAL render (it pins static storage for
+        # view slots) -- reading a SCALAR sibling is the same
+        # `std::get<N>(t)` a view-free tuple gets, so the read routes while
+        # the literal keeps rejecting.
+        src = (
             _PRELUDE
             + "from tpy import StrView\n"
-            + "def f(t: tuple[StrView, Int32]) -> Int32:\n    return t[1]\n")
-        assert _fn(thir, "f") is None
+            + "def f(t: tuple[StrView, Int32]) -> Int32:\n    return t[1]\n"
+            + "def main() -> None:\n    print(f((\"a\", 2)))\n"
+            + "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_byte_identical(src)
+        assert "return std::get<1>(t);" in cpp[0] + cpp[1]
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(src)
+        _assert_rejects_at(fell, "body:stmt.expr_stmt",
+                           shape="expr.tuple_literal")
 
     def test_nested_value_tuple_scalar_element_read_routes(self):
         # Reading a SCALAR element (`t[0]`) off a nested value-tuple receiver is
@@ -2104,17 +2116,21 @@ class TestStandaloneUnpackTargetRungs:
         assert witnesses.get("subscript.value_tuple_source", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_subscript_tuple_elem_value_position_still_defers(self):
-        # BOUNDARY: the same element read in a VALUE position (not the
-        # unpack capture) keeps rejecting -- only the tuple-source sink
-        # takes the whole tuple bare.
+    def test_subscript_tuple_elem_value_position_routes(self):
+        # The same element read in a VALUE position (not the unpack
+        # capture): the whole tuple copies into its decl slot -- the
+        # value-tuple container-element row, a plain value read where the
+        # unpack sink instead binds the elements.
         src = ("from tpy import Int32\n"
                "def f(xs: list[tuple[Int32, Int32]]) -> Int32:\n"
                "    t = xs[0]\n"
                "    return t[0]\n"
                "print(f([(1, 2)]))\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _thir, witnesses = _lower_ctx_witnessed(src)
+        assert witnesses.get("subscript.value_tuple_elem", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("std::tuple<int32_t, int32_t> t = "
+                "::tpy::__getitem__(xs, 0);") in hpp + cpp
 
     def test_reused_scalar_beside_own_target_routes(self):
         # A reused scalar target beside a fresh Own element: the Own moves
@@ -4574,3 +4590,173 @@ class TestOptionalBorrowTupleLocal:
         thir = _lower_ctx(src)
         assert _fn(thir, "read_only") is None
         _assert_byte_identical(src)
+
+
+class TestValueTupleContainerElem:
+    """A value-TUPLE container element read whole (`pair = self._store[lk]`
+    off a `dict[str, tuple[str, str]]` field) -- the value-union element
+    row's sibling: borrow and storage coincide at the tuple level, so the
+    checked read copies bare into its sink."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class D:\n"
+        "    store: dict[str, tuple[str, Int32]]\n"
+        "    def __init__(self) -> None:\n        self.store = {}\n"
+        "    def total(self) -> Int32:\n"
+        "        n = 0\n"
+        "        for k in self.store:\n"
+        "            pair = self.store[k]\n"
+        "            n += pair[1]\n"
+        "        return n\n"
+        "def local_read(k: str) -> Int32:\n"
+        "    m: dict[str, tuple[str, Int32]] = {}\n"
+        "    p = m[k]\n"
+        "    return p[1]\n"
+        "def main() -> None:\n"
+        "    print(D().total())\n"
+        "    print(local_read(\"z\"))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        both = cpp[0] + cpp[1]
+        assert ("std::tuple<std::string, int32_t> pair = "
+                "::tpy::__getitem__(this->store, k);") in both
+
+    def test_face_witnessed(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("subscript.value_tuple_elem", 0) == 2
+
+    def test_view_element_tuple_defers(self):
+        # BOUNDARY: a `StrView` element keeps the tuple out of the value
+        # family -- a view element is a borrow whose whole-tuple copy is
+        # not this bare read.
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(
+            "from tpy import Int32, StrView\n"
+            "class D:\n"
+            "    store: dict[str, tuple[StrView, Int32]]\n"
+            "    def __init__(self) -> None:\n        self.store = {}\n"
+            "    def total(self) -> Int32:\n"
+            "        n = 0\n"
+            "        for k in self.store:\n"
+            "            pair = self.store[k]\n"
+            "            n += pair[1]\n"
+            "        return n\n"
+            "def main() -> None:\n"
+            "    print(D().total())\n"
+            "main()\n")
+        _assert_rejects_at(fell, "body:stmt.var_decl")
+
+
+class TestValueTupleElemOffContainerField:
+    """`self._store[lk][N]` -- the value-tuple element read whose inner
+    container is a dict FIELD. The receiver decides only how the container
+    itself renders (a bare lvalue either way), never what `std::get<N>`
+    spells, so the field/dict shapes share the bare-name row's verdict."""
+
+    _PRELUDE = (
+        "from tpy import Int32, String\n"
+        "class D:\n"
+        "    store: dict[str, tuple[str, str]]\n"
+        "    views: dict[str, tuple[StrView, Int32]]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.store = {}\n        self.views = {}\n"
+    )
+
+    SRC = (
+        "from tpy import StrView\n" + _PRELUDE
+        + "    def value_of(self, key: str) -> str:\n"
+        + "        return self.store[key][1]\n"
+        + "    def owned(self, key: str) -> str:\n"
+        + "        v = String(self.store[key][1])\n"
+        + "        return v\n"
+        + "    def collect(self) -> Int32:\n"
+        + "        out: list[str] = []\n"
+        + "        for k in self.store:\n"
+        + "            out.append(self.store[k][0])\n"
+        + "        return len(out)\n"
+        + "def main() -> None:\n"
+        + "    d = D()\n"
+        + "    print(d.collect())\n"
+        + "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        both = cpp[0] + cpp[1]
+        assert ("return std::get<1>(::tpy::__getitem__(this->store, key));"
+                in both)
+        # The element read lands BARE in the Own[str] element slot -- the
+        # `std::get` lvalue is the tuple's owned member, not a view.
+        assert ("out.push_back(std::get<0>("
+                "::tpy::__getitem__(this->store, k)));") in both
+
+    def test_view_element_read_defers(self):
+        # BOUNDARY: the widening is about the RECEIVER; the element actually
+        # read is still gated, so a `StrView` member keeps rejecting.
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(
+            "from tpy import StrView\n" + self._PRELUDE
+            + "    def peek(self, key: str) -> Int32:\n"
+            + "        return len(self.views[key][0])\n"
+            + "def main() -> None:\n"
+            + "    print(D().peek(\"a\"))\n"
+            + "main()\n")
+        _assert_rejects_at(fell, "body:stmt.return",
+                           shape="subscript.tuple_shape")
+
+
+class TestValueTupleGlobalElemRead:
+    """A `Final` value-tuple global carrying a VIEW element: reading a
+    SCALAR member is the same `std::get<N>(g)` a view-free tuple gets. The
+    view element keeps the tuple out of `_value_tuple` only because it pins
+    the tuple LITERAL's render, a constraint no element read carries."""
+
+    SRC = (
+        "from typing import Final\n"
+        "from tpy import Int32, StrView\n"
+        "VER: Final[tuple[Int32, StrView, Int32]] = (1, \"x\", 2)\n"
+        "def parts() -> Int32:\n"
+        "    return VER[0] + VER[2]\n"
+        "def main() -> None:\n"
+        "    print(parts())\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::get<0>(VER)" in cpp[0] + cpp[1]
+
+    def test_view_member_read_defers(self):
+        # BOUNDARY: the VIEW member itself is not a value read -- the
+        # element gate still rejects it.
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(
+            "from typing import Final\n"
+            "from tpy import Int32, StrView\n"
+            "VER: Final[tuple[Int32, StrView, Int32]] = (1, \"x\", 2)\n"
+            "def tag() -> Int32:\n"
+            "    return len(VER[1])\n"
+            "def main() -> None:\n"
+            "    print(tag())\n"
+            "main()\n")
+        _assert_rejects_at(fell, "body:stmt.return",
+                           shape="subscript.tuple_shape")
+
+    def test_view_element_tuple_literal_still_defers(self):
+        # BOUNDARY, the other half: the LITERAL render is what the view
+        # element constrains, and that gate is untouched.
+        from .testutil import _thir_ctx, _assert_rejects_at
+        _, fell = _thir_ctx(
+            "from tpy import Int32, StrView\n"
+            "def build(s: StrView) -> Int32:\n"
+            "    t: tuple[Int32, StrView] = (7, s)\n"
+            "    return t[0]\n"
+            "def main() -> None:\n"
+            "    print(build(\"ab\"))\n"
+            "main()\n")
+        _assert_rejects_at(fell, "body:stmt.var_decl",
+                           shape="decl.tuple_literal_shape")

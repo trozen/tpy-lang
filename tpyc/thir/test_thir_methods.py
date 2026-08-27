@@ -1904,13 +1904,16 @@ class TestBuiltinRecordReceiver:
         # family (probe: the record param gate, isolated by a body that
         # reads a field off it, which no container family admits).
         from .lower.predicates import _f1_record
-        from ..typesys import NominalType, make_list
+        from ..typesys import INT32, make_list
         compiler, modules = _compile(self.SRC)
         from ..compilation_context import activate_compiler
         with activate_compiler(compiler):
             analyzer = compiler.modules[_entry(modules).name].analyzer
-            lt = make_list(NominalType("Int32", "tpy.Int32"))
-            assert not _f1_record(lt, analyzer)
+            # The canonical singleton, not a hand-built NominalType: passing
+            # the qname positionally lands it in `type_args`, and the
+            # malformed element is then rejected for its construction before
+            # the element's own category is ever consulted.
+            assert not _f1_record(make_list(INT32), analyzer)
 
 
 _STATIC_TEMPLATE_SRC = (
@@ -3803,10 +3806,14 @@ class TestProtocolNameAtStubArg:
 
 class TestStrBytesFieldWriteValueShapes:
     """Value shapes the str/bytes field-write allowlists admit beyond the
-    literal / name / binop rows: a str SLICE subscript, the zero-arg `str()`
-    ctor call, and a narrowed `bytes | None` NAME. The renders are the
-    existing bare STR / bytes-copy arms -- each new shape's materialization
-    rides its own node."""
+    literal / name / binop rows: a str SLICE subscript, a str-typed CALL (the
+    zero-arg `str()` construction and the conversion alike), and a narrowed
+    `bytes | None` NAME. The renders are the existing bare STR / bytes-copy
+    arms -- each new shape's materialization rides its own node.
+
+    Every boundary unit here asserts byte-identity BEFORE it asserts the
+    fallback: ordered the other way, a widening that admits the shape fails
+    on the fallback assertion and never compares the two paths at all."""
 
     def _fallback(self, src: str) -> dict:
         compiler, modules = _compile(src)
@@ -3841,9 +3848,9 @@ class TestStrBytesFieldWriteValueShapes:
                "    def __init__(self) -> None:\n        self.name = \"t\"\n"
                "    def pick(self, s: str) -> None:\n"
                "        self.name = s[0]\n")
+        _assert_byte_identical(src)
         thir = _lower_ctx(src)
         assert _fn(thir, "pick") is None
-        _assert_byte_identical(src)
 
     def test_str_field_write_from_str_ctor_routes(self):
         # `self.name = str()`: the zero-arg ctor call default-constructs the
@@ -3853,17 +3860,18 @@ class TestStrBytesFieldWriteValueShapes:
                "    def reset(self) -> None:\n        self.name = str()\n")
         _assert_routes_byte_identical(src)
 
-    def test_str_field_write_from_str_conversion_stays_ast(self):
-        # BOUNDARY: the ctor row is ZERO-ARG only -- `str(x)` is a conversion
-        # with its own render, not a default construction.
+    def test_str_field_write_from_str_conversion_routes(self):
+        # `str(x)` is a call like any other here: the family reads its verdict
+        # off the resolved value type, and the conversion's own render
+        # (`::tpy::fixed_to_str<int32_t>(n)`) is what the bare assign lands.
         src = ("from tpy import Int32\n"
                "class Tag:\n    name: str\n"
                "    def __init__(self) -> None:\n        self.name = \"t\"\n"
                "    def show(self, n: Int32) -> None:\n"
                "        self.name = str(n)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "show") is None
         _assert_byte_identical(src)
+        thir = _lower_ctx(src)
+        assert _fn(thir, "show") is not None
 
     def test_bytes_field_write_from_narrowed_optional_routes(self):
         # A NAME declared `bytes | None`, narrowed to `bytes`: the deref is a
@@ -3884,9 +3892,13 @@ class TestStrBytesFieldWriteValueShapes:
                "    def __init__(self) -> None:\n        self.name = \"t\"\n"
                "    def store(self, s: str | None) -> None:\n"
                "        if s is not None:\n            self.name = s\n")
+        # Byte-identity FIRST: ordered the other way, a widening that admits
+        # the shape fails on the fallback assertion before the two paths are
+        # ever compared -- reporting a clean boundary break while hiding the
+        # divergence that is the actual claim.
+        _assert_byte_identical(src)
         assert self._fallback(src) == {
             "body:stmt.assign:assign.field_write_shape": 1}
-        _assert_byte_identical(src)
 
 
 class TestBytesLiteralValueOptMethodArg:

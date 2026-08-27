@@ -12,7 +12,8 @@ post-if narrow alias (`_post_if_narrow_fact`, which had mirrored the AST's
 return-arm only) and the `self`-at-a-value-union-arg reject.
 """
 from .testutil import (
-    _assert_byte_identical, _assert_routes_byte_identical, _fn,
+    _assert_byte_identical, _assert_rejects_at,
+    _assert_routes_byte_identical, _fn,
     _lower_ctx_witnessed, _thir_ctx,
 )
 
@@ -246,7 +247,8 @@ class TestSelfAtValueUnionArg:
         )
         _assert_byte_identical(src)
         _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:expr.call": 1}, fell
+        _assert_rejects_at(fell, "body:expr.call",
+                           "call.arg_shape.union")
 
     def test_self_into_a_method_value_union_slot_stays_ast(self):
         # The METHOD-call flavor of the same reject (datetime's
@@ -275,7 +277,8 @@ class TestSelfAtValueUnionArg:
         )
         _assert_byte_identical(src)
         _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:expr.method_call": 1}, fell
+        _assert_rejects_at(fell, "body:expr.method_call",
+                           "method.qualcall.arg.union")
 
     def test_member_named_arg_still_takes_the_temp(self):
         # The row the reject must NOT swallow: an ordinary member-typed NAME

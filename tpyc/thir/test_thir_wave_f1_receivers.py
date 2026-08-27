@@ -16,6 +16,7 @@ Row 4 -- member-CTOR rvalue into a wrapper-union arg slot
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -80,7 +81,8 @@ class TestChainFieldReceiver:
             "def use(o: Outer3) -> None:\n"
             "    o.mid.xs.append(1)\n"
         )
-        assert "body:expr.method_call" in _thir_fallbacks(src)
+        _assert_rejects_at(_thir_fallbacks(src), "body:expr.method_call",
+                           "method.recv.field_chain")
 
 
 class TestTupleRecordElemReceiver:
@@ -123,7 +125,8 @@ class TestTupleRecordElemReceiver:
             "def take(t: tuple[Own[Node], Int32]) -> Int32:\n"
             "    return t[0].get()\n"
         )
-        assert "body:expr.method_call" in _thir_fallbacks(src)
+        _assert_rejects_at(_thir_fallbacks(src), "body:expr.method_call",
+                           "method.recv.subscript")
 
 
 _VALUE = (

@@ -6,7 +6,8 @@ carry a lift the bare `push_back` does not render."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _assert_rejects_at, _compile,
+                       _entry)
 
 
 def _gen_thir(source: str):
@@ -191,9 +192,10 @@ class TestElementBoundaries:
         assert faces.get("arg.own_btuple_literal", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_non_discarded_open_t_pop_stays_ast(self):
-        # A CONSUMED T result lands in a slot whose family the decl gate has
-        # not admitted -- only the discarded statement position is mirrored.
+    def test_non_discarded_open_t_pop_routes(self):
+        # A CONSUMED T result lands in the bare open type-param slot, which
+        # takes the plain spelled copy: the slot has no borrow or storage form
+        # to choose between until instantiation.
         src = (
             "from tpy import Int32\n"
             "class Bag[T]:\n"
@@ -211,6 +213,36 @@ class TestElementBoundaries:
             "    print(b.take())\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
-        assert fallback
+        out, faces, fallback = _gen_thir(src)
+        assert not fallback
+        assert faces.get("decl.type_param_slot", 0) >= 1
+        assert "T x = ::tpy::pop_back(this->items);" in out
+        _assert_byte_identical(src)
+
+    def test_reassigned_open_t_pop_stays_ast(self):
+        # BOUNDARY, where the old one moved to: a REBOUND T local is a
+        # rebind-slot pointer binding, not a copy.
+        src = (
+            "from tpy import Int32\n"
+            "class Bag[T]:\n"
+            "    items: list[T]\n"
+            "    def __init__(self):\n"
+            "        self.items = []\n"
+            "    def add(self, item: T) -> None:\n"
+            "        self.items.append(item)\n"
+            "    def take(self) -> T:\n"
+            "        x = self.items.pop()\n"
+            "        x = self.items.pop()\n"
+            "        return x\n"
+            "def main() -> None:\n"
+            "    b = Bag[Int32]()\n"
+            "    b.add(7)\n"
+            "    b.add(8)\n"
+            "    print(b.take())\n"
+            "main()\n"
+        )
+        out, _faces, fallback = _gen_thir(src)
+        _assert_rejects_at(fallback, "body:stmt.var_decl",
+                           "decl.slot_type")
+        assert "T* x = &__slot_1;" in out
         _assert_byte_identical(src)

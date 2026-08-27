@@ -518,14 +518,21 @@ class TestBuiltinValueRecordFamily:
         "main()\n")
 
     def test_all_four_legs_route(self):
-        # decl slot + call ret (witnessed faces), receiver (`w.wake()`)
-        # and the bare pass-through arg (`register_timer(0.5, w)`).
+        # decl slot + call ret, receiver (`w.wake()`) and the bare
+        # pass-through arg (`register_timer(0.5, w)`).
+        #
+        # The faces are the F1 family's, not this family's dedicated pair:
+        # a RECORD-category TypeDef is an F1 record whatever its
+        # `cpp_formatter`, so the F1 decl / call-ret / receiver arms claim
+        # these legs first. `_builtin_value_record`'s own arms sit behind
+        # them in their or-chains and no longer decide this type.
         from .testutil import (_assert_routes_byte_identical,
                                _lower_ctx_witnessed)
         _hpp, cpp = _assert_routes_byte_identical(self._SRC)
         _thir, wit = _lower_ctx_witnessed(self._SRC)
-        assert wit.get("decl.builtin_value_record_slot", 0) >= 1
-        assert wit.get("call.builtin_value_record_ret", 0) >= 1
+        assert wit.get("decl.owned_record", 0) >= 1
+        assert wit.get("call.imported", 0) >= 1
+        assert wit.get("recv.builtin_record", 0) >= 1
         joined = _hpp + cpp
         assert "::tpystd::coro::Waker w = " in joined
         assert "w.wake();" in joined

@@ -12,7 +12,8 @@ from .nodes import (
 from .nodes import Form
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
-    _assert_byte_identical, _assert_routes_byte_identical,
+    _assert_byte_identical, _assert_rejects_at, _assert_routes_byte_identical,
+    _thir_ctx, _thir_ctx_witnessed,
 )
 
 # Class A's body, open for extra methods (`_src(extra_a=...)` appends at the
@@ -3524,3 +3525,234 @@ class TestVarargViewOwnedTrack:
         assert _fn(thir, "f") is not None
         cpp = _assert_byte_identical(src)
         assert "{owned, \"q\"}" in cpp[1]
+
+
+class TestOwnCharSlotCopyTemp:
+    """A `Char` payload at an `Own[T]` slot takes the same `auto __tmp_N =
+    <arg>;` + `std::move` copy cascade a fixed-int one does -- the Own-slot
+    copy+move row is scalar-family-wide, not `_eligible_scalar`-wide."""
+
+    _PRELUDE = (
+        "from tpy import Char, Own, Int32\n"
+        "class Sink:\n"
+        "    n: Int32\n"
+        "    def __init__(self) -> None:\n        self.n = 0\n"
+        "    def put(self, c: Own[Char]) -> None:\n        self.n += 1\n"
+        "class Holder:\n"
+        "    c: Char\n"
+        "    def __init__(self, c: Char) -> None:\n        self.c = c\n"
+        "class Boxed:\n"
+        "    v: Char\n"
+        "    def __init__(self, v: Own[Char]) -> None:\n        self.v = v\n"
+        "def take(c: Own[Char]) -> Int32:\n    return 1\n"
+        "def forward(s: Sink, c: Own[Char]) -> None:\n    s.put(c)\n"
+    )
+
+    SRC = (
+        _PRELUDE
+        + "def main() -> None:\n"
+        + "    s = Sink()\n"
+        + "    h = Holder(Char('h'))\n"
+        + "    c = Char('a')\n"
+        + "    s.put(c)\n"
+        + "    s.put(h.c)\n"
+        + "    print(take(c))\n"
+        + "    b = Boxed(c)\n"
+        + "    print(b.v)\n"
+        + "    cs: list[Char] = []\n"
+        + "    cs.append(c)\n"
+        + "    forward(s, c)\n"
+        + "    print(s.n)\n"
+        + "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        assert "auto __tmp_2 = c;\n    s.put(std::move(__tmp_2));" in cpp[1]
+        # The FIELD source takes the identical `auto` copy -- a member read
+        # is a simple lvalue like a name.
+        assert "auto __tmp_3 = h.c;" in cpp[1]
+        # A cpp_template callee binds the lvalue natively: no temp.
+        assert "cs.push_back(c);" in cpp[1]
+
+    def test_face_witnessed(self):
+        _, faces, _ = _thir_ctx_witnessed(self.SRC)
+        assert faces.get("argtemp.own_copy", 0) >= 4
+
+    def test_ternary_char_arg_defers(self):
+        # BOUNDARY: an `Own[value-type]` slot is a plain by-value param an
+        # lvalue binds directly, so the AST hoists NO temp for a ternary
+        # there -- the copy row must not claim it.
+        _, fell = _thir_ctx(
+            self._PRELUDE
+            + "def pick(s: Sink, flag: bool, a: Char, b: Char) -> None:\n"
+            + "    s.put(a if flag else b)\n"
+            + "def main() -> None:\n"
+            + "    pick(Sink(), True, Char('a'), Char('b'))\n"
+            + "main()\n")
+        _assert_rejects_at(fell, "body:expr.method_call",
+                           shape="method.arg_shape")
+
+    def test_scalar_ternary_own_slot_stays_bare(self):
+        # The same value-payload boundary one family over: a fixed-int
+        # ternary at `Own[Int32]` renders the bare conditional, no temp.
+        src = ("from tpy import Own, Int32\n"
+               "def take(n: Own[Int32]) -> Int32:\n    return n\n"
+               "def main() -> None:\n"
+               "    a = 1\n"
+               "    b = 2\n"
+               "    flag = True\n"
+               "    print(take(a if flag else b))\n"
+               "main()\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "take(((flag) ? (a) : (b)))" in cpp[1]
+        assert "__tmp" not in cpp[1]
+
+
+class TestRecordFieldAtMethodRefSlot:
+    """A record FIELD read binding a method's `T&` / `const T&` slot renders
+    the bare member on both paths -- the record-method twin of the row the
+    marker family already carried. The Own-bound receiver rides it: an
+    `Own[record]` binding's members read exactly like any record binding's."""
+
+    _PRELUDE = (
+        "from tpy import Int32, Own\n"
+        "class Cell:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "class Box:\n"
+        "    inner: Cell\n"
+        "    maybe: Cell | None\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.inner = Cell(n)\n        self.maybe = None\n"
+        "    def soak(self, other: Cell) -> None:\n"
+        "        self.inner.n += other.n\n"
+    )
+
+    SRC = (
+        _PRELUDE
+        + "    def drain(self, other: Own[Box]) -> None:\n"
+        + "        self.soak(other.inner)\n"
+        + "    def drain_borrow(self, other: Box) -> None:\n"
+        + "        self.soak(other.inner)\n"
+        + "def main() -> None:\n"
+        + "    a = Box(1)\n"
+        + "    a.drain_borrow(Box(2))\n"
+        + "    a.drain(Box(3))\n"
+        + "    print(a.inner.n)\n"
+        + "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        assert "this->soak(other.inner);" in cpp[0] + cpp[1]
+
+    def test_face_witnessed(self):
+        _, faces, _ = _thir_ctx_witnessed(self.SRC)
+        assert faces.get("arg.record_field_marker", 0) == 2
+
+    def test_narrowed_optional_field_defers(self):
+        # BOUNDARY: the row keys on the DECLARED field type, so a narrowed
+        # `Cell | None` member -- whose AST render takes the pointee unwrap
+        # -- keeps the named reject.
+        _, fell = _thir_ctx(
+            self._PRELUDE
+            + "    def pick(self, other: Box) -> None:\n"
+            + "        if other.maybe is not None:\n"
+            + "            self.soak(other.maybe)\n"
+            + "def main() -> None:\n"
+            + "    a = Box(1)\n"
+            + "    a.pick(Box(2))\n"
+            + "    print(a.inner.n)\n"
+            + "main()\n")
+        _assert_rejects_at(fell, "body:expr.method_call",
+                           shape="method.arg_shape")
+
+
+class TestOwnParamFieldReads:
+    """An `Own[record]` PARAM's members reach every field consumer the plain
+    record binding's do -- reads, writes, method receivers, container
+    subscripts and iteration."""
+
+    SRC = (
+        "from tpy import Int32, Own\n"
+        "class Cell:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+        "    def bump(self) -> None:\n        self.n += 1\n"
+        "class Box:\n"
+        "    inner: Cell\n"
+        "    xs: list[Int32]\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.inner = Cell(n)\n        self.xs = [n]\n"
+        "def write_field(o: Own[Box]) -> Int32:\n"
+        "    o.inner.n = 5\n    return o.inner.n\n"
+        "def call_on_field(o: Own[Box]) -> Int32:\n"
+        "    o.inner.bump()\n    return o.inner.n\n"
+        "def loop_field(o: Own[Box]) -> Int32:\n"
+        "    t = 0\n"
+        "    for v in o.xs:\n        t += v\n"
+        "    return t\n"
+        "def append_field(o: Own[Box]) -> Int32:\n"
+        "    o.xs.append(9)\n    return len(o.xs)\n"
+        "def main() -> None:\n"
+        "    print(write_field(Box(2)))\n"
+        "    print(call_on_field(Box(3)))\n"
+        "    print(loop_field(Box(5)))\n"
+        "    print(append_field(Box(7)))\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        both = cpp[0] + cpp[1]
+        assert "o.inner.n = 5;" in both
+        assert "o.inner.bump();" in both
+        assert "o.xs.push_back(9);" in both
+
+    def test_own_readonly_receiver_defers(self):
+        # BOUNDARY: the receiver gate and the declared-field lookup peel the
+        # binding through ONE helper, so an `Own[readonly[record]]` -- outside
+        # the record slice, since the peel stops at the readonly wrapper --
+        # rejects at the RECEIVER, not at a downstream consumer that got a
+        # field type the gate never granted.
+        _, fell = _thir_ctx(
+            "from tpy import Int32, Own, readonly\n"
+            "class Cell:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+            "class Box:\n"
+            "    inner: Cell\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.inner = Cell(n)\n"
+            "def read_field(o: Own[readonly[Box]]) -> Int32:\n"
+            "    return o.inner.n\n"
+            "def main() -> None:\n"
+            "    print(read_field(Box(2)))\n"
+            "main()\n")
+        _assert_rejects_at(fell, "body:stmt.return",
+                           shape="field.receiver_shape")
+
+    def test_own_optional_receiver_routes(self):
+        # The sibling binding the shared peel must keep admitting: an
+        # `Own[record | None]` param proven non-None reads its members through
+        # the storage optional's `operator->`.
+        cpp = _assert_routes_byte_identical(
+            "from tpy import Int32, Own\n"
+            "class Cell:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
+            "class Box:\n"
+            "    inner: Cell\n"
+            "    xs: list[Int32]\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.inner = Cell(n)\n        self.xs = [n]\n"
+            "def read_field(o: Own[Box | None]) -> Int32:\n"
+            "    if o is None:\n        return 0\n"
+            "    o.inner.n = 4\n"
+            "    return o.inner.n + o.xs[0] + len(o.xs)\n"
+            "def main() -> None:\n"
+            "    print(read_field(Box(2)))\n"
+            "main()\n")
+        both = cpp[0] + cpp[1]
+        assert "o->inner.n = 4;" in both

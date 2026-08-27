@@ -14,7 +14,8 @@ routing claim on its own.
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _constant_positions
+from .testutil import (_assert_byte_identical, _assert_rejects_at,
+                       _constant_positions)
 
 PRELUDE = "from typing import Final\nfrom tpy import Char, Int32\n"
 
@@ -291,7 +292,7 @@ class TestCharConstructorKeepsFallingBack:
         routed, ast_rendered, fallback = _constant_positions(self.SRC)
         assert "CH" in ast_rendered
         assert "CH" not in routed
-        assert fallback == {"final_global:expr.call": 1}, fallback
+        _assert_rejects_at(fallback, "final_global:expr.call", count=1)
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
@@ -316,7 +317,7 @@ class TestClassConstantFallbackTalliesSeparately:
     def test_falls_back_and_tallies(self):
         routed, ast_rendered, fallback = _constant_positions(self.SRC)
         assert "CH" in ast_rendered
-        assert fallback == {"class_const:expr.call": 1}, fallback
+        _assert_rejects_at(fallback, "class_const:expr.call", count=1)
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)

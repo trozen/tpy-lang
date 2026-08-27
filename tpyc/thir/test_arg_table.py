@@ -98,6 +98,7 @@ class TestProtocolSinkShape:
             "shared_pass_through",
             "ru_wrapper_name",
             "optional_ptr",
+            "value_record_rvalue",
             "tuple_literal",
         ]
 
@@ -139,6 +140,7 @@ class TestNativeSinkShape:
             "native_record_call",
             "protocol_slot",
             "native_protocol_value",
+            "native_protocol_open_call",
             "native_optptr_name",
             "native_union_name",
             "native_protocol_tuple_literal",
@@ -202,6 +204,8 @@ class TestContainerSinkShape:
             "bytes_owned_literal",
             "bytes_view_literal",
             "bytes_owned_slot",
+            "bytes_owned_name",
+            "bytes_owned_call_rvalue",
             "bytes_pass_through",
             "char_pass_through",
             "enum_pass_through",
@@ -449,6 +453,7 @@ class TestPlainSinkShape:
             "callable_field",
             "callable_object",
             "shared_pass_through",
+            "container_field_pass",
             "value_union_temp",
             "record_rvalue_temp",
             "str_owned_slot",
@@ -581,7 +586,7 @@ class TestPlainSinkShape:
                      _CONTAINER_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 29
+        assert len(shared) == 30
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -693,7 +698,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 47
+        assert len(set(plain) - set(generic)) == 48
         assert {"callable_field", "value_union_temp", "record_rvalue_temp",
                 "str_owned_slot", "bytes_owned_slot", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
@@ -824,7 +829,7 @@ class TestGenericOpenSlot:
         assert seen == [None]
 
 class TestRecordMethodSinkShape:
-    """The user-record method family -- the widest in the fold at 66 rows.
+    """The user-record method family -- the widest in the fold at 67 rows.
 
     The design predicted "needs `overload`/`index` in ctx"; it needs a THIRD
     per-call fact too (`frame_capturing`, the generator/coro-factory flag).
@@ -862,7 +867,7 @@ class TestRecordMethodSinkShape:
             "value_record_name",
             "value_array_call",
             "own_record_rvalue",
-            "own_tparam_method_rvalue",
+            "own_tparam_call_rvalue",
             "copy_record_own",
             "own_move",
             "own_lvalue",
@@ -872,7 +877,9 @@ class TestRecordMethodSinkShape:
             "union_member_lift_none",
             "optional_ptr_no_temp",
             "container_pass_through",
+            "container_field_pass",
             "record_pass_through",
+            "record_field_marker",
             "method_ctor_rvalue",
             "record_rvalue_temp_factory",
             "dyn_own_conformer",
@@ -900,6 +907,7 @@ class TestRecordMethodSinkShape:
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
             "ru_wrapper_member_rvalue",
+            "borrow_ret_record_marker",
         ]
 
     def test_note_tail_is_verbatim(self):
@@ -964,14 +972,14 @@ class TestRecordMethodSinkShape:
     def test_the_shared_rows_reach_the_other_families_cells(self):
         # `register_sink` has already proved each shared name reaches the
         # IDENTICAL predicate (it fails the import otherwise). This pins the
-        # SPLIT: 35 of 66 rows were already written for another family.
+        # SPLIT: 39 of 69 rows were already written for another family.
         others = set()
         for sink in (_VIEW_ARG_SINK, _PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
                      _CONTAINER_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _RECORD_METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 35
+        assert len([r for r in rows if r in others]) == 39
         assert [r for r in rows if r not in others] == [
             "plain_scalar_slot",
             "tparam_scalar",
@@ -983,10 +991,9 @@ class TestRecordMethodSinkShape:
             "slice_ctor_pass_through",
             "own_scalar_rvalue",
             "value_opt_view_whole",
-            "value_record_rvalue",
             "value_opt_record_rvalue",
             "value_record_name",
-            "own_tparam_method_rvalue",
+            "own_tparam_call_rvalue",
             "union_member_lift_none",
             "optional_ptr_no_temp",
             "record_pass_through",
@@ -1421,6 +1428,7 @@ class TestRecordCtorSinkShape:
             "str_literal_value_opt",
             "bytes_literal_value_opt",
             "tuple_literal_value_opt",
+            "value_opt_member",
             "none_value_opt",
             "none_unit",
             "tparam_name_pass",
@@ -1468,11 +1476,13 @@ class TestRecordCtorSinkShape:
             "own_str_literal_bare",
             "none_value_opt",
             "str_literal_value_opt",
+            "value_opt_member",
             "own_record_rvalue",
             "own_move",
             "own_move_source_slice",
             "dyn_own_conformer",
             "value_record_rvalue",
+            "ptr_pass_through",
             "const_rvalue",
             "str_pass_through_unmutated",
         ]
@@ -1579,13 +1589,17 @@ class TestRecordCtorNestedIsNotADirectPrefix:
     def test_the_nested_family_is_not_a_subset_of_the_direct_one(self):
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        # Two nested-only cells, both of which the direct family answers
+        # Three nested-only cells, all of which the direct family answers
         # elsewhere: `const_rvalue` is the decisive slot block (direct
         # spells the same slot as the flush-gated `record_rvalue_temp_ctor`
-        # at the very end of its tuple), and `str_pass_through_unmutated`
-        # hardcodes `mutated=False` where direct threads the fact.
+        # at the very end of its tuple), `str_pass_through_unmutated`
+        # hardcodes `mutated=False` where direct threads the fact, and
+        # `ptr_pass_through` is one leg of the direct family's
+        # `shared_pass_through` bundle, taken alone because the rest of that
+        # bundle is not temp-free.
         assert nested - direct == {"const_rvalue",
-                                   "str_pass_through_unmutated"}
+                                   "str_pass_through_unmutated",
+                                   "ptr_pass_through"}
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
         # Absence-preserving: the flush-less nested position admits only
@@ -1654,7 +1668,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 29
+        assert len([r for r in rows if r in others]) == 30
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

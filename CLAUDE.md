@@ -332,14 +332,17 @@ Migrating C++ codegen from the AST path to THIR (`tpyc/thir/`). End state: THIR 
 
 Fallback is per-BODY and all-or-nothing: a body THIR cannot lower emits through the AST path instead. So the AST body emitter stays complete until one atomic cutover at the end; do not delete AST arms piecemeal, and never mix AST and THIR within one body.
 
-**Metric: cases cleared.** `tpy| thir cases: N/M migrated` is the dial. Do NOT set fallback-UNIT targets -- units reward cheap small tags over the constructs that actually dominate the work. Shape % is asymptotic by design; ignore it.
+**Metric: the case dial is SATURATED (3746/3746) -- the live metric is stdlib fallback BODIES against gate A5.** `tpy| thir cases: N/M migrated` selected work while user cases were the payoff unit; it can no longer select anything. `tests/test_thir_stdlib_gate.py` carries the live numbers (a per-body ceiling and a routed floor) and `ci/nightly/configs.json` the collapsed twin -- the two keys are NOT comparable, so name which one any figure uses. Shape % is asymptotic by design; ignore it.
 
-**The loop.** `probe_corpus.py` builds the per-case blocker map; `probe_sites.py "<tag>"` histograms where in `tpyc/thir/lower/` that tag's cases actually reject. Pick the biggest site, grind every case that rejects there to zero, flip the newly-clean cases (`--thir-check-flip`, delete their `no_thir.txt`), verify, repeat. `/tpy-thir-wave` is this loop as an executable procedure with the probe scripts.
+The hazard the old cases-only rule guarded against is real and still applies in its general form: **rank a candidate by the bodies currently sitting under its tag before working it.** A cheap tag rewards effort with nothing -- an instrument fix that carried 70 bodies once was repeated later on tags carrying about one, purely because the first had paid.
+
+**The loop.** Reject reasons now COMPOSE their blocking shape into the tag, so the fallback tally names the shape directly -- read it first. `probe_corpus.py` builds the per-case blocker map; `probe_sites.py "<tag>"` is the FALLBACK instrument for a tag whose reason is still bare, not the first move. Pick the biggest site, grind every case that rejects there to zero, flip the newly-clean cases (`--thir-check-flip`, delete their `no_thir.txt`), verify, repeat. `/tpy-thir-wave` is this loop as an executable procedure with the probe scripts.
 
 **Anti-patterns:**
 - **Never name a tracking label (a `TODO.md` drift tag, a bug number, a step letter) in a brief you hand an implementer.** They will write it into a code comment, where it rots as soon as the tracking entry is resolved. State the INVARIANT in the brief and the comment will state the invariant too. When checking, grep NAMES (tests, functions) as well as comments.
 - Attack the biggest tags. Clearing the corpus is a SET COVER over the blocker constructs, and a handful of the largest cover a quarter of it -- the small tags are a long 1:1 tail that no selection strategy shortens. But open a big tag as a multi-cell TRACK against a single raise SITE, never as one cell: it is a stack of independent render rows. (Which tags are currently largest is a measurement, not a rule -- it lives in TODO.md.)
-- Never reject a family by sampling its cases -- raise sites interleave, so any small sample reads as unrelated shapes. Run `probe_sites.py`.
+- Never reject a family by sampling its cases -- raise sites interleave, so any small sample reads as unrelated shapes.
+- A composed tag names where a reason was FORMATTED, not where it was DECIDED. Resolve the raise site before scoping a lane; partitioning by tag prefix has handed lanes work that raises in a file they did not own. Grouping the tail by reason DETAIL reveals shared raise SITES, not shared rows -- four bodies under one detail were four different questions.
 - Reject tags are LOSSY: they name the first reject, not the blocker. Read the blocking case's source + its `expected/*.cpp` oracle before committing to a target.
 - Measure once, then grind. A full-corpus run is ~15 min; two per session is the budget.
 

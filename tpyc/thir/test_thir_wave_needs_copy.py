@@ -188,19 +188,22 @@ class TestOwnViewfamParamReads:
         assert "::tpy::__setitem__(d, v" in _body(thir, "key")
         _assert_byte_identical(src)
 
-    def test_own_bytes_param_at_owned_elem_slot_still_defers(self):
-        # Boundary: the bytes twin of the copy-temp leg has no witness (the
-        # AST hoists `auto __tmp_N = v;` -- the plain-auto copy, not the
-        # brace-init conversion) -- the leg admits str only, the body
-        # falls back whole.
+    def test_own_bytes_param_at_owned_elem_slot_lands_bare(self):
+        # The bytes twin of the copy-temp leg is a DIFFERENT render, not a
+        # missing one: an `Own[bytes]` param is owned storage the template
+        # callee binds as an lvalue, so it passes bare where the str twin
+        # above hoists the brace-init view->owned temp.
         src = (
             "from tpy import Own\n"
             "def f(v: Own[bytes]) -> None:\n"
             "    xs: list[bytes] = []\n"
             "    xs.append(v)\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("arg.bytes_owned_name", 0) >= 1
+        assert not faces.get("argtemp.own_str")
+        assert "xs.push_back(v);" in _body(thir, "f")
         _assert_byte_identical(src)
 
     def test_own_strview_param_read_still_defers(self):

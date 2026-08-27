@@ -12,6 +12,7 @@ not mirror the uncompilable output by routing).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -99,7 +100,8 @@ class TestEnumTypeArg:
             "    print(p.first == Color.BLUE)\n"
             "main()\n"
         )
-        assert "body:expr.call" in _thir_fallbacks(src)
+        _assert_rejects_at(_thir_fallbacks(src), "body:expr.call",
+                           "call.ctor_arg.own_enum")
 
 
 class TestTupleTypeArg:
