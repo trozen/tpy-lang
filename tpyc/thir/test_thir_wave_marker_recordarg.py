@@ -150,15 +150,17 @@ class TestRecordLvalueAtMarkerRecordSlot:
     )
 
     def test_borrow_returning_call_at_own_slot_stays_ast(self, tmp_path):
-        # BOUNDARY: same call source, `Own[H]` slot -- the AST copies the
-        # `T&` result through a temp, which neither the gate row nor the
-        # BORROW_BIND render leg mirrors.
+        # BOUNDARY: same call source, `Own[H]` slot. The Own-slot arg row now
+        # claims the copy+move temp the AST hoists for a borrow-returning
+        # call, so the arg is no longer what holds -- the body stays AST on
+        # the inner marker call's `T&` RESULT, which has no arm in this
+        # position. Identity is the claim either way.
         _write_helper(tmp_path)
         assert (_cpp(self._OWN_RET_SRC, tmp_path, thir=True)
                 == _cpp(self._OWN_RET_SRC, tmp_path, thir=False))
         _ctx, fell = _thir_ctx(self._OWN_RET_SRC, extra_lib_dirs=[tmp_path])
         _assert_rejects_at(fell, "body:expr.method_call",
-                           "method.qualcall.arg.own")
+                           "method.ret_type")
 
 
 class TestBorrowTupleLiteralAtMarkerSlot:

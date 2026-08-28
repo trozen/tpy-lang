@@ -422,6 +422,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _str_field_over_container_subscript_read,
     _borrow_form_tuple_call,
     _storage_field_ternary,
     _builtin_value_record,
@@ -2718,7 +2719,18 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
         return True
     if (isinstance(init, (TpyCall, TpyMethodCall))
             and is_rvalue_source(analyzer, init)):
-        fam = _storage_call_ret(analyzer.get_expr_type(init), analyzer)
+        rt = analyzer.get_expr_type(init)
+        # A bare OPEN `T` result at the same bare `T` slot inside a template:
+        # neither side has a form yet, so the C++ traits pick the same one for
+        # both per instantiation and the plain assign engages the hoist. There
+        # is no storage FAMILY to classify -- `_storage_call_ret` answers None
+        # for a type-param result -- so the identity of the two slots is the
+        # whole admission. Bare on both sides: a `readonly` / `Ref` decoration
+        # spells its own C++ shape, which reopens the question this answers.
+        if (_type_param_value_slot(rt)
+                and _type_param_value_slot(target_t) and rt == target_t):
+            return True
+        fam = _storage_call_ret(rt, analyzer)
         if fam is None:
             return False
         if _storage_call_container(fam) or is_bytearray_type(fam):
@@ -6724,17 +6736,19 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
     # renders through the same render-then-flush assign arm as a sync body,
     # on the ctx-backed TempSink (shared __tmp_N numbering), exactly where
     # the AST hoists `auto __tmp_1 = (*p);` inside the case block.
-    # field_owned_str_ok: a str-family FIELD read into a str frame field
-    # (`q = self.s` narrowed -> `q = (*__self.s);`) -- the same admission
-    # the sync decl sink threads (str_field_init).
+    # field_owned_str_ok: a view-family FIELD read into a view-family frame
+    # field (`q = self.s` narrowed -> `q = (*__self.s);`) -- the same
+    # admission the sync decl sink threads (str_field_init). str and bytes
+    # share the row: both read the member bare and let the sink compose its
+    # own wrap, so the slot family does not change the render.
     value = _lower_expr(
         init, lc, declared,
         use=_ExprUse(allow_temps=True),
         allow_whole_optional=_value_opt_target_binding(stmt.name, lc),
         field_owned_str_ok=(
             isinstance(init, TpyFieldAccess)
-            and _resolved_str_value(declared[stmt.name],
-                                    lc.analyzer) is not None))
+            and _resolved_viewfam_value(declared[stmt.name],
+                                        lc.analyzer) is not None))
     _witness("res.decl_assign")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
@@ -7325,6 +7339,19 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # -- the top-level leaf arm's delegation rule; only the
                     # sync-only `__slot_N` rebinds keep the reject.
                     return _lower_stmt(stmt, lc, declared)
+            if (stmt.init is not None
+                    and stmt.name not in lc.frame_local_types
+                    and stmt.name not in lc.prescan.param_names
+                    and stmt.name not in lc.narrow.narrowed):
+                # A name backed by NO frame slot (the frame's members are the
+                # params plus the resolved generator locals) is a true C++
+                # block local: the AST renders its bind exactly where a sync
+                # body would -- typed decl at the first bind, bare assign at a
+                # reassign -- so re-enter the sync ladder without in_branch.
+                # Every frame-resident name keeps the reject above; its write
+                # render is a member assign, not a decl.
+                _witness("res.branch_block_local")
+                return _lower_stmt(stmt, lc, declared)
             raise ThirUnsupported("res.leaf_field_write")
         if isinstance(stmt, TpyTupleUnpack):
             return _lower_frame_tuple_unpack(stmt, scope)
@@ -9925,8 +9952,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # On a reassignment the sink is the TARGET's existing slot:
                 # only an optional binding takes the whole-optional copy; a
                 # plain-T binding reads the narrowed inner ((*p)).
+                # A value-repr `Optional[value tuple]` target is asked off its
+                # DECLARED type rather than the binding registry: the tuple
+                # kind admits the whole-optional copy only, and registering it
+                # would hand its narrowed reads a deref render no arm claims.
                 if (stmt.name in declared
-                        and not _value_opt_target_binding(stmt.name, lc)):
+                        and not _value_opt_target_binding(stmt.name, lc)
+                        and _value_opt_tuple(declared[stmt.name],
+                                             analyzer) is None):
                     opt_slot = False
                 # A str-family FIELD read into a str-value decl slot
                 # (`s = p.name` -> `std::string_view s = p.name;` for a view
@@ -11762,6 +11795,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("ret.value_opt_view_name")
                 return THIRReturn(
                     value=_lower_expr(stmt.value, lc, declared), loc=loc)
+            owned_inner = _value_opt_owned_view(ret_vopt_view, analyzer)
+            if (owned_inner is not None
+                    and isinstance(stmt.value, TpyCoerce)
+                    and _coerce_disposition(stmt.value) == "materialize"):
+                # An OWNED inner (`-> str | None`) makes sema wrap a view
+                # source in the view->owned coercion, so the copy IS the render
+                # (`std::string(x)` / `::tpy::bytes_copy(x)`) and its owned
+                # result reaches the optional through the converting ctor. The
+                # copy targets the INNER slot, never the optional, so it goes
+                # through the shared view->owned sink; the source is gated at
+                # its own arms. Keyed on the coercion's own materialize
+                # verdict: one that rebuilds the whole optional instead renders
+                # nothing like this and keeps the reject below.
+                src = _lower_expr(stmt.value.expr, lc, declared)
+                if src.form is Form.BORROW:
+                    _witness("ret.value_opt_view_materialize")
+                    return THIRReturn(
+                        value=_wrap_view_owned_sink(
+                            src, unwrap_readonly(owned_inner.inner), loc),
+                        loc=loc)
             if not isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
                 note_detail("return.opt_view_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -11953,22 +12006,39 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     stmt.value, pointers, narrowed,
                     lc.prescan.ret_record_borrow is not None))
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+        # An `Own[wrapper-union]` return fed by a HOISTED-optional local of
+        # the slot's own type (`std::optional<JsonValue> value;`): the same
+        # indirect-name arm, so it shares the deref+move render below rather
+        # than growing a second copy of it. The type-equality guard is what
+        # keeps a differently-shaped hoist -- which would need the converting
+        # step the bare deref omits -- on the wrapper gate's own reject.
+        _ow_ptr_local = (
+            lc.prescan.ret_own_wrapper is not None
+            and isinstance(stmt.value, TpyName)
+            and stmt.value.name in lc.optional_locals
+            and stmt.value.name in declared
+            and _wrapper_union_like(declared[stmt.value.name], analyzer)
+            == lc.prescan.ret_own_wrapper)
         if (isinstance(stmt.value, TpyName)
                 and stmt.value.name in lc.pointers
                 and stmt.value.name not in narrowed
-                and (lc.prescan.ret_record_borrow is not None
-                     or lc.prescan.ret_record_storage is not None)
-                and (_optional_ptr_borrow_name(
-                         stmt.value, declared, analyzer) is not None
-                     or (stmt.value.name in declared
-                         and _f1_record(unwrap_readonly(unwrap_ref_type(
-                             unwrap_send_sync(declared[stmt.value.name]))),
-                             analyzer)))):
+                and (_ow_ptr_local
+                     or ((lc.prescan.ret_record_borrow is not None
+                          or lc.prescan.ret_record_storage is not None)
+                         and (_optional_ptr_borrow_name(
+                                  stmt.value, declared, analyzer) is not None
+                              or (stmt.value.name in declared
+                                  and _f1_record(unwrap_readonly(
+                                      unwrap_ref_type(unwrap_send_sync(
+                                          declared[stmt.value.name]))),
+                                      analyzer)))))):
             # The deref + last-use move the ladder admitted above
             # (`return std::move((*p));`), the AST's is_indirect_name return
             # arm -- both the ptr-repr Optional local and the plain F1
             # pointer-local flavors. The value-opt PARAM twin lives in the
             # generic tail.
+            if _ow_ptr_local:
+                _witness("ret.own_wrapper_ptr_opt_local")
             ptr_val = _lower_expr(stmt.value, lc, declared,
                                   allow_whole_optional=True)
             if not isinstance(ptr_val, THIRName):
@@ -12231,7 +12301,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             if isinstance(source, TpyTupleLiteral):
                 try:
-                    value = _lower_tuple_literal(source, ret_vt, lc, declared)
+                    # The return is a statement flush point, so an element's
+                    # call may hoist its `__tmp_N` decl ahead of the return
+                    # -- the grant the generic return tail already carries.
+                    value = _lower_tuple_literal(source, ret_vt, lc, declared,
+                                                 elem_temps=True)
                 except ThirUnsupported as ex:
                     raise ThirUnsupported(stmt_reject_reason(
                         stmt, f"return.tuple_source:{ex.reason}")) from None
@@ -12635,18 +12709,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 and stmt.value.name not in narrowed
                 and _is_type_param_slot(declared.get(stmt.value.name))):
             # `return result;` where `result` is a reseatable `T*` element
-            # borrow in a generic body: the AST's indirect-name arm derefs it
-            # into the `val_or_ref_t<T>` slot (`return (*result);`). The
-            # record twins are `ret.record_ptr_opt_local` /
-            # `ret.record_ptr_local` above (both run the move audit; this
-            # open-T arm still returns bare -- TODO.md's parity-gap entry);
-            # an open-T slot never reaches that ladder (`_f1_record` is
-            # False for it).
+            # borrow or a hoisted `std::optional<T>` in a generic body: the
+            # AST's indirect-name arm derefs it into the `val_or_ref_t<T>`
+            # slot and moves at a movable last use (`return (*result);` /
+            # `return std::move((*value));`). One `is_indirect_name` +
+            # `_maybe_move` branch serves every pointer-local return on the
+            # oracle side, so this arm and its record twins
+            # (`ret.record_ptr_opt_local` / `ret.record_ptr_local`) must ask
+            # the move question identically; an open-T slot never reaches
+            # that ladder (`_f1_record` is False for it).
             _witness("ret.tparam_ptr_local")
-            return THIRReturn(
-                value=_lower_expr(stmt.value, lc, declared,
-                                  use=_ExprUse(indirect_read=True)),
-                loc=loc)
+            tp_src: THIRExpr = _lower_expr(
+                stmt.value, lc, declared, use=_ExprUse(indirect_read=True))
+            if _is_move_source(stmt.value, lc):
+                tp_src = THIRMove(result_type=tp_src.result_type,
+                                  value=tp_src, form=tp_src.form, loc=loc)
+            return THIRReturn(value=tp_src, loc=loc)
         field_prechecked = (
             (isinstance(stmt.value, TpyFieldAccess)
              and lc.prescan.ret_str is not None
@@ -12654,6 +12732,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # The union-return owned-str field read admitted above rides
             # the same bare-member render.
             or owned_str_field)
+        # The str result row admits the member read off ANY receiver the
+        # field ladder itself admits, so the grant is not tied to the sink's
+        # own NAME-receiver precheck: a record-element subscript receiver
+        # (`return self._store[k].value`) composes the ladder's own subscript
+        # row with the same bare member tail. Only the RESULT row is granted
+        # -- the receiver still goes through the ladder.
+        field_owned_str = field_prechecked or (
+            lc.prescan.ret_str is not None
+            and _str_field_over_container_subscript_read(
+                stmt.value, declared, analyzer))
         value = (_flush_witness(
                     "flush.return",
                     _lower_expr(
@@ -12671,7 +12759,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         # exactly `field_prechecked`'s row, so grant the field
                         # arm the same owned-str admission the decl / f-string
                         # sinks already thread.
-                        field_owned_str_ok=field_prechecked,
+                        field_owned_str_ok=field_owned_str,
                         target_type=(lc.prescan.ret_container_storage
                                      if isinstance(
                                          stmt.value,
@@ -12771,11 +12859,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # else branch exists: no else extraction runs, and both
             # paths' post-if arms take concrete members only (the AST's
             # `_narrows_to_union_member`, THIR's `_narrow_fact_member`).
-            # With an else BODY the AST reaches its extraction arm on the
-            # fact, so that shape keeps rejecting.
+            # With a genuine else BODY the AST reaches its extraction arm on
+            # the fact, so that shape keeps rejecting.
             else_facts_ok = _narrow_facts_ok(u, stmt.else_type_facts, var)
             if not else_facts_ok and not stmt.else_body:
                 _witness("if.narrow_nc_else_fact")
+                else_facts_ok = True
+            if not else_facts_ok and _elif_link(stmt) is not None:
+                # An elif continuation is the same inert case one link along:
+                # the AST's is_elif_continuation skips the else extraction
+                # unconditionally (concreteness only picks flat-vs-nested,
+                # which `_lower_narrow_if_shape` mirrors), and the link seeds
+                # its own facts. So no consumer of THIS level's else fact
+                # exists whatever its shape.
+                _witness("if.narrow_elif_else_fact")
                 else_facts_ok = True
             narrow_ok = not (
                 (var in lc.narrow.narrowed and not folded)

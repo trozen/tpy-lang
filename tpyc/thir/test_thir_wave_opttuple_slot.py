@@ -11,9 +11,8 @@ registered value-optional binding and this family has no registration."""
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
-                       _assert_routes_byte_identical,
-                       _lower_ctx_witnessed, _thir_ctx)
+from .testutil import (_assert_routes_byte_identical,
+                       _lower_ctx_witnessed)
 
 
 class TestValueOptTupleDeclSlot:
@@ -70,10 +69,11 @@ class TestValueOptTupleDeclSlot:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "return std::get<0>((*local));" in hpp + cpp
 
-    def test_reassigned_value_opt_tuple_slot_stays_ast(self):
-        # BOUNDARY: the reassign sink admits a whole-optional source only for
-        # a REGISTERED value-optional binding kind, which this family has not
-        # got -- so the second write's source read keeps rejecting.
+    def test_reassigned_value_opt_tuple_slot_routes(self):
+        # The reassign sink takes the whole-optional copy for this family
+        # too: the target is asked off its DECLARED type rather than the
+        # binding registry, which this family deliberately stays out of (the
+        # tuple kind admits only the whole-optional read).
         src = (
             "from tpy import Int32\n"
             "def use(a: tuple[Int32, Int32] | None) -> Int32:\n"
@@ -90,8 +90,5 @@ class TestValueOptTupleDeclSlot:
             "    print(outer((1, 2), (3, 4)))\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        _assert_rejects_at(fell, "body:stmt.var_decl",
-                           "name.opttuple_unproven_read")
-        hpp, cpp = _assert_byte_identical(src)
+        hpp, cpp = _assert_routes_byte_identical(src)
         assert "local = fallback;" in hpp + cpp

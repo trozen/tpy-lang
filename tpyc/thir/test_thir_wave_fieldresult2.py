@@ -180,8 +180,9 @@ class TestSuspendFieldOperand:
 class TestStrFieldFrameReassign:
     """A narrowed `str | None` FIELD read reassigning a str frame local
     (`q = self.s` -> `q = (*__self.s);`): the frame-field assign threads
-    the same str-family admission the sync decl sink has. A bytes-field
-    frame read stays deferred like the sync decl's."""
+    the same str-family admission the sync decl sink has -- and the bytes
+    field rides the identical row, both view families reading the member
+    bare."""
     _SRC = (
         "from typing import Iterator\n"
         "class Box:\n"
@@ -204,7 +205,7 @@ class TestStrFieldFrameReassign:
         _, _hpp, cpp = _gen(self._SRC, thir=True)
         assert "q = (*__self.s);" in cpp
 
-    def test_bytes_field_frame_reassign_stays_ast(self):
+    def test_bytes_field_frame_reassign_routes(self):
         src = (
             "from typing import Iterator\n"
             "class Box:\n"
@@ -219,4 +220,7 @@ class TestStrFieldFrameReassign:
             "    for x in Box(b\"v\").gen():\n        print(x)\n"
             "main()\n")
         w, fallback = _assert_identical(src)
-        assert fallback
+        assert not fallback
+        assert w.get("print.bytes_field", 0) >= 1
+        _, _hpp, cpp = _gen(src, thir=True)
+        assert "q = __self.b;" in cpp

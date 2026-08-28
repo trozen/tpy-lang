@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _assert_rejects_at, _compile, _entry
+from .testutil import _assert_rejects_at, _compile, _entry, _thir_ctx
 
 _PRE = "from tpy import Int32, Int64\n\n"
 
@@ -1080,12 +1080,12 @@ class TestContainerAndNoneParams:
 
 
 class TestOwnContainerFrameFields:
-    """An `Own[container]` PARAM becomes a plain owned frame FIELD. The sync
-    `name.own_read` reject exists because `seed_param_locals` marks such a
-    param movable, so its last-use read renders `std::move(p)` -- a binding a
-    frame body does not have (the payload was moved into the frame at
-    construction). Body reads are bare member reads; an OWNING sink still
-    takes the shared movable-last-use row, identically on both paths."""
+    """An `Own[container]` PARAM becomes a plain owned frame FIELD: the
+    payload was moved into the frame at construction, so body reads are bare
+    member reads and an OWNING sink takes the shared movable-last-use row,
+    identically on both paths. The SYNC sibling of the same param reads bare
+    too, off the by-value binding -- the two seams agree, so this class pins
+    the frame renders rather than a contrast."""
 
     def test_own_container_frame_reads_route(self):
         src = (_PRE
@@ -1107,13 +1107,10 @@ class TestOwnContainerFrameFields:
                + "    await asyncio.sleep(0.0)\n"
                + "    return take(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert witnesses.get("name.frame_own_field", 0) >= 5
+        _witnesses, fallback = _assert_identical(src)
         # Pin the WHOLE dict: a resumable:-only filter lets a body: key
         # through, and a frame body that stopped routing would land there.
-        # The one entry is `take`, the SYNC helper whose Own-param read is
-        # the deliberate boundary (test_sync_own_container_param_read...).
-        assert fallback == {"body:stmt.return:name.own_read": 1}
+        assert fallback == {}
 
     def test_own_container_frame_owning_sink_moves(self):
         # The owning sink inside the frame renders `take(std::move(xs))` on
@@ -1131,23 +1128,23 @@ class TestOwnContainerFrameFields:
         _witnesses, fallback = _assert_identical(src)
         # Mechanical routing claim: the render asserts below are satisfied
         # by a whole-body fallback, so the frame body must be pinned here.
-        # The single entry is the SYNC helper's deliberate boundary reject.
-        assert fallback == {"body:stmt.return:name.own_read": 1}
+        assert fallback == {}
         _c, _hpp, cpp = _gen(src, thir=True)
         assert "return take(std::move(xs));" in cpp
         assert "return ::tpy::__len__(xs);" in cpp
 
-    def test_sync_own_container_param_read_stays_ast(self):
-        # BOUNDARY: the same param in a SYNC body keeps the reject -- there
-        # the movable seeding is real and the AST's last-use render is the
-        # unmirrored `std::move(p)` shape the verdict names.
+    def test_sync_own_container_param_read_routes(self):
+        # The SYNC sibling: the movable seeding is real there, and the bare
+        # read plus the last-use `std::move` are both mirrored -- so the
+        # frame field's bare member read is not a special case, it is the
+        # same answer the sync binding gives.
         src = (_PRE
                + "from tpy import Own\n\n"
                + "def take(v: Own[list[Int32]]) -> Int32:\n"
                + "    return Int32(len(v))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _witnesses, fallback = _assert_identical(src)
-        assert fallback.get("body:stmt.return:name.own_read") == 1, fallback
+        assert fallback == {}, fallback
 
 
 class TestStrBytesReturns:
@@ -4941,7 +4938,7 @@ class TestQualcallRecordDiscardStorage:
     """The qualcall record-result rows added for the create_task cluster:
     a DISCARDED record-family result renders the bare call statement
     (`asyncio.create_task(...);`), a record RVALUE at a storage sink lands
-    bare in the frame-slot emplace (Task[bytes] -- non-F1), and a
+    bare in the frame-slot emplace (a non-F1 Task payload), and a
     module-qualified ASYNC factory nested in the adapter position lowers
     through the marker lane (`create_task(asyncio.wait_for(...))`)."""
 
@@ -4949,6 +4946,14 @@ class TestQualcallRecordDiscardStorage:
             "from tpy import Int32\n\n"
             "async def sub() -> bytes:\n"
             '    return b"x"\n\n')
+
+    # The storage row is reached only while the handle's payload keeps the
+    # Task OUT of the F1 record slice; the view spelling is the payload that
+    # stays out, so the pin binds to it rather than to whatever `_PRE` uses.
+    _PRE_NONF1 = ("import asyncio\n"
+                  "from tpy import Int32, BytesView\n\n"
+                  "async def sub() -> BytesView:\n"
+                  '    return b"x"\n\n')
 
     def test_discarded_create_task_routes(self):
         src = (self._PRE
@@ -4961,9 +4966,10 @@ class TestQualcallRecordDiscardStorage:
         assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_nonf1_record_storage_decl_routes(self):
-        # Task[bytes] fails _f1_record (reference-type targ); the storage
-        # row admits the rvalue call whole into the emplace.
-        src = (self._PRE
+        # Task[BytesView] fails _f1_record (the view type-arg is admitted by
+        # no shape in the slice); the storage row admits the rvalue call
+        # whole into the emplace.
+        src = (self._PRE_NONF1
                + "async def main_coro() -> None:\n"
                + "    t = asyncio.create_task(sub())\n"
                + "    r = await t\n"
@@ -4971,7 +4977,9 @@ class TestQualcallRecordDiscardStorage:
                + "def main() -> None:\n    pass\nmain()\n")
         witnesses, fallback = _assert_identical(src)
         assert witnesses.get("method.qualcall.record_storage", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
+        # Whole-tally: a face is recorded at the gate, so it alone cannot
+        # tell an admitted row from a body that fell back further down.
+        assert not fallback
 
     def test_nested_marker_async_factory_routes(self):
         # The inner wait_for is an ASYNC module function: the coro_factory
@@ -5706,6 +5714,27 @@ class TestAwaitOwnValueArgSlots:
         assert set(fallback) <= {"resumable:res.param_type:own_scalar"}
         _, _hpp, cpp = _gen(src, thir=True)
         assert "__tmp_" not in cpp
+
+    def test_own_enum_slot_still_defers(self):
+        # BOUNDARY: an enum payload is the one value family the sync Own-arg
+        # row leaves unmodelled (a sync call rejects it at the arg gate). No
+        # call admission runs at the await position, so admitting it here
+        # renders the arg bare where the AST hoists its copy temp.
+        src = (_PRE
+               + "import asyncio\n"
+               + "from enum import Enum\n"
+               + "from tpy import Own\n\n"
+               + "class Color(Enum):\n    RED = 1\n    BLUE = 2\n\n"
+               + "def show(c: Color) -> None:\n    print(c)\n\n"
+               + "async def sink(c: Own[Color]) -> None:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    show(c)\n\n"
+               + "async def go(k: Color) -> None:\n"
+               + "    await sink(k)\n\n"
+               + "def main() -> None:\n    asyncio.run(go(Color.RED))\nmain()\n")
+        _assert_identical(src)
+        fb = _res_fallback(src)
+        _assert_rejects_at(fb, "res.await_param_type", count=1)
 
     def test_own_str_slot_still_defers(self):
         # BOUNDARY: an Own[str] await slot is outside the value families --
@@ -6450,20 +6479,105 @@ class TestOwnDynParamFamily:
         _, hpp, _cpp = _gen(src, thir=True)
         assert "__sub_0.emplace(std::move(coro), timeout);" in hpp
 
-    def test_own_bare_t_param_still_defers(self):
-        # BOUNDARY: an `Own[T]` PARAM (bare type param under Own) is not in
-        # the param families -- only the RETURN slot admits Own[T]. The
-        # capture form for an owned open-T param is unverified; it must
-        # keep res.param_type.
-        src = ("import asyncio\nfrom tpy import Own\n\n\n"
-               "async def ident[T](x: Own[T]) -> Own[T]:\n"
-               "    await asyncio.sleep(0.001)\n"
-               "    return x\n\n\n"
-               "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        _assert_rejects_at(fallback, "res.param_type",
-                           shape="own_generic", count=1)
+    def test_own_bare_t_param_routes(self):
+        # An `Own[T]` PARAM captures with ownership transfer into the bare
+        # payload field the plain-T param already gets: `T x;` with a
+        # `T&& x_` ctor param and an `x(std::move(x_))` member init, all
+        # skeleton, so the leaf read is the same bare name.
+        src = (_PRE
+               + "import asyncio\nfrom tpy import Own\n\n"
+               + "async def ident[T](x: Own[T]) -> Own[T]:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    return x\n\n"
+               + "async def go() -> None:\n"
+               + "    v = await ident(5)\n"
+               + "    print(v)\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        # `thir_resumables` caches None for a REJECT, so its len() is not a
+        # routed count -- and `_thir_routed_bodies` never moves for a frame
+        # body at all. Count the non-None entries.
+        ctx, fallback = _thir_ctx(src)
+        assert len([b for b in ctx.thir_resumables.values()
+                    if b is not None]) == 2
+        assert not fallback
         _assert_identical(src)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "    T x;\n" in hpp
+        assert "__coro_ident(T&& x_)" in hpp
+
+
+class TestOwnValueParamFamily:
+    """The `Own[value]` frame-PARAM family: ownership transfer into the same
+    bare payload field a plain value param gets, so the reads are the value
+    families' rows unchanged."""
+
+    def test_own_scalar_param_routes(self):
+        src = (_PRE
+               + "import asyncio\nfrom tpy import Own\n\n"
+               + "async def sink(x: Own[Int32]) -> Int32:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    return x + 1\n\n"
+               + "async def go() -> None:\n"
+               + "    print(await sink(1))\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        ctx, fallback = _thir_ctx(src)
+        assert len([b for b in ctx.thir_resumables.values()
+                    if b is not None]) == 2
+        assert not fallback
+        _assert_identical(src)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "__coro_sink(int32_t&& x_)" in hpp
+
+    def test_generic_method_own_t_param_routes(self):
+        # The stdlib shape: an async method on a generic record taking the
+        # element by ownership and forwarding it to a sync sink.
+        src = (_PRE
+               + "import asyncio\nfrom tpy import Own\n\n"
+               + "class Bin[T]:\n"
+               + "    items: list[T]\n\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.items = []\n\n"
+               + "    def push(self, v: Own[T]) -> None:\n"
+               + "        self.items.append(v)\n\n"
+               + "    async def put(self, item: Own[T]) -> None:\n"
+               + "        await asyncio.sleep(0.001)\n"
+               + "        self.push(item)\n\n"
+               + "async def go() -> None:\n"
+               + "    b: Bin[Int32] = Bin()\n"
+               + "    await b.put(7)\n"
+               + "    print(b.items)\n\n"
+               + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
+        ctx, fallback = _thir_ctx(src)
+        assert len([b for b in ctx.thir_resumables.values()
+                    if b is not None]) == 2
+        assert not fallback
+        _assert_identical(src)
+
+    def test_own_str_param_still_defers(self):
+        # BOUNDARY: an `Own[str]` param's sync signature spells the VIEW
+        # (`std::string_view`) while the frame field is owned -- a form
+        # split, not the capture detail the value families share.
+        src = (_PRE
+               + "import asyncio\nfrom tpy import Own\n\n"
+               + "async def sink(s: Own[str]) -> None:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    print(s)\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        _assert_rejects_at(_res_fallback(src), "res.param_type",
+                           shape="own_str", count=1)
+
+    def test_own_bytes_param_still_defers(self):
+        # BOUNDARY: the bytes twin of the str form split.
+        src = (_PRE
+               + "import asyncio\nfrom tpy import Own\n\n"
+               + "async def sink(b: Own[bytes]) -> None:\n"
+               + "    await asyncio.sleep(0.001)\n"
+               + "    print(len(b))\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+        _assert_rejects_at(_res_fallback(src), "res.param_type",
+                           shape="own_bytes", count=1)
 
 
 class TestErasedHandleWrites:

@@ -588,12 +588,11 @@ class TestCtorMilNullableProtocolUnionArg:
         assert _fn(thir, "load") is not None
         _assert_routes_byte_identical(src)
 
-    def test_own_list_param_general_read_still_defers(self):
-        # BOUNDARY: the Own[container] param's GENERAL read (a bare
-        # `len(items)` after the lift) has no arm -- only the whole-name
-        # consuming positions route, so a body with a later plain read
-        # keeps its fallback.
-        from .testutil import _assert_byte_identical, _lower_ctx, _fn
+    def test_own_list_param_general_read_after_the_lift_routes(self):
+        # The lift takes the param's ADDRESS, not its value, so a later bare
+        # `len(items)` is a plain read of a still-live binding -- both paths
+        # render it bare off the by-value param.
+        from .testutil import _assert_routes_byte_identical
         src = (
             "from tpy import Int32, Own\n"
             "from tplib.array_list import ArrayList\n"
@@ -604,6 +603,5 @@ class TestCtorMilNullableProtocolUnionArg:
             "    nums: list[Int32] = [1, 2, 3]\n"
             "    print(load(nums))\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "load") is None
-        _assert_byte_identical(src)
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__len__(items)" in cpp

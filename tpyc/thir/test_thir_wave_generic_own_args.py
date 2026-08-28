@@ -15,6 +15,8 @@ BigInt slots need. Rows pinned here:
    storage lift (tuple_to_storage_move over the borrow build);
  * a str literal into a substituted `Own[str]` slot binds bare; an owned
    str NAME takes the copy+move temp instead;
+ * an owned-`bytes` CALL rvalue into a substituted `Own[bytes]` slot binds
+   bare, while every other bytes source at that slot keeps rejecting;
  * the `Own[@dynamic P]` erasure rows fire on generic callees too -- the
    structural-conformer `::tpy::make_adapter<P>(...)` wrap and the
    async-factory wrap at an `Own[Cancellable[T]]` slot.
@@ -26,7 +28,8 @@ import io
 
 from .emit import emit_thir_body
 from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
-                       _assert_byte_identical)
+                       _assert_byte_identical, _assert_rejects_at,
+                       _assert_routes_byte_identical, _thir_ctx)
 
 
 def _body(thir, name: str) -> str:
@@ -456,4 +459,93 @@ class TestGenericOptOwnSlot:
                + "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is None
+        _assert_byte_identical(src)
+
+
+class TestGenericOwnBytesSlot:
+    """An owned-`bytes` CALL rvalue at a substituted `Own[bytes]` slot binds
+    BARE: a prvalue has nothing to move from and owes no view->owned copy, so
+    the Own cascade emits neither a temp nor a convert. The row is slot-keyed
+    and blind to the callee being generic, which is why the concrete ladder's
+    cell carries over unchanged.
+
+    Every neighbouring bytes source at the SAME slot keeps rejecting, each
+    for its own render: an owned LOCAL rides the copy+move temp, a view-form
+    source (param name, view local, view-returning call, slice) owes the
+    `bytes_copy` materialize, and a literal renders owned in place."""
+
+    _PRE = ("from tpy import Own, Int32, BytesView\n"
+            "from tpy.coro import Poll, poll_ready\n"
+            "class Src:\n"
+            "    n: Int32\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "    def recv(self, k: Int32) -> bytes:\n"
+            "        return b\"ab\"\n"
+            "    def peek(self, k: Int32) -> BytesView:\n"
+            "        return b\"ab\"\n")
+
+    _MAIN = ("def main() -> None:\n"
+             "    s = Src(2)\n"
+             "    q = run(s)\n"
+             "main()\n")
+
+    def test_owned_bytes_call_rvalue_routes(self):
+        src = (self._PRE
+               + "def run(s: Src) -> Own[Poll[bytes]]:\n"
+               + "    return poll_ready(s.recv(s.n))\n"
+               + self._MAIN)
+        _assert_routes_byte_identical(src)
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("arg.bytes_owned_call", 0) >= 1
+
+    def test_owned_bytes_call_rvalue_renders_bare(self):
+        src = (self._PRE
+               + "def run(s: Src) -> Own[Poll[bytes]]:\n"
+               + "    return poll_ready(s.recv(s.n))\n"
+               + self._MAIN)
+        _hpp, cpp = _assert_byte_identical(src)
+        assert ("::tpystd::coro::poll_ready<std::vector<uint8_t>>("
+                "s.recv(s.n))" in cpp)
+
+    def test_view_returning_call_stays_ast(self):
+        # BOUNDARY: the slot is pinned to `bytes` by the explicit type arg,
+        # so this really is the SAME slot -- and the view source still owes
+        # the `bytes_copy` materialize the bare bind would drop.
+        src = (self._PRE
+               + "def run(s: Src) -> Own[Poll[bytes]]:\n"
+               + "    return poll_ready[bytes](s.peek(s.n))\n"
+               + self._MAIN)
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.generic_arg_shape")
+        _assert_byte_identical(src)
+
+    def test_owned_bytes_local_name_stays_ast(self):
+        # BOUNDARY: an owned STORAGE local at the same slot rides the AST's
+        # copy+move-temp cascade -- the row is the RVALUE face only.
+        src = (self._PRE
+               + "def run(s: Src) -> Own[Poll[bytes]]:\n"
+               + "    b = s.recv(s.n)\n"
+               + "    return poll_ready[bytes](b)\n"
+               + self._MAIN)
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.generic_arg_shape")
+        _assert_byte_identical(src)
+
+    def test_str_sibling_call_rvalue_stays_ast(self):
+        # BOUNDARY: the str family's owned-slot rows are not in this sink at
+        # all (only its literal cell is), so the str twin of the admitted
+        # shape keeps rejecting -- admitting bytes did not admit "the
+        # owned-slot rvalue" generally.
+        src = (self._PRE
+               + "def name(s: Src) -> str:\n"
+               + "    return \"ab\"\n"
+               + "def run(s: Src) -> Own[Poll[str]]:\n"
+               + "    return poll_ready[str](name(s))\n"
+               + self._MAIN)
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.generic_arg_shape")
         _assert_byte_identical(src)

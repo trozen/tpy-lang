@@ -5,8 +5,8 @@ return, container-element and setitem sinks.
 and the OWNED `std::optional<std::string>` everywhere else, while
 `StrView | None` is the view optional in every position. Which side a sink
 is on decides whether the value passes bare or takes the per-element
-materialize shim -- these pins fix each pairing, plus the two boundaries
-where the AST's render is a filed defect or an unmirrored quirk.
+materialize shim -- these pins fix each pairing, plus the boundary where
+the AST's render is an unmirrored quirk.
 """
 
 from __future__ import annotations
@@ -151,10 +151,10 @@ class TestViewInnerOptionalLocal:
         assert _fn(_lower_ctx(src), "probe") is None
         _assert_byte_identical(src)
 
-    def test_owned_inner_return_from_a_view_source_keeps_rejecting(self):
-        # BOUNDARY: `-> str | None` from a slice source is the filed
-        # wrong-code shape (the owned slot never gets its view->owned copy),
-        # so the VIEW-inner slice row must not capture it.
+    def test_owned_inner_return_from_a_view_source_takes_the_copy(self):
+        # The VIEW-inner slice row must not capture `-> str | None`: at an
+        # owned inner sema wraps the slice in the view->owned coercion, and
+        # the copy that coercion renders is what reaches the slot.
         src = (
             "from typing import Optional\n"
             "def head(subject: str) -> Optional[str]:\n"
@@ -165,5 +165,9 @@ class TestViewInnerOptionalLocal:
             "    print(head(\"hello\"))\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx(src), "head") is None
-        _assert_byte_identical(src)
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("return std::string(::tpy::str_slice(subject, "
+                "::tpy::BasicSlice{std::nullopt, 2}));") in hpp + cpp
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("ret.value_opt_view_slice", 0) == 0
+        assert wit.get("ret.value_opt_view_materialize", 0) >= 1

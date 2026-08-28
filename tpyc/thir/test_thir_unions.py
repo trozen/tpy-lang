@@ -2576,6 +2576,67 @@ class TestUnionCallSubjectMatch:
         assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
+class TestNarrowElifElseFact:
+    """The narrow_ok gate's elif-link leg: a narrowing `if` whose else body is
+    an elif continuation tolerates ANY else fact, because the AST's
+    `is_elif_continuation` skips the else extraction unconditionally and the
+    link seeds its own facts. Corpus witness: datetime's `datetime.replace`,
+    whose second link carries an `Optional[member]` remainder fact.
+
+    A GENUINE else keeps rejecting -- and the AST render there is a
+    pre-existing wrong-code defect (`std::get<std::optional<C>*>` on a
+    pointer variant, ill-formed C++), so mirroring it is not an option."""
+
+    CHAIN_SRC = (_THREE_RECORDS
+                 + "def probe(h: A | B | C | None) -> Int32:\n"
+                 + "    if isinstance(h, A):\n"
+                 + "        return h.x\n"
+                 + "    elif isinstance(h, B):\n"
+                 + "        return h.y\n"
+                 + "    elif isinstance(h, C):\n"
+                 + "        return h.z\n"
+                 + "    return -1\n"
+                 + "def main() -> None:\n"
+                 + "    print(probe(A(1)))\n"
+                 + "    print(probe(B(2)))\n"
+                 + "    print(probe(C(3)))\n"
+                 + "    print(probe(None))\n"
+                 + "main()\n")
+
+    def test_elif_link_nonmember_else_fact_routes(self):
+        _thir, w = _lower_ctx_witnessed(self.CHAIN_SRC)
+        assert w.get("if.narrow_elif_else_fact", 0) >= 1
+        _assert_routes_byte_identical(self.CHAIN_SRC)
+
+    def test_elif_link_nests_on_concrete_else_fact(self):
+        # The remainder fact is concrete, so the chain breaks: the link emits
+        # as a nested `} else { if (...) }`, not a flat `else if`.
+        compiler, modules = _compile(self.CHAIN_SRC)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert "} else {\n        if (std::holds_alternative<C*>(h)) {" in cpp
+
+    def test_genuine_else_nonmember_fact_stays_ast(self):
+        # BOUNDARY: a real `else:` block reaches the AST extraction arm on the
+        # same non-mirrorable fact.
+        src = (_THREE_RECORDS
+               + "def probe(h: A | B | C | None) -> Int32:\n"
+               + "    if isinstance(h, A):\n"
+               + "        return h.x\n"
+               + "    elif isinstance(h, B):\n"
+               + "        return h.y\n"
+               + "    else:\n"
+               + "        return 0\n"
+               + "def main() -> None:\n"
+               + "    print(probe(A(1)))\n"
+               + "main()\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "probe") is None
+        assert w.get("if.narrow_elif_else_fact", 0) == 0
+        _assert_byte_identical(src)
+
+
 class TestNarrowFoldedElseRows:
     """The narrow_ok gate's two widened legs: an exhaustiveness-folded `if`
     WITH an explicit else (the dead arm still extracts its excluded member,

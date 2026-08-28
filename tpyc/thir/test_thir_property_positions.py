@@ -137,13 +137,19 @@ class TestPropertySetterBody:
                                       "c.items = [4]\n"
                                       "print(c.items[0])\n")
 
-    def test_own_param_nonadmitted_sink_stays_ast(self):
-        # BOUNDARY: an Own[container] param read at a NON-admitted sink (a
-        # bare decl) keeps the name.own_read fence.
+    def test_own_param_alias_decl_then_field_sink_routes(self):
+        # An Own[container] param aliased by a bare decl and THEN moved into
+        # the field: the decl binds a reference to the by-value param
+        # (`std::vector<int32_t>& xs = v;`) and only the field sink is a
+        # move, so the alias read stays valid on both paths.
         src = (_CONTAINER
                + "    def bad(self, v: Own[list[Int32]]) -> None:\n"
                + "        xs = v\n"
                + "        print(len(xs))\n"
                + "        self._items = v\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "bad") is None
+        hpp, cpp = _assert_routes_byte_identical(
+            src + "def main() -> None:\n"
+            + "    c = Container()\n    c.bad([1, 2])\nmain()\n")
+        out = hpp + cpp
+        assert "std::vector<int32_t>& xs = v;" in out
+        assert "this->_items = std::move(v);" in out

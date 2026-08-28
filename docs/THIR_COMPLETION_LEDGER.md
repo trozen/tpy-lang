@@ -13669,3 +13669,189 @@ An instrument fix is worth exactly the bodies currently sitting under the
 catcher's own tag -- a number countable before doing the work. The first such
 fix carried 70 bodies and turned two opaque buckets into 33. Later ones carried
 about one, and were done anyway because the first had paid so well.
+
+## 2026-08-28 -- the stdlib tail, ground by raise site (fallback 60 -> 39 per body, 52 -> 32 collapsed)
+
+Twenty-one bodies, 25 commits, one orchestrator and sixteen agents. Routed rose
+1185 -> 1206 as fallback fell 60 -> 39: the same 21 both ways, which is what
+separates real routing from bodies dropping out of classification. All three
+ratchets re-armed together at the ground tree.
+
+**The instrument was the wave's actual product.** The tail had flattened to ~1.2
+bodies per reject reason, so ranking tags could no longer select work.
+`scripts/thir_migration/thir_stdlib_sites.py` records the tpyc frame that
+CONSTRUCTED each `ThirUnsupported` and matches it back to the body's composed
+reason by containment, longest match first, so the innermost deciding site
+outranks the chokepoint that reformatted it. It collapsed 52 near-unique tags
+onto about a dozen decision sites: three tags under one `field.result_type`
+decision, four ctor-arg details under one ladder, two `urllib.parse` twins under
+one return row. Its blind spot is in its docstring rather than left to be
+rediscovered -- the resumable and simple-generator gates reject through a helper
+that never constructs the exception, so those four bodies print no site and had
+to be grepped.
+
+**A shared raise site is still not a lane, and this cost the most.** The
+ctor-arg ladder looked like a four-body cluster and was four unrelated
+predicates in two files; the `own_generic` / `union` / `optional` suffixes turn
+out to tag the SLOT type, never the blocking shape. The three tags at
+`field.result_type` failed three different clauses, under two different flags,
+threaded from three different sinks. A `truthy.call_nonbool` tag was decided one
+level earlier by a silent `return None` in a union member-class predicate, in no
+truthiness ladder at all. **The site collapses the search; only reading each
+ladder settles the lane.**
+
+**"The body routes" is not the property.** Two cells -- `json::loads` and
+`tplib.channel::recv` -- route under admission alone while silently dropping a
+`std::move`, and the byte-diff was the only thing that caught either. Admission
+and render are separate claims. A third, `_parse_http_date`, produced a
+divergence when admitted at the arg ladder (bare where the AST hoists a temp,
+plus a renumbered downstream temp); the honest fix was threading the flush into
+the tuple-literal lowering, which no tag pointed at.
+
+**Refusals were the highest-value output.** Three of five lanes declined work
+rather than forcing it. One reverted a cell on finding the fence it would have
+overturned was live and correct -- dropping `not is_param` opens the sgen slice,
+where the AST captures `__iter` and THIR captures `__beg/__end/__init`; the
+predicate sees identical inputs for both shapes, so no local discriminator
+exists. One stopped at a file boundary and handed over rather than reaching
+across. One rejected the discriminator its brief specified and proved it half
+wrong: `frame_local_types` is only `generator_locals`, so testing it alone calls
+a param "not frame-backed" while params ARE frame members.
+
+**Two fences whose recorded reason was wrong when written.** One called a shape
+"the filed wrong-code case where the owned slot never gets its view->owned
+copy"; the AST does emit the copy, both paths agree byte for byte, and no BUGS
+entry describes it. Its neighbour is real and still rejects. Separately, a pin
+was invalidated rather than violated: admitting a concrete `bytes` type-arg made
+the fixture's deliberately non-F1 record F1, so it routed down an earlier arm.
+Its premise, not its invariant, had expired -- re-pointed at the payload the
+same commit had fenced out.
+
+**A zero-yield broad widening was completed rather than left.** The `bytes`
+type-arg leg gates `_f1_record`, consulted at ~296 call sites, and a controlled
+same-tree A/B showed it paid NOTHING on its own -- the body merely moved one
+blocker deeper. It also silently invalidated the pin above. Completed with the
+companion arg row (A/B: both halves load-bearing) rather than kept as a broad
+admission that buys nothing, which is the worst of both.
+
+**Parked deliberately, with reasons, not attempted:** `datetime.__abs__` /
+`fromutc` behind the live `-self` -> `-(this)` defect, whose routing arm was
+already built and reverted once; the `self`-subscript deref receiver, which
+would be the eighth hand-application of a fact already wrong at two sites, and
+whose oracle `(*this)[i].__deref__().m()` was confirmed reachable;
+`collections::most_common`, AST-blocked with two filed defects in one body and a
+second THIR gate behind them; `HTTPSConnection.__init__`, needing a value-category
+decision for a prvalue record ternary plus a `copy(pointer-local)` row adjacent
+to an open bug; `thread.spawn`, bottoming out in a standing native-record-return
+policy fence; `os.walk` and `_request_on`, multi-layer for one body each.
+
+**Method notes for the next wave.**
+
+Measuring against a moving tree is worthless, and it happened twice: a scout
+killed its own corpus A/B when implementers landed under it, and a lane
+retracted a positive gate reading as contaminated. Scout to completion before
+dispatching implementers, or accept that every mid-flight number is provisional
+and re-measure on a quiet tree at the end.
+
+File OWNERSHIP does not protect a shared git INDEX. Two commits swept in peers'
+staged-but-uncommitted files. Hand implementers a filtered `git apply --cached`
+rather than `git add` when lanes share a checkout.
+
+A targeted subset is not the suite. The one unit regression on this branch
+escaped because the full THIR run timed out under five concurrent lanes and its
+lane fell back to nine files. It was then misattributed by two lanes to
+different commits; a six-point bisect settled it in one pass and exonerated
+both guesses. **Bisect the tree; do not poll the agents' opinions of it.**
+
+Scratch under `/tmp` filled the filesystem and hard-blocked every tool -- scouts
+had copied whole `tpyc` + `lib/tpy` trees and compiled C++ into it. Point agent
+scratch at a gitignored repo-local directory instead.
+
+## 2026-08-28 (second round) -- the scouted remainder (fallback 39 -> 21 per body, 32 -> 17 collapsed)
+
+Eighteen more bodies, ~24 commits, three lanes. Routed 1206 -> 1224 -- 18
+both ways, ceiling and floor. Across
+both rounds of the day: 60 -> 21 by body, 52 -> 17 collapsed, and the ceiling
+and floor moved by the same 39 -- the check that separates real routing from
+bodies falling out of classification.
+
+**Why there was a second round at all, which is the process lesson.** Round one
+partitioned lanes by FILE so five implementers could run concurrently, and only
+dispatched cells that fit inside one file. Every cross-file cell was deferred --
+and then the round went to review with roughly half its own scouted, measured,
+byte-identity-verified work undispatched. Four flips a scout had already
+measured were never handed to anyone. The file partition is a sound way to
+parallelize edits; it is not a way to select work, and nothing reconciled the
+two. If a round defers cells for a mechanical reason, the deferred set is a
+work item, not a footnote.
+
+**Three defects filed, none caused by these cells, one of them the kind the
+gates cannot see.** A `@nocopy`-element list literal at a GENERIC record's
+`Own[list[T]]` ctor param renders a copying brace-init under THIR where the AST
+spells `make_vector` -- a live THIR/AST divergence needing generic AND nocopy
+together, which is why no corpus case carries it and why the byte-diff never
+compared it. Separately: binding one recursive union alias into a
+differently-named one crashes the compiler with `RecursionError` (merged into
+the pre-existing entry for the same cycle -- it turned out to be a second
+trigger, not a second bug). And an `@overload`-ed `async def` emits one
+coroutine frame per overload entry, all identically named: a C++ redefinition
+that miscompiles today.
+
+**A premise was falsified by the implementer who was told to act on it.** A
+lane cleared an `@overload`-ed resumable GENERATOR by dropping one term from a
+carve-out, and judged the `async` twin to be the same one-body argument. It is
+not: a `...` stub body is not a generator, which is exactly what keeps generator
+stubs off the frame entry, but an `async def` stub is still async, so every
+entry reaches the frame emitter. The next lane checked before widening, found
+the three-frame redefinition, kept the reject, corrected the fixture's stated
+reason, and pinned the three-frame emission so the reject cannot later be
+re-read as a gap.
+
+**An ill-formed AST render was confirmed by building it, and deliberately not
+mirrored.** A genuine `else:` after an isinstance chain over a 3+-member
+nullable union extracts a variant alternative that does not exist
+(`std::get<std::optional<C>*>` against `variant<monostate, A*, B*, C*>`); g++
+rejects it. The cell admitted only the elif-link shape and pinned the genuine
+`else` as a boundary.
+
+**"The body routes" is not the property, twice more.** Two cells routed under
+admission alone while silently dropping a `std::move`; both were caught by the
+byte-diff and both needed a second row. One implementer improved on its brief
+here: told to make two edits agree, it found the pointer-local deref+move block
+sits BEFORE the wrapper gate, so extending one guard makes the move impossible
+to drop by construction rather than by two edits staying in sync.
+
+**Method notes.**
+
+The instrument this round leaned on cannot see a known class of lies in the
+metric it measures, and that is worth more attention than it got. The
+raise-site spy hooks `ThirUnsupported` construction -- but the resumable and
+simple-generator gates reject through a `_reject()` helper that never
+constructs one, so four bodies had to be found by grepping the reason string.
+Independently, the backlog records six-plus sites that CATCH a
+`ThirUnsupported` and re-raise with a fixed tag, discarding the operand's own
+reason, and notes the enumeration was built by grepping `raise ... from None`
+and therefore misses the bare `except ThirUnsupported: return _reject(...)`
+form entirely. Those are the same defect from two directions: a reject that
+does not travel as an exception is invisible to the spy, and a reject that is
+caught and relabelled is visible but lying. Any future scoping done off the
+tally inherits both. Fixing the catchers is diagnostics-only and can be done
+at any time; the spy's blind spot needs the frame gates to raise rather than
+note, which is a larger change and should be priced before the next wave
+trusts a site histogram over a body count.
+
+Scout claims kept failing in the same direction -- confidently, and about
+mechanism rather than about size. A blocker attribution named the wrong
+predicate; a binding was called pointer-repr when it was value-repr; a
+"sole blocker" had a second gate behind it; a caveat about a collapsed metric
+row was wrong. Every one was caught by an implementer verifying before
+building. Brief implementers to verify, and treat "the scout was wrong" as a
+reportable result rather than a failure.
+
+`git commit --only <paths>` does NOT protect a file two lanes both append to:
+it commits the working-tree state of the named path, peer edits included. Two
+`faces.py` lines again landed under the wrong commit message. A genuinely
+shared append-only file needs serialization, not path-scoping.
+
+A broad `pkill -f pytest` killed a peer's run for the second time in one
+session. Kill only PIDs you started.

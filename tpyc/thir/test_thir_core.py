@@ -2147,9 +2147,13 @@ class TestDump:
         )
 
     def test_dump_empty(self):
-        # A str walrus is outside the value-scalar walrus slice, so nothing
-        # routes (the scalar walrus now has an arm -- see the wave pins).
-        thir = _lower(_PRELUDE + "def f(s: str) -> Int32:\n    if (y := s + \"!\"):\n        return 1\n    return 0\n")
+        # A VIEW-form walrus target needs the pending-view pre-declaration,
+        # which is unmirrored, so nothing in the module routes.
+        thir = _lower("from tpy import Int32, StrView\n"
+                      "def f(s: StrView) -> Int32:\n"
+                      "    if len(y := s) > 0:\n"
+                      "        return 1\n"
+                      "    return 0\n")
         assert "(no THIR-eligible functions)" in dump_thir(thir)
 
     def test_dump_for_range(self):

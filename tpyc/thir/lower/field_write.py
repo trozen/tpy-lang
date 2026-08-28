@@ -64,6 +64,7 @@ from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import (
     _borrow_tuple_local_type,
     _bytes_field_write_ok,
+    _field_over_container_subscript_ok,
     _default_ctor_field_write_ok,
     _class_const_write_target_ok,
     _container_copy_field_write_ok,
@@ -94,6 +95,7 @@ from .predicates import (
     _nested_tuple_field_literal_write_ok,
     _f2b_optional_field_write_ok,
     _field_decl_type,
+    _field_over_subscript_ok,
     _field_receiver_ok,
     _owned_optional_call_source,
     _callable_value,
@@ -253,7 +255,15 @@ def _classify_opt_none(stmt: TpyAssign, lc: _LowerCtx,
                        pointers: AbstractSet[str]) -> _OptNonePlan | None:
     if not isinstance(stmt.value, TpyNoneLiteral):
         return None
-    if not _field_receiver_ok(stmt.target, declared, lc.analyzer):
+    # A SUBSCRIPT receiver -- a container element or a record-typed tuple
+    # element -- is a plain record borrow lvalue, so the member spells the
+    # same postfix off the bare element read that the scalar field write
+    # already renders there. Only the target varies with the receiver; the
+    # `std::nullopt` value render is receiver-blind.
+    if not (_field_receiver_ok(stmt.target, declared, lc.analyzer)
+            or _field_over_subscript_ok(stmt.target, declared, lc.analyzer)
+            or _field_over_container_subscript_ok(stmt.target, declared,
+                                                  lc.analyzer)):
         return None
     fdt = _field_decl_type(stmt.target, declared, lc.analyzer)
     if fdt is None:
@@ -453,6 +463,8 @@ def _classify_record(stmt: TpyAssign, lc: _LowerCtx,
         if not _record_field_write_ok(stmt, declared, analyzer, pointers,
                                       narrowed, lc.prescan):
             return None
+        if getattr(stmt.target, "deref_depth", 0):
+            _witness("field_write.record_user_deref")
         return _RecordFieldPlan(_RecordSlot.PLAIN, ftype)
     opt_inner = (_optional_record_field_inner(ftype, analyzer)
                  or _optional_value_record_field_inner(ftype, analyzer))

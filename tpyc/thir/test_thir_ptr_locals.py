@@ -883,18 +883,25 @@ class TestElementBorrowPtrDecl:
 
     def test_tparam_elem_decl_and_return_route(self):
         # The open-T twin: `result = a[i]` inside a generic function binds
-        # `T* result` and the return derefs it (`return (*result);`).
+        # `T* result` and the return derefs it. The element borrow is NOT a
+        # move source (the pointee belongs to the caller's list), so the
+        # deref returns bare -- the counterweight to the hoisted-optional
+        # flavor below, which moves.
         src = ("from tpy import Int32\n"
                + "def last[T](a: list[T]) -> T:\n"
                + "    result: T = a[0]\n"
                + "    for i in range(1, len(a)):\n"
                + "        result = a[i]\n"
-               + "    return result\n")
+               + "    return result\n"
+               + "def main() -> None:\n"
+               + "    print(last([1, 2, 3]))\n"
+               + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "last") is not None
         assert faces.get("decl.subscript_elem_addr")
         assert faces.get("ret.tparam_ptr_local")
-        _assert_byte_identical(src)
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return (*result);" in hpp + cpp
 
     def test_nested_container_elem_reassign_still_defers(self):
         # BOUNDARY: an element that is itself a CONTAINER binds the REF_ALIAS
@@ -921,6 +928,71 @@ class TestElementBorrowPtrDecl:
         thir, faces = _lower_ctx_witnessed(src)
         assert not faces.get("decl.subscript_elem_addr")
         _assert_byte_identical(src)
+
+
+class TestTparamHoistedOptionalReturn:
+    """A `with`-hoisted `std::optional<T>` in a generic body: the open-T call
+    rvalue reseats the hoist plainly (neither side has a form until the
+    template instantiates, so the traits pick the same one for both), and the
+    return derefs and MOVES at a movable last use -- the same question the
+    record pointer-local flavors ask, since one `is_indirect_name` branch
+    serves every pointer-local return on the oracle side.
+
+    The stdlib witness is `tplib.channel`'s `Receiver.recv`."""
+
+    _HEAD = (
+        "from tpy import Int32, Own\n"
+        "class Guard:\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def __enter__(self) -> Int32:\n"
+        "        return self.n\n"
+        "    def __exit__(self, et, ev, tb) -> None:\n"
+        "        pass\n"
+        "class Bag[T]:\n"
+        "    xs: list[T]\n"
+        "    def __init__(self, xs: Own[list[T]]) -> None:\n"
+        "        self.xs = xs\n"
+        "    def pop_one(self) -> Own[T]:\n"
+        "        return self.xs.pop()\n"
+    )
+    _TAIL = (
+        "def main() -> None:\n"
+        "    b = Bag([1, 2, 3])\n"
+        "    print(b.take(1))\n"
+        "main()\n"
+    )
+    SRC = _HEAD + (
+        "    def take(self, n: Int32) -> Own[T]:\n"
+        "        with Guard(n) as g:\n"
+        "            value = self.pop_one()\n"
+        "        return value\n"
+    ) + _TAIL
+
+    def test_open_t_call_reseats_the_hoist_and_returns_moved(self):
+        thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert _fn(thir, "main") is not None
+        assert faces.get("reseat.opt_storage")
+        assert faces.get("ret.tparam_ptr_local")
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        out = hpp + cpp
+        assert "std::optional<T> value;" in out
+        assert "value = this->pop_one();" in out
+        assert "return std::move((*value));" in out
+
+    def test_non_call_rvalue_at_the_same_hoist_defers(self):
+        # BOUNDARY: the reseat admits a CALL rvalue whose open-T result is the
+        # slot's own type param; a ternary at the same slot is a different
+        # source shape with no vetted render, so it keeps rejecting.
+        src = self._HEAD + (
+            "    def take(self, n: Int32) -> Own[T]:\n"
+            "        with Guard(n) as g:\n"
+            "            value = self.pop_one() if n > 0 else self.pop_one()\n"
+            "        return value\n"
+        ) + self._TAIL
+        _ctx, fb = _thir_ctx(src)
+        assert fb == {"body:stmt.var_decl:reseat.opt_storage_source": 1}
 
 
 class TestOptNameCopyDecl:

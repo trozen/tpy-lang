@@ -8,7 +8,7 @@ routing wrong."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _compile, _entry
+from .testutil import _compile, _entry, _thir_ctx
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
 
@@ -320,10 +320,12 @@ class TestSlicedOutShapes:
         witnesses, _fallback = _assert_identical(src)
         assert not _sgen_fallback(src).get("sgen.yield_type")
 
-    def test_str_loop_var_defers(self):
-        # A str loop element stays out of the loop-var slice (the view/owned
-        # usage-resolution duality is not mirrored for the sgen binding);
-        # the yield gate passes (scalar).
+    def test_str_loop_var_routes(self):
+        # The peephole's loop-var decl spells the element type verbatim, so
+        # a str element binds OWNED (`std::string w`) where a sync for-each
+        # binds the usage-resolved view -- but that decl is shared skeleton,
+        # emitted the same on both paths, and the leaf reads consult the
+        # same sema form resolution either way.
         src = ("from typing import Iterator\n"
                + "from tpy import Int32\n\n"
                + "def lens(ws: list[str]) -> Iterator[Int32]:\n"
@@ -332,7 +334,53 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    ws = [\"a\", \"bc\"]\n"
                + "    for n in lens(ws):\n        print(n)\nmain()\n")
-        assert _sgen_fallback(src).get("sgen.loop_var_type") == 1
+        # The routing claim must be read off `thir_simple_gens`: the
+        # generator seam keys its own map, and `_thir_routed_bodies` does
+        # not move when it routes.
+        ctx, fallback = _thir_ctx(src)
+        assert ctx.thir_simple_gens
+        assert not fallback
+        _assert_identical(src)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "std::string w = *__beg++;" in hpp
+
+    def test_bytes_loop_var_routes(self):
+        # The bytes twin, whose owned binding is `std::vector<uint8_t>`.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "def sizes(bs: list[bytes]) -> Iterator[Int32]:\n"
+               + "    for b in bs:\n"
+               + "        yield Int32(len(b))\n\n"
+               + "def main() -> None:\n"
+               + "    bs = [b\"a\", b\"bc\"]\n"
+               + "    for n in sizes(bs):\n        print(n)\nmain()\n")
+        ctx, fallback = _thir_ctx(src)
+        assert ctx.thir_simple_gens
+        assert not fallback
+        _assert_identical(src)
+        _, hpp, _cpp = _gen(src, thir=True)
+        assert "std::vector<uint8_t> b = *__beg++;" in hpp
+
+    def test_str_dict_key_loop_var_routes(self):
+        # The stdlib shape: a str dict-KEY loop var used both as the yield
+        # source and as the subscript key back into the same field dict.
+        src = ("from typing import Iterator\n"
+               + "from tpy import Int32\n\n"
+               + "class H:\n"
+               + "    store: dict[str, tuple[str, str]]\n\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.store = {}\n\n"
+               + "    def __iter__(self) -> Iterator[str]:\n"
+               + "        for lk in self.store:\n"
+               + "            yield self.store[lk][0]\n\n"
+               + "def main() -> None:\n"
+               + "    h = H()\n"
+               + "    h.store[\"a\"] = (\"A\", \"1\")\n"
+               + "    for s in h:\n        print(s)\nmain()\n")
+        ctx, fallback = _thir_ctx(src)
+        assert ctx.thir_simple_gens
+        assert not fallback
+        _assert_identical(src)
 
     def test_generic_routes(self):
         # The generic DEF routes since the generic-sgen cells (the

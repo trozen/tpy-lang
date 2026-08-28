@@ -2055,17 +2055,19 @@ class TestContainerStorageReturn:
             assert fn is not None, name
             assert isinstance(fn.body[0].value, THIRContainerLiteral), name
 
-    def test_own_container_param_still_ineligible(self):
-        # An `Own[list]` PARAM keeps the body on the AST path (the move-in
-        # ABI cell `_container_scalar_read` excludes) -- the return-slot
-        # widening must not have opened it. A BORROWED or reassigned-alias
-        # bare-name source cannot reach the return arm at all: sema rejects
-        # `return <borrowed>` at an Own slot without copy(), so the arm's
-        # reassigned/pointers checks are defensive.
-        thir = _lower(
-            "from tpy import Int32, Own\n"
-            "def f(xs: Own[list[Int32]]) -> Own[list[Int32]]:\n    return xs\n")
-        assert _fn(thir, "f") is None
+    def test_own_container_param_returns_bare(self):
+        # The `Own[list]` PARAM binding is spelled by value (`std::vector&&`)
+        # and reads bare, so the return slot takes the plain name. A BORROWED
+        # or reassigned-alias bare-name source cannot reach the return arm at
+        # all: sema rejects `return <borrowed>` at an Own slot without
+        # copy(), so the arm's reassigned/pointers checks are defensive.
+        src = ("from tpy import Int32, Own\n"
+               "def f(xs: Own[list[Int32]]) -> Own[list[Int32]]:\n"
+               "    return xs\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "return xs;" in cpp
 
     def test_record_element_literal_return_ineligible(self):
         # Elements outside the scalar/str slice keep the literal on the AST
@@ -3664,11 +3666,12 @@ class TestCompositionalContainerParam:
                + "def f[T](xs: list[T]) -> Int32:\n    return len(xs)\n")
         self._routes_identical(src)
 
-    def test_own_container_param_rejects(self):
-        # `Own[list]` (move-in `T&&`, a distinct ABI) keeps its reject.
+    def test_own_container_param_routes(self):
+        # `Own[list]` is the move-in `T&&` ABI, a distinct SIGNATURE -- but
+        # the body reads it exactly like the borrowed sibling above, bare.
         src = ("from tpy import Int32, Own\n"
                "def f(xs: Own[list[Int32]]) -> Int32:\n    return len(xs)\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        self._routes_identical(src)
 
 
 class TestMethodArgLiteralTargets:

@@ -1651,11 +1651,13 @@ class TestOwnProtoContainerArg:
         _assert_routes_byte_identical(src)
 
     def test_own_container_sgen_param_stays_ast(self):
-        # BOUNDARY: an Own[CONTAINER] sgen param read must keep
-        # name.own_read -- admitting it flips the skeleton's
-        # iterable-strategy classification (ctx.var_types is seeded by the
-        # AST's gen_body, not the leaf path); dualgen-caught scaffolding
-        # divergence.
+        # BOUNDARY: an Own[CONTAINER] param used as the sgen FOR-HEAD
+        # iterable must stay AST. The skeleton classifies the iteration
+        # strategy off the un-unwrapped binding, so `Own` sends it to the
+        # universal `__iter__` capture while the leaf would spell begin/end
+        # off the payload -- a dualgen-caught scaffolding divergence. The
+        # Own[PROTOCOL] iterable above is NOT this shape: both paths agree
+        # there, which is why the reject keys on the payload family.
         from .testutil import _thir_ctx
         src = ("from tpy import Own, Int32\n"
                "from typing import Iterator\n\n"
@@ -1667,7 +1669,7 @@ class TestOwnProtoContainerArg:
                "        print(u)\n"
                "main()\n")
         _ctx, fallback = _thir_ctx(src)
-        assert fallback == {"body:name.own_read": 1}, fallback
+        assert fallback == {"body:sgen.iterable_own_binding": 1}, fallback
         _assert_byte_identical(src)
 
 

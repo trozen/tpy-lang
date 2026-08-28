@@ -20,6 +20,7 @@ from .testutil import (
     _lower_ctx,
     _thir_ctx,
 )
+from ..codegen_cpp import CodeGenOptions
 from .lower import lower_function
 from .lower.functions import iter_module_callables, module_native_globals
 from .nodes import THIRFoldedBlock
@@ -725,9 +726,10 @@ class TestGenericStubRouting:
 
 
 class TestOverloadedGenerator:
-    """An @overload-ed simple generator emits ONE body -- the AST router
-    lowers it at the leaf seam and never reaches the per-stub seeding loop,
-    so there is no specialization for a shared impl to hijack."""
+    """An @overload-ed generator emits ONE body -- the AST router diverts
+    every generator to a leaf seam (the simple peephole or the resumable
+    frame) and never reaches the per-stub seeding loop, so there is no
+    specialization for a shared impl to hijack."""
 
     def test_overloaded_simple_generator_routes(self):
         src = (
@@ -753,25 +755,102 @@ class TestOverloadedGenerator:
         assert not fallback
         _assert_byte_identical(src)
 
-    def test_overloaded_resumable_generator_keeps_rejecting(self):
-        # BOUNDARY: a non-simple generator lowers through the resumable frame,
-        # a seam the carve-out deliberately excludes (no corpus witness).
+    _RESUMABLE_SRC = (
+        "from typing import overload, Iterator\n"
+        "from tpy import Int32\n"
+        "@overload\n"
+        "def walk(n: Int32) -> Iterator[Int32]: ...\n"
+        "@overload\n"
+        "def walk(n: Int32, step: Int32) -> Iterator[Int32]: ...\n"
+        "def walk(n: Int32, step: Int32 = 1) -> Iterator[Int32]:\n"
+        "    i = 0\n"
+        "    while i < n:\n"
+        "        try:\n"
+        "            yield i\n"
+        "        finally:\n"
+        "            i += step\n"
+        "for x in walk(4, 2):\n"
+        "    print(x)\n"
+    )
+
+    def test_overloaded_resumable_generator_routes(self):
+        # The routing claim reads off `thir_resumables`: the frame seam keys
+        # its own map, and `_thir_routed_bodies` does not move when it routes.
+        ctx, fallback = _thir_ctx(self._RESUMABLE_SRC)
+        assert ctx.thir_resumables
+        assert not fallback
+
+    def test_overloaded_resumable_generator_byte_identical(self):
+        _assert_byte_identical(self._RESUMABLE_SRC)
+
+    def test_overloaded_resumable_generator_isinstance_body_routes(self):
+        # The neighbour that would break first if the AST DID specialize a
+        # generator per stub: an isinstance body is exactly what per-stub
+        # dead-branch elimination rewrites. One frame means no rewrite.
         src = (
             "from typing import overload, Iterator\n"
             "from tpy import Int32\n"
             "@overload\n"
-            "def walk(n: Int32) -> Iterator[Int32]: ...\n"
+            "def walk(x: Int32) -> Iterator[Int32]: ...\n"
             "@overload\n"
-            "def walk(n: Int32, step: Int32) -> Iterator[Int32]: ...\n"
-            "def walk(n: Int32, step: Int32 = 1) -> Iterator[Int32]:\n"
-            "    i = 0\n"
-            "    while i < n:\n"
+            "def walk(x: str) -> Iterator[Int32]: ...\n"
+            "def walk(x: Int32 | str) -> Iterator[Int32]:\n"
+            "    if isinstance(x, Int32):\n"
+            "        i = 0\n"
+            "        while i < x:\n"
+            "            try:\n"
+            "                yield i\n"
+            "            finally:\n"
+            "                i += 1\n"
+            "    else:\n"
             "        try:\n"
-            "            yield i\n"
+            "            yield len(x)\n"
             "        finally:\n"
-            "            i += step\n"
-            "for x in walk(4, 2):\n"
-            "    print(x)\n"
+            "            print('done')\n"
+            "for v in walk(3):\n"
+            "    print(v)\n"
+            "for v in walk('ab'):\n"
+            "    print(v)\n"
         )
-        _ctx, fallback = _thir_ctx(src)
+        ctx, fallback = _thir_ctx(src)
+        assert ctx.thir_resumables
+        assert not fallback
+        _assert_byte_identical(src)
+
+    _ASYNC_SRC = (
+        "from typing import overload\n"
+        "from tpy import Int32\n"
+        "@overload\n"
+        "async def go(n: Int32) -> Int32: ...\n"
+        "@overload\n"
+        "async def go(n: Int32, step: Int32) -> Int32: ...\n"
+        "async def go(n: Int32, step: Int32 = 1) -> Int32:\n"
+        "    i = 0\n"
+        "    while i < n:\n"
+        "        i += step\n"
+        "    return i\n"
+    )
+
+    def test_overloaded_async_keeps_rejecting(self):
+        # BOUNDARY: the generator's one-body argument does NOT carry to
+        # async. A `...` stub body is not a generator, which is what keeps
+        # generator stubs off the frame entry -- but an `async def` stub is
+        # still async, so each stub reaches the frame emitter itself and the
+        # AST emits one frame plus one factory PER OVERLOAD ENTRY.
+        _ctx, fallback = _thir_ctx(self._ASYNC_SRC)
         assert fallback.get("resumable:sig.overload_set.arity") == 1
+        # The two stubs reaching the same entry is the evidence: the
+        # generator twin's set produces exactly one attempt.
+        assert fallback.get("resumable:sig.special_callable") == 2
+
+    def test_overloaded_async_frames_all_share_one_struct_name(self):
+        # The AST emission is broken independently of routing: all three
+        # frames are `struct __coro_go`, a C++ redefinition. Pinned so the
+        # reject above is not misread as a gap waiting on a witness.
+        compiler, modules = _compile(self._ASYNC_SRC)
+        hpp, _cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=False))
+        assert hpp.count("struct __coro_go {") == 3

@@ -2800,14 +2800,13 @@ def _span_value(t: TpyType | None) -> bool:
         return False
     return _eligible_scalar(_peel_readonly(args[0]))
 
-def _span_return(t: TpyType | None) -> bool:
-    """The span RETURN slot -- see `_span_value` (the return is one of its
-    bare-render positions). A `Span[T]` / `Span[readonly[T]]` over a TYPE
-    PARAM admits too (the auto_readonly getter pair): the slot renders
-    per-instantiation and the witnessed sources are the element-blind
-    spanlike coerces (`as_span` / `as_mut_span`)."""
-    if _span_value(t):
-        return True
+def _span_open_t_value(t: TpyType | None) -> bool:
+    """A `Span[T]` / `Span[readonly[T]]` over a bare TYPE PARAM -- the open
+    sibling of `_span_value`. The spelling resolves per-instantiation and a
+    span is a value view whose render is bare wherever it lands, so the
+    element family (which `_span_value` pins for the concrete case) only
+    constrains sources that could carry a per-element convert; none exists
+    for an open element."""
     if t is None:
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -2815,6 +2814,14 @@ def _span_return(t: TpyType | None) -> bool:
         return False
     args = getattr(u, "type_args", None)
     return bool(args) and _is_type_param_slot(unwrap_readonly(args[0]))
+
+def _span_return(t: TpyType | None) -> bool:
+    """The span RETURN slot -- see `_span_value` (the return is one of its
+    bare-render positions). A `Span[T]` / `Span[readonly[T]]` over a TYPE
+    PARAM admits too (the auto_readonly getter pair): the slot renders
+    per-instantiation and the witnessed sources are the element-blind
+    spanlike coerces (`as_span` / `as_mut_span`)."""
+    return _span_value(t) or _span_open_t_value(t)
 
 def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     """A generic user-record type-arg that THIR spells byte-identically to the
@@ -2841,6 +2848,15 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         u = unwrap_readonly(a)
         if isinstance(u, NominalType) and (is_str_type(u)
                                            or is_str_view_type(u)):
+            return True
+        # A CONCRETE `bytes` arg (`Pair[bytes]` / `Poll[bytes]`): both paths
+        # spell the OWNED storage form `std::vector<uint8_t>`, the str arm's
+        # argument one family over -- the view/owned param split never
+        # applies inside a type-arg list. `BytesView` spells the view form
+        # and is admitted by no shape here, so it keeps rejecting; the
+        # `bytearray` sibling shares the spelling but is a reference type,
+        # whose borrow form is a separate question.
+        if isinstance(u, NominalType) and is_bytes_type(u):
             return True
         # A builtin-container arg (`Box[list[Int32]]`): both paths spell the
         # formatter form (`std::vector<...>`) recursing element args through
@@ -3598,7 +3614,18 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
     if isinstance(u, OwnType):
         u = unwrap_readonly(u.wrapped)
     if isinstance(u, OptionalType):
-        if recv.name not in pointers or not u.uses_pointer_repr():
+        if _own_opt_storage_binding(declared[recv.name]):
+            # A VALUE-repr `Own[wrapper] | None` binding (`std::optional<Box>`
+            # by value): its narrowed read already derefs in place (`(*name)`),
+            # so the chain composes off that lvalue exactly like the storage-
+            # optional FIELD receiver above. An UN-narrowed occurrence has no
+            # payload lvalue to deref -- keep it out.
+            rt = analyzer.get_expr_type(recv)
+            if rt is None or isinstance(
+                    unwrap_readonly(unwrap_ref_type(rt)), OptionalType):
+                return None
+            _witness("recv.deref_value_opt_name")
+        elif recv.name not in pointers or not u.uses_pointer_repr():
             return None
         u = unwrap_readonly(_unwrap_own(u.inner))
     if not _deref_wrapper_record_ok(u, analyzer):
@@ -4210,6 +4237,33 @@ def _whole_value_opt_name_arg(a: TpyExpr, ptype: 'TpyType | None',
           if isinstance(at, TpyType) else None)
     return at == slot
 
+def _whole_value_opt_field_arg(a: TpyExpr, ptype: 'TpyType | None',
+                               locals_: dict[str, TpyType], analyzer) -> bool:
+    """The FIELD twin of `_whole_value_opt_name_arg`: a member read whose
+    DECLARED type is exactly the value-repr `Optional[scalar]` slot binds
+    BARE (`create_connection(addr, this->timeout)`) -- the optional is a
+    value passed by value, so neither path lifts, shims or hoists. A
+    sema-NARROWED read is excluded by the exact-type pin: its analyzed type
+    is the payload, and the render derefs."""
+    if not isinstance(a, TpyFieldAccess):
+        return False
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+            if isinstance(ptype, TpyType) else None)
+    if _value_opt_scalar(slot, analyzer) is None:
+        return False
+    if not (_field_markers_clean(a)
+            and _field_receiver_ok(a, locals_, analyzer)):
+        return False
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if isinstance(at, TpyType) else None)
+    if at != slot:
+        return False
+    fdt = _field_decl_type(a, locals_, analyzer)
+    fdt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
+           if isinstance(fdt, TpyType) else None)
+    return fdt == slot and bool(_witness("arg.value_opt_field"))
+
 def _value_opt_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 locals_: dict[str, TpyType],
                                 narrowed: 'AbstractSet[str]',
@@ -4376,14 +4430,17 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 or ((is_param or movable_local)
                     and (_eligible_scalar(inner) or _eligible_char(inner)
                          or _eligible_enum(inner, analyzer) is not None))
-                # An Own[CONTAINER] LOOP VAR (`for row in csv.reader(..)`
-                # at `Own[list[str]]`): the elem binds `auto&& row` and joins
-                # the movable working set, so reads render bare and the AST
-                # moves the last one at an owning sink -- which the
-                # move-source rows mirror off that same set. LOCALS only:
-                # the PARAM of the same type is movable-seeded too, but its
-                # reject is a boundary the slice holds deliberately.
-                or (movable_local and not is_param
+                # An Own[CONTAINER] binding -- a LOOP VAR (`for row in
+                # csv.reader(..)` at `Own[list[str]]`, whose elem binds
+                # `auto&& row`) or a PARAM (whose signature spells the
+                # container by value): both join the movable working set, so
+                # reads render bare and the AST moves the last one at an
+                # owning sink -- which the move-source rows mirror off that
+                # same set. The one position where a PARAM diverges is the
+                # SIMPLE-GENERATOR for-head, whose skeleton picks its
+                # iteration strategy off the un-unwrapped binding; that seam
+                # declines the name itself.
+                or ((movable_local or is_param)
                     and (is_list(inner) or is_dict(inner) or is_set(inner)))
                 # An Own[str]/Own[bytes] PARAM: the signature spells the
                 # OWNED type by value, so the name reads are STORAGE
@@ -9348,6 +9405,30 @@ def _owned_form_str_name(a: TpyExpr, locals_: 'dict[str, TpyType] | None',
     return is_str_type(t) and a.name not in param_names
 
 
+def _own_borrow_call_temp_slot(a: TpyExpr, w: TpyType,
+                               analyzer) -> 'TpyType | None':
+    """The CALL shape of the Own-slot copy+move row: a BORROW-returning call
+    (`Box(self.get())`) is a non-simple lvalue the `T&&` slot cannot bind, so
+    the AST always hoists `auto __tmp_N = <call>;` + the move -- the temp-free
+    move arm needs a NAME and never fires here.
+
+    Payload-restricted to the type-param and same-nominal record slots: a
+    str/bytes or view payload takes a CONVERTING temp spelling instead, a
+    union payload a variant lift, and a value payload binds by value with no
+    temp at all. An Own-returning call is an rvalue that binds the slot
+    directly."""
+    if w.is_value_type():
+        return None
+    if not (_is_type_param_slot(w) or _f1_record(w, analyzer)):
+        return None
+    if is_rvalue_source(analyzer, a):
+        return None
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    return w if at is not None and at == w else None
+
+
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer,
                           locals_: 'dict[str, TpyType] | None' = None,
@@ -9422,6 +9503,8 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # payload is excluded: its Own slot is a plain by-value param an lvalue
     # binds directly, so the AST's copy arm (guarded on a non-value payload)
     # never fires and the whole render is the bare ternary.
+    if isinstance(a, (TpyCall, TpyMethodCall)):
+        return _own_borrow_call_temp_slot(a, w, analyzer)
     if not isinstance(a, (TpyName, TpyFieldAccess, TpyIfExpr)):
         return None
     if isinstance(a, TpyIfExpr) and w.is_value_type():
@@ -9671,6 +9754,19 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
                          or is_bytearray_type(inner))
                     and is_rvalue_source(analyzer, a)):
                 return 'container_temp'
+            # A RECORD-returning rvalue call at a record pointee
+            # (`Conn(host, port, _context_for(v))`): the ctor face's
+            # free-call sibling -- the AST arm is source-blind and hoists
+            # the same slot-typed temp + `&(__tmp_N)`. An `Own[T]` return
+            # unwraps to the same pointee; an INEXACT one (a subclass
+            # return, where the AST re-derives the temp's class from the arg
+            # type to avoid slicing) stays out.
+            at_o = at_c.wrapped if isinstance(at_c, OwnType) else at_c
+            at_o = unwrap_readonly(at_o) if at_o is not None else None
+            if (isinstance(inner, NominalType) and at_o == inner
+                    and _f1_record(inner, analyzer)
+                    and is_rvalue_source(analyzer, a)):
+                return 'ctor'
             return None
         at = analyzer.get_expr_type(a)
         if at == inner:

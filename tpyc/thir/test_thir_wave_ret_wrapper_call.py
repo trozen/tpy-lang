@@ -88,3 +88,69 @@ class TestWrapperNameReturnDefers:
         _ctx, fb = _thir_ctx(self.SRC)
         _assert_rejects_at(fb, "body:stmt.return",
                            shape="return.own_wrapper_source")
+
+
+class TestTryHoistedWrapperLocalAtWrapperSlot:
+    """The hoisted-optional sibling of the deferred plain local above: a
+    wrapper-union local bound inside a `try` is hoisted as
+    `std::optional<J> v;`, so the AST's indirect-name return arm derefs and
+    moves it. It shares the record flavors' deref+move render, which is what
+    keeps the `std::move` from being dropped by an admission-only widening.
+
+    The stdlib witness is `json.loads`."""
+
+    _HEAD = (
+        "from tpy import Own, Int32, error_return, ReturnException\n"
+        "type J = None | bool | int | str | list[J]\n"
+        "class ReadErr(Exception, ReturnException):\n"
+        "    def __init__(self, message: str = '') -> None:\n"
+        "        self.message = message\n"
+        "@error_return(ReadErr)\n"
+        "def read(n: Int32) -> Own[J]:\n"
+        "    if n == 0:\n"
+        "        raise ReadErr('zero')\n"
+        "    return 42\n"
+    )
+
+    SRC = _HEAD + (
+        "def loads(n: Int32) -> Own[J]:\n"
+        "    try:\n"
+        "        value = read(n)\n"
+        "    except ReadErr as e:\n"
+        "        raise ValueError(e.message)\n"
+        "    if n < 0:\n"
+        "        raise ValueError('neg')\n"
+        "    return value\n"
+        "def main() -> None:\n"
+        "    v: J = loads(1)\n"
+        "    print(isinstance(v, int))\n"
+        "main()\n"
+    )
+
+    def test_routes_with_face(self):
+        _thir, w = _lower_ctx_witnessed(self.SRC)
+        assert w.get("ret.own_wrapper_ptr_opt_local", 0) >= 1
+
+    def test_routes_byte_identical_and_keeps_the_move(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "std::optional<J> value;" in cpp
+        assert "return std::move((*value));" in cpp
+
+    def test_plain_local_at_the_same_slot_defers(self):
+        # BOUNDARY: without the try the local is a plain `J value;`, whose
+        # bare name IS the AST render -- deref+move there would read through
+        # a non-optional.
+        src = self._HEAD + (
+            "def loads(n: Int32) -> Own[J]:\n"
+            "    value: J = 5\n"
+            "    if n < 0:\n"
+            "        raise ValueError('neg')\n"
+            "    return value\n"
+            "def main() -> None:\n"
+            "    v: J = loads(1)\n"
+            "    print(isinstance(v, int))\n"
+            "main()\n"
+        )
+        _ctx, fb = _thir_ctx(src)
+        _assert_rejects_at(fb, "body:stmt.return",
+                           shape="return.own_wrapper_source")

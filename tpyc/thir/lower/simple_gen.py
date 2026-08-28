@@ -124,13 +124,22 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     copy) and F1 records (the skeleton's `auto&&` borrow; the leaf reads
     the var through the same borrow-classified forms as a sync for-each
     body). Pointer-repr tuple elements (which flip
-    `storage_form_tuple_locals`), str/bytes and the remaining families
-    stay their own rungs."""
+    `storage_form_tuple_locals`) and the remaining families stay their own
+    rungs."""
     if _res_value_ok(iter_elem, analyzer):
         return True
     if iter_elem is None:
         return False
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(iter_elem)))
+    # A str/bytes element: the skeleton declares the element type by
+    # `type_to_cpp`, so the binding is OWNED where a sync for-each binds the
+    # usage-resolved view -- but that decl is shared machinery, emitted the
+    # same on both paths. The leaf reads consult the same sema form
+    # resolution either way, which is why the yield slot already rides this
+    # reasoning.
+    if (_resolved_str_value(u, analyzer) is not None
+            or _resolved_bytes_value(u, analyzer) is not None):
+        return True
     # A CONTAINER element binds the same skeleton `auto&& v = *__beg++;`
     # as an F1 record, and the leaf reads it through the container-name
     # arms (`v.push_back(9)` / `len(v)`) exactly like a sync for-each var.
@@ -305,6 +314,21 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         if (isinstance(last.iterable, TpyName)
                 and last.iterable.name in lc.prescan.global_slots):
             return _reject("sgen.iterable_global_slot")
+        # The skeleton picks its iteration strategy off the DECLARED binding
+        # and does not unwrap `Own`, so an Own-bound CONTAINER name is not a
+        # native iterable there and the AST captures the universal `__iter__`
+        # object -- never the begin/end pair this leaf would spell off the
+        # payload. The sync for-head's container route declines the same
+        # binding for the same reason. An Own-bound PROTOCOL name is not this
+        # shape: both paths agree it iterates through the protocol.
+        if isinstance(last.iterable, TpyName):
+            _ib = declared.get(last.iterable.name)
+            _ibu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_ib)))
+                    if _ib is not None else None)
+            if isinstance(_ibu, OwnType):
+                _ibw = unwrap_readonly(_ibu.wrapped)
+                if is_list(_ibw) or is_dict(_ibw) or is_set(_ibw):
+                    return _reject("sgen.iterable_own_binding")
         # A field iterable (`for h in self.items:`) mirrors the sync
         # container route's validation: receiver admission via
         # _field_receiver_ok, then the bare field-read render (the result

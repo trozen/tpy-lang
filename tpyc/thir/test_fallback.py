@@ -397,10 +397,12 @@ def test_wide_integer_routes_while_nonfinite_float_rejects():
 
 def test_unhandled_expression_rejects_from_lowering_tail():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(s: str) -> str:\n"
-        "    x = (y := s + \"!\")\n"
-        "    return x\n"
+        # A VIEW-form walrus target needs the pending-view pre-declaration,
+        # which is unmirrored -- the body rejects at the walrus.
+        "from tpy import Int32, StrView\n"
+        "def rejected(s: StrView) -> Int32:\n"
+        "    x = (y := s)\n"
+        "    return len(x) + len(y)\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
     )
@@ -1300,11 +1302,13 @@ def test_return_lowering_reject_falls_back_at_sync_boundary():
 
 def test_sync_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(s: str) -> str:\n"
+        # The `assert` is admitted, so the VIEW-form walrus below it is the
+        # first reject in source order.
+        "from tpy import Int32, StrView\n"
+        "def rejected(s: StrView) -> Int32:\n"
         "    assert True\n"
-        "    x = (y := s + \"!\")\n"
-        "    return x\n"
+        "    x = (y := s)\n"
+        "    return len(x) + len(y)\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):
@@ -1319,12 +1323,12 @@ def test_sync_lowering_reports_first_reject_in_source_order():
 
 def test_constructor_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import Int32, StrView\n"
         "class R:\n"
-        "    n: str\n"
-        "    def __init__(self, n: str):\n"
+        "    n: StrView\n"
+        "    def __init__(self, n: StrView):\n"
         "        assert True\n"
-        "        x = (y := n + \"!\")\n"
+        "        x = (y := n)\n"
         "        self.n = x\n"
     )
     entry = _entry(modules)

@@ -10,6 +10,7 @@ import pytest
 from ..diagnostics import SemanticError
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
+    _assert_routes_byte_identical,
 )
 
 _EAT = (
@@ -236,17 +237,15 @@ class TestCondTemps:
         assert _fn(thir, "use") is None
         _assert_byte_identical(src)
 
-    def test_str_walrus_first_decl_stays_ast(self):
-        # A FIRST-DECL owned-str walrus target stays AST (the pending-view
-        # predecl is unmirrored); only the REASSIGN form routes
-        # (expr.walrus_owned_viewfam).
+    def test_str_walrus_first_decl_routes(self):
+        # A FIRST-DECL owned-str walrus target predeclares the bare owned
+        # slot on the named row and assigns in place, the value-scalar
+        # shape at an owning buffer type.
         src = ("def use(s: str) -> str:\n"
                "    if (t := s + \"!\"):\n"
                "        return t\n"
                "    return s\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_routes_byte_identical(src)
 
 
 class TestWalrusLadder:

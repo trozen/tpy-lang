@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from .testutil import _compile, _entry
+from .testutil import _compile, _ctor_tail, _entry
 
 
 def _lower_ctor_reason(source: str, record_name: str):
@@ -183,16 +183,16 @@ class TestOwnParams:
         assert ctor is not None
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_own_str_mil_use_stays_ast(self):
-        # `self.s = p` (str field): the AST hoists `s(std::move(p))`; no str
-        # MIL arm in this cell -> whole ctor AST, never a demote.
+    def test_own_str_mil_use_moves(self):
+        # `self.s = p` (str field) at the param's LAST USE: the own-param move
+        # is type-agnostic, so the view-family field takes it like any other.
         src = ("from tpy import Int32, Own\n"
                "class C:\n    s: str\n    y: Int32\n"
                "    def __init__(self, p: Own[str]) -> None:\n"
                "        self.s = p\n        self.y = 1\n")
-        ctor, reason = _lower_ctor_reason(src, "C")
-        assert ctor is None
-        assert reason.startswith("ctor.mil_field")
+        ctor, _ = _lower_ctor_reason(src, "C")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : s(std::move(p)), y(1) {}\n"
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_container_mil_move_routes(self):

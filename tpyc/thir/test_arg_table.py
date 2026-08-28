@@ -309,6 +309,7 @@ class TestMarkerSinkSplit:
             "union_member_lift",
             "union_coerced_literal",
             "value_opt_member",
+            "value_opt_field_pass",
             "none_value_opt",
             "ru_container_literal",
             "ru_wrapper_name",
@@ -646,10 +647,12 @@ class TestGenericPlainSinkShape:
             "opt_own_record_name",
             "dyn_own_coro_factory",
             "dyn_own_conformer",
+            "dyn_own_forward_call",
             "none_unit",
             "none_value_opt",
             "tuple_literal",
             "own_str_literal",
+            "bytes_owned_call_rvalue",
             "protocol_slot",
             "ru_wrapper_name",
             "ru_wrapper_borrow_call",
@@ -698,7 +701,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 48
+        assert len(set(plain) - set(generic)) == 47
         assert {"callable_field", "value_union_temp", "record_rvalue_temp",
                 "str_owned_slot", "bytes_owned_slot", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
@@ -727,7 +730,7 @@ class TestGenericPlainSinkShape:
             "generic_list_literal",
             "generic_own_list_literal",
         ]
-        assert len([r for r in rows if r in others]) == 21
+        assert len([r for r in rows if r in others]) == 23
 
     def test_family_carries_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder never consulted

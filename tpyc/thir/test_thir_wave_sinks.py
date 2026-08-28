@@ -240,9 +240,10 @@ class TestOwnContainerParamMove:
         assert _fn(thir, "drop") is not None
         _assert_byte_identical(self._SRC)
 
-    def test_plain_read_still_rejects(self):
-        # A general (non-consuming) read of the same binding keeps the
-        # body on the AST path -- the opt-in is position-scoped.
+    def test_plain_read_before_the_move_routes(self):
+        # A general (non-consuming) read of the same binding renders bare and
+        # does NOT consume it, so the later insert still takes the move -- the
+        # last-use verdict decides which read moves, not the binding kind.
         src = ("from tpy import Int32, Own\n"
                "def peek(xs: Own[list[Int32]]) -> Int32:\n"
                "    n = len(xs)\n"
@@ -250,7 +251,10 @@ class TestOwnContainerParamMove:
                "    store.append(xs)\n"
                "    return n\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "peek") is None
+        assert _fn(thir, "peek") is not None
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "int32_t n = ::tpy::__len__(xs);" in cpp
+        assert "store.push_back(std::move(xs));" in cpp
 
 
 class TestRecordKeyedContainers:

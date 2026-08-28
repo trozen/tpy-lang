@@ -102,10 +102,10 @@ class TestViewNameAtOwnedInnerDefers:
                            shape="return.opt_view_source")
 
 
-class TestSliceSourceAtOwnedInnerDefers:
-    # BOUNDARY: a slice at an owned inner is wrapped by sema in the
-    # view->owned coercion, whose MATERIALIZING render the bare name arm
-    # does not carry -- the identity-coerce see-through must not reach it.
+class TestSliceSourceAtOwnedInner:
+    # A slice at an owned inner is wrapped by sema in the view->owned
+    # coercion: the bare name arm must NOT capture it (it carries no
+    # materializing render), the coercion arm must.
     SRC = (
         "def f(k: str) -> str | None:\n"
         "    at = k.find(':')\n"
@@ -117,7 +117,10 @@ class TestSliceSourceAtOwnedInnerDefers:
         "main()\n"
     )
 
-    def test_defers_at_named_shape(self):
-        _ctx, fb = _thir_ctx(self.SRC)
-        _assert_rejects_at(fb, "body:stmt.return",
-                           shape="return.opt_view_source")
+    def test_takes_the_copy_not_the_named_shape(self):
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert ("return std::string(::tpy::str_slice(k, "
+                "::tpy::BasicSlice{std::nullopt, at}));") in hpp + cpp
+        _thir, wit = _lower_ctx_witnessed(self.SRC)
+        assert wit.get("ret.value_opt_view_name", 0) == 0
+        assert wit.get("ret.value_opt_view_materialize", 0) >= 1

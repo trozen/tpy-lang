@@ -478,14 +478,23 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # carve-out: a property getter+setter pair shares one method name in
     # the registry but each has its own body (no shared-impl hijack).
     #
-    # A simple generator is a second carve-out on the same argument, one tier
-    # up: the AST router lowers it at its leaf seam and never reaches the
-    # per-stub seeding loop, so its overload set emits ONE body (the impl
-    # signature with its defaults) and there is no specialization to hijack.
-    # Keyed on the simple-generator ENTRY, not on the shape: the plain
-    # function entry reaching the same func must keep its own reject.
-    single_body = (allow_resumable and func.is_generator
-                   and GeneratorCodegen.is_simple_generator(func))
+    # A generator is a second carve-out on the same argument, one tier up:
+    # the AST router diverts every generator to its leaf seam (the simple
+    # peephole lambda or the resumable frame) before the per-stub seeding
+    # loop, so its overload set emits ONE body -- one frame plus one factory
+    # carrying the impl signature and its defaults -- and there is no
+    # specialization to hijack. Keyed on the frame/peephole ENTRY, not on the
+    # shape: the plain function entry reaching the same func must keep its
+    # own reject.
+    #
+    # The async twin does NOT join it: an `async def` STUB is still async
+    # (a `...` body is not a generator, which is what keeps generator stubs
+    # off this entry), so it reaches the frame emitter itself, and the AST
+    # emits one frame plus one factory PER OVERLOAD ENTRY -- three bodies,
+    # not one. Its emission is broken independently of routing (every frame
+    # takes the same struct name), so the shape must stay on the AST path
+    # until that is fixed.
+    single_body = allow_resumable and func.is_generator
     if is_record_callable:
         ri = analyzer.registry.get_record_for_type(self_type)
         overloads = ri.get_method_overloads(func.name) if ri is not None else []
@@ -1371,6 +1380,15 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     if view_t is None:
         view_t = _resolved_bytes_value(ftype, analyzer)
     if view_t is not None:
+        # An `Own[str]` / `Own[bytes]` param consumed at its LAST USE moves
+        # into the owned field like any other own-param source -- the tail
+        # emitter runs that check ahead of its view arm, so admitting it here
+        # is the whole gap. Move sources only: at a NON-last use the AST
+        # renders the family's copy (`::tpy::bytes_copy(name)`), which the
+        # view arm below does not spell for an Own-wrapped declaration.
+        if _is_move_source(_unwrap_copy(stmt.value, analyzer), lc,
+                           own_param_names):
+            return True
         return _ctor_viewfam_source_ok(stmt.value, view_t, declared, lc)
     if isinstance(ftype, TypeParamRef):
         # Stage B: a generic record's `T` field. An `Own[T]` param moves; a bare

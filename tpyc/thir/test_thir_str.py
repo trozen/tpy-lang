@@ -2068,9 +2068,9 @@ class TestNarrowedOptViewConcat:
         assert '(::tpy::str_concat("p=", (*t)))' in cpp
         assert '(::tpy::str_concat("l=", (*t)))' in cpp
 
-    def test_bytes_flavor_stays_ast(self):
-        # BOUNDARY (dualgen-probed): the bytes twin is not admitted -- its
-        # own row when a witness appears.
+    def test_bytes_flavor_routes(self):
+        # The bytes twin of the same deref: `(*t)` is the span
+        # bytes_concat takes, exactly as str_concat takes the string_view.
         src = (
             "from typing import Optional\n"
             "def f(t: Optional[bytes]) -> None:\n"
@@ -2080,6 +2080,8 @@ class TestNarrowedOptViewConcat:
             '    f(b"yz")\n'
             "    f(None)\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _, faces = _lower_ctx_witnessed(src)
+        assert faces.get("binop.opt_view_narrowed", 0) == 1
+        cpp = _assert_routes_byte_identical(src)[1]
+        assert '::tpy::bytes_concat(::tpy::bytes_literal_owned' in cpp
+        assert '(*t))' in cpp

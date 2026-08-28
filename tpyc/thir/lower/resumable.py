@@ -304,6 +304,18 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     if cont is not None and (is_list(cont) or is_dict(cont)
                              or is_set(cont)):
         return True
+    # An `Own[value]` / `Own[T]` param is the bare-value capture with
+    # ownership transfer: the frame field is the payload spelling itself
+    # (`T item;` / `int32_t x;`), the ctor takes it as `T&&` and member-inits
+    # with std::move -- all skeleton -- so every leaf read is the same bare
+    # name the sync param spells and the value families' read rows apply
+    # unchanged. Own[str]/Own[bytes] stay out: their sync param is a VIEW
+    # while the frame field would be OWNED, a form split rather than a
+    # capture detail.
+    if (isinstance(unwrapped, OwnType)
+            and _res_capture_ok(unwrap_readonly(unwrapped.wrapped),
+                                analyzer)):
+        return True
     # A Callable/Fn param is a templated `F_pred pred;` frame field
     # (skeleton FN kind + template header); the only leaf read is the bare
     # call `pred(x)`.
@@ -941,13 +953,21 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
         own_dyn_slot = (isinstance(pt_u, OwnType)
                         and is_dyn_protocol(pt_u.wrapped))
         # An `Own[value]` slot (a generic Own[T] param at a value
-        # instantiation, e.g. Queue[Int32].put): the emplace arg is the sync
+        # instantiation, e.g. a Queue[Int32] put): the emplace arg is the sync
         # call-arg render (arg temp + std::move via `gen_call_arg`), so it
-        # rides the same `_lower_call_arg` rows; a bad arg SHAPE still
-        # rejects inside the arg lowering.
+        # rides the same `_lower_call_arg` rows.
         own_val_slot = (isinstance(pt_u, OwnType)
                         and _res_value_ok(unwrap_readonly(pt_u.wrapped),
                                           analyzer))
+        if (isinstance(pt_u, OwnType)
+                and _eligible_enum(unwrap_readonly(pt_u.wrapped),
+                                   analyzer) is not None):
+            # An ENUM payload is the one value family the sync Own-arg row
+            # leaves unmodelled (a sync call rejects it outright), and no
+            # call admission runs at this position -- admitting it, from
+            # this rung or the CAPTURE families below, renders the arg BARE
+            # where the AST still hoists its copy temp.
+            return "res.await_param_type"
         if not (own_dyn_slot or own_val_slot or _res_param_ok(pt, analyzer)):
             # Slots beyond the param families (optional-ptr / protocol
             # adapter / union lift) trigger the emplace coercion ladder and,
