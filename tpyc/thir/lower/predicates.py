@@ -3585,7 +3585,8 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
     -- a plain value binding (bare `.` chain), or a PROVEN Optional-ptr
     local (`r: Ref | None` narrowed non-None, in `pointers` -- the lowering
     spells the `->` first hop off the pointer set), whose wrapper record is
-    the Optional's inner. None outside the slice."""
+    the Optional's inner; a markers-clean FIELD read of one; or a container
+    ELEMENT read of one. None outside the slice."""
     if isinstance(recv, TpyFieldAccess):
         # A markers-clean FIELD receiver (`self.val.speak()` off
         # `val: Optional[Box[Pet]]` proven non-None): the field lowering
@@ -3606,6 +3607,24 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
         if not _deref_wrapper_record_ok(u, analyzer):
             return None
         return u
+    if isinstance(recv, TpySubscript):
+        # A container ELEMENT receiver (`self._pool[k].close()` off
+        # `dict[str, Box[Conn]]`): the element read lowers at RECEIVER and
+        # spells its own checked read, then the `.__deref__()` hops compose
+        # postfix off that lvalue. No pointer first hop can arise, so the
+        # `->` join the NAME leg picks off the pointer set is unreachable
+        # here. The element read's OWN arm gates its shape -- a slice
+        # result, a record's own `__getitem__` -- so a receiver whose render
+        # is not this bare composition falls the body back there rather than
+        # being pre-screened here. An Optional element is not a wrapper
+        # record, and an unproven one carries the null-check marker both
+        # consumers already reject.
+        et = analyzer.get_expr_type(recv)
+        u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+             if et is not None else None)
+        if isinstance(u, OwnType):
+            u = unwrap_readonly(u.wrapped)
+        return u if _deref_wrapper_record_ok(u, analyzer) else None
     if not isinstance(recv, TpyName) or recv.name not in declared:
         return None
     if recv.name in narrowed:

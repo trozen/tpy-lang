@@ -536,6 +536,7 @@ from .checks import (
     _r_own_move,
     _r_own_optional_record_rvalue,
     _r_own_record_rvalue,
+    _r_own_tparam_call_rvalue,
     _r_own_union_ctor,
     _r_bytes_literal_value_opt,
     _r_ptr_pass_through,
@@ -557,6 +558,7 @@ from .checks import (
     _container_record_elem_subscript,
     _storage_form_tuple_return,
     _container_field_pass_arg,
+    _value_tuple_field_pass_arg,
     _coro_factory_structural_arg,
     _deref_coerce_arg,
     _iter_rvalue_structural_arg,
@@ -1786,6 +1788,12 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # the free/method plain-arg row -- same predicate, same bare render
         # in `_lower_call_arg`'s Own-slot arms.
         _ArgRow("own_record_rvalue", _r_own_record_rvalue),
+        # ... and its OPEN-slot sibling (`Box(p.value())` inside a generic
+        # body): a T-returning call rvalue at a bare `Own[T]` ctor slot
+        # binds the `T&&` prvalue with no temp and no move wrap, exactly as
+        # at the method ladder's same slot -- the render is settled by the
+        # rvalue-ness, not by the callee kind or the slot's spelling.
+        _ArgRow("own_tparam_call_rvalue", _r_own_tparam_call_rvalue),
         # The pointer-repr Optional NAME half of the Own[Optional[record]]
         # slot: rebuild null-safely, then move in. The ctor-rvalue half is
         # `own_optional_record_rvalue` further down.
@@ -4796,6 +4804,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 allow_union_divergent: bool = False,
                 field_prechecked: bool = False,
                 field_owned_str_ok: bool = False,
+                field_value_tuple_ok: bool = False,
                 own_slot_coerce: bool = False,
                 subscript_prechecked: bool = False,
                 container_threaded: bool = True,
@@ -5353,7 +5362,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # A VALUE-tuple field read consumed whole
                     # (`tuple_to_str(this->pair)` at `tuple[Int32, str]`):
                     # forms coincide, the bare member read IS the render.
-                    or (use.result is _ExprResultUse.BORROW_BIND
+                    # `field_value_tuple_ok` carries the same admission to
+                    # the f-string interpolation, whose `tuple_to_str` wrap
+                    # consumes the read whole exactly as the borrow lift
+                    # does. A narrow flag, not BORROW_BIND: that use also
+                    # unlocks the record / container / pointer-repr-tuple
+                    # legs above, which no interpolation witnesses.
+                    or ((use.result is _ExprResultUse.BORROW_BIND
+                         or field_value_tuple_ok)
                         and _value_tuple(rtype, analyzer) is not None
                         and _witness("field.value_tuple"))
                     or (use.result is _ExprResultUse.TRUTHY
@@ -6647,6 +6663,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     lowered_part = _lower_expr(
                         part.expr, lc, declared, use=part_use,
                         field_owned_str_ok=isinstance(
+                            part.expr, TpyFieldAccess),
+                        field_value_tuple_ok=isinstance(
                             part.expr, TpyFieldAccess))
                 except ThirUnsupported as ex:
                     # The landmark names the interpolation position; the
@@ -13328,6 +13346,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # slot binds the member read by reference -- aliasing preserved, so
         # the copy-vs-alias fence on the generic field VALUE position does
         # not apply here.
+        return _lower_expr(a, lc, declared, field_prechecked=True)
+    if (isinstance(a, TpyFieldAccess)
+            and _value_tuple_field_pass_arg(a, ptype, declared, lc.analyzer)):
+        # A VALUE-tuple FIELD read binding the matching tuple ref slot
+        # (`self._sock.connect(self._addr)` -> bare `this->_addr`): borrow
+        # and storage forms coincide for a value tuple, so the member read
+        # binds by reference with no lift. The predicate owns the receiver +
+        # declared-type checks, so the gates are prechecked; a POINTER-REPR
+        # tuple field is outside the predicate and keeps its own lift.
         return _lower_expr(a, lc, declared, field_prechecked=True)
     if (isinstance(a, TpyNoneLiteral)
             and _protocol_union_arg(a, ptype, declared, lc.analyzer)

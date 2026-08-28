@@ -129,6 +129,20 @@ discards its own work.
    dict when the fixture legitimately carries a deliberate boundary reject.
    **Confirm a boundary shape is CONSTRUCTIBLE before pinning it** -- sema
    rejects more shapes than you expect, and an unfalsifiable pin cannot fail.
+6b. **Name an owner for every SHARED file before the lanes start, and say so
+   in each brief.** Partitioning lanes BY FILE leaves the append-only shared
+   files -- `faces.py` above all -- owned by nobody, and this has now cost
+   three waves: `git commit --only <path>` does not protect them (it commits
+   the path's working-tree state, peer edits included), so the lane that
+   finishes second either commits a peer's half-written line or drops its own.
+   Either serialise that one file or hold every registration for
+   consolidation. Restating the lesson in a ledger entry is not the fix; the
+   fix is the assignment in the brief.
+6c. **Carry the written rules INTO the lane brief.** An implementer that never
+   read this file cannot follow it. The two that get broken are the
+   `git checkout <path>` ban in step 4 and 6b above -- quote them, do not
+   assume them.
+
 7. **Commit the cell.** Auto-commit on the working branch, ONE COMMIT PER CELL
    as soon as it verifies -- an agent died mid-batch and per-cell commits are
    what made the work recoverable. Before the commit: `grep -rn DBG tpyc/`

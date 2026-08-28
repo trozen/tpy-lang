@@ -8458,6 +8458,33 @@ def _record_field_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
     return _witness("arg.record_field_marker")
 
 
+def _value_tuple_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                locals_: dict[str, TpyType],
+                                analyzer) -> bool:
+    """A VALUE-tuple FIELD read at the same value-tuple ref slot
+    (`::tpy::deref_check(this->_sock).connect(this->_addr)` at
+    `tuple[str, Int32]`): borrow and storage forms coincide for a value
+    tuple, so the member read binds the `const std::tuple<...>&` slot
+    directly -- bare on both paths, the tuple sibling of
+    `_container_field_pass_arg` / `_record_field_marker_arg`. A
+    POINTER-REPR tuple field lifts through `tuple_to_pointer` instead,
+    which is why the key is the value-tuple predicate rather than "a tuple
+    field"; Own/Optional slots are not tuples and fall out of the same
+    predicate, keeping their own cascades. Keyed on the DECLARED field
+    type, so a narrowed `Optional[tuple]` field (whose occurrence types at
+    the member) keeps needing the unwrap the AST renders."""
+    if not isinstance(a, TpyFieldAccess):
+        return False
+    if not _field_receiver_ok(a, locals_, analyzer):
+        return False
+    ft = _field_decl_type(a, locals_, analyzer)
+    ftu = _value_tuple(ft, analyzer) if isinstance(ft, TpyType) else None
+    if ftu is None:
+        return False
+    return bool(_value_tuple(ptype, analyzer) == ftu
+                and _witness("arg.value_tuple_field"))
+
+
 def _btuple_literal_marker_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A tuple LITERAL at a marker callee's pointer-repr tuple slot
     (`::mylog::log_dispatch(h, fmt, (defer_str(tag), i))` at
@@ -8516,9 +8543,12 @@ def _own_tparam_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     binds the `T&&` slot bare -- the Own cascade's rvalue tail -- and the
     same-T pairing mirrors the generic free lane's open-slot rule. Free and
     method callees alike, since an open T fixes the render at instantiation
-    and the callee kind cannot change it. A borrow-returning callee is not
-    an rvalue source (the AST copies it through a temp) and stays out; the
-    nested call validates itself at its own lowering."""
+    and the callee kind cannot change it. A BORROW-returning callee stays
+    out on its DECLARED return type: `is_rvalue_source` answers True for
+    both, so it cannot discriminate them, and the AST binds a borrowed
+    `val_or_ref_t<T>` result straight into the `T&&` slot -- ill-formed at
+    any reference-type instantiation, so nothing may route it. The nested
+    call validates itself at its own lowering."""
     slot = unwrap_send_sync(ptype) if isinstance(ptype, TpyType) else None
     if not isinstance(slot, OwnType):
         return False
@@ -8534,6 +8564,7 @@ def _own_tparam_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
         atu = unwrap_readonly(atu.wrapped)
     return bool(isinstance(atu, TypeParamRef) and atu.name == st.name
                 and is_rvalue_source(analyzer, a)
+                and _own_declared_call_ret(a)
                 and _witness("arg.own_tparam_call_rvalue"))
 
 
@@ -10227,6 +10258,11 @@ def _r_record_field_marker(req: _ArgReq) -> bool:
                                     req.analyzer)
 
 
+def _r_value_tuple_field_pass(req: _ArgReq) -> bool:
+    return _value_tuple_field_pass_arg(req.a, req.ptype, req.locals_,
+                                       req.analyzer)
+
+
 def _r_borrow_ret_record_marker(req: _ArgReq) -> bool:
     return _borrow_ret_record_marker_arg(req.a, req.ptype, req.analyzer)
 
@@ -10812,6 +10848,26 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
         # the row cannot be spelled as a cell here.
         if _own_tparam_call_rvalue_arg(a, resolved, analyzer):
             return True
+        # ... and the Own-slot copy+move row at a slot whose payload is
+        # still COMPOSITE in T (`poll_ready(empty)` with `empty: list[T]`
+        # at `Own[T]` resolved `Own[list[T]]`). The open slot's bare `T`
+        # never matches the composite binding, so the temp-free row above
+        # cannot reach it; the SUBSTITUTED payload does, and it is the type
+        # `_lower_call_arg` renders against -- the same helper, the same
+        # slot, so the two cannot disagree. A borrow-form source (param,
+        # field) resolves the slot through the ref wrapper instead, which
+        # this payload compare rejects: exactly right, since the AST hoists
+        # a defensive copy there that passing the name bare would drop.
+        # A payload that is still a BARE type param stays out: that slot
+        # belongs to the temp-free rows above, and the copy+move helper
+        # also admits shapes (a ternary) the `T&&` slot cannot take.
+        _own_payload = _plain_own_slot(resolved)
+        if (temps_ok and _own_payload is not None
+                and not _is_type_param_slot(_own_payload)
+                and _own_lvalue_arg(a, resolved, locals_, narrowed,
+                                    analyzer,
+                                    param_names=req.param_names)):
+            return _witness("call.generic_own_composite_slot")
         # The COMPOSITE sibling of the bare-T row above: a NAME whose binding
         # is exactly the still-unsubstituted slot (`first(items)` at
         # `list[T]` -> `first<T>(items)`, `poll_once(aw)` at `Awaitable[T]`
@@ -11243,8 +11299,8 @@ _CONTAINER_ARG_SINK = register_sink(_ArgSink(
 # The marker-call families' shared row listing. Written ONCE, in ladder
 # order; the Own-slot cells are named in `_MARKER_OWN_ROWS` and spliced out
 # for the family that has no Own slots, which is the whole content of the
-# `own_ok and` prefix the ladder re-typed on nine rows. Keeping one listing
-# is also the proof that the split changed no row's position: the two
+# `own_ok and` prefix the ladder re-typed on every Own row. Keeping one
+# listing is also the proof that the split changed no row's position: the two
 # non-template families are filters of this tuple, not re-typings of it.
 _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("shared_pass_through", _r_shared_pass_through),
@@ -11264,6 +11320,12 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("none_unit", _r_none_unit),
     _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
     _ArgRow("own_record_rvalue", _r_own_record_rvalue),
+    # An Own[T]-returning call rvalue at an OPEN `Own[T]` slot reached
+    # through a qualified receiver (`self._state._push(self._value.take())`
+    # -- the Rc deref): the prvalue binds the `T&&` slot bare, the same
+    # render the record-method family carries at the same slot, and the
+    # qualcall arg loop hoists no temp around it.
+    _ArgRow("own_tparam_call_rvalue", _r_own_tparam_call_rvalue),
     # `Factory.consume(copy(p))` -- the static-method face of the
     # copy-construct rvalue row.
     _ArgRow("copy_record_own", _r_copy_record_own),
@@ -11332,6 +11394,10 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # the member read binds the `T&` slot bare -- the same cell the
     # record-method family carries.
     _ArgRow("record_field_marker", _r_record_field_marker),
+    # ... and its VALUE-TUPLE twin (`self._sock.connect(self._addr)`):
+    # borrow and storage forms coincide, so the member read binds the
+    # `const std::tuple<..>&` slot bare.
+    _ArgRow("value_tuple_field_pass", _r_value_tuple_field_pass),
     # A borrow-returning record call at the same slot
     # (`log_dispatch(svc.get_logger(), ...)`): the `T&` result
     # binds the `T&` slot in place.
@@ -11354,12 +11420,12 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
 
 # The cells the `native` marker family does NOT carry: its arg loop sets
 # `inline_template`, which skips the Own copy temp, so an Own slot has no
-# mirrored render there. Exactly the nine rows the ladder prefixed with
+# mirrored render there. Exactly the rows the ladder prefixed with
 # `own_ok and`.
 _MARKER_OWN_ROWS = frozenset({
-    "own_record_rvalue", "copy_record_own", "own_move", "own_lvalue",
-    "own_union_ctor", "dyn_own_coro_factory", "dyn_own_handle",
-    "dyn_own_forward_call", "own_container_literal",
+    "own_record_rvalue", "own_tparam_call_rvalue", "copy_record_own",
+    "own_move", "own_lvalue", "own_union_ctor", "dyn_own_coro_factory",
+    "dyn_own_handle", "dyn_own_forward_call", "own_container_literal",
 })
 
 assert _MARKER_OWN_ROWS <= {r.row for r in _MARKER_ROWS}

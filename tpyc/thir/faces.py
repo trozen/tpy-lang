@@ -1432,6 +1432,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A lambda at a still-open Fn slot in a generic caller
     # (`map_keys(pairs, lambda p: p[1])`): the lambda renders itself.
     "call.generic_open_slot_lambda",
+    # An owned NAME at an Own slot whose payload is still composite in T
+    # (`poll_ready(empty)` with `empty: list[T]` at `Own[T]` resolved
+    # `Own[list[T]]`): the Own copy+move row against the substituted slot.
+    "call.generic_own_composite_slot",
     # A container-element subscript at the still-open slot inside a generic
     # body (`f(xs[i])` at `T`): the element read binds the ref slot bare.
     "call.generic_open_slot_elem",
@@ -1648,6 +1652,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.record_field_marker",      # F1-record field read bound bare at a
                                     # marker or record-method callee's
                                     # record ref slot
+    "arg.value_tuple_field",        # value-tuple field read bound bare at a
+                                    # matching value-tuple ref slot (forms
+                                    # coincide, so no lift)
     "arg.record_borrow_ret_marker", # T&-returning record call bound bare at
                                     # a marker callee's record ref slot
     "arg.btuple_literal_marker",    # tuple literal at a marker callee's

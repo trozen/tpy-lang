@@ -36,7 +36,11 @@ If there are uncommitted changes, the review covers both committed and uncommitt
 Run `git diff <BASE> --name-only` and bucket each path:
 
 - **codegen-output**: `tests/cases/*/expected/{src,include}/main.{cpp,hpp}`
-- **codegen-logic**: `tpyc/codegen_cpp/**/*.py`
+- **codegen-logic**: `tpyc/codegen_cpp/**/*.py`, `tpyc/thir/lower/**/*.py`
+  (both emit C++; a wave that touches only the THIR lowering path would
+  otherwise silence codegen-correctness, safety-model and cpython-parity at
+  once, and after the AST body emitters are deleted `codegen_cpp/` stops
+  changing at all)
 - **compiler-py**: any `tpyc/**/*.py`
 - **tests**: `tests/cases/**`
 - **runtime-cpp**: `runtime/cpp/**`

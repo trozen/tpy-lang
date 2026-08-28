@@ -549,3 +549,249 @@ class TestGenericOwnBytesSlot:
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.generic_arg_shape")
         _assert_byte_identical(src)
+
+
+class TestGenericOwnCompositeSlot:
+    """An owned NAME at an `Own[T]` slot whose SUBSTITUTED payload is still
+    composite in T (`poll_ready(empty)` with `empty: list[T]`).
+
+    The open slot's bare `T` never matches a composite binding, so the
+    temp-free type-param row cannot reach the shape; the substituted payload
+    does, and it is the one `_lower_call_arg` renders against."""
+
+    _SINK = (
+        "from tpy import Int32, Own\n"
+        "def take_own[T](v: Own[T]) -> Own[T]:\n"
+        "    return v\n"
+    )
+
+    def test_owned_local_at_its_last_use_moves(self):
+        src = self._SINK + (
+            "def from_local[T]() -> Own[list[T]]:\n"
+            "    empty: list[T] = []\n"
+            "    return take_own(empty)\n"
+            "def main() -> None:\n"
+            "    print(len(from_local[Int32]()))\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "take_own<std::vector<T>>(std::move(empty))" in hpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("call.generic_own_composite_slot", 0) >= 1
+
+    def test_still_live_owned_local_keeps_the_copy_temp(self):
+        # The other half of the same row: a source still live after the call
+        # owes the AST's defensive `auto __tmp_N = ys;` copy, which lowering
+        # picks from the same movability facts the gate does not consult.
+        src = self._SINK + (
+            "def from_local[T](seed: T) -> Own[list[T]]:\n"
+            "    ys: list[T] = [seed]\n"
+            "    r = take_own(ys)\n"
+            "    ys.append(seed)\n"
+            "    return r\n"
+            "def main() -> None:\n"
+            "    print(len(from_local(1)))\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "auto __tmp_1 = ys;" in hpp
+        assert "take_own<std::vector<T>>(std::move(__tmp_1))" in hpp
+
+    def test_dict_payload_rides_the_same_row(self):
+        src = self._SINK + (
+            "def from_local[K, V]() -> Own[dict[K, V]]:\n"
+            "    m: dict[K, V] = {}\n"
+            "    return take_own(m)\n"
+            "def main() -> None:\n"
+            "    print(len(from_local[Int32, Int32]()))\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "take_own<::tpy::ordered_map<K, V>>(std::move(m))" in hpp
+
+    def test_generic_record_payload_rides_the_same_row(self):
+        src = self._SINK + (
+            "class Pair[T]:\n"
+            "    a: T\n"
+            "    b: T\n"
+            "    def __init__(self, a: Own[T], b: Own[T]) -> None:\n"
+            "        self.a = a\n"
+            "        self.b = b\n"
+            "def from_local[T](x: Own[T], y: Own[T]) -> Own[Pair[T]]:\n"
+            "    p = Pair(x, y)\n"
+            "    return take_own(p)\n"
+            "def main() -> None:\n"
+            "    q = from_local(1, 2)\n"
+            "    print(q.a, q.b)\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "take_own<Pair<T>>(std::move(p))" in hpp
+
+    def test_nocopy_payload_moves_rather_than_copies(self):
+        # A payload whose copy would not compile: the row must reach the
+        # temp-free move, not the copy temp, at a last use.
+        src = self._SINK + (
+            "from tpy import nocopy\n"
+            "@nocopy\n"
+            "class Res[T]:\n"
+            "    v: T\n"
+            "    def __init__(self, v: Own[T]) -> None:\n"
+            "        self.v = v\n"
+            "def from_local[T](x: Own[T]) -> Own[Res[T]]:\n"
+            "    r = Res(x)\n"
+            "    return take_own(r)\n"
+            "def main() -> None:\n"
+            "    print(from_local(5).v)\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "take_own<Res<T>>(std::move(r))" in hpp
+
+    def test_borrowed_param_at_the_same_slot_stays_ast(self):
+        # BOUNDARY, and a wrong-code one: a param binds in BORROW form, so
+        # the slot resolves through the ref wrapper and the AST hoists a
+        # defensive copy before the move. Admitting the name here passes a
+        # live borrow straight into a move-consuming slot.
+        src = self._SINK + (
+            "def from_param[T](xs: list[T]) -> Own[list[T]]:\n"
+            "    r = take_own(xs)\n"
+            "    return r\n"
+            "def main() -> None:\n"
+            "    print(len(from_param([1, 2])))\n"
+            "main()\n"
+        )
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call", "call.generic_arg_slot")
+        hpp, _cpp = _assert_byte_identical(src)
+        assert "auto __tmp_1 = xs;" in hpp
+
+    def test_field_read_at_the_same_slot_stays_ast(self):
+        # BOUNDARY: the field twin of the param row -- same borrow form,
+        # same dropped copy if admitted.
+        src = self._SINK + (
+            "class Holder[T]:\n"
+            "    items: list[T]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.items = []\n"
+            "    def from_field(self) -> Own[list[T]]:\n"
+            "        return take_own(self.items)\n"
+            "def main() -> None:\n"
+            "    h = Holder[Int32]()\n"
+            "    print(len(h.from_field()))\n"
+            "main()\n"
+        )
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call", "call.generic_arg_slot")
+        hpp, _cpp = _assert_byte_identical(src)
+        assert "auto __tmp_1 = this->items;" in hpp
+
+    def test_flushless_position_stays_ast(self):
+        # BOUNDARY: a condition is no flush point, so the copy temp has
+        # nowhere to land -- without the flush guard THIR drops it and moves
+        # a name the AST leaves live.
+        src = (
+            "from tpy import Int32, Own\n"
+            "def take_len[T](v: Own[list[T]]) -> Int32:\n"
+            "    return len(v)\n"
+            "def in_cond[T](seed: T) -> Int32:\n"
+            "    ys: list[T] = [seed]\n"
+            "    if take_len(ys) > 0 and len(ys) > 0:\n"
+            "        return 1\n"
+            "    return 0\n"
+            "def main() -> None:\n"
+            "    print(in_cond(1))\n"
+            "main()\n"
+        )
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:stmt.if", "call.generic_arg_slot")
+        hpp, _cpp = _assert_byte_identical(src)
+        assert "auto __tmp_1 = ys;" in hpp
+
+
+class TestGenericOwnCtorSlotCallRvalue:
+    """A T-returning call rvalue at a bare `Own[T]` RECORD-CTOR slot inside a
+    generic body (`Box(p.value())`): the prvalue binds the `T&&` slot with
+    no temp and no move wrap, exactly as at the method ladder's same slot."""
+
+    _PRE = (
+        "from tpy import Int32, Own\n"
+        "from tpy.coro import Poll\n"
+        "class Box2[T]:\n"
+        "    v: T\n"
+        "    def __init__(self, value: Own[T]) -> None:\n"
+        "        self.v = value\n"
+    )
+    _MAIN = (
+        "def main() -> None:\n"
+        "    b = wrap(Poll[Int32].ready(7))\n"
+        "    print(b.v)\n"
+        "main()\n"
+    )
+
+    def test_call_rvalue_binds_the_ctor_slot_bare(self):
+        src = self._PRE + (
+            "def wrap[T](p: Own[Poll[T]]) -> Own[Box2[T]]:\n"
+            "    return Box2(p.value())\n"
+        ) + self._MAIN
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "Box2<T>(std::move(p).value())" in hpp
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("arg.own_tparam_call_rvalue", 0) >= 1
+
+    def test_borrow_returning_callee_keeps_rejecting(self):
+        # BOUNDARY: `is_rvalue_source` answers True for a borrowing callee
+        # too, so the row keys on the DECLARED return instead. The AST binds
+        # the borrowed `val_or_ref_t<T>` result straight into the `T&&`
+        # slot, which is ill-formed at a reference-type instantiation --
+        # nothing may route it, byte-identical or not.
+        src = (
+            "from tpy import Int32, Own\n"
+            "class Box2[T]:\n"
+            "    v: T\n"
+            "    def __init__(self, value: Own[T]) -> None:\n"
+            "        self.v = value\n"
+            "class Holder[T]:\n"
+            "    item: T\n"
+            "    def __init__(self, it: Own[T]) -> None:\n"
+            "        self.item = it\n"
+            "    def get(self) -> T:\n"
+            "        return self.item\n"
+            "def wrap[T](h: Holder[T]) -> Own[Box2[T]]:\n"
+            "    return Box2(h.get())\n"
+            "def main() -> None:\n"
+            "    h = Holder(3)\n"
+            "    print(wrap(h).v)\n"
+            "main()\n"
+        )
+        _ctx, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.call",
+                           "call.ctor_arg.own_generic")
+        hpp, _cpp = _assert_byte_identical(src)
+        assert "Box2<T>(h.get())" in hpp
+
+    def test_container_literal_element_position_routes_too(self):
+        # The element of a container literal still carries the enclosing
+        # statement's flush right, so it gates as a direct ctor position --
+        # the bare bind is position-independent either way.
+        src = self._PRE + (
+            "def wrap[T](p: Own[Poll[T]]) -> Own[list[Box2[T]]]:\n"
+            "    return [Box2(p.value())]\n"
+            "def main() -> None:\n"
+            "    bs = wrap(Poll[Int32].ready(7))\n"
+            "    print(len(bs))\n"
+            "main()\n"
+        )
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "{Box2<T>(std::move(p).value())}" in hpp
+
+    def test_the_caller_type_param_need_not_be_spelled_T(self):
+        # The row pairs the slot's open T with the ARGUMENT's, and the
+        # render is settled by the rvalue-ness rather than the spelling --
+        # so a caller whose own param is named differently routes too.
+        src = self._PRE + (
+            "def wrap[U](p: Own[Poll[U]]) -> Own[Box2[U]]:\n"
+            "    return Box2(p.value())\n"
+        ) + self._MAIN
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "Box2<U>(std::move(p).value())" in hpp

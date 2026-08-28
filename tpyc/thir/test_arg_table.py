@@ -299,6 +299,7 @@ class TestMarkerSinkSplit:
             "none_unit",
             "value_union_temp",
             "own_record_rvalue",
+            "own_tparam_call_rvalue",
             "copy_record_own",
             "own_move",
             "own_lvalue",
@@ -321,6 +322,7 @@ class TestMarkerSinkSplit:
             "container_literal_method",
             "container_field_pass",
             "record_field_marker",
+            "value_tuple_field_pass",
             "borrow_ret_record_marker",
             "btuple_literal_marker",
             "same_tparam_name",
@@ -356,11 +358,12 @@ class TestMarkerSinkSplit:
             union |= {r.row for r in sink.rows}
         assert union == {r.row for r in _MARKER_ROWS}
 
-    def test_own_cells_are_the_nine_the_ladder_prefixed(self):
+    def test_own_cells_are_the_ones_the_ladder_prefixed(self):
         assert _MARKER_OWN_ROWS == frozenset({
-            "own_record_rvalue", "copy_record_own", "own_move", "own_lvalue",
-            "own_union_ctor", "dyn_own_coro_factory", "dyn_own_handle",
-            "dyn_own_forward_call", "own_container_literal"})
+            "own_record_rvalue", "own_tparam_call_rvalue", "copy_record_own",
+            "own_move", "own_lvalue", "own_union_ctor",
+            "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
+            "own_container_literal"})
 
     def test_own_capability_is_row_membership_not_a_flag(self):
         # The Own capability IS which cells the family holds -- there is no
@@ -568,12 +571,15 @@ class TestPlainSinkShape:
     def test_family_carries_own_rows_and_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder carried the Own cells and
         # never consulted `mutated_params` (only the ctor ladder does, and
-        # extending that is its own post-fold commit). The two it does NOT
-        # carry are a real HOLE: this ladder spells the record rvalue as the
-        # flush-gated `record_rvalue_temp` instead.
+        # extending that is its own post-fold commit). Two of the three it
+        # does NOT carry are a real HOLE: this ladder spells the record
+        # rvalue as the flush-gated `record_rvalue_temp` instead. The third
+        # is structural -- an OPEN `Own[T]` slot needs a generic callee, and
+        # the generic family settles that slot in its prologue.
         rows = {r.row for r in _PLAIN_ARG_SINK.rows}
         assert (_MARKER_OWN_ROWS - rows
-                == {"own_record_rvalue", "copy_record_own"})
+                == {"own_record_rvalue", "copy_record_own",
+                    "own_tparam_call_rvalue"})
         assert "record_rvalue_temp" in rows
         assert _PLAIN_ARG_SINK.mutated_slots is False
 
@@ -975,14 +981,14 @@ class TestRecordMethodSinkShape:
     def test_the_shared_rows_reach_the_other_families_cells(self):
         # `register_sink` has already proved each shared name reaches the
         # IDENTICAL predicate (it fails the import otherwise). This pins the
-        # SPLIT: 39 of 69 rows were already written for another family.
+        # SPLIT: 40 of 69 rows were already written for another family.
         others = set()
         for sink in (_VIEW_ARG_SINK, _PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
                      _CONTAINER_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _RECORD_METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 39
+        assert len([r for r in rows if r in others]) == 40
         assert [r for r in rows if r not in others] == [
             "plain_scalar_slot",
             "tparam_scalar",
@@ -996,7 +1002,6 @@ class TestRecordMethodSinkShape:
             "value_opt_view_whole",
             "value_opt_record_rvalue",
             "value_record_name",
-            "own_tparam_call_rvalue",
             "union_member_lift_none",
             "optional_ptr_no_temp",
             "record_pass_through",
@@ -1439,6 +1444,7 @@ class TestRecordCtorSinkShape:
             "own_lvalue",
             "own_move_source_slice",
             "own_record_rvalue",
+            "own_tparam_call_rvalue",
             "own_opt_ptr_name_move",
             "opt_own_ptr_opt_name_move",
             "opt_own_record_name",
@@ -1606,12 +1612,12 @@ class TestRecordCtorNestedIsNotADirectPrefix:
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
         # Absence-preserving: the flush-less nested position admits only
-        # temp-FREE renders, so 44 direct cells are simply absent. The count
+        # temp-FREE renders, so 45 direct cells are simply absent. The count
         # is what closes the gap -- naming a subset leaves the unnamed
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 44
+        assert len(direct - nested) == 45
         assert {"mutated_container_literal", "str_pass_through",
                 "shared_pass_through", "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1671,7 +1677,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 30
+        assert len([r for r in rows if r in others]) == 31
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

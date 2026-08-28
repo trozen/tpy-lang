@@ -13855,3 +13855,104 @@ shared append-only file needs serialization, not path-scoping.
 
 A broad `pkill -f pytest` killed a peer's run for the second time in one
 session. Kill only PIDs you started.
+
+### Stdlib grind (2026-08-28): 17 -> 15 collapsed, 21 -> 16 per body
+
+Five stdlib bodies flipped: the two `asyncio` gather `__poll__` bodies,
+`tplib.requests::Session.__exit__`, `tpy.channel::_Send.__poll__`, and
+`asyncio::_SockConnect.__poll__`. Routed floor 1224 -> 1229. Ceiling and
+floor move by the same five, which is what separates real routing from
+bodies dropping out of the classification; the two keys stay separate and
+every figure above names the one it uses.
+
+The rows: an Own-slot leg in the generic slot prologue
+(`call.generic_own_composite_slot`); `own_tparam_call_rvalue` extended
+from the record-method sink to the ctor and marker-qualified sinks
+against one shared predicate; a new `value_tuple_field_pass` row plus the
+matching field result leg reached from the f-string interpolation; and a
+`TpySubscript` receiver leg on the user-Deref wrapper predicate.
+
+**A recorded blocker was falsified, for the fourth consecutive wave.**
+`tplib.requests::__exit__` was filed as blocked on the `self`-subscript
+deref fact -- the hand-applied "is `self` a pointer here" bit that is
+wrong at two of its sites and is under a pending decision. It was not:
+the receiver is `self._pool[k]`, which renders as an ordinary member
+access, and no bare-`self` value position is constructed anywhere on that
+path. The scout established this by BUILDING the shape the hazard
+protects (`self[0].close()`) and watching it still reject at an
+independent downstream gate while four benign subscript receivers routed.
+The row then shipped from a single predicate leg. The recurring shape is
+not that records go stale; it is that a blocker reason recorded from a
+reject TAG names where a reason was formatted, and a later reader treats
+it as where the reason was decided.
+
+**A docstring asserted a guard the code did not have.** The shared
+predicate behind the call-rvalue-at-an-Own-slot rows claimed a
+borrow-returning callee was excluded by not being an rvalue source.
+Measured: `is_rvalue_source` answers True for both the owning and the
+borrowing callee, so nothing excluded it. The AST passes such a result
+bare into an `own_param_t<T>` (`T&&`) slot, which is ill-formed at a
+reference-type instantiation -- filed, with a g++ reduction. The
+discriminator is the callee's DECLARED return type. Two lanes reached
+this independently, one from a g++ reduction and one from a boundary pin
+that failed, and the guard was in place before the row that needed it
+landed. The lesson is about the artifact: the docstring is what made the
+gap invisible, because anyone reading the predicate would have believed
+the case was handled.
+
+**A row registered into a shared listing needs a witness per FAMILY that
+carries it, not per shape.** The three-unit rule covers the shape axis and
+says nothing about the sink axis. `value_tuple_field_pass` was pinned
+under the qualified family only, while the row listing also placed it in
+the native family -- an admitted arm whose sole cover was the corpus
+byte-diff, which is deleted at cutover. Its sibling in the same wave was
+registered correctly, so the two are a matched pair worth reading
+together. The skipped pin was justified as needing a hand-written C++
+companion carrying a tuple param; that was false, and an ellipsis-stub
+native declaration across two in-repo modules is sufficient, as two
+existing test files already do.
+
+**Method notes.**
+
+The tag histogram is exhausted as a selection instrument and the site
+histogram nearly is: after this wave no site carries more than two rows.
+The backlog claimed two sites held four and three; a fresh sweep found
+neither, and one of the rows was attributed to a site it does not reject
+at. Rank by measurement, never by the previous wave's record of one.
+
+The name-collapsed key hid a body count inside a single row. The
+`asyncio::__poll__` row stood for four bodies, and they were three
+different questions across two sites -- the "a shared site does not
+define a lane" rule firing inside one ROW. Nine of that module's thirteen
+same-named bodies already routed. A collapsed row is a search key, not a
+work unit.
+
+An orchestration note that cost real time: two lanes were partitioned by
+file, which is correct, but the shared face registry is edited by every
+lane and belongs to none. One lane dropped its face registration rather
+than commit another lane's in-progress line, and its arm shipped
+witnessed only by a mechanical routing pin. Serialise the registry edit
+or hold it for consolidation; do not leave it to the lane that finishes
+second.
+
+**The method that keeps working, stated positively.** Four consecutive waves
+have falsified a recorded blocker, and the weak lesson ("records go stale") is
+not the useful half. The strong one: the cheap way to test a recorded blocker
+is to CONSTRUCT the shape it claims to protect and see whether it actually
+rejects. That is how this round established that a container-element receiver
+never reaches the hand-applied self-pointer fact -- by building the receiver
+the hazard names, watching it reject at an independent downstream gate, and
+watching four benign siblings route. The construction then pays a second time,
+because it is already the boundary pin the arm needs. A blocker reason read off
+a reject tag costs nothing to record and cannot be trusted; a blocker reason
+that survived an attempt to build past it is worth the line.
+
+**Where the defects were this round.** Nothing in the compiler diff warranted
+backing out; the escalations from the readiness challenge were all in tooling
+or orchestration, and three of them were rules already written down and not
+applied. Worth noticing as a phase change: on a green, well-pinned diff the
+remaining defects migrate out of the code and into the process layer, and the
+review dispatch table had gone blind to exactly this kind of wave -- it keyed
+"codegen logic" to the AST emitter's directory, so a THIR-only change silenced
+three specialists at once. That blind spot widens to total at cutover, when the
+AST emitter stops changing at all.

@@ -89,6 +89,19 @@ class TestValueOptDerefReceiver:
                + "main()\n")
         _assert_routes_byte_identical(src)
 
+    def test_subscript_element_receiver_routes(self):
+        # The third leg of the shared receiver resolution, kept here so a
+        # change to the value-opt legs has to keep it routing too; its own
+        # rows and boundary live in the subscript-receiver unit.
+        src = (_PET
+               + "def use(bs: list[Box[Pet]]) -> Int32:\n"
+               + "    return bs[0].speak()\n"
+               + "def main() -> None:\n"
+               + "    bs = [Box(Pet(3))]\n"
+               + "    print(use(bs))\n"
+               + "main()\n")
+        _assert_routes_byte_identical(src)
+
     def test_pointer_repr_optional_still_routes(self):
         # The pre-existing pointer-repr leg beside the new one.
         src = (_PET
@@ -104,20 +117,6 @@ class TestValueOptDerefReceiver:
 
 
 class TestValueOptDerefReceiverBoundary:
-    def test_subscript_receiver_keeps_rejecting(self):
-        # A non-NAME, non-FIELD deref receiver composes an unwrap the chain
-        # render does not carry; the widening must not reach it.
-        src = (_PET
-               + "def use(bs: list[Box[Pet]]) -> Int32:\n"
-               + "    return bs[0].speak()\n"
-               + "def main() -> None:\n"
-               + "    bs = [Box(Pet(3))]\n"
-               + "    print(use(bs))\n"
-               + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call",
-                           "method.marker.deref.recv_shape")
-        _assert_byte_identical(src)
-
     def test_call_rvalue_receiver_keeps_rejecting(self):
         src = (_PET
                + "def mk() -> Own[Box[Pet]]:\n"

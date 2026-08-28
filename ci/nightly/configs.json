@@ -87,7 +87,7 @@
     {
       "name": "thir-stdlib-fallback",
       "base_image": "ubuntu:24.04",
-      "script": "uv run python scripts/thir_migration/thir_stdlib_fallback.py --max-fallback 17"
+      "script": "uv run python scripts/thir_migration/thir_stdlib_fallback.py --max-fallback 15"
     },
     {
       "name": "macos-native",
