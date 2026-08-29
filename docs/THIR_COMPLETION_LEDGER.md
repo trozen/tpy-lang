@@ -8,6 +8,16 @@
 > and completion model below map what blocks that cutover. The "sequence against routing %" /
 > throughput-campaign framing predates this and is no longer how the work is
 > driven.
+>
+> **Metric update (2026-08-29):** the migrated-CASES half of that metric is
+> SATURATED -- 3746/3746 user cases, zero `no_thir.txt` markers repo-wide, and
+> the interop corpus done at 34/34 cases / 285 bodies with zero fallback. It can
+> no longer select work. The live metric is **stdlib fallback BODIES** against
+> gate A5 (`tests/test_thir_stdlib_gate.py`), and past that the cutover
+> checklist in the Gate D3 entry -- which was re-measured 2026-08-29 and is the
+> authoritative statement of what is left. Anything in this file that reads as
+> CURRENT state rather than as a dated measurement predates that re-measurement
+> unless it says otherwise.
 
 The **deletion roadmap** for the THIR codegen migration: the single place that
 answers *"what stands between us and retiring the AST body/form codegen path, and
@@ -123,6 +133,17 @@ cell it touches is admitted:
   @error_return body still defers -- a conservative gap, the AST emit
   there is verified identical.)
 
+  **[The `(covered)` / `(not)` tags above are a 2026-07 snapshot; do not read
+  them as current.]** Spot-checked 2026-08-29 at `fbfbb5b0d`, two of them are
+  now wrong in the safe direction: genexpr is tagged `(not)` but has a full
+  lowering arm (`thir/lower/comprehensions.py::_lower_genexpr`, with its own
+  `genexpr.*` reject tags for the residual shapes), and the parenthetical's
+  "a resumable / @error_return body still defers" for `raise <expr>` is
+  contradicted by `_lower_raise`, whose comment records that both contexts
+  render identically and route here too. Since the user case dial is saturated
+  and stdlib is at 16 fallback bodies, treat every tag in this bullet as a
+  lower bound on coverage rather than a status.
+
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
 
@@ -148,6 +169,18 @@ These interlock: deleting `gen_body`/`gen_expr` requires the form machinery gone
 (F-final) and every statement shape routed. The **ctor MIL emit is the first
 independently-deletable sub-component** -- it dies once ctor cells route (still
 gated on F3+ for non-record fields).
+
+**[Staleness note, 2026-08-29.]** Every body count in the table above is a
+2026-07 *routing-attempt* tally against the then-current tree, kept as a record
+of relative mass -- not as current state. In particular `the remaining
+ctor.mil_field mass (8,616 bodies)` is long superseded: user cases now fall back
+ZERO bodies and stdlib is at 16. The three **PARTIAL** statuses are still
+literally correct in the only sense that matters -- the AST components are still
+present, because deletion happens once at the atomic cutover -- but the "what is
+left" narrative in each Status cell describes the 2026-07 frontier, not today's.
+For what is actually left, read the re-measured cutover checklist in the Gate D3
+entry. Structural residues named here that ARE still live: `RefType` (still in
+`tpyc/typesys.py`) and the form-machinery removal that F-final gates.
 
 ### The cutover deletion budget -- THIR's OWN code that dies with the AST emitter
 
@@ -177,6 +210,17 @@ Subtract both and THIR lands at ~35k against the AST emitter's ~36.5k --
 **parity**. That is the honest read of what the migration buys: STRUCTURE (a
 typed IR, one sema->codegen boundary, the cache point) at roughly equal size,
 not code reduction.
+
+[Re-measured 2026-08-29 at `fbfbb5b0d` (same method, non-test LOC): `tpyc/thir/`
+is **84,249**, `tpyc/codegen_cpp/` **38,642** -- THIR is now **118%** larger, not
+33%. The scaffolding grew with it: `lower/checks.py` 14,109 + `lower/
+predicates.py` 10,772 (against the ~10,200-line admission estimate drawn from
+them a month earlier), and `faces.py` alone went 1,360 -> 3,118. The **parity
+conclusion above no longer holds and should not be quoted**; nobody has re-run
+the admission-vs-lowering split on the current tree, so the post-subtraction
+figure is unknown rather than "~35k". The QUALITATIVE claim is unchanged and is
+the part worth keeping: the migration buys structure, not code reduction, and
+the reduction is collectable only after cutover.]
 
 The reduction is collectable only AFTER cutover, and only deliberately. While
 byte-identity is the contract, each lowering arm must reproduce the AST's
@@ -272,6 +316,16 @@ deferred (self-contained) / blocked-on-`<rung>`.
   verdicts dropped),
   pointer-repr Optional/union getter returns (the `in_property_getter`
   return-the-field-storage arm; rejected by the general return gate).
+  [ALL THREE deferred rows have since LANDED, and this list contradicts later
+  entries in this file. Inplace dunders admitted in the round-6 VI increment
+  (`_param_is_const` grew the forced-const arm; see the "Maintaining this
+  ledger" bullet for that wave) -- `tpyc/thir/lower/functions.py` and
+  `predicates.py` both carry it now. `@readonly` statics admit at the same
+  site (the readonly verdicts are signature-only, and a static body has no
+  `self`, so the sole readonly-keyed body effect is unreachable). The
+  property-getter union return routes via `_LowerCtx.ret_union_borrow`, which
+  derives the storage-by-reference flavor ahead of `ret_ptr_union`. Verified
+  2026-08-29 against `fbfbb5b0d` by reading the fences, not by re-measuring.]
   `@total_ordering`-synthesized comparison bodies (same-record compare operands,
   a bare `self` deref to `(*this)` in value position) now ROUTE via the widened
   compare arm (commit 2bcd8d8dc: `dataclass_order`, `total_ordering_*`, the
@@ -290,7 +344,12 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `e.move` decision as the sibling Optional/union/tuple arms). Routing
   169568 -> 245285 bodies. **Remaining generic-user-record cell** (self-contained,
   small): a `T` LOCAL decl (`x = self.value`) is unhandled and falls back
-  byte-identically. (`Own[T]` method PARAMS now land -- see the `Own[T]` cell in
+  byte-identically. [LANDED since: the open-T value slot routes at the decl
+  gate (face `decl.type_param_slot`, `lower/statements.py`), for an rvalue
+  source that is not reassigned / hoisted / moved-through. Those three
+  indirection flavors bind an alias instead and are their own rows, so the
+  cell is narrowed rather than closed -- checked 2026-08-29 at `fbfbb5b0d`.]
+  (`Own[T]` method PARAMS now land -- see the `Own[T]` cell in
   the callable-kind axis; landing them surfaced + fixed a latent no-op-move-convert
   validator bug in this cell's `T`-field-write move arm.)
   **NB the `sig.receiver_record` mass (~1.65M) is NOT generic user records** --
@@ -613,6 +672,12 @@ deferred (self-contained) / blocked-on-`<rung>`.
   different spelling arm), `@export(binding="C")` linkage, `native_cpp_return_type`
   static_cast wraps, the bespoke-arm builtins, non-positional templates, and the
   pre-arm/kwarg-dependent arg rows for native callees (`call.native_arg_shape`).
+  [The first two residual rows LANDED and were never back-updated here:
+  `_free_callee_kind` gained a `NATIVE_C` arm on 2026-07-21 (`6f1b5e66b`) and
+  `EXPORT_C` was folded into the same verbatim raw-symbol arm on 2026-07-22
+  (`228d58b6b`) -- see `thir/lower/checks.py` around the
+  `FunctionLinkage.NATIVE_C, FunctionLinkage.EXPORT_C` test. The other four rows
+  were not re-checked on 2026-08-29.]
 - **Shadow-colliding records** (a member named like a same-module type -- the
   member/type-name collision fix): **whole-record reject** (`sig.member_shadows_type`
   for method bodies, `ctor.member_shadows_type` for constructors). The AST path
@@ -623,6 +688,10 @@ deferred (self-contained) / blocked-on-`<rung>`.
   emit to qualify a shadowed local ref -- read the same `RecordInfo.shadows_local_type`
   fact and qualify the ctor-call/base-init/type sites under the flag, instead of
   gate-rejecting. Surfaced by /tpy-review of the member/type-name collision fix.
+  [CLOSED, exactly as prescribed. `member_shadows_type` no longer appears
+  anywhere in `tpyc/` -- neither reject face exists. `thir/lower/expressions.py`
+  reads `RecordInfo.shadows_local_type` and qualifies the type spelling inline
+  instead of rejecting the record. Verified 2026-08-29 at `fbfbb5b0d`.]
 
 - **Empty container literal at a resumable return** (`return.empty_container_literal`,
   `_lower_resumable_return_value`): the async return render is position-blind, and the
@@ -637,7 +706,12 @@ deferred (self-contained) / blocked-on-`<rung>`.
   a bare reference-type async return has a pointer Poll payload (`Poll<C*>`, the async
   borrow-return ABI); the `&(...)` lift and its alias-source renders are unported, so
   the body falls back (8 async cases marked no_thir carry the shape or its erased
-  task-layer consumers). The generic TRAIT form (`val_or_ptr_t<T>` +
+  task-layer consumers). [The REJECT is still live -- `resumable.py` still fences
+  the bare reference-type return and `test_thir_wave_async_ret.py`'s
+  keeps-rejecting pin still passes -- but the parenthetical evidence is stale:
+  there are ZERO `no_thir.txt` markers in the repo as of 2026-08-29, so no case
+  carries the shape any more. Checked at `fbfbb5b0d`.] The generic TRAIT form
+  (`val_or_ptr_t<T>` +
   `to_val_or_ptr` lift) IS mirrored (the `async_ret_val_or_ptr` THIRCoerce). To CLOSE:
   mirror the borrow lift (form-driven, one arm) plus the await-site pointer-alias
   binding consumers.
@@ -694,7 +768,11 @@ deferred (self-contained) / blocked-on-`<rung>`.
   corpus-witnessed). enum ITERATION (`for c in Color:`, the
   `enum_iterable` for-loop arm) now ROUTES (`foreach.enum` face), as does
   name-lookup subscript `Color[name]` (`subscript.enum_from_name`).
-  Still deferred: match-over-enum (the match-statement axis).
+  Still deferred: match-over-enum (the match-statement axis). [LANDED --
+  `thir/lower/match.py` carries a full `switch_enum` strategy: enum subjects
+  select it in `_match_strategy`, `_match_route` admits it, and
+  `_match_case_label` / `_enum_member_cpp` render the member labels. Checked
+  2026-08-29 at `fbfbb5b0d`.]
 - F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
   (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
   + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
@@ -968,6 +1046,11 @@ deferred (self-contained) / blocked-on-`<rung>`.
   `Own[...]` ARG slots (the gen_call_arg cascade frontier), the
   `Optional[str/StrView]` per-element arms (statement-expression hoist),
   `char_to_str/string/strview` (own wrap renders, the Char edge).
+  [The first of the three LANDED: `_coerce_disposition` grew an `own_slot_arg`
+  flag (`thir/lower/predicates.py`) and a view-typed str source at an `Own[str]`
+  arg slot lowers to a brace-init moving `THIRArgTemp` (face `argtemp.own_str`,
+  `thir/lower/expressions.py`). The other two were not re-checked. Checked
+  2026-08-29 at `fbfbb5b0d`.]
   **S4 leftovers DONE (increment 45)**: stepped slices
   `s[a:b:c]` -> `::tpy::str_stepped_slice` over `::tpy::Slice{lo, hi, step}`
   (an OWNED `std::string` STORAGE result, bare at every sink -- `THIRStrSlice`
@@ -1017,6 +1100,16 @@ deferred (self-contained) / blocked-on-`<rung>`.
   owned-str params (owned-copy prologue), `Literal[str]` bindings, String
   params/returns (`const std::string&` signatures), `bytearray` (a
   reference type, different axis).
+  [`bytearray` is no longer an untouched axis: `is_bytearray_type` is threaded
+  through the ordinary container family in `thir/lower/{predicates,checks,
+  statements}.py` (binop operands, coercions, container literals, subscripts,
+  aug-assign), with dedicated routing pins across `test_thir_bytes.py`,
+  `test_thir_containers.py`, `test_thir_ctor.py` and several wave files. Narrow
+  bytearray shapes still stay AST (e.g. an `Own[bytearray]` param read, a
+  field-from-slice write). The **String** row above IS still true --
+  `_resolved_str_value`'s docstring records that the `const std::string&` param
+  slot is spelled by the skeleton and "no body arm renders it". Checked
+  2026-08-29 at `fbfbb5b0d`.]
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
   reseat sources): **blocked-on-F3+** or the relevant frontier; see the F1/F2 TODO
@@ -1025,6 +1118,14 @@ deferred (self-contained) / blocked-on-`<rung>`.
 ### Statement / expression shapes -- **AXIS OPENED (increment 25), STILL MOSTLY UNCOVERED**
 The form ladder and callable axis are tracked; the statement-shape axis was the
 untracked gap and is now being enumerated + driven.
+
+**[The heading's "STILL MOSTLY UNCOVERED" is a 2026-07 status and is no longer
+true.]** This whole section is the incremental record of that axis being opened;
+it was never rewritten as rows landed, so it reads as a to-do list when it is a
+diary. Every rung it names as pending has since been worked -- the user case dial
+is saturated and stdlib is at 16 fallback bodies. Read it as history; for what is
+actually uncovered, use the re-measured cutover checklist in the Gate D3 entry
+and the live stdlib gate.
 Routed so far: var-decl / assign / return / if-elif-else / while / range-for /
 aug-assign, plus the no-op trivia `pass` / docstring (M3c-trivia, `THIRNoOpStmt`),
 **value-result tuple subscript reads** (`t[N]` -> `std::get<N>(t)`, `THIRSubscript`,
@@ -1129,7 +1230,11 @@ emit the bare optional) with no guard firing. Make the field guard declared-type
 deferred: value-semantics `and`/`or` (non-bool result -> `_gen_logical_value` temp+ternary),
 the statement-expr chained arm (a
 non-`_is_duplicable_expr` intermediate binds `_cmp` temps), bool-literal conditions
-(dead-branch elimination). The incr-36 byte-diff also exposed and closed a latent compare
+(dead-branch elimination). [The FIRST of the three landed: `THIRValueSelect`
+(`thir/nodes.py`, documented as "`_gen_logical_value`'s value slice") is built by
+`_lower_value_select` in `thir/lower/expressions.py`, admitting scalar / float /
+BigInt / str results and container/record results via `_lower_container_select`.
+The other two were not re-checked. Checked 2026-08-29 at `fbfbb5b0d`.] The incr-36 byte-diff also exposed and closed a latent compare
 gap: the rb=None derived-comparison arm admitted RECORD operands (`not (self <= other)` from
 `@total_ordering` -- the AST derefs `(*this)`); compare operands are now pinned to resolved
 scalars (widened to the str slice when the F6 S1 cell merged: str operands emit the same
@@ -1230,7 +1335,11 @@ co-occur with other per-body blockers -- first-reject masking), the value
 is the duplication removal + compositional readiness.
 Deferred container-iteration cells: `dict[int, record]` key iteration (param not admitted --
 its value read is a record borrow), `set`/`Span`/`Array` containers (params not yet admitted),
-str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (str-family FIELDS off
+str/bytes-key dicts, `dict.items()`/tuple-unpack [both landed: `_dict_view_iterable_ok`
+in `thir/lower/predicates.py`, consumed by the for-head and comprehension paths,
+and `THIRTupleUnpack` for the unpack targets -- the completion model's own bullet
+already lists dict-view + tuple-unpack iteration as incr 69; checked 2026-08-29],
+non-name iterables (str-family FIELDS off
 F1-record receivers route since incr 45 -- lvalues, the same `auto&` capture; subscript/call/
 literal receivers stay deferred, a call result being an rvalue `auto` capture), generators / user iterators (the
 `__iter__`/`__next__` fallback), consuming iteration (VALUE-family hoisted loop
@@ -1335,6 +1444,13 @@ needs the borrow-capture/materialize split mirrored in
 `exceptions/finally_mutates_returned_local_indirect`,
 `exceptions/finally_return_nocopy_move`,
 `async/async_finally_mutates_returned_local`.
+[LANDED since, on both sides, and the marker list is void -- the repo has
+ZERO `no_thir.txt` files as of 2026-08-29. The sync dispatch lowers the stamp
+through `_finally_deferred_recipe` (`ret.finally_deferred`) and the resumable
+side through the leaf finally bridge (`res.leaf_deferred_capture`). The
+`return.finally_deferred_capture` reject SURVIVES, but narrowed: it now fires
+only for a stamped return outside the two mirrored recipes. Checked at
+`fbfbb5b0d`.]
 **try/except throw tier + raise landed (incr 80): +493 bodies
 (33361 -> 33854 / 3332 cases)** -- `_gen_try_throw`'s C++ try/catch:
 one catch arm per handler (headers pre-rendered at lowering via
@@ -1459,6 +1575,12 @@ match reject at the FUNCTION gate (the match arm never fired); the
 widening was reverted rather than shipping a dead emit arm + a
 permanently zero-witness face. `match/union_recursive_bare` (new case)
 is the ready witness for when the rung lands.
+[The rung LANDED and so did M4c -- see the wave-next10 entry below
+("M4c wrapper match (decision 17)"): `switch_union` admits value-repr
+non-generic wrapper NAME subjects, threading `.value` through the switch
+head and the `std::get` positions, and `test_thir_wave_wrapper_match.py`
+pins the slice. Remaining boundary per that file: guarded matches, field
+subjects, non-ctor decl inits.]
 **M4b guarded union landed (incr 86, the approved M1-M4 ladder
 COMPLETE): +7 bodies (33903 -> 33910 / 3335 cases)** -- per-variant-
 index guard groups (`__case_{idx}` -- VARIANT-index naming), wildcard
@@ -1482,7 +1604,8 @@ record-inner dispatch LANDED on thir-match-dynattrs-args): the
 optional tiers' remainder (field-access subjects; guarded record-inner
 chains), overload-specialized (1),
 resumable (generator/async) matches (own frontier), M4c wrapper
-subjects (cross-axis, see above).
+subjects (cross-axis, see above). [M4c is no longer parked -- it landed
+in wave-next10; see the bracketed note at the M4c paragraph above.]
 **P1 polymorphic/@dynamic dispatch LANDED (thir-match-drill):** the
 poly_if_elif chain (`_gen_match_polymorphic_if_elif` mirror: C++17
 if-init `Sub* __mpoly_i = <cast>` + `Sub& __case_i` alias, subject
@@ -1779,7 +1902,27 @@ Optional dotted-field narrowing remains a deliberate fallback). **Action:** cont
 enumerating + driving these as a tracked axis
 before claiming `gen_body`/`gen_expr` deletion is near.
 
+**[This list and its Action are CONSUMED -- do not work from them.]** Spot-checked
+2026-08-29 at `fbfbb5b0d`: `async`/`await` and `yield`/generators lower through
+`thir/lower/resumable.py` + `simple_gen.py`; comprehensions and generator
+iterables through `thir/lower/comprehensions.py` (genexpr included); `nonlocal`
+routes as a no-code face in `thir/lower/statements.py`; the non-simple-intermediate
+chained compare has its own arm (`chained_compare.stmt_expr` in
+`thir/lower/expressions.py`); and Optional dotted-field narrowing has a landed
+read path rather than being a blanket fallback. The parked match tail is
+separately corrected above (M4c landed). The Action's own criterion is met from
+the other side: the dial is saturated, so this axis no longer selects work.
+
 ## Sequencing discipline (the plan)
+
+**[Read 1-4 as history, 5-6 as standing policy (2026-08-29).]** Items 1-4 are a
+SELECTION strategy for a phase that is over: the case dial is saturated and can
+no longer select work, and the residual deferrals that remain are individually
+tracked rather than parked against rungs. What sequences the remaining work is
+the re-measured cutover checklist in the Gate D3 entry and the live stdlib
+fallback gate. Items 5 (the two AST-bug policies, by output well-formedness) and
+6 (one shared function computes any fact the gate and lowering must agree on)
+are invariants, not sequencing, and both still bind.
 
 1. **Drive the form ladder (F3 -> F-final) as the spine.** Highest leverage: each
    rung unblocks form cells in *every* callable frontier at once, and F-final is the
@@ -3878,7 +4021,11 @@ which a type-param receiver does not have.
     every `--thir-codegen` run (15 open at this wave's close). Note the hole
     feeding it: `_witness()` has no rollback, so an arm that witnesses BEFORE
     it can raise reads as witnessed even when it never lowered -- that defeats
-    the detector itself, and is filed in TODO.md.
+    the detector itself, and is filed in TODO.md. [FIXED 2026-07-28 in
+    `ca57e429d`: witnesses are journalled per lowering attempt and rolled back
+    when the body falls back. The `15 open` figure above is also pre-fix and
+    INCOMPARABLE with any later one -- 2026-08-29 reads 69 zero-witness of
+    1435.]
   * **A5 -- stdlib fallback.** Unmanaged: resolved on paper only
     (`IR_DESIGN.md`:893-895), no instrument, and the single datum is a stale
     2026-07-05 drill showing ~249 blocked stdlib bodies. The migration is
@@ -4082,6 +4229,14 @@ which a type-param receiver does not have.
   controls are exec + cpy and the standing rule that snapshot churn on existing
   tests needs approval. This is the pre-THIR regime; accept it, do not build
   something to plug it.
+  [Understated as of 2026-08-29: "the one thing lost" names only the byte-diff,
+  but cutover deletes **three** cross-path detectors. `tpyc/move_audit.py` and
+  `tpyc/binding_audit.py` both landed after this entry was written; each is a
+  dual-path JOIN whose AST-side recorder lives inside the deleted emitter, and
+  `move_audit`'s own docstring calls itself the ONLY detector for its divergence
+  class (a wrong move verdict at a site whose render ignores it emits identical
+  C++). Neither is covered by "exec + cpy". Re-decide D4's user half against
+  three detectors, not one -- see cutover-checklist item 8.]
 
   **DECISION -- two-commit cutover, and the proof is free.**
   `_thir_flag_conflict` (`tests/conftest.py`:1256) currently FORBIDS THIR under
@@ -4209,6 +4364,14 @@ which a type-param receiver does not have.
   dead arm (`decl.alias_choice_src`) passed the project's own check. A detector
   that reports false coverage is worse than no detector once it is the only
   one left.
+  [Superseded within its own entry: the paragraph above records the journal +
+  rollback fix LANDING on 2026-07-28 (`ca57e429d`), and this paragraph -- drafted
+  against the pre-fix tree -- then asserts the defect as live 40 lines later. The
+  defect is FIXED; witnesses are journalled per lowering attempt and rolled back
+  when the body falls back. The residual hazards are different ones, enumerated
+  in cutover-checklist item 5: 69 zero-witness faces of 1435, the census having
+  no reader that survives cutover, the attempt-seam-less `lower_module` entry,
+  and the ~224 faces whose witness fires at a GATE rather than at the render.]
 
   **Teardown inventory.** DIES: the overlay (~321 THIR-touching lines in
   `conftest.py`), the ratchet, 958 `no_thir.txt` markers, the 5 CLI flags
@@ -4220,6 +4383,17 @@ which a type-param receiver does not have.
   internal net: `faces.py` (1462), `validate.py` (386), `dump.py` (786),
   adversarial `dualgen.py`. Note the workflow loss to plan for: `--no-thir`
   pure-AST mode disappears with the path it selects.
+  [Re-measured 2026-08-29 at `fbfbb5b0d`: **this inventory is stale in every
+  number and missing about half the surface.** It predates the stdlib gate, the
+  committed cutover gate, both audit modules (`move_audit.py`,
+  `binding_audit.py`), the migration scripts and two CI rows. The marker count
+  is 0, not 958. Two of the three SURVIVES entries are misleading rather than
+  wrong: `faces.py` survives but its only READER (`conftest.py`) is on the DIES
+  list, so the census would survive unread; and the "ONLY internal net" framing
+  omits that cutover deletes THREE cross-path detectors -- the corpus byte-diff
+  plus `move_audit.py` and `binding_audit.py`, both dual-path joins whose
+  AST-side recorders live inside the deleted emitter. Do not execute from this
+  list; rewrite it first. See cutover-checklist items 5, 7 and 8.]
 
 - **Landed: docstring leading-comment trivia** (`stmt.trivia`): a docstring
   statement now lowers as `THIRNoOpStmt(trivia_loc=loc)` instead of a bare
@@ -4821,75 +4995,192 @@ inventory every skeleton -> `gen_expr`/`gen_stmt` call site, and per site
 either route it through THIR lowering or move it to a small dedicated
 renderer. The cutover gate is "the skeleton calls zero body-emitter
 helpers" -- that is what makes commit 2 a wholesale deletion plus dead-code
-pruning instead of archaeology.
+pruning instead of archaeology. [That gate statement is one-directional and
+therefore not sufficient on its own: THIR itself imports FROM the four doomed
+body-emitter modules at 8 production sites, and the committed scan does not
+look that way. See checklist item 4 below.]
 
-**The cutover checklist, assembled in one place** (previously scattered
-across gate entries; all of it is parked until markers approach zero --
-none of it moves the dial, and body-lowering waves cannot invalidate it):
+**The cutover checklist, assembled in one place.** RE-MEASURED 2026-08-29 at
+`fbfbb5b0d`; the previous version of this block is superseded, and four of its
+eight items were wrong in ways that would have mis-scoped the endgame. Every
+figure below names how it was derived. **Treat any number here as valid only
+for the tree it names** -- that rule is what this re-measurement exists to
+enforce, since the last version carried a stale figure in every item that had
+one.
 
-1. A1: `no_thir.txt` markers -> 0 (dial 2773/3632, 859 left at this
-   writing) -- the standing wave work.
-2. A5: stdlib fallback -> 0. **Do not maintain a running count here** -- it
-   moves with every cell and a hand-copied figure in a checklist item is
-   stale on arrival (this line has already carried three wrong numbers).
-   `scripts/thir_migration/thir_stdlib_fallback.py` IS the number; re-run it.
-   **Count BODIES, not distinct names.** The tracked figure was a
-   name-collapsed count and under-reported by 24: `thir_stdlib_fallback.py`'s
-   `merge_module` keys on the BARE body name, so overloads and a method name
-   shared across several records in one module collapse to their worst
-   sighting. Deleting the AST body emitter needs each BODY routed, so the
-   name-collapsed number is not the gate.
-   Dated snapshot, per body: **195 fallback / 1050 routed / 2843 classified,
-   2026-08-25 at `09c3f8000`** (`tests/test_thir_stdlib_gate.py`, which
-   ratchets it pre-merge). The name-collapsed view of the same tree reads
-   171 / 828 / 999, and master `4ad40383c` reads 189 / 810 collapsed; the
-   2026-07-28 baseline of 289 is also collapsed. Cross-check: applying the
-   collapse to the per-body sweep reproduces 171 / 828 exactly.
-   **Never subtract two of these from each other.** Always quote the tree,
-   the instrument AND the key -- this line alone has now carried four
-   figures that were not comparable.
-   Per-module detail belongs in the dated entries below, not here.
+1. **A1: `no_thir.txt` markers -> 0. DONE.** Zero repo-wide (`tests/cases` and
+   `tests/interop` both). Nothing left here.
+2. **A5: stdlib fallback -> 0. 16 bodies / 15 name-collapsed, 1229 routed.**
+   `tests/test_thir_stdlib_gate.py` IS the number; re-run it, do not copy it.
+   Count BODIES, not distinct names, and never subtract figures from the two
+   keys. **This is no longer grind-bound.** Of the 15 rows: 4 wait on filed
+   defects, 3 are design forks, 2 are chained behind arms at other sites, 4 are
+   measured dead ends or a zero-yield pair, 2 need a drill. The per-row status
+   lives in TODO.md, not here.
+3. **Interop corpus. DONE, verified per BODY.** 34/34 cases, 285 bodies, zero
+   fallback of ANY component, zero markers. The case dial alone does not prove
+   this -- its "migrated" test excludes two non-ratchet components -- so it was
+   confirmed by an emit-side census that spied the AST body arms directly: 0
+   AST-arm body emissions, 0 AST ctor-tail extractions. The CPython glue
+   emitter depends only on skeleton modules and needs no porting.
+4. **Skeleton call-site inventory: 4 OPEN** (from 34, then 5). The scan is
+   COMMITTED as `tpyc/codegen_cpp/test_cutover_gate.py`, so this number is
+   reproducible rather than re-derived -- which is the fix for the grep that
+   once priced this at 2 against a real 26. All four are in `gen_async.py`;
+   three are ONE behavior (the async-return recipe) whose home is wrong rather
+   than whose logic is missing, ~320 lines of relocation. The fourth,
+   `_extra_template_args_for_await`, dispatches an arbitrary user expression on
+   the routed path and is the only genuine routing work.
+   **The gate scans one direction only.** THIR imports FROM the four doomed
+   modules at 8 production sites (10 symbols: pure predicates, constant tables,
+   static methods). Deleting those modules today breaks THIR at import time,
+   and no gate would say so. Widen the gate with a cross-package import check
+   before relying on it.
+5. **The faces detector. The increment-site defect is ALREADY FIXED** (witnesses
+   are journalled per attempt and rolled back on fallback). Three records
+   asserted otherwise, one of them written three days after the fix; they are
+   corrected. What remains is different and larger:
+   - **69 zero-witness faces of 1435, not nine.** "Nine" was a delta against a
+     711-face registry, never a total.
+   - 46 of the 69 ARE witnessed, by the stdlib sweep, which does not fold its
+     witnesses into the census. Folding it drops the list to 23. Of those, 11
+     have no unit-test mention at all -- the dangerous class.
+   - **The census survives and its only reader does not.** `faces.py` is on the
+     SURVIVES list; the code that reports it is in `conftest.py`, on the DIES
+     list, behind an opt-in flag. Nothing ratchets it: no test asserts on the
+     count, no nightly row runs it. A detector nobody runs is the failure this
+     item was written to prevent, and it was not written down anywhere.
+   - One lowering entry (`lower_module`, the unit-test path) has no attempt
+     seam, so 694 witnesses per suite run escape rollback. Measured blast
+     radius of fixing it: zero test changes.
+   - For ~224 faces the witness fires at a GATE, so "witnessed" means a row
+     admitted, not that the named render ran. Post-cutover a reader will assume
+     the stronger meaning. That semantics needs writing down.
+6. **The two-commit cutover per Gate D4.** Mechanically ready -- the corpus
+   dial is saturated, so THIR can author every snapshot. THREE blockers:
+   - **Error cases have never been lowered through THIR at all.** The overlay
+     runs after codegen SUCCEEDS, so every case that fails at codegen is
+     invisible to the dial, the ratchet, the byte-diff and both audits. Three
+     `CodeGenError` diagnostics are raised from inside the BODY emitters,
+     covering 6 committed cases, and `tpyc/thir/` contains zero
+     `raise CodeGenError`. Post-cutover those either silently compile or ICE;
+     either way the empty-diff proof fails. 33 further raise sites in those
+     files have no case witnessing them.
+   - `class_const` / `final_global` fallback is excluded from the ratchet by
+     design, so it never fails a case and never moves the dial. Measured small
+     (about 1 in a 250-case sample, 1 in the stdlib), but it blocks commit 2.
+   - `tests/interop/*/expected/` is authored by the real CLI at the default
+     `thir_codegen=False`; commit 1 must flip that default too.
+7. **Teardown. 15,887 lines net, and NOT the hard part** -- roughly a week of
+   mechanical work. The body/skeleton boundary is already drawn and enforced by
+   the committed gate. 13 shared helpers (302 lines) are pure predicates that
+   relocate cleanly; 41 AST arms and 36 guards delete outright; 6 seam sites
+   collapse into a direct THIR emit. Six functions (686 lines) are structurally
+   BOTH and must be re-homed rather than deleted.
+   **The D4 inventory this item refers to is stale in every number and missing
+   about half the surface** -- it predates the stdlib gate, the cutover gate,
+   both audit modules, the migration scripts and two CI rows. Rewrite it before
+   executing it.
+   Post-cutover `ThirUnsupported` becomes an internal error with no fallback
+   behind it, so every reachable raise site turns into a hard compile failure
+   on user source. There are **651 raise sites**, and the split was MEASURED
+   2026-08-29 by `scripts/thir_migration/thir_reject_reach.py` (committed).
+   The result reframes this item rather than sizing it:
+   - **Only 16 of 651 sites are reached by any program we compile.** 633 are
+     never reached by the corpus or the stdlib at all. Adding the 275 THIR
+     unit-test files -- the only population that reaches a raise site ON
+     PURPOSE -- takes it to 279 reached / 372 unreached.
+   - **The reason the unreached bucket is huge is structural, and it gets
+     WORSE as the migration improves.** THIR raises only to reject: 29,829
+     routed attempts produced zero raises. A corpus case reaches a site only
+     by falling back, which the per-case ratchet forbids and the saturated
+     dial makes impossible. **The healthier the migration gets, the blinder
+     the program corpora become.** The pin corpus strictly dominates them for
+     reach, so boundary pins are not extra rigor -- they are the only
+     instrument that still sees anything.
+   - **A valid, passing, snapshot-tested case is already an ICE-in-waiting.**
+     `CH: Final[Char] = Char(65)` -- ordinary Python at a module-level Final --
+     reaches a raise site today and survives ONLY because `final_global` sits
+     in `NON_RATCHET_COMPONENTS`. Those two non-ratcheted components are the
+     one hole through which a valid program can reach a fallback, and this is
+     what came through it. Ten more sites are ordinary stdlib code that will
+     ICE the moment the stdlib routes.
+   - The fatal-capable set is **238**, not 203: a site reached only as the
+     inner decider of a recomposed reject still kills the body through its
+     composer.
+   - **Driving the unreached set to zero is 200-400 engineer-hours with no
+     set-cover shortcut** -- the densest arm grouping tops out at 9 sites. But
+     not all 372 want a widened arm: a defensive tail like `stmt.unhandled`
+     should become a DELIBERATE diagnostic, not new lowering. Triaging
+     widen-vs-diagnose is a read, roughly 15 hours, and is the cheaper first
+     pass.
+   - **Cheapest thing that stops the bleeding: ratchet the reached SET.** The
+     instrument's JSON is the artifact; reached -> unreached means a dead arm,
+     unreached -> reached means new evidence.
+   - **The structural argument this raises, which is a decision rather than a
+     task:** after cutover a reject becomes an observable compile error, so
+     the corpus REGAINS reach and pins get easy; before cutover it is
+     invisible. That argues for a STAGED cutover -- AST emitter still present
+     but a loud diagnostic on any fallback -- so the first 372 discoveries
+     land on us rather than on users.
+8. **The position-enumeration matrices. The premise is wrong in the direction
+   that matters: cutover deletes THREE detectors, not one.** The corpus
+   byte-diff is named; `tpyc/move_audit.py` and `tpyc/binding_audit.py` are
+   not, and both are dual-path joins whose AST-side recorders live inside the
+   deleted emitter. `move_audit`'s own docstring calls itself the ONLY detector
+   for its divergence class. Three matrices lose their sole net on the cutover
+   commit while this checklist reads as satisfied.
+   - **Coverage measured by a committed instrument**
+     (`scripts/thir_migration/thir_matrix_reach.py`), which patches the
+     predicate, records (site, class) on every TRUE verdict and sweeps the
+     corpus plus the stdlib. Wide pointee accessor: **102 of 350 cells**
+     (35 sites x 10 classes), 33 of 35 sites, **9 of 10 classes**. Ptr-union
+     sibling: 43 of 117, 11 of 13 sites, 9 of 9 classes. 28 pointee cells are
+     witnessed exactly ONCE. Only `char` has no witness anywhere; the stdlib
+     adds exactly one cell the corpus does not.
+     **An earlier figure of "32 of ~140 cells, five of ten classes never
+     reached" is RETRACTED, not refined.** It came from a sweep in which 214
+     of 700 sampled cases silently failed for want of per-case options -- a
+     third of the population dropped, which is the instrument failure this
+     project keeps paying for. Layering the options removes the class of
+     failure entirely. Read a zero as absence of witness, never as proof of
+     deadness: the script cannot separate unreachable from untested and says
+     so in its own output.
+   - **There are at least NINE such matrices, not the two named here.** The
+     largest is the arg-table's family x row space. **Three different cell
+     counts are in circulation and they do NOT conflict -- they are three
+     KEYS**, which is this project's oldest recurring error: 359 is the count
+     of `_ArgRow(...)` constructions, 194 the distinct row NAMES, and ~386 the
+     (family, row) CELLS, since a shared row counts once per family carrying
+     it. An older entry's 367 is the cell count on an earlier tree. Name the
+     key or the figure means nothing. The table's own module docstring states
+     this item's hazard verbatim. It is not probe-sweepable; it needs a
+     coverage assertion.
+   - The `_name_read_deref` caveat here went stale ONE DAY after it was
+     written: the inversion landed 2026-08-05. It discharges the class axis,
+     not the position axis, which is the larger one.
+   - Sweeping the two named matrices is 30-55 focused hours, measured from a
+     real probe batch with a 37% first-draft yield. **Prefer partition tests
+     over a sweep**: a sweep proves today's tree and rots on the next widening,
+     while this repo already has two precedents for a total-partition test that
+     FAILS when a new member appears. Three of the matrices admit that
+     treatment for 1-2 days.
 
-   **Beware the counting key when comparing figures across instruments.**
-   `thir_stdlib_fallback.py` dedupes by `(module, name)`, worst sighting
-   winning; a per-body-instance count (overload specializations listed
-   separately) reads higher for the same tree. Two numbers from different
-   keys are not a delta.
-
-   The "re-measure with a using corpus" instruction is CONSUMED and the FLOOR
-   caveat is RETIRED for the fallback count: a 495-case corpus sweep found
-   ZERO fallback bodies the import-only sweep had not already seen, and the
-   reason is mechanical -- `iter_module_callables` attempts each callable
-   once per module, so instantiation count cannot change the body
-   POPULATION. (The caveat still stands for DIVERGENCE, which is
-   emission-driven.) The prerequisite -- zero divergence -- is met and now
-   gated; see the 2026-08-25 entry.
-3. Interop corpus: its own dial to migrated (tallied separately).
-4. The skeleton call-site inventory above, ground to zero.
-5. `faces.py` call-site increment fix (an arm that witnesses before it can
-   raise reads as covered) + pins for the nine zero-witness faces -- both
-   filed in TODO.md; after teardown faces.py is the primary internal net,
-   and a detector reporting false coverage is worse than none.
-6. The two-commit cutover per Gate D4: flip snapshot authorship to THIR
-   with the `git diff tests/cases` EMPTY proof, then delete the body
-   emitters in a commit touching no `expected/` file.
-7. Teardown per the D4 inventory. Post-cutover, `ThirUnsupported` is an
-   internal compiler error: new language features land sema + THIR lowering
-   together -- there is no fallback to hide behind.
-8. Adversarial dualgen sweep over the POSITION-ENUMERATION matrices before
-   the AST path goes: the wide pointee accessor's consumer positions and
-   `_name_read_deref`'s admission classes have only ever had their
-   completeness demonstrated by the corpus byte-diff (three waves each
-   caught a missed position reactively) -- at cutover that detector is
-   deleted, so the sweep is the last chance to prove the matrices closed
-   (2026-08-04 retro; moot for `_name_read_deref` if the inversion filed
-   in TODO.md lands first).
-
+**Honest total: 4-6 weeks if the decisions come promptly**, with two genuinely
+unknown quantities that could move it either way -- the 33 unwitnessed
+diagnostics, and the never-reached bucket of the 651. The critical path is NOT
+the deletion. It is the four `gen_async.py` decisions and the error-diagnostic
+re-homing, both of which are blocked on judgement rather than effort.
 What changed NOW rather than at the checklist: `--thir-codegen` implies
 `--thir-stdlib` (the stdlib oracle rides every measurement run instead of
 depending on someone remembering a flag; ~10-15% wall on a comp-only run)
 and the measurement run prints the migrated-case dial it previously
-omitted. Grind economics stay settled per D4: byte-identity holds for
+omitted. [Both halves superseded 2026-08-25, by the entry near the end of
+this file: the wide stdlib oracle is now DEFAULT-ON for every run (with
+`--no-thir-stdlib` as the opt-out and `--thir-stdlib` a no-op/force), so it
+no longer rides on `--thir-codegen`; and the `~10-15%` figure was measured
+and found stale by 2-3x -- the real cost is `+14.0s of 273.3s = +5.1%`
+comp-only.] Grind economics stay settled per D4: byte-identity holds for
 every cell until cutover commit 1 -- the diff-empty proof is the only
 cheap proof the cutover has, and output-equivalence would destroy it.
 

@@ -1,6 +1,6 @@
 ---
 name: tpy-thir-wave
-description: Grind one THIR raise site to zero -- histogram where a blocker tag actually rejects, widen the lowering arm for the biggest site, flip the newly-clean cases, verify. Invoke when the user wants THIR migration pushed forward.
+description: Grind one THIR raise site to zero -- resolve where a blocker reason is actually decided, widen the lowering arm for the biggest site, re-arm the ratchets, verify. Invoke when the user wants THIR migration pushed forward.
 ---
 
 # /tpy-thir-wave
@@ -8,28 +8,61 @@ description: Grind one THIR raise site to zero -- histogram where a blocker tag 
 Grind ONE raise site to zero. The doctrine (metric, contract, anti-patterns)
 is CLAUDE.md's "THIR migration" section -- read it, do not re-derive it.
 
+## The corpus is done; the live population is the STDLIB
+
+`no_thir.txt` markers are at ZERO repo-wide and the case dial is saturated
+(3746/3746, interop 34/34). **Nothing below that selects work from
+`tests/cases` can select anything**: every corpus-scoped probe here filters on
+`no_thir.txt`, so it now measures the empty set and prints a clean sheet that
+reads as "nothing to do". The remaining population is stdlib bodies
+(`lib/tpy`), measured by `tests/test_thir_stdlib_gate.py` (per-body ceiling +
+routed floor) and the nightly's collapsed twin. The tail there is small and
+DECISION-bound, not admission-bound: read it before assuming a wave fits.
+
 ## Argument
 
 A blocker tag (`body:expr.call`) or a specific site (`expressions.py:6982`).
-No argument: pick the biggest tag from the fallback tally itself -- reject reasons now compose their blocking shape, so the tally names the shape without a probe. Fall back to `probe_sites.py` only for a tag whose reason is still bare.
+No argument: read the biggest reason off the stdlib gate's own failure report
+(`_fallback_report`, or the per-body JSON from
+`scripts/thir_migration/thir_stdlib_fallback.py`) -- reject reasons compose
+their blocking shape, so the tally names the shape without a probe. Then
+resolve where that reason is DECIDED with
+`scripts/thir_migration/thir_stdlib_sites.py`: a composed tag names where a
+reason was FORMATTED, and once the tail is near 1:1 per reason the paying unit
+is the shared raise SITE, not the tag.
 
 ## Standing directive
 
-Keep grinding cases at the chosen site until none rejects there, then stop.
+Keep grinding bodies at the chosen site until none rejects there, then stop.
 Do not pause between cells to ask. Do not set a unit target. Stop early only
 for a design fork (a new concept or behavior split) -- present it, don't
 improvise.
 
-## Scripts (`scripts/`, run from the repo root)
+## Scripts
+
+Live instruments (`scripts/thir_migration/`, run from the repo root):
 
 | Script | Job |
 |---|---|
-| `probe_corpus.py` | per-case blocker map -> `blockers.json`. ~5 min. Once per session. |
-| `probe_sites.py "<tag>"` | **where** that tag's sole-blocker cases actually reject, ranked. ~4 min. FALLBACK instrument: it exists because `expr.call` / `expr.method_call` carried no detail, and they now do. Reach for it only when a reason is bare. |
-| `sites_multi.py [prefix]` | per-case raise-site SETS over every marked case (soles AND multis) + a greedy set-cover ranking. The paying view when cases have several blockers; `probe_sites.py` only sees sole-blockers. |
-| `probe_one.py <case>...` | per-case fallback reasons + snapshot byte-diff. The per-edit smoke: a flip candidate prints CLEAN and IDENTICAL. |
-| `probe_loc.py <case>...` | every `ThirUnsupported` raised, with reason + source line. Decodes a lossy tag. |
-| `dualgen.py <file.py>` | THIR-vs-AST diff over a scratch program. The only check for an admitted shape with no corpus witness. |
+| `thir_stdlib_fallback.py` | the standalone stdlib sweep: per-body JSON, routed / fallback(reason) / not-attempted, `--max-fallback N`. Counts on the sweep's NAME-COLLAPSED key (the nightly's key), not the gate's per-body key. |
+| `thir_stdlib_sites.py [mod,...]` | raise-site spy over that sweep: where each reject is DECIDED, not where it was formatted. The first move on the live tail. Blind to the resumable / simple-generator frame gates (they `_reject()` without constructing a `ThirUnsupported`) -- find those by grepping the reason string. |
+
+Still live, corpus-independent:
+
+| Script | Job |
+|---|---|
+| `dualgen.py <file.py>` | THIR-vs-AST diff over a scratch program. The only check for an admitted shape with no corpus witness, and the only one that does not need a marked case. |
+| `probe_file.py <file.py>` | reject reasons + raise sites for an arbitrary scratch program. |
+| `probe_loc.py <case>...` / `probe_site.py <case>...` | every `ThirUnsupported` raised in a NAMED case, with reason + source line (+ raise site). Still works on any case you name -- it does not read markers. |
+| `probe_one.py <case>...` | per-case fallback reasons + snapshot byte-diff, for a case you name. |
+| `probe_interop.py <case>...` | the interop twin of `probe_loc.py` (interop cases live at a different path and compile with `no_main`). |
+
+INERT while markers are at zero -- each enumerates only `no_thir.txt`-marked
+cases (or reads `blockers.json`, which those produce), so it now reports an
+empty corpus rather than an error: `probe_corpus.py`, `probe_sites.py`,
+`sites_multi.py`, `probe_site_units.py`, `probe_slot_families.py`,
+`cluster_reject.py`. They are kept because a future un-migrated case
+re-arms them; do not read an empty result as "no work left".
 
 ## The instruments lie in four known ways
 
@@ -47,8 +80,10 @@ discards its own work.
    reads `0/0`.
 2. **The census cannot see resumable frame-gate rejects at all.**
    `resumable.py`'s `_reject` does `note(reason); return None` and never
-   constructs a `ThirUnsupported`, which is what `sites_multi.py` hooks. Every
-   generator/async case's site set is a LOWER BOUND missing a whole class.
+   constructs a `ThirUnsupported`, which is what every raise-site spy hooks --
+   `thir_stdlib_sites.py` and `sites_multi.py` alike. Any generator/async
+   body's site set is a LOWER BOUND missing a whole class; those sites have to
+   be found by grepping the reason string.
 3. **`move_audit` is structurally blind at copy/alias-position arms and at the
    ctor MIL** (`joined=0` / the join count does not move when those bodies
    start routing) -- the AST asks no move question there, so the join
@@ -62,6 +97,11 @@ discards its own work.
    an explicit `cmp=N`.
 
 ## Picking work
+
+These were learned on the case corpus. The reasoning transfers to the stdlib
+tail; the numbers and the "sole-blocker case" vocabulary do not -- there the
+unit is a BODY, and the tail is small enough that the ranking question is
+mostly replaced by "is this row decision-bound or admission-bound?".
 
 - **Rank by ABLATION, never by census count.** The sole-site label is a
   HYPOTHESIS: lowering aborts at the first `ThirUnsupported`, so a second
@@ -81,8 +121,12 @@ discards its own work.
 
 ## Loop
 
-1. **Pick the site.** Read it off the composed reason first; `probe_sites.py "<tag>"` only if the reason is bare. Take the top row. Open two or
-   three of its cases AND their `expected/*.cpp` oracle before writing code.
+1. **Pick the site.** Read the reason off the stdlib gate's report, then
+   resolve the deciding site with `thir_stdlib_sites.py`. Take the top row.
+   Open two or three of its BODIES in `lib/tpy` and the AST-emitted C++ they
+   produce before writing code. (One shared site routinely holds several
+   unrelated rows -- read each ladder before cutting a lane.) For a named
+   `tests/cases` case, `probe_loc.py` / `probe_one.py` still work.
 2. **Read the AST arm you are mirroring**, and grep the THIR tests for pins on
    that boundary. Grep by the construct/type SHAPE (the source pattern, the
    payload type, the callee name), NOT just the boundary-marker tags
@@ -96,7 +140,8 @@ discards its own work.
    over-capturing a routed shape, two stale fence pins) were each caught a
    full corpus/suite run later than this check would have.
 3. **Widen the arm.** Register any new face in `tpyc/thir/faces.py`.
-4. **Smoke:** `probe_one.py` every case at the site, then `dualgen.py` on
+4. **Smoke:** re-run the stdlib gate (or `thir_stdlib_fallback.py --modules
+   <mod>`) for a stdlib row, `probe_one.py` for a named case, then `dualgen.py` on
    adversarial inputs around the new boundary. Byte-identity via FALLBACK is
    not routing -- check the fallback line, with the RIGHT counter for the
    shape (see "The instruments lie"). **Disable-and-dualgen every NEW
@@ -115,7 +160,7 @@ discards its own work.
    in a predicate shared with the free-call loop, which hoists a temp where
    the ctor passes bare).
 5. **Chain-walk.** Clearing one blocker promotes the next; keep going on the
-   same cases until CLEAN or the chain leaves this site.
+   same bodies until CLEAN or the chain leaves this site.
 6. **Pin:** routing + byte-identity + boundary units for every new arm.
    Every dualgen boundary probe becomes a COMMITTED pin before the cell
    commit -- probe-only boundary evidence has slipped through three review
@@ -164,14 +209,22 @@ Repeat 3-7 until the site is empty.
 
 ## Finish
 
-- `--thir-check-flip --no-exec`, delete the listed `no_thir.txt`, ratchet-verify
-  with `pytest --no-exec -k <names>`, commit the flips.
-- Full suite with exec (`rpytest -q`). Re-run `--thir-check-flip` if lowering
-  changed after the last harvest -- the ratchet proves no WRONG flip, not that
-  none was missed.
+- **Re-arm the three stdlib ratchets in the same commit**, or the next wave
+  measures against slack: `MAX_FALLBACK_BODIES` and `MIN_ROUTED_BODIES` in
+  `tests/test_thir_stdlib_gate.py` (per-BODY key) and `--max-fallback` in
+  `ci/nightly/configs.json` (the sweep's NAME-COLLAPSED key). The gate asserts
+  the two keys stay unequal on purpose -- do not "align" them. Ceiling and
+  floor must move by the SAME amount: that is what separates real routing from
+  bodies dropping out of classification. Update the measured numbers in the
+  comments beside them too; they have gone stale on the last two waves.
+- If a `no_thir.txt` marker exists again: `--thir-check-flip --no-exec`, delete
+  the listed markers, ratchet-verify with `pytest --no-exec -k <names>`, commit
+  the flips. At zero markers this step is a no-op, not a signal.
+- Full suite with exec (`rpytest -q`).
 - `/tpy-review`, apply routine findings as ONE commit.
 - Add a wave entry to `docs/THIR_COMPLETION_LEDGER.md`.
-- Report: site, cases cleared, dial delta. The merge is always the user's.
+- Report: site, bodies cleared, fallback delta (naming WHICH key). The merge is
+  always the user's.
 
 ## Hard rules (each paid for)
 

@@ -30,6 +30,22 @@ arm next to an open one would read as wholly open (or wholly discharged).
 
 Adding a call fails this test on purpose. Discharging one means deleting its
 entry here in the same change.
+
+KNOWN LIMIT -- ONE DIRECTION ONLY. The scan walks skeleton -> body-emitter
+calls. It does not see the reverse dependency: THIR lowering IMPORTS from the
+four deleted modules at production sites (predicates and constants pulled out
+of `expressions` / `builtins`, and the `match` helpers), and nothing scans
+that. An empty OPEN set therefore means "no skeleton call survives routing",
+NOT "the four modules are unreferenced". Those imports have to be inventoried
+and relocated separately before the deletion commit -- the shared home for
+what both layers need is `emit_prims.py`, guarded by
+`test_shared_prims_module_never_names_a_body_emitter` below.
+
+Also out of scope here, and easy to under-count when scoping the cutover: the
+deletion takes THREE cross-path detectors with it, not just the corpus
+byte-diff. `move_audit.py` and `binding_audit.py` are dual-path joins whose
+AST-SIDE recorder lives inside the emitter being deleted, so each loses one of
+its two sides. `dualgen.py` has the same problem -- it needs two authors.
 """
 from __future__ import annotations
 

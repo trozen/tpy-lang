@@ -90,7 +90,7 @@ MAX_MACRO_MODULES = 20
 # beating it passes, so routing progress never needs a config edit (lowering the
 # number is a deliberate, reviewed one). Measured 2026-08-28 (round three).
 #
-# 21, not the 17 the standalone sweep reports: that script merges its per-entry
+# 16, not the 15 the standalone sweep reports: that script merges its per-entry
 # results with `merge_module`, which keys on the BARE body name, so every
 # same-named body in a module (overloads, one method name across several records)
 # collapses to its worst sighting. Deleting the AST body emitter needs each BODY
@@ -100,7 +100,9 @@ MAX_FALLBACK_BODIES = 16
 # The ratchet's blind spot: a sweep that stops classifying reports FEWER
 # fallbacks and so reads as progress. Assert on the work done, not just on the
 # number -- same guard, same reason, as the script's MIN_MODULES_MEASURED.
-# Measured: 2843 bodies, 1224 routed over 88 body-bearing modules.
+# Measured 2026-08-28: 2843 bodies, 1229 routed over 88 body-bearing modules.
+# Re-measure and re-arm BOTH numbers with the ceiling -- a floor left behind
+# while the ceiling drops is slack, and the two must move by the same amount.
 #
 # The routed floor is a RATCHET at the measured value, not slack: left loose it
 # drifts behind, and a floor hundreds of bodies below the truth cannot catch the

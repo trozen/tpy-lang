@@ -3903,14 +3903,30 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
     """The WIDENED Optional-pointee class for the RETURN/DECL/COND-scoped
     rows: F1 records (the base slice), wrapper-union-likes, open type
     params (the force_pointer_repr `T | None` slots), @dynamic protocols,
-    and containers. Every consumer render is member-shape-blind (`T*`
-    spellings via render_type, `nullptr` compares, `optional_to_ptr`
-    lifts, the bare pointer pass): the return facts, the decl/reseat
-    rows, the None-test rows, the print OPT_PTR row (whose Formatter
-    template args are a pure function of the pointee type), the param
-    pointer seed and the deref-name arg row. The narrow
-    `_optional_ptr_borrow` keeps the F1 slice for the arg faces whose
-    renders ARE pointee-shaped (the ctor temp's spelled type)."""
+    containers, and concrete scalars/Chars.
+
+    The class exists because the renders that key on it are typically
+    member-shape-blind -- `T*` spellings via render_type, `nullptr`
+    compares, `optional_to_ptr` lifts, the bare pointer pass -- so one
+    predicate serves the return facts, the decl/reseat rows, the None-test
+    rows, the print OPT_PTR row (whose Formatter template args are a pure
+    function of the pointee type), the param pointer seed and the
+    deref-name arg row. The narrow `_optional_ptr_borrow` keeps the F1
+    slice for the arg faces whose renders ARE pointee-shaped (the ctor
+    temp's spelled type).
+
+    "Typically", not "always", and the list above is illustrative, not the
+    consumer set: this and `_optional_ptr_borrow_wide` are called from ~30
+    sites across checks / statements / expressions / resumable / context.
+    Three of them are NOT member-shape-blind, so do not widen the class on
+    the strength of the blindness argument alone -- check them:
+      * `resumable.py` re-narrows the wide verdict to list/dict/set inners
+        for the OPT_PTR frame-local arm;
+      * `resumable.py`'s narrowed-for-iterable arm uses it to select the
+        pointer form, whose leaf carries a deref the value form does not;
+      * one `statements.py` BRANCH_RVALUE reseat row uses it NEGATIVELY, to
+        EXCLUDE a shape -- there a widening removes admission instead of
+        adding it."""
     if inner is None:
         return False
     iu = unwrap_readonly(inner)
@@ -3945,7 +3961,11 @@ def _optional_ptr_borrow_wide(t: TpyType | None,
     # (`T | None` instantiated at Int32) -- the uses_pointer_repr guard
     # above keeps a normal value-repr `Int32 | None` out, so the scalar
     # class is safe HERE and only here (the storage flavor must leave
-    # scalars to the value-opt facts).
+    # scalars to the value-opt facts). That admission now rides
+    # `_opt_pointee_wide`'s own scalar row, over the same unwrapped inner:
+    # the trailing `or` below is REDUNDANT, not a second class. Left in
+    # place rather than removed as a drive-by; do not read it as a widening
+    # this function performs on top of the accessor.
     return t if (_opt_pointee_wide(inner, analyzer)
                  or _eligible_scalar(inner)) else None
 

@@ -22,6 +22,13 @@ sink that overrides the verdict downstream reads as agreement here while the
 byte-diff differs, so the two checks are complementary and neither subsumes
 the other.
 
+MORTALITY: this is a DUAL-path join, and its AST side
+(`ExpressionGenerator._is_last_use_movable`) lives in the emitter the cutover
+deletes. It cannot survive that deletion as written -- neither can
+`binding_audit.py` or the corpus byte-diff, so the cutover retires three
+cross-path detectors, not one. Whatever replaces them has to be decided with
+the cutover, not after it.
+
 Only a ROUTED body's THIR verdict counts. A body that falls back emits its
 whole tree through the AST path, so its verdicts drove no emitted C++;
 counting them would report divergences that cannot exist. The journal mirrors

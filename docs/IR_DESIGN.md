@@ -4,12 +4,12 @@
 
 | Feature | Status |
 |---------|--------|
-| THIR node definitions (`tpyc/thir/nodes.py`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value) |
-| AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value w/ resolved-local-type tracking) |
-| `--dump-thir` debug output | Done (increment 1) |
-| THIR-backed codegen context | Increments 1-5+ -- default-on per-case for user modules (`tpyc/thir/emit.py`) |
-| Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 (2026-06) onward landed; form ladder well past F6/unions/tuples** -- the per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
+| THIR node definitions (`tpyc/thir/nodes.py`) | Covers the whole body surface the corpus and stdlib exercise |
+| AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Same -- see the fallback tally for what is left |
+| `--dump-thir` debug output | Done |
+| THIR-backed codegen context | Default-on per-case for user modules (`tpyc/thir/emit.py`); `thir_all_modules` lifts the scoping gate for the stdlib sweeps |
+| Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (3746/3746, interop 34/34). **Stdlib: 16 fallback bodies / 1229 routed** (2026-08-28), which is the live metric; the AST body emitter is deleted only at zero |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -29,10 +29,11 @@ which AST body/form codegen component each rung is working toward deleting, what
 gates each deletion, and the registry of deferred cells. This doc is the design
 (plus the distilled migration findings under the Rollout Plan); the ledger is what
 is *left*. Sequence against the ledger, not against routing %. `THIR_EMIT_INVENTORY.md` maps the finite emit surface (the ~380 AST
-codegen dispatch arms to port) with parallel/serial tags and the fan-out plan;
-the shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) measures distinct-shape
-coverage, the honest progress dial (body-count over-states it -- the stdlib links
-into every case).
+codegen dispatch arms to port) with parallel/serial tags and the fan-out plan.
+The shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) measures
+distinct-shape coverage; it was once used as the honest progress dial, but the
+percentage is asymptotic by construction and no longer steers anything. Steer
+by the stdlib fallback tally in `tests/test_thir_stdlib_gate.py` instead.
 
 ## Motivation
 
@@ -762,6 +763,14 @@ async/await union) are migrated FAITHFULLY (byte-identical, bug preserved -- THI
 makes the conversion visible); fixing them is a separate churn-accepting follow-on
 that the migration enables. Migration-complete != bugs-fixed.
 
+**The table below is a SCOPE map, not a status board.** The per-rung "landed"
+tags stopped being maintained after F3, while the corpus went on to route
+unions, generic slots and view locals in practice -- so an untagged F4/F5/F6 row
+means "nobody re-tagged it", not "not started". The one row that is still
+genuinely open is **F-final**: `RefType` is live in `typesys.py` and the AST
+form codegen has not been retired. For what is actually left, read the fallback
+tally, not this table.
+
 | Rung | Scope | Closes (inventory) |
 |------|-------|--------------------|
 | **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
@@ -883,16 +892,26 @@ original "gate-first, whole-body routing, delete at ~100%" shape, whose payoff
   validated option to revisit if whole-body fallback proves too coarse.
 
 **Decision: per-case incremental migration, whole-body fallback.** THIR is
-scoped to *user* modules (lib/tpy + stdlib stay AST -- a stable leaf behind the
-user-code boundary, so a case migrates on its own code, not its imports). A body
-either fully routes THIR or falls back whole to AST (Lever A). Per-case
-`no_thir.txt` markers (managed by `--thir-classify`, un-mark candidates surfaced
-by `--thir-check-flip`) track migration; a case is "clean" iff every user body
-routes with zero fallback. The predictive gate is dropped in favour of Lever A +
+scoped to *user* modules (lib/tpy + stdlib stay AST for EMISSION -- a stable leaf
+behind the user-code boundary, so a case migrates on its own code, not its
+imports). A body either fully routes THIR or falls back whole to AST (Lever A).
+Per-case `no_thir.txt` markers (managed by `--thir-classify`, un-mark candidates
+surfaced by `--thir-check-flip`) track migration; a case is "clean" iff every user
+body routes with zero fallback. The predictive gate is dropped in favour of Lever A +
 inline asserts. The real-build flip to THIR-primary (the enforced sema->codegen
 boundary) is deferred until porting velocity earns it; stdlib THIR is needed only
 for the eventual full AST deletion, not for the near-term separation/debuggability
 win.
+
+*Where that left the tree (2026-08).* The marker scheme has run its course: zero
+`no_thir.txt` remain and the dial reads 3746/3746, so neither the markers nor
+`--thir-check-flip` can select work any more -- they now only guard against
+regression. The stdlib is still AST-scoped for real emission, but it is measured
+and byte-diffed through THIR by two always-on gates (the per-case wide oracle and
+`tests/test_thir_stdlib_gate.py`), and its 16 remaining fallback bodies are the
+live distance to the AST deletion. The remaining tail is decision-bound rather
+than admission-bound (filed defects, design forks, chained sites), which is why
+it no longer shrinks per wave the way the case corpus did.
 
 ##### Ratchet + tiered measurement (2026-07 refinement)
 
@@ -914,7 +933,8 @@ Measurement is separated from emission and tiered so the always-on cost is ~zero
   fallback count for them, but the dial ignores it on purpose: the marker is the
   contract, and a marked-but-clean case is benign porting progress, not a
   regression to fail on. `--thir-check-flip` turns that drift into un-mark
-  candidates.
+  candidates. **SATURATED since 2026-08** (3746/3746, zero markers): the dial
+  still reports, but it can no longer select work -- only regress.
 - **Tier 2 -- exact sweep (whole corpus).** THIR emit + byte-compare runs for
   EVERY case on a plain run -- the marker gates the ratchet, not the overlay,
   because fallback is per-body and a marked case still routes bodies that must be
@@ -1067,8 +1087,13 @@ analyzer coupling:
 - **Before MIR-backed codegen**: MIR must preserve narrowing, structured region tags
   for reconstructable control flow, and both return-tier and throw-tier error handling.
 
+The numbered list below is the ORIGINAL rollout plan, kept for the reasoning
+rather than as a map of the tree: the paths have moved (`tpyc/thir/lower.py`
+became the package `tpyc/thir/lower/`), and `tpyc/mir/` does not exist. Steps
+1-3 are long done.
+
 1. **Define THIR nodes** in `tpyc/thir/nodes.py`
-2. **Implement `lower_module()`** in `tpyc/thir/lower.py`
+2. **Implement `lower_module()`** -- now the `tpyc/thir/lower/` package
 3. **Add `--dump-thir`** to CLI
 4. **Create a `THIRCodeGenContext`** that reads from THIR instead of analyzer
 5. **Migrate codegen modules one at a time** (expressions, statements, functions, records)
@@ -2264,10 +2289,14 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    guards) to simplify reconstruction, rather than recovering structure purely from
    the CFG topology.
 
-4. **Incremental adoption.** Should codegen support both THIR and AST input during
-   migration, or is a big-bang switch acceptable? Recommendation: dual-mode during
-   migration -- each codegen module can be switched independently, verified by running
-   the full test suite.
+4. **Incremental adoption. RESOLVED, and the answer held.** Should codegen support
+   both THIR and AST input during migration, or is a big-bang switch acceptable?
+   Recommendation was dual-mode during migration. That is what was built, but the
+   granularity landed finer than this question imagined: the unit is the BODY, not
+   the codegen module, and the AST path is the ORACLE rather than merely the old
+   path -- every routed body is byte-diffed against it. The cost that was not
+   foreseen here is the exit: three cross-path detectors exist only because two
+   authors do, and all three die on the cutover commit.
 
 5. **Separate THIR and MIR codegen backends.** During Phase 2, codegen switches from
    THIR to MIR. Should both backends coexist permanently (e.g., THIR backend for fast

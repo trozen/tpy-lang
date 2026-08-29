@@ -3,11 +3,17 @@ routing is extended past the user-module boundary.
 
 The migration deliberately scopes THIR to user modules (compiler.py
 `_make_codegen`), so the stdlib surface is invisible to the corpus dial and to
-the ratchet -- yet the AST body emitter cannot be deleted while stdlib bodies
-still need it. This lifts the scoping gate for a MEASUREMENT ONLY: every module
-routes, the generated C++ is DISCARDED (there is no oracle for it -- see the D4
-stdlib-oracle gap), and each body is classified routed / fallback(reason) /
-not-attempted / not-a-candidate.
+the per-case ratchet -- yet the AST body emitter cannot be deleted while stdlib
+bodies still need it. With the case dial saturated this is the LIVE migration
+metric. This lifts the scoping gate for a MEASUREMENT ONLY: every module
+routes, the generated C++ is DISCARDED here, and each body is classified
+routed / fallback(reason) / not-attempted / not-a-candidate.
+
+Discarding the C++ is this script's own choice, not an absence of an oracle:
+stdlib emission is byte-diffed AST-vs-THIR in two other places -- the wide
+stdlib oracle in a plain `uv run pytest` (on by default) and
+tests/test_thir_stdlib_gate.py's one mega-entry compile. There is still no
+COMMITTED stdlib snapshot; the oracle is the same run's AST output.
 
 One entry program per stdlib module (`import <mod>`), so transitive deps are
 covered and a module that fails to compile standalone costs only itself. Bodies
@@ -21,9 +27,10 @@ programs) added zero bodies over this one.
 The COUNT is nonetheless an undercount, for a different reason: `merge_module`
 keys on the bare body name, so overloads and a method name shared across records
 collapse within a module. tests/test_thir_stdlib_gate.py folds this same
-classification into its one mega-entry compile and counts every body (195 vs the
-171 here), which is the number that has to reach zero before the AST body emitter
-can be deleted. That gate runs in every plain `uv run pytest`; this script stays
+classification into its one mega-entry compile and counts every body (16 vs the
+15 here, measured 2026-08-28), which is the number that has to reach zero before
+the AST body emitter can be deleted -- the two keys are NOT comparable, so name
+which one any figure uses. That gate runs in every plain `uv run pytest`; this script stays
 the per-body JSON dump and the standalone sweep, still armed with
 `--max-fallback` by the nightly `thir-stdlib-fallback` row.
 

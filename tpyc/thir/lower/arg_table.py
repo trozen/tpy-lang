@@ -19,9 +19,10 @@ tuple with the predicates' own short-circuit, never a dispatch keyed on a
 computed source classifier, which would have to classify every argument
 before it could dispatch.
 
-`note` is the family's verbatim `note_detail` tail. `probe_sites.py` and
-`probe_corpus.py` histogram on those strings, so a family keeps the tag it
-had.
+`note` is the family's verbatim `note_detail` tail. Every reject histogram --
+the stdlib gate's own fallback report, `thir_stdlib_fallback.py`, and the
+marker-scoped corpus probes -- groups on those strings, so a family keeps the
+tag it had; renaming one silently splits its rows across two buckets.
 
 THE TABLES LIVE WITH THEIR PREDICATES, not here: every row's predicate is
 defined in `checks.py` / `predicates.py`, and `checks.py` needs the finished

@@ -26,6 +26,9 @@ not complete.
 KNOWN LIMIT: the join sees set MEMBERSHIP, not the render decisions keyed on
 it, and only for bodies both paths finished -- it complements the byte-diff
 and the move-verdict join, subsuming neither.
+
+MORTALITY: like the move-verdict join, this needs BOTH paths, and its AST side
+is the emitter the cutover deletes -- see `move_audit.py`'s note.
 """
 
 from __future__ import annotations

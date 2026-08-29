@@ -5,7 +5,10 @@ Controlled by env RESID_ONLY:
   marked   -> keep only cases WITH no_thir.txt
   all/unset -> no filtering
 
-Used to build the A-minus-U residency metric for the THIR migration.
+Used to build the A-minus-U residency metric for the THIR migration. With
+`no_thir.txt` markers at zero the `marked` selection is empty and `unmarked`
+is the whole corpus, so the partition no longer separates anything -- see the
+note in thir_ast_arm_residency.py.
 """
 import os
 

@@ -15,6 +15,12 @@ it costs ~4 minutes.
 Usage (from the repo root, after probe_corpus.py):
     uv run python .claude/skills/tpy-thir-wave/scripts/probe_sites.py \
         "body:expr.call"
+
+INERT while `no_thir.txt` markers are at zero (they are, repo-wide): the
+population this enumerates is empty, so it prints a clean sheet rather
+than an error. Do not read that as "no work left" -- the live THIR
+fallback lives in the stdlib and is measured by
+tests/test_thir_stdlib_gate.py and scripts/thir_migration/.
 """
 import collections
 import dataclasses

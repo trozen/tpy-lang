@@ -4,6 +4,13 @@
 Measures how much of tpyc/codegen_cpp/ still fires ONLY because THIR
 falls back to the AST emit path -- i.e. the AST emit code left to delete.
 
+INERT AS WRITTEN. The subtraction partitions `tests/cases` by `no_thir.txt`,
+and there are none left: U and A are then the same run, so RESIDENCY is
+identically zero whatever the tree. It measures nothing until either a marked
+case exists again or the partition is re-keyed off something else (the stdlib
+sweep, which is where the remaining fallback lives, has no marker at all).
+Reviving it means replacing the partition, not re-running it.
+
 Method (A-minus-U subtraction):
   U (baseline) : codegen_cpp coverage under --thir-codegen, UNMARKED cases only
                  (ratchet => zero fallback => pure THIR shared-helper usage).

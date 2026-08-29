@@ -111,7 +111,15 @@ def ratchet_total(fallback: 'dict[str, int]') -> int:
 
 
 class ThirUnsupported(Exception):
-    """A lowering-time rejection that routes the whole body to AST codegen."""
+    """A lowering-time rejection that routes the whole body to AST codegen.
+
+    Two facts about the population, both unaudited and both easy to trip over
+    when scoping the cutover: there are ~650 `raise ThirUnsupported` sites and
+    nobody has checked which are still REACHABLE, so a residual-by-grep count
+    over-states the remaining work; and ~25 handlers INSIDE `tpyc/thir/` catch
+    it as an internal retry rather than as a body-level reject, so a raise is
+    not always a fallback.
+    """
 
     def __init__(self, reason: str, *, detail: bool = False) -> None:
         super().__init__(reason)

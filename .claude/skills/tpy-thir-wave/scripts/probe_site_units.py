@@ -12,6 +12,12 @@ Attribution mirrors the fallback module's own coarseness contract: the FIRST
 Usage (from the repo root):
     PROBE_PROCS=10 uv run python \
         .claude/skills/tpy-thir-wave/scripts/probe_site_units.py [reason-prefix]
+
+INERT while `no_thir.txt` markers are at zero (they are, repo-wide): the
+population this enumerates is empty, so it prints a clean sheet rather
+than an error. Do not read that as "no work left" -- the live THIR
+fallback lives in the stdlib and is measured by
+tests/test_thir_stdlib_gate.py and scripts/thir_migration/.
 """
 from __future__ import annotations
 

@@ -935,6 +935,12 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
         if has_errors:
+            # NOTE: this returns ahead of BOTH emits, so an `error_*` case has
+            # never been lowered through THIR -- not once, by any run. The
+            # overlay, the ratchet and the byte-diff all measure only cases
+            # that reach codegen. Any CodeGenError raised from inside the AST
+            # body emitters therefore has no THIR counterpart and no coverage;
+            # that gap has to be closed before the emitters are deleted.
             return CompileResult(success=False, diagnostics=diagnostics)
 
         # AST is ALWAYS the emitted + oracle artifact: it feeds exec and is
@@ -1073,7 +1079,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         thir_routed_names = (dict(compiler._thir_routed_names)
                              if thir_active else None)
 
-        # Stdlib oracle (--thir-stdlib): regenerate the NON-local modules
+        # Stdlib oracle (ON by default; --no-thir-stdlib turns it off, and a
+        # bare --thir-stdlib is the explicit force): regenerate the NON-local modules
         # through THIR and hand test_case both paths to byte-compare. Runs
         # AFTER every record_thir_* call above -- stdlib bodies would otherwise
         # land in the same tallies the dial and the ratchet read.
@@ -2769,10 +2776,12 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             # the gate rejected, by first-reject reason -- the measured gap to
             # each deletion target ("body" = gen_body/gen_expr, "ctor" = the
             # MIL emit). A coverage-query metric like faces/shapes, so it hides
-            # behind the same flag: the default run's fallback is dominated by
-            # the marked cases it now also routes, which is three long lines of
-            # standing backlog, not news about this run. ($THIR_FALLBACK_JSON
-            # still dumps whole-corpus counts from any run that asks for them.)
+            # behind the same flag: it measures standing migration backlog, not
+            # the run that emitted it. With markers at zero the user-body
+            # backlog is nearly empty; the live fallback is in the STDLIB,
+            # which this corpus tally does not reach (see
+            # tests/test_thir_stdlib_gate.py). ($THIR_FALLBACK_JSON still dumps
+            # whole-corpus counts from any run that asks for them.)
             fallback = dict(_thir_fallback)
             for key, n in _thir_fallback_agg.items():
                 fallback[key] = fallback.get(key, 0) + n
@@ -2846,9 +2855,11 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                         f"to {arm_dump}"
                     )
             # Distinct-SHAPE coverage: the de-inflated complement of the routed
-            # count (which repeats the stdlib body per case). `R/T distinct
-            # shapes routed` is the honest progress %; the top blocked shapes are
-            # ranked by which reject reason blocks the most DISTINCT shapes.
+            # count (which repeats the stdlib body per case). The top blocked
+            # shapes are ranked by which reject reason blocks the most DISTINCT
+            # shapes. The `R/T` percentage was once read as the progress dial;
+            # it is asymptotic by construction, so treat the blocked-shape
+            # ranking as the useful half and ignore the percentage.
             shapes = dict(_thir_shapes)
             _fold_shapes(shapes, _thir_shapes_agg)
             if shapes and THIR_IGNORE_MARKERS:  # whole-corpus metric (see faces)

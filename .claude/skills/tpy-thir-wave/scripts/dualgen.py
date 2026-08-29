@@ -9,6 +9,10 @@ the corpus green. A non-empty `fallback` line means the shape fell back --
 byte-identity via fallback proves routing did NOT happen, not that the arm
 is correct.
 
+Needs BOTH emit paths, so it does not survive the AST body-emitter deletion as
+written -- like the move-verdict and binding joins, its replacement is part of
+the cutover decision, not a follow-on.
+
 Usage (from the repo root):
     uv run python .claude/skills/tpy-thir-wave/scripts/dualgen.py \
         /tmp/agents/thir-wave/smoke/main.py

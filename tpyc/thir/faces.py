@@ -14,6 +14,18 @@ render is
 the bare arg shared with the pass-through emit, so admission is the only
 distinguishing site; `flush.*` record when a flushable
 statement position's lowered value actually carries a hoisted arg temp.
+The admission-time kind is NOT a small exception: a large minority of the
+registry witnesses at a GATE, so "witnessed" there means a row was ADMITTED,
+not that its render ran. Read the registry comment before treating a witness
+count as render coverage.
+
+CENSUS SCOPE, and it inflates the zero-witness list: the harness folds
+witnesses only from the per-case USER-module overlay. The stdlib sweeps --
+conftest's wide stdlib oracle (which runs deliberately AFTER every
+`record_thir_*` call, so stdlib bodies stay out of the dial and the ratchet)
+and `tests/test_thir_stdlib_gate.py` -- reach many more faces and fold none of
+them in. A sizeable share of the reported zero-witness faces are in fact
+exercised by the stdlib. Check there before writing a unit for one.
 
 Every kind is journalled per lowering attempt and ROLLED BACK when the body
 falls back (`rollback_witnesses`, driven from fallback.py's attempt
@@ -21,6 +33,17 @@ boundaries): a fallback emits its whole tree through the AST path, so an arm
 it merely reached covers nothing. Without that, an arm witnessing before it
 can raise reads as covered when it never lowered -- which is how a dead arm
 passed this very check.
+
+RESIDUE, measured and real: `lower_module` -- the whole-module entry only the
+lowering UNIT TESTS drive (`testutil._lower_ctx*`) -- opens no attempt window,
+so witnesses recorded under it are never journalled and never rolled back
+(~694 escape per suite run). The whole-corpus census is unaffected: it folds
+only the compiler-driven path, which IS bracketed at every fallback seam. What
+this weakens is the unit-level routing pin: a face read out of
+`_lower_ctx_witnessed` counts even when the body that reached it then raised
+and fell back, so witness-count assertions there are not by themselves a
+routing claim -- pair them with `_assert_no_fallback`. Give `lower_module` a
+seam and the gap closes.
 
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
