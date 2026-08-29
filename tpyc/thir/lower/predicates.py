@@ -8691,23 +8691,14 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # temp) -- it rides `_union_pass_through_arg`, not this member-valued row.
     if isinstance(a, TpyName):
         if a.name == "self":
-            # `f(self)` at a value-union slot: the AST hoists the temp from
-            # the DEREF'd receiver (`__tmp_N = (*this);`) while the temp row's
-            # init lowers the bare receiver read (`this`) -- the retag the
-            # ordinary arg tail applies has no twin inside the ArgTemp. Decline
-            # here so the gate and the temp row decline together and the body
-            # stays on the AST path, rather than spelling a raw `Record*` into
-            # a by-value variant slot.
-            #
-            # The retag alone does NOT let this fence go: applying it at both
-            # ArgTemp rows makes the two known witnesses byte-identical, but
-            # admitting the shape then admits WHOLE BODIES carrying a second,
-            # unrelated gap -- `datetime.ZoneInfo.fromutc` diverges on the
-            # post-if narrow alias, because `_chain_post_if_fact` reads the
-            # CONDITION shape while the AST's post-narrowing arm is
-            # condition-blind (it reads else_type_facts), so an or-chain with a
-            # NEGATED isinstance leaf (`if not isinstance(tz, Z) or tz != self:
-            # raise`) silently emits no alias instead of rejecting.
+            # `f(self)` at a value-union slot declines: admitting it admits
+            # WHOLE BODIES carrying a second, unrelated gap --
+            # `datetime.ZoneInfo.fromutc` diverges on the post-if narrow
+            # alias, because `_chain_post_if_fact` reads the CONDITION shape
+            # while the AST's post-narrowing arm is condition-blind (it reads
+            # else_type_facts), so an or-chain with a NEGATED isinstance leaf
+            # (`if not isinstance(tz, Z) or tz != self: raise`) silently emits
+            # no alias instead of rejecting.
             return None
         dt = locals_.get(a.name)
         dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))

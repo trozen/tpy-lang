@@ -2412,18 +2412,6 @@ def _container_slice_recv_ok(recv: TpyExpr, lc: '_LowerCtx',
             or is_varargs(bare))
 
 
-def _record_subscript_recv(recv: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
-    """The record-subscript receiver at a VALUE position. A plain method's
-    `self` is a `Record*`, and both the record's `operator[]` and the checked
-    setitem dunder need the `(*this)` lvalue -- the same deref the record
-    call-arg and ternary-arm positions apply. A resumable coro's `__self` is
-    already a `Record&` (`self_is_pointer` off) and reads bare, as does a
-    poly-narrowed `self` (lowered to its alias name, not a THIRSelf)."""
-    if isinstance(recv, THIRSelf):
-        return replace(recv, deref=lc.self_is_pointer)
-    return recv
-
-
 def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
     """Mirror ExpressionGenerator._tuple_subscript_yields_borrow_ptr: `std::get<N>(t)`
     is a bare `T*` (member access `->`) iff element N is a plain non-value BORROW_REF
@@ -2499,6 +2487,54 @@ def _subscript_result_form(sub: TpySubscript, rtype: TpyType, lc: '_LowerCtx') -
         return Form.STORAGE
     return Form.BORROW
 
+def _whole_optional_bare(x: THIRExpr) -> THIRExpr:
+    """Strip a NAME read's deref-on-narrow: the WHOLE optional passes bare
+    into a matching optional slot. Scoped to THIRName so it cannot strip
+    another node kind's deref -- a THIRSelf's deref is the receiver's own
+    pointer read, not a narrowing artifact."""
+    return replace(x, deref=False) if isinstance(x, THIRName) else x
+
+
+def _raw_pointer_slot(x: THIRExpr) -> THIRExpr:
+    """Strip the receiver read's deref at a slot that binds the POINTER
+    itself -- a `T*` borrow-tuple element, where `this` passes bare because
+    `&(this)` would be a `T**`. An address-of slot keeps the deref instead:
+    `&((*this))` IS the pointer."""
+    return replace(x, deref=False) if isinstance(x, THIRSelf) else x
+
+
+def _self_recv_positioned(
+        node: 'THIRFieldAccess | THIRMethodCall',
+) -> 'THIRFieldAccess | THIRMethodCall':
+    """Strip the receiver's own deref where the member is reached THROUGH the
+    receiver pointer. `THIRSelf` carries the plain-method deref intrinsically
+    so that every VALUE sink renders `(*this)` without having to know about
+    the receiver; a member behind an arrow wants the raw pointer, and
+    `(*this)->x` would be ill-formed. Keyed on the node's own
+    `receiver_through_pointer`, the same predicate `validate` enforces, so
+    the render and its guard cannot drift. Raw `T*` slots are the OTHER
+    consumer that needs the bare pointer -- `_raw_pointer_slot`, with no
+    guard behind it."""
+    recv = node.receiver
+    if (isinstance(recv, THIRSelf) and recv.deref
+            and node.receiver_through_pointer):
+        return replace(node, receiver=replace(recv, deref=False))
+    return node
+
+
+def _name_recv_is_arrow(obj: TpyExpr, lc: '_LowerCtx') -> bool:
+    """`recv->member` for a NAME receiver: a plain `T*` pointer-local (F2), a
+    proven pointer-repr Optional borrow name (both in `lc.pointers`), or the
+    `self` receiver (a `this` pointer). A poly-narrowed `self` reads through
+    the cast pointer's DEREF (`(*__self_ptr)`), so the access is `.`.
+    Codegen's `is_indirect_name` minus its narrowed carve-out, in one place
+    so the arrow arms cannot disagree with each other."""
+    return (isinstance(obj, TpyName)
+            and (_ptr_read_derefs(obj.name, lc)
+                 or (obj.name == lc.self_receiver and lc.self_is_pointer
+                     and obj.name not in lc.narrow.spelled)))
+
+
 def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     """`recv->field` vs `recv.field`: a plain `T*` pointer-local (F2), a proven
     pointer-repr Optional borrow name (an Optional-ptr param / OPTIONAL_TO_PTR
@@ -2514,13 +2550,7 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     obj = e.obj
     if isinstance(obj, TpySubscript):
         return _subscript_yields_borrow_ptr(obj, lc)
-    return (isinstance(obj, TpyName)
-            and (_ptr_read_derefs(obj.name, lc)
-                 or (obj.name == lc.self_receiver and lc.self_is_pointer
-                     # A poly-narrowed `self` reads through the cast
-                     # pointer's DEREF (`(*__self_ptr)`), so the access is
-                     # `.` -- `this->` belongs to the un-narrowed spelling.
-                     and obj.name not in lc.narrow.spelled)))
+    return _name_recv_is_arrow(obj, lc)
 
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is an `Own[...]`-declared param of the function being
@@ -4240,14 +4270,6 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  if e.op not in ("==", "!=") else None) or _lower_char_targeted(
             e.right, lt_a, lc, declared, use=_cmp_operand_use(e.right),
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
-        # A bare `self` record operand reads by value here (`(*this) < other`,
-        # the synthesized @total_ordering / dataclass compares) -- gen_expr_deref
-        # derefs the pointer receiver in value position, unlike a field/method
-        # receiver where THIRSelf stays bare.
-        if isinstance(left, THIRSelf):
-            left = replace(left, deref=lc.self_is_pointer)
-        if isinstance(right, THIRSelf):
-            right = replace(right, deref=lc.self_is_pointer)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
 
@@ -5018,13 +5040,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     result_type=rtype, name=e.name, cpp=self_spelled,
                     form=Form.BORROW, loc=loc)
             # The method receiver -> `this` (plain method) or `__self` (a
-            # resumable method coro's `Record&` frame field). Reached as a
-            # field-access / method-call receiver and as a record call-arg
-            # (whose tail retags deref for the `(*this)` render), so its
-            # form tag is informational.
+            # resumable method coro's `Record&` frame field). A plain
+            # method's receiver is a POINTER, so the read carries its
+            # value-position deref intrinsically (`(*this)`); the field /
+            # method receiver positions that reach a member through the
+            # pointer clear it via `_self_recv_positioned`.
             _witness("self.this")
             return THIRSelf(result_type=rtype, form=Form.BORROW,
-                            cpp=lc.self_cpp, loc=loc)
+                            cpp=lc.self_cpp, deref=lc.self_is_pointer,
+                            loc=loc)
         gcpp = lc.prescan.global_cpp.get(e.name)
         if gcpp is None and lc.top_level_scope:
             # Module init reads an imported name that this module REDEFINES
@@ -5699,20 +5723,19 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # (proven narrowed-Optional / F2-reseated) joins the first hop
             # with `->`; a plain value binding reads bare `.`.
             _witness("field.user_deref_chain")
-            return THIRFieldAccess(
+            return _self_recv_positioned(THIRFieldAccess(
                 result_type=rtype,
                 receiver=_lower_expr(
                     e.obj, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER)),
                 field_cpp=_field_cpp(e),
-                is_arrow=(isinstance(e.obj, TpyName)
-                          and _ptr_read_derefs(e.obj.name, lc)),
+                is_arrow=_name_recv_is_arrow(e.obj, lc),
                 deref_chain=e.deref_depth,
                 narrowed_deref=narrowed_opt,
                 form=_viewfam_result_form(fa_str),
                 loc=loc,
-            )
-        return THIRFieldAccess(
+            ))
+        return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
             # A call-shaped receiver's own arg temps flush at the enclosing
             # statement (`Holder(__tmp_1).kind`), so allow_temps rides
@@ -5728,7 +5751,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             narrowed_deref=narrowed_opt,
             form=_viewfam_result_form(fa_str),
             loc=loc,
-        )
+        ))
     if isinstance(e, TpySubscript):
         if e.typed_dict_field is not None:
             # `d["key"]` on a TypedDict -> the field access `d.key`
@@ -6093,7 +6116,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     _witness("subscript.narrowed_ptr_opt_recv")
                 return THIRSubscript(
                     result_type=rtype,
-                    receiver=_record_subscript_recv(_lower_expr(
+                    receiver=_lower_expr(
                         e.obj, lc, declared,
                         # A module-attr GLOBAL receiver reads its pointer
                         # slot (`(*environ)[k]`) -- the module-var arm's
@@ -6102,7 +6125,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              if _module_var_recv(e.obj, declared, analyzer)
                              else _ExprUse(indirect_read=rec_optrecv)),
                         field_prechecked=isinstance(e.obj, TpyFieldAccess)),
-                        lc),
                     # A runtime-BigInt key against a FIXED-int key param
                     # narrows here exactly as at a container read
                     # (`p[k]` -> `p[k.to_fixed_check<int64_t>()]`); the
@@ -6503,7 +6525,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("subscript.record_getitem")
             return THIRSubscript(
                 result_type=rtype,
-                receiver=_record_subscript_recv(_lower_expr(
+                receiver=_lower_expr(
                     e.obj, lc, declared,
                     # A pointer-slot LOCAL receiver derefs at the name read
                     # (`(*acc)[0].name` -- the rebind-slot read).
@@ -6511,7 +6533,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         isinstance(e.obj, TpyName)
                         and e.obj.name in lc.pointers)),
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
-                    lc),
                 index=_lower_expr(e.index, lc, declared),
                 record_getitem=True,
                 form=(Form.BORROW if _f1_record(rtype, analyzer)
@@ -8798,8 +8819,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("method.opt_callable_field" if cf_unwrap
                      else "method.callable_field")
             cf_recv = _lower_expr(recv, lc, declared)
-            if cf_self and isinstance(cf_recv, THIRSelf):
-                cf_recv = replace(cf_recv, deref=True)
             return THIRMethodCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 receiver=cf_recv,
@@ -8894,7 +8913,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if d_str is None:
                     d_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_chain")
-                return THIRMethodCall(
+                return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
                         e.obj, lc, declared,
@@ -8905,12 +8924,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             e, a, dfi.params[i].type, i, lc, declared,
                             temp_args=temp_args)
                         for i, a in enumerate(e.args)),
-                    is_arrow=(isinstance(e.obj, TpyName)
-                              and _ptr_read_derefs(e.obj.name, lc)),
+                    is_arrow=_name_recv_is_arrow(e.obj, lc),
                     deref_chain=e.deref_depth,
                     form=_viewfam_result_form(d_str),
                     loc=loc,
-                )
+                ))
             if _user_deref_stub_method_ok(
                     e, declared, lc.narrow.narrowed, analyzer, lc.pointers):
                 # A container-stub MEMBER call through the Deref chain
@@ -8949,13 +8967,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if s_str is None:
                     s_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_stub")
-                return THIRMethodCall(
+                return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
                         e.obj, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER)),
-                    is_arrow=(isinstance(e.obj, TpyName)
-                              and _ptr_read_derefs(e.obj.name, lc)),
+                    is_arrow=_name_recv_is_arrow(e.obj, lc),
                     method_cpp=sfi.native_name,
                     args=tuple(
                         _lower_call_arg(
@@ -8968,7 +8985,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     deref_chain=e.deref_depth,
                     form=_viewfam_result_form(s_str),
                     loc=loc,
-                )
+                ))
             # A receiver-less marker call (module-qualified / static): the
             # classifier selected it through _marker_call_kind, so the same
             # classification names the emit arm -- the pre-rendered
@@ -9166,13 +9183,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             analyzer)
                         and _eligible_scalar(rtype)):
                     _witness("method.no_fi_member")
-                    return THIRMethodCall(
+                    return _self_recv_positioned(THIRMethodCall(
                         result_type=rtype,
                         receiver=_lower_expr(
                             e.obj, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.RECEIVER)),
                         method_cpp=escape_cpp_name(e.method),
-                        args=(), loc=loc)
+                        # An indirect receiver reaches the member through the
+                        # pointer, `self` included -- the fact-free tail still
+                        # renders `_gen_method_call`'s accessor.
+                        is_arrow=_name_recv_is_arrow(e.obj, lc),
+                        args=(), loc=loc))
                 note_detail("method.fi_kind")
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if not _plain_method_fi_ok(
@@ -9643,7 +9664,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                               and fi.native_name)))),
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript))
-        method_node = THIRMethodCall(
+        method_node = _self_recv_positioned(THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
             method_cpp=member,
@@ -9679,7 +9700,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                            and _witness("method.consuming_move")),
             form=_viewfam_result_form(m_str),
             loc=loc,
-        )
+        ))
         if (fi.native_cpp_return_type is not None
                 and fi.return_type is not None
                 and fi.error_return_type is None):
@@ -10415,7 +10436,7 @@ def _lower_dyn_synth_call(call: 'TpyMethodCall', rtype: 'TpyType | None',
                 and _resolved_str_value(declared[name_arg.name], analyzer)
                 is not None)):
         raise ThirUnsupported("getattr.name_shape", detail=True)
-    return THIRMethodCall(
+    return _self_recv_positioned(THIRMethodCall(
         result_type=rtype,
         receiver=_lower_expr(
             recv, lc, declared,
@@ -10425,7 +10446,7 @@ def _lower_dyn_synth_call(call: 'TpyMethodCall', rtype: 'TpyType | None',
                               method_arg=True),),
         is_arrow=is_self and lc.self_is_pointer,
         loc=loc,
-    )
+    ))
 
 
 def _lower_dyn_getattr_call(e: TpyFieldAccess, rtype: 'TpyType | None',
@@ -11340,10 +11361,10 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                                == inner_t))):
                     node = THIROptionalPtrArg(
                         result_type=et_bare, form=Form.BORROW,
-                        value=_lower_expr(
+                        value=_raw_pointer_slot(_lower_expr(
                             elem, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                         ptr_opt_passthrough=True)),
+                                         ptr_opt_passthrough=True))),
                         addr_of=False, loc=getattr(elem, "loc", None))
                 elif (isinstance(elem, TpySubscript)
                       and not isinstance(elem.index, TpySlice)
@@ -11494,10 +11515,12 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # above (its object is a borrow-form tuple, so `std::get<i>` yields
         # the element pointer); the generic tuple-subscript arm has no row
         # for that read on its own.
-        lowered.append(_lower_expr(
+        elem_lowered = _lower_expr(
             elem, lc, declared,
             use=_ExprUse(result=_ExprResultUse.RECEIVER),
-            subscript_prechecked=_btuple_elem_passthrough))
+            subscript_prechecked=_btuple_elem_passthrough)
+        lowered.append(elem_lowered if lift
+                       else _raw_pointer_slot(elem_lowered))
         if consuming and lift and _is_move_source(elem, lc):
             wraps.append("std::move(&({0}))")
             lifts.append(False)
@@ -13164,9 +13187,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # passes the WHOLE optional bare (`take_opt(p)`), even when sema
         # narrowed the read -- the AST's gen_call_arg derefs only for a
         # NON-optional slot. Strip the name arm's deref-on-narrow.
-        return replace(
-            _lower_expr(a, lc, declared, allow_whole_optional=True),
-            deref=False)
+        return _whole_optional_bare(
+            _lower_expr(a, lc, declared, allow_whole_optional=True))
     if _value_opt_tuple_pass_arg(a, ptype, declared, lc.narrow.narrowed,
                                  lc.analyzer):
         # The value-TUPLE sibling of the row above (`s.request(.., auth)`):
@@ -13184,18 +13206,16 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # for a PARAM whose binding is the borrow `optional<string_view>`, the
         # arm below). Strip any deref-on-narrow like the scalar sibling.
         _witness("call.optview_local_whole")
-        return replace(
-            _lower_expr(a, lc, declared, allow_whole_optional=True),
-            deref=False)
+        return _whole_optional_bare(
+            _lower_expr(a, lc, declared, allow_whole_optional=True))
     if _opt_strview_to_str_own_elem_arg(a, ptype, declared, lc.analyzer):
         # The opposite-direction Own-slot face: a VIEW-inner value optional
         # (a local read whole off its binding, or a same-typed call rvalue)
         # into an `Own[Optional[str]]` element slot takes the coercion
         # lambda's non-identity branch -- the once-evaluated `__ov`
         # statement expression that materializes each element.
-        inner = _lower_expr(a.expr, lc, declared, allow_whole_optional=True)
-        if isinstance(inner, THIRName):
-            inner = replace(inner, deref=False)
+        inner = _whole_optional_bare(
+            _lower_expr(a.expr, lc, declared, allow_whole_optional=True))
         _witness("arg.opt_strview_own_shim")
         return THIRCoerce(
             result_type=a.expected_type, expr=inner,
@@ -13219,9 +13239,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # `optional_str_to_strview`, whose Own-slot ARG face is the
         # once-evaluated statement-expression shim (the coercion lambda's
         # non-identity branch).
-        inner = replace(
-            _lower_expr(a.expr, lc, declared, allow_whole_optional=True),
-            deref=False)
+        inner = _whole_optional_bare(
+            _lower_expr(a.expr, lc, declared, allow_whole_optional=True))
         if a.coercion.name == "str_to_strview":
             _witness("arg.opt_view_own_bare")
             return inner
@@ -13259,9 +13278,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # optional passes BARE -- no shim. Stub loops thread the raw param
         # (the exclusion note below) and keep rejecting at their gates.
         _witness("method.optview_whole_arg")
-        return replace(
-            _lower_expr(a, lc, declared, allow_whole_optional=True),
-            deref=False)
+        return _whole_optional_bare(
+            _lower_expr(a, lc, declared, allow_whole_optional=True))
     if (isinstance(a, TpyName)
             and not method_arg
             and _opt_view_arg_shim(_param_declared_type(a.name, lc), ptype,
@@ -13505,7 +13523,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # adapter with the AST's exact spelling (`std::move(*(c))`, the bare
         # name inside the wrap -- not the frame-deref `(*c)` render).
         _witness("call.coro_handle_adapter")
-        inner = replace(_lower_expr(a, lc, declared), deref=False)
+        inner = _whole_optional_bare(_lower_expr(a, lc, declared))
         base = dynamic_base_name(handle_proto, lc.analyzer)
         return THIRCoerce(
             result_type=unwrap_send_sync(ptype), expr=inner,
@@ -14418,12 +14436,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=replace(_NESTED_ARG_USE, indirect_read=True))
     if isinstance(a, TpyName) and a.name == lc.self_receiver:
-        # `self` passed by reference derefs the receiver pointer
-        # (`on_init((*this))`); a resumable method's `__self` frame field is
-        # already a `Record&` and reads bare.
-        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-        assert isinstance(lowered, THIRSelf)
-        return replace(lowered, deref=lc.self_is_pointer)
+        # `self` passed by reference reads the receiver pointer as a VALUE
+        # (`on_init((*this))`) -- the deref the THIRSelf node already
+        # carries; a resumable method's `__self` frame field is already a
+        # `Record&` and reads bare. Kept as its own arm so the receiver
+        # picks the nested-arg use rather than a name-shape ladder below.
+        return _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
     # A float literal into a Float32 (or Own[Float32]) slot renders with the
     # `f` suffix, and an int literal into a FREE-call BigInt slot takes the
     # ctor wrap -- gen_call_arg threads the param type into the render. A
@@ -14661,8 +14679,9 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     return THIRUnionArgLift(
         result_type=ut, variant_cpp=variant_cpp,
         value=_lower_expr(a, lc, declared),
-        deref=(_ptr_read_derefs(a.name, lc)
-               or (a.name == lc.self_receiver and lc.self_is_pointer)),
+        # The receiver's own deref rides the THIRSelf node, so the lift must
+        # not stack a second one.
+        deref=_ptr_read_derefs(a.name, lc),
         form=Form.BORROW, loc=loc)
 
 def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
@@ -15273,19 +15292,17 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             and isinstance(e, TpyName)
             # The record __bool__/__len__ dispatch consumes the read at a
             # gen_expr_deref position, so ask the resolver for the indirect
-            # verdict (`self` reads THIRSelf before the name arm, hence the
-            # explicit receiver-pointer clause).
-            and (_name_read_deref(
-                     e.name,
-                     _param_declared_type(e.name, lc) or declared.get(e.name),
-                     lc,
-                     _ExprUse(result=_ExprResultUse.TRUTHY,
-                              indirect_read=True))
-                 or (e.name == lc.self_receiver and lc.self_is_pointer))
+            # verdict.
+            and _name_read_deref(
+                e.name,
+                _param_declared_type(e.name, lc) or declared.get(e.name),
+                lc,
+                _ExprUse(result=_ExprResultUse.TRUTHY, indirect_read=True))
             # A rebound CONTAINER local's name read already derefs `(*xs)`
-            # (the F2d value-use deref in the name arm) -- the wrap must not
-            # stack a second one.
-            and not (isinstance(operand, THIRName) and operand.deref))
+            # (the F2d value-use deref in the name arm), as does the
+            # receiver read -- the wrap must not stack a second one.
+            and not (isinstance(operand, (THIRName, THIRSelf))
+                     and operand.deref))
         _witness("truthy." + mode.name.lower())
         return THIRTruthy(
             result_type=BOOL,
@@ -15812,18 +15829,9 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 return _lower_expr(
                     arm, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-            lowered = _lower_expr(arm, lc, declared,
-                                  use=_ExprUse(indirect_read=True),
-                                  target_type=rec_t)
-            if isinstance(lowered, THIRSelf):
-                # A bare `self` arm is a VALUE position: the C++ ternary needs
-                # `(*this)` for the `Acc&` operand, not the raw `Acc*` --
-                # gen_expr_deref's receiver-pointer deref, the binop-compare
-                # retag. A poly-narrowed `self` never reaches here (its read
-                # lowers to the alias THIRName), matching the AST's
-                # narrowed_vars carve-out.
-                return replace(lowered, deref=lc.self_is_pointer)
-            return lowered
+            return _lower_expr(arm, lc, declared,
+                               use=_ExprUse(indirect_read=True),
+                               target_type=rec_t)
         then = _rec_arm_lower(e.then_expr)
         orelse = _rec_arm_lower(e.else_expr)
         _witness("ifexpr.record")
@@ -16119,7 +16127,7 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     narrowed_opt = _narrowed_opt_field_read(e, rtype, declared, lc.analyzer)
     if narrowed_opt:
         _witness("field.narrowed_deref")
-    return THIRFieldAccess(
+    return _self_recv_positioned(THIRFieldAccess(
         result_type=rtype,
         # RECEIVER, like every sibling field arm: an indirect receiver reaches
         # its member through `is_arrow`, so a value-position deref here would
@@ -16134,7 +16142,7 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
         narrowed_deref=narrowed_opt,
         form=Form.STORAGE,
         loc=getattr(e, "loc", None),
-    )
+    ))
 
         # Param names live on `prescan.param_names` (the single copy): a
         # `str`-typed PARAM name is a `std::string_view` in the C++ signature

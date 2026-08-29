@@ -1236,8 +1236,7 @@ class TestRecordBorrowReturn:
 
     def test_self_return_routes(self):
         # `return self` (builder pattern) renders the AST's indirect-name
-        # deref (`return (*this);`) via THIRSelf(deref=True), BORROW at the
-        # non-value slot.
+        # deref (`return (*this);`), BORROW at the non-value slot.
         thir, faces = _lower_ctx_witnessed(
             _F1_RECORDS
             + "class Chain:\n"
@@ -2018,10 +2017,8 @@ class TestPrintWrapArgs:
 
     def test_self_print_routes(self):
         # `print(self)` renders `(*this)` on the AST path: the receiver is a
-        # POINTER in a plain method and a value position derefs it. That is
-        # `THIRSelf.deref` -- the same retag the record call-arg tail applies
-        # -- so the print path applies it too and streams the record raw via
-        # its emitted operator<<.
+        # POINTER in a plain method and a value position derefs it, then
+        # streams the record raw via its emitted operator<<.
         src = (
             _F1_RECORDS
             + "class W:\n"

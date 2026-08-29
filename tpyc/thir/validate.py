@@ -62,7 +62,7 @@ from .nodes import (
     THIRNode, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
-    THIRPtrLocalDecl, THIRUnionArgLift, THIRVarDecl,
+    THIRPtrLocalDecl, THIRSelf, THIRUnionArgLift, THIRVarDecl,
 )
 
 
@@ -95,6 +95,17 @@ def _fail(owner: str, node: THIRNode, why: str) -> None:
 
 
 def _check_node(owner: str, node: THIRNode) -> None:
+    if isinstance(node, (THIRFieldAccess, THIRMethodCall)):
+        # A plain method's receiver read carries its own value-position
+        # deref (`(*this)`), so the member reached THROUGH the pointer must
+        # take the raw receiver -- `(*this)->x` is not valid C++. Keeping
+        # this a structural rule is what stops the deref from drifting back
+        # into a fact each consumer re-applies by hand.
+        recv = node.receiver
+        if (isinstance(recv, THIRSelf) and recv.deref
+                and node.receiver_through_pointer):
+            _fail(owner, node,
+                  "dereferenced receiver behind an arrow member access")
     if isinstance(node, THIRCall):
         # Explicit template args ride only the plain / imported spellings --
         # the AST's native and cpp_template arms never emit them.

@@ -13956,3 +13956,59 @@ review dispatch table had gone blind to exactly this kind of wave -- it keyed
 "codegen logic" to the AST emitter's directory, so a THIR-only change silenced
 three specialists at once. That blind spot widens to total at cutover, when the
 AST emitter stops changing at all.
+
+### Self-receiver deref made intrinsic (2026-08-29): a defect fix, zero bodies
+
+Closes the thread two earlier entries left open by name. `-self` lowered to
+`-(this)` where the AST spells `-((*this))`, on a body that ROUTED with an
+empty fallback map -- ill-formed C++ on ordinary user source, reachable
+today. The `self`-receiver deref fact was hand-applied at nine value
+positions; it is now set where `THIRSelf` is CONSTRUCTED, from
+`self_is_pointer`, and cleared at receiver positions through one node
+property that also backs a `validate.py` rule, so the render and its guard
+read a single predicate.
+
+**State the value as defect-retirement, not consolidation.** The branch moves
+ZERO stdlib bodies. The arm it was meant to unblock was built, verified
+(fallback would move 16 -> 15 per body) and backed out a THIRD time, because
+routing `timezone.fromutc` exposes a DIFFERENT filed defect -- no post-if
+narrowing alias after a negated-isinstance guard -- whose fix is an open
+design call. Of the three bodies the decision packet priced, only
+`timedelta.__abs__` is actually won by that arm; `ZoneInfo.fromutc` moves to
+another reject. What the branch does buy is one live wrong-code defect and
+three latent miscompiles retired (`-self`, a `self`-rooted user-deref chain,
+and a resumable `return self` that would have emitted `*__self`, a deref of a
+reference), plus the first pin coverage this area has ever had.
+
+**Why no gate could see any of it, measured rather than asserted.** Across
+the whole case corpus, value-position `self` appears in three distinct
+shapes; the rest of the `(*this)` occurrences are one waker call repeated
+hundreds of times. So the byte-diff has no witness to compare, the ratchet
+sees a routed body, and the move-verdict join has nothing to join. "Suite
+green, zero divergences" proves nothing about the positions this branch
+touched -- the unit pins are the whole instrument, which is why the
+position matrix was pinned rather than probed.
+
+**The invariant changed SHAPE; it did not become unforgettable.** The
+positioning helper wraps 3 of 14 field-access and 6 of 10 method-call
+constructions -- the rest are receiver-shape-guarded and safe today, and one
+arm still builds its receiver with a hardcoded non-deref instead of deriving
+it. Construction-site discipline is still required. What changed is the
+failure mode: a forgotten position now crashes at an arrow site instead of
+silently miscompiling at a value sink. Louder and better, and a trade rather
+than an elimination. Note the direction of that trade against the filed
+cutover blocker for `THIRValidationError` being uncaught -- every new rule
+here enlarges a crash-on-valid-code class whose newest trigger needs no flag
+and no macro.
+
+**Three things the design brief got wrong, each caught by an adversarial
+probe rather than a gate.** The user-deref chain wanted the arrow on its
+first hop, so making the deref intrinsic converted an ill-formed render into
+a DIVERGENT one -- and fixing it properly surfaced FOUR arms that had each
+dropped the self clause, not the two the brief named. A third consumer class
+existed that the brief did not name at all: raw pointer slots, where an
+element binds the receiver pointer itself. And one of the three sites listed
+as wrong-today was not constructible from source, so it is pinned at the node
+level instead of being invented as a case. A survey that enumerates consumers
+by grepping one field name will miss the consumers that spell the same fact
+differently.

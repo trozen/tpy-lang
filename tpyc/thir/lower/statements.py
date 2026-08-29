@@ -1790,8 +1790,8 @@ def _for_iter_proto_route(
     elif isinstance(it, TpyName):
         if it.name == "self":
             # `for x in self:` captures the receiver DEREFERENCED
-            # (`auto& __src_N = (*this);`, gen_expr_deref) -- the lowering
-            # retags THIRSelf.deref; the record must be a plain
+            # (`auto& __src_N = (*this);`, gen_expr_deref) -- the deref the
+            # receiver read carries; the record must be a plain
             # user-iterator like the local-name leg.
             su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 analyzer.get_expr_type(it))))
@@ -12069,7 +12069,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         result_type=self_t,
                         form=(Form.BORROW if _is_borrow_form_name(self_t)
                               else Form.VALUE),
-                        deref=True, loc=loc),
+                        cpp=lc.self_cpp, deref=lc.self_is_pointer, loc=loc),
                     loc=loc)
             if isinstance(stmt.value, TpyFieldAccess):
                 return THIRReturn(value=_lower_field_source(stmt.value, lc, declared),
@@ -14240,12 +14240,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # flush point -- so temp-hoisting arg rows are safe here.
                     use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                  allow_temps=True))
-            if isinstance(proto_iterable, THIRSelf):
-                # `for x in self:` captures `(*this)` -- gen_expr_deref's
-                # receiver-pointer deref, the print-self retag.
-                proto_iterable = replace(proto_iterable,
-                                         deref=lc.self_is_pointer)
-            elif (isinstance(proto_iterable, THIRName)
+            if (isinstance(proto_iterable, THIRName)
                     and not proto_iterable.deref
                     and proto_iterable.name in lc.pointers
                     and _ptr_read_derefs(proto_iterable.name, lc)):
@@ -15328,14 +15323,9 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     if (isinstance(a, TpyName) and lc.self_receiver is not None
             and a.name == lc.self_receiver and lc.record_name is not None
             and _f1_record(lc.analyzer.get_expr_type(a), lc.analyzer)):
-        # `print(self)` streams the record raw via its emitted operator<<.
-        # The receiver is a POINTER in a plain method, and a value position
-        # derefs it (`(*this)`) -- the same retag the record call-arg tail
-        # applies; the print path just never did it.
-        lowered = _lower_expr(a, lc, declared)
-        if isinstance(lowered, THIRSelf) and lc.self_is_pointer:
-            lowered = replace(lowered, deref=True)
-        return THIRPrintArg(lowered, PrintForm.RAW)
+        # `print(self)` streams the record raw via its emitted operator<<:
+        # a VALUE position, so the receiver read arrives dereferenced.
+        return THIRPrintArg(_lower_expr(a, lc, declared), PrintForm.RAW)
     wrap = _wrap_print_form(a, declared, lc.analyzer)
     if wrap is not None and isinstance(a, (TpyCall, TpyMethodCall)):
         # A container-returning CALL wraps the inline call render; STORAGE

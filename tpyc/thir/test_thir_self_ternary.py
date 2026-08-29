@@ -3,12 +3,11 @@
 `self` is a POINTER in a plain method, and a ternary arm is a VALUE
 position, so the arm owes gen_expr_deref's receiver deref (`((c) ?
 ((*this)) : (o))`) -- without it the C++ operands are `Acc*` and `Acc&`
-and the program does not build. The shape ROUTED before the deref retag
-landed and the corpus had no witness (the three `operators/op_*` cases
-carrying it are `return`-position and reject upstream), so the byte-diff
-was structurally blind to it.
+and the program does not build. The corpus had no witness (the three
+`operators/op_*` cases carrying it are `return`-position and reject
+upstream), so the byte-diff was structurally blind to it.
 
-Boundary units below hold the positions the retag must NOT reach: the
+Boundary units below hold the positions the deref must NOT reach: the
 pointer-repr Optional / value-repr Optional / ptr-union ternary faces (all
 resolved before the record branch), and a receiver spelled by a non-pointer
 `self` (a generator's `(*this)`, a poly-narrowed `__self_ptr` alias) where
@@ -110,7 +109,7 @@ class TestSelfBothArmsDeref:
 
 class TestSelfArmWithBorrowCallArm:
     # The self arm beside the OTHER admitted arm shape (a `T&`-returning
-    # call): only the self arm retags, the call arm renders bare.
+    # call): only the self arm derefs, the call arm renders bare.
     SRC = (
         _ACC +
         "    def pick(self, o: Acc, c: bool) -> Int32:\n"
@@ -193,8 +192,8 @@ class TestReadonlyMethodSelfArmDerefs:
 
 class TestGeneratorSelfArmStaysUndereferenced:
     # BOUNDARY (dualgen-probed): a generator body's receiver is already
-    # spelled `(*this)` (`_LowerCtx.self_is_pointer=False`), so the retag
-    # must be a no-op -- a second deref would emit `(*(*this))`.
+    # spelled `(*this)` (`_LowerCtx.self_is_pointer=False`), so the value
+    # position adds nothing -- a second deref would emit `(*(*this))`.
     SRC = (
         "from typing import Iterator\n"
         "from tpy import Int32\n"
@@ -228,7 +227,7 @@ class TestGeneratorSelfArmStaysUndereferenced:
 class TestPolyNarrowedSelfArmUsesAlias:
     # BOUNDARY (dualgen-probed): inside `isinstance(self, Dog)` the read
     # routes through the pre-bound cast pointer, so lowering yields a
-    # THIRName -- never a THIRSelf -- and the retag cannot fire. This is
+    # THIRName -- never a THIRSelf -- and the deref cannot fire. This is
     # the AST's `narrowed_vars` carve-out in gen_expr_deref, reached
     # structurally rather than by a second predicate.
     SRC = (
@@ -270,8 +269,8 @@ class TestPolyNarrowedSelfArmUsesAlias:
 class TestPtrOptTernarySelfArmStillRejects:
     # BOUNDARY (dualgen-probed): the pointer-repr Optional face resolves
     # BEFORE the record branch and its record-name arm fences `self` by
-    # name (an address-of the receiver is its own render rung). The retag
-    # must not make this shape newly admissible.
+    # name (an address-of the receiver is its own render rung). The
+    # receiver deref must not make this shape newly admissible.
     SRC = (
         _ACC +
         "    def pick(self) -> 'Acc | None':\n"
@@ -292,7 +291,7 @@ class TestPtrOptTernarySelfArmStillRejects:
 class TestPtrOptTernaryInMethodUnchanged:
     # BOUNDARY: the ptr-opt ternary face itself, exercised inside a METHOD
     # (so `self_is_pointer` is live) -- arms keep their own normalization,
-    # untouched by the record-branch retag.
+    # untouched by the record branch's receiver deref.
     SRC = (
         "from tpy import Int32\n"
         "class Box:\n"

@@ -1931,15 +1931,17 @@ class TestUnionCallArgLift:
         arg = ret.value.args[0]
         assert isinstance(arg, THIRName) and arg.name == "__v"
 
-    def test_self_arg_lifts_with_deref(self):
+    def test_self_arg_lifts_over_dereferenced_receiver(self):
+        # `&((*this))` at the variant slot: the deref belongs to the receiver
+        # read (a value position), so the lift must NOT add a second one.
         thir = self._lower(
             "class C:\n    n: Int32\n"
             "    def __init__(self, n: Int32):\n        self.n = n\n"
             "    def go(self) -> Int32:\n        return take_c(self)\n"
             "def take_c(v: C | A) -> Int32:\n    return 0\n")
         arg = self._arg(thir, "go")
-        assert isinstance(arg, THIRUnionArgLift) and arg.deref
-        assert isinstance(arg.value, THIRSelf)
+        assert isinstance(arg, THIRUnionArgLift) and not arg.deref
+        assert isinstance(arg.value, THIRSelf) and arg.value.deref
 
     def test_pointer_local_arg_lifts_with_deref(self):
         thir = self._lower(

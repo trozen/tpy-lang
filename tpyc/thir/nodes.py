@@ -259,9 +259,21 @@ class THIRSelf(THIRExpr):
     plain method, `__self` for a resumable (async) method coro, whose frame
     captures the receiver as a `Record&` reference (so field reads render
     `.`, driven by `_LowerCtx.self_is_pointer=False`). `deref` renders
-    `(*{cpp})` -- the indirect-name deref a value position applies (`return
-    self` at a record borrow-return slot; a value out of the resumable
-    value-scalar slice, so a reference-self deref never arises)."""
+    `(*{cpp})` -- the indirect-name deref a value position applies.
+
+    `deref` is set ONCE, where the node is built, from whether the receiver
+    IS a pointer: a value position is the default consumer, so a position
+    that never thought about `self` still renders a legal value. Making it a
+    POSITION fact hand-applied at each value sink is what let a sink forget
+    and render a bare `Record*` into a value slot.
+
+    Two consumer classes need the bare pointer back and clear it. Members
+    reached THROUGH the pointer (`THIRFieldAccess` / `THIRMethodCall` with
+    `receiver_through_pointer`) -- `(*this)->x` is ill-formed; that class has
+    a `validate` rule behind it. And raw `T*` SLOTS that bind the receiver
+    pointer itself (a borrow-tuple element, `{1, this}`) -- unguarded,
+    because the tuple nodes cannot distinguish a pointer slot from a value
+    one, so clearing there is a construction-site obligation."""
 
     deref: bool = False
     cpp: str = "this"
@@ -916,6 +928,16 @@ class THIRMethodCall(THIRExpr):
         assert not (self.move_receiver
                     and (self.deref_check or self.deref_chain))
 
+    @property
+    def receiver_through_pointer(self) -> bool:
+        """Whether emit reaches the member THROUGH the receiver pointer
+        (`recv->m()`, or move_receiver's `std::move(*recv)` fold). The
+        cpp_template and native-free-function arms interpolate the receiver
+        into a VALUE slot and never read `is_arrow`, so a pointer receiver
+        must arrive already dereferenced there."""
+        return (self.is_arrow and self.cpp_template is None
+                and self.native_function_name is None)
+
 
 @dataclass(frozen=True)
 class THIRContainerLiteral(THIRExpr):
@@ -1346,6 +1368,15 @@ class THIRFieldAccess(THIRExpr):
         assert not (self.opt_deref_check
                     and (self.deref_check or self.is_arrow
                          or self.narrowed_deref or self.deref_chain))
+
+    @property
+    def receiver_through_pointer(self) -> bool:
+        """Whether emit reaches the member THROUGH the receiver pointer
+        (`recv->field`, or the first hop of a user-Deref chain), so a
+        receiver that dereferences itself would compose into the ill-formed
+        `(*recv)->field`. The two runtime-check wraps consume the receiver
+        as an argument instead and are already exclusive with `is_arrow`."""
+        return self.is_arrow and not (self.deref_check or self.opt_deref_check)
 
 
 @dataclass(frozen=True)

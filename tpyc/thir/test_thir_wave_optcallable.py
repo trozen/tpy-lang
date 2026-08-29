@@ -919,6 +919,37 @@ class TestSelfCallableField:
         assert _fn(thir, "trigger") is not None
         _assert_byte_identical(src)
 
+    def test_self_optional_callable_field_invocation_routes(self):
+        # The Optional flavor of the sibling above. Its receiver is lowered
+        # at a VALUE position and keeps the deref (`(*this).on_event`), while
+        # the None-test reads the same field through the pointer
+        # (`this->on_event`) -- both spellings of one receiver in one body.
+        src = (
+            "from typing import Callable\n"
+            "from tpy import Int32\n"
+            "class H:\n"
+            "    on_event: Callable[[Int32], None] | None\n"
+            "    def __init__(self) -> None:\n"
+            "        self.on_event = None\n"
+            "    def trigger(self, value: Int32) -> None:\n"
+            "        if self.on_event is not None:\n"
+            "            self.on_event(value)\n"
+            "def sink(v: Int32) -> None:\n"
+            "    print(v)\n"
+            "def main() -> None:\n"
+            "    h = H()\n"
+            "    h.trigger(1)\n"
+            "    h.on_event = sink\n"
+            "    h.trigger(2)\n"
+            "main()\n")
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "trigger") is not None
+        assert witnessed.get("method.opt_callable_field", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        both = hpp + cpp
+        assert "(*this).on_event.value()(value);" in both
+        assert "if ((this->on_event.has_value()))" in both
+
 
 class TestViewFamilyReceiverWidenings:
     def test_bytes_field_call_and_property_receivers_route(self):

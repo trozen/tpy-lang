@@ -7363,13 +7363,13 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     either pairing (`own is None`, no protocol / Optional / union / covariant
     arm -- an upcast is C++'s implicit derived-to-base reference binding), so
     both paths render the bare name -- or `(*p)` for an F2 pointer-local, the
-    gen_expr_deref indirect render `_lower_call_arg` retags. A narrowed
+    gen_expr_deref indirect render. A narrowed
     subject's read arrives with `locals_` retyped to the member record and
     renames to its `T&` extraction alias at lowering (bare on both paths).
-    `self` renders the receiver deref `(*this)` (the tail retag, like an F2
-    pointer-local). An `Own[record]` slot auto-moves at last use -> its own
+    `self` renders the receiver deref `(*this)`, like an F2
+    pointer-local. An `Own[record]` slot auto-moves at last use -> its own
     rows; a `readonly[record]` slot binds the same bare name (`const T&` --
-    no readonly lift exists for records, and the retags are const-blind).
+    no readonly lift exists for records, and the deref is const-blind).
     A record RVALUE (`take_rec(A(7))`) is not a
     name: the AST hoists it into a `__tmp_N` (free calls, typed at the CHILD
     for an upcast) or inlines it (method calls -- the const-slot ctor row
@@ -7380,8 +7380,8 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if a.name == "self":
         # `self` into a same/parent record slot: the receiver deref
         # `(*this)` (probe-verified `on_init((*this))`), or the bare
-        # `__self` frame-field read in a resumable method -- THIRSelf's
-        # deref flag, set at `_lower_call_arg`'s tail.
+        # `__self` frame-field read in a resumable method -- both carried
+        # on the receiver read itself.
         at = analyzer.get_expr_type(a)
         at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
               if at is not None else None)

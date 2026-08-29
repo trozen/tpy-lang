@@ -144,7 +144,9 @@ def _expr(e: THIRExpr) -> str:
         # A pointer-local read in a value position renders `(*name)`.
         return f"*%{e.name}" if e.deref else f"%{e.name}"
     if isinstance(e, THIRSelf):
-        return "%self"
+        # A plain-method receiver read is `(*this)` in a value position;
+        # the dump has to show the two apart, like the name arm above.
+        return "*%self" if e.deref else "%self"
     if isinstance(e, THIRConceptTest):
         return f"concept({e.cpp})"
     if isinstance(e, THIRLiteral):

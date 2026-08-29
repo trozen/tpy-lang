@@ -3736,6 +3736,43 @@ class TestNoFiMemberCall:
         assert cpp_t == cpp_a
         assert "return c.bump();" in cpp_t
 
+    def test_self_receiver_no_fi_member_call_arrows(self, tmp_path):
+        # The receiver is `this`: the fact-free tail still reaches the member
+        # through the pointer (`this->bump()`), never `(*this).bump()`.
+        from ..codegen_cpp.context import CodeGenOptions
+        from .testutil import _compile, _entry
+        src = _NOFI_SRC.replace(
+            "def sentinel(c: Counter) -> Int32:\n"
+            "    return 0\n"
+            "@resolve_bump\n"
+            "def poke(c: Counter) -> Int32:\n"
+            "    return sentinel(c)\n",
+            "def sentinel(c: Counter) -> Int32:\n"
+            "    return 0\n")
+        src = src.replace(
+            "    def bump(self) -> Int32:\n"
+            "        self.n += 1\n"
+            "        return self.n\n",
+            "    def bump(self) -> Int32:\n"
+            "        self.n += 1\n"
+            "        return self.n\n"
+            "    @resolve_bump\n"
+            "    def poke(self) -> Int32:\n"
+            "        return sentinel(self)\n")
+        src = src.replace("    print(poke(c))\n", "    print(c.poke())\n")
+        (tmp_path / "nofimod.py").write_text(_NOFI_MACRO_MOD)
+        compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
+        entry = _entry(modules)
+        hpp_t, cpp_t = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=True))
+        hpp_a, cpp_a = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False,
+                                          thir_codegen=False))
+        assert not dict(compiler._thir_fallback)
+        assert (hpp_t, cpp_t) == (hpp_a, cpp_a)
+        assert "return this->bump();" in hpp_t
+
     def test_no_fi_member_call_with_args_still_defers(self, tmp_path):
         # An fi-less member call WITH an arg is outside the slice (no param
         # slots to type the arg against) -- the body keeps the AST path.
