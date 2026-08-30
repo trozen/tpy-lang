@@ -8,10 +8,11 @@ Usage:
 
 Any other arguments (e.g. -n auto) are passed directly to pytest.
 
-Equivalent to `uv run pytest tests/test_case.py tests/test_interop_exec.py
--v --update-snapshots`. --update-snapshots implies --force-exec so output.txt,
-panic.txt, diagnostics, generated code (including the CPython ext-exec glue),
-and the per-case .fingerprints file are regenerated in one pass.
+Equivalent to `uv run pytest tests/test_case.py tests/test_interop_exec.py -v
+--update-snapshots`. --update-snapshots implies --force-exec so output.txt,
+panic.txt, diagnostics, generated code (including the CPython ext-exec glue and
+every library module a case snapshots) and the per-case .fingerprints file are
+regenerated in one pass.
 """
 import argparse
 import subprocess

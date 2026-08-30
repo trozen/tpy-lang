@@ -156,6 +156,115 @@ def test_load_case_options_dsl_opts_merge_keywise(
     assert cfg["dsl_opts"] == {"sdl": "off", "trace": "1"}
 
 
+def test_parse_options_file_snapshot_lib_modules(tmp_path: Path) -> None:
+    p = tmp_path / "options.json"
+    p.write_text('{"snapshot_lib_modules": ["itertools", "tplib.box"]}')
+    cfg = conftest._parse_options_file(p)
+    assert cfg["snapshot_lib_modules"] == ["itertools", "tplib.box"]
+
+
+def test_parse_options_file_rejects_non_list_snapshot_lib_modules(
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / "options.json"
+    p.write_text('{"snapshot_lib_modules": "itertools"}')
+    with pytest.raises(BaseException, match="snapshot_lib_modules"):
+        conftest._parse_options_file(p)
+
+
+def test_parse_options_file_rejects_non_string_snapshot_lib_module(
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / "options.json"
+    p.write_text('{"snapshot_lib_modules": ["ok", 7]}')
+    with pytest.raises(BaseException, match="snapshot_lib_modules"):
+        conftest._parse_options_file(p)
+
+
+def test_get_case_snapshot_lib_modules_defaults_to_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case_dir = _layered_case_dir(tmp_path, group_cfg=None, case_cfg=None)
+    monkeypatch.setattr(conftest, "CASES_DIR", tmp_path / "cases")
+    assert conftest.get_case_snapshot_lib_modules(case_dir) == frozenset()
+
+
+def test_snapshot_lib_modules_replaces_rather_than_unions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A list key follows the plain override rule -- only dsl_opts merges --
+    so the case's list is exactly what gets snapshotted."""
+    case_dir = _layered_case_dir(
+        tmp_path,
+        group_cfg='{"snapshot_lib_modules": ["itertools"]}',
+        case_cfg='{"snapshot_lib_modules": ["heapq"]}',
+    )
+    monkeypatch.setattr(conftest, "CASES_DIR", tmp_path / "cases")
+    assert conftest.get_case_snapshot_lib_modules(case_dir) == {"heapq"}
+
+
+# --- snapshot_lib_modules: pattern matching + the zero-match guard ---------
+
+def test_snapshot_lib_pattern_hits_exact_and_glob() -> None:
+    """An exact name is a glob with no metacharacter, so both forms take the
+    same path; `*` spans dots, which is what makes `["*"]` mean the library."""
+    pats = frozenset({"heapq", "os.*", "*"})
+    assert conftest.snapshot_lib_pattern_hits("heapq", pats) == {"heapq", "*"}
+    assert conftest.snapshot_lib_pattern_hits("os.path", pats) == {"os.*", "*"}
+    assert conftest.snapshot_lib_pattern_hits("tplib.json.parser",
+                                              frozenset({"*"})) == {"*"}
+    assert conftest.snapshot_lib_pattern_hits("heapq",
+                                              frozenset({"Heapq"})) == set()
+
+
+def _compile_trivial(tmp_path: Path, patterns: set[str]):
+    src = tmp_path / "main.py"
+    src.write_text("def main() -> None:\n    print(1)\n\n\nmain()\n")
+    return conftest.compile_with_diagnostics(
+        src, tmp_path / "out", snapshot_lib_modules=frozenset(patterns))
+
+
+def test_snapshot_lib_modules_exact_name_matching_nothing_fails(
+    tmp_path: Path,
+) -> None:
+    """A renamed module must break the case rather than quietly narrow what it
+    snapshots -- the guard this pins was previously unexercised."""
+    with pytest.raises(BaseException, match="matched no library module"):
+        _compile_trivial(tmp_path, {"no_such_module"})
+
+
+def test_snapshot_lib_modules_glob_matching_nothing_fails(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(BaseException, match="matched no library module"):
+        _compile_trivial(tmp_path, {"no_such_package.*"})
+
+
+def test_snapshot_lib_modules_glob_resolves_to_compiled_modules(
+    tmp_path: Path,
+) -> None:
+    result = _compile_trivial(tmp_path, {"tpy.*"})
+    assert result.success, result.diagnostics
+    assert result.snapshot_lib_modules
+    assert all(n.startswith("tpy.") for n in result.snapshot_lib_modules)
+
+
+def test_snapshot_lib_modules_star_takes_every_library_module(
+    tmp_path: Path,
+) -> None:
+    result = _compile_trivial(tmp_path, {"*"})
+    assert result.success, result.diagnostics
+    assert "builtins" in result.snapshot_lib_modules
+
+
+def test_snapshot_lib_modules_one_dead_pattern_among_live_ones_fails(
+    tmp_path: Path,
+) -> None:
+    """Per-ENTRY, not per-set: a live `*` must not cover for a dead sibling."""
+    with pytest.raises(BaseException, match="no_such_module"):
+        _compile_trivial(tmp_path, {"*", "no_such_module"})
+
+
 def test_load_case_options_no_files_returns_empty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

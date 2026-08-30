@@ -653,8 +653,8 @@ class TestBranchHoistDecls:
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_async_name_alias_stays_byte_identical(self):
-        # The decl.ptr_alias_borrow guard exempts resumable leaves (they
-        # never run whole-function validation); today the async name-alias
+        # The decl.ptr_alias_borrow guard exempts resumable leaves (the no-op
+        # rule admits the shape everywhere now); today the name-alias
         # shape falls back upstream anyway, so byte-identity pins the
         # exemption's current (vacuous) reach.
         src = (_F1_RECORDS

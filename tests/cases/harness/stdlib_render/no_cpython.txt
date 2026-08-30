@@ -1,0 +1,11 @@
+The cpy phase cannot run this case, and cannot be made to.
+
+It dies on the first line: `import _bindings`. The raw @native binding
+layers under lib/tpy are internal to the library path and have no lib/cpy
+stub, by design -- they declare C++ symbols, not Python.
+
+Do NOT "fix" that by stubbing _bindings and putting lib/tpy on PYTHONPATH.
+31 of the 88 import names here (os, io, json, re, socket, ssl, http, math,
+time, urllib, collections, itertools, ...) are also real CPython stdlib
+modules, so CPython would resolve them to its OWN implementations and the
+phase would report a green while testing none of TPy's library.

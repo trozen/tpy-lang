@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from ..fallback import ThirUnsupported, note
 from ..faces import witness as _witness
+from ..validate import validate_simple_gen_body
 from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import Form, THIRFormConvert, THIRSimpleGenBody
 from ...parse.nodes import (
@@ -275,9 +276,11 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
             return _reject("sgen.rebind_slot_hoist")
         _witness("sgen.body")
+        sg = THIRSimpleGenBody(init=init, pre_yield=pre_l,
+                               post_yield=post_l, yield_value=yv, cond=cond)
+        validate_simple_gen_body(func.name, sg)
         publish_binding_facts(lc)
-        return THIRSimpleGenBody(init=init, pre_yield=pre_l,
-                                 post_yield=post_l, yield_value=yv, cond=cond)
+        return sg
 
     assert isinstance(last, TpyForEach)
     iter_elem = last.elem_type
@@ -382,10 +385,12 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
         return _reject("sgen.rebind_slot_hoist")
     _witness("sgen.body")
+    sg = THIRSimpleGenBody(init=init, pre_yield=pre_l, post_yield=post_l,
+                           yield_value=yv, iterable=iterable,
+                           range_args=range_args)
+    validate_simple_gen_body(func.name, sg)
     publish_binding_facts(lc)
-    return THIRSimpleGenBody(init=init, pre_yield=pre_l, post_yield=post_l,
-                             yield_value=yv, iterable=iterable,
-                             range_args=range_args)
+    return sg
 
 
 def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],

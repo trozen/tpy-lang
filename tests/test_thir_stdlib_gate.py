@@ -1,8 +1,15 @@
-"""Pre-merge gate over lib/tpy: THIR/AST byte-identity AND the fallback ratchet.
+"""Pre-merge gate over lib/tpy: THIR/AST byte-identity and the fallback ratchet.
 
 Both properties come from ONE mega-entry compile (~6s), which is the whole point
 of the file: measured separately they cost ~6s + ~64s, and the expensive half
 only ever ran in a nightly row.
+
+The library's committed RENDER oracle is NOT here -- it is an ordinary test
+case, tests/cases/harness/stdlib_render, which imports every non-macro module
+and snapshots them all through options.json. What this file adds is the
+AST-vs-THIR diff: two authors checking each other, which goes away with the AST
+body emitter. The case's snapshot outlives it, and is what the library's render
+is checked against from then on.
 
 *Complementary to the wide overlay, not superseded by it.* The default corpus run
 also routes lib/tpy through THIR per case and diffs it (conftest's stdlib
@@ -17,7 +24,17 @@ program instantiates almost nothing (generics and resumable frames only lower at
 emission time), and the sweep compiles at ONE option set -- `default_int` is
 compilation-wide and reaches every stdlib module's sema, so an option-gated
 divergence is invisible here even though BigInt-narrow selection is exactly the
-bug class that motivated this gate. FALLBACK is not a floor: `iter_module_callables`
+bug class that motivated this gate. The first half reads PESSIMISTIC where it
+has been measured: over ten stdlib-heavy corpus cases, 63 library file emissions
+differed from this sweep's and NONE differed outside the include block, because
+lib/tpy's generics and resumable frames lower to C++ templates in their defining
+module. The second half is REAL and was once claimed away: the same emission over
+Int32/Int64/BigInt is NOT byte-identical. Measured 2026-08-30 over the mega-entry
+at each option (population held equal per comparison, since most of the library
+does not compile at all above Int32): 164 file compares, 153 identical, 11
+differing across 7 modules -- `collections.hpp` alone turns `int32_t i = 0` into
+`int64_t i = 0`. So everything committed at Int32, here and in the case, says
+nothing about the other two widths. FALLBACK is not a floor: `iter_module_callables`
 attempts each callable once per module, so the body population cannot grow with
 instantiation count -- two independent corpus sweeps (495 cases; 90 entry
 programs) added zero bodies over the import-only sweep.
@@ -25,6 +42,7 @@ programs) added zero bodies over the import-only sweep.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import importlib.util
 import json
@@ -40,6 +58,7 @@ from conftest import (
     _format_unified_diff,
     enclosing_function,
     first_divergent_line,
+    module_to_expected_path,
 )
 
 from tpyc import get_lib_dir
@@ -52,6 +71,11 @@ from tpyc.compiler import Compiler
 from tpyc.thir.lower import arg_table, checks, expressions  # noqa: F401
 
 LIB_TPY = get_lib_dir() / "tpy"
+
+# The case that commits the library's render. It compiles what this gate
+# compiles, so its import list is the coverage and the guard below pins it.
+RENDER_CASE_MAIN = (Path(__file__).resolve().parent / "cases" / "harness"
+                    / "stdlib_render" / "src" / "main.py")
 
 # The families the arg table has sinks for, snapshotted at COLLECTION time so
 # a unit test registering a throwaway sink (tpyc/thir/test_arg_table.py has
@@ -175,6 +199,15 @@ def _is_macro_module(name: str) -> bool:
     return "macro_module" in path.read_text(errors="replace")[:4000]
 
 
+def _render_divergences(rows: list[tuple[str, str]], heading: str,
+                        noun: str) -> str:
+    shown = rows[:MAX_REPORTED_DIVERGENCES]
+    body = "\n\n".join(f"=== {where}\n{diff}" for where, diff in shown)
+    more = (f"\n\n... and {len(rows) - len(shown)} more {noun}"
+            if len(rows) > len(shown) else "")
+    return f"{heading}\n\n{body}{more}"
+
+
 def _label(text: str, other: str) -> str:
     """Name the function enclosing the first divergent hunk, as the corpus
     divergence reporter does -- a bare line number in 30k lines of generated
@@ -242,28 +275,11 @@ def _assert_every_family_reached(compiler: Compiler) -> None:
         f"(tpyc/thir/lower/checks.py, tpyc/thir/lower/expressions.py).")
 
 
-def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
-                                 tmp_path: Path) -> None:
-    """Emit every non-macro lib/tpy module through both codegen paths from one
-    entry program; byte-diff the results and ratchet the fallback count.
-
-    One entry importing everything (rather than 88 separate `import <mod>`
-    programs) compiles the dependency graph once -- ~6s instead of ~73s -- and
-    is strictly WIDER: every module is emitted with the union of the
-    instantiations its siblings request, not just its own.
-
-    Both properties ride the same THIR emission -- the ctx is what codegen
-    actually used, so the routing classified here is the routing that produced
-    the C++ compared here.
-    """
-    if request.config.getoption("--no-thir"):
-        pytest.skip("--no-thir disables THIR entirely")
-    if (request.config.getoption("--update-snapshots")
-            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
-        # Same rule --thir-stdlib follows (conftest `_thir_flag_conflict`):
-        # snapshots must be AST-authored, so THIR is off in update mode.
-        pytest.skip("--update-snapshots authors snapshots from the AST path")
-
+def _compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:
+    """Compile every non-macro lib/tpy module from ONE entry that imports them
+    all: the dependency graph is walked once (~6s instead of ~73s) and each
+    module is emitted with the union of the instantiations its siblings
+    request, not just its own."""
     all_names = _lib_module_names()
     macro_names = [n for n in all_names if _is_macro_module(n)]
     names = [n for n in all_names if n not in set(macro_names)]
@@ -271,13 +287,40 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
         f"macro_module detection returned {len(macro_names)} of "
         f"{len(all_names)} modules -- the detector is broken, not the stdlib"
     )
-
     entry = tmp_path / "thir_stdlib_gate_entry.py"
     entry.write_text("".join(f"import {n}\n" for n in names))
-
-    t0 = time.monotonic()
     compiler = Compiler(entry, lib_dirs=[LIB_TPY])
     compiled = compiler.compile()
+    # A cycle peer also emits a `<mod>_fwd.hpp`, which generate_code_to_strings
+    # has no slot for -- it would go unsnapshotted and undiffed in silence. No
+    # lib/tpy module is one today; if that changes, this must grow a third
+    # artifact rather than quietly stop covering it.
+    assert not compiler._cycle_peers, (
+        f"lib/tpy now has import cycles ({sorted(compiler._cycle_peers)}); "
+        f"their _fwd.hpp headers are outside everything this gate compares")
+    return compiler, compiled
+
+
+def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
+                                 tmp_path: Path) -> None:
+    """Emit every non-macro lib/tpy module through both codegen paths from one
+    entry program; byte-diff THIR against the AST and ratchet the fallback
+    count.
+
+    Both properties ride the same emissions -- the ctx is what codegen actually
+    used, so the routing classified here is the routing that produced the C++
+    compared here.
+    """
+    if request.config.getoption("--no-thir"):
+        pytest.skip("--no-thir disables THIR entirely")
+    if (request.config.getoption("--update-snapshots")
+            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
+        # Same rule --thir-stdlib follows (conftest `_thir_flag_conflict`):
+        # snapshots are AST-authored, so THIR does not run in update mode.
+        pytest.skip("--update-snapshots authors snapshots from the AST path")
+
+    t0 = time.monotonic()
+    compiler, compiled = _compile_lib_tpy(tmp_path)
 
     ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
     # thir_all_modules lifts the user-module scoping gate (compiler.py
@@ -310,7 +353,9 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
             ast_src, thir_src = ast_out[i], thir_out[i]
             if not ast_src and not thir_src:
                 # Declaration-only (`native_module`) modules emit nothing --
-                # not a missing counterpart, so not a compare.
+                # not a missing counterpart, so neither a compare nor a
+                # snapshot file. The set comparison below is what keeps that
+                # absence from also excusing a file the tree is missing.
                 continue
             compares += 1
             emitted = True
@@ -347,23 +392,20 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
             f"{_fallback_report(bodies_by_module)}")
 
     if divergences:
-        # The ratchet verdict rides along: the two properties are independent,
-        # and reporting only the first would cost a second 6s round-trip to
-        # discover the other.
-        also = f"\n\n=== ALSO: {ratchet_problem}" if ratchet_problem else ""
-        shown = divergences[:MAX_REPORTED_DIVERGENCES]
-        body = "\n\n".join(f"=== {where}\n{diff}" for where, diff in shown)
-        more = (f"\n\n... and {len(divergences) - len(shown)} more diverging file(s)"
-                if len(divergences) > len(shown) else "")
-        pytest.fail(
-            f"THIR/AST stdlib divergence: {len(divergences)} problem(s) over "
-            f"{compares} generated file(s) in {modules} lib/tpy modules.\n"
-            f"The AST path is the oracle: fix THIR lowering, not the snapshot.\n"
-            f"Reproduce the wide gate with: uv run pytest --no-exec (the stdlib "
-            f"oracle is on by default)"
-            f"\n\n{body}{more}{also}",
-            pytrace=False,
-        )
+        # Everything the run learned goes in one report: the two properties are
+        # independent, and reporting only the first would cost a second 6s
+        # round-trip to discover the other.
+        parts = [_render_divergences(
+            divergences,
+            f"THIR/AST stdlib divergence: {len(divergences)} problem(s) "
+            f"over {compares} generated file(s) in {modules} lib/tpy "
+            f"modules.\nThe AST path is the oracle: fix THIR lowering, "
+            f"not the snapshot.\nReproduce the wide gate with: uv run "
+            f"pytest --no-exec (the stdlib oracle is on by default)",
+            "diverging file(s)")]
+        if ratchet_problem:
+            parts.append(f"ALSO: {ratchet_problem}")
+        pytest.fail("\n\n########\n\n".join(parts), pytrace=False)
 
     # Self-check: the assertions above are vacuously true if nothing was
     # compared, so the gate must prove it did work.
@@ -448,3 +490,69 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
           f"reached over {sum(_cells.values())} argument verdicts; "
           f"{len(_decided & THIR_ARG_CELLS)}/{len(THIR_ARG_CELLS)} cells "
           f"decided at least one")
+
+
+def test_snapshot_path_scheme_round_trips() -> None:
+    """The dotted-name -> path mapping is injective and reversible.
+
+    A module name holds no `/` and a path component holds no `.`, so splitting
+    on dots inverts exactly. The pair that looks like a collision is a package
+    and its submodule: `tplib.json` lands on the file `json.hpp` beside the
+    directory `json/` that `tplib.json.parser` lives in, which a filesystem
+    holds side by side. Asserted over the whole library because the render case
+    puts all of it in ONE expected/ tree, where a collision would silently
+    overwrite one module's render with another's.
+    """
+    names = [n for n in _lib_module_names() if not _is_macro_module(n)]
+    assert len(names) >= MIN_MODULES
+    base = RENDER_CASE_MAIN.parent.parent / "expected"
+
+    def invert(path: Path, ext: str) -> str:
+        rel = path.relative_to(base)
+        parts = list(rel.parts[1:])  # drop include/ or src/
+        parts[-1] = parts[-1][: -len(ext)]
+        return ".".join(parts)
+
+    seen: dict[Path, str] = {}
+    for name in names:
+        for ext in (".hpp", ".cpp"):
+            path = module_to_expected_path(base, name, ext)
+            assert invert(path, ext) == name
+            assert seen.setdefault(path, name) == name, (
+                f"{name} and {seen[path]} both map to {path}")
+
+    pkg = module_to_expected_path(base, "tplib.json", ".hpp")
+    sub = module_to_expected_path(base, "tplib.json.parser", ".hpp")
+    assert pkg != sub and sub.parent.name == "json"
+
+
+def test_render_case_imports_every_lib_module() -> None:
+    """The render case's import list equals the non-macro lib/tpy module set.
+
+    Its options.json snapshots `*`, which takes every library module that
+    COMPILES -- so the import list alone decides what gets a committed render.
+    A module nobody imports there is matched by nothing, and the pattern
+    reports no error because it did match the modules that were compiled.
+    """
+    want = {n for n in _lib_module_names() if not _is_macro_module(n)}
+    tree = ast.parse(RENDER_CASE_MAIN.read_text())
+    got = {a.name for node in tree.body if isinstance(node, ast.Import)
+           for a in node.names}
+    missing = sorted(want - got)
+    extra = sorted(got - want)
+    assert len(want) >= MIN_MODULES, (
+        f"only {len(want)} non-macro modules found under {LIB_TPY} -- the "
+        f"module scan broke, so this guard is comparing against nothing")
+    if missing or extra:
+        pytest.fail(
+            f"{RENDER_CASE_MAIN} does not import every non-macro module under "
+            f"{LIB_TPY}, so the library's committed render has holes.\n"
+            + (f"  ADD these lines: "
+               f"{', '.join('import ' + n for n in missing)}\n"
+               if missing else "")
+            + (f"  REMOVE these lines (no such non-macro module): "
+               f"{', '.join('import ' + n for n in extra)}\n"
+               if extra else "")
+            + f"Then refresh with `uv run python tests/update_snapshots.py "
+              f"-k stdlib_render`.",
+            pytrace=False)

@@ -41,6 +41,7 @@ from dataclasses import fields as dc_fields, replace
 from ..fallback import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
 from ..faces import witness as _witness
+from ..validate import validate_resumable_body, validate_stmts
 from ...binding_audit import (acknowledge_binding_partial as publish_ack,
                               publish_thir as publish_binding_facts)
 from ..nodes import (
@@ -2481,13 +2482,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     if saw_async_with:
         _witness("res.async_with")
     _witness("res.body")
-    publish_binding_facts(lc)
-    return THIRResumableBody(
+    res_body = THIRResumableBody(
         leaves=leaves, conds=conds, await_args=await_args,
         return_values=return_values, yield_values=yield_values,
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
         match_dispatches=match_dispatches,
         nested_def_bodies=nested_def_bodies)
+    validate_resumable_body(func.name, res_body)
+    publish_binding_facts(lc)
+    return res_body
 
 
 def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
@@ -2540,7 +2543,14 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
     finally:
         lc.resumable_leaf_mode = saved_leaf
     _witness("res.nested_def_body")
-    return tuple(body)
+    out = tuple(body)
+    # The member's OWN return slot -- an unresolved annotation reaches the
+    # walk as None, which makes the borrow-return rule vacuous rather than
+    # feeding a non-type to the type predicates.
+    validate_stmts(func.name, out,
+                   func.return_type if isinstance(func.return_type, TpyType)
+                   else None)
+    return out
 
 
 def _reject(reason: str):

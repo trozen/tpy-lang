@@ -35,13 +35,19 @@ load-bearing across union slots):
 `THIRBytesLiteral`'s render verdict rides the `form` tag (the bespoke `owned`
 flag was folded in with U2's opening), so bytes literals sit on the validated
 axis like every other expression.
+
+Every lowered body is validated, whatever its shape: ordinary functions and
+constructors through `validate_function` / `validate_constructor`, and the
+resumable-frame and simple-generator bodies -- whose leaves the skeleton
+holds apart in seam tables rather than one linear body -- through
+`validate_resumable_body` / `validate_simple_gen_body`.
 """
 
 from __future__ import annotations
 
 import dataclasses
 
-from ..codegen_cpp.forms import is_ptr_variant_union
+from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..type_def_registry import (
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
@@ -62,7 +68,9 @@ from .nodes import (
     THIRNode, THIRInplaceContainerOp, THIRWhile,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
-    THIRPtrLocalDecl, THIRSelf, THIRUnionArgLift, THIRVarDecl,
+    THIRFrameSlotWrite,
+    THIRPtrLocalDecl, THIRResumableBody, THIRSelf, THIRSimpleGenBody,
+    THIRUnionArgLift, THIRVarDecl,
 )
 
 
@@ -118,16 +126,23 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # family / form / is_const / move), so a same-form same-type convert that
         # carries a move is NOT a no-op -- it materializes `std::move(x)` (an
         # Own[T] param written into a `T` field is already STORAGE form, so the
-        # move is the whole operation). Only a move-free same-form convert is dead.
-        if (node.form is node.value.form
-                and node.result_type == node.value.result_type
-                and not node.move):
-            _fail(owner, node,
-                  f"no-op form convert (form={node.form.name}, "
-                  f"type={node.result_type})")
+        # move is the whole operation).
         cv = node.result_type
         cv = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cv)))
               if cv is not None else None)
+        # A plain-non-value BORROW convert is the `T&` -> reseatable `T*`
+        # address-of lift, and BORROW spells BOTH of those for such a type,
+        # so form + type cannot tell the two apart -- the same blind spot
+        # the pointer-lifted field sink rule names. Its same-form same-type
+        # shape is the lift doing its job, not a dead node.
+        ref_to_ptr_lift = (node.form is Form.BORROW and cv is not None
+                           and is_plain_nonvalue(cv))
+        if (node.form is node.value.form
+                and node.result_type == node.value.result_type
+                and not node.move and not ref_to_ptr_lift):
+            _fail(owner, node,
+                  f"no-op form convert (form={node.form.name}, "
+                  f"type={node.result_type})")
         if node.materialize:
             # The view->owned copy: only the view families own the render,
             # and a fresh buffer never moves.
@@ -166,13 +181,23 @@ def _check_node(owner: str, node: THIRNode) -> None:
             # result (`std::optional<span>` absorbs the as_span rvalue).
             or (isinstance(rt, OptionalType)
                 and is_span(unwrap_readonly(rt.inner))))
+        # The async return slot's borrow/trait lifts (`&(x)`,
+        # `to_val_or_ptr<val_or_ptr_t<T>>(x)`) materialize a pointer or
+        # trait-selected prvalue out of any source form, so they are
+        # form-producing like the ptr/span families. Keyed by NAME, not by
+        # result type: both deliberately keep the SOURCE's type spelling
+        # (the pointer/trait spelling lives in the wrap), so the ptr row
+        # above structurally cannot see them.
+        value_wrap_target = node.coercion_name in (
+            "async_ret_addr_of", "async_ret_val_or_ptr")
         # The optional-borrow-tuple wrap (`std::optional<B>{<borrow rhs>}`)
         # materializes a STORAGE optional out of the borrow tuple -- form-
         # producing like the ptr/span families.
         opt_btuple_target = node.coercion_name == "opt_btuple_wrap"
         if node.form is not node.expr.form and not (
                 (view_target and node.form is Form.BORROW)
-                or (value_target and node.form is Form.VALUE)
+                or ((value_target or value_wrap_target)
+                    and node.form is Form.VALUE)
                 or (opt_btuple_target and node.form is Form.STORAGE)):
             _fail(owner, node,
                   f"coerce form {node.form.name} != inner "
@@ -419,6 +444,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, b, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRFrameSlotWrite):
+        # `name.emplace(value);` -- a statement, so the value's arg temps
+        # hoist before the emplace line exactly like a THIRAssign value.
+        _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
     if isinstance(node, THIRInplaceContainerOp):
         _walk(owner, node.receiver, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
@@ -506,3 +536,82 @@ def validate_constructor(ctor: THIRConstructor) -> None:
             _walk(owner, arg)
     for stmt in ctor.body:
         _walk(owner, stmt)
+
+
+def validate_stmts(owner: str, stmts, return_type=None) -> None:
+    """Validate a statement block that is not a whole function body -- a
+    frame nested def's member body, a seam's leaf block."""
+    for stmt in stmts:
+        _walk(owner, stmt, return_type)
+
+
+def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
+    """Same structural gate the ordinary bodies get, applied to a resumable
+    frame's leaf tables.
+
+    The frame skeleton holds the statements/expressions apart in id()-keyed
+    maps instead of one linear body, so each seam is walked at the flush
+    right its lowering grants. `return_type` stays out: a `return` in a
+    resumable is a CFG terminator whose value renders through
+    `return_values`, so no THIRReturn statement reaches a leaf, and the
+    frame's declared return type is not the sink type of that value render
+    (the scaffolding binds it to its own `__tpy_async_ret` slot).
+    `nested_def_bodies` is validated where it is lowered, under the member's
+    own return type."""
+    for stmt in body.leaves.values():
+        _walk(owner, stmt)
+    for stmt in body.match_dispatches.values():
+        _walk(owner, stmt)
+    # Temp-free seams: their lowering never grants a flush right, so an
+    # arg temp reaching one is a lowering bug.
+    for expr in body.conds.values():
+        _walk(owner, expr)
+    for expr in body.return_values.values():
+        _walk(owner, expr)
+    for expr in body.yield_values.values():
+        _walk(owner, expr)
+    # Flushable seams: the sub-coro emplace, the await operand and the sync
+    # for-head source are statement positions where the skeleton flushes
+    # temps ahead of the line. Both maps below pool entries from several
+    # populate sites of which exactly ONE grants temps -- `suspend_exprs`
+    # holds the await operand (flushable) plus the bound-method receiver;
+    # `region_exprs` the sync for-head iterable (flushable) plus the range
+    # bounds, the with-manager and the async-for iterable. Pooling by
+    # expression id() leaves no way to tell them apart here, so both are
+    # walked at the looser right: a temp reaching one of the four temp-free
+    # seams, where the skeleton has no flush point, is NOT caught.
+    for args in body.await_args.values():
+        for a in args:
+            # The tuple IS the emplace's arg list, so each entry is walked
+            # the way the call-node arm walks a call's args.
+            if isinstance(a, THIRArgTemp):
+                _walk(owner, a.init, argtemp_ok=True)
+            elif isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None:
+                if a.value is not None:
+                    _walk(owner, a.value, argtemp_ok=True)
+            else:
+                _walk(owner, a, argtemp_ok=True)
+    for expr in body.suspend_exprs.values():
+        _walk(owner, expr, argtemp_ok=True)
+    for expr in body.region_exprs.values():
+        _walk(owner, expr, argtemp_ok=True)
+
+
+def validate_simple_gen_body(owner: str, body: THIRSimpleGenBody) -> None:
+    """The structural gate for a simple-generator peephole's leaf blocks.
+
+    No `return_type`: the peephole shape has no return statement (the
+    per-pull optional return is skeleton). The while condition is a flush
+    position (the peephole restructures its loop head like the sync while);
+    the for-head iterable and range bounds are not -- the skeleton renders
+    them into the lambda's capture/header, which has no flush point."""
+    validate_stmts(owner, body.init)
+    validate_stmts(owner, body.pre_yield)
+    validate_stmts(owner, body.post_yield)
+    _walk(owner, body.yield_value)
+    if body.cond is not None:
+        _walk(owner, body.cond, argtemp_ok=True)
+    if body.iterable is not None:
+        _walk(owner, body.iterable)
+    for a in body.range_args:
+        _walk(owner, a)

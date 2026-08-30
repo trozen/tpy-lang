@@ -38,6 +38,7 @@ from conftest import (
     plugin_extensions_for,
     compile_with_diagnostics,
     get_case_default_int,
+    get_case_snapshot_lib_modules,
     validate_annotations,
     validate_type_annotations,
     validate_non_null_annotations,
@@ -49,6 +50,7 @@ from conftest import (
     parse_annotations,
     check_or_update,
     discover_cases,
+    module_to_expected_path,
     find_extra_src_files,
     find_extra_include_dirs,
     find_force_includes,
@@ -70,20 +72,6 @@ from conftest import (
     record_exec_outcome,
     record_stale_fingerprint,
 )
-
-
-def _module_to_expected_path(expected_dir: Path, mod_name: str, ext: str) -> Path:
-    """Convert module name to expected file path for generated code snapshots.
-
-    Recognizes both the `.hpp` / `.cpp` extensions and the `_fwd.hpp`
-    cycle-peer forward-declaration header suffix (lives under include/).
-    """
-    subdir = "src" if ext == ".cpp" else "include"
-    parts = mod_name.split('.')
-    if len(parts) == 1:
-        return expected_dir / subdir / f"{parts[0]}{ext}"
-    rel_dir = '/'.join(parts[:-1])
-    return expected_dir / subdir / rel_dir / f"{parts[-1]}{ext}"
 
 
 def _sweep_case_binary(build_dir: Path, module_name: str) -> None:
@@ -140,7 +128,8 @@ def test_case(case_dir, main_src, request):
 
     # ----- COMP PHASE ---------------------------------------------------------
     result = compile_with_diagnostics(
-        main_src, build_dir, default_int=get_case_default_int(case_dir)
+        main_src, build_dir, default_int=get_case_default_int(case_dir),
+        snapshot_lib_modules=get_case_snapshot_lib_modules(case_dir),
     )
 
     # Diagnostics snapshot
@@ -203,18 +192,44 @@ def test_case(case_dir, main_src, request):
             pairs.append((".cpp", cpp_path))
         return pairs
 
-    # AST (oracle) snapshots: every local module, byte-compared to the AST-
-    # authored expected files. This check holds for EVERY case -- migrated or not
-    # -- so a regression in the AST codegen path can't hide behind THIR (the AST
-    # path is the snapshot oracle as long as snapshots are AST-authored).
+    # AST (oracle) snapshots: every local module -- plus any library module the
+    # case's options.json names, whose emission at these options and these
+    # instantiations no import-only sweep reproduces -- byte-compared to the
+    # AST-authored expected files. This check holds for EVERY case -- migrated
+    # or not -- so a regression in the AST codegen path can't hide behind THIR
+    # (the AST path is the snapshot oracle as long as snapshots are
+    # AST-authored).
+    snapshotted: set[Path] = set()
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
-        if not is_local:
+        if not is_local and mod_name not in result.snapshot_lib_modules:
             continue
         for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
-            expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
+            expected_file = module_to_expected_path(expected_dir, mod_name, ext)
+            snapshotted.add(expected_file)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
             check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
+
+    # The snapshotted set is derived from what compiled, so a module that was
+    # renamed, dropped, or dropped out of a snapshot_lib_modules pattern leaves
+    # its file behind with nothing comparing it -- coverage narrows in silence
+    # and only a set comparison sees it. (Update mode wipes both dirs first, so
+    # it cannot produce an orphan.)
+    if not UPDATE_EXPECTED:
+        on_disk = {p for sub in ("include", "src")
+                   if (expected_dir / sub).is_dir()
+                   for p in (expected_dir / sub).rglob("*") if p.is_file()}
+        orphans = sorted(str(p.relative_to(expected_dir))
+                         for p in on_disk - snapshotted)
+        if orphans:
+            pytest.fail(
+                f"{len(orphans)} file(s) under {expected_dir} that nothing "
+                f"this case compiles emits:\n"
+                + "\n".join(f"  {p}" for p in orphans[:20])
+                + "\nDelete them, or restore whatever used to emit them. "
+                  "`uv run python tests/update_snapshots.py -k <case>` "
+                  "rewrites the tree from scratch.",
+                pytrace=False)
 
     # THIR overlay snapshots: the migrated user modules regenerated through THIR,
     # byte-compared to the SAME expected files. A mismatch here is a THIR
@@ -224,16 +239,18 @@ def test_case(case_dir, main_src, request):
             thir_names = (result.thir_routed_names.get(mod_name, frozenset())
                           if result.thir_routed_names is not None else None)
             for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
-                expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
+                expected_file = module_to_expected_path(expected_dir, mod_name, ext)
                 if not gen_path.exists():
                     pytest.fail(f"{gen_path} (THIR overlay) not generated",
                                 pytrace=False)
                 check_or_update(gen_path.read_text(), expected_file,
                                 f"{mod_name}{ext} (THIR)", thir_routed_names=thir_names)
 
-    # Stdlib oracle (--thir-stdlib): lib/tpy + stdlib have no committed
-    # snapshot anywhere, so the THIR emission is compared to the AST emission
-    # from THIS run -- a transient oracle, never written to expected/.
+    # Stdlib oracle (--thir-stdlib): only the import-only, Int32, whole-library
+    # render is committed (tests/cases/harness/stdlib_render), and a case's own
+    # instantiations and options emit something else, so the THIR emission is
+    # compared to the AST emission from THIS run -- a transient oracle, never
+    # written to expected/.
     if result.thir_lib_modules is not None:
         for mod_name, ast_hpp, ast_cpp, thir_hpp, thir_cpp in result.thir_lib_modules:
             for ext, ast_path, thir_path in ((".hpp", ast_hpp, thir_hpp),

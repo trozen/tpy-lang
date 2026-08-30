@@ -3693,8 +3693,9 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             # makes the convert the no-op node validate_function
             # hard-rejects -- the T&/T* representation change has no form
             # spelling yet, so the shape stays on AST. Resumable leaves are
-            # exempt like the twin guards (they never run whole-function
-            # validation).
+            # exempt like the twin guards. NB the no-op rule now admits this
+            # shape for every body kind, so this fence's original rationale
+            # no longer holds; whether it still needs to reject is unverified.
             note_detail("decl.ptr_alias_borrow")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         convert = THIRFormConvert(
@@ -8755,10 +8756,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             and not lc.resumable_leaf_mode):
                         # Same trap as the plain-record param reseat below:
                         # the BORROW convert over a same-type BORROW param
-                        # name is the no-op node validate_function
-                        # hard-rejects. Resumable leaves are exempt: they
-                        # never run whole-function validation, and the
-                        # routed async shape is pinned byte-identical
+                        # name was the no-op node validate_function
+                        # hard-rejected. The no-op rule now admits the shape
+                        # for every body kind, so this fence's rationale no
+                        # longer holds; the routed async shape is pinned
                         # (frame-field receivers render `x = &(b);`).
                         note_detail("decl.reseat_param_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))

@@ -156,7 +156,8 @@ class TestThirScoping:
         """The A5 / stdlib-oracle knob: `thir_all_modules` routes non-user
         modules too. Asserts the routing DECISION (the sibling test pins the
         default scoped behaviour); without it the stdlib surface can be neither
-        measured nor byte-diffed, since it has no committed snapshot."""
+        measured nor byte-diffed at a case's own instantiations and
+        options, which no committed snapshot covers."""
         src_file = tmp_path / "main.py"
         src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)

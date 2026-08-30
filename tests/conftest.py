@@ -4,6 +4,7 @@ import concurrent.futures
 import dataclasses
 import difflib
 import fcntl
+import fnmatch
 import functools
 import hashlib
 import json
@@ -724,6 +725,11 @@ class CompileResult:
     # is_local=True for modules from the test's src/ dir, False for library modules
     # hpp_path/cpp_path are None for native_module (no generated code)
     all_modules: list[tuple[str, Path | None, Path | None, bool]] = field(default_factory=list)
+    # Non-local modules the case ALSO snapshots (options.json
+    # `snapshot_lib_modules`), resolved against what actually compiled. Kept
+    # apart from is_local on purpose: these modules are snapshotted but stay
+    # out of the THIR overlay and the ratchet, which govern USER code only.
+    snapshot_lib_modules: frozenset[str] = frozenset()
     # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
     declared_var_types: dict[tuple[int, str], object] | None = None
     # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
@@ -757,8 +763,8 @@ class CompileResult:
     thir_modules: list[tuple[str, Path | None, Path | None]] | None = None
     # Stdlib oracle only: per non-local (lib/tpy + stdlib) module, the AST and
     # THIR generated paths from THIS run: (name, ast_hpp, ast_cpp, thir_hpp,
-    # thir_cpp). Stdlib emission has no committed snapshot anywhere, so the
-    # same-run AST output is its only available oracle (cutover gate D4).
+    # thir_cpp). Most stdlib emission has no committed snapshot at these
+    # options, so the same-run AST output is its oracle.
     thir_lib_modules: list[
         tuple[str, Path | None, Path | None, Path | None, Path | None]
     ] | None = None
@@ -778,14 +784,16 @@ def _validate_default_int_name(name: str) -> str:
     return name
 
 
-_ALLOWED_OPTIONS_KEYS = {"default_int", "plugin", "dsl_opts"}
+_ALLOWED_OPTIONS_KEYS = {"default_int", "plugin", "dsl_opts",
+                         "snapshot_lib_modules"}
 
 
 def _parse_options_file(path: Path) -> dict:
     """Read and validate one options.json file. Returns {} when the
     file is absent. Schema: `default_int` (str), `plugin` (str path
     relative to PROJECT_ROOT), `dsl_opts` (dict[str, str] passed to
-    the frontend plugin)."""
+    the frontend plugin), `snapshot_lib_modules` (list[str] of glob
+    patterns over library module names this case also snapshots)."""
     if not path.exists():
         return {}
     try:
@@ -810,6 +818,13 @@ def _parse_options_file(path: Path) -> dict:
             if not isinstance(v, str):
                 pytest.fail(
                     f"{path}: dsl_opts {k!r} must be a string value")
+    if "snapshot_lib_modules" in raw:
+        mods = raw["snapshot_lib_modules"]
+        if not isinstance(mods, list) or not all(isinstance(m, str)
+                                                 for m in mods):
+            pytest.fail(
+                f"{path}: 'snapshot_lib_modules' must be a list of "
+                f"module-name glob patterns")
     return raw
 
 
@@ -856,6 +871,32 @@ def get_case_default_int(case_dir: Path) -> str:
     """Resolve default integer mode for a test case."""
     options = load_case_options(case_dir)
     return _validate_default_int_name(options.get("default_int", "Int32"))
+
+
+def get_case_snapshot_lib_modules(case_dir: Path) -> frozenset[str]:
+    """Glob patterns selecting library modules whose generated C++ this
+    case ALSO snapshots.
+
+    A bare `import` of a stdlib module never instantiates its generics
+    or resumable frames -- those lower at emission time -- so a case
+    that USES a module emits richer C++ for it, at that case's own
+    options. Naming the module here records that emission next to the
+    case. `"*"` takes everything the case compiles, which is how the
+    whole library's render is committed.
+
+    Always an explicit declaration, never inferred from the import
+    graph: adding an import must not silently start snapshotting a
+    module.
+    """
+    options = load_case_options(case_dir)
+    return frozenset(options.get("snapshot_lib_modules", ()))
+
+
+def snapshot_lib_pattern_hits(mod_name: str,
+                              patterns: frozenset[str]) -> set[str]:
+    """The patterns `mod_name` satisfies. A name with no metacharacter is
+    its own glob, so exact names and patterns take one code path."""
+    return {p for p in patterns if fnmatch.fnmatchcase(mod_name, p)}
 
 
 def plugin_extensions_for(src_file: Path) -> frozenset[str]:
@@ -940,12 +981,19 @@ def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
         f"reject it so the AST re-emit raises.")
 
 
-def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:
+def compile_with_diagnostics(
+        src_file: Path, output_dir: Path, default_int: str | None = None,
+        snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
     Returns CompileResult with success status, diagnostics, and output paths.
     Warnings are collected but don't cause failure. Errors cause failure.
     Uses Compiler for multi-module support.
+
+    `snapshot_lib_modules` holds glob patterns over the non-local modules the
+    caller additionally snapshots; passed in rather than read here so this
+    stays usable from harness tests that have no case directory to resolve
+    options against.
     """
     frontend_registry, extra_lib_dirs = _frontend_registry_for(src_file)
     plugin_extensions = (frontend_registry.all_extensions()
@@ -1006,6 +1054,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
         all_modules = []
         local_mods = []
+        snapshot_lib: set[str] = set()
+        matched_patterns: set[str] = set()
         try:
             for mod in compiled_modules:
                 hpp_path, cpp_path = compiler.generate_code(
@@ -1022,12 +1072,35 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 all_modules.append((mod.name, hpp_path, cpp_path, is_local))
                 if is_local:
                     local_mods.append(mod)
+                else:
+                    hits = snapshot_lib_pattern_hits(mod.name,
+                                                     snapshot_lib_modules)
+                    if hits:
+                        snapshot_lib.add(mod.name)
+                        matched_patterns |= hits
         except CodeGenError as ast_err:
             if thir_active:
                 _assert_thir_raises_too(compiler, compiled_modules,
                                         entry_module, src_dir, output_dir,
                                         src_file, ast_err)
             raise
+
+        # A pattern that matched nothing would silently stop snapshotting the
+        # modules it meant -- a rename must break the case, not quietly narrow
+        # its coverage.
+        unresolved = sorted(set(snapshot_lib_modules) - matched_patterns)
+        if unresolved:
+            local_names = [n for n, _h, _c, loc in all_modules if loc]
+            hit_local = any(snapshot_lib_pattern_hits(n, frozenset(unresolved))
+                            for n in local_names)
+            hint = ("; it matches a module of this case, already snapshotted"
+                    if hit_local else
+                    "; this case compiles no library module by that name")
+            pytest.fail(
+                f"options.json snapshot_lib_modules has "
+                f"{', '.join(unresolved)}, which matched no library module "
+                f"compiled for {src_file}{hint}",
+                pytrace=False)
 
         # THIR overlay: regenerate the USER modules through THIR to a separate
         # dir (stdlib is user-scoped-out and already AST-tested above);
@@ -1193,6 +1266,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                              thir_modules=thir_modules,
                              thir_lib_modules=thir_lib_modules,
                              thir_ratchet_fell=thir_ratchet_fell,
+                             snapshot_lib_modules=frozenset(snapshot_lib),
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
@@ -1373,8 +1447,10 @@ def pytest_addoption(parser):
         help=(
             "Turn OFF the stdlib oracle: by default lib/tpy + the stdlib are "
             "also routed through THIR and byte-diffed against the SAME RUN's "
-            "AST output (stdlib emission has no committed snapshot, so this is "
-            "its only oracle -- nothing else can catch it diverging). Costs "
+            "AST output (only the import-only Int32 whole-library render is "
+            "committed, in tests/cases/harness/stdlib_render; emission at a "
+            "case's own instantiations and options has no committed snapshot, "
+            "so this is its only oracle). Costs "
             "~5% wall on a comp-only run (+14.0s of 273.3s); drop it for fast "
             "local iteration."
         ),
@@ -3697,6 +3773,25 @@ def validate_frame_annotations(
     return errors
 
 
+def module_to_expected_path(expected_dir: Path, mod_name: str,
+                            ext: str) -> Path:
+    """Snapshot path for one module's generated file, under `expected_dir`.
+
+    Dots become directories, so the mapping round-trips: a module name cannot
+    contain `/` and a path component cannot contain `.`, and a package `a`
+    lands on the file `a.hpp` beside the directory `a/` its submodules use.
+
+    Recognizes both the `.hpp` / `.cpp` extensions and the `_fwd.hpp`
+    cycle-peer forward-declaration header suffix (lives under include/).
+    """
+    subdir = "src" if ext == ".cpp" else "include"
+    parts = mod_name.split('.')
+    if len(parts) == 1:
+        return expected_dir / subdir / f"{parts[0]}{ext}"
+    rel_dir = '/'.join(parts[:-1])
+    return expected_dir / subdir / rel_dir / f"{parts[-1]}{ext}"
+
+
 def check_or_update(actual: str, expected_file: Path, description: str,
                     *, compare_only: bool = False,
                     thir_routed_names: frozenset[str] | None = None) -> None:
@@ -3718,9 +3813,13 @@ def check_or_update(actual: str, expected_file: Path, description: str,
         expected_file.parent.mkdir(parents=True, exist_ok=True)
         expected_file.write_text(actual)
     else:
-        expected = expected_file.read_text() if expected_file.exists() else ""
+        exists = expected_file.exists()
+        expected = expected_file.read_text() if exists else ""
         if actual != expected:
             diff = _format_unified_diff(expected, actual, fromfile=str(expected_file), tofile="actual")
+            # An absent snapshot diffs as an all-additions hunk, which reads
+            # like a content change; say which it is.
+            missing = "" if exists else " (no such file -- nothing snapshotted)"
             thir_note = ""
             if thir_routed_names is not None:
                 label = _thir_divergence_label(
@@ -3729,7 +3828,8 @@ def check_or_update(actual: str, expected_file: Path, description: str,
                     f"{_case_label(expected_file)} {description}: {label}")
                 thir_note = f"THIR divergence: {label}\n"
             pytest.fail(
-                f"{description} differs: {expected_file}\n{thir_note}{diff}",
+                f"{description} differs: {expected_file}{missing}\n"
+                f"{thir_note}{diff}",
                 pytrace=False,
             )
 

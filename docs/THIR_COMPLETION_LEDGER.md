@@ -5176,6 +5176,40 @@ by reading the item, never by trusting a sibling's summary of it.
    deleted emitter. `move_audit`'s own docstring calls itself the ONLY detector
    for its divergence class. Three matrices lose their sole net on the cutover
    commit while this checklist reads as satisfied.
+   - **The stdlib's RENDER is no longer among the losses (2026-08-30).**
+     `lib/tpy` had no committed C++ anywhere, so both stdlib checks compared
+     the two authors against each other and both would have gone with the AST
+     emitter. Its AST-authored emission is now committed as an ordinary test
+     case, `tests/cases/harness/stdlib_render` (88 modules, 110 library files,
+     ~1.37 MB), which imports every non-macro module and snapshots `"*"` via
+     the `snapshot_lib_modules` options.json key -- so the render is compared,
+     built and run by the normal case machinery and needs no bespoke authoring
+     path. (A first attempt built one: a separate committed tree at
+     `tests/stdlib_expected/` plus ~270 lines of hand-rolled comparison inside
+     the gate. It was replaced the same week; a plain case does the whole job,
+     and `snapshot_lib_modules` grew glob support to say so in one entry.)
+     That buys the stdlib render only -- the two audits and the user-corpus
+     byte-diff are untouched -- and any case may additionally pin a library
+     module's emission at its own options with the same key. Measured while
+     committing it, correcting one standing claim about
+     instantiation-dependence and, later, one of its own: over ten
+     stdlib-heavy cases, 63 library file emissions differed from the sweep's
+     and NONE outside the include block (lib/tpy's generics and resumable
+     frames lower to C++ templates in their defining module) -- ten cases are
+     not the corpus. **The companion claim that the same emission over
+     Int32/Int64/BigInt was byte-identical is WITHDRAWN (2026-08-30).** It came
+     from the same ten-case population, in which only two cases set
+     `default_int` at all and neither imports an affected module, so the
+     measurement structurally could not see the effect. Re-measured over the
+     mega-entry at each option, holding the compiled population equal per
+     comparison: 164 file compares, 153 identical, **11 differing across 7
+     modules** (`_datetime_cal`, `_datetime_fmt`, `_datetime_parse`,
+     `collections`, `datetime`, `math`, `urllib.parse`) -- `collections.hpp`
+     turns `int32_t i = 0` into `int64_t i = 0`. The committed render is
+     Int32-only and says nothing about the other two widths. The populations
+     had to be held equal because most of the library does not COMPILE above
+     Int32 at all (filed in BUGS.md): 30 module/option pairs fail sema, 17
+     distinct modules.
    - **Coverage measured by a committed instrument**
      (`scripts/thir_migration/thir_matrix_reach.py`), which patches the
      predicate, records (site, class) on every TRUE verdict and sweeps the
@@ -14407,3 +14441,78 @@ fact, which nothing had noticed because the union flavour was the one anybody
 probed. Where a fence is a stand-in for an arm, it has to be phrased in the
 oracle's own terms; phrased in the mirror's terms it degrades to "would WE
 emit here?", which is always yes.
+
+### The resumable and simple-generator seams reach the validator (2026-08-30)
+
+THIR's structural validator (`tpyc/thir/validate.py`) had never run on async
+or generator bodies. `lower/resumable.py` and `lower/simple_gen.py` published
+their leaf tables and their binding facts without ever calling it, so every
+rule the file carries -- the no-op form convert, the coerce form-passthrough,
+the BORROW-at-a-pointer-lifted-sink family -- was simply unapplied to the two
+body kinds whose form handling is hardest to reason about. Both seams now call
+`validate_resumable_body` / `validate_simple_gen_body`, each leaf table walked
+at the flush right its own lowering grants, with units that fail if the call
+sites are ablated. No emitted C++ changed.
+
+**Wiring it in immediately falsified three rules**, each too narrow for a shape
+only these bodies carry, and each widened with its reason stated at the rule:
+the async return slot's borrow/trait lifts materialize a prvalue out of any
+source form but deliberately keep the source's TYPE spelling, so the
+result-type rows structurally could not see they are form-producing; a
+plain-non-value BORROW form-convert is the `T&` -> reseatable `T*` address-of
+lift, and BORROW spells BOTH of those, so its same-form same-type shape is the
+lift working rather than a dead node; a frame slot write is a statement
+position whose value flushes arg temps exactly like a `THIRAssign` value. That
+a first exposure produced three findings is the reading worth keeping: the
+rules were written against ordinary bodies and had been generalizing on faith.
+
+**What this does NOT buy, stated so the cutover checklist is not read as
+satisfied: the gate applied at these seams is strictly WEAKER than the one an
+ordinary body gets, in three known ways.**
+
+1. *Pooled maps are walked at the looser flush right.* `region_exprs` and
+   `suspend_exprs` are keyed by expression `id()` and pool entries from
+   several populate sites, of which exactly ONE per map grants temps -- the
+   await operand and the sync for-head iterable. The other four (the
+   bound-method receiver, the range bounds, the with-manager expression, the
+   async-for iterable) are temp-free seams with no flush point in the
+   skeleton, and an arg temp reaching one of them is not caught, because the
+   walk cannot tell which site an entry came from.
+2. *`THIRFrameSlotWrite` sits outside the pointer-lifted-sink rule*, which is
+   the validator's highest-value check, while resumable frames route
+   pointer-repr union locals -- precisely the guarded family -- through that
+   node rather than through `THIRAssign`. Filed in BUGS.md; no repro was
+   produced and a real mismatch may fail at the C++ build instead.
+3. *Two of the three widened rules are keyed on shape or on a string*, not on
+   a decision the producer records: the BORROW exemption on form + type alone,
+   the async-return exemption on `coercion_name` membership. Both are correct
+   today only because lowering does not construct the adjacent shape
+   elsewhere. Filed in TODO.md.
+
+So "async and generator bodies are validated now" is true of the WALK and not
+of the rule set. The escape hatch is also unchanged: a validation failure is a
+`THIRValidationError`, which is caught nowhere and escapes the per-body
+fallback boundary as a compiler crash -- already tracked, but now reachable
+from two more body kinds.
+
+Three costs of this branch that no gate reports, recorded so a later reader
+inherits them rather than re-deriving them:
+
+- The crash surface above is the largest risk accepted here, not a footnote.
+  Only `ThirUnsupported` degrades to the AST path; a `THIRValidationError`
+  terminates the compile. Wiring the seams extends that reach to async and
+  generator bodies, which is where the exotic seam shapes live. The preferred
+  structural fix -- run the validator inside the per-body fallback boundary --
+  closes three known triggers at once, and this is the change-set that widened
+  the surface, so the "its own change-set" deferral is weaker now than when it
+  was written.
+- The stdlib render case compiles, links and runs about 1.37 MB of library C++
+  on every non-cached exec, and re-keys on any toolchain or runtime-header
+  change. Cheap next to the corpus, but it is a new fixed cost per cold run.
+- Every future stdlib codegen change now churns a 110-file expected tree.
+  The snapshot policy says to consult before regenerating existing output;
+  that policy assumes a reviewable diff, and at this size the honest
+  expectation is that the tree is read by its summary statistics -- file
+  count, byte count, which modules moved -- not line by line. A change that
+  moves ONE module's emission is reviewable; one that moves eighty is not,
+  and the second case is the one to be suspicious of.

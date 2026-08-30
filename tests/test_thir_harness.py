@@ -82,9 +82,10 @@ def test_thir_flag_conflict() -> None:
 
 def test_thir_stdlib_default_on() -> None:
     """The stdlib oracle is ON unless something turns it off. An opt-in oracle
-    is only as good as the flag people remember to pass, and stdlib emission has
-    no committed snapshot to fall back on -- so the DEFAULT carries the check
-    and every way off is explicit."""
+    is only as good as the flag people remember to pass, and stdlib emission at
+    a case's own instantiations and options has no committed snapshot to fall
+    back on -- so the DEFAULT carries the check and every way off is
+    explicit."""
     on = conftest._thir_stdlib_enabled
 
     assert on(_StubConfig({}), updating=False) is True
