@@ -24,21 +24,25 @@ the skeleton and the body emitter call them, and neither owns them.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Callable, Iterator, TextIO, TYPE_CHECKING
+from typing import Callable, Iterator, NoReturn, TextIO, TYPE_CHECKING
 
 from .. import binding_audit
 from ..namespace import Namespace
 from ..parse.nodes import (
-    TpyAssign, TpyBinOp, TpyExpr, TpyFieldAccess, TpyFunction, TpyIfExpr,
-    TpyMethodCall, TpyName, TpyNoneLiteral, TpyStmt, TpySubscript,
-    TpyTupleUnpack, TpyUnaryOp, TpyVarDecl, walrus_bindings,
+    SourceLocation, TpyAsPattern, TpyAssign, TpyBinOp, TpyCapturePattern,
+    TpyClassPattern, TpyExpr, TpyFieldAccess, TpyFunction,
+    TpyIfExpr, TpyLiteralPattern, TpyMatchCase, TpyMethodCall, TpyName,
+    TpyNoneLiteral, TpyOrPattern, TpyPattern, TpyStmt, TpySubscript,
+    TpyTupleUnpack, TpyUnaryOp, TpyVarDecl, TpyWildcardPattern,
+    walrus_bindings,
 )
 from ..prescan import parse_deref_view_key
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..sema.registration import build_record_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import (
-    FLOAT, AnyType, FloatLiteralType, LiteralType, NominalType, OptionalType,
+    BIGINT, FLOAT, AnyType, FloatLiteralType, IntLiteralType, LiteralType,
+    NominalType, OptionalType,
     OwnType, PendingViewType, PtrType, ReadonlyType, TpyType, TupleType,
     UnionType, VoidType,
     collapse_tuple_own_elements, error_return_to_cpp, is_dyn_protocol,
@@ -47,7 +51,7 @@ from ..typesys import (
     polymorphic_subclass_into_optional, resolve_int_literals, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from .context import INDENT, FinallyContext, escape_cpp_name
+from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
 from .type_resolution import resolve_stmt_binding_type
 from .types import resolve_pending_container
 from .variant_access import VariantAccess
@@ -1012,7 +1016,299 @@ def resolve_target_type(ctx: 'CodeGenContext', types: 'TypeResolver',
     return target_type
 
 
+# -- match routing predicates ----------------------------------------------
+#
+# Pure functions of the AST pattern/subject shape plus the type system. Both
+# body paths route on them, so a single home is what keeps the two routings
+# from disagreeing about which tier a `match` takes.
+
+def returns_bare_reference(rt: 'TpyType | None') -> bool:
+    """True when a return type lowers to a C++ lvalue reference (`T&` /
+    `const T&`) -- a bare non-value reference type. Own (by-value move),
+    Optional / Ptr (pointer repr), protocols (auto / base), and value types
+    are prvalues / non-references and excluded."""
+    if rt is None:
+        return False
+    rt = unwrap_readonly(rt)
+    if rt.is_value_type() or isinstance(rt, (OwnType, OptionalType, PtrType)):
+        return False
+    if isinstance(rt, UnionType) and not rt.needs_wrapper():
+        # A pointer-variant or value union is returned by value (a prvalue
+        # `std::variant<...>`), not `T&`. Only a wrapper union returns by
+        # reference (mirrors UnionType.to_cpp_return's needs_wrapper gate).
+        return False
+    return not is_protocol_type(rt)
+
+
+def match_subject_is_lvalue(expr: TpyExpr) -> bool:
+    """A match subject is an lvalue when binding it with `auto&` is
+    safe (won't dangle) and useful (lets `case C() as v: v.f = ...`
+    write through to the original storage).
+
+    Plain names, field accesses whose target is itself an lvalue,
+    and subscripts on lvalue targets all qualify. A method call that
+    returns a bare reference (an accessor like `h.get() -> Tree[T]`
+    lowering to `Tree<T>&`) on an lvalue receiver also qualifies -- the
+    reference aliases the receiver's storage, which outlives the match.
+    Other calls (by-value / Own returns, temporary receivers), literals,
+    and constructed temporaries do not."""
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return match_subject_is_lvalue(expr.obj)
+    if isinstance(expr, TpySubscript):
+        return match_subject_is_lvalue(expr.obj)
+    if isinstance(expr, TpyMethodCall):
+        fi = expr.resolved_function_info
+        return (fi is not None and returns_bare_reference(fi.return_type)
+                and match_subject_is_lvalue(expr.obj))
+    return False
+
+
+def sub_has_field_condition(sub: 'TpyPattern') -> bool:
+    """Whether a field sub-pattern emits a runtime condition (mirrors what
+    `_record_field_conditions` produces): a literal comparison, a union
+    field guard, or a nested record sub-pattern that itself carries one.
+    Such a sub-pattern makes its arm conditional -- a later arm on the same
+    variant stays reachable."""
+    inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
+    if isinstance(inner, TpyLiteralPattern):
+        return True
+    if isinstance(inner, TpyClassPattern):
+        if inner.is_union_field_guard:
+            return True
+        return any(sub_has_field_condition(s) for _, s in inner.keywords)
+    return False
+
+
+def pattern_has_field_condition(pattern: 'TpyPattern') -> bool:
+    """Whether a case pattern (class or or-pattern alternative) carries a
+    field-value condition that the guarded codegen path must emit."""
+    if isinstance(pattern, TpyAsPattern):
+        pattern = pattern.pattern
+    if isinstance(pattern, TpyClassPattern):
+        return any(sub_has_field_condition(sub)
+                   for _, sub in pattern.keywords)
+    if isinstance(pattern, TpyOrPattern):
+        return any(pattern_has_field_condition(alt)
+                   for alt in pattern.patterns)
+    return False
+
+
+def partition_optional_cases(
+    cases: list['TpyMatchCase'],
+) -> tuple[list['TpyMatchCase'], list['TpyMatchCase']] | None:
+    """Split cases into (none_cases, inner_cases) if None arms form a prefix.
+
+    Both paths dispatch to the Optional-partition shape iff this returns
+    non-None.
+
+    Returns None if the optimization cannot be applied:
+    - None arms don't form a contiguous prefix
+    - An or-pattern mixes None and non-None alternatives
+    - A None arm has a guard (guard failure needs fallthrough to later arms)
+    - A wildcard/capture arm is reachable for a None subject (no
+      unguarded None-arm prefix): the has_value-partitioned shape
+      cannot route None into it
+    - An arm carries both a guard and a binding (capture / as): the
+      inner dispatch emitters evaluate conditions before bindings, so
+      such arms need the standalone-if + goto chain instead
+    """
+    none_cases: list[TpyMatchCase] = []
+    inner_cases: list[TpyMatchCase] = []
+    seen_inner = False
+
+    for case in cases:
+        pat = case.pattern
+        if isinstance(pat, TpyAsPattern):
+            pat = pat.pattern
+
+        # Or-pattern mixing None and non-None -- bail out
+        if isinstance(pat, TpyOrPattern):
+            has_none = any(
+                isinstance(a, TpyLiteralPattern) and a.value is None
+                for a in pat.patterns
+            )
+            has_other = any(
+                not (isinstance(a, TpyLiteralPattern) and a.value is None)
+                for a in pat.patterns
+            )
+            if has_none and has_other:
+                return None
+            if has_none:
+                if seen_inner:
+                    return None
+                if case.guard is not None:
+                    return None
+                none_cases.append(case)
+            else:
+                seen_inner = True
+                inner_cases.append(case)
+            continue
+
+        is_none = isinstance(pat, TpyLiteralPattern) and pat.value is None
+        if is_none:
+            if seen_inner:
+                return None
+            # Guarded None arm needs fallthrough to later arms on guard failure
+            if case.guard is not None:
+                return None
+            none_cases.append(case)
+        else:
+            seen_inner = True
+            inner_cases.append(case)
+
+    if not inner_cases:
+        return None
+    for case in inner_cases:
+        pat = case.pattern
+        has_as = isinstance(pat, TpyAsPattern)
+        if has_as:
+            pat = pat.pattern
+        is_catch = isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
+        or_has_catch = (isinstance(pat, TpyOrPattern)
+                        and any(isinstance(a, (TpyWildcardPattern,
+                                               TpyCapturePattern))
+                                for a in pat.patterns))
+        if not none_cases and (is_catch or or_has_catch):
+            return None
+        if case.guard is not None and (
+                has_as or is_catch
+                or (isinstance(pat, TpyClassPattern) and pat.keywords)):
+            return None
+    return none_cases, inner_cases
+
+
+# -- user-facing rejections ------------------------------------------------
+#
+# Every codegen diagnostic a BODY emit can reach lives here, message and all,
+# so the AST body emitter and THIR raise one text at one `loc` instead of two
+# that drift. Each of these terminates -- a caller that only wants the verdict
+# must evaluate its own predicate first, because a returned message string can
+# be dropped, reworded or paired with a different `loc` on one path only.
+
+def reject_overload_return_mismatch(value_type: TpyType,
+                                    stub_return: TpyType,
+                                    loc: SourceLocation | None) -> NoReturn:
+    """An `@overload` specialization returns a value its own stub's declared
+    return type does not accept.
+
+    The literal normalization is part of the message, not of the verdict: an
+    unresolved int literal prints as its default-int spelling, which names no
+    type the user wrote."""
+    if isinstance(value_type, IntLiteralType):
+        value_type = BIGINT
+    raise CodeGenError(
+        f"@overload return type mismatch: returning '{value_type}' "
+        f"but this overload declares '-> {stub_return}'",
+        loc=loc,
+    )
+
+
+def reject_polymorphic_rvalue_into_optional_local(
+        name: str, target_type: OptionalType, sub: NominalType,
+        loc: SourceLocation | None) -> NoReturn:
+    """An rvalue of a polymorphic subclass is constructed into a local
+    `Optional[Base]` slot that a later rvalue rebind shares.
+
+    The shared `std::optional<Base>` storage cannot preserve a dynamic type
+    per assignment, so the rvalue would slice. An init with no rebind needs no
+    rejection -- that slot is widened to the rvalue's own type instead."""
+    raise CodeGenError(
+        f"rvalue construction of '{sub.name}' into local "
+        f"'{name}: Optional[{target_type.inner.name}]' with rvalue rebind "
+        f"is not yet supported; pass the value directly as an argument "
+        f"or assign to a typed local of type '{sub.name}'.",
+        loc=loc
+    )
+
+
+def reject_rebind_slot_crosses_scope(
+        name: str, loc: SourceLocation | None) -> NoReturn:
+    """A rebind consumes a slot reserved by an enclosing hoist scope.
+
+    Neither placement is sound: declared inside the inner body the slot dies
+    each invocation while a pointer aliasing it outlives that, and declared
+    outside it the inner body cannot name it."""
+    raise CodeGenError(
+        f"'{name}' is declared outside a generator or nested function "
+        f"and reassigned to a new value inside it, which TPy cannot "
+        f"give a stable home; bind the new value to a local declared "
+        f"in that body instead.",
+        loc=loc)
+
+
+def reject_nonlvalue_resumable_match_ptr_bind(
+        loc: SourceLocation | None) -> NoReturn:
+    """A pointer-form `match` capture aliases a subject that is not stable
+    storage, inside a body that can suspend.
+
+    The binding points into the subject, so a dispatch-local copy of it
+    leaves the frame field dangling at the first resumption."""
+    raise CodeGenError(
+        "binding a `T | None` field from a non-lvalue "
+        "`match` subject inside a generator/`async` is not "
+        "yet supported (the binding would dangle across a "
+        "suspension); bind the subject to a local first",
+        loc=loc)
+
+
+# The `reason` clause of `reject_nondef_ctor_field_in_body`, one per demote
+# trigger. Each is half of a user-visible sentence, so it belongs with the
+# message: both paths that decide a demote name the same constant instead of
+# repeating a literal that only one of them would be corrected in.
+CTOR_DEMOTE_PRIOR_STATEMENT = (
+    "a prior statement in the constructor body would run before this "
+    "initializer")
+CTOR_DEMOTE_NESTED_DEF = "the assigned value is a function defined in the body"
+CTOR_DEMOTE_BODY_LOCAL = (
+    "the assigned expression references a local defined earlier in the body")
+CTOR_DEMOTE_READS_INHERITED = (
+    "the initializer reads a `self.<field>` written by an earlier "
+    "inherited-field assignment in the body")
+CTOR_DEMOTE_NEEDS_TEMP = (
+    "the initializer expression requires a codegen temporary that cannot be "
+    "declared in the member initializer list (e.g. a varargs call). Refactor "
+    "the RHS so it does not need an intermediate")
+
+
+def reject_nondef_ctor_field_in_body(field_name: str, record_name: str,
+                                     reason: str,
+                                     loc: SourceLocation | None) -> NoReturn:
+    """A `self.field = expr` that codegen demoted out of the member
+    initializer list targets an own field whose type has a suppressed default
+    constructor.
+
+    Such a field has no default state, so the C++ member initializer list
+    would implicitly default-init it to an uncompilable one; the wording
+    steers the user back to a leading MIL chain before the C++ compiler emits
+    something cryptic."""
+    raise CodeGenError(
+        f"field '{field_name}' of non-default-constructible type "
+        f"'{record_name}' must be initialized before any local "
+        f"variable is bound or any other statement runs in this "
+        f"constructor: {reason}. The field has no default constructor, "
+        f"so the initializer cannot run later than the member "
+        f"initializer list.\n"
+        f"  Constructor order: super().__init__() -> field assignments "
+        f"(self.x = ...) -> other logic.\n"
+        f"  To pre-compute arguments, move the logic into a "
+        f"@staticmethod on '{record_name}'. Two shapes work: "
+        f"(a) factory returning Own[Self] -- "
+        f"`self.{field_name} = {record_name}.factory(ctor_params)`; "
+        f"(b) helper returning a raw Ptr[T] called from "
+        f"'{record_name}.__init__' -- takes high-level args and "
+        f"assigns via `self.{field_name} = {record_name}(high_level_args)`",
+        loc,
+    )
+
+
 __all__ = [
+    "CTOR_DEMOTE_BODY_LOCAL",
+    "CTOR_DEMOTE_NEEDS_TEMP",
+    "CTOR_DEMOTE_NESTED_DEF",
+    "CTOR_DEMOTE_PRIOR_STATEMENT",
+    "CTOR_DEMOTE_READS_INHERITED",
     "PARAM_LOCAL_SET_FIELDS",
     "compute_borrow_tuple_const",
     "cpp_declared_type",
@@ -1026,17 +1322,27 @@ __all__ = [
     "is_const_borrow_source",
     "is_const_indirect",
     "is_plain_nonvalue",
+    "match_subject_is_lvalue",
     "maybe_unwrap_narrowed_optional",
     "narrowed_value_optional_iter_type",
     "nested_def_signature",
+    "partition_optional_cases",
+    "pattern_has_field_condition",
     "promote_movable",
     "ptr_slot_field_type",
     "push_finally",
+    "reject_nondef_ctor_field_in_body",
+    "reject_nonlvalue_resumable_match_ptr_bind",
+    "reject_overload_return_mismatch",
+    "reject_polymorphic_rvalue_into_optional_local",
+    "reject_rebind_slot_crosses_scope",
     "resolve_field_declared_type",
     "resolve_target_type",
+    "returns_bare_reference",
     "seed_param_locals",
     "seed_param_locals_scoped",
     "setup_body_scope",
+    "sub_has_field_condition",
     "tuple_source_is_const",
     "unpack_source_has_const_slots",
 ]

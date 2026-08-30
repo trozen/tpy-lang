@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import pytest
 
-from ..codegen_cpp.context import CodeGenOptions
+from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 from ..diagnostics import SemanticError
 from .nodes import THIRMatch
 from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
-                       _lower_ctx, _lower_ctx_witnessed,
+                       _lower_ctx, _lower_ctx_witnessed, _raised_in_lowering,
                        _assert_routes_byte_identical)
 
 
@@ -3644,12 +3644,12 @@ class TestOptPtrFrameFieldCapture:
         _assert_byte_identical(src)
         assert _fn(_lower_ctx(src), "sync_cap") is None
 
-    def test_rvalue_subject_capture_defers(self):
-        # BOUNDARY (UAF guard): a call-RVALUE subject with a ptr-Optional
-        # field capture and a suspension in the arm would dangle -- the
-        # AST raises a deliberate diagnostic there, so the exemption is
-        # withheld and the body falls back (the AST error then surfaces
-        # on both paths).
+    def test_rvalue_subject_capture_raises_from_lowering(self):
+        # A call-RVALUE subject with a ptr-Optional field capture and a
+        # suspension in the arm would dangle: the frame field points into a
+        # dispatch-local copy of the subject. There is no correct lowering,
+        # so lowering itself decides -- a plain reject would fall the body
+        # back and leave the message to whoever emits it next.
         src = self._PRE.replace(
             "from typing import Iterator, Optional\n",
             "from typing import Iterator, Optional\nfrom tpy import Own\n"
@@ -3662,7 +3662,59 @@ class TestOptPtrFrameFieldCapture:
             "            yield 1\n"
             "            if v is not None:\n"
             "                yield v.n\n")
-        assert _fn(_lower_ctx(src), "gen") is None
+        with pytest.raises(CodeGenError,
+                           match="would dangle across a suspension") as exc:
+            _cpp(src, thir=True)
+        assert _raised_in_lowering(exc.value)
+
+    def test_async_rvalue_subject_capture_raises_from_lowering(self):
+        # The async spelling shares the frame, so it shares the verdict.
+        src = self._PRE.replace(
+            "from typing import Iterator, Optional\n",
+            "from typing import Optional\nfrom tpy import Own\n"
+        ) + (
+            "def make() -> Own[Box]:\n"
+            "    return Box(Inner(3))\n"
+            "async def co() -> Int32:\n"
+            "    match make():\n"
+            "        case Box(maybe=v):\n"
+            "            await nap()\n"
+            "            if v is not None:\n"
+            "                return v.n\n"
+            "    return 0\n"
+            "async def nap() -> None:\n"
+            "    return None\n")
+        with pytest.raises(CodeGenError,
+                           match="would dangle across a suspension") as exc:
+            _cpp(src, thir=True)
+        assert _raised_in_lowering(exc.value)
+
+    def test_nonlvalue_subject_without_a_ptr_capture_is_untouched(self):
+        # BOUNDARY: the frame carries a ptr-Optional local from the FIRST
+        # match, so keying the reject on that set being non-empty would
+        # condemn the second match too -- its capture is a value field that
+        # is COPIED into the frame, which no subject copy can dangle.
+        src = self._PRE + (
+            "class Tag:\n"
+            "    label: str\n"
+            "    def __init__(self, s: str) -> None:\n"
+            "        self.label = s\n"
+            "def gen(b: Box) -> Iterator[Int32]:\n"
+            "    match b:\n"
+            "        case Box(maybe=v):\n"
+            "            yield 1\n"
+            "            if v is not None:\n"
+            "                yield v.n\n"
+            "    match Tag('hi'):\n"
+            "        case Tag(label=s):\n"
+            "            yield 2\n"
+            "            print(s)\n"
+            "def main() -> None:\n"
+            "    for x in gen(Box(Inner(3))):\n"
+            "        print(x)\n"
+            "main()\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "v = ::tpy::optional_to_ptr(__match_subject_1.maybe);" in cpp
 
 
 class TestScalarFieldSubjectFlavors:
@@ -3705,7 +3757,7 @@ class TestScalarFieldSubjectFlavors:
 class TestMatchScalarRvalueSubject:
     """A NON-LVALUE subject on the SWITCH scalar tiers copies into the
     dispatch local (`auto __match_subject_N = <expr>;` -- the AST's
-    `_match_subject_is_lvalue` ternary; a scalar copy is safe by value).
+    `match_subject_is_lvalue` ternary; a scalar copy is safe by value).
     Witnesses: the pascal frontend's call-rooted `deref(p).tag` subject and
     the bare-call sibling. Lvalue subjects keep the `auto&` bind, and the
     if/elif chain tiers stay out of the rung."""

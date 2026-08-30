@@ -10,12 +10,13 @@ from dataclasses import dataclass
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, NoneType, OptionalType, OwnType, PtrType, ReadonlyType,
+    TpyType, NominalType, NoneType, OptionalType, ReadonlyType,
     PendingStrType, UnionType, RecursiveAliasInstanceType,
     LiteralType,
-    unwrap_readonly, is_any_str_type, is_protocol_type, polymorphic_source_inner,
+    unwrap_readonly, is_any_str_type, polymorphic_source_inner,
     polymorphic_source_is_pointer,
 )
+from . import emit_prims
 from .variant_access import VariantAccess
 from ..parse import (
     TpyStmt, TpyExpr, TpyFieldAccess, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
@@ -25,79 +26,12 @@ from ..parse import (
 )
 
 
-def _returns_bare_reference(rt: 'TpyType | None') -> bool:
-    """True when a return type lowers to a C++ lvalue reference (`T&` /
-    `const T&`) -- a bare non-value reference type. Own (by-value move),
-    Optional / Ptr (pointer repr), protocols (auto / base), and value types
-    are prvalues / non-references and excluded."""
-    if rt is None:
-        return False
-    rt = unwrap_readonly(rt)
-    if rt.is_value_type() or isinstance(rt, (OwnType, OptionalType, PtrType)):
-        return False
-    if isinstance(rt, UnionType) and not rt.needs_wrapper():
-        # A pointer-variant or value union is returned by value (a prvalue
-        # `std::variant<...>`), not `T&`. Only a wrapper union returns by
-        # reference (mirrors UnionType.to_cpp_return's needs_wrapper gate).
-        return False
-    return not is_protocol_type(rt)
-
-
-def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
-    """A match subject is an lvalue when binding it with `auto&` is
-    safe (won't dangle) and useful (lets `case C() as v: v.f = ...`
-    write through to the original storage).
-
-    Plain names, field accesses whose target is itself an lvalue,
-    and subscripts on lvalue targets all qualify. A method call that
-    returns a bare reference (an accessor like `h.get() -> Tree[T]`
-    lowering to `Tree<T>&`) on an lvalue receiver also qualifies -- the
-    reference aliases the receiver's storage, which outlives the match.
-    Other calls (by-value / Own returns, temporary receivers), literals,
-    and constructed temporaries do not."""
-    if isinstance(expr, TpyName):
-        return True
-    if isinstance(expr, TpyFieldAccess):
-        return _match_subject_is_lvalue(expr.obj)
-    if isinstance(expr, TpySubscript):
-        return _match_subject_is_lvalue(expr.obj)
-    if isinstance(expr, TpyMethodCall):
-        fi = expr.resolved_function_info
-        return (fi is not None and _returns_bare_reference(fi.return_type)
-                and _match_subject_is_lvalue(expr.obj))
-    return False
-
-
-def _sub_has_field_condition(sub: 'TpyPattern') -> bool:
-    """Whether a field sub-pattern emits a runtime condition (mirrors what
-    `_record_field_conditions` produces): a literal comparison, a union
-    field guard, or a nested record sub-pattern that itself carries one.
-    Such a sub-pattern makes its arm conditional -- a later arm on the same
-    variant stays reachable."""
-    inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
-    if isinstance(inner, TpyLiteralPattern):
-        return True
-    if isinstance(inner, TpyClassPattern):
-        if inner.is_union_field_guard:
-            return True
-        return any(_sub_has_field_condition(s) for _, s in inner.keywords)
-    return False
-
-
-def pattern_has_field_condition(pattern: 'TpyPattern') -> bool:
-    """Whether a case pattern (class or or-pattern alternative) carries a
-    field-value condition that the guarded codegen path must emit.
-    Module-level so the THIR poly-tier routing shares the exact
-    guarded-vs-chain dispatch fact."""
-    if isinstance(pattern, TpyAsPattern):
-        pattern = pattern.pattern
-    if isinstance(pattern, TpyClassPattern):
-        return any(_sub_has_field_condition(sub)
-                   for _, sub in pattern.keywords)
-    if isinstance(pattern, TpyOrPattern):
-        return any(pattern_has_field_condition(alt)
-                   for alt in pattern.patterns)
-    return False
+from .emit_prims import (
+    match_subject_is_lvalue,
+    partition_optional_cases,
+    pattern_has_field_condition,
+    sub_has_field_condition,
+)
 from .context import INDENT, CodeGenError, escape_cpp_name, cpp_string_literal_expr
 from .string_dispatch import (
     find_best_discriminator, discriminator_key, case_label,
@@ -112,91 +46,6 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
     from .statements import StatementGenerator
-
-
-def partition_optional_cases(
-    cases: list['TpyMatchCase'],
-) -> tuple[list['TpyMatchCase'], list['TpyMatchCase']] | None:
-    """Split cases into (none_cases, inner_cases) if None arms form a prefix.
-
-    Module-level so the THIR gate/lowering shares the exact routing fact
-    (the AST dispatches to `_gen_match_optimized_optional` iff this returns
-    non-None).
-
-    Returns None if the optimization cannot be applied:
-    - None arms don't form a contiguous prefix
-    - An or-pattern mixes None and non-None alternatives
-    - A None arm has a guard (guard failure needs fallthrough to later arms)
-    - A wildcard/capture arm is reachable for a None subject (no
-      unguarded None-arm prefix): the has_value-partitioned shape
-      cannot route None into it
-    - An arm carries both a guard and a binding (capture / as): the
-      inner dispatch emitters evaluate conditions before bindings, so
-      such arms need the standalone-if + goto chain instead
-    """
-    none_cases: list[TpyMatchCase] = []
-    inner_cases: list[TpyMatchCase] = []
-    seen_inner = False
-
-    for case in cases:
-        pat = case.pattern
-        if isinstance(pat, TpyAsPattern):
-            pat = pat.pattern
-
-        # Or-pattern mixing None and non-None -- bail out
-        if isinstance(pat, TpyOrPattern):
-            has_none = any(
-                isinstance(a, TpyLiteralPattern) and a.value is None
-                for a in pat.patterns
-            )
-            has_other = any(
-                not (isinstance(a, TpyLiteralPattern) and a.value is None)
-                for a in pat.patterns
-            )
-            if has_none and has_other:
-                return None
-            if has_none:
-                if seen_inner:
-                    return None
-                if case.guard is not None:
-                    return None
-                none_cases.append(case)
-            else:
-                seen_inner = True
-                inner_cases.append(case)
-            continue
-
-        is_none = isinstance(pat, TpyLiteralPattern) and pat.value is None
-        if is_none:
-            if seen_inner:
-                return None
-            # Guarded None arm needs fallthrough to later arms on guard failure
-            if case.guard is not None:
-                return None
-            none_cases.append(case)
-        else:
-            seen_inner = True
-            inner_cases.append(case)
-
-    if not inner_cases:
-        return None
-    for case in inner_cases:
-        pat = case.pattern
-        has_as = isinstance(pat, TpyAsPattern)
-        if has_as:
-            pat = pat.pattern
-        is_catch = isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
-        or_has_catch = (isinstance(pat, TpyOrPattern)
-                        and any(isinstance(a, (TpyWildcardPattern,
-                                               TpyCapturePattern))
-                                for a in pat.patterns))
-        if not none_cases and (is_catch or or_has_catch):
-            return None
-        if case.guard is not None and (
-                has_as or is_catch
-                or (isinstance(pat, TpyClassPattern) and pat.keywords)):
-            return None
-    return none_cases, inner_cases
 
 
 @dataclass
@@ -295,7 +144,7 @@ class MatchGenerator:
         # field access whose target is itself an lvalue (e.g.
         # `self.payload`). Everything else (calls, temporaries) is
         # copied as `auto` to avoid dangling references.
-        subject_is_lvalue = _match_subject_is_lvalue(stmt.subject)
+        subject_is_lvalue = match_subject_is_lvalue(stmt.subject)
         binding = "auto&" if subject_is_lvalue else "auto"
         # A pointer-repr subject renders __match_subject as a `T*` (a
         # pointer-repr Optional/Ptr local, or a storage-form Optional source
@@ -460,7 +309,7 @@ class MatchGenerator:
         # chain then takes its pointer from this single binding.
         subject_code = self.expressions.gen_expr(subject)
         self.ctx.temps.flush(out, indent)
-        binding = "auto&" if _match_subject_is_lvalue(subject) else "auto"
+        binding = "auto&" if match_subject_is_lvalue(subject) else "auto"
         out.write(f"{indent}{binding} {self.subject} = {subject_code};\n")
 
         source_inner = polymorphic_source_inner(var_decl, registry)
@@ -1163,12 +1012,8 @@ class MatchGenerator:
                 # subject, so a non-lvalue subject (dispatch-local copy) would
                 # dangle across the suspension: reject rather than miscompile.
                 if not self.ctx.resumable_match_subject_is_lvalue:
-                    raise CodeGenError(
-                        "binding a `T | None` field from a non-lvalue "
-                        "`match` subject inside a generator/`async` is not "
-                        "yet supported (the binding would dangle across a "
-                        "suspension); bind the subject to a local first",
-                        loc=self.ctx.resumable_match_loc)
+                    emit_prims.reject_nonlvalue_resumable_match_ptr_bind(
+                        self.ctx.resumable_match_loc)
                 out.write(
                     f"{indent}{escaped} = "
                     f"::tpy::optional_to_ptr({subject_expr});\n")
@@ -2447,7 +2292,7 @@ class MatchGenerator:
                 conds.extend(nested)
         return conds
 
-    _sub_has_field_condition = staticmethod(_sub_has_field_condition)
+    _sub_has_field_condition = staticmethod(sub_has_field_condition)
     _pattern_has_field_condition = staticmethod(pattern_has_field_condition)
 
     def _has_shared_variant_index(self, stmt: TpyMatch, subject_type: UnionType) -> bool:

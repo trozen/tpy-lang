@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from ..codegen_cpp.context import CodeGenOptions
+import pytest
+
+from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 from .nodes import Form, THIRBytesLiteral
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
     _ctor_tail, _PRELUDE, _assert_routes_byte_identical,
-    _assert_byte_identical,
+    _assert_byte_identical, _raised_in_lowering,
 )
+
 
 class TestConstructor:
     """The M3a ctor frontier: pure-MIL scalar constructors of flat records --
@@ -506,22 +509,41 @@ class TestConstructor:
             "S")
         assert ctor is None
 
-    def test_ctor_demoted_nondef_record_field_is_ineligible(self):
+    def test_ctor_demoted_nondef_record_field_raises(self):
         # A demoted init of a field whose record type suppresses its default
-        # ctor (@nocopy + __del__) makes the AST raise a CodeGenError -- the
-        # gate must keep the whole ctor on the AST path so the diagnostic
-        # still fires.
+        # ctor (@nocopy + __del__) has nowhere to go: the member initializer
+        # list would default-init a type with no default state. Lowering owns
+        # the diagnostic -- a fallback would only borrow it from an emitter the
+        # cutover deletes.
+        with pytest.raises(CodeGenError) as ei:
+            _lower_ctor(
+                "from tpy import Int32, nocopy\n"
+                + "@nocopy\n"
+                + "class R:\n    v: Int32\n"
+                + "    def __init__(self, v: Int32):\n        self.v = v\n"
+                + "    def __del__(self):\n        pass\n"
+                + "class W:\n    rec: R\n"
+                + "    def __init__(self, v: Int32):\n"
+                + "        m = R(v)\n        self.rec = m\n",
+                "W")
+        assert "field 'rec' of non-default-constructible type 'R'" in str(
+            ei.value)
+        assert "a prior statement in the constructor body" in str(ei.value)
+        assert _raised_in_lowering(ei.value)
+
+    def test_ctor_demoted_default_constructible_field_does_not_raise(self):
+        # The boundary of the raise above: the same demote shape over a field
+        # whose type keeps its default constructor is ordinary body code, so
+        # widening the field predicate would start rejecting valid programs.
         ctor = _lower_ctor(
-            "from tpy import Int32, nocopy\n"
-            + "@nocopy\n"
+            "from tpy import Int32\n"
             + "class R:\n    v: Int32\n"
             + "    def __init__(self, v: Int32):\n        self.v = v\n"
-            + "    def __del__(self):\n        pass\n"
             + "class W:\n    rec: R\n"
             + "    def __init__(self, v: Int32):\n"
             + "        m = R(v)\n        self.rec = m\n",
             "W")
-        assert ctor is None
+        assert ctor is not None
 
     def test_field_read_optional_byte_identical(self):
         # A param field-read into an Optional[record] field (`self.opt = b.inner`)

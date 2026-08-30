@@ -6,10 +6,14 @@ with the rebind-slot pre-decl), the rvalue init slot (`T __slot_N = ...;`),
 the None / rvalue reseats, and the ptr-variant union rvalue / address kinds.
 """
 
+import pytest
+
 from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
                        _fn, _F1_RECORDS, _assert_byte_identical,
-                       _assert_routes_byte_identical, _thir_ctx)
+                       _assert_routes_byte_identical, _raised_in_lowering,
+                       _thir_ctx)
 from ..codegen_cpp import CodeGenOptions
+from ..codegen_cpp.context import CodeGenError
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
     Form,
@@ -1792,3 +1796,88 @@ class TestGenericOptionalPtrSlot:
         assert fell == {"body:stmt.expr_stmt:call.generic_arg_shape": 1}, fell
         assert "is_def_gen<Pod>(&(t.o))" in "".join(
             _assert_byte_identical(src))
+
+
+_PETS = (
+    "from typing import Optional, Protocol\n"
+    "from tpy import dynamic\n"
+    "@dynamic\n"
+    "class Pet(Protocol):\n"
+    "    def name(self) -> str: ...\n"
+    "class Dog(Pet):\n"
+    "    def name(self) -> str:\n        return 'dog'\n"
+    "class Cat(Pet):\n"
+    "    def name(self) -> str:\n        return 'cat'\n"
+)
+
+
+class TestPolymorphicOptSlotRebindDiagnostic:
+    """A slot shared by a rebind is typed once, so an rvalue of a polymorphic
+    subclass would slice into it. Lowering decides that itself: leaving the
+    message to whoever emits the body next makes the diagnostic depend on a
+    reject firing for some unrelated reason."""
+
+    def test_rvalue_rebind_raises_from_lowering(self):
+        src = _PETS + (
+            "def f() -> str:\n"
+            "    p: Optional[Pet] = Dog()\n"
+            "    p = Cat()\n"
+            "    return p.name()\n"
+        )
+        with pytest.raises(CodeGenError, match="with rvalue rebind"):
+            _lower_ctx(src)
+
+    def test_rvalue_rebind_in_a_frame_raises_from_lowering(self):
+        # The same decl inside a resumable body: the frame-local placement is
+        # a different decision, the verdict is not.
+        src = _PETS + (
+            "from typing import Iterator\n"
+            "def gen() -> Iterator[str]:\n"
+            "    p: Optional[Pet] = Dog()\n"
+            "    yield 'start'\n"
+            "    p = Cat()\n"
+            "    if p is not None:\n"
+            "        yield p.name()\n"
+        )
+        # A frame body only lowers under the real skeleton seam, which needs
+        # full codegen -- and that also has the other path standing by, hence
+        # the author assertion.
+        with pytest.raises(CodeGenError, match="with rvalue rebind") as exc:
+            _cpp(src, thir=True)
+        assert _raised_in_lowering(exc.value)
+
+    def test_init_only_slot_routes(self):
+        # BOUNDARY: with no rebind the slot is widened to the rvalue's own
+        # class, so there is nothing to diagnose and the decl lowers.
+        src = _PETS + (
+            "def f() -> str:\n"
+            "    p: Optional[Pet] = Dog()\n"
+            "    if p is None:\n"
+            "        return ''\n"
+            "    return p.name()\n"
+            "print(f())\n"
+        )
+        _assert_routes_byte_identical(src)
+
+    def test_frame_slot_exact_type_rvalue_routes(self):
+        # BOUNDARY on the POLYMORPHISM axis at the frame site: the declared
+        # type IS the rvalue's class, so nothing can slice and the frame decl
+        # must lower. Widening the frame-site predicate past the
+        # subclass-into-Optional test starts rejecting this.
+        #
+        # Not the rebind axis -- that boundary is unwritable at frame scope. A
+        # frame slot is a struct field typed from the DECLARED type, so unlike
+        # a sync-scope slot it cannot be widened to the rvalue's own class,
+        # and the init-only polymorphic form is rejected outright rather than
+        # routing.
+        src = _PETS + (
+            "from typing import Iterator\n"
+            "def gen() -> Iterator[str]:\n"
+            "    p: Optional[Dog] = Dog()\n"
+            "    yield 'start'\n"
+            "    if p is not None:\n"
+            "        yield p.name()\n"
+            "for s in gen():\n"
+            "    print(s)\n"
+        )
+        _assert_routes_byte_identical(src)

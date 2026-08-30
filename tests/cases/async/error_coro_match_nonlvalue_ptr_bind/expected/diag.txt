@@ -1,0 +1,1 @@
+main.py:24: error: binding a `T | None` field from a non-lvalue `match` subject inside a generator/`async` is not yet supported (the binding would dangle across a suspension); bind the subject to a local first

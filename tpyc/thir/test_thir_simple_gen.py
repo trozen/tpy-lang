@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
-from .testutil import _compile, _entry, _thir_ctx
+from .testutil import _compile, _entry, _raised_in_lowering, _thir_ctx
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
 
@@ -33,24 +33,24 @@ def _assert_identical(src: str) -> 'tuple[dict, dict]':
     return c._thir_face_witnesses, c._thir_fallback
 
 
-def _sgen_fallback(src: str, raises: bool = False) -> dict:
-    """The body-component fallback reasons, sans the `body:` prefix.
-
-    `raises` is for a source the AST emitters reject at codegen: the tally is
-    filled by lowering, which runs before the emit that raises."""
-    if raises:
-        compiler, modules = _compile(src)
-        with pytest.raises(CodeGenError):
-            compiler.generate_code_to_strings(
-                _entry(modules),
-                options=CodeGenOptions(emit_source_comments=True,
-                                       thir_codegen=True))
-        tally = compiler._thir_fallback
-    else:
-        c, _hpp, _cpp = _gen(src, thir=True)
-        tally = c._thir_fallback
-    return {k.split(":", 1)[1]: n for k, n in tally.items()
+def _sgen_fallback(src: str) -> dict:
+    """The body-component fallback reasons, sans the `body:` prefix."""
+    c, _hpp, _cpp = _gen(src, thir=True)
+    return {k.split(":", 1)[1]: n for k, n in c._thir_fallback.items()
             if k.startswith("body:")}
+
+
+def _assert_thir_authored(src: str) -> None:
+    """The diagnostic must be raised from THIR lowering, not by an AST re-emit
+    after a fallback.
+
+    A fallback re-emits the same text from the AST body emitters, so the message
+    alone cannot tell the two apart -- and those emitters go away, taking any
+    diagnostic that still lives in them."""
+    with pytest.raises(CodeGenError) as ei:
+        _gen(src, thir=True)
+    if not _raised_in_lowering(ei.value):
+        pytest.fail(f"diagnostic not authored by THIR lowering: {ei.value}")
 
 
 def _assert_raises_alike(src: str) -> None:
@@ -847,7 +847,8 @@ class TestRebindSlotDrain:
         rebind sits inside the lambda. Nothing can place that decl -- inside
         the lambda it dies each pull while the captured pointer outlives it,
         outside it the lambda cannot name it -- so the AST raises. Lowering
-        must decline the body or THIR emits a use-after-scope in silence."""
+        must raise that diagnostic itself or THIR emits a use-after-scope in
+        silence."""
         src = (self._PT
                + "def g(n: Int32) -> Iterator[Int32]:\n"
                + "    p = Point(11)\n"
@@ -858,7 +859,7 @@ class TestRebindSlotDrain:
                + "        i += 1\n\n"
                + "def main() -> None:\n"
                + "    for u in g(2):\n        print(u)\nmain()\n")
-        assert "sgen.rebind_slot_hoist" in _sgen_fallback(src, raises=True)
+        _assert_thir_authored(src)
         _assert_raises_alike(src)
 
     def test_slot_reserved_before_a_for_loop_rejects(self):
@@ -872,7 +873,7 @@ class TestRebindSlotDrain:
                + "        yield p.x\n\n"
                + "def main() -> None:\n"
                + "    for u in g([1, 2]):\n        print(u)\nmain()\n")
-        assert "sgen.rebind_slot_hoist" in _sgen_fallback(src, raises=True)
+        _assert_thir_authored(src)
         _assert_raises_alike(src)
 
 

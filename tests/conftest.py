@@ -43,6 +43,9 @@ def _log(msg: str, *, err: bool = False) -> None:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
+# The committed cutover gate owns the body/skeleton boundary; a second copy of
+# the module list here would drift the moment the boundary moves.
+from tpyc.codegen_cpp.test_cutover_gate import BODY_EMITTER_MODULES
 from tpyc.compilation_context import activate_compiler
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -937,8 +940,70 @@ def _frontend_registry_for(src_file: Path):
     return reg, extra_lib_dirs
 
 
+# A codegen diagnostic still authored by the AST body emitters. Each entry
+# survives only because THIR rejects the body and the AST re-emits it and
+# raises; deleting those emitters turns it into a crash on source that is
+# supposed to be cleanly rejected. Drive this to empty -- an entry that starts
+# passing must be REMOVED, which is why the check runs in both directions.
+AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset({
+    # Blocked, not merely unmigrated: THIR rejects a narrowed-name match
+    # subject outright, so there is no lowering to raise from. The reject is
+    # also wrong -- this program compiles and runs correctly with the AST's
+    # guard removed -- so the fix belongs in the AST first, and mirroring the
+    # guard into THIR would make a known-wrong rejection permanent.
+    "iterators/error_gen_match_nested_narrowed_ptr_bind",
+    # Blocked: no THIR lowering raises this diagnostic at all -- the
+    # suspension-in-a-@dynamic-match reject exists only in the AST match
+    # emitter, so there is nothing to re-home it from yet.
+    "async/error_async_match_dyn_await",
+})
+
+
+# Diagnostics that live in a module the cutover KEEPS but are reached only
+# from one it deletes, so the file they sit in says nothing about their fate.
+# Inventory by CALLER, not by file -- a file-based reading misses every row
+# here.
+BODY_DIAGNOSTIC_FUNCTIONS: frozenset[tuple[str, str]] = frozenset({
+    # callers: statements, expressions
+    ("tpyc.codegen_cpp.context", "use_rebind_slot"),
+    # callers: the AST ctor member-init arm, which the ctor lowering replaces
+    ("tpyc.codegen_cpp.records", "_reject_nondef_ctor_field_in_body"),
+    ("tpyc.codegen_cpp.records", "_extract_base_inits"),
+    # the mixed walrus + temps generator cond, rejected by the sgen lowering
+    ("tpyc.codegen_cpp.gen_generators", "_gen_simple_while_generator"),
+})
+
+
+def _diagnostic_author(err: CodeGenError) -> str:
+    """Which layer raised `err`: "thir", "body" (dies at cutover) or "skeleton".
+
+    Only "body" is a blocker. A skeleton diagnostic outlives the cutover
+    untouched, so lumping it in with the body ones manufactures work that does
+    not exist.
+
+    A frame in `tpyc.thir.lower` marks a THIR-authored raise, and it stays a
+    valid discriminator even when both paths share one message builder --
+    provided that builder lives OUTSIDE `lower/`, or every AST raise starts
+    reading as a THIR one.
+    """
+    body_modules = {f"tpyc.codegen_cpp.{m}" for m in BODY_EMITTER_MODULES}
+    author = "skeleton"
+    tb = err.__traceback__
+    while tb is not None:
+        mod = tb.tb_frame.f_globals.get("__name__", "")
+        if mod.startswith("tpyc.thir.lower"):
+            return "thir"
+        if (mod in body_modules
+                or (mod, tb.tb_frame.f_code.co_name)
+                in BODY_DIAGNOSTIC_FUNCTIONS):
+            author = "body"
+        tb = tb.tb_next
+    return author
+
+
 def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
-                            output_dir: Path, src_file: Path, ast_err) -> None:
+                            output_dir: Path, src_file: Path, case_dir: Path,
+                            ast_err) -> None:
     """A codegen diagnostic the AST path raises must also be raised with THIR on.
 
     The overlay runs only AFTER codegen succeeds, so a case that fails at
@@ -946,8 +1011,10 @@ def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
     the body, emit code and stay silent, and no gate notices. Re-emit here
     with the user modules routed and require the same diagnostic.
 
-    A body THIR REJECTS passes: the AST re-emits it and raises, which is why
-    the verdict is on the diagnostic and not on where it came from.
+    Matching the diagnostic is necessary but NOT sufficient: a body THIR
+    rejects yields the identical text via the AST re-emit, so text alone
+    cannot tell a re-homed diagnostic from a re-parked one. `AST_ONLY_DIAGNOSTICS`
+    carries that second verdict, and it is what counts down to cutover.
 
     "Same diagnostic" is `CodeGenError.format()`, which carries `file:line` but
     no column -- deliberately the SAME granularity `diag.txt` records, so this
@@ -955,6 +1022,7 @@ def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
     differing only in column therefore compare equal here.
     """
     want = ast_err.format(src_file.name)
+    case_id = f"{case_dir.parent.name}/{case_dir.name}"
     ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
     thir_dir = output_dir / "_thir_err"
     try:
@@ -969,11 +1037,24 @@ def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
                 options=TEST_CODEGEN_OPTIONS if is_local else ast_opts)
     except CodeGenError as thir_err:
         got = thir_err.format(src_file.name)
-        if got == want:
-            return
-        pytest.fail(
-            f"THIR raised a DIFFERENT codegen diagnostic than the AST path.\n"
-            f"  ast:  {want}\n  thir: {got}")
+        if got != want:
+            pytest.fail(
+                f"THIR raised a DIFFERENT codegen diagnostic than the AST path.\n"
+                f"  ast:  {want}\n  thir: {got}")
+        author = _diagnostic_author(thir_err)
+        if author == "body" and case_id not in AST_ONLY_DIAGNOSTICS:
+            pytest.fail(
+                f"The diagnostic for {case_id} is authored by an AST body "
+                f"emitter, which the cutover deletes; THIR only rejects the "
+                f"body and lets the AST re-emit raise it.\n  {want}\n"
+                f"Raise it from THIR lowering, or record {case_id!r} in "
+                f"AST_ONLY_DIAGNOSTICS as known-unmigrated.")
+        if author != "body" and case_id in AST_ONLY_DIAGNOSTICS:
+            pytest.fail(
+                f"{case_id} no longer depends on an AST body emitter for its "
+                f"diagnostic (now raised from: {author}) -- remove it from "
+                f"AST_ONLY_DIAGNOSTICS so the count keeps falling.")
+        return
     pytest.fail(
         f"THIR emitted code where the AST path raised a codegen diagnostic; "
         f"the reject is lost the moment THIR becomes the default.\n"
@@ -1082,7 +1163,7 @@ def compile_with_diagnostics(
             if thir_active:
                 _assert_thir_raises_too(compiler, compiled_modules,
                                         entry_module, src_dir, output_dir,
-                                        src_file, ast_err)
+                                        src_file, case_dir, ast_err)
             raise
 
         # A pattern that matched nothing would silently stop snapshotting the

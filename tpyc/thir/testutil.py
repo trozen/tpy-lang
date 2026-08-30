@@ -321,6 +321,20 @@ def _ctor_tail(ctor) -> str:
     return buf.getvalue()
 
 
+def _raised_in_lowering(err) -> bool:
+    """Whether a THIR lowering frame raised `err`. Both paths share one
+    message builder, so the text cannot say which layer decided -- and a pin
+    that only matches the text passes just as well when the body fell back
+    and the other path raised."""
+    tb = err.__traceback__
+    while tb is not None:
+        if tb.tb_frame.f_globals.get("__name__", "").startswith(
+                "tpyc.thir.lower"):
+            return True
+        tb = tb.tb_next
+    return False
+
+
 def _emit_expr(e) -> str:
     """Render one expression standalone, over a fresh emit state (tests
     only): the real `_emit_expr` threads the per-body state for the arg-temp

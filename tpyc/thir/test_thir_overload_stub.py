@@ -10,6 +10,8 @@ through the ordinary arms."""
 
 from __future__ import annotations
 
+import pytest
+
 from .testutil import (
     _assert_byte_identical,
     _assert_routes_byte_identical,
@@ -21,6 +23,7 @@ from .testutil import (
     _thir_ctx,
 )
 from ..codegen_cpp import CodeGenOptions
+from ..codegen_cpp.context import CodeGenError
 from .lower import lower_function
 from .lower.functions import iter_module_callables, module_native_globals
 from .nodes import THIRFoldedBlock
@@ -629,11 +632,11 @@ class TestWriteGuard:
 
 
 class TestPerStubReturnMismatch:
-    def test_return_mismatch_keeps_rejecting(self):
-        # A branch returning the WRONG type for its stub is a codegen-time
-        # CodeGenError on the AST path; the per-stub lowering must reject
-        # (never swallow the body), keeping the diagnostic on the emission
-        # path.
+    def test_return_mismatch_raises_from_lowering(self):
+        # A branch returning the WRONG type for its stub is a user error, and
+        # the lowering that already evaluates the compatibility is what
+        # diagnoses it -- never a reject that leaves the message to whoever
+        # emits the body next.
         src = _PRELUDE + (
             "@overload\n"
             "def tag(a: Dog) -> int: ...\n"
@@ -644,10 +647,9 @@ class TestPerStubReturnMismatch:
             "        return a.name\n"
             "    return str(a.lives)\n"
         )
-        results = _per_stub_results(src, "tag")
-        assert any(fn is None for fn, _ in results)
-        assert any(r is not None and "return.overload_mismatch" in r
-                   for _, r in results)
+        with pytest.raises(CodeGenError,
+                           match="@overload return type mismatch"):
+            _per_stub_results(src, "tag")
 
 
 class TestShortStubArity:

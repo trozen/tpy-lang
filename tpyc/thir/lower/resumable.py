@@ -117,8 +117,10 @@ from .checks import (
     _ctor_shape_ok,
     _narrow_cond_info,
     _record_rvalue_source_shape,
+    check_polymorphic_rvalue_opt_rebind,
 )
-from .context import _ExprResultUse, _ExprUse, _LowerCtx, ValueOptKind
+from .context import (_ExprResultUse, _ExprUse, _LowerCtx, _Prescan,
+                      ValueOptKind)
 from .expressions import (
     _poly_cast_checks,
     _lower_call_arg,
@@ -433,6 +435,27 @@ def _var_decl_names(stmts: list) -> 'set[str]':
             out.update(n for n in s.targets if n is not None)
         for body in s.sub_bodies():
             out |= _var_decl_names(body)
+    return out
+
+
+def _first_var_decls(stmts: list,
+                     out: 'dict[str, TpyVarDecl] | None' = None
+                     ) -> 'dict[str, TpyVarDecl]':
+    """Every name's source-first `TpyVarDecl`, anywhere in the body.
+
+    A frame local is named by the layout plan, not by a statement, so a
+    verdict that belongs to the DECL has to find its statement again. Built
+    for the whole body at once: a per-name search would rewalk the body once
+    per frame local."""
+    if out is None:
+        out = {}
+    # Source order is statement-then-its-sub-bodies, and only the first
+    # binding of a name counts, so a later decl must never overwrite it.
+    for s in stmts:
+        if isinstance(s, TpyVarDecl) and s.name not in out:
+            out[s.name] = s
+        for body in s.sub_bodies():
+            _first_var_decls(body, out)
     return out
 
 
@@ -1237,6 +1260,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     borrow_tuple_locals: set[str] = set()
     owning_tuple_slots: set[str] = set()
     _K = rcfg.FrameLocalKind
+    # Whole-body scans, independent of any single local -- the classification
+    # loop below only reads them, so they must not be rebuilt per local.
+    _local_prescan = _Prescan(func, analyzer)
+    _body_var_decls = _first_var_decls(func.body)
     for lname, ltype in (func.generator_locals or []):
         kind = frame_layout.bindings[lname].kind
         if kind in (_K.VALUE, _K.OWNED_STR):
@@ -1347,6 +1374,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             frame_slots.add(lname)
             continue
         if kind is _K.OPT_PTR:
+            # The polymorphic-rebind verdict belongs to the decl, not to the
+            # frame placement, so it is reached whether or not this local's
+            # field form is one the leaves can render.
+            _opt_decl = _body_var_decls.get(lname)
+            check_polymorphic_rvalue_opt_rebind(
+                lname, ltype,
+                _opt_decl.init if _opt_decl is not None else None,
+                _local_prescan.rvalue_reassigned, analyzer)
             # Pointer-repr Optional[NonValue] local (`P* x = nullptr;`
             # field): reads ride lc.pointers (null tests + arrow), writes
             # are bare `=` from P*-shaped sources -- the local twin of the

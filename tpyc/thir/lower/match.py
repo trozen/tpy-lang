@@ -44,11 +44,12 @@ from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
-from ...codegen_cpp.match import (
-    MatchGenerator,
-    _match_subject_is_lvalue,
+from ...codegen_cpp.emit_prims import (
+    match_subject_is_lvalue,
     partition_optional_cases,
     pattern_has_field_condition,
+    reject_nonlvalue_resumable_match_ptr_bind,
+    sub_has_field_condition,
 )
 from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...codegen_cpp.string_dispatch import (
@@ -485,8 +486,8 @@ def _match_union_route(stmt: TpyMatch, u: UnionType) -> str:
     """_gen_match_dispatch's union routing: any guard, two arms landing on
     one variant index (`_has_shared_variant_index` -- class and or-class
     alternatives only), or a field-value sub-pattern (the unconditional
-    switch has no `&&` position for its check -- the AST's own
-    `_pattern_has_field_condition` is reused so the two routings cannot
+    switch has no `&&` position for its check -- the shared
+    `pattern_has_field_condition` is reused so the two routings cannot
     drift) takes the guarded path."""
     if any(c.guard is not None for c in stmt.cases):
         return "guarded_union"
@@ -512,7 +513,7 @@ def _match_union_route(stmt: TpyMatch, u: UnionType) -> str:
             if idx in seen:
                 return "guarded_union"
             seen.add(idx)
-    if any(MatchGenerator._pattern_has_field_condition(c.pattern)
+    if any(pattern_has_field_condition(c.pattern)
            for c in stmt.cases):
         return "guarded_union"
     return "switch_union"
@@ -651,15 +652,15 @@ def _union_arm_ok(
 def _match_record_arm_always(test) -> bool:
     """Whether an arm matches unconditionally on the record tiers: a
     wildcard/capture (test None), a class pattern with no condition-
-    rendering field sub-patterns (the AST's own recursive
-    `_sub_has_field_condition` -- literals, union-field guards, and nested
+    rendering field sub-patterns (the shared recursive
+    `sub_has_field_condition` -- literals, union-field guards, and nested
     records carrying either), or an or-pattern whose rendered condition
     list collapses empty (a wildcard alternative clears it; condition-free
     class alternatives contribute nothing)."""
     if test is None:
         return True
     if isinstance(test, TpyClassPattern):
-        return not any(MatchGenerator._sub_has_field_condition(s)
+        return not any(sub_has_field_condition(s)
                        for _, s in test.keywords)
     if any(isinstance(a, TpyWildcardPattern) for a in test.patterns):
         return True
@@ -742,11 +743,11 @@ def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
                            narrowed: AbstractSet[str],
                            storage_tuple_locals: AbstractSet[str]) -> bool:
     """A non-name subject the storage-form tiers admit: a field/subscript
-    LVALUE chain (the shared `_match_subject_is_lvalue` fact -- `auto&`
+    LVALUE chain (the shared `match_subject_is_lvalue` fact -- `auto&`
     binds the storage) rooted at `self` or a declared name that renders
     direct (pointer/narrowed/tuple-alias roots spell indirect). Method-call
     lvalue roots (accessor chains) are their own rung."""
-    if not _match_subject_is_lvalue(subj):
+    if not match_subject_is_lvalue(subj):
         return False
     e = subj
     while isinstance(e, (TpyFieldAccess, TpySubscript)):
@@ -1008,7 +1009,7 @@ def _match_route(
                          analyzer) is not None))
             # A NON-LVALUE subject on the SWITCH scalar tiers copies into
             # the dispatch local (`auto __match_subject_N = <expr>;` -- the
-            # AST's `_match_subject_is_lvalue` ternary; a scalar copy is
+            # AST's `match_subject_is_lvalue` ternary; a scalar copy is
             # safe by value). Lvalue chains rooted at pointer/narrowed/
             # tuple-alias names stay out: the AST binds those `auto&`, an
             # unmirrored render. The chain scalar tiers (if_elif*) stay
@@ -1016,7 +1017,7 @@ def _match_route(
             # rvalue subjects.
             scalar_rvalue_subject = (
                 kind in ("switch_enum", "switch_primitive")
-                and not _match_subject_is_lvalue(subj))
+                and not match_subject_is_lvalue(subj))
             if _wrap_borrow_subj:
                 pass
             elif not (union_call_subject
@@ -1086,6 +1087,22 @@ def _select_match_route(
         lc: '_LowerCtx', *,
         in_branch: bool, in_loop: bool) -> _MatchRoute:
     """Select a match lowering strategy or reject at the lowering boundary."""
+    # A capture that lands in a `P*` frame field points INTO the subject, so a
+    # subject that is not stable storage leaves the field dangling at the
+    # first resumption. No lowering is correct here, so the verdict is
+    # lowering's own -- rejecting instead would only defer the body and leave
+    # the user-facing message to whichever layer emits it next.
+    # `opt_ptr_frame_locals` is empty outside a resumable body, and a
+    # non-empty set says nothing on its own -- only a capture NAMING one of
+    # those locals builds the aliasing field.
+    # Narrowing is deliberately NOT part of this condition: a narrowed subject
+    # that is an lvalue is still frame-rooted, so only the non-lvalue case can
+    # dangle -- folding narrowing in here would reject valid programs.
+    if lc.opt_ptr_frame_locals and not match_subject_is_lvalue(stmt.subject):
+        for _case in stmt.cases:
+            for _bind in iter_capture_bindings(_case.pattern):
+                if _bind.name in lc.opt_ptr_frame_locals:
+                    reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
     route = _match_route(
         stmt, analyzer, declared, pointers, narrowed,
         storage_tuple_locals, prescan, lc,
@@ -2052,7 +2069,7 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
     return THIRMatch(
         strategy=kind,
         subject=_lower_expr(subj, lc, declared, use=subj_use),
-        subject_ref=_match_subject_is_lvalue(subj),
+        subject_ref=match_subject_is_lvalue(subj),
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
         is_exhaustive=stmt.is_exhaustive,
@@ -3079,7 +3096,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
             # has_field_guard) -- a failed field compare falls through.
             pat = entry[4]
             has_field_guard = (pat is not None and any(
-                MatchGenerator._sub_has_field_condition(sub)
+                sub_has_field_condition(sub)
                 for _, sub in pat.keywords))
             if entry[0].guard is None and not has_field_guard:
                 break

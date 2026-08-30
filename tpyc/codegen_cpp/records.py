@@ -30,6 +30,7 @@ from ..namespace import Namespace
 from ..sema.registration import build_record_self_type
 
 from .. import qnames
+from . import emit_prims
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp)
@@ -1622,12 +1623,11 @@ class RecordGenerator:
                     source_expr = source_expr.expr
                 if chain_broken:
                     demote(field_name, stmt.loc,
-                           "a prior statement in the constructor body would "
-                           "run before this initializer")
+                           emit_prims.CTOR_DEMOTE_PRIOR_STATEMENT)
                     continue
                 if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
                     demote(field_name, stmt.loc,
-                           "the assigned value is a function defined in the body")
+                           emit_prims.CTOR_DEMOTE_NESTED_DEF)
                     continue
                 # Bare-name RHS not in params, or any reference to a body-local:
                 # the value isn't in scope at MIL time.
@@ -1639,8 +1639,7 @@ class RecordGenerator:
                     local_names and (collect_name_refs(stmt.value) & local_names))
                 if blocked_by_bare_name or blocked_by_body_local:
                     demote(field_name, stmt.loc,
-                           "the assigned expression references a local defined "
-                           "earlier in the body")
+                           emit_prims.CTOR_DEMOTE_BODY_LOCAL)
                     continue
                 # Inherited field: the base ctor owns the MIL slot, so we
                 # write through the body but the chain stays alive.
@@ -1649,8 +1648,7 @@ class RecordGenerator:
                     continue
                 if expr_reads_self_field(stmt.value, body_written_self_fields):
                     demote(field_name, stmt.loc,
-                           "the initializer reads a `self.<field>` written by an "
-                           "earlier inherited-field assignment in the body")
+                           emit_prims.CTOR_DEMOTE_READS_INHERITED)
                     continue
                 fld_type = field_types[field_name]
                 # Unwrap copy() in member init -- init list copies implicitly
@@ -1684,10 +1682,7 @@ class RecordGenerator:
                         self.ctx.temps.rollback_discarded(checkpoint)
                 if _mil_probe_temps:
                     demote(field_name, stmt.loc,
-                           "the initializer expression requires a codegen "
-                           "temporary that cannot be declared in the member "
-                           "initializer list (e.g. a varargs call). Refactor "
-                           "the RHS so it does not need an intermediate")
+                           emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
                     continue
                 # A bytes-view source (e.g. a bytes param's span) into an owned
                 # bytes field copies via the shared view->owned chokepoint --
@@ -1767,24 +1762,8 @@ class RecordGenerator:
         fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
         if fld_rec is None or not del_suppresses_default_ctor(fld_rec):
             return
-        raise CodeGenError(
-            f"field '{field_name}' of non-default-constructible type "
-            f"'{fld_rec.name}' must be initialized before any local "
-            f"variable is bound or any other statement runs in this "
-            f"constructor: {reason}. The field has no default constructor, "
-            f"so the initializer cannot run later than the member "
-            f"initializer list.\n"
-            f"  Constructor order: super().__init__() -> field assignments "
-            f"(self.x = ...) -> other logic.\n"
-            f"  To pre-compute arguments, move the logic into a "
-            f"@staticmethod on '{fld_rec.name}'. Two shapes work: "
-            f"(a) factory returning Own[Self] -- "
-            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`; "
-            f"(b) helper returning a raw Ptr[T] called from "
-            f"'{fld_rec.name}.__init__' -- takes high-level args and "
-            f"assigns via `self.{field_name} = {fld_rec.name}(high_level_args)`",
-            loc,
-        )
+        emit_prims.reject_nondef_ctor_field_in_body(
+            field_name, fld_rec.name, reason, loc)
 
     def _render_enum_member_default(self, expr) -> str | None:
         """C++ for a validated enum-member field default

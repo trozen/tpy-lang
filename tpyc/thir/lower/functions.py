@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from ...parse.nodes import (
     FunctionLinkage,
+    SourceLocation,
     TpyArrayLiteral,
     TpyAssign,
     TpyBinOp,
@@ -74,6 +75,7 @@ from ...typesys import (
     unwrap_send_sync,
     view_family_for_type,
 )
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp.context import (
     escape_cpp_name,
     imported_variable_cpp,
@@ -1900,25 +1902,19 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                     continue
                 # DYNAMIC demote (the AST's probe-registers-a-temp trigger,
                 # e.g. a varargs std::array in the init): the init goes to
-                # the body like the static demotes below. The AST raises
-                # for a demoted non-default-constructible field -- keep
-                # falling back whole there so it still does.
-                if _nondef_ctor_field(analyzer.get_expr_type(stmt.target),
-                                      analyzer):
-                    note("ctor.demote_nondefault_field")
-                    return None
+                # the body like the static demotes below.
+                _reject_nondef_ctor_field(stmt, analyzer,
+                                          emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
                 _witness("mil.demote_probe")
                 chain_broken = True
                 body_stmts.append(stmt)
                 continue
-            # A demoted own-field init of a non-default-constructible field type
-            # raises CodeGenError on the AST path (_reject_nondef_ctor_field_in_body,
-            # the MIL would default-init an uncompilable state) -- reject so the AST
-            # path still raises it.
             if is_own_init:
-                if _nondef_ctor_field(analyzer.get_expr_type(stmt.target), analyzer):
-                    note("ctor.demote_nondefault_field")
-                    return None
+                _reject_nondef_ctor_field(
+                    stmt, analyzer,
+                    _ctor_demote_reason(stmt, chain_broken, nested_def_names,
+                                        lc.prescan.param_names,
+                                        body_local_names))
                 if not chain_broken and ast_demotes:
                     _witness("mil.demote_mirror")
             # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
@@ -2027,6 +2023,48 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
         return True
     return bool(body_local_names
                 and (collect_name_refs(stmt.value) & body_local_names))
+
+
+def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
+                        nested_def_names: set[str], param_names: set[str],
+                        body_local_names: set[str]) -> str:
+    """Which demote trigger fired for this own-field init, in the order
+    `_extract_field_inits` tests them.
+
+    The trigger is part of the user-visible sentence, so a later one standing in
+    for an earlier one is a wrong message, not a differently-worded right one.
+    Reached only for an init that IS demoted, so the last arm needs no test of
+    its own -- nothing else can have sent it here."""
+    if chain_broken:
+        return emit_prims.CTOR_DEMOTE_PRIOR_STATEMENT
+    src = stmt.value
+    while isinstance(src, TpyCoerce):
+        src = src.expr
+    if isinstance(src, TpyName):
+        if src.name in nested_def_names:
+            return emit_prims.CTOR_DEMOTE_NESTED_DEF
+        if src.name not in param_names:
+            return emit_prims.CTOR_DEMOTE_BODY_LOCAL
+    if body_local_names and (collect_name_refs(stmt.value) & body_local_names):
+        return emit_prims.CTOR_DEMOTE_BODY_LOCAL
+    return emit_prims.CTOR_DEMOTE_READS_INHERITED
+
+
+def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
+    """Raise when a DEMOTED own-field init targets a field whose type has a
+    suppressed default constructor.
+
+    Such a field has no default state, so leaving it out of the member
+    initializer list is not an option the emitters have. Own-field-ness is the
+    caller's guard -- an inherited field of the same type belongs to the base
+    constructor's list and is not this diagnostic."""
+    ftype = analyzer.get_expr_type(stmt.target)
+    if not _nondef_ctor_field(ftype, analyzer):
+        return
+    emit_prims.reject_nondef_ctor_field_in_body(
+        stmt.target.field, analyzer.registry.get_record_for_type(ftype).name,
+        reason, stmt.loc)
+
 
 def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
     """A `self.<own field> = expr` -- a member initializer the AST hoists into the
@@ -2759,9 +2797,10 @@ def _rebound_name(node) -> 'str | None':
     return None
 
 
-def rejects_cross_scope_rebind(outer, inner) -> bool:
-    """True when a LAMBDA-rendered body CONSUMES a rebind slot the ENCLOSING
-    scope reserved.
+def cross_scope_rebind_site(
+        outer, inner) -> 'tuple[str, SourceLocation | None] | None':
+    """The `(name, loc)` of a rebind in a LAMBDA-rendered body that CONSUMES a
+    rebind slot the ENCLOSING scope reserved, or None.
 
     The slot is declared at the enclosing body's prologue, outside the lambda's
     capture list: inside the lambda it dies each invocation while the pointer
@@ -2770,6 +2809,10 @@ def rejects_cross_scope_rebind(outer, inner) -> bool:
     owning hoist scope, and THIR has no such runtime check, so this predicate is
     its entire protection. A lambda body reserving its OWN slot is not a hazard
     -- the emitters drain it inside the lambda.
+
+    The offending rebind is returned rather than a bare verdict because the
+    user-facing diagnostic points at the name's REBIND, not at the body that
+    holds it.
 
     A rebind whose name the lambda body itself reserves a slot for is a SHADOW,
     not a cross-scope consume, but the reason differs per caller and only one of
@@ -2788,23 +2831,28 @@ def rejects_cross_scope_rebind(outer, inner) -> bool:
     outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(outer))
                         if n is not None}
     if not outer_slot_names:
-        return False
+        return None
     own = {n for n in (_slot_owning_name(x) for x in _iter_thir(inner))
            if n is not None}
     for n in _iter_thir(inner):
         rb = _rebound_name(n)
         if rb is not None and rb in outer_slot_names and rb not in own:
-            return True
-    return False
+            return rb, n.loc
+    return None
 
 
 def _rejects_lambda_hoist(body) -> bool:
-    """The nested-def flavor of `rejects_cross_scope_rebind`.
+    """The nested-def flavor of `cross_scope_rebind_site`.
 
     `own` is deliberately not computed across a further nesting level -- sema
     rejects a nested def inside a nested def, so there is none.
+
+    A verdict only, never the diagnostic: a local first declared in a branch
+    rides `THIRIf.hoist_slots`, whose owner `_slot_owning_name` cannot read, so
+    the shadow exemption misses it and this over-rejects shapes the AST accepts.
+    Falling back is safe there; raising would reject valid code.
     """
-    return any(rejects_cross_scope_rebind(body, nd.body)
+    return any(cross_scope_rebind_site(body, nd.body) is not None
                for nd in _iter_thir(body)
                if isinstance(nd, THIRNestedDef))
 

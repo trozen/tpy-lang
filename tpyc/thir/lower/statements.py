@@ -154,7 +154,7 @@ from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_is_pointer,
                         polymorphic_subclass_into_optional)
 from ...codegen_cpp.types import resolve_pending_container
-from ...codegen_cpp import resumable_cfg as rcfg
+from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
 from ...value_category import (
     call_returns_cpp_ref, is_rvalue_source, wants_move,
@@ -435,6 +435,7 @@ from .checks import (
     _assert_narrow_info,
     _borrow_local_binding,
     _borrow_dunder_source,
+    check_polymorphic_rvalue_opt_rebind,
     _bytes_aug_concat_ok,
     _class_const_aug_assign_ok,
     _container_aug_setitem_ok,
@@ -7218,9 +7219,10 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
     _check_overload_return_type (compat validation against the stub's
     return type) + _strip_wrong_overload_coerce (sema coerced against the
     impl's union return, which may target a different member than this
-    stub). An incompatible return rejects, so the AST path keeps raising
-    its return-type-mismatch CodeGenError; a stripped value shallow-copies
-    the node -- the shared AST must never be mutated."""
+    stub). An incompatible return is a user error, except under a literal
+    specialization, where it is dead code the live branches eliminated. A
+    stripped value shallow-copies the node -- the shared AST must never be
+    mutated."""
     stub_ret = lc.overload_stub_return
     if stmt.value is None or stmt.value_type is None:
         return stmt
@@ -7236,8 +7238,14 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
         lc.analyzer.compat.check_type_compatible(
             vt, rt, "return value", loc=stmt.loc, is_return=True)
     except SemanticError:
-        note_detail("return.overload_mismatch")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        if lc.overload_literal_facts:
+            # Dead code the literal branch elimination drops rather than
+            # diagnoses; dropping a statement is not a shape this arm can
+            # express, so the body still needs the other path.
+            note_detail("return.overload_mismatch")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        emit_prims.reject_overload_return_mismatch(stmt.value_type, rt,
+                                                   stmt.loc)
     value = stmt.value
     if isinstance(value, TpyCoerce):
         keep = (value.expected_type == rt
@@ -7718,6 +7726,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                             analyzer, lc.pointers)
             if binding is not None:
                 if binding is LocalBinding.OPT_PTR_SLOT:
+                    check_polymorphic_rvalue_opt_rebind(
+                        stmt.name, vtype, stmt.init,
+                        lc.prescan.rvalue_reassigned, analyzer)
                     if (fn_top
                             and isinstance(stmt.init, (TpyCall, TpyMethodCall,
                                                        TpyIfExpr,

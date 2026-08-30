@@ -1,5 +1,6 @@
 """Regression tests for the THIR per-case migration harness helpers."""
 
+import ast
 import contextlib
 import copy
 from pathlib import Path
@@ -281,7 +282,7 @@ class _StubCompiler:
         return None, None
 
 
-def _run_error_gate(tmp_path: Path, re_emit):
+def _run_error_gate(tmp_path: Path, re_emit, case_dir: Path | None = None):
     """Drive `_assert_thir_raises_too` over a stub whose THIR re-emit is
     `re_emit`. Returns the stub, so a caller can prove the re-emit ran."""
     src = tmp_path / "src" / "main.py"
@@ -291,6 +292,7 @@ def _run_error_gate(tmp_path: Path, re_emit):
     stub = _StubCompiler(re_emit)
     conftest._assert_thir_raises_too(
         stub, [entry], entry, src.parent.resolve(), tmp_path / "out", src,
+        case_dir if case_dir is not None else tmp_path,
         conftest.CodeGenError("cannot lower this"))
     return stub
 
@@ -331,6 +333,100 @@ def test_error_gate_passes_on_the_same_diagnostic(tmp_path: Path) -> None:
 
     stub = _run_error_gate(tmp_path, same)
     assert stub.emitted == ["main"], "the gate never re-emitted"
+
+
+def _raise_from(module_name: str, func_name: str, msg: str = "boom"):
+    """Raise `CodeGenError` from a frame that claims `module_name` and
+    `func_name`, so the author classification can be driven over every layer
+    without importing the real emitters."""
+    src = (f"def {func_name}(exc):\n"
+           f"    raise exc\n")
+    globs = {"__name__": module_name}
+    exec(compile(src, "<probe>", "exec"), globs)
+    try:
+        globs[func_name](conftest.CodeGenError(msg))
+    except conftest.CodeGenError as err:
+        return err
+    raise AssertionError("probe did not raise")
+
+
+@pytest.mark.parametrize("module_name, func_name, want", [
+    ("tpyc.codegen_cpp.statements", "_gen_simple_stmt", "body"),
+    ("tpyc.codegen_cpp.match", "_emit_binding", "body"),
+    # The row a file-based reading gets wrong: a SURVIVING module whose
+    # callers all die.
+    ("tpyc.codegen_cpp.context", "use_rebind_slot", "body"),
+    ("tpyc.codegen_cpp.records", "_reject_nondef_ctor_field_in_body", "body"),
+    # Skeleton diagnostics outlive the cutover; calling them blockers would
+    # manufacture work that does not exist.
+    ("tpyc.codegen_cpp.gen_async", "gen_coro_struct", "skeleton"),
+    ("tpyc.codegen_cpp.generator", "_emit_resumable_structs", "skeleton"),
+    ("tpyc.thir.lower.statements", "_lower_return", "thir"),
+    # The name alone must not carry the verdict: the same function name in a
+    # module that is not its home is a different function.
+    ("tpyc.thir.emit", "use_rebind_slot", "skeleton"),
+])
+def test_diagnostic_author_classifies_by_caller(module_name, func_name, want):
+    err = _raise_from(module_name, func_name)
+    assert conftest._diagnostic_author(err) == want
+
+
+def test_body_diagnostic_functions_all_exist() -> None:
+    """The classification is keyed on function names, so a rename silently
+    reclassifies a diagnostic and the ratchet then fails pointing the wrong
+    way. Fail here instead, naming the function that moved.
+
+    This asserts only that each name still EXISTS. It does not re-derive the
+    claim that earned the name its place -- that every caller lives in a
+    module the cutover deletes. Give one of these a surviving caller and the
+    entry silently becomes wrong while this still passes. The static site
+    inventory catches the case where the new caller is in THIR; a new
+    SKELETON caller is caught by neither, so the claim is re-derived by
+    reading, not by a gate."""
+    repo = Path(__file__).resolve().parent.parent
+    missing = []
+    for module_name, func_name in sorted(conftest.BODY_DIAGNOSTIC_FUNCTIONS):
+        path = repo / (module_name.replace(".", "/") + ".py")
+        if not path.exists():
+            missing.append(f"{module_name} (module gone)")
+            continue
+        tree = ast.parse(path.read_text())
+        defined = {n.name for n in ast.walk(tree)
+                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        if func_name not in defined:
+            missing.append(f"{module_name}.{func_name}")
+    assert not missing, (
+        f"BODY_DIAGNOSTIC_FUNCTIONS names functions that no longer exist: "
+        f"{missing}. Update it in the same change that moved them.")
+
+
+def test_error_gate_fires_on_an_unrecorded_body_diagnostic(
+        tmp_path: Path) -> None:
+    """A diagnostic the cutover would delete, not recorded as such. Without
+    this branch the gate is satisfied by the AST re-emit and a re-parked
+    diagnostic reads exactly like a re-homed one."""
+    def from_body():
+        raise _raise_from("tpyc.codegen_cpp.statements", "_gen_simple_stmt",
+                          "cannot lower this")
+
+    with pytest.raises(pytest.fail.Exception) as excinfo:
+        _run_error_gate(tmp_path, from_body)
+    assert "authored by an AST body emitter" in str(excinfo.value)
+
+
+def test_error_gate_fires_when_a_recorded_case_starts_passing(
+        tmp_path: Path) -> None:
+    """The other direction, which is what makes the record a ratchet rather
+    than a suppression list: progress must force the entry out."""
+    recorded = sorted(conftest.AST_ONLY_DIAGNOSTICS)[0]
+    case_dir = tmp_path / Path(recorded).parent.name / Path(recorded).name
+
+    def same():
+        raise conftest.CodeGenError("cannot lower this")
+
+    with pytest.raises(pytest.fail.Exception) as excinfo:
+        _run_error_gate(tmp_path, same, case_dir=case_dir)
+    assert "remove it from AST_ONLY_DIAGNOSTICS" in str(excinfo.value)
 
 
 # --- tests/interop ext-exec overlay --------------------------------------

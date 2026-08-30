@@ -5080,7 +5080,7 @@ by reading the item, never by trusting a sibling's summary of it.
      `tests/cases/generators/error_gen_rebind_slot_*`; the cause was
      `_rejects_lambda_hoist` walking for `THIRNestedDef` only while the
      simple-generator peephole is lambda-rendered too. Fixed at the root by
-     generalizing it to `rejects_cross_scope_rebind(outer, inner)` and applying
+     generalizing it to `cross_scope_rebind_site(outer, inner)` and applying
      it at the sgen seam. `tpyc/thir/` still contains zero `raise CodeGenError`,
      so every one of these passes by FALLBACK -- the diagnostics still have to be
      re-homed before the emitters are deleted, and the detector only guarantees
@@ -5092,14 +5092,134 @@ by reading the item, never by trusting a sibling's summary of it.
      8 stop being diagnostics and become ICEs on valid-to-reject source. Count
      them down to zero as the diagnostics are re-homed -- 8 is the number to
      re-measure, not a caveat.
+     **RE-MEASURED 2026-08-30: it was 10 of the ones the CORPUS REACHES, not
+     8, and 9 are now re-homed.** Say the qualifier every time -- the method
+     enumerates `error_*` cases, so it is blind by construction to a
+     diagnostic no case reaches, and a probe found one the same day. The
+     population-complete twin is the static site inventory
+     (`scripts/thir_migration/thir_diagnostic_sites.py`), which counts raise
+     SITES rather than cases and goes to zero when the four modules are
+     deleted -- that, not the case count, is the definition of done. The
+     30/20 split held exactly; the bucket boundary did not. The two extra rows
+     are the `records/error_nocopy_del_field_*` pair, whose raise sits in the
+     ctor member-init extraction -- textually inside a module the cutover
+     KEEPS, but the ctor lowering returns before it, so it is body code. The
+     figure was re-derived two ways that agreed: a sweep compiling all 1570
+     `error_*` cases and joining reject to raise on the same live stack frame,
+     and a static call-graph trace from all 78 `raise CodeGenError` sites.
+     A ratchet now carries the verdict (`tests/conftest.py::AST_ONLY_DIAGNOSTICS`),
+     because matching the diagnostic TEXT cannot distinguish a re-homed
+     diagnostic from a re-parked one -- the AST re-emit produces identical
+     text either way. **It must classify by CALLER and must hold skeleton
+     diagnostics apart**: a first cut asking only "did THIR raise it" flagged
+     all 20 skeleton rows, which need no work at all.
    - **FOUR body diagnostics, not three -- and the fourth was missed by a
      file-based inventory.** `context.py::use_rebind_slot` (the cross-scope
      rebind-slot reject) lives in `codegen_cpp/context.py`, a file the cutover
      KEEPS, but every one of its callers is in a file the cutover DELETES
      (`statements.py` x7, `expressions.py` x1). **Lesson: inventory raise sites
      by CALLER, not by file.** A diagnostic is a body concern when the bodies
-     reach it, regardless of which module spells the `raise`. Re-homing it is
-     separate work and is NOT done.
+     reach it, regardless of which module spells the `raise`.
+     **SUPERSEDED 2026-08-30: the full inventory is 78 raise sites, 42 BODY /
+     36 SKELETON, of which 12 are BODY and deliberate.** That reading came
+     from a throwaway tool; the committed one
+     (`scripts/thir_migration/thir_diagnostic_sites.py`) refines it to
+     37 BODY / 29 SKELETON / 12 BOTH, of which 8 are BODY and deliberate --
+     and it RECONCILES rather than contradicts (37 + the 5 re-homed = 42;
+     29 + the other 7 BOTH = 36). The BOTH bucket is the difference: the
+     first tool restricted callers to `codegen_cpp/` and so could not see a
+     THIR caller. Re-run the script rather than trusting either figure, and
+     note that the five re-homed diagnostics classifying BOTH is the
+     instrument SEEING the re-homing -- reporting them as BODY would say it
+     had not happened. **7 BODY+deliberate sites have no witnessing case**,
+     which is the list this work needed and did not have; three of them have
+     since been probed unreachable (two `_resolve_cpp_type` rows, one
+     `@overload`-specialized match row traced dead through its caller
+     guards) and one reads as an internal assertion, so the live residue is
+     small -- but derive it from a fresh run, not from this sentence.
+     Five of the twelve
+     are load-bearing (a committed case witnesses them); the rest are
+     unwitnessed. Four unwitnessed ones were probed and turned out
+     unreachable -- sema rejects those shapes earlier with a better
+     diagnostic.
+     **That was FOUR probes, and an earlier draft of this line generalized
+     them into a claim about all seven. A fifth probe falsified it the same
+     day**: an `await` inside a `match` on a `@dynamic` subject -- ordinary
+     Python, no corpus case -- reaches a deliberate diagnostic in `match.py`
+     with no THIR mirror anywhere. It is now a committed case and a second
+     `AST_ONLY_DIAGNOSTICS` entry. The ratchet going UP was the right
+     outcome: it recorded a gap that had been invisible, and the population
+     it tracks is smaller than the one the static inventory sees, so agreement
+     between them is not evidence.
+     **A witness is an ablation; a deliberate-LOOKING message is a
+     hypothesis -- and so is "probed, therefore unreachable" until the probe
+     exists.** Four more raise-in-a-surviving-file rows exist beyond
+     `use_rebind_slot` (three in the ctor base-init extraction, one in the
+     simple-generator while-cond), so that shape is a family, not an
+     exception. Also of note: 20 further BODY sites wear an internal-shaped
+     message (`Unsupported <thing>: {type(pattern).__name__}`) over real TPy
+     pattern nodes, all in `match.py`. Their reachability is UNESTABLISHED --
+     two constructed witnesses for them were both falsified -- so they are
+     neither safely demoted to internal errors nor safely budgeted as work.
+   - **A NEW risk class the re-homing introduces: lowering can now reject by
+     RAISING.** Before it, a too-broad THIR predicate cost a fallback --
+     invisible and safe, because the AST re-emitted the body. Now five
+     predicates raise `CodeGenError` directly, so a too-broad one REJECTS
+     VALID CODE, and neither the byte-diff nor the ratchet can see it because
+     raising IS the outcome they observe. The invariant, which two of the five
+     sites already argue individually and which should be stated once
+     branch-wide: **a lowering arm may raise only where its predicate is
+     provably equal to the AST's; anywhere it is merely close, it must keep
+     falling back.** The nested-def cross-scope rebind is the worked example
+     of the second case -- it deliberately does NOT raise, because its
+     predicate is broader than the AST's raise condition.
+   - **`emit_prims` is a way-station for the five pattern predicates moved out
+     of `match.py`** (subject-is-lvalue, the optional-case partition, the two
+     field-condition walks, the bare-reference test) -- NOT the five reject
+     helpers, which belong there permanently.
+     Moving them out of the dying `match.py` was right -- THIR importing a
+     module the cutover deletes is the gate's own documented limit -- but
+     after cutover they are AST-pattern predicates sitting in the permanent
+     PRINTER layer with callers only in `thir/lower/`. Move them into THIR
+     when the emitters go, in the same pass as the docstring restatement
+     below.
+   - **Deletion chore the re-homing leaves behind.** Three THIR functions now
+     mirror a verdict whose AST twin the cutover deletes: `_overload_adjusted_return`
+     and, in the ctor lowering, `_ast_demotes_init` and `_ctor_demote_reason`.
+     Unifying them now would put a shared helper in the permanent home with
+     exactly one caller left after the cutover, so the mirrors are deliberate
+     and temporary. What must not survive is their DOCSTRINGS: each names the
+     AST symbol it mirrors, and those symbols are scheduled for deletion. When
+     the emitters go, restate each docstring as the invariant it enforces
+     rather than as a reference to a function that no longer exists. Until
+     then the mirrors are instrumented -- all three feed diagnostic TEXT, and
+     the error-path gate fails on any text mismatch for a covered shape.
+   - **What re-homing them actually costs, measured on all ten.** Three sites
+     were nearly free: THIR already evaluated the exact condition and threw
+     the answer away, with a source comment saying it rejected so the AST
+     would raise. Two more needed THIR to learn a condition it never
+     evaluated, because the rejects that shadowed them fired for unrelated
+     reasons. The tenth is not re-homable at all and is filed as a defect --
+     see the narrowed-name match entry below.
+   - **The count is a FLOOR, not a ceiling, and the first site proved it.**
+     The method only sees raise sites some `error_*` case reaches. Re-homing
+     the polymorphic-`Optional` init path immediately surfaced its REBIND
+     sibling: still AST-authored, no corpus case, so the ratchet is silent and
+     it becomes a crash at cutover. Filed. Expect more of these to appear
+     while doing the work rather than while measuring it.
+   - **One of the ten is a WRONG rejection, and it blocks the cutover twice
+     over.** `iterators/error_gen_match_nested_narrowed_ptr_bind` rejects a
+     program that compiles, runs and matches CPython (verified end-to-end with
+     a running binary against the exact committed source). THIR cannot raise
+     its diagnostic because it rejects narrowed-name match subjects outright
+     -- and that reject is NOT resumable-specific: a plain sync `def` with a
+     nested narrowed match falls back too. So the residue is not one error
+     case but an entire un-routed shape of ordinary valid Python that ICEs at
+     cutover, invisible to every gate because no corpus case carries it.
+     Mirroring the AST guard into THIR would reach a zero on the ratchet while
+     making a known-wrong rejection permanent AND leaving the sync shape
+     ICE-ing; the AST fix plus the routing lane is the work that actually
+     unblocks the cutover. Filed in `BUGS.md` and `TODO.md`.
    - ~~`class_const` / `final_global` fallback is excluded from the ratchet by
      design~~ **RESOLVED 2026-08-30**: the residue reached zero and
      `NON_RATCHET_COMPONENTS` is now empty, so both positions are ratcheted
@@ -5170,12 +5290,20 @@ by reading the item, never by trusting a sibling's summary of it.
      but a loud diagnostic on any fallback -- so the first 372 discoveries
      land on us rather than on users.
 8. **The position-enumeration matrices. The premise is wrong in the direction
-   that matters: cutover deletes THREE detectors, not one.** The corpus
+   that matters: cutover deletes FOUR detectors, not one.** The corpus
    byte-diff is named; `tpyc/move_audit.py` and `tpyc/binding_audit.py` are
    not, and both are dual-path joins whose AST-side recorders live inside the
    deleted emitter. `move_audit`'s own docstring calls itself the ONLY detector
    for its divergence class. Three matrices lose their sole net on the cutover
    commit while this checklist reads as satisfied.
+   **A FOURTH joined them 2026-08-30 and dies the same way**: the error-path
+   gate (`tests/conftest.py::_assert_thir_raises_too` plus its
+   `AST_ONLY_DIAGNOSTICS` record) is reached only from the handler for a
+   `CodeGenError` raised by the AST emit, so deleting that emit removes its
+   trigger. Part of its coverage survives in each case's own `diag.txt`
+   snapshot; the AST-vs-THIR comparison does not. Counting it is the point --
+   it was built to close the hole the other three leave, and it leaves the
+   same kind of hole behind.
    - **The stdlib's RENDER is no longer among the losses (2026-08-30).**
      `lib/tpy` had no committed C++ anywhere, so both stdlib checks compared
      the two authors against each other and both would have gone with the AST

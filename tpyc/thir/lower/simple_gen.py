@@ -54,6 +54,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp.gen_generators import (
     for_range_uses_counter_loop,
     owned_view_frame_params,
@@ -65,7 +66,7 @@ from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
                           _lower_yield_tuple_literal, _lower_copy_record)
 from .functions import (_check_callable_structure, _seed_global_scope,
-                        rejects_cross_scope_rebind)
+                        cross_scope_rebind_site)
 from ...type_def_registry import is_dict, is_list, is_set
 from ...typesys import is_protocol_type
 from ...modules.type_resolution import is_native_iterable
@@ -273,8 +274,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         # statement nodes, and no THIR expression owns a statement subtree --
         # so the head's `cond` / `iterable` / `range_args` carry nothing the
         # predicate can see, at this seam and at the for-each one below.
-        if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
-            return _reject("sgen.rebind_slot_hoist")
+        _reject_cross_scope_rebind(init, pre_l, post_l)
         _witness("sgen.body")
         sg = THIRSimpleGenBody(init=init, pre_yield=pre_l,
                                post_yield=post_l, yield_value=yv, cond=cond)
@@ -382,8 +382,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         lc.storage_tuple_locals.add(last.var)
     pre_l, yv, post_l = _lower_loop_body(last, lc, body_declared,
                                          loop_depth=1 if is_range else 0)
-    if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
-        return _reject("sgen.rebind_slot_hoist")
+    _reject_cross_scope_rebind(init, pre_l, post_l)
     _witness("sgen.body")
     sg = THIRSimpleGenBody(init=init, pre_yield=pre_l, post_yield=post_l,
                            yield_value=yv, iterable=iterable,
@@ -502,6 +501,21 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
     if lc.unhandled_hoists:
         raise ThirUnsupported("body.hoisted_vars")
     return pre_l, yv, post_l
+
+
+def _reject_cross_scope_rebind(init, pre_l, post_l) -> None:
+    """Raise on a loop-body rebind of a name whose slot the pre-loop prologue
+    reserved.
+
+    The peephole renders the loop into a lambda while the prologue stays in the
+    enclosing function, so the slot has no sound home either side of the capture
+    list. Unlike the nested-def seam, the two operands here are one Python scope,
+    so a name reserving a slot in the prologue reserves none inside the loop:
+    the predicate matches the diagnostic's condition exactly and is safe to
+    raise on rather than fall back."""
+    site = cross_scope_rebind_site(init, (*pre_l, *post_l))
+    if site is not None:
+        emit_prims.reject_rebind_slot_crosses_scope(*site)
 
 
 def _reject(reason: str):

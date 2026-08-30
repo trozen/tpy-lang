@@ -682,6 +682,39 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
 - **[generics][test-gap] The `_infer_protocol_type_arg_from_protocol` (protocol-to-protocol) multi-param path has no end-to-end test.** Its return was generalized to a positional list alongside the record-structural path, but the only way to reach it -- forwarding a protocol-typed param into a generic bound -- hits the pre-existing codegen bug in BUGS.md (undeclared `T`), so it can't be a passing case. The record-structural multi-param path IS covered (`assoc_type_multiparam_bound`). Add coverage once that codegen bug is fixed. Surfaced by /tpy-review (test-coverage) of multi-param inference.
 - **[sema hygiene] `_infer_protocol_type_arg_structurally` resolves the protocol by BARE short name.** `tpyc/sema/type_ops.py` uses `registry.scan_by_short_name(protocol_name)` where `protocol_name` comes from the param/bound NominalType's `.name` -- the same bare-name-as-identity class the enum/record match fixes retired (qname discipline). Two same-named protocols in different modules could resolve to the wrong one; downstream the damage is bounded (the solved type still passes through the real bound's conformance check, so worst case is rejection-of-valid, not a miscompile -- probed with a two-module `Container` collision). Route the lookup through the bound's qname / `protocol_info_of(bound)` instead of the short-name scan when next touching this area.
 
+## THIR: narrowed-name match subjects must route before cutover (2026-08-30)
+
+A cutover BLOCKER that no current instrument can see, and the last entry in
+`tests/conftest.py::AST_ONLY_DIAGNOSTICS` depends on it.
+
+`tpyc/thir/lower/match.py` returns `None` -- reject -- whenever a match
+subject is a name in the narrowing map (`subj.name in narrowed`), and it does
+so across ALL tiers, not just resumable ones. Verified with a plain sync
+`def` holding a nested narrowed match: it falls back with `body:stmt.match`,
+no generator or async involved. That is ordinary valid Python which compiles
+correctly today and becomes a hard internal error the moment fallback goes
+away, because post-cutover a reject has nothing behind it.
+
+Why nothing catches it: no corpus case carries the shape. The dial reads
+saturated with zero fallback precisely BECAUSE the shape is untested, so the
+ratchet, the byte-diff and both audits are all silent on it. This is the
+structural blindness in its concrete form -- the healthier the migration
+looks, the less the corpora can see.
+
+Sequencing: the AST's own narrowed-subject guard rejects valid code (filed in
+`BUGS.md`), so fix the AST first, then route the shape here. Doing them in the
+other order mirrors a known-wrong rejection into THIR permanently. The two are
+one lane, and it is wave-sized rather than a patch.
+
+The lane must also re-check the non-lvalue capture gate in
+`_select_match_route`. That gate guards a real use-after-free (a frame field
+holding the address of a by-value dispatch local), and today narrowed subjects
+never reach it because the reject above fires first. Routing them removes that
+backstop. The gate's non-lvalue-only condition is believed to be the correct
+final shape -- a narrowed subject that is an lvalue is frame-rooted, so it
+should be admitted -- but that belief is untested precisely because nothing
+reaches it, so it needs a witness once the shape routes.
+
 ## THIR deferred / parked cells (registry, assembled 2026-07-30)
 
 One-time consolidation of every deliberately-shelved THIR cell, swept from this

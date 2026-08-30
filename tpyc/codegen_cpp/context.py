@@ -2044,12 +2044,10 @@ class CodeGenContext:
             return None
         owner = self.rebind_slot_scopes.get(slot)
         if owner is not None and owner != self.hoist_scope_id:
-            raise CodeGenError(
-                f"'{name}' is declared outside a generator or nested function "
-                f"and reassigned to a new value inside it, which TPy cannot "
-                f"give a stable home; bind the new value to a local declared "
-                f"in that body instead.",
-                loc=loc)
+            # Local import: emit_prims imports this module at module level, so
+            # only a deferred import keeps the module-level edge acyclic.
+            from . import emit_prims
+            emit_prims.reject_rebind_slot_crosses_scope(name, loc)
         decl = self.deferred_rebind_slot_decls.pop(slot, None)
         if decl is not None:
             self.pending_hoist_decls.append(decl)

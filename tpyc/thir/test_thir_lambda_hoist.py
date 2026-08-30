@@ -5,7 +5,7 @@ A body the nested def reserves for ITSELF drains at the lambda's own prologue
 capture list and routes. A slot the ENCLOSING scope reserved and the lambda
 CONSUMES (a `nonlocal` rebind) is declared outside that capture list: the AST
 rejects it with a diagnostic (`use_rebind_slot` compares the slot's owning hoist
-scope), THIR has no runtime equivalent, so `rejects_cross_scope_rebind` is its
+scope), THIR has no runtime equivalent, so `cross_scope_rebind_site` is its
 entire protection.
 
 The nested def is one of two lambda-rendered bodies; the simple-generator

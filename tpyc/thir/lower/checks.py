@@ -79,6 +79,7 @@ from ...typesys import (
     is_float_type,
     is_protocol_type,
     is_void_like_type,
+    polymorphic_subclass_into_optional,
     resolve_int_literals,
     unwrap_optional_own,
     unwrap_readonly,
@@ -111,6 +112,7 @@ from ...type_def_registry import (
     is_str_view_type,
     is_string_type,
 )
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
 from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.functions import literal_mangled_name
@@ -1606,6 +1608,30 @@ def _borrow_dunder_source(init: TpyExpr, analyzer) -> bool:
     if isinstance(init, TpyUnaryOp) and init.resolved_unaryop is not None:
         return call_returns_cpp_ref(analyzer, init.resolved_unaryop.method)
     return False
+
+
+def check_polymorphic_rvalue_opt_rebind(
+        name: str, target_type: 'TpyType | None', init: 'TpyExpr | None',
+        rvalue_reassigned: 'AbstractSet[str]', analyzer) -> None:
+    """Diagnose an rvalue of a polymorphic subclass initializing a local
+    `Optional[Base]` slot that a later rvalue rebind reseats.
+
+    The verdict must be reached before any admission decision on the same
+    decl: a slot the rebind shares is typed once, so lowering it would slice
+    the dynamic type instead of telling the user the shape is unavailable.
+    """
+    if init is None or name not in rvalue_reassigned:
+        return
+    if not is_rvalue_source(analyzer, init):
+        return
+    init_type = analyzer.get_expr_type(init)
+    sub = polymorphic_subclass_into_optional(
+        target_type,
+        unwrap_readonly(init_type) if init_type is not None else None,
+        analyzer.registry)
+    if sub is not None:
+        emit_prims.reject_polymorphic_rvalue_into_optional_local(
+            name, target_type, sub, init.loc)
 
 
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,

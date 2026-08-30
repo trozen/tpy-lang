@@ -457,15 +457,8 @@ class StatementGenerator:
                     if not compatible:
                         if self.ctx.literal_overload_facts:
                             return None  # Dead code after literal branch elimination
-                        from .context import CodeGenError
-                        vt = stmt.value_type
-                        if isinstance(vt, IntLiteralType):
-                            vt = BIGINT
-                        raise CodeGenError(
-                            f"@overload return type mismatch: returning '{vt}' "
-                            f"but this overload declares '-> {ret_type}'",
-                            loc=stmt.loc,
-                        )
+                        emit_prims.reject_overload_return_mismatch(
+                            stmt.value_type, ret_type, stmt.loc)
                     ret_value = self._strip_wrong_overload_coerce(ret_value, ret_type)
                 # Property getter with pointer-repr return: return field directly
                 # (C++ return is std::optional<T>& / std::variant<A,B>&, not T* / variant<T*>)
@@ -912,25 +905,6 @@ class StatementGenerator:
         return emit_prims.ptr_slot_field_type(
             self.ctx, init, target_type, cpp_type)
 
-    @staticmethod
-    def _reject_polymorphic_rvalue_into_optional_local(
-            name: str, target_type: 'OptionalType', sub: 'NominalType', loc) -> None:
-        """Raise a clean error for rvalue construction of a polymorphic
-        subclass into a local Optional[Polymorphic] slot that would slice.
-
-        Fires when the slot is shared across rebinds (init-with-rebind or
-        rebind site) -- the shared `std::optional<Base>` storage can't
-        preserve dynamic type per assignment. The init-only case is handled
-        without rejection by widening the slot to the rvalue's type.
-        """
-        raise CodeGenError(
-            f"rvalue construction of '{sub.name}' into local "
-            f"'{name}: Optional[{target_type.inner.name}]' with rvalue rebind "
-            f"is not yet supported; pass the value directly as an argument "
-            f"or assign to a typed local of type '{sub.name}'.",
-            loc=loc
-        )
-
     def _gen_pointer_local_init(self, name: str, cpp_type: str, init: 'TpyExpr',
                                 target_type: TpyType | None, indent: str) -> str:
         """Generate pointer-local initialization code.
@@ -1076,7 +1050,7 @@ class StatementGenerator:
                 self.ctx.analyzer.registry)
             if sub is not None:
                 if name in self.ctx.rvalue_reassigned_vars:
-                    self._reject_polymorphic_rvalue_into_optional_local(
+                    emit_prims.reject_polymorphic_rvalue_into_optional_local(
                         name, target_type, sub, init.loc)
                 slot_cpp_type = sub.name
             init_slot = self.ctx.slots.next_slot()
@@ -1252,7 +1226,7 @@ class StatementGenerator:
                 target_type, self.ctx.get_expr_type(init),
                 self.ctx.analyzer.registry)
             if sub is not None:
-                self._reject_polymorphic_rvalue_into_optional_local(
+                emit_prims.reject_polymorphic_rvalue_into_optional_local(
                     name, target_type, sub, init.loc)
             frame_field = self._resumable_ptr_slot_field(stmt, name)
             if frame_field is not None:
