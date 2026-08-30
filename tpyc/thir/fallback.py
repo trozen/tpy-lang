@@ -94,18 +94,15 @@ _CAMEL_SPLIT = re.compile(r"(?<!^)(?=[A-Z])")
 _ARM_RESIDUAL_ON = bool(os.environ.get("THIR_ARM_RESIDUAL_JSON"))
 
 
-# Components the per-case RATCHET does not govern. Tallied like every other
-# component (the residue has to be visible and driven to zero), but an
-# unmarked case does not fail on them: these are the non-body constant
-# positions, which no case's no_thir.txt marker was ever measured against.
-# An exclusion list, not an allow-list, so a new BODY component defaults into
-# the ratchet rather than silently out of it.
-NON_RATCHET_COMPONENTS = frozenset({"class_const", "final_global"})
+# Components the per-case RATCHET does not govern. EMPTY: the non-body constant
+# positions used to sit here, but they render through the same `gen_expr` the
+# cutover deletes, so exempting them understated the residue. An exclusion
+# list, not an allow-list, so a new component defaults INTO the ratchet.
+NON_RATCHET_COMPONENTS: frozenset[str] = frozenset()
 
 
 def ratchet_total(fallback: 'dict[str, int]') -> int:
-    """The fallback count the per-case ratchet reads -- every component but
-    the non-body constant positions."""
+    """The fallback count the per-case ratchet reads."""
     return sum(n for key, n in fallback.items()
                if key.split(":", 1)[0] not in NON_RATCHET_COMPONENTS)
 

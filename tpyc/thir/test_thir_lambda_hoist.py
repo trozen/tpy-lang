@@ -5,9 +5,11 @@ A body the nested def reserves for ITSELF drains at the lambda's own prologue
 capture list and routes. A slot the ENCLOSING scope reserved and the lambda
 CONSUMES (a `nonlocal` rebind) is declared outside that capture list: the AST
 rejects it with a diagnostic (`use_rebind_slot` compares the slot's owning hoist
-scope), THIR has no runtime equivalent, so `_rejects_lambda_hoist` is its entire
-protection -- and an error-diagnostic test case cannot pin it, because those
-never exercise the THIR overlay.
+scope), THIR has no runtime equivalent, so `rejects_cross_scope_rebind` is its
+entire protection.
+
+The nested def is one of two lambda-rendered bodies; the simple-generator
+peephole is the other, pinned in `test_thir_simple_gen.py`.
 """
 
 from .testutil import (_assert_routes_byte_identical, _fn, _lower_ctor,

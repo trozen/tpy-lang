@@ -5,8 +5,7 @@ member (uniform `std::vector<uint8_t>` / `...*` spelling), so
 None monostate lift, the member-name address lift, the bytes-literal
 temp, and the NEW dict-literal typed temp (`unionlift.dict_literal_temp`).
 Boundaries: a LIST literal at a list-membered union stays unwitnessed and
-keeps rejecting; the bytes-union isinstance narrowing bodies keep their
-own gates (identity via fallback)."""
+keeps rejecting."""
 
 from __future__ import annotations
 
@@ -124,10 +123,9 @@ class TestBytesUnionBoundaries:
         assert not faces.get("unionlift.dict_literal_temp")
         _assert_byte_identical(src)
 
-    def test_bytes_union_isinstance_body_keeps_own_gate(self):
-        # The widened member class must not smuggle the narrowing bodies
-        # through -- they keep their own condition gates; identity holds
-        # via fallback.
+    def test_bytes_union_isinstance_body_routes(self):
+        # The narrowing bodies over the same subject now ride the widened
+        # member class too -- every spelling here is `render_type(m)`.
         src = _SEND + (
             "def consume(data: bytes | dict[str, str] | None) -> Int32:\n"
             "    if isinstance(data, bytes):\n"
@@ -136,4 +134,4 @@ class TestBytesUnionBoundaries:
             "def main() -> None:\n"
             "    print(consume(b'abc'))\n"
         )
-        _assert_byte_identical(src)
+        _assert_routes_byte_identical(src)

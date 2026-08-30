@@ -4387,7 +4387,7 @@ class TestFinallyHelper:
         # rejects with res.narrowed_resume BEFORE the nested return's own
         # res.finally_return -- pinning that the helper walk names its
         # missing post-if arm, not just the return render. (A raise-arm `if`
-        # produces the same post-if fact -- `_post_if_narrow_fact` mirrors the
+        # produces the same post-if fact -- the fact reader mirrors the
         # AST's early-EXIT arm, return and raise alike -- so the guard's domain
         # is both flavors; the return one is what this fixture exercises.)
         src = ("from tpy import Int32\n\n"

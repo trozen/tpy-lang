@@ -896,6 +896,50 @@ def _frontend_registry_for(src_file: Path):
     return reg, extra_lib_dirs
 
 
+def _assert_thir_raises_too(compiler, compiled_modules, entry_module, src_dir,
+                            output_dir: Path, src_file: Path, ast_err) -> None:
+    """A codegen diagnostic the AST path raises must also be raised with THIR on.
+
+    The overlay runs only AFTER codegen succeeds, so a case that fails at
+    codegen is otherwise never lowered through THIR at all -- THIR can route
+    the body, emit code and stay silent, and no gate notices. Re-emit here
+    with the user modules routed and require the same diagnostic.
+
+    A body THIR REJECTS passes: the AST re-emits it and raises, which is why
+    the verdict is on the diagnostic and not on where it came from.
+
+    "Same diagnostic" is `CodeGenError.format()`, which carries `file:line` but
+    no column -- deliberately the SAME granularity `diag.txt` records, so this
+    gate cannot fail a case the snapshot would have accepted. Two diagnostics
+    differing only in column therefore compare equal here.
+    """
+    want = ast_err.format(src_file.name)
+    ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
+    thir_dir = output_dir / "_thir_err"
+    try:
+        for mod in compiled_modules:
+            is_local = True
+            try:
+                mod.path.resolve().relative_to(src_dir)
+            except ValueError:
+                is_local = False
+            compiler.generate_code(
+                mod, thir_dir, entry_module_name=entry_module.name,
+                options=TEST_CODEGEN_OPTIONS if is_local else ast_opts)
+    except CodeGenError as thir_err:
+        got = thir_err.format(src_file.name)
+        if got == want:
+            return
+        pytest.fail(
+            f"THIR raised a DIFFERENT codegen diagnostic than the AST path.\n"
+            f"  ast:  {want}\n  thir: {got}")
+    pytest.fail(
+        f"THIR emitted code where the AST path raised a codegen diagnostic; "
+        f"the reject is lost the moment THIR becomes the default.\n"
+        f"  ast: {want}\nEither lower the shape correctly, or make lowering "
+        f"reject it so the AST re-emit raises.")
+
+
 def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
@@ -935,12 +979,11 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
         if has_errors:
-            # NOTE: this returns ahead of BOTH emits, so an `error_*` case has
-            # never been lowered through THIR -- not once, by any run. The
-            # overlay, the ratchet and the byte-diff all measure only cases
-            # that reach codegen. Any CodeGenError raised from inside the AST
-            # body emitters therefore has no THIR counterpart and no coverage;
-            # that gap has to be closed before the emitters are deleted.
+            # NOTE: this returns ahead of BOTH emits, so a case rejected in
+            # sema is never lowered through THIR. That is sound -- the reject
+            # precedes codegen on both paths. A case that reaches codegen and
+            # fails THERE is a different matter, and is covered by
+            # _assert_thir_raises_too below.
             return CompileResult(success=False, diagnostics=diagnostics)
 
         # AST is ALWAYS the emitted + oracle artifact: it feeds exec and is
@@ -955,34 +998,42 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                     else src_file.parent)
         no_thir = (case_dir / "no_thir.txt").exists()
 
+        thir_active, thir_ratchet = _thir_case_mode(
+            thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
+            ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
+            check_flip=THIR_CHECK_FLIP)
+
         ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
         all_modules = []
         local_mods = []
-        for mod in compiled_modules:
-            hpp_path, cpp_path = compiler.generate_code(
-                mod, output_dir, entry_module_name=entry_module.name,
-                options=ast_opts
-            )
-            is_local = False
-            try:
-                mod.path.resolve().relative_to(src_dir)
-                is_local = True
-            except ValueError:
-                pass
-            # cpp_path is None for native_module (binding-only) modules
-            all_modules.append((mod.name, hpp_path, cpp_path, is_local))
-            if is_local:
-                local_mods.append(mod)
+        try:
+            for mod in compiled_modules:
+                hpp_path, cpp_path = compiler.generate_code(
+                    mod, output_dir, entry_module_name=entry_module.name,
+                    options=ast_opts
+                )
+                is_local = False
+                try:
+                    mod.path.resolve().relative_to(src_dir)
+                    is_local = True
+                except ValueError:
+                    pass
+                # cpp_path is None for native_module (binding-only) modules
+                all_modules.append((mod.name, hpp_path, cpp_path, is_local))
+                if is_local:
+                    local_mods.append(mod)
+        except CodeGenError as ast_err:
+            if thir_active:
+                _assert_thir_raises_too(compiler, compiled_modules,
+                                        entry_module, src_dir, output_dir,
+                                        src_file, ast_err)
+            raise
 
         # THIR overlay: regenerate the USER modules through THIR to a separate
         # dir (stdlib is user-scoped-out and already AST-tested above);
         # test_case byte-compares these to the same snapshot. Fills the THIR
         # tallies (_thir_fallback / _thir_routed_names) read below. Runs for
         # EVERY case -- a marked case still routes bodies (see _thir_case_mode).
-        thir_active, thir_ratchet = _thir_case_mode(
-            thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
-            ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
-            check_flip=THIR_CHECK_FLIP)
         thir_modules = None
         thir_ratchet_fell = None
         if thir_active:
@@ -1054,10 +1105,9 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 # A fallback emits byte-identical AST, so the THIR snapshot
                 # compare can't see a silent THIR->AST regression. Surface the
                 # count so the comp phase fails the case (the ratchet): unmarked
-                # => every RATCHETED user body must route THIR. The non-body
-                # constant components are tallied but excluded (see
-                # thir_fallback.NON_RATCHET_COMPONENTS), so a case carrying only
-                # constant residue passes here and counts migrated on the dial.
+                # => every user unit must route THIR. The exclusion set
+                # (thir_fallback.NON_RATCHET_COMPONENTS) is empty, so the
+                # non-body constant positions are in scope like every body.
                 thir_ratchet_fell = fell
                 record_thir_case(fell)
             elif not THIR_IGNORE_MARKERS:

@@ -1140,6 +1140,11 @@ class ExpressionGenerator:
                     # returns of tuple[T_ref|None,...]) stay on the copy
                     # path -- moving from a returned pointer would alias
                     # storage the caller still owns.
+                    # LOAD-BEARING for a literal: the slot builder leaves a
+                    # bare-lvalue reference element in borrow form even at an
+                    # owning sink, so this wrap is what keeps its pointers
+                    # from outliving the full-expression. Narrowing the
+                    # condition means teaching that builder to see the sink.
                     helper = ("tuple_to_storage_move"
                               if isinstance(arg, TpyTupleLiteral)
                               else "tuple_to_storage")
@@ -5795,6 +5800,13 @@ class ExpressionGenerator:
         # value-form slots; borrow contexts (unannotated call args) want
         # T&/T*, with the rvalue path routed through tuple_value_to_borrow.
         in_storage_context = self.ctx.in_container_element
+        # An `Own[tuple[...]]` slot takes the tuple by value and may hold it
+        # past the full-expression, so the borrow form -- whose element
+        # addresses stay valid only through the call -- must not be selected
+        # for an rvalue element there. Unlike the read-only container-element
+        # transient this sink MOVES out of the borrow-form slots it does keep,
+        # so lvalue elements stay on the mutable spelling.
+        owning_sink = outer_own_tuple
         # First pass: resolve per-element target / resolved types so the
         # second pass can see the final slot mode (storage vs borrow
         # fallback) when deciding whether each element is rvalue-into-
@@ -5828,6 +5840,7 @@ class ExpressionGenerator:
             slot_info = self._tuple_literal_slot_info(
                 resolved_elem_types, expr,
                 in_storage_context=in_storage_context,
+                owning_sink=owning_sink,
                 target_provided=target_tuple is not None,
                 target_readonly=target_readonly)
             cpp_type = f"std::tuple<{', '.join(p for _, p in slot_info)}>"
@@ -5969,6 +5982,7 @@ class ExpressionGenerator:
         resolved_elem_types: list[TpyType],
         expr: TpyTupleLiteral,
         in_storage_context: bool = False,
+        owning_sink: bool = False,
         target_provided: bool = False,
         target_readonly: bool = False,
     ) -> list[tuple['TupleElemCapture', str]]:
@@ -5984,6 +5998,11 @@ class ExpressionGenerator:
         slot matches the container's value-form element) vs call args /
         loose contexts (borrow; rvalues become REF and codegen routes
         through tuple_value_to_borrow to bind addresses safely).
+        owning_sink marks an `Own[tuple[...]]` slot: it takes the tuple by
+        value and may hold it past the full-expression, so an rvalue element
+        must land in a value slot rather than a borrow whose address dies with
+        the call. It deliberately does not imply in_storage_context's const
+        downgrade -- this sink moves out of the borrow slots it does keep.
         target_provided is True when the consumer supplied a TupleType
         target. Without one we don't know whether the slot should be value
         or borrow form, so we keep the old rvalue-fallback (VALUE) -- the
@@ -5993,6 +6012,13 @@ class ExpressionGenerator:
         info: list[tuple[TupleElemCapture, str]] = []
         for i, et in enumerate(resolved_elem_types):
             base = self.types.type_to_cpp(et)
+            if (in_storage_context or owning_sink) and isinstance(et, TypeParamRef):
+                # A generic element is never bare-pointer repr, so no later
+                # tuple_to_storage lift materializes it -- a storage sink's
+                # slot has to be the by-value form its destination is already
+                # spelled with (`T`), not the borrow-form trait.
+                info.append((TupleElemCapture.VALUE, base))
+                continue
             if i < len(expr.elem_capture):
                 mode = expr.elem_capture[i]
             elif (isinstance(et, OptionalType) and et.uses_pointer_repr()):
@@ -6010,6 +6036,14 @@ class ExpressionGenerator:
                 # itself can't bind a T& to an rvalue, so codegen wraps it
                 # in tuple_value_to_borrow.
                 if _is_simple_lvalue(expr.elements[i]):
+                    # Deliberately blind to owning_sink: a bare-lvalue
+                    # reference element keeps its borrow slot even at an
+                    # `Own[tuple]` sink, and is safe only because the caller
+                    # ALWAYS re-wraps a literal at such a sink in
+                    # tuple_to_storage_move, which reads the pointers out
+                    # within the same full-expression. Widening either
+                    # `has_pointer_repr_element` or that wrap condition
+                    # reintroduces a dangling slot here.
                     sema_type = self.ctx.analyzer.get_expr_type(expr.elements[i])
                     # In a storage context the borrow-form tuple is a transient
                     # fed to tuple_to_storage (read-only -- each element is
@@ -6022,7 +6056,7 @@ class ExpressionGenerator:
                     mode = (TupleElemCapture.CONST_REF
                             if in_storage_context or isinstance(sema_type, ReadonlyType)
                             else TupleElemCapture.REF)
-                elif in_storage_context or not target_provided:
+                elif in_storage_context or owning_sink or not target_provided:
                     mode = TupleElemCapture.VALUE
                 else:
                     mode = TupleElemCapture.REF

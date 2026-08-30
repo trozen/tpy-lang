@@ -259,7 +259,7 @@ from .predicates import (
     _module_var_recv,
     _bigint_index_disposition,
     _call_iterable_lvalue,
-    _chain_post_if_fact,
+    _post_if_narrow_plan,
     _const_exact_field_receiver_ok,
     _storage_tuple_alias_src_ok,
     _opt_view_arg_shim,
@@ -307,6 +307,7 @@ from .predicates import (
     _mixed_own_storage_source,
     _f2_reseat_ok,
     _facts_have_concrete,
+    _facts_emit_alias,
     _field_decl_type,
     _narrowed_opt_container_field,
     _method_member_cpp,
@@ -362,6 +363,7 @@ from .predicates import (
     _value_opt_bytes,
     _value_opt_string_owned,
     _value_opt_str,
+    _opt_owned_view_elem_tuple,
     _value_opt_owned_view,
     _param_is_deep_const,
     _peel_stale_view_owned_coerce,
@@ -792,6 +794,15 @@ def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
             # tail = std::get<1>(tup);`) or an owned re-bind, spelled by
             # render_type exactly like the str flavor.
             or _resolved_bytes_value(
+                unwrap_ref_type(t) if t is not None else None,
+                analyzer) is not None
+            # ... and their OPTIONAL flavor with an owned inner
+            # (`std::optional<std::string> ctype = std::get<1>(tup);`): the
+            # element is owned inside the tuple's storage, so the target is
+            # the same plain by-value copy the value-opt SCALAR element
+            # takes. A view-INNER optional stays out -- its copy would alias
+            # the source tuple.
+            or _value_opt_owned_view(
                 unwrap_ref_type(t) if t is not None else None,
                 analyzer) is not None)
 
@@ -2343,6 +2354,10 @@ def _tuple_unpack_source(
                 # Int32]` -> `std::tuple<Tree<int32_t>&, int32_t>`): the
                 # same bare capture, whose wrapper slot is a live `X&` the
                 # target re-binds through `unwrap_ref`.
+                # ... and a value tuple carrying an owned-inner
+                # `Optional[str/bytes]` element: the same by-value rvalue
+                # capture, whose elements copy out whole.
+                and _opt_owned_view_elem_tuple(src_raw, analyzer) is None
                 and _wrapper_ref_tuple_return(src_raw, analyzer) is None):
             _kind_detail("tuple_unpack.src_", v)
             return None
@@ -3355,7 +3370,13 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                 or _eligible_enum(inner, analyzer) is not None
                 or _resolved_str_value(inner, analyzer) is not None
                 or _resolved_bytes_value(inner, analyzer) is not None
-                or _f1_record(inner, analyzer)):
+                or _f1_record(inner, analyzer)
+                # A recursive-alias WRAPPER union (`Own[JsonValue]`) is a
+                # by-value struct with a defaulted ctor, so it predecls and
+                # assigns exactly like the F1-record slot; its reads route
+                # on the declared union like any other union binding.
+                or (_eligible_wrapper_union(inner, analyzer) is not None
+                    and _witness("er.bind_slot_wrapper_union"))):
             note_detail("error_return.bind_slot")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         decl_cpp = unwrap_ref_type(var_type).to_cpp()
@@ -4992,29 +5013,24 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
             # A per-stub dead-branch fold emits no `if` -- the AST's
             # post-if narrowing machinery never runs on it.
             continue
-        pf = _chain_post_if_fact(s, declared, lc.narrow.narrowed, lc.analyzer)
-        if pf is None:
-            ppf = _poly_post_if_fact(s, declared, lc.narrow.poly_source,
-                                     lc.analyzer)
-            if ppf is None:
+        for var, post, u in _post_if_narrow_plan(s, declared, lc.narrow,
+                                                 lc.analyzer):
+            alias = _persistent_alias_name(var, lc)
+            if u is None:
+                out.append(_make_dyn_narrow_alias(alias, var, post, lc,
+                                                  declared,
+                                                  getattr(s, "loc", None)))
+                _register_dyn_narrow(alias, var, post, lc, declared)
+                _witness("narrow.dyn_post_if")
                 continue
-            pvar, pmember = ppf
-            palias = _persistent_alias_name(pvar, lc)
-            out.append(_make_dyn_narrow_alias(palias, pvar, pmember, lc,
-                                              declared,
-                                              getattr(s, "loc", None)))
-            _register_dyn_narrow(palias, pvar, pmember, lc, declared)
-            _witness("narrow.dyn_post_if")
-            continue
-        var, u, post = pf
-        alias = _persistent_alias_name(var, lc)
-        out.append(_make_narrow_alias(alias, var, post, u, lc,
-                                      getattr(s, "loc", None)))
-        lc.narrow.persistent_aliases.add(alias)
-        lc.narrow.narrowed[var] = alias
-        lc.narrow.subject_union[var] = u
-        lc.narrow.persistent_narrowed.add(var)
-        declared[var] = post
+            out.append(_make_narrow_alias(alias, var, post, u, lc,
+                                          getattr(s, "loc", None)))
+            lc.narrow.persistent_aliases.add(alias)
+            lc.narrow.narrowed[var] = alias
+            lc.narrow.subject_union[var] = u
+            lc.narrow.persistent_narrowed.add(var)
+            declared[var] = post
+            _witness("narrow.union_post_if")
     if not top_level:
         lc.overload_terminated = saved_overload_terminated
     return tuple(out)
@@ -5521,7 +5537,7 @@ def _lower_narrow_if_shape(stmt: TpyIf, cond: THIRExpr, fact_of, branch_of,
                                                  loop_depth=loop_depth)
             else:
                 # Flat chain: the chain-level post-if belongs to the enclosing
-                # statement walk (_lower_stmts' _chain_post_if_fact pass), so
+                # statement walk (_lower_stmts' post-if plan pass), so
                 # the link lowers bare.
                 else_stmts = (_lower_stmt(
                     inner, lc, dict(declared), in_branch=True,
@@ -8767,6 +8783,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             stmt.init, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.RECEIVER)),
                         loc=loc)
+                elif (isinstance(stmt.init, TpyName)
+                      and stmt.init.name in lc.narrow.narrowed
+                      and stmt.init.name in lc.ptr_variant_locals
+                      # A const-pointee subject's alias binds `const M&`; its
+                      # address would be a `const M*` at this mutable slot.
+                      and not _narrow_subject_const(stmt.init.name, lc)
+                      and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                          declared.get(stmt.init.name)))) == pointee):
+                    # A narrowed ptr-variant union's extraction alias binds
+                    # `M&`, so re-pointing off it takes the plain address-of
+                    # (`form = &(__data);`) -- the same lift the subscript
+                    # element arm uses, over the renamed alias.
+                    _witness("reseat.narrow_alias_addr")
+                    return THIRPtrLocalRebind(
+                        name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                        value=_lower_expr(stmt.init, lc, declared),
+                        loc=loc)
                 elif _f2_reseat_ok(stmt.init, declared, analyzer):
                     src = _lower_field_source(stmt.init, lc, declared)
                 else:
@@ -10511,6 +10544,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("setitem.ru_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = _lower_expr(v, lc, declared)
+                if _is_move_source(v, lc):
+                    # A movable wrapper NAME is an insert position like any
+                    # other container element: `_maybe_move` wraps it, so
+                    # the bare render would silently copy where the AST
+                    # moves.
+                    value = THIRMove(result_type=value.result_type,
+                                     value=value, form=Form.STORAGE, loc=loc)
+                    _witness("setitem.ru_move")
                 _witness("setitem.ru_scalar")
             elif (isinstance(eu, TupleType) and eu.has_pointer_repr_element()
                     and not _tuple_elem_slots_ptr_optional(eu)):
@@ -11867,6 +11908,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # wrapper-struct render is a different row.
                 value_record_ret = True
                 record_ok = bool(_witness("ret.record_methodcall_value"))
+            elif (isinstance(lc.prescan.ret_record_borrow, NominalType)
+                  and lc.prescan.ret_record_borrow.is_value_type()
+                  and isinstance(stmt.value, (TpyBinOp, TpyUnaryOp))
+                  and is_rvalue_source(analyzer, stmt.value)):
+                # `return -self` / `return dt + off` at a VALUE-record slot: an
+                # Own-returning user dunder yields a FRESH record and a value
+                # record is returned BY VALUE, so the render is the operator
+                # arm's bare expression -- the STORAGE row's source shapes at
+                # the method-call row's slot. Same discriminator pair as both
+                # siblings: the slot's value-ness and the dunder's return
+                # convention. No `value_record_ret`: the borrow block below
+                # has no operator branch, so the source rides the generic tail
+                # either way.
+                record_ok = bool(_witness("ret.record_op_value"))
             elif (lc.prescan.ret_record_borrow is not None
                   and lc.prescan.has_self
                   and isinstance(stmt.value, TpyName)
@@ -13091,6 +13146,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     loc=getattr(stmt.condition.operand, "loc", None)),
                 loc=getattr(stmt.condition, "loc", None))
         else:
+            # No narrowing arm claimed this condition, so no branch-entry
+            # extraction is mirrored -- but sema stamps facts by a
+            # compositional recursion over the whole boolean algebra, so a
+            # condition no shape reader spells can still carry one the AST
+            # emits. The else side follows the AST's is_elif_continuation
+            # skip: an elif link seeds its own facts instead.
+            if _facts_emit_alias(stmt.then_type_facts) or (
+                    stmt.else_body and _elif_link(stmt) is None
+                    and _facts_emit_alias(stmt.else_type_facts)):
+                note_detail("if.cond_facts_unmirrored")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
             try:
                 condition = _lower_truthy(stmt.condition, lc, declared,
                                           temps_ok=True)
@@ -13362,6 +13428,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported("stmt.while:while.mixed_walrus_temps")
             _literal_fact_fence(stmt.then_type_facts, stmt,
                                 "while.literal_fact")
+            if _facts_emit_alias(stmt.then_type_facts):
+                # `_gen_while` extracts the head's facts at loop entry; no
+                # narrowing arm claimed this condition, so nothing here does.
+                raise ThirUnsupported(
+                    "stmt.while:while.cond_facts_unmirrored")
             body = _lower_scoped_stmts(
                 stmt.body, lc, dict(declared),
                 branch_decls_ok=True,
@@ -13584,6 +13655,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # -- narrowed reads must deref, like the for-head targets.
             if _value_opt_scalar(tt, analyzer) is not None:
                 lc.value_opt_bindings[name] = ValueOptKind.SCALAR
+            elif _value_opt_owned_view(tt, analyzer) is not None:
+                # ... and the owned-inner `Optional[str/bytes]` element: the
+                # VIEW kind, whose narrowed deref off a LOCAL is already
+                # owned storage.
+                lc.value_opt_bindings[name] = ValueOptKind.VIEW
+                _witness("stmt.tuple_unpack.value_opt_view_target")
             elif _own_opt_storage_binding(tt):
                 # `Own[P] | None` element: the RECORD kind -- has_value
                 # None-test, `(*a)` narrowed deref -- the same registration
@@ -14000,6 +14077,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         if _value_opt_scalar(tt, analyzer) is not None:
                             lc.value_opt_bindings[name] = (
                                 ValueOptKind.SCALAR)
+                        elif _value_opt_owned_view(tt, analyzer) is not None:
+                            lc.value_opt_bindings[name] = (
+                                ValueOptKind.VIEW)
                     body_declared[name] = tt
                 head_wrap_cpp = None
                 head_bind = TupleSourceBind.NAME_CREF

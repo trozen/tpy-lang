@@ -683,10 +683,22 @@ def _emit_literal(lit: THIRLiteral) -> str:
         # Matches the gen_expr float-literal arm: repr() is the shortest
         # round-tripping form and a valid C++ double literal; a Float32-typed
         # literal (retyped at lowering from its float_literal_to_float32
-        # coerce) takes the `f` suffix. inf/nan never reach here -- the
-        # Lowering admits finite literals only.
+        # coerce) takes the `f` suffix.
         rendered = repr(v)
-        if is_float32_type(lit.result_type):
+        f32 = is_float32_type(lit.result_type)
+        if rendered in ("inf", "-inf", "nan"):
+            # No C++ literal spells these, so both paths fold to the constexpr
+            # numeric_limits form. Keyed on the SAME `repr()` token gen_expr
+            # keys on, so the two spellings cannot drift -- including the
+            # `-inf` leg, which mirrors an oracle arm no source form is known
+            # to reach (a negative float literal parses as a unary minus over
+            # the positive one, which renders through the operator).
+            base = "float" if f32 else "double"
+            lim = (f"std::numeric_limits<{base}>::quiet_NaN()"
+                   if rendered == "nan"
+                   else f"std::numeric_limits<{base}>::infinity()")
+            return f"(-{lim})" if rendered == "-inf" else lim
+        if f32:
             return rendered + "f"
         return rendered
     if isinstance(v, int):

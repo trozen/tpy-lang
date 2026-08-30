@@ -296,6 +296,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # at the matching rvalue tuple slot
     "move.own_proto_container",     # container conformer name moved into an
                                     # Own[protocol] slot (std::move(nums))
+    "move.wrapper_union_elem",      # movable wrapper-union name moved into a
+                                    # same-wrapper container element slot
     # Pointer-repr Optional[record] slot faces (lowering).
     "optptr.none",                  # `nullptr`
     "optptr.ctor_rvalue",           # `&(__tmp_N)` addr-of arg temp
@@ -337,6 +339,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `v = &(::tpy::unwrap_ref(*tmp));`
     "er.alias_first_decl",          # first-decl alias bind: `T* v;` predecl
                                     # + the alias assign (non-const slice)
+    "er.bind_slot_wrapper_union",   # first-decl predecl slot spelled as a
+                                    # recursive-alias wrapper struct
     "ret.record_ref_call_storage",  # ref-returning call at the Own[record]
                                     # STORAGE slot: bare render, slot copies
     "er.field_target_bind",         # er-assign FIELD target gate: the bind
@@ -405,6 +409,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Own-cascade bare rows + the readonly ctor tail (lowering admission).
     "own.scalar_rvalue",            # rvalue scalar into Own[scalar]
     "own.record_rvalue",            # record rvalue call into Own[record]
+    "own.native_record_rvalue",     # ... its @native Own-returning residue
     "own.opt_ptr_name_rebuild",     # ptr-repr Optional name into the
                                     # same slot: null-safe move rebuild
     "own.record_copy",              # copy(name) into Own[record]: T(x)
@@ -446,6 +451,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                        # storage sink: bare into optional<T>
     "method.container_iterable",    # container method result as a for-head iterable
     "method.qualcall.container_iterable",  # marker-call container as a for-head iterable
+    # marker-call owned-tuple result at an owning Own[tuple] arg slot
+    "method.qualcall.own_tuple_slot",
     "method.qualcall.union_discard",  # discarded wrapper-union qualcall
                                     # result: the bare call statement
     "method.qualcall.container_discard",  # discarded marker-call container result
@@ -506,6 +513,8 @@ THIR_FACES: frozenset[str] = frozenset({
 
     "call.inst_bare_name_arg",      # non-movable name at a container
                                     # instantiation: the bare render
+    "call.inst_field_arg",          # container FIELD read at the same
+                                    # position: the bare member render
     "call.inst_call_rvalue_arg",    # `set(make_nodes())` -> an owning call
                                     # rvalue inline in the construct template
     "call.inst_ctor_arg",           # `dict(PairIter(3))` -> a user-iterator
@@ -1174,6 +1183,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # __slot_N + to_ptr_variant
     "method.union_property_ret",    # ptr-union property getter call
                                     # at the decl lift's BORROW_BIND
+    "method.value_union_property_ret",  # VALUE-union property getter call,
+                                    # position-blind (a by-value variant)
     "ret.union_borrow_field",       # Ref(union) property return ->
                                     # the bare self-field read
     "narrow.multi_var",             # multi-var `&&` isinstance compound ->
@@ -1189,6 +1200,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # subject -> `(!(<null-check>))` condition
     "narrow.dyn_post_if",           # the early-return implicit-else poly
                                     # cast-and-cache alias (persistent)
+    "narrow.union_post_if",         # the early-return implicit-else variant
+                                    # extraction alias (persistent)
     "narrow.dyn_assert",            # `assert isinstance(v, Sub)` poly narrow
                                     # -> null-check cond + persistent alias
     "subscript.protocol_recv",      # protocol-typed template-param receiver
@@ -1197,6 +1210,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # args[static_cast<std::size_t>(i)]
     "setitem.ru_scalar",            # scalar/str literal into a wrapper-union
                                     # value slot -> bare token (converting ctor)
+    "setitem.ru_move",              # ... and a MOVABLE wrapper name there,
+                                    # which the insert moves in
     "print.union_narrowed_arg",     # U3-narrowed alias print arg -> the
                                     # union-typed `::tpy::__str__` visitor
     "subscript.ru_narrowed_recv",   # subscript off a narrowed wrapper-union
@@ -1233,6 +1248,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # return -- bare passthrough
     "ret.record_op_storage",        # Own-returning user dunder binop/unary
                                     # at the STORAGE return -- bare
+    "ret.record_op_value",          # ... at a VALUE-record slot (by-value ret)
     "ret.record_storage",
     "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
@@ -1299,6 +1315,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # generic tuple slot: passes bare
     "call.generic_open_slot_field",  # same-T field read at the open T
                                     # slot: bare (`identity<T>(this->val)`)
+    # ... and the same read at a COMPOSITE open slot (`Ptr[R]` resolved
+    # `Ptr[W]`), which the bare-T row above cannot reach
+    "call.generic_open_slot_field_composite",
     "ret.container_call_borrow",    # borrow-returning call passthrough at
                                     # the T& container return slot
     "ret.value_opt_view_ctor",      # StrView instantiation at the
@@ -1373,6 +1392,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # union slot -> `to_value_variant<..>(a)`
     "containerlit.tparam_elem",     # plain declared NAME at a `T` element
                                     # slot -> bare brace init (`return {x};`)
+    "containerlit.tparam_copy_elem",  # `copy(x)` of an open-T NAME at a `T`
+                                    # element slot -> the `T(x)` rvalue
     "containerlit.tuple_name_storage",  # bare NAME at a non-value tuple
                                     # element slot -> the whole non-move
                                     # tuple_to_storage copy
@@ -1514,6 +1535,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # An empty container instantiation into an Own[container] ctor slot
     # (the @dataclass default_factory fill): the spelled default ctor.
     "ctor.own_container_instantiation",
+    # ... and its one-source sibling (`list(names)` at the same
+    # slot): the construct template, temp-free.
+    "ctor.own_container_construct",
     # `copy(src[i])` of an open-T element into an Own[T] ctor slot:
     # the generic copy tail (`T(<element read>)`).
     "ctor.copy_open_elem",
@@ -1702,6 +1726,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.own_ptr_value",            # ptr value at an Own[Ptr] element slot
     "arg.own_value_tuple_literal",  # value-tuple literal at an Own[tuple]
                                     # element slot -> spelled value render
+    "arg.own_open_t_tuple_literal", # open-T tuple literal at an Own[tuple]
+                                    # element slot -> bare-`T` value render
+    "arg.own_open_t_tuple_storage_source",
+                                    # whole open-T tuple element READ at an
+                                    # Own[tuple] element slot -> bare pass
     "arg.ptr_none",                 # None at the (collapsed) Ptr[T] slot ->
                                     # the bare nullptr render
     "arg.ptr_addr_of_elem",         # record-element lvalue at a Ptr elem
@@ -2072,6 +2101,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # to_ptr_variant field lift), BORROW
     "ifexpr.record",                # F1-record lvalue ternary: bare name
                                     # arms, a BORROW lvalue
+    "ifexpr.record_prvalue",        # F1-record PRVALUE ternary (copy /
+                                    # by-value call arms) at the MIL slot
     "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
                                     # binds the lowered `T*` ternary bare
     "decl.opt_storage_call",        # Own-declared optional call decl: the
@@ -2244,6 +2275,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.param_name",            # `x = b;` over a record param's T& lvalue
     "reseat.borrow_call",           # `x = pick(s);` -> `x = &(pick(s));`
     "reseat.subscript_elem",        # `p = xs[i];` -> `p = &(__getitem__(...));`
+    "reseat.narrow_alias_addr",     # `form = data;` off a narrowed union ->
+                                    # `form = &(__data);`
     "reseat.dunder_borrow",         # `c = a + b;` -> `c = &(((a) + (b)));`,
                                     # the operator flavor of reseat.borrow_call
     "print.hoisted_container_arg",  # ListPrinter((*items)) over a hoisted ptr
@@ -2415,6 +2448,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `std::optional<P> a = std::get<i>(__tup_N);` value copy, registered
     # RECORD-kind so has_value / `(*a)` reads ride the value-opt arms.
     "stmt.tuple_unpack.value_opt_record_target",
+    # ... and the owned-inner `Optional[str/bytes]` element target: the
+    # same value copy, registered VIEW-kind.
+    "stmt.tuple_unpack.value_opt_view_target",
     # Own[A | B] element target: `std::variant<A*, B*> p =
     # ::tpy::to_ptr_variant(std::get<i>(__tup));` -- the per-element lift.
     "stmt.tuple_unpack.ptr_variant_target",
@@ -2458,7 +2494,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # storage-bound local) through the wrap
     "arg.btuple_mixed_name",        # mixed-own-tuple local at a borrow-
                                     # tuple param slot -> tuple_to_pointer
+    "subscript.value_record_elem",  # ValueType-record element read copied
+                                    # into a by-value storage slot
     "subscript.value_tuple_source",  # value-tuple element as an unpack source
+    "subscript.open_t_tuple_source",  # its open-T flavor inside a generic
+                                    # body -- same self-contained element
     "subscript.value_union_elem",   # value-variant union element read
                                     # bare into its same-union sink
     "subscript.value_tuple_elem",   # value-TUPLE container element read
@@ -2578,6 +2618,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`for v in items.values():` at `dict | None`): the bare `(*items)`
     # deref feeding the same view render as an unwrapped receiver.
     "iter.narrowed_opt_container_view",
+    # `d.keys()` on a dict whose VALUE family the row below does not name
+    # (`dict[str, JsonValue]`): the view render and the key the consumer
+    # binds are both value-blind, so only the key slice decides.
+    "iter.dict_keys_value_blind",
     "foreach.genexpr_iterable",   # genexpr iterable: the make_generator
                                   # lambda's rvalue owning capture
     "foreach.list_repeat_local",  # lazy repeat local iterable: the
@@ -3004,6 +3048,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the raw er-bind's alias-bind arm
     "call.native_record_recv",      # native record-rvalue call under a
                                     # postfix member read (deref(p).f)
+    "call.native_own_record_value",  # Own-returning native record call at
+                                    # the plain VALUE position
     "decl.none_unit_slot",          # None-annotated decl: monostate copy
     "decl.bytearray_owned_rvalue",  # bytearray slot from an owned dunder
                                     # rvalue (`bb = ba + b"cd"`)

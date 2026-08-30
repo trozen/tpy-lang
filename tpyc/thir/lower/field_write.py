@@ -29,6 +29,7 @@ from ...parse.nodes import (
 )
 from ...type_def_registry import (
     is_array,
+    is_bytearray_type,
     is_bytes_type,
     is_dict,
     is_list,
@@ -178,12 +179,16 @@ def _container_name_field_write_ok(
         return False
     ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(stmt.target))))
+    ba_field = is_bytearray_type(ft)
     if isinstance(ft, OptionalType):
         # An Optional[container] FIELD stores `std::optional<T>` whose
         # operator= absorbs the same bare/moved name render the plain
-        # container field gets (`h.s = std::move(initial);`).
+        # container field gets (`h.s = std::move(initial);`). NOT extended to
+        # bytearray: an `Optional[bytearray]` field is pointer-repr here,
+        # whose lift is a different render.
         ft = unwrap_readonly(ft.inner)
-    if not (is_dict(ft) or is_list(ft) or is_set(ft) or is_array(ft)):
+    if not (is_dict(ft) or is_list(ft) or is_set(ft) or is_array(ft)
+            or ba_field):
         return False
     if v.name in pointers or v.name in narrowed or v.name not in declared:
         return False
@@ -202,7 +207,12 @@ def _container_name_field_write_ok(
              # is a plain value member. Callable is NOT here: its store has no
              # borrow->storage convert arm, so admitting it CRASHES the
              # emitter instead of falling back.
-             or (is_array(ft) and is_array(vt)))
+             or (is_array(ft) and is_array(vt))
+             # `bytearray` is the same owning `std::vector<uint8_t>` member,
+             # so the bare copy / last-use move applies unchanged. NOT
+             # paired with `bytes`: that crossing is the view coerce, which
+             # arrives as its own node.
+             or (ba_field and is_bytearray_type(vt)))
             and _witness("field_write.container_name"))
 
 
@@ -793,8 +803,17 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     # ignores it, so this is invariant hygiene, not a render change. The
     # THIRMove arm above is untouched: a storage-form same-type source
     # still moves whole.
+    # `bytearray` is the one view-family member whose (family, form) pair
+    # does not fix the render, so the meaning is decided HERE: a same-family
+    # source is the OBJECT move/copy, never the view->owned materialize.
+    _ba_object = (is_bytearray_type(unwrap_readonly(cnv_t))
+                  and lowered.result_type is not None
+                  and is_bytearray_type(unwrap_readonly(
+                      unwrap_ref_type(unwrap_send_sync(
+                          lowered.result_type)))))
     return THIRFormConvert(result_type=cnv_t, value=lowered,
                            form=Form.STORAGE, move=mv and not union_field,
+                           materialize=False if _ba_object else None,
                            loc=loc)
 
 

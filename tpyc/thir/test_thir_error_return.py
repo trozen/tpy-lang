@@ -21,7 +21,10 @@ from .nodes import (
     THIRReturn,
     THIRTry,
 )
-from .testutil import _compile, _entry, _fn, _lower_ctx
+from .testutil import (
+    _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
+    _fn, _lower_ctx, _lower_ctx_witnessed, _thir_ctx,
+)
 
 
 def _cpp(src: str, thir: bool):
@@ -387,7 +390,6 @@ class TestErrorReturnGateRejections:
             + "    return v\n"
             + "print(use(Store(2)))\n"
         )
-        from .testutil import _assert_routes_byte_identical
         _assert_routes_byte_identical(src)
         assert "auto __er_" in _cpp(src, thir=True)
 
@@ -690,7 +692,6 @@ class TestErrorReturnDeferredGateDetails:
             + "    print(c.v)\n"
             + "main()\n"
         )
-        from .testutil import _assert_routes_byte_identical
         _hpp, cpp = _assert_routes_byte_identical(src)
         joined = _hpp + cpp
         assert "this->v = ::tpy::unwrap_ref_move(*__try_tmp_" in joined
@@ -1095,7 +1096,6 @@ class TestErrorReturnRefBind:
         # The DISCARD flavor of the same rung: the try block renders the
         # bare call with no bind (`auto __try_tmp_N = positive(a);` +
         # the goto), ref-ness-blind on the AST side.
-        from .testutil import _assert_routes_byte_identical
         src = self.SRC.replace(
             "    try:\n"
             "        r = positive(p)\n",
@@ -1197,7 +1197,6 @@ class TestErrorReturnAliasRebindSlotTarget:
         "        return self.b\n")
 
     def test_rebind_slot_pointer_target_alias_binds(self):
-        from .testutil import _assert_routes_byte_identical
         src = (
             self._H
             + "def main() -> None:\n"
@@ -1289,7 +1288,6 @@ class TestRefCallAtStorageReturn:
     def test_er_receiver_ref_call_storage_return_routes(self):
         # The er-unwrap receiver composes under the same arm:
         # `return ({ ...unwrap_ref_move(*__er_N); }).updated();`.
-        from .testutil import _assert_routes_byte_identical
         src = (
             "from tpy import Int32, Own, Self, error_return, "
             "ReturnException\n"
@@ -1323,7 +1321,6 @@ class TestRefCallAtStorageReturn:
     def test_free_ref_call_storage_return_routes(self):
         # The free-call twin (`return first(xs);` at Own[Point]) rides the
         # same arm via the borrow_ret_passthrough call admission.
-        from .testutil import _assert_routes_byte_identical
         src = (
             self._POINT
             + "def first(xs: list[Point]) -> Point:\n"
@@ -1494,7 +1491,6 @@ class TestErrorReturnMethodExprUnwrap:
     )
 
     def test_routes_byte_identical(self):
-        from .testutil import _assert_routes_byte_identical
         _assert_routes_byte_identical(self.SRC)
 
     def test_borrow_flavor_keeps_its_address_of_lift(self):
@@ -1510,3 +1506,118 @@ class TestErrorReturnMethodExprUnwrap:
         assert w.get("method.er_expr_unwrap", 0) >= 2
         assert w.get("er.unwrap_ptr", 0) >= 1
         assert w.get("er.unwrap", 0) >= 1
+
+
+class TestErrorReturnWrapperUnionSlot:
+    """A recursive-alias WRAPPER union at the first-binding predecl slot: the
+    wrapper is a by-value struct with a defaulted ctor, so `JV val;` predecls
+    and the unwrap block assigns into it exactly like an F1-record slot.
+    Downstream, the bound name is a plain wrapper value the container insert
+    takes bare -- the predecl arm withholds the movable promotion, so nothing
+    moves out of it."""
+
+    SRC = ("from tpy import Int32, Own, ReturnException, error_return\n"
+           "class Err(Exception, ReturnException):\n"
+           "    pass\n"
+           "type JV = None | int | str | list[JV]\n"
+           "@error_return(Err)\n"
+           "def one(src: list[JV], n: Int32) -> Own[JV]:\n"
+           "    if n < 0:\n"
+           '        raise Err("neg")\n'
+           "    return src.pop()\n"
+           "@error_return(Err)\n"
+           "def build(src: list[JV], n: Int32) -> Own[list[JV]]:\n"
+           "    a: list[JV] = []\n"
+           "    i = 0\n"
+           "    while i < n:\n"
+           "        item = one(src, i)\n"
+           "        a.append(item)\n"
+           "        i += 1\n"
+           "    return a\n"
+           "def main() -> None:\n"
+           "    s: list[JV] = [1, 2]\n"
+           "    try:\n"
+           "        print(len(build(s, 2)))\n"
+           "    except Err:\n"
+           '        print("err")\n'
+           "main()\n")
+
+    def test_predecl_and_insert_route_byte_identical(self):
+        _, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "JV item;" in cpp
+        assert "item = ::tpy::unwrap_ref_move(*__try_tmp_" in cpp
+        # The insert copies: the unwrap-bound name never joins the movable
+        # working set, so a `std::move` here would be a divergence.
+        assert "a.push_back(item);" in cpp
+
+    def test_predecl_slot_witnesses_the_wrapper_row(self):
+        _, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces["er.bind_slot_wrapper_union"] >= 1
+
+    def test_call_rvalue_at_the_same_element_slot_keeps_rejecting(self):
+        # BOUNDARY: the widened leg is a same-wrapper NAME. An owning CALL
+        # rvalue at the element slot is a different render family and keeps
+        # the named reject.
+        src = ("from tpy import Int32\n"
+               "type JV = None | int | str | list[JV]\n"
+               "def f(a: list[JV], src: list[JV]) -> Int32:\n"
+               "    a.append(src.pop())\n"
+               "    return Int32(len(a))\n"
+               "def main() -> None:\n"
+               "    a: list[JV] = []\n"
+               "    s: list[JV] = [1]\n"
+               "    print(f(a, s))\n"
+               "main()\n")
+        _, fallback = _thir_ctx(src)
+        _assert_rejects_at(fallback, "body:expr.method_call",
+                           shape="method.arg_shape")
+
+
+class TestWrapperUnionElementMove:
+    """A MOVABLE wrapper-union name at a container element slot is an insert
+    position like any other: `_maybe_move` wraps it, so the bare render would
+    silently copy where the AST moves."""
+
+    SRC = ("from tpy import Int32\n"
+           "type JV = None | int | str | list[JV]\n"
+           "def push(a: list[JV], src: list[JV]) -> Int32:\n"
+           "    item = src.pop()\n"
+           "    a.append(item)\n"
+           "    return Int32(len(a))\n"
+           "def store(d: dict[str, JV], src: list[JV]) -> Int32:\n"
+           "    item = src.pop()\n"
+           '    d["k"] = item\n'
+           "    return Int32(len(d))\n"
+           "def main() -> None:\n"
+           "    a: list[JV] = []\n"
+           "    s: list[JV] = [1, 2]\n"
+           "    print(push(a, s))\n"
+           "    print(store({}, s))\n"
+           "main()\n")
+
+    def test_last_use_moves_at_both_insert_sinks(self):
+        _, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "a.push_back(std::move(item));" in cpp
+        assert '::tpy::__setitem__(d, "k", std::move(item));' in cpp
+
+    def test_move_faces_fire(self):
+        _, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces["move.wrapper_union_elem"] >= 1
+        assert faces["setitem.ru_move"] >= 1
+
+    def test_non_movable_binding_stays_a_copy(self):
+        # BOUNDARY: a borrowed PARAM is never movable, so the same two sinks
+        # must keep rendering the bare copy.
+        src = ("from tpy import Int32\n"
+               "type JV = None | int | str | list[JV]\n"
+               "def push(a: list[JV], item: JV) -> Int32:\n"
+               "    a.append(item)\n"
+               "    return Int32(len(a))\n"
+               "def main() -> None:\n"
+               "    a: list[JV] = []\n"
+               "    s: list[JV] = [1, 2]\n"
+               "    for v in s:\n"
+               "        print(push(a, v))\n"
+               "main()\n")
+        _, cpp = _assert_routes_byte_identical(src)
+        assert "a.push_back(item);" in cpp

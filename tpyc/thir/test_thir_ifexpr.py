@@ -177,6 +177,55 @@ class TestIfExprStrForms:
         assert ret.value.form is Form.STORAGE
 
 
+class TestIfExprContainerCallArms:
+    """A container ternary whose arms are owning CALLS: each arm owns its
+    result, so the ternary is the arm's storage sink exactly as a direct decl
+    init would be -- the value-position result set claims no container
+    return, so the arm takes the storage admission instead."""
+
+    SRC = ("from tpy import Int32, Own\n"
+           "def mk(n: Int32) -> Own[list[Int32]]:\n"
+           "    return [n]\n"
+           "def mkd(n: Int32) -> Own[dict[str, Int32]]:\n"
+           '    return {"a": n}\n'
+           "def pick(c: bool) -> Int32:\n"
+           "    xs = mk(1) if c else mk(2)\n"
+           "    return Int32(len(xs))\n"
+           "def pick_dict(c: bool) -> Int32:\n"
+           "    d = mkd(1) if c else mkd(2)\n"
+           "    return Int32(len(d))\n"
+           "def main() -> None:\n"
+           "    print(pick(True), pick_dict(False))\n"
+           "main()\n")
+
+    def test_call_arms_route_byte_identical(self):
+        cpp = _assert_routes_byte_identical(self.SRC)
+        assert ("std::vector<int32_t> xs = ((c) ? (mk(1)) : (mk(2)));"
+                in cpp[1])
+
+    def test_call_arm_is_the_ternary_arm(self):
+        thir = _lower_ctx(self.SRC)
+        decl = _fn(thir, "pick").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert isinstance(decl.init, THIRIfExpr)
+        assert decl.init.form is Form.VALUE
+
+    def test_scalar_ternary_keeps_the_value_admission(self):
+        # BOUNDARY: the storage admission is scoped to a CONTAINER result --
+        # a scalar-returning call arm keeps riding the value-position set,
+        # so widening the container slot cannot have loosened it.
+        src = ("from tpy import Int32\n"
+               "def g(n: Int32) -> Int32:\n"
+               "    return n\n"
+               "def pick(c: bool) -> Int32:\n"
+               "    return g(1) if c else g(2)\n"
+               "def main() -> None:\n"
+               "    print(pick(True))\n"
+               "main()\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "return ((c) ? (g(1)) : (g(2)));" in cpp[1]
+
+
 class TestIfExprRejects:
     def test_value_opt_scalar_name_arm_routes(self):
         # RE-PINNED ROUTED: a VALUE-repr Optional result wraps every arm in the

@@ -88,19 +88,21 @@ MAX_MACRO_MODULES = 20
 
 # The fallback ratchet: stdlib bodies THIR cannot lower. EXCEEDING this fails;
 # beating it passes, so routing progress never needs a config edit (lowering the
-# number is a deliberate, reviewed one). Measured 2026-08-28 (round three).
+# number is a deliberate, reviewed one). Measured 2026-08-30 -- at ZERO: every
+# stdlib body routes, so any new fallback is a regression, not a backlog item.
 #
-# 16, not the 15 the standalone sweep reports: that script merges its per-entry
-# results with `merge_module`, which keys on the BARE body name, so every
-# same-named body in a module (overloads, one method name across several records)
-# collapses to its worst sighting. Deleting the AST body emitter needs each BODY
-# routed, not each distinct name, so this counts them. Cross-check: collapsing
-# this sweep the same way reproduces the script's number exactly.
-MAX_FALLBACK_BODIES = 16
+# Counted per BODY, unlike the standalone sweep: that script merges its
+# per-entry results with `merge_module`, which keys on the BARE body name, so
+# every same-named body in a module (overloads, one method name across several
+# records) collapses to its worst sighting. Deleting the AST body emitter needs
+# each BODY routed, not each distinct name, so this counts them. The two
+# numbers coincide whenever no same-named fallback pair survives -- they are
+# still different keys, and the nightly pin below is derived, never copied.
+MAX_FALLBACK_BODIES = 0
 # The ratchet's blind spot: a sweep that stops classifying reports FEWER
 # fallbacks and so reads as progress. Assert on the work done, not just on the
 # number -- same guard, same reason, as the script's MIN_MODULES_MEASURED.
-# Measured 2026-08-28: 2843 bodies, 1229 routed over 88 body-bearing modules.
+# Measured 2026-08-30: 2843 bodies, 1245 routed over 88 body-bearing modules.
 # Re-measure and re-arm BOTH numbers with the ceiling -- a floor left behind
 # while the ceiling drops is slack, and the two must move by the same amount.
 #
@@ -108,7 +110,7 @@ MAX_FALLBACK_BODIES = 16
 # drifts behind, and a floor hundreds of bodies below the truth cannot catch the
 # regression it exists for. Re-arm it with the fallback ceiling, not after.
 MIN_BODIES_CLASSIFIED = 2400
-MIN_ROUTED_BODIES = 1229
+MIN_ROUTED_BODIES = 1245
 MIN_CLASSIFIED_MODULES = 70
 
 # Arg-table reach floor: the registry is the expected set, so this is only a
@@ -132,8 +134,9 @@ def _nightly_max_fallback() -> int:
     return int(argv[argv.index("--max-fallback") + 1])
 
 
-def _collapsed_fallback(per_module: dict[str, list[dict]]) -> int:
-    """The same fallback population under the SWEEP SCRIPT's counting key.
+def _collapsed(per_module: dict[str, list[dict]]) -> tuple[int, int]:
+    """The same population under the SWEEP SCRIPT's counting key: (fallback
+    bodies, bodies of any status).
 
     `merge_module` keys on the bare body name within a module, so overloads and
     a method name shared across records collapse to one entry. Reusing the
@@ -142,8 +145,8 @@ def _collapsed_fallback(per_module: dict[str, list[dict]]) -> int:
     collapsed: dict[str, dict] = {}
     for mod, bodies in per_module.items():
         fallback_sweep.merge_module(collapsed, mod, bodies)
-    return sum(1 for bodies in collapsed.values()
-               for b in bodies.values() if b["status"] == "fallback")
+    rows = [b for bodies in collapsed.values() for b in bodies.values()]
+    return sum(1 for b in rows if b["status"] == "fallback"), len(rows)
 
 
 def _lib_module_names() -> list[str]:
@@ -400,12 +403,23 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
     # every test in the repo while handing the row slack for every collapsed
     # body -- and slack quietly accumulating is exactly how a ratchet stops
     # being one.
-    collapsed = _collapsed_fallback(bodies_by_module)
+    collapsed, collapsed_total = _collapsed(bodies_by_module)
     nightly_max = _nightly_max_fallback()
-    assert collapsed < fallback, (
-        f"collapsing by bare body name changed nothing ({collapsed} vs "
-        f"{fallback}) -- the two ratchets are no longer counting on different "
-        f"keys, so pinning them apart is meaningless")
+    # Prove the collapse is LIVE, and prove it over the CLASSIFIED population
+    # rather than the fallback subset: the two keys differ only where a module
+    # holds same-named bodies, and the fallback subset can legitimately hold no
+    # such pair (it does today), which makes an assertion scoped to it
+    # unfalsifiable. Over ~2800 stdlib bodies the pairs are abundant, so a
+    # merge key that stopped coarsening -- the failure that would silently make
+    # the nightly pin below a duplicate of MAX_FALLBACK_BODIES -- shows up here.
+    assert collapsed_total < classified, (
+        f"collapsing by bare body name merged NOTHING over {classified} "
+        f"classified bodies ({collapsed_total} survive) -- the merge key is no "
+        f"longer a coarsening of the per-body one, so the two ratchets below "
+        f"are not measuring one population on two keys")
+    assert collapsed <= fallback, (
+        f"collapsing by bare body name GREW the fallback count ({collapsed} vs "
+        f"{fallback}) -- the merge key is not a coarsening of the per-body one")
     assert nightly_max == collapsed, (
         f"the nightly thir-stdlib-fallback row arms --max-fallback "
         f"{nightly_max}, but its own counting key measures {collapsed} "

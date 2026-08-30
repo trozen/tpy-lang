@@ -7,7 +7,9 @@ routing wrong."""
 
 from __future__ import annotations
 
-from ..codegen_cpp.context import CodeGenOptions
+import pytest
+
+from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 from .testutil import _compile, _entry, _thir_ctx
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
@@ -31,11 +33,35 @@ def _assert_identical(src: str) -> 'tuple[dict, dict]':
     return c._thir_face_witnesses, c._thir_fallback
 
 
-def _sgen_fallback(src: str) -> dict:
-    """The body-component fallback reasons, sans the `body:` prefix."""
-    c, _hpp, _cpp = _gen(src, thir=True)
-    return {k.split(":", 1)[1]: n for k, n in c._thir_fallback.items()
+def _sgen_fallback(src: str, raises: bool = False) -> dict:
+    """The body-component fallback reasons, sans the `body:` prefix.
+
+    `raises` is for a source the AST emitters reject at codegen: the tally is
+    filled by lowering, which runs before the emit that raises."""
+    if raises:
+        compiler, modules = _compile(src)
+        with pytest.raises(CodeGenError):
+            compiler.generate_code_to_strings(
+                _entry(modules),
+                options=CodeGenOptions(emit_source_comments=True,
+                                       thir_codegen=True))
+        tally = compiler._thir_fallback
+    else:
+        c, _hpp, _cpp = _gen(src, thir=True)
+        tally = c._thir_fallback
+    return {k.split(":", 1)[1]: n for k, n in tally.items()
             if k.startswith("body:")}
+
+
+def _assert_raises_alike(src: str) -> None:
+    """Both paths must reject with the SAME diagnostic. A shape the AST
+    refuses to emit cannot become emittable just because THIR is on."""
+    errs = []
+    for thir in (False, True):
+        with pytest.raises(CodeGenError) as ei:
+            _gen(src, thir=thir)
+        errs.append(str(ei.value))
+    assert errs[0] == errs[1], errs
 
 
 class TestRoutedFoundation:
@@ -815,6 +841,39 @@ class TestRebindSlotDrain:
             < both.index("p = &*(__slot_2 = Point(i));")
         assert both.index("::tpy::make_generator") < both.index(
             "std::optional<Point> __slot_2;")
+
+    def test_slot_reserved_before_the_loop_rejects(self):
+        """The cross-scope half: the slot belongs to the FACTORY body, the
+        rebind sits inside the lambda. Nothing can place that decl -- inside
+        the lambda it dies each pull while the captured pointer outlives it,
+        outside it the lambda cannot name it -- so the AST raises. Lowering
+        must decline the body or THIR emits a use-after-scope in silence."""
+        src = (self._PT
+               + "def g(n: Int32) -> Iterator[Int32]:\n"
+               + "    p = Point(11)\n"
+               + "    i = 0\n"
+               + "    while i < n:\n"
+               + "        p = Point(i)\n"
+               + "        yield p.x\n"
+               + "        i += 1\n\n"
+               + "def main() -> None:\n"
+               + "    for u in g(2):\n        print(u)\nmain()\n")
+        assert "sgen.rebind_slot_hoist" in _sgen_fallback(src, raises=True)
+        _assert_raises_alike(src)
+
+    def test_slot_reserved_before_a_for_loop_rejects(self):
+        """Same placement hazard on the for-each peephole -- the pull branch
+        renders its body into the same lambda."""
+        src = (self._PT
+               + "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
+               + "    p = Point(11)\n"
+               + "    for v in xs:\n"
+               + "        p = Point(v)\n"
+               + "        yield p.x\n\n"
+               + "def main() -> None:\n"
+               + "    for u in g([1, 2]):\n        print(u)\nmain()\n")
+        assert "sgen.rebind_slot_hoist" in _sgen_fallback(src, raises=True)
+        _assert_raises_alike(src)
 
 
 class TestYieldCopyRecord:

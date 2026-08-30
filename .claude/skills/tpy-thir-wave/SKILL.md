@@ -16,8 +16,11 @@ is CLAUDE.md's "THIR migration" section -- read it, do not re-derive it.
 `no_thir.txt`, so it now measures the empty set and prints a clean sheet that
 reads as "nothing to do". The remaining population is stdlib bodies
 (`lib/tpy`), measured by `tests/test_thir_stdlib_gate.py` (per-body ceiling +
-routed floor) and the nightly's collapsed twin. The tail there is small and
-DECISION-bound, not admission-bound: read it before assuming a wave fits.
+routed floor) and the nightly's collapsed twin. **That tail is EMPTY too as of
+2026-08-30** (0 fallback bodies on both counting keys), so this procedure has
+no population to select from either: run it only against a row a FRESH sweep
+has grown back, never against a recorded one. The remaining THIR work is the
+cutover itself -- see the ledger's cutover checklist.
 
 ## Argument
 
@@ -183,10 +186,18 @@ mostly replaced by "is this row decision-bound or admission-bound?".
    Either serialise that one file or hold every registration for
    consolidation. Restating the lesson in a ledger entry is not the fix; the
    fix is the assignment in the brief.
+6b2. **Concurrent implementers get ISOLATED WORKTREES, or they do not run
+   concurrently.** Two agents committing in one checkout collide on the git
+   index, and each per-cell commit then either fails or sweeps in the peer's
+   half-finished tree -- which is exactly what step 7's per-cell commits exist
+   to prevent. The agent tooling takes an isolation setting that gives each one
+   its own worktree; use it. If a lane genuinely cannot be isolated, run the
+   lanes one at a time. This is a rule, not a caution: it was recorded once as
+   a lesson and broken on the next branch anyway.
 6c. **Carry the written rules INTO the lane brief.** An implementer that never
-   read this file cannot follow it. The two that get broken are the
-   `git checkout <path>` ban in step 4 and 6b above -- quote them, do not
-   assume them.
+   read this file cannot follow it. The three that get broken are the
+   `git checkout <path>` ban in step 4, the shared-file owner in 6b, and the
+   worktree isolation in 6b2 -- quote them, do not assume them.
 
 7. **Commit the cell.** Auto-commit on the working branch, ONE COMMIT PER CELL
    as soon as it verifies -- an agent died mid-batch and per-cell commits are

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from .testutil import (
     _lower_ctx, _lower_ctx_witnessed, _fn,
-    _assert_byte_identical, _assert_routes_byte_identical,
+    _assert_byte_identical, _assert_rejects_at,
+    _assert_routes_byte_identical,
     _compile, _entry,
 )
 from ..codegen_cpp import CodeGenOptions
@@ -216,12 +217,14 @@ class TestOwnBtupleAppend:
 
 class TestPlainRecordBtupleLiteral:
     """The plain-record sibling of the all-Optional literal row: an
-    ALL-RVALUE tuple literal at `list[tuple[Item, Item]].append` takes the
-    same consuming lift (`tuple_to_storage_move` over
-    `tuple_value_to_borrow` -- the AST's double-convert). A last-use
-    movable local element keeps rejecting (its per-element move render is
-    its own rung); a plain borrowed lvalue element is sema-rejected before
-    lowering. Corpus witness: async/coro_for_tuple_unpack_ref."""
+    ALL-RVALUE tuple literal at `list[tuple[Item, Item]].append` builds its
+    elements in VALUE slots and takes the consuming `tuple_to_storage_move`
+    lift over them. The owning slot keeps the tuple past the call, so the
+    borrow form -- whose element addresses die with the full-expression --
+    must not appear. A last-use movable local element keeps rejecting (its
+    per-element move render is its own rung); a plain borrowed lvalue
+    element is sema-rejected before lowering. Corpus witness:
+    async/coro_for_tuple_unpack_ref."""
 
     SRC = (_P
            + "def f() -> None:\n"
@@ -242,8 +245,9 @@ class TestPlainRecordBtupleLiteral:
             _entry(modules), options=CodeGenOptions(
                 emit_source_comments=False, thir_codegen=True))
         assert ("::tpy::tuple_to_storage_move<std::tuple<P, P>>("
-                "::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>("
-                in cpp)
+                "std::tuple<P, P>{P(1), P(2)})" in cpp)
+        # The owning sink must not reach for the borrow form at all.
+        assert "tuple_value_to_borrow" not in cpp
 
     def test_lastuse_element_stays_ast(self):
         # BOUNDARY (dualgen-probed): a last-use movable local is not an
@@ -256,6 +260,195 @@ class TestPlainRecordBtupleLiteral:
                + "    for a, b in pairs:\n"
                + "        print(a.x + b.x)\n")
         assert _fn(_lower_ctx(src), "f") is None
+        _assert_byte_identical(src)
+
+
+class TestOpenTOwningSinkLiteral:
+    """A tuple literal with an OPEN-`T` element at an `Own[tuple[T, ..]]`
+    element slot. The owning slot keeps the tuple, so the generic element is
+    spelled with the bare `T` its destination already uses -- a generic
+    element is never bare-pointer repr, so nothing lifts it afterwards and
+    the borrow trait would otherwise become the stored slot. The BORROWING
+    twin (a plain `tuple[T, ..]` param, read only through the call) keeps
+    `val_or_ptr_t<T>` and its `to_val_or_ptr` wrap. Corpus witness:
+    tuple/tuple_own_sink_generic_elem, tuple/tuple_borrow_sink_literal_alias.
+    """
+
+    _BAG = (
+        "from tpy import Int32, Own, copy\n"
+        "class P:\n"
+        "    x: Int32\n"
+        "    def __init__(self, x: Int32) -> None:\n"
+        "        self.x = x\n"
+        "class Bag[T]:\n"
+        "    items: list[T]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.items = []\n"
+        "    def add(self, v: Own[T]) -> None:\n"
+        "        self.items.append(v)\n"
+    )
+
+    SRC = (_BAG
+           + "    def pairs(self) -> Own[list[tuple[T, Int32]]]:\n"
+           + "        out: list[tuple[T, Int32]] = []\n"
+           + "        i = 0\n"
+           + "        for it in self.items:\n"
+           + "            out.append((copy(it), i))\n"
+           + "            i += 1\n"
+           + "        return out\n"
+           + "def main() -> None:\n"
+           + "    b: Bag[P] = Bag()\n"
+           + "    b.add(P(1))\n"
+           + "    for it, i in b.pairs():\n"
+           + "        print(i, it.x)\n"
+           + "main()\n")
+
+    def test_open_t_literal_routes(self):
+        # The routing claim is `_assert_routes_byte_identical`: the subject
+        # sits in a record METHOD, which the module-level lowering does not
+        # carry, so its faces are witnessed by the emit below.
+        _assert_routes_byte_identical(self.SRC)
+        compiler, modules = _compile(self.SRC)
+        hpp, _ = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        w = compiler._thir_face_witnesses
+        assert w.get("arg.own_open_t_tuple_literal", 0) >= 1
+        assert w.get("containerlit.tparam_copy_elem", 0) >= 1
+        assert "out.push_back(std::tuple<T, int32_t>{T(it), i});" in hpp
+        # The owning slot must not pick up the borrow-form trait.
+        assert "val_or_ptr" not in hpp
+
+    def test_borrowing_slot_keeps_val_or_ptr(self):
+        # BOUNDARY (dualgen-probed): the SAME literal at a plain
+        # `tuple[T, Int32]` slot -- borrowed only for the call's duration --
+        # keeps the generic borrow trait and its to_val_or_ptr wrap.
+        src = (self._BAG
+               + "    def wrap(self, e: T) -> tuple[T, Int32]:\n"
+               + "        return (e, 1)\n")
+        _assert_byte_identical(src)
+        compiler, modules = _compile(src)
+        hpp, _ = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert compiler._thir_face_witnesses.get("gentuple.literal", 0) >= 1
+        assert ("std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{"
+                "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(e), 1}" in hpp)
+
+    def test_container_element_sink_keeps_const_borrow(self):
+        # BOUNDARY (dualgen-probed): the container-element sink reads a
+        # read-only transient into `tuple_to_storage`, so its lvalue slots
+        # stay CONST borrows. The owning sink moves out of the borrow slots
+        # it keeps, which is why the two are separate decisions.
+        src = (_P
+               + "def build(a: P, b: P) -> Int32:\n"
+               + "    rows: list[tuple[P, Int32]] = [(a, 1), (b, 2)]\n"
+               + "    return len(rows)\n")
+        _assert_routes_byte_identical(src)
+        compiler, modules = _compile(src)
+        _, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        assert ("::tpy::tuple_to_storage<std::tuple<P, int32_t>>("
+                "std::tuple<const P*, int32_t>{&(a), 1})" in cpp)
+
+    def test_non_name_copy_source_stays_ast(self):
+        # BOUNDARY: the open-`T` element admits a plain declared NAME source;
+        # a subscript read under `copy()` carries a render this row does not
+        # mirror, so the body keeps falling back.
+        src = (self._BAG
+               + "    def pairs(self) -> Own[list[tuple[T, Int32]]]:\n"
+               + "        out: list[tuple[T, Int32]] = []\n"
+               + "        out.append((copy(self.items[0]), 1))\n"
+               + "        return out\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        # `_fn` sees only module-level functions, so the reject has to be
+        # read off the fallback tally for a body inside a record.
+        assert sum(compiler._thir_fallback.values()) >= 1, \
+            dict(compiler._thir_fallback)
+        _assert_byte_identical(src)
+
+
+class TestOpenTOwningSinkStorageRead:
+    """A whole open-`T` tuple ELEMENT READ at an `Own[tuple[T, ..]]` element
+    slot (`out.append(ranked[i])`). The generic element has no pointer repr,
+    so borrow and storage coincide there and the element is a self-contained
+    value the read passes bare -- the pointer-repr sibling's form conversion
+    has nothing to convert. Corpus witness: collections.Counter.most_common.
+    """
+
+    _BAG = (
+        "from tpy import Int32, Own\n"
+        "class Bag[T]:\n"
+        "    rows: list[tuple[T, Int32]]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.rows = []\n"
+    )
+
+    def test_local_and_field_reads_route(self):
+        # `_assert_routes_byte_identical`: the subject sits in a record
+        # METHOD, which the module-level lowering lens does not carry.
+        src = (self._BAG
+               + "    def take(self, n: Int32) -> Own[list[tuple[T, Int32]]]:\n"
+               + "        out: list[tuple[T, Int32]] = []\n"
+               + "        i = 0\n"
+               + "        while i < n and i < len(self.rows):\n"
+               + "            out.append(self.rows[i])\n"
+               + "            i += 1\n"
+               + "        return out\n")
+        _assert_routes_byte_identical(src)
+        compiler, modules = _compile(src)
+        hpp, _ = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        w = compiler._thir_face_witnesses
+        assert w.get("arg.own_open_t_tuple_storage_source", 0) >= 1
+        assert w.get("subscript.open_t_tuple_source", 0) >= 1
+        assert ("out.push_back(::tpy::__getitem__(this->rows, i));" in hpp)
+        # The owning slot must not pick up the borrow-form trait.
+        assert "val_or_ptr" not in hpp
+
+    def test_nested_tuple_element_stays_ast(self):
+        # BOUNDARY (dualgen-probed): a TUPLE element beside the open one is
+        # outside the value-element family this row reads through, so the
+        # body keeps falling back at the arg gate.
+        src = (self._BAG
+               + "    def pack(self, src: list[tuple[T, tuple[Int32, Int32]]]"
+                 ") -> Own[list[tuple[T, tuple[Int32, Int32]]]]:\n"
+               + "        out: list[tuple[T, tuple[Int32, Int32]]] = []\n"
+               + "        out.append(src[0])\n"
+               + "        return out\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        # `_fn` sees only module-level functions, so a record body's reject
+        # has to be read off the fallback tally.
+        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
+                           "method.arg_shape")
+        _assert_byte_identical(src)
+
+    def test_call_source_stays_ast(self):
+        # BOUNDARY: this row reads a SUBSCRIPT only. A CALL returning the
+        # same open-`T` tuple never even reaches the arg gate -- the method
+        # call's own return shape refuses it first -- so widening that gate
+        # must re-decide the call source deliberately rather than inherit it.
+        src = (self._BAG
+               + "    def make(self, i: Int32) -> Own[tuple[T, Int32]]:\n"
+               + "        return self.rows[i]\n"
+               + "    def pack(self) -> Own[list[tuple[T, Int32]]]:\n"
+               + "        out: list[tuple[T, Int32]] = []\n"
+               + "        out.append(self.make(0))\n"
+               + "        return out\n")
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(
+                emit_source_comments=False, thir_codegen=True))
+        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
+                           "method.ret_type")
         _assert_byte_identical(src)
 
 

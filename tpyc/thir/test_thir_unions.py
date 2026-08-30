@@ -22,7 +22,8 @@ from .validate import (
     THIRValidationError, validate_constructor, validate_function,
 )
 from .testutil import (
-    _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
+    _assert_byte_identical, _assert_rejects_at,
+    _assert_routes_byte_identical, _compile, _entry,
     _fn, _lower, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
 )
 
@@ -2159,6 +2160,73 @@ class TestUnionCallArgLift:
         assert "ctor(A, [coerce(lit(7) -> Int32)])" in text
         assert ("union_lift[std::variant<const A*, const B*>]"
                 "{to_const(%v)}") in text
+
+
+class TestValueUnionSelfArgTemp:
+    """`f(self)` at a value-union arg slot hoists the value-union arg temp
+    (`std::variant<A, int32_t> __tmp_N = (*this);`). The receiver read in a
+    value position is already the DEREF'd object, so the by-value variant is
+    initialized from the object rather than from the pointer -- the same temp
+    every other member-valued source at that slot takes. An `Own[union]` slot
+    is a different render and keeps rejecting.
+    """
+
+    _SRC = (
+        "from tpy import Int32, Own, ValueType, readonly\n"
+        "class V(ValueType):\n"
+        "    n: Int32\n"
+        "    def __init__(self, n: Int32) -> None:\n"
+        "        self.n = n\n"
+        "    def free(self) -> Int32:\n"
+        "        return take_vu(self)\n"
+        "    def qual(self) -> Int32:\n"
+        "        return V.helper(self)\n"
+        "    @readonly\n"
+        "    def ro(self) -> Int32:\n"
+        "        return take_ro(self)\n"
+        "    def opt(self) -> Int32:\n"
+        "        return take_opt(self)\n"
+        "    @staticmethod\n"
+        "    def helper(v: 'V | Int32') -> Int32:\n"
+        "        return 1\n"
+        "def take_vu(v: V | Int32) -> Int32:\n    return 0\n"
+        "def take_ro(v: readonly[V | Int32]) -> Int32:\n    return 0\n"
+        "def take_opt(v: V | Int32 | None) -> Int32:\n    return 0\n"
+    )
+
+    def _emit(self, src: str):
+        compiler, modules = _compile(src)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                    thir_codegen=True))
+        return compiler, hpp, cpp
+
+    def test_free_and_qualified_calls_route(self):
+        _assert_routes_byte_identical(self._SRC)
+        _, hpp, _ = self._emit(self._SRC)
+        assert "std::variant<int32_t, V> __tmp_1 = (*this);" in hpp
+        assert "return take_vu(__tmp_1);" in hpp
+        assert "return V::helper(__tmp_2);" in hpp
+        # ... including the readonly receiver and the monostate-bearing slot.
+        assert ("std::variant<std::monostate, int32_t, V> __tmp_4 = (*this);"
+                in hpp)
+
+    def test_own_union_slot_stays_ast(self):
+        # BOUNDARY (dualgen-probed): an `Own[union]` slot moves rather than
+        # copying into a const-ref temp, so it is a different render and owes
+        # its own decision.
+        src = ("from tpy import Int32, Own, ValueType\n"
+               "class V(ValueType):\n"
+               "    n: Int32\n"
+               "    def __init__(self, n: Int32) -> None:\n"
+               "        self.n = n\n"
+               "    def own(self) -> Int32:\n"
+               "        return take_own(self)\n"
+               "def take_own(v: Own[V | Int32]) -> Int32:\n    return 0\n")
+        compiler, _, _ = self._emit(src)
+        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
+                           "call.arg_shape.own_union")
+        _assert_byte_identical(src)
 
 
 class TestUnionCallArgEmit:

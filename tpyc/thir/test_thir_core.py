@@ -36,19 +36,31 @@ from .testutil import (
 )
 
 class TestExprUseFlagCeiling:
+    # Two PARALLEL channels carry per-sink lowering modes, and a ceiling on
+    # one alone just redirects the next flag to the other. Both are ratcheted
+    # at their measured width; the fix for either is a sink-kind enum, never
+    # a raised cap.
+
     def test_expr_use_boolean_flag_count_is_capped(self):
-        # The debt ceiling with TEETH (TODO.md's _ExprUse entry, violated
-        # once mid-branch): _ExprUse must not grow past 18 single-sink
-        # boolean flags. A 19th flag fails here by design -- fold the
-        # booleans into a sink-kind enum instead of raising the cap.
         import dataclasses
         from .lower.context import _ExprUse
         flags = [f.name for f in dataclasses.fields(_ExprUse)
                  if f.type == "bool"]
         assert len(flags) <= 18, (
             f"_ExprUse grew to {len(flags)} boolean flags: {flags}. "
-            "Consolidate into a sink-kind enum (TODO.md debt-ceiling "
-            "entry) instead of adding flag #19.")
+            "Consolidate into a sink-kind enum instead of adding flag #19.")
+
+    def test_lower_expr_boolean_kwarg_count_is_capped(self):
+        from .lower.expressions import _lower_expr, _lower_expr_impl
+        flags = [(fn.__name__, p.name)
+                 for fn in (_lower_expr, _lower_expr_impl)
+                 for p in inspect.signature(fn).parameters.values()
+                 if p.kind is p.KEYWORD_ONLY and p.annotation == "bool"]
+        assert len(flags) <= 15, (
+            f"the _lower_expr keyword channel grew to {len(flags)} boolean "
+            f"parameters: {flags}. Consolidate into a sink-kind enum instead "
+            "of adding another -- the _ExprUse ceiling above does not cover "
+            "this surface.")
 
 
 class TestEligibility:

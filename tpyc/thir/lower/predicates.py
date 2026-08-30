@@ -113,6 +113,7 @@ from ...type_def_registry import (
     is_bytes_view_type,
     is_char_type,
     is_dict,
+    is_dict_view,
     is_enum_type,
     is_fixed_int_type,
     is_int_enum_type,
@@ -158,7 +159,8 @@ from ...codegen_cpp.protocols import (
 )
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
-from ..fallback import ThirUnsupported
+from ...prescan import parse_deref_view_key
+from ..fallback import ThirUnsupported, note_detail, stmt_reject_reason
 from ..faces import witness as _witness
 from ..nodes import (
     Form,
@@ -916,7 +918,11 @@ def _ptr_union_member_wide(m: TpyType, analyzer) -> bool:
             or is_void_like_type(m)):
         return True
     mu = unwrap_readonly(m)
-    return (is_str_type(mu) or is_list(mu) or is_dict(mu) or is_set(mu)
+    # bytes rides beside str for the same reason: both spell one concrete
+    # storage type (`std::vector<uint8_t>` / `std::string`) with no type-arg
+    # recursion, so `render_type(m)` alone reproduces every spelling here.
+    return (is_str_type(mu) or is_bytes_type(mu)
+            or is_list(mu) or is_dict(mu) or is_set(mu)
             or _span_value(mu)
             or _value_tuple(mu, analyzer) is not None)
 
@@ -1202,34 +1208,12 @@ def _union_binding_divergent(e: 'TpyName', locals_: dict[str, TpyType],
           if rt is not None else None)
     return rt != bt
 
-def _isinstance_narrow_info(
-        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, UnionType, tuple[TpyType, ...], bool] | None':
-    """The F4 U3 isinstance-condition shape: `isinstance(v, A)` /
-    `isinstance(v, (A, B))` on a declared local/param of a routed union (U1
-    value / U2 pointer-variant). Returns `(var, union, check_members,
-    folded_true)` or None. `folded_true` is sema's exhaustiveness constant-fold
-    (`macro_expansion == True`, the last elif of an exhausted union): the
-    condition renders `true` and the AST suppresses the dead implicit-else
-    (`_condition_static_true`). Out of the slice: Any / polymorphic /
-    deref-view / type-param subjects (different extraction machinery),
-    readonly-qualified subjects (the `ptr_variant_to_const` chain stays AST,
-    the U2 verdict), and global slots. A resumable FRAME member is in: its
-    variant spelling (bare member, or the frame_slot `(*v)` deref) comes
-    from `_narrow_variant_cpp` like any other subject's. A recursive-alias
-    wrapper union rides the F6 slice
-    (`_eligible_wrapper_union`; the `.value` variant access)."""
-    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
-            and cond.isinstance_type is not None):
-        return None
-    if cond.isinstance_type_param or cond.isinstance_deref_depth:
-        return None
-    me = cond.macro_expansion
-    folded = isinstance(me, TpyBoolLiteral) and me.value is True
-    if me is not None and not folded:
-        return None
-    var = cond.isinstance_var
-    dt = declared.get(var)
+def _narrow_subject_union(dt: 'TpyType | None',
+                          analyzer) -> 'UnionType | None':
+    """The routed union a narrowing subject's DECLARED type binds, or None
+    when the subject is outside the extraction slice. One definition so the
+    condition-shape reader and the fact-driven post-if reader cannot disagree
+    about which subjects have a mirrored extraction."""
     if dt is None:
         return None
     db = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
@@ -1263,6 +1247,36 @@ def _isinstance_narrow_info(
             w = _wrapper_union_like(unwrap_readonly(opt.inner), analyzer)
             if isinstance(w, UnionType):
                 u = w
+    return u
+
+def _isinstance_narrow_info(
+        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
+) -> 'tuple[str, UnionType, tuple[TpyType, ...], bool] | None':
+    """The F4 U3 isinstance-condition shape: `isinstance(v, A)` /
+    `isinstance(v, (A, B))` on a declared local/param of a routed union (U1
+    value / U2 pointer-variant). Returns `(var, union, check_members,
+    folded_true)` or None. `folded_true` is sema's exhaustiveness constant-fold
+    (`macro_expansion == True`, the last elif of an exhausted union): the
+    condition renders `true` and the AST suppresses the dead implicit-else
+    (`_condition_static_true`). Out of the slice: Any / polymorphic /
+    deref-view / type-param subjects (different extraction machinery),
+    readonly-qualified subjects (the `ptr_variant_to_const` chain stays AST,
+    the U2 verdict), and global slots. A resumable FRAME member is in: its
+    variant spelling (bare member, or the frame_slot `(*v)` deref) comes
+    from `_narrow_variant_cpp` like any other subject's. A recursive-alias
+    wrapper union rides the F6 slice
+    (`_eligible_wrapper_union`; the `.value` variant access)."""
+    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
+            and cond.isinstance_type is not None):
+        return None
+    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+        return None
+    me = cond.macro_expansion
+    folded = isinstance(me, TpyBoolLiteral) and me.value is True
+    if me is not None and not folded:
+        return None
+    var = cond.isinstance_var
+    u = _narrow_subject_union(declared.get(var), analyzer)
     if u is None:
         return None
     ct = cond.isinstance_type
@@ -1537,6 +1551,20 @@ def _facts_have_concrete(facts: dict[str, TpyType]) -> bool:
         for ty in facts.values()
     )
 
+def _facts_emit_alias(facts: dict[str, TpyType]) -> bool:
+    """Whether `emit_isinstance_extractions` would DECLARE an alias for these
+    branch facts: `_facts_have_concrete`'s rows minus the deref-view keys,
+    whose narrowing rides `deref_narrowed_to` with no local of its own.
+    A branch arm with no mirrored extraction must fence on this, or the alias
+    the AST declares is silently dropped."""
+    return any(
+        parse_deref_view_key(k) is None
+        and not (isinstance(ty, (UnionType, LiteralType))
+                 or is_void_like_type(ty))
+        and not is_protocol_type(ty)
+        for k, ty in facts.items()
+    )
+
 def _is_elif_link(outer: TpyIf, inner: TpyIf) -> bool:
     """Mirror of StatementGenerator._is_elif (and emit._is_elif): an elif keeps
     the outer's column; a nested `else: if` sits deeper. Both-locs-None (macro
@@ -1558,28 +1586,6 @@ def _elif_link(stmt: TpyIf) -> 'TpyIf | None':
         return stmt.else_body[0]
     return None
 
-def _post_if_narrow_fact(
-        stmt: TpyIf, info, narrowed: 'set[str] | dict[str, str]',
-) -> TpyType | None:
-    """The early-EXIT implicit-else fact: when the then-body terminates with a
-    return OR a raise and there is no else block, code after the if is the else
-    branch, and the AST emits a persistent statement-level extraction
-    (`_gen_if`'s post-narrowing arm, `_narrows_to_union_member` +
-    not-already-narrowed). The raise flavor is the same arm on the AST side and
-    in `_poly_post_if_fact`'s twin -- a guard-and-raise
-    (`if not isinstance(tz, ZoneInfo) or tz != self: raise ...`) leaves the
-    subject narrowed exactly like the return flavor. `narrowed` is the active
-    narrowing scope (eligibility's set / lowering's alias map -- only membership
-    is read). Returns the member fact or None."""
-    var, u, _members, folded = info
-    if folded or stmt.else_body or not stmt.else_type_facts:
-        return None
-    if var in narrowed:
-        return None
-    if not (stmt.then_body
-            and isinstance(stmt.then_body[-1], (TpyReturn, TpyRaise))):
-        return None
-    return _narrow_fact_member(u, stmt.else_type_facts, var)
 
 def _flatten_binop_leaves(cond: TpyExpr, op: str) -> 'list[TpyExpr]':
     """Flatten a single-op boolean tree into its leaves, in source order;
@@ -1633,50 +1639,160 @@ def _or_chain_narrow_info(
     return var, u, leaf_infos, negated
 
 
-def _chain_post_if_fact(
-        stmt: TpyIf, declared: dict[str, TpyType],
-        narrowed: 'set[str] | dict[str, str]', analyzer,
-) -> 'tuple[str, UnionType, TpyType] | None':
-    """The post-if extraction for a whole if statement: the AST collects the
-    flat elif chain first and runs post-narrowing on `chain[-1]`, emitting the
-    persistent alias at the ENCLOSING scope -- so the fact belongs to the last
+def _post_if_chain_tail(stmt: TpyIf) -> TpyIf:
+    """The link the AST runs post-narrowing on: it collects the flat elif
+    chain first and takes `chain[-1]`, so the fact belongs to the last
     FLATTENABLE link (same column, no concrete intermediate else-fact),
-    whatever the head condition's kind (a plain-headed chain can still end in
-    a narrowing elif). A nested `else: if` is a body statement of its else
-    block and handles its own post-if there. Returns `(var, union, member)`
-    or None."""
+    whatever the head condition's kind. A nested `else: if` is a body
+    statement of its else block and handles its own post-if there."""
     last = stmt
     while ((nxt := _elif_link(last)) is not None
            and not _facts_have_concrete(last.else_type_facts)):
         last = nxt
-    # Peel a leading `not` (the negated-polarity simple form): the fact is read
-    # from `last.else_type_facts`, which sema already computed for the actual
-    # else branch regardless of the condition's polarity.
-    cond = last.condition
+    return last
+
+def _protocol_isinstance_condition(cond: TpyExpr) -> bool:
+    """Mirror of `_is_protocol_isinstance_condition`: a sema STAMP read under
+    any number of `not` peels, never a match on the condition's tree."""
+    if isinstance(cond, TpyCall) and cond.isinstance_is_protocol:
+        return True
     if isinstance(cond, TpyUnaryOp) and cond.op == "!":
-        cond = cond.operand
-    info = _isinstance_narrow_info(cond, declared, analyzer)
-    if info is None:
-        # An or-chain condition's post-if fact: the AST's post-narrowing
-        # arm reads the same else facts whatever the condition kind
-        # (including the dead extraction past an exhaustively-folded
-        # chain); chain-level folded is False -- a per-leaf fold does not
-        # suppress the arm.
-        oc = _or_chain_narrow_info(last.condition, declared, analyzer)
-        if oc is None:
-            return None
-        info = (oc[0], oc[1], (), False)
-    dv = declared.get(info[0])
-    if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dv)))
-                  if dv is not None else None, OwnType):
-        # An Own[union]-declared subject never takes the post-if
-        # extraction: the AST's `_narrows_to_union_member` reads the raw
-        # declared type (OwnType, not UnionType) and skips it.
-        return None
-    post = _post_if_narrow_fact(last, info, narrowed)
-    if post is None:
-        return None
-    return info[0], info[1], post
+        return _protocol_isinstance_condition(cond.operand)
+    return False
+
+def _condition_static_true(cond: TpyExpr) -> bool:
+    """Mirror of `_condition_static_true`: sema folded the WHOLE condition to
+    `True`, so its implicit-else fall-through is dead and post-narrowing there
+    would extract a member the enclosing flow already excluded."""
+    me = getattr(cond, "macro_expansion", None)
+    return isinstance(me, TpyBoolLiteral) and me.value is True
+
+def _post_if_subject_decl(var: str, declared: dict[str, TpyType],
+                          narrow) -> 'TpyType | None':
+    """The DECLARED type of a post-if subject, which narrowing never retypes.
+    Lowering's `declared` DOES retype a live narrow to its member, so a
+    narrowed subject reads the parked original -- and it seeds a
+    polymorphic-class record PARAM as `Ref[Rec]` where the AST's map holds the
+    bare type, so the borrow wrapper comes off.
+
+    Locals and params only, unlike the AST's `lookup_var_type`, which also
+    falls through to the global namespace. Sound because no global whose fact
+    this arm would extract gets this far: a union global is seeded into
+    `declared` by neither global-seeding predicate, so an isinstance on one
+    rejects at the CONDITION; an `Any` global the AST drops as well; a
+    polymorphic global IS seeded and resolves identically."""
+    if var in narrow.narrowed or var in narrow.spelled:
+        dt = (narrow.subject_union.get(var) or narrow.poly_source.get(var)
+              or declared.get(var))
+    else:
+        dt = declared.get(var)
+    return dt.wrapped if isinstance(dt, RefType) else dt
+
+def _post_if_ast_facts(stmt: TpyIf, declared: dict[str, TpyType], narrow,
+                       analyzer) -> dict[str, TpyType]:
+    """The else-facts the AST's post-narrowing arm would extract after `stmt`
+    (`_gen_if`'s `post_facts`, in fact order).
+
+    Driven by the FACTS, exactly as the AST is: sema builds them by a
+    compositional recursion over the whole boolean algebra, so any reader that
+    recovers the subject from the condition's syntax instead covers strictly
+    less than the producer and silently drops what it cannot spell. The
+    condition is consulted for two whole-condition filters the AST itself
+    applies, and both read a sema stamp rather than the tree.
+
+    Those two are not the whole AST gate, and both omissions bite a widener:
+
+    - The AST suppresses the post-if extraction ENTIRELY when an elif
+      condition needs hoisted temps: it recurses into a nested `else {}` block
+      with post-narrowing off and returns before reaching its own arm. Not
+      mirrored, and unreachable only because every construct that forces the
+      hoist rejects in THIR first -- so admitting one of those admits a shape
+      whose AST emits NO extraction while this map still names one.
+    - Neither this nor `_facts_emit_alias` mirrors
+      `emit_isinstance_extractions`' `overload_param_types` skip (the param is
+      already the concrete type there), so both OVER-reject inside an
+      @overload specialization. Over-rejection is a fallback, never wrong
+      code, and costs nothing today."""
+    last = _post_if_chain_tail(stmt)
+    if last.else_body or not last.else_type_facts:
+        return {}
+    if not _facts_have_concrete(last.else_type_facts):
+        return {}
+    if not (last.then_body
+            and isinstance(last.then_body[-1], (TpyReturn, TpyRaise))):
+        return {}
+    if (_protocol_isinstance_condition(last.condition)
+            or _condition_static_true(last.condition)):
+        return {}
+    registry = analyzer.registry
+    facts: dict[str, TpyType] = {}
+    for k, ft in last.else_type_facts.items():
+        dt = _post_if_subject_decl(k, declared, narrow)
+        if not (_recursive_union_shape(dt)
+                or is_polymorphic_subclass_fact(dt, ft, registry)
+                # A union member cannot be re-narrowed to a different concrete
+                # type, so an already-live alias is correct as-is.
+                or (_narrows_to_union_member(dt, ft)
+                    and k not in narrow.narrowed and k not in narrow.spelled)):
+            continue
+        if (isinstance(ft, UnionType) or is_void_like_type(ft)
+                or parse_deref_view_key(k) is not None):
+            # `emit_isinstance_extractions`' pure skips: no alias, no scope
+            # change, so these keys carry no mirroring obligation.
+            continue
+        facts[k] = ft
+    return facts
+
+def _recursive_union_shape(vt: 'TpyType | None') -> bool:
+    """Mirror of `_gen_if`'s post-narrowing `_recursive_union_shape`: the
+    subject's storage form is a recursive-union wrapper struct. The
+    post-`_fix_recursive_optional_annotations` shape `OptionalType(AliasRef)`
+    counts too -- its `needs_wrapper()` is False despite the aliased body
+    being a wrapper struct."""
+    if vt is None:
+        return False
+    if vt.needs_wrapper():
+        return True
+    return isinstance(vt, OptionalType) and isinstance(vt.inner, AliasRef)
+
+def _narrows_to_union_member(vt: 'TpyType | None', narrowed: TpyType) -> bool:
+    """Mirror of `_gen_if`'s post-narrowing `_narrows_to_union_member`: a plain
+    union left narrowed to one concrete member. Member identity is `==`, as the
+    AST spells it -- a looser match here would extract where the oracle does
+    not."""
+    base = unwrap_readonly(vt) if vt is not None else None
+    return (isinstance(base, UnionType)
+            and not isinstance(narrowed, UnionType)
+            and any(m == narrowed for m in base.members))
+
+def _post_if_narrow_plan(
+        stmt: TpyIf, declared: dict[str, TpyType], narrow, analyzer,
+) -> 'tuple[tuple[str, TpyType, UnionType | None], ...]':
+    """The persistent extractions to append after `stmt`, in the AST's fact
+    order: `(var, member, union)` for a variant extraction, `(var, member,
+    None)` for a polymorphic cast-and-cache.
+
+    Raises `ThirUnsupported` for any fact the AST WOULD extract but this has no
+    mirror for. Silence is not an option at this arm: lowering either generates
+    or raises, and a drop that emits nothing still counts the body as ROUTED,
+    so the ratchet reads the loss as progress."""
+    ast_facts = _post_if_ast_facts(stmt, declared, narrow, analyzer)
+    if not ast_facts:
+        return ()
+    poly = _poly_post_if_fact(stmt, declared, narrow.poly_source, analyzer)
+    plan: list[tuple[str, TpyType, UnionType | None]] = []
+    for var, member in ast_facts.items():
+        if poly is not None and poly[0] == var:
+            plan.append((var, poly[1], None))
+            continue
+        u = _narrow_subject_union(_post_if_subject_decl(var, declared, narrow),
+                                  analyzer)
+        if (u is None or var in narrow.narrowed or var in narrow.spelled
+                or not any(m == member for m in u.members)):
+            note_detail("if.post_narrow_unmirrored")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        plan.append((var, member, u))
+    return tuple(plan)
 
 def _poly_anchor_declared(
         cond: TpyExpr, declared: dict[str, TpyType],
@@ -1701,16 +1817,13 @@ def _poly_post_if_fact(
     isinstance(v, Sub): return/raise` on a poly-dispatch subject leaves code
     after the `if` narrowed to Sub, and the AST emits the persistent
     cast-and-cache alias at the enclosing scope (`_gen_if`'s post-narrowing
-    arm, the `is_polymorphic_subclass_fact` filter). The chain walk and the
-    `not`-peel mirror `_chain_post_if_fact`; unlike the union arm, an
+    arm, the `is_polymorphic_subclass_fact` filter). Runs on the same chain
+    tail the union arm does, `not`-peel included; unlike the union arm, an
     already-narrowed subject RE-narrows (the alias suffix-bumps, anchored to
     the original decl via `poly_source`). Returns `(var, member)` or None;
     a facts map beyond the single `{var: member}` entry stays out of the
     slice (the caller's arm gate rejected the compound shapes already)."""
-    last = stmt
-    while ((nxt := _elif_link(last)) is not None
-           and not _facts_have_concrete(last.else_type_facts)):
-        last = nxt
+    last = _post_if_chain_tail(stmt)
     if last.else_body or not last.else_type_facts:
         return None
     if not (last.then_body
@@ -4759,6 +4872,34 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _opt_owned_view_elem_tuple(t: TpyType | None,
+                               analyzer) -> 'TupleType | None':
+    """A storage tuple carrying at least one value-repr `Optional[str]` /
+    `Optional[bytes]` element beside plain value-tuple elements
+    (`tuple[bytes | None, str | None]` -> `std::tuple<std::optional<
+    std::vector<uint8_t>>, std::optional<std::string>>`), or None.
+
+    Such an element is OWNED inside the tuple's storage, so the whole
+    optional copies by value like a scalar and the tuple has no borrow form
+    to resolve -- but `_value_tuple` still declines it, because a bare str
+    element there is an owned lvalue while a view-INNER optional would not
+    be. Kept separate rather than widening that family, whose callers reach
+    param and return slots this element has not been verified at.
+    """
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType) or t.has_pointer_repr_element():
+        return None
+    any_opt = False
+    for e in t.element_types:
+        if _value_opt_owned_view(e, analyzer) is not None:
+            any_opt = True
+            continue
+        if not _value_tuple_element_ok(e, analyzer):
+            return None
+    return t if any_opt else None
+
 def _value_tuple_owned_str_elem(e: 'TpyExpr', analyzer) -> bool:
     """An OWNED-str element read out of a value tuple (`pair[1]` on
     `tuple[str, str]`): the element is a `std::string` held in the tuple's own
@@ -5023,7 +5164,7 @@ def _value_tuple_return_element_ok(e: TpyType, analyzer) -> bool:
                 or isinstance(unwrap_readonly(inner.wrapped),
                               RecursiveAliasInstanceType))
     return (_value_opt_scalar(e, analyzer) is not None
-            or _value_opt_str(e, analyzer) is not None)
+            or _value_opt_view(e, analyzer) is not None)
 
 def _value_tuple_return(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The value-tuple RETURN slot: `_value_tuple` widened at the element axis
@@ -8710,16 +8851,10 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     # (`x: A | B = A(); f(x)`) is still the variant in C++ and passes bare (no
     # temp) -- it rides `_union_pass_through_arg`, not this member-valued row.
     if isinstance(a, TpyName):
-        if a.name == "self":
-            # `f(self)` at a value-union slot declines: admitting it admits
-            # WHOLE BODIES carrying a second, unrelated gap --
-            # `datetime.ZoneInfo.fromutc` diverges on the post-if narrow
-            # alias, because `_chain_post_if_fact` reads the CONDITION shape
-            # while the AST's post-narrowing arm is condition-blind (it reads
-            # else_type_facts), so an or-chain with a NEGATED isinstance leaf
-            # (`if not isinstance(tz, Z) or tz != self: raise`) silently emits
-            # no alias instead of rejecting.
-            return None
+        # `f(self)` rides the row: the receiver read in a value position is
+        # already the DEREF'd `(*this)` the AST hoists the temp from, so the
+        # by-value variant is initialized from the object, never from the
+        # pointer.
         dt = locals_.get(a.name)
         dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
               if dt is not None else None)
@@ -10188,8 +10323,25 @@ def _native_iterable_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
     if isinstance(at, OwnType):
         at = unwrap_readonly(at.wrapped)
+    # A DICT-VIEW result (`sorted(d.keys())`) joins them: the view is a
+    # borrowing value object the same template param binds bare, and the
+    # runtime's range overloads accept it -- the only thing that kept it out
+    # was the container-family spelling of this test. NATIVE/@cpp_template
+    # callees only, which is what the docstring's "the caller gates the
+    # branch" means: a USER callee's structural slot hoists the AST's
+    # `auto __tmp_N =` temp for a view rvalue, so the render arm re-checks.
     return (is_list(at) or is_dict(at) or is_set(at) or is_array(at)
-            or is_span(at))
+            or is_span(at) or is_dict_view(at))
+
+
+def _dict_view_call_result(a: TpyExpr, analyzer) -> bool:
+    """Whether a call's result is a dict VIEW -- the one member of the
+    native Iterable-slot family whose USER-callee render differs (the
+    structural-slot temp hoist)."""
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return False
+    return is_dict_view(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at))))
 
 def _native_iterable_range_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     """A `range(...)` rvalue into a NATIVE builtin's structural `Iterable[T]`
@@ -10730,7 +10882,19 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
             # A value-opt-scalar-valued dict (`dict[str, Int32 | None]`):
             # the loop var binds the storage optional by value
             # (`std::optional<int32_t> val = *__beg_N;`).
-            or _container_value_opt_scalar_elem(recv_t, analyzer))
+            or _container_value_opt_scalar_elem(recv_t, analyzer)
+            # ... and `keys()` over ANY value family: the view yields the
+            # KEY, so neither `::tpy::dict_keys(d)` nor what the consumer
+            # binds off it depends on what the dict maps to. Last, so the
+            # rows above keep owning the verdicts they already had. The
+            # shared dispatch still applies the key slice and the
+            # `Own[container]` exclusion; `values()` / `items()` yield the
+            # VALUE and stay on the rows above.
+            or (e.method == "keys"
+                and is_dict(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(recv_t))))
+                and _container_elem_family(recv_t, analyzer, lambda _v: True)
+                and bool(_witness("iter.dict_keys_value_blind"))))
 
 def _plain_scalar_slot(ptype: TpyType | None, analyzer) -> bool:
     """A NON-Own value-scalar param slot. The user-record sibling of

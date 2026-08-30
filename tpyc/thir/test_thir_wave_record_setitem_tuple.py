@@ -64,3 +64,58 @@ class TestViewNameValueKeepsRejecting:
                                    thir_codegen=True))
         _assert_rejects_at(dict(compiler._thir_fallback),
                            "body:stmt.assign", shape="setitem.family")
+
+
+class TestOwnedStrRvalueValue:
+    """An owned-str RVALUE written through the same `__setitem__`. The
+    view->owned copy keys on the SOURCE being view-form; a concat, an
+    f-string and a `str`-returning call are all owned `std::string`
+    prvalues, so they bind the slot bare. A short-circuit chain and a
+    ternary are decided recursively over their operands and stay out.
+    """
+
+    SRC = (
+        _REC +
+        "    def load(self, p: str) -> None:\n"
+        "        self[\"concat\"] = p + \"-\" + p\n"
+        "        self[\"fstr\"] = f\"{p}!\"\n"
+        "        self[\"meth\"] = p.upper()\n"
+        "        self[\"free\"] = str(3)\n"
+        "def main() -> None:\n"
+        "    h = H()\n"
+        "    h.load(\"p\")\n"
+        "    print(h[\"concat\"])\n"
+        "main()\n"
+    )
+
+    def test_routes_byte_identical(self):
+        _assert_routes_byte_identical(self.SRC)
+        compiler, modules = _compile(self.SRC)
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        both = hpp + cpp
+        assert "::tpy::__setitem__((*this), \"meth\", ::tpy::str_upper(p))" \
+            in both
+
+    def test_ternary_value_keeps_rejecting(self):
+        # BOUNDARY (dualgen-probed): a ternary's form is its arms', which the
+        # gate does not walk -- and a view arm would owe the owned copy.
+        src = (
+            _REC +
+            "    def load(self, p: str, flag: bool) -> None:\n"
+            "        self[\"t\"] = p if flag else p\n"
+            "def main() -> None:\n"
+            "    h = H()\n"
+            "    h.load(\"p\", True)\n"
+            "    print(h[\"t\"])\n"
+            "main()\n"
+        )
+        compiler, modules = _compile(src)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   thir_codegen=True))
+        _assert_rejects_at(dict(compiler._thir_fallback),
+                           "body:stmt.assign", shape="setitem.family")

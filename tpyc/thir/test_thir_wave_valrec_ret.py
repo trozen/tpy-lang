@@ -8,12 +8,13 @@ emits. The stdlib witnesses are datetime's `now` / `today` / `utcnow` /
 `fromtimestamp` / `utcfromtimestamp`.
 
 Also pins the two adjacent rows the widening exposed: the raise-terminated
-post-if narrow alias (`_post_if_narrow_fact`, which had mirrored the AST's
-return-arm only) and the `self`-at-a-value-union-arg reject.
+post-if narrow alias (which had mirrored the AST's return-arm only) and
+`self` at a value-union arg slot.
 """
+from ..codegen_cpp import CodeGenOptions
 from .testutil import (
     _assert_byte_identical, _assert_rejects_at,
-    _assert_routes_byte_identical, _fn,
+    _assert_routes_byte_identical, _compile, _entry, _fn,
     _lower_ctx_witnessed, _thir_ctx,
 )
 
@@ -191,7 +192,7 @@ class TestValueRecordMethodCallReturn:
 
 class TestRaiseGuardPostIfAlias:
     def test_raise_terminated_guard_emits_the_alias(self):
-        # `_post_if_narrow_fact` had mirrored the AST's return-terminated arm
+        # The post-if fact reader had mirrored the AST's return-terminated arm
         # only, while `_gen_if` (and `_poly_post_if_fact`) accept a raise too:
         # the guard leaves the subject narrowed for the rest of the body, so
         # the persistent extraction alias is emitted at the enclosing scope.
@@ -220,11 +221,13 @@ class TestRaiseGuardPostIfAlias:
 
 
 class TestSelfAtValueUnionArg:
-    def test_self_into_a_value_union_slot_stays_ast(self):
-        # BOUNDARY / reject: the AST hoists the value-union arg temp from the
-        # DEREF'd receiver (`__tmp_N = (*this);`) while the THIR temp row
-        # lowers the bare receiver read. Unmirrored, so the body falls back
-        # rather than spelling a raw `A*` into a by-value variant.
+    """`self` at a value-union arg slot: the receiver read in a value
+    position is already the DEREF'd `(*this)`, so the value-union arg temp
+    is initialized from the object exactly as for any other member-valued
+    source. The free-call and qualified-call gates read one verdict, so both
+    admit together."""
+
+    def test_self_into_a_value_union_slot_routes(self):
         src = (
             "from tpy import Int32, ValueType\n"
             "class B(ValueType):\n"
@@ -245,15 +248,17 @@ class TestSelfAtValueUnionArg:
             "    print(A(3).pass_self())\n"
             "use()\n"
         )
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        _assert_rejects_at(fell, "body:expr.call",
-                           "call.arg_shape.union")
+        _assert_routes_byte_identical(src)
+        compiler, modules = _compile(src)
+        hpp, _ = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                    thir_codegen=True))
+        assert "__tmp_1 = (*this);" in hpp
+        assert "return sink(__tmp_1);" in hpp
 
-    def test_self_into_a_method_value_union_slot_stays_ast(self):
-        # The METHOD-call flavor of the same reject (datetime's
-        # `ZoneInfo.fromutc` -> `datetime._from_epoch_us(.., self)`): the two
-        # arg gates read one verdict, so both decline together.
+    def test_self_into_a_method_value_union_slot_routes(self):
+        # The METHOD-call flavor of the same admission (datetime's
+        # `ZoneInfo.fromutc` -> `datetime._from_epoch_us(.., self)`).
         src = (
             "from tpy import Int32, ValueType\n"
             "class B(ValueType):\n"
@@ -275,10 +280,13 @@ class TestSelfAtValueUnionArg:
             "    print(Sink(3).pass_self())\n"
             "use()\n"
         )
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        _assert_rejects_at(fell, "body:expr.method_call",
-                           "method.qualcall.arg.union")
+        _assert_routes_byte_identical(src)
+        compiler, modules = _compile(src)
+        hpp, _ = compiler.generate_code_to_strings(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                    thir_codegen=True))
+        assert "__tmp_1 = (*this);" in hpp
+        assert "return Sink::of(__tmp_1);" in hpp
 
     def test_member_named_arg_still_takes_the_temp(self):
         # The row the reject must NOT swallow: an ordinary member-typed NAME

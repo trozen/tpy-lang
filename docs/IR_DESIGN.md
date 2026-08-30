@@ -8,7 +8,7 @@
 | AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Same -- see the fallback tally for what is left |
 | `--dump-thir` debug output | Done |
 | THIR-backed codegen context | Default-on per-case for user modules (`tpyc/thir/emit.py`); `thir_all_modules` lifts the scoping gate for the stdlib sweeps |
-| Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (3746/3746, interop 34/34). **Stdlib: 16 fallback bodies / 1229 routed** (2026-08-28), which is the live metric; the AST body emitter is deleted only at zero |
+| Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (3746/3746, interop 34/34). **Stdlib: 0 fallback bodies / 1245 routed** (2026-08-30), so the routing metric is saturated too; what stands between here and deleting the AST body emitter is the cutover itself |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
@@ -908,10 +908,12 @@ win.
 `--thir-check-flip` can select work any more -- they now only guard against
 regression. The stdlib is still AST-scoped for real emission, but it is measured
 and byte-diffed through THIR by two always-on gates (the per-case wide oracle and
-`tests/test_thir_stdlib_gate.py`), and its 16 remaining fallback bodies are the
-live distance to the AST deletion. The remaining tail is decision-bound rather
-than admission-bound (filed defects, design forks, chained sites), which is why
-it no longer shrinks per wave the way the case corpus did.
+`tests/test_thir_stdlib_gate.py`), and its fallback reached ZERO on 2026-08-30,
+so no routing distance to the AST deletion remains -- what is left is the
+cutover itself. The tail that closed it was recorded as decision-bound rather
+than admission-bound (filed defects, design forks, chained sites); every one of
+those statuses had been read off a reject tag instead of ablated, and each was
+pessimistic.
 
 ##### Ratchet + tiered measurement (2026-07 refinement)
 

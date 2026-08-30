@@ -128,6 +128,7 @@ class TestNativeSinkShape:
             "own_move",
             "native_own_scalar_lvalue",
             "native_iterable_container",
+            "container_field_pass",
             "inst_slice",
             "container_ternary",
             "native_iterable_call",
@@ -234,8 +235,10 @@ class TestContainerSinkShape:
             "callable_slot",
             "tparam_slot",
             "own_value_tuple_literal",
+            "own_open_t_tuple_literal",
             "own_btuple_literal",
             "own_btuple_storage_source",
+            "own_open_t_tuple_storage_source",
             "own_btuple_mixed_call",
             "own_btuple_nested_name",
             "own_tuple_call_rvalue",
@@ -264,7 +267,11 @@ class TestContainerSinkShape:
             ("container_slot_call_rvalue", "arg.container_call_rvalue"),
             ("own_ptr_value", "arg.own_ptr_value"),
             ("own_value_tuple_literal", "arg.own_value_tuple_literal"),
+            ("own_open_t_tuple_literal",
+             "arg.own_open_t_tuple_literal"),
             ("own_btuple_literal", "arg.own_btuple_literal"),
+            ("own_open_t_tuple_storage_source",
+             "arg.own_open_t_tuple_storage_source"),
         ]
 
     def test_family_carries_own_rows_and_no_mutated_policy(self):
@@ -668,6 +675,7 @@ class TestGenericPlainSinkShape:
             "ru_wrapper_member_rvalue",
             "generic_list_literal",
             "generic_own_list_literal",
+            "own_tuple_call_rvalue",
         ]
 
     def test_note_tail_is_verbatim(self):
@@ -736,7 +744,7 @@ class TestGenericPlainSinkShape:
             "generic_list_literal",
             "generic_own_list_literal",
         ]
-        assert len([r for r in rows if r in others]) == 23
+        assert len([r for r in rows if r in others]) == 24
 
     def test_family_carries_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder never consulted
@@ -1459,6 +1467,7 @@ class TestRecordCtorSinkShape:
             "container_literal",
             "own_container_literal",
             "own_container_instantiation",
+            "own_container_construct",
             "ru_wrapper_name_no_alias",
             "ru_wrapper_own_literal",
             "own_genrec_literal",
@@ -1612,12 +1621,12 @@ class TestRecordCtorNestedIsNotADirectPrefix:
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
         # Absence-preserving: the flush-less nested position admits only
-        # temp-FREE renders, so 45 direct cells are simply absent. The count
+        # temp-FREE renders, so 46 direct cells are simply absent. The count
         # is what closes the gap -- naming a subset leaves the unnamed
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 45
+        assert len(direct - nested) == 46
         assert {"mutated_container_literal", "str_pass_through",
                 "shared_pass_through", "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1669,6 +1678,7 @@ class TestRecordCtorSharedAndNewRows:
             "async_factory_wrap",
             "field_read_ref_ctor",
             "own_container_instantiation",
+            "own_container_construct",
             "ru_wrapper_name_no_alias",
             "ru_wrapper_own_literal",
             "own_genrec_literal",

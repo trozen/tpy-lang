@@ -56,9 +56,9 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
         // pairs: list[tuple[Item, Item]] = []
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
         // pairs.append((Item(1), Item(2)))
-        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(::tpy::tuple_value_to_borrow<std::tuple<Item*, Item*>>(std::tuple<Item, Item>{Item(1), Item(2)})));
+        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(1), Item(2)}));
         // pairs.append((Item(10), Item(20)))
-        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(::tpy::tuple_value_to_borrow<std::tuple<Item*, Item*>>(std::tuple<Item, Item>{Item(10), Item(20)})));
+        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(10), Item(20)}));
         // print(await total(pairs))
         __sub_0.emplace((*pairs));
         __state = S_RESUME_0;

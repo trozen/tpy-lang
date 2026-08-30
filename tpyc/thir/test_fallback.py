@@ -368,7 +368,7 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
     assert "clean" in routed
 
 
-def test_wide_integer_routes_while_nonfinite_float_rejects():
+def test_wide_integer_and_nonfinite_float_both_route():
     compiler, modules = _compile(
         "from tpy import Float64, Int64\n"
         "def take_int(n: Int64) -> Int64:\n"
@@ -390,9 +390,8 @@ def test_wide_integer_routes_while_nonfinite_float_rejects():
                 fold_attempt("body")
             else:
                 routed.append(fn.name)
-    assert "wide" in routed
-    assert compiler._thir_fallback.get(
-        "body:expr.float_literal.nonfinite") == 1
+    assert "wide" in routed and "nonfinite" in routed
+    assert compiler._thir_fallback == {}
 
 
 def test_unhandled_expression_rejects_from_lowering_tail():

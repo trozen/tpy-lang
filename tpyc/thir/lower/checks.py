@@ -2528,9 +2528,10 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     which is why the render must keep lowering the UNPEELED value) and a
     zero-arg `str()` ctor call. A NAME declared `str | None` and narrowed to
     `str` stays OUT: the AST moves the deref at a last use
-    (`this->s = std::move((*s));`) and this arm renders it bare. Other call
-    sources stay on the AST path; `String`-typed fields/sources keep their
-    own emit shapes (excluded by `_resolved_str_value`)."""
+    (`this->s = std::move((*s));`) and this arm renders it bare. A str-typed
+    call or method call of any other shape rides the same bare assign as
+    well; `String`-typed fields/sources keep their own emit shapes (excluded
+    by `_resolved_str_value`)."""
     if not (_field_receiver_or_unbound_self_ok(stmt.target, declared,
                                                analyzer)
             # A record-getitem element receiver (`moved[0].name = "s"` on
@@ -3207,7 +3208,32 @@ def _user_record_setitem_ok(
                          and (_svv := _resolved_str_value(
                              analyzer.get_expr_type(_svc),
                              analyzer)) is not None
-                         and is_str_view_type(_svv)))))
+                         and is_str_view_type(_svv))
+                     # ... and an OWNED-str RVALUE (a concat, an f-string,
+                     # a call result typed `str`): the AST's owned-copy wrap
+                     # keys on the SOURCE being view-form, and none of these
+                     # is, so the value binds the slot bare. A NAME is
+                     # excluded -- its form is its binding's, which this
+                     # gate does not resolve.
+                     or _owned_str_rvalue_source(stmt.value, analyzer))))
+
+def _owned_str_rvalue_source(e: TpyExpr, analyzer) -> bool:
+    """A str value source the view->owned copy does NOT fire on -- the
+    mirror of the AST's view-source fall-through: an expression that is not
+    a NAME, a str literal or a short-circuit / ternary chain, and whose
+    resolved str family is owned rather than `StrView`. A concat, an
+    f-string and a `str`-returning call all land here and bind the slot
+    bare.
+
+    Names and literals are excluded because their form is their binding's,
+    not the expression's; the chains because the AST decides them
+    recursively over operands this gate does not walk."""
+    if isinstance(e, (TpyName, TpyStrLiteral, TpyIfExpr)):
+        return False
+    if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
+        return False
+    rv = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
+    return rv is not None and not is_str_view_type(rv)
 
 def _record_aug_setitem_ok(
         sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
@@ -3940,6 +3966,24 @@ def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
          if ret is not None else None)
     return (_f1_record(t, analyzer) and is_rvalue_source(analyzer, e)
             and _native_ctx_manager_ok(e, analyzer))
+
+
+def _native_own_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
+    """`_native_record_rvalue_call_shape` restricted to a callee whose
+    DECLARED return spells the ownership transfer (`-> Own[V]`).
+
+    The restriction is what lets the shape reach an `Own[T]` (`T&&`) sink:
+    `is_rvalue_source` is True for a BORROWING callee too, and binding a
+    `T&` result into a `T&&` slot is ill-formed at a reference-type
+    instantiation, so the value category alone cannot carry the admission.
+    A bare `-> V` free native leaves its C++ return convention unspelled and
+    a `-> T` one renders `val_or_ref_t<T>`; both stay out. One predicate for
+    the arg gate and the result-use gate, so the two cannot drift apart."""
+    if not isinstance(e, TpyCall) or e.resolved_function_info is None:
+        return False
+    rt = unwrap_send_sync(e.resolved_function_info.return_type)
+    return (isinstance(rt, OwnType)
+            and _native_record_rvalue_call_shape(e, analyzer))
 
 
 def _er_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
@@ -5137,6 +5181,33 @@ def _own_container_instantiation_arg(a: TpyExpr, ptype: 'TpyType | None',
         atu = unwrap_readonly(atu.wrapped)
     return atu == inner and _witness("ctor.own_container_instantiation")
 
+def _own_container_construct_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                 analyzer) -> bool:
+    """A one-source container INSTANTIATION into an `Own[container]` ctor slot
+    (`_WalkEmit(cur, list(names), files)` -> `::tpy::construct<
+    std::vector<std::string>>(names)`): the construct template IS the whole
+    render and needs no temp, so the owning slot binds the prvalue directly.
+    The EMPTY sibling above spells the default ctor instead, and the source's
+    own admission stays with the instantiation arm."""
+    if not (isinstance(a, TpyCall) and a.call_type is not None
+            and len(a.args) == 1 and not a.kwargs
+            and a.double_star_unpack is None
+            and a.subscript_callee is None):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if not isinstance(pt, OwnType):
+        return False
+    inner = unwrap_readonly(unwrap_send_sync(pt.wrapped))
+    if not (is_list(inner) or is_dict(inner) or is_set(inner)):
+        return False
+    at = analyzer.get_expr_type(a)
+    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+           if at is not None else None)
+    if isinstance(atu, OwnType):
+        atu = unwrap_readonly(atu.wrapped)
+    return atu == inner and _witness("ctor.own_container_construct")
+
 def _native_iterable_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                                  analyzer) -> bool:
     """A container LITERAL into a NATIVE builtin's structural `Iterable[T]` /
@@ -5555,7 +5626,8 @@ def _union_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     pt = unwrap_readonly(unwrap_send_sync(pt))
     if isinstance(pt, OwnType):
         return False
-    ut = _eligible_value_union(pt)
+    value_union = _eligible_value_union(pt)
+    ut = value_union
     if ut is None:
         ut = _eligible_ptr_union(pt, analyzer)
         if ut is None:
@@ -5567,7 +5639,20 @@ def _union_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
         if ut is None:
             return False
     if not isinstance(a, TpyName) or a.name not in locals_:
-        return False
+        if value_union is None:
+            return False
+        # A NON-NAME source already typed the SAME VALUE union (a property
+        # getter read at a variant slot): the value-variant arm has exactly
+        # one already-union render -- fall through to the default arg -- so
+        # the source's own shape decides nothing and its lowering
+        # re-validates it. Value unions only: a pointer variant's
+        # already-union renders branch on the slot's const-ness and on the
+        # source being an un-narrowed name, so admission there is not
+        # source-blind.
+        at = analyzer.get_expr_type(a)
+        return (at is not None
+                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+                == ut)
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
     return at == ut
 
@@ -6178,8 +6263,15 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
         return ((_ctor_shape_ok(a, analyzer, native_ok=True)
                  or _ctor_instantiation_ok(a, analyzer))
                 and _witness("own.record_rvalue"))
-    return (_record_rvalue_call_shape(a, analyzer)
-            and _witness("own.record_rvalue"))
+    if _record_rvalue_call_shape(a, analyzer):
+        return bool(_witness("own.record_rvalue"))
+    # The @native residue of the same row (`JoinHandle[R](spawn_native(t))`):
+    # the native callee's prvalue binds the `T&&` slot bare, exactly as the
+    # plain one does. @cpp_template callees stay out -- a template
+    # text-substitutes the return spelling, so its divergence mechanism is
+    # independent of the declared type the shared predicate reads.
+    return (_native_own_record_rvalue_call_shape(a, analyzer)
+            and bool(_witness("own.native_record_rvalue")))
 
 def _own_opt_record_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':
     """An `Own[Optional[F1-record]]` param slot -- C++ `std::optional<T>&&`.
@@ -7099,6 +7191,18 @@ def _opt_str_shim_arg(a: TpyExpr, ptype: TpyType | None,
         locals_.get(a.name),
         ptype if isinstance(ptype, TpyType) else None, analyzer)
 
+def _own_peeled_container_str_elem(t: 'TpyType | None', analyzer) -> bool:
+    """`_container_str_elem` with the binding's `Own[...]` peeled off. The
+    element-family predicates reject `Own[container]` because the OWNING
+    binding's ABI differs; an element READ does not -- the subscript is the
+    same `__getitem__` lvalue either way."""
+    tu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+          if t is not None else None)
+    if isinstance(tu, OwnType):
+        tu = unwrap_readonly(tu.wrapped)
+    return _container_str_elem(tu, analyzer)
+
+
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                         locals_: dict[str, TpyType],
                         param_names: 'set[str] | frozenset[str]',
@@ -7146,10 +7250,14 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                 and _own_viewfam_param(locals_.get(a.name)) is None)
     # A container-ELEMENT owned-str read (`tag.append(argv[i])`): the element
     # lvalue lands bare in the element slot (`push_back(__getitem__(argv, i))`
-    # -- the vector copies on insert), no cascade on either path.
+    # -- the vector copies on insert), no cascade on either path. The
+    # receiver's Own is peeled: an owned container binding indexes through
+    # the very same `__getitem__` lvalue (`__getitem__((*row), h)` for a
+    # resumable frame slot, whose payload is never moved out), so ownership
+    # of the buffer says nothing about how an element reads.
     if (isinstance(a, TpySubscript)
             and _borrow_elem_subscript_shape(a, locals_, analyzer,
-                                             _container_str_elem)):
+                                             _own_peeled_container_str_elem)):
         return True
     # ... and the value-TUPLE element read of the same owned form
     # (`out.append(self._store[lk][0])`): `std::get<N>(...)` yields the
@@ -8276,6 +8384,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           moved_ret_ok: bool = False,
                           iterable_gen_ok: bool = False,
                           owned_tuple_ret_ok: bool = False,
+                          own_tuple_slot_ret_ok: bool = False,
                           storage_ret_ok: bool = False,
                           value_opt_ret_ok: bool = False,
                           coro_factory_ok: bool = False,
@@ -8325,6 +8434,14 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # `auto __tup_N =` capture takes the result whole, no value slot.
             or (owned_tuple_ret_ok
                 and _owned_tuple_call_ret(ret, analyzer) is not None)
+            # The owning `Own[tuple]` ARG slot (`poll_ready(
+            # sock._accept_nonblocking())`): the prvalue binds the by-value
+            # slot bare. A DIFFERENT position from the unpack source above --
+            # that one captures `auto __tup_N =` and moves per element -- so
+            # it takes its own flag over the same result predicate.
+            or (own_tuple_slot_ret_ok
+                and _owned_tuple_call_ret(ret, analyzer) is not None
+                and _witness("method.qualcall.own_tuple_slot"))
             # A container return at a STORAGE sink (`print(re.split(..))` --
             # the print wrap / owned-decl slot take the bare call), the
             # marker twin of free-call lowering's storage_ret_ok escape.
@@ -8421,7 +8538,12 @@ def _container_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     ok = ((is_list(ftu) and is_list(pt))
           or (is_dict(ftu) and is_dict(pt))
           or (is_set(ftu) and is_set(pt))
-          or (is_array(ftu) and is_array(pt)))
+          or (is_array(ftu) and is_array(pt))
+          # `bytearray` binds the same owning `std::vector<uint8_t>&` slot
+          # bare (`bytes(self.buffer)` -> `bytes_copy(this->buffer)`). NOT
+          # paired with `bytes`: that crossing is the view coerce, which
+          # arrives as its own node.
+          or (is_bytearray_type(ftu) and is_bytearray_type(pt)))
     return bool(ok and _witness("arg.container_field"))
 
 
@@ -9134,6 +9256,27 @@ def _elem_slot_type(ptype: 'TpyType | None') -> 'TpyType | None':
     return pt
 
 
+def _wrapper_union_elem_name_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                 locals_: dict[str, TpyType],
+                                 narrowed: 'AbstractSet[str]',
+                                 analyzer) -> bool:
+    """A same-wrapper-union NAME at a wrapper-union container ELEMENT slot
+    (`a.append(item)` / `d[k] = item` on a `JsonValue` container). The
+    wrapper is a by-value struct the insert takes bare -- or under
+    `std::move` at a movable last use, which is why the gate admits the
+    shape whole and the render arm picks. Both read this one predicate."""
+    if not (isinstance(a, TpyName) and a.name not in narrowed
+            and a.name in locals_):
+        return False
+    w = _wrapper_union_like(
+        _resolve_plain_alias(_elem_slot_type(ptype), analyzer), analyzer)
+    if w is None:
+        return False
+    at = _unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        locals_[a.name]))))
+    return _wrapper_union_like(at, analyzer) == w
+
+
 def _callable_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer) -> bool:
     """A callable source into a `Callable`-VALUE element slot
@@ -9413,7 +9556,30 @@ def _own_tuple_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     """An owning-call rvalue whose result type IS the `Own[tuple]` element
     slot. The prvalue binds the by-value slot with no lift, so the element
     family is unobservable at the insert -- unlike the borrow-tuple rows
-    above, which each render a conversion."""
+    above, which each render a conversion.
+
+    The row must stay closed to a BORROW-returning callee: a `T&` result
+    bound into the slot's `T&&` is ill-formed once the tuple carries a
+    reference-type element. `is_rvalue_source` folds the callee's
+    `call_returns_cpp_ref` verdict in for a method call and for a call
+    resolved through the function registry, which covers every shape
+    witnessed here. It does NOT for the residual leg -- a call whose callee
+    is an expression (a `Callable`-typed local) or a name the registry does
+    not resolve -- which it defaults to rvalue unconditionally. That leg is
+    tolerated rather than guarded: a free `@native` function is
+    unconditionally not-cpp_ref, so nothing reaching it today can be a borrow
+    return, and if one ever does the failure is the ill-formed C++ above -- a
+    build error, not a silent miscompile. A separate declared-return check
+    here is provably unreachable (ablated), which is why there is none."""
+    return (_own_tuple_call_rvalue_slot(a, ptype, analyzer)
+            and bool(_witness("arg.own_tuple_call_rvalue")))
+
+
+def _own_tuple_call_rvalue_slot(a: TpyExpr, ptype: 'TpyType | None',
+                                analyzer) -> bool:
+    """`_own_tuple_call_rvalue_arg` without the witness -- for the render arm,
+    which asks the same question the gate already answered and must not
+    double-count the row."""
     w = _plain_own_slot(ptype)
     if w is None or not isinstance(a, (TpyCall, TpyMethodCall)):
         return False
@@ -9425,8 +9591,7 @@ def _own_tuple_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
            if at is not None else None)
     if isinstance(atu, OwnType):
         atu = unwrap_readonly(atu.wrapped)
-    return (atu == slot and is_rvalue_source(analyzer, a)
-            and _witness("arg.own_tuple_call_rvalue"))
+    return atu == slot and is_rvalue_source(analyzer, a)
 
 
 def _stub_method_ret_ok(
@@ -10103,6 +10268,13 @@ def _r_own_value_tuple_literal(req: _ArgReq) -> bool:
             and _value_tuple(own, req.analyzer) is not None)
 
 
+def _r_own_open_t_tuple_literal(req: _ArgReq) -> bool:
+    own = _plain_own_slot(req.ptype)
+    return (isinstance(req.a, TpyTupleLiteral)
+            and own is not None
+            and _open_t_tuple_slot(own, req.analyzer) is not None)
+
+
 def _own_slot_ptr_repr_tuple(ptype: 'TpyType | None') -> 'TupleType | None':
     """The Own[tuple[..]] element slot shared by the borrow-tuple rows, when
     the tuple has a pointer-repr element (i.e. a borrow form exists)."""
@@ -10143,6 +10315,27 @@ def _r_own_btuple_storage_source(req: _ArgReq) -> bool:
                      and _f1_tuple(bare, req.analyzer) is not None))
             and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 req.analyzer.get_expr_type(req.a)))) == bare)
+
+
+def _r_own_open_t_tuple_storage_source(req: _ArgReq) -> bool:
+    """A whole tuple ELEMENT read at an `Own[open-T tuple]` element slot.
+
+    An open element has no pointer repr, so borrow and storage forms
+    coincide and the read passes bare -- unlike the pointer-repr sibling
+    above, which owes a form conversion. SUBSCRIPT only: a call source
+    would owe the return-shape question the ptr-repr row answers
+    separately.
+    """
+    if not isinstance(req.a, TpySubscript):
+        return False
+    own = _plain_own_slot(req.ptype)
+    if own is None:
+        return False
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(own)))
+    if _open_t_tuple_slot(bare, req.analyzer) is None:
+        return False
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        req.analyzer.get_expr_type(req.a)))) == bare
 
 
 def _r_own_btuple_mixed_call(req: _ArgReq) -> bool:
@@ -10771,6 +10964,14 @@ def _pre_container_slot_family(req: _ArgReq) -> 'bool | None':
                               TpyBoolLiteral))
                 and _ru_elem_ok(_lit, analyzer)):
             return _witness("arg.ru_wrapper_elem_literal")
+        # A same-wrapper NAME binding (`a.append(item)` on
+        # `list[JsonValue]`): the wrapper is a by-value struct, so the
+        # insert takes it exactly as the plain-union leg below takes a
+        # value-variant name -- with the arg arm owning the copy-vs-move
+        # spelling off the binding set.
+        if _wrapper_union_elem_name_arg(a, ptype, req.locals_, req.narrowed,
+                                        analyzer):
+            return True
         return note_detail("method.arg_shape")
     if isinstance(_es, UnionType):
         # A plain UNION element slot takes two mirrored rows: the member
@@ -10895,6 +11096,19 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                         and au.is_user_record and not au.is_protocol
                         and _witness("call.generic_open_proto_name")):
                     return True
+        # ... and the NAME row's FIELD twin (`_parse_rows(self._fp, ..)` at
+        # `Ptr[R]` resolved `Ptr[W]`): a markers-clean field read of exactly
+        # the substituted slot binds the same lvalue-ref template param bare.
+        # The bare-T field row above covers only an unparameterized slot.
+        if (isinstance(a, TpyFieldAccess) and not isinstance(resolved, OwnType)
+                and _field_markers_clean(a)
+                and _field_receiver_ok(a, locals_, analyzer)):
+            _cft = analyzer.get_expr_type(a)
+            _cftu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_cft)))
+                     if _cft is not None else None)
+            if (_cftu is not None and _cftu == resolved
+                    and _witness("call.generic_open_slot_field_composite")):
+                return True
         # A lambda at a still-open Fn slot (`map_keys(pairs, lambda p:
         # p[1])` in a generic caller): the lambda renders itself -- its
         # param spelling (incl. `val_or_ptr_t<T>`) comes from its own
@@ -11078,6 +11292,11 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         # witnessed at the lowering arm (call.native_own_scalar_lvalue)
         _ArgRow("native_own_scalar_lvalue", _r_native_own_scalar_lvalue),
         _ArgRow("native_iterable_container", _r_native_iterable_container),
+        # A container FIELD read binding a plain container ref slot
+        # (`bytes(self.buffer)` -> `::tpy::bytes_copy(this->buffer)`): the
+        # member read binds the slot bare, exactly as the bare-NAME twin
+        # already in the shared row. Same cell the marker families carry.
+        _ArgRow("container_field_pass", _r_container_field_pass),
         # A list/Span-yielding SLICE subscript (`len(items[1:1])` ->
         # `__len__(::tpy::list_slice(items, BasicSlice{1, 1}))`): the
         # inline rvalue render is position-independent, same row the
@@ -11261,6 +11480,14 @@ _CONTAINER_ARG_SINK = register_sink(_ArgSink(
         # at an Own slot rides the move cascade.
         _ArgRow("own_value_tuple_literal", _r_own_value_tuple_literal,
                 face="arg.own_value_tuple_literal"),
+        # Its OPEN-T sibling (`pairs.append((copy(k), n))` at
+        # `list[tuple[T, int]]` -> `push_back(std::tuple<T, ::tpy::BigInt>{
+        # T(k), ..})`): the owning slot spells the generic element bare, so
+        # the render is the by-value builder, not the `val_or_ptr_t<T>` one
+        # a borrowing `tuple[T, ..]` param takes. Per-element admission
+        # lives in the ladder and rejects there.
+        _ArgRow("own_open_t_tuple_literal", _r_own_open_t_tuple_literal,
+                face="arg.own_open_t_tuple_literal"),
         # A ref-element tuple LITERAL at an Own[tuple[T | None, ..]]
         # element slot (`pairs.append((a, b))`): the consuming storage
         # lift (`tuple_to_storage_move<S>(..)` over the borrow tuple
@@ -11275,6 +11502,12 @@ _CONTAINER_ARG_SINK = register_sink(_ArgSink(
         # tuple_to_storage lift) into the same tuple's Own slot; the
         # source's own gates re-check at lowering.
         _ArgRow("own_btuple_storage_source", _r_own_btuple_storage_source),
+        # Its OPEN-T sibling (`out.append(ranked[i])` at
+        # `list[tuple[T, int]]`): the generic element has no pointer repr,
+        # so the read passes bare with no form conversion at all.
+        _ArgRow("own_open_t_tuple_storage_source",
+                _r_own_open_t_tuple_storage_source,
+                face="arg.own_open_t_tuple_storage_source"),
         # A MIXED-own-tuple call at the same Own element slot
         # (`xs.append(make_mixed(b))` -> `push_back(tuple_to_storage<
         # S>(make_mixed(b)))` -- the non-move materialization).
@@ -11774,6 +12007,12 @@ _GENERIC_PLAIN_ARG_SINK = register_sink(_ArgSink(
         # param takes the prvalue brace INLINE -- no ref-slot temp.
         _ArgRow("generic_own_list_literal", _r_generic_own_list_literal,
                 face="call.generic_own_list_literal"),
+        # An owning CALL whose result IS the substituted `Own[tuple]` slot
+        # (`poll_ready(sock._accept_nonblocking())` at `Own[T]` resolved
+        # `Own[tuple[Own[socket], tuple[str, Int32]]]`): the prvalue binds
+        # the by-value slot with no lift, so the render is blind to the
+        # callee being generic -- the container family's cell, verbatim.
+        _ArgRow("own_tuple_call_rvalue", _r_own_tuple_call_rvalue),
     )))
 
 
@@ -12337,6 +12576,16 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                 and isinstance(ret, TpyType)
                 and _eligible_ptr_union(ret, analyzer) is not None
                 and _witness("method.union_property_ret"))
+            # ... and its VALUE-variant sibling (`self.tzinfo` at a
+            # `std::variant<...>` slot), at ANY result position. A value
+            # variant is a plain by-value C++ object, so its render is
+            # position-independent -- unlike the pointer-variant flavour
+            # above, whose borrow/storage duality is what confines that row
+            # to the receiver sink. Value unions ONLY: that split is the
+            # fence.
+            or (fi.is_property_getter and isinstance(ret, TpyType)
+                and _eligible_value_union(ret) is not None
+                and _witness("method.value_union_property_ret"))
             # A VALUE Array result (`use_array(b.get_data())` -- a
             # substituted `Array[T, N]` return): std::array is a VALUE
             # container, so the prvalue lands bare at any sink -- arg slots

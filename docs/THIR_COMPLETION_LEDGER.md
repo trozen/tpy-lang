@@ -141,7 +141,7 @@ cell it touches is admitted:
   "a resumable / @error_return body still defers" for `raise <expr>` is
   contradicted by `_lower_raise`, whose comment records that both contexts
   render identically and route here too. Since the user case dial is saturated
-  and stdlib is at 16 fallback bodies, treat every tag in this bullet as a
+  and stdlib fallback is at ZERO, treat every tag in this bullet as a
   lower bound on coverage rather than a status.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
@@ -1123,7 +1123,7 @@ untracked gap and is now being enumerated + driven.
 true.]** This whole section is the incremental record of that axis being opened;
 it was never rewritten as rows landed, so it reads as a to-do list when it is a
 diary. Every rung it names as pending has since been worked -- the user case dial
-is saturated and stdlib is at 16 fallback bodies. Read it as history; for what is
+is saturated and stdlib fallback is at ZERO. Read it as history; for what is
 actually uncovered, use the re-measured cutover checklist in the Gate D3 entry
 and the live stdlib gate.
 Routed so far: var-decl / assign / return / if-elif-else / while / range-for /
@@ -5006,17 +5006,24 @@ eight items were wrong in ways that would have mis-scoped the endgame. Every
 figure below names how it was derived. **Treat any number here as valid only
 for the tree it names** -- that rule is what this re-measurement exists to
 enforce, since the last version carried a stale figure in every item that had
-one.
+one. **And an item states its OWN status only.** A cross-referencing status
+claim ("item N moved too", "every other item still reads as it did") is stale
+the moment a neighbour changes, because nothing enforces it; one such sentence
+here was wrong three times in three different ways before it was deleted. Each
+item carries its own date and its own derivation, so a reader gets the answer
+by reading the item, never by trusting a sibling's summary of it.
 
 1. **A1: `no_thir.txt` markers -> 0. DONE.** Zero repo-wide (`tests/cases` and
    `tests/interop` both). Nothing left here.
-2. **A5: stdlib fallback -> 0. 16 bodies / 15 name-collapsed, 1229 routed.**
-   `tests/test_thir_stdlib_gate.py` IS the number; re-run it, do not copy it.
-   Count BODIES, not distinct names, and never subtract figures from the two
-   keys. **This is no longer grind-bound.** Of the 15 rows: 4 wait on filed
-   defects, 3 are design forks, 2 are chained behind arms at other sites, 4 are
-   measured dead ends or a zero-yield pair, 2 need a drill. The per-row status
-   lives in TODO.md, not here.
+2. **A5: stdlib fallback -> 0. MET 2026-08-30** -- 0 bodies, 0 name-collapsed,
+   1245 routed over 2843 classified. `tests/test_thir_stdlib_gate.py` IS the
+   number and its ceiling is armed at zero; re-run it, do not copy it. Count
+   BODIES, not distinct names, and never subtract figures from the two keys.
+   Nothing here selects work any more: a non-zero reading is a regression, not
+   a backlog row. The tail that closed A5 had been recorded as decision-bound
+   (filed defects, design forks, chained sites); each row's status had been
+   read off a reject tag rather than ablated, and all of them were wrong in
+   the pessimistic direction.
 3. **Interop corpus. DONE, verified per BODY.** 34/34 cases, 285 bodies, zero
    fallback of ANY component, zero markers. The case dial alone does not prove
    this -- its "migrated" test excludes two non-ratchet components -- so it was
@@ -5057,20 +5064,56 @@ one.
      admitted, not that the named render ran. Post-cutover a reader will assume
      the stronger meaning. That semantics needs writing down.
 6. **The two-commit cutover per Gate D4.** Mechanically ready -- the corpus
-   dial is saturated, so THIR can author every snapshot. THREE blockers:
-   - **Error cases have never been lowered through THIR at all.** The overlay
-     runs after codegen SUCCEEDS, so every case that fails at codegen is
-     invisible to the dial, the ratchet, the byte-diff and both audits. Three
-     `CodeGenError` diagnostics are raised from inside the BODY emitters,
-     covering 6 committed cases, and `tpyc/thir/` contains zero
-     `raise CodeGenError`. Post-cutover those either silently compile or ICE;
-     either way the empty-diff proof fails. 33 further raise sites in those
-     files have no case witnessing them.
-   - `class_const` / `final_global` fallback is excluded from the ratchet by
-     design, so it never fails a case and never moves the dial. Measured small
-     (about 1 in a 250-case sample, 1 in the stdlib), but it blocks commit 2.
+   dial is saturated, so THIR can author every snapshot. The blockers:
+   - **Error cases had never been lowered through THIR at all. A DETECTOR now
+     exists (2026-08-30); the re-homing work does not.** The overlay runs after
+     codegen SUCCEEDS, so every case that fails at codegen was invisible to the
+     dial, the ratchet, the byte-diff and both audits. `compile_with_diagnostics`
+     now re-emits with THIR on whenever the AST run raises `CodeGenError` and
+     requires the SAME diagnostic
+     (`tests/conftest.py::_assert_thir_raises_too`); a body THIR rejects passes,
+     because the AST re-emits it and raises. Measured over the whole corpus at
+     that commit: of 1570 `error_*` cases only **30 reach codegen**; 20 raise
+     from the SKELETON, 8 pass only via a THIR body reject, and **2 were
+     already wrong** -- THIR routed them, emitted code and raised nothing (one a
+     use-after-scope with observed wrong output, one ill-formed C++). Both are
+     `tests/cases/generators/error_gen_rebind_slot_*`; the cause was
+     `_rejects_lambda_hoist` walking for `THIRNestedDef` only while the
+     simple-generator peephole is lambda-rendered too. Fixed at the root by
+     generalizing it to `rejects_cross_scope_rebind(outer, inner)` and applying
+     it at the sgen seam. `tpyc/thir/` still contains zero `raise CodeGenError`,
+     so every one of these passes by FALLBACK -- the diagnostics still have to be
+     re-homed before the emitters are deleted, and the detector only guarantees
+     nothing regresses meanwhile. 33 further raise sites in those files have no
+     case witnessing them.
+     **The gate is green but NOT cutover-safe, and the blocker is countable:
+     those 8.** Each passes only because THIR rejects the body and the AST
+     re-emits and raises; commit 2 deletes that re-emit, so on that commit all
+     8 stop being diagnostics and become ICEs on valid-to-reject source. Count
+     them down to zero as the diagnostics are re-homed -- 8 is the number to
+     re-measure, not a caveat.
+   - **FOUR body diagnostics, not three -- and the fourth was missed by a
+     file-based inventory.** `context.py::use_rebind_slot` (the cross-scope
+     rebind-slot reject) lives in `codegen_cpp/context.py`, a file the cutover
+     KEEPS, but every one of its callers is in a file the cutover DELETES
+     (`statements.py` x7, `expressions.py` x1). **Lesson: inventory raise sites
+     by CALLER, not by file.** A diagnostic is a body concern when the bodies
+     reach it, regardless of which module spells the `raise`. Re-homing it is
+     separate work and is NOT done.
+   - ~~`class_const` / `final_global` fallback is excluded from the ratchet by
+     design~~ **RESOLVED 2026-08-30**: the residue reached zero and
+     `NON_RATCHET_COMPONENTS` is now empty, so both positions are ratcheted
+     like every body.
    - `tests/interop/*/expected/` is authored by the real CLI at the default
      `thir_codegen=False`; commit 1 must flip that default too.
+   - **A constraint that DISSOLVES here rather than blocking:** the AST-first
+     rule (fix the oracle in its own change-set) and the always-on THIR
+     byte-diff are jointly unsatisfiable today. An AST fix landed alone leaves
+     the byte-diff red until its THIR mirror follows, so for a divergence
+     needing an oracle fix there is no green-at-every-commit sequence -- both
+     rules are right and the pair is not satisfiable. After cutover there is no
+     second author, no mirror and no byte-diff, so the tension goes away on its
+     own. Do not weaken either rule to buy a green intermediate commit.
 7. **Teardown. 15,887 lines net, and NOT the hard part** -- roughly a week of
    mechanical work. The body/skeleton boundary is already drawn and enforced by
    the committed gate. 13 shared helpers (302 lines) are pure predicates that
@@ -5100,11 +5143,14 @@ one.
      instrument that still sees anything.
    - **A valid, passing, snapshot-tested case is already an ICE-in-waiting.**
      `CH: Final[Char] = Char(65)` -- ordinary Python at a module-level Final --
-     reaches a raise site today and survives ONLY because `final_global` sits
-     in `NON_RATCHET_COMPONENTS`. Those two non-ratcheted components are the
-     one hole through which a valid program can reach a fallback, and this is
-     what came through it. Ten more sites are ordinary stdlib code that will
-     ICE the moment the stdlib routes.
+     reached a raise site and survived ONLY because `final_global` sat in
+     `NON_RATCHET_COMPONENTS`. Those two non-ratcheted components were the one
+     hole through which a valid program could reach a fallback, and this is
+     what came through it. **Both were closed 2026-08-30** (the `Char(n)`
+     type-ctor now routes and the exclusion set is empty), so that hole is
+     shut. Ten more sites were ordinary stdlib code that would ICE the moment
+     the stdlib routed; the stdlib fallback tail is now zero, so re-measure
+     that list rather than trusting it.
    - The fatal-capable set is **238**, not 203: a site reached only as the
      inner decider of a recomposed reject still kills the body through its
      composer.
@@ -12213,15 +12259,22 @@ Both escrowed decisions were taken in-branch and ratified by the user at
 the review gate. A non-body position IS in scope: `tpyc/thir/constants.py`
 routes the class-constant default and the `Final` global initializer,
 converting their two OPEN calls to AST_ARM. Their fallbacks are TALLIED in
-`_thir_fallback` but EXCLUDED from the ratchet
+`_thir_fallback` but, at the time, EXCLUDED from the ratchet
 (`fallback.NON_RATCHET_COMPONENTS = {class_const, final_global}`, read via
 `ratchet_total`) -- neither of the two options the entry named, but a third:
 no case's `no_thir.txt` marker was ever classified against a non-body
-position, so folding these into the ratchet would fail previously-clean
-unmarked cases without any regression having occurred. The residue stays
-visible and drivable to zero. The cost is honest and known: a case whose
-constant initializers still emit through AST now passes the ratchet and
-counts migrated on the dial, adding to the dial's existing overstatement.
+position, so folding these into the ratchet would have failed previously-clean
+unmarked cases without any regression having occurred. The residue stayed
+visible and drivable to zero, at the honest and known cost that a case whose
+constant initializers still emitted through AST passed the ratchet and
+counted migrated on the dial.
+
+**Closed 2026-08-30: `NON_RATCHET_COMPONENTS` is now EMPTY.** The residue it
+covered reached zero (the nonfinite float literal and the `Char(n)` type-ctor
+were the last two shapes), so the two components fold into the ratchet with
+no case regressing -- and the dial overstatement they carried is gone. Those
+positions render through the same `gen_expr` the cutover deletes, so counting
+them was always the honest reading.
 
 The other 29 were relocation, and got relocated rather than routed:
 `tpyc/codegen_cpp/emit_prims.py` gives the shared primitives a home outside
@@ -14303,3 +14356,54 @@ as wrong-today was not constructible from source, so it is pinned at the node
 level instead of being invented as a case. A survey that enumerates consumers
 by grepping one field name will miss the consumers that spell the same fact
 differently.
+
+### Post-if narrowing made condition-blind (2026-08-29): a filed silent no-op retired
+
+Closes the entry the previous wave named as its own blocker. Sema stamps a
+branch's narrowings by a compositional recursion over the whole boolean
+algebra (`sema/narrowing.py`); the AST's post-narrowing arm is driven by that
+map and consults the condition only for two whole-condition filters, both
+sema-STAMP reads with a `not` peel. THIR recovered the subject from the
+condition's SYNTAX instead, through a finite shape recogniser whose
+non-recognition path was `return None` -- it neither emitted nor rejected. The
+lowering now derives the plan from `else_type_facts` and raises for anything
+the AST would extract and no arm here mirrors.
+
+**A finite recogniser cannot cover a compositional producer, and the failure
+mode was the silent one.** The smallest counterexample is a negated
+`isinstance` leaf inside an `or` chain: the chain reader peels a `not` around
+the WHOLE chain but requires a bare call per leaf, so `if not isinstance(u, A)
+or flag: raise` lost its `const auto& __u = std::get<A>(u);` entirely. Two
+adjacent arms had the same shape of silence -- the generic `if` and `while`
+lowerings built their nodes with no fence on concrete BRANCH facts, so an
+unrecognised condition carrying one dropped the AST's branch-entry extraction
+too. That second class was never filed; it was found by asking the same
+question of the neighbouring arms rather than by any gate.
+
+**Why the corpus never saw it, and the reason is a warning about "self-limiting"
+defects.** Where the narrowed name is field-read after the guard (`return u.n`),
+the missing alias makes the read itself reject, the whole body falls back, and
+the byte-diff compares AST output against AST output. The divergence is visible
+only when the guard's subject is NOT read afterwards -- or is read in a position
+that routes anyway. So the shape that exposes the bug is the one that looks
+least worth writing a case for, and a green corpus was never evidence about
+this arm at all.
+
+**Measured, both directions.** Five hand-built reproducers were DIVERGENT before
+and are byte-identical after (ordinary body, either leaf position, a
+three-member nullable union, a generator frame, a finally helper); the two
+controls stayed identical throughout; a two-subject guard that previously fell
+back at its return now routes and emits BOTH aliases, which is the multi-alias
+shape the arm always owed and never had. Whole corpus: 3746/3746 cases still
+migrated with zero fallback, so neither fence costs a single body. Stdlib gate
+unchanged at 16 per body / 1229 routed, byte-identical -- this branch is a
+defect fix, not a routing win.
+
+**The three consumers had drifted apart.** The statement walk, the resumable
+leaf arm, and the finally-helper detector all asked the same recogniser, and
+the detector's whole job was "would the AST emit here?" -- a question only the
+facts can answer. Two of the three also silently dropped a POLYMORPHIC post-if
+fact, which nothing had noticed because the union flavour was the one anybody
+probed. Where a fence is a stand-in for an arm, it has to be phrased in the
+oracle's own terms; phrased in the mirror's terms it degrades to "would WE
+emit here?", which is always yes.

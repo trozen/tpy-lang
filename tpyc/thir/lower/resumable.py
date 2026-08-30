@@ -139,7 +139,8 @@ from .predicates import (
     _poly_narrow_info,
     _storage_optional_return_type,
     _callable_value,
-    _chain_post_if_fact,
+    _post_if_ast_facts,
+    _post_if_narrow_plan,
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
@@ -160,6 +161,7 @@ from .predicates import (
     _type_family_tag,
     _wrap_view_owned_sink,
     _unwrap_own,
+    _value_opt_callable,
     _value_opt_scalar,
     _value_opt_view,
     _value_tuple,
@@ -286,6 +288,12 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     # Value-repr Optional[scalar] params (`std::optional<T>` value field,
     # moved capture); reads gate per-shape at the value-opt arms.
     if _value_opt_scalar(t, analyzer) is not None:
+        return True
+    # ... and the CALLABLE inner (`onerror: Callable[..] | None`): the frame
+    # field is the same moved `std::optional<std::function<..>>` the
+    # non-optional callable param below captures, with the optional's own
+    # value-opt read arms on top.
+    if _value_opt_callable(t, analyzer) is not None:
         return True
     if (_f1_tuple(t, analyzer) is not None
             or _value_tuple(t, analyzer) is not None):
@@ -1875,29 +1883,35 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         stay BB-LOCAL: the env walk (`_resume_narrow_envs`) doesn't model
         mid-BB facts, so only a BB whose control leaves the frame (ReturnT /
         RaiseT terminator) admits one -- anything else falls back whole."""
-        pf = _chain_post_if_fact(stmt, declared, lc.narrow.narrowed, analyzer)
-        if pf is None:
+        plan = _post_if_narrow_plan(stmt, declared, lc.narrow, analyzer)
+        if not plan:
             return leaf
         if not isinstance(bb.terminator, (rcfg.ReturnT, rcfg.RaiseT)):
-            raise ThirUnsupported("res.narrowed_resume")
-        var, u, post = pf
-        if _alias_frame_collision(var, frame_fields):
             raise ThirUnsupported("res.narrowed_resume")
         saved = postif_saved[0]
         assert saved is not None
         lc.narrow = lc.narrow.snapshot()
-        alias = _persistent_alias_name(var, lc)
-        node = _make_narrow_alias(alias, var, post, u, lc,
-                                  getattr(stmt, "loc", None))
-        lc.narrow.persistent_aliases.add(alias)
-        lc.narrow.narrowed[var] = alias
-        lc.narrow.subject_union[var] = u
-        lc.narrow.persistent_narrowed.add(var)
-        if var not in saved:
-            saved[var] = declared.get(var)
-        declared[var] = post
+        nodes = []
+        for var, post, u in plan:
+            if u is None or _alias_frame_collision(var, frame_fields):
+                # A poly cast-and-cache has no frame-aware maker here, and an
+                # alias colliding with a frame field would shadow it. The poly
+                # half has no constructible witness: the fact needs a negated
+                # poly guard, which a resumable leaf rejects at the `if`
+                # itself, before this runs.
+                raise ThirUnsupported("res.narrowed_resume")
+            alias = _persistent_alias_name(var, lc)
+            nodes.append(_make_narrow_alias(alias, var, post, u, lc,
+                                            getattr(stmt, "loc", None)))
+            lc.narrow.persistent_aliases.add(alias)
+            lc.narrow.narrowed[var] = alias
+            lc.narrow.subject_union[var] = u
+            lc.narrow.persistent_narrowed.add(var)
+            if var not in saved:
+                saved[var] = declared.get(var)
+            declared[var] = post
         _witness("res.postif_narrow")
-        return THIRStmtSeq(stmts=(leaf, node))
+        return THIRStmtSeq(stmts=(leaf, *nodes))
 
     def _lower_bb(bb: 'rcfg.BB') -> None:
         for stmt in bb.stmts:
@@ -2423,11 +2437,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     try:
         for _helper_name, body_stmts in cfg.finally_helpers:
             for stmt in body_stmts:
-                if (isinstance(stmt, TpyIf) and _chain_post_if_fact(
-                        stmt, declared, lc.narrow.narrowed,
-                        analyzer) is not None):
+                if (isinstance(stmt, TpyIf) and _post_if_ast_facts(
+                        stmt, declared, lc.narrow, analyzer)):
                     # The AST emits the post-if extraction inside the helper
                     # too; the helper walk has no post-if arm -- fall back.
+                    # Asked of the FACTS, which is what the AST arm reads: a
+                    # condition-shape reader answers "no" for every shape it
+                    # cannot spell, and the extraction vanishes.
                     raise ThirUnsupported("res.narrowed_resume")
                 if _flat_narrowing_assert(stmt):
                     raise ThirUnsupported("res.narrowed_resume")

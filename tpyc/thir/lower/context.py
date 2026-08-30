@@ -88,9 +88,10 @@ class _ExprResultUse(Enum):
     # moves/points the result into the sub-future slot (emplace(std::move..)
     # / &(..)), so a record-family result renders bare -- no value slot.
     SUSPEND = auto()
-    # An `Own[...]` value-variant ARG slot consuming a same-union
-    # Own[A | B]-returning call rvalue whole -- the prvalue moves through
-    # the `&&` slot bare (`describe(pick(True))`). Never threaded at
+    # An `Own[...]` by-value ARG slot consuming a same-typed owning call
+    # rvalue whole -- the prvalue moves through the `&&` slot bare
+    # (`describe(pick(True))` for a union payload, `poll_ready(
+    # sock._accept_nonblocking())` for a tuple one). Never threaded at
     # decl/return sinks (their slots gate separately).
     OWN_SLOT = auto()
 

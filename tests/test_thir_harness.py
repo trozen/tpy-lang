@@ -255,6 +255,83 @@ def test_thir_stdlib_wiring_reaches_the_compile(request: pytest.FixtureRequest,
         "--no-thir-stdlib must leave the stdlib oracle off entirely")
 
 
+# --- the codegen-error gate ----------------------------------------------
+
+
+class _StubCodegenModule:
+    """The two attributes `_assert_thir_raises_too` reads off a module."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.name = "main"
+
+
+class _StubCompiler:
+    """A `generate_code` whose re-emit does whatever the caller needs, so the
+    gate's own branches can be reached without a source that provokes them."""
+
+    def __init__(self, re_emit) -> None:
+        self._re_emit = re_emit
+        self.emitted: list[str] = []
+
+    def generate_code(self, mod, out_dir, *, entry_module_name, options):
+        self.emitted.append(mod.name)
+        self._re_emit()
+        return None, None
+
+
+def _run_error_gate(tmp_path: Path, re_emit):
+    """Drive `_assert_thir_raises_too` over a stub whose THIR re-emit is
+    `re_emit`. Returns the stub, so a caller can prove the re-emit ran."""
+    src = tmp_path / "src" / "main.py"
+    src.parent.mkdir(parents=True)
+    src.write_text("x = 1\n")
+    entry = _StubCodegenModule(src)
+    stub = _StubCompiler(re_emit)
+    conftest._assert_thir_raises_too(
+        stub, [entry], entry, src.parent.resolve(), tmp_path / "out", src,
+        conftest.CodeGenError("cannot lower this"))
+    return stub
+
+
+def test_error_gate_fires_when_thir_emits_where_the_ast_raised(
+        tmp_path: Path) -> None:
+    """The gate's whole point is its FAILING branch, and with both known
+    offenders fixed the corpus only ever takes its passing one. Deleting the
+    gate outright would leave the suite green, so a green suite is not evidence
+    that it still catches anything; this assertion is.
+
+    Constructed at the gate rather than from source: the shape it must catch is
+    a body THIR routes and emits where the AST raises, and no such source is
+    supposed to exist in the tree."""
+    with pytest.raises(pytest.fail.Exception) as excinfo:
+        _run_error_gate(tmp_path, lambda: None)
+    assert "THIR emitted code where the AST path raised" in str(excinfo.value)
+
+
+def test_error_gate_fires_on_a_different_diagnostic(tmp_path: Path) -> None:
+    """The other failing branch: THIR rejecting for its OWN reason is not the
+    same as reproducing the AST's diagnostic, and the case's `diag.txt` would
+    record the AST's."""
+    def other():
+        raise conftest.CodeGenError("some unrelated reject")
+
+    with pytest.raises(pytest.fail.Exception) as excinfo:
+        _run_error_gate(tmp_path, other)
+    assert "DIFFERENT codegen diagnostic" in str(excinfo.value)
+
+
+def test_error_gate_passes_on_the_same_diagnostic(tmp_path: Path) -> None:
+    """The complement, and the branch a body THIR REJECTS takes: the AST
+    re-emits it and raises, so the diagnostic matches and the gate is silent.
+    Asserting the re-emit RAN is what keeps this from passing vacuously."""
+    def same():
+        raise conftest.CodeGenError("cannot lower this")
+
+    stub = _run_error_gate(tmp_path, same)
+    assert stub.emitted == ["main"], "the gate never re-emitted"
+
+
 # --- tests/interop ext-exec overlay --------------------------------------
 
 _INTEROP_FIXTURE = (

@@ -63,7 +63,8 @@ from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
                           _cond_mixed_walrus_temps, _slot_literal_retype,
                           _lower_yield_tuple_literal, _lower_copy_record)
-from .functions import _check_callable_structure, _seed_global_scope
+from .functions import (_check_callable_structure, _seed_global_scope,
+                        rejects_cross_scope_rebind)
 from ...type_def_registry import is_dict, is_list, is_set
 from ...typesys import is_protocol_type
 from ...modules.type_resolution import is_native_iterable
@@ -267,6 +268,12 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
             return _reject("sgen.cond")
         _witness("sgen.while_cond")
         pre_l, yv, post_l = _lower_loop_body(last, lc, declared, loop_depth=1)
+        # Statements only: reserving and consuming a rebind slot are both
+        # statement nodes, and no THIR expression owns a statement subtree --
+        # so the head's `cond` / `iterable` / `range_args` carry nothing the
+        # predicate can see, at this seam and at the for-each one below.
+        if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
+            return _reject("sgen.rebind_slot_hoist")
         _witness("sgen.body")
         publish_binding_facts(lc)
         return THIRSimpleGenBody(init=init, pre_yield=pre_l,
@@ -372,6 +379,8 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         lc.storage_tuple_locals.add(last.var)
     pre_l, yv, post_l = _lower_loop_body(last, lc, body_declared,
                                          loop_depth=1 if is_range else 0)
+    if rejects_cross_scope_rebind(init, (*pre_l, *post_l)):
+        return _reject("sgen.rebind_slot_hoist")
     _witness("sgen.body")
     publish_binding_facts(lc)
     return THIRSimpleGenBody(init=init, pre_yield=pre_l, post_yield=post_l,

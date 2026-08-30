@@ -19,6 +19,7 @@ from ...parse.nodes import (
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyFunction,
+    TpyIfExpr,
     TpyImport,
     TpyIntLiteral,
     TpyLambda,
@@ -1729,6 +1730,11 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     # M3b-move: an own-param at its last use moves into the field.
     if _is_move_source(source, lc, own_param_names):
         return True
+    if not is_opt and isinstance(stmt.value, TpyIfExpr):
+        # A record TERNARY of prvalue arms direct-initializes the field
+        # (`_ctx((c != nullptr) ? Ctx((*c)) : make_ctx())`); the arms gate
+        # themselves at lowering, so admission here only claims the slot.
+        return True
     if is_opt:
         # None / a non-own borrow `T*` (pointer-repr Optional param, lifts via
         # ptr_to_optional) / a record-value source (constructs the optional directly).
@@ -2564,6 +2570,13 @@ def _lower_ctor_mil_init(
                  else "mil.callable_copy")
         return THIRMilInit(field_cpp=field_cpp,
                            value=_lower_expr(source, lc, declared))
+    if isinstance(stmt.value, TpyIfExpr) and _f1_record(ftype, analyzer):
+        # The prvalue record ternary: the MIL direct-init IS the value sink,
+        # so the arms lower as prvalues and the whole `?:` lands bare.
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_expr(stmt.value, lc, declared,
+                              mil_record_prvalue=True))
     if _method_rvalue_f1_record(source, analyzer):
         # An Own-returning method-call rvalue constructs the field directly
         # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
@@ -2746,35 +2759,54 @@ def _rebound_name(node) -> 'str | None':
     return None
 
 
-def _rejects_lambda_hoist(body) -> bool:
-    """True when a nested def CONSUMES a rebind slot the ENCLOSING scope reserved.
+def rejects_cross_scope_rebind(outer, inner) -> bool:
+    """True when a LAMBDA-rendered body CONSUMES a rebind slot the ENCLOSING
+    scope reserved.
 
-    That is the `nonlocal` half of the hazard: the slot is declared at the
-    enclosing body's prologue, outside the lambda's capture list. The AST
-    rejects it in `use_rebind_slot` by comparing the slot's owning hoist scope,
-    and THIR has no such runtime check, so this predicate is its entire
-    protection. A nested def reserving its OWN slot is not a hazard --
-    `_emit_nested_def` drains it inside the lambda, mirroring the AST's
-    `nested_hoist_scope`.
+    The slot is declared at the enclosing body's prologue, outside the lambda's
+    capture list: inside the lambda it dies each invocation while the pointer
+    aliasing it is captured and outlives it, and outside it the lambda cannot
+    name it. The AST rejects that in `use_rebind_slot` by comparing the slot's
+    owning hoist scope, and THIR has no such runtime check, so this predicate is
+    its entire protection. A lambda body reserving its OWN slot is not a hazard
+    -- the emitters drain it inside the lambda.
 
-    A rebind whose name the nested def itself reserves a slot for is a SHADOW,
-    not a `nonlocal`: within one Python function scope a name is either local or
-    `nonlocal`, never both, so `rb in own` proves the rebind targets the INNER
-    slot. `own` is deliberately not computed across a further nesting level --
-    sema rejects a nested def inside a nested def, so there is none.
+    A rebind whose name the lambda body itself reserves a slot for is a SHADOW,
+    not a cross-scope consume, but the reason differs per caller and only one of
+    the two is the local-vs-`nonlocal` dichotomy. For a NESTED DEF the two
+    operands are two Python scopes, and within one of them a name is either local
+    or `nonlocal`, never both. For the SIMPLE-GENERATOR seam they are ONE scope
+    -- the lambda is a render, not a Python scope -- and what carries `rb in own`
+    there is that a local is DECLARED once per scope: a name whose slot is
+    reserved inside the loop reserved none in the prologue, so the drain is
+    inside the lambda either way.
+
+    EVERY lambda-rendered body must be checked, not just nested defs: the
+    simple-generator peephole renders its loop into a lambda too, with the
+    pre-loop statements left in the enclosing function.
     """
-    outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(body))
+    outer_slot_names = {n for n in (_slot_owning_name(x) for x in _iter_thir(outer))
                         if n is not None}
-    for nd in _iter_thir(body):
-        if not isinstance(nd, THIRNestedDef):
-            continue
-        own = {n for n in (_slot_owning_name(x) for x in _iter_thir(nd.body))
-               if n is not None}
-        for n in _iter_thir(nd.body):
-            rb = _rebound_name(n)
-            if rb is not None and rb in outer_slot_names and rb not in own:
-                return True
+    if not outer_slot_names:
+        return False
+    own = {n for n in (_slot_owning_name(x) for x in _iter_thir(inner))
+           if n is not None}
+    for n in _iter_thir(inner):
+        rb = _rebound_name(n)
+        if rb is not None and rb in outer_slot_names and rb not in own:
+            return True
     return False
+
+
+def _rejects_lambda_hoist(body) -> bool:
+    """The nested-def flavor of `rejects_cross_scope_rebind`.
+
+    `own` is deliberately not computed across a further nesting level -- sema
+    rejects a nested def inside a nested def, so there is none.
+    """
+    return any(rejects_cross_scope_rebind(body, nd.body)
+               for nd in _iter_thir(body)
+               if isinstance(nd, THIRNestedDef))
 
 
 def _rejects_global_slot(node) -> bool:

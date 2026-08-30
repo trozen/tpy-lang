@@ -14,8 +14,7 @@ routing claim on its own.
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
-                       _constant_positions)
+from .testutil import _assert_byte_identical, _constant_positions
 
 PRELUDE = "from typing import Final\nfrom tpy import Char, Int32\n"
 
@@ -273,11 +272,10 @@ class TestPrimitiveConstructorCall:
                 "::tpy::int_cast_check<int64_t>(SMALL);") in thir[0]
 
 
-class TestCharConstructorKeepsFallingBack:
-    """Boundary: `Char(65)` has no lowering arm, so the position falls back
-    to `gen_expr` and tallies under its own component. Pins that the fallback
-    arm is live -- without a constructible reject, the guarded arm would be
-    unfalsifiable."""
+class TestCharConstructorRoutes:
+    """`Char(65)` is a value-scalar type constructor like the fixed-int ones;
+    the constant position renders its `static_cast<char>(65)` on both paths.
+    Was the last shape keeping a valid program's constant on the AST path."""
 
     SRC = PRELUDE + (
         "CH: Final[Char] = Char(65)\n"
@@ -288,20 +286,20 @@ class TestCharConstructorKeepsFallingBack:
         "main()\n"
     )
 
-    def test_falls_back_and_tallies(self):
+    def test_routes(self):
         routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "CH" in ast_rendered
-        assert "CH" not in routed
-        _assert_rejects_at(fallback, "final_global:expr.call", count=1)
+        assert "CH" in routed
+        assert "CH" not in ast_rendered
+        assert fallback == {}, fallback
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
         assert "inline constexpr char CH = static_cast<char>(65);" in thir[0]
 
 
-class TestClassConstantFallbackTalliesSeparately:
-    """The same reject at the class-constant position keys its own component,
-    so the two positions' residue stays separable in the tally."""
+class TestClassConstantPositionRoutes:
+    """The class-constant position takes the same render as the Final global,
+    and keys its own component in the tally when either does reject."""
 
     SRC = PRELUDE + (
         "class Codes:\n"
@@ -314,38 +312,49 @@ class TestClassConstantFallbackTalliesSeparately:
         "main()\n"
     )
 
-    def test_falls_back_and_tallies(self):
+    def test_routes(self):
         routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "CH" in ast_rendered
-        _assert_rejects_at(fallback, "class_const:expr.call", count=1)
+        assert "CH" in routed
+        assert "CH" not in ast_rendered
+        assert fallback == {}, fallback
 
     def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
+        hpp, _cpp = _assert_byte_identical(self.SRC)
+        assert "static constexpr char CH = static_cast<char>(65);" in hpp
 
 
-class TestNonfiniteFloatKeepsFallingBack:
-    """Boundary: a float literal that overflows to infinity (`math.inf` is
-    spelled this way) has no literal arm, so it keeps taking the AST
-    render."""
+class TestNonfiniteFloatRoutes:
+    """A float literal that overflows to infinity (`math.inf` is spelled this
+    way) has no C++ literal form; both paths fold it to the constexpr
+    `numeric_limits` spelling, so the constant position routes."""
 
     SRC = (
         "from typing import Final\n"
         "MY_INF: Final[float] = 1e309\n"
+        "MY_NEG_INF: Final[float] = -1e309\n"
+        "MY_NAN: Final[float] = float(\"nan\")\n"
         "\n"
         "def main() -> None:\n"
-        "    print(MY_INF)\n"
+        "    print(MY_INF > 1.0)\n"
+        "    print(MY_NEG_INF < 1.0)\n"
+        "    print(MY_NAN != MY_NAN)\n"
         "\n"
         "main()\n"
     )
 
-    def test_falls_back(self):
+    def test_routes(self):
         routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "MY_INF" in ast_rendered
-        assert fallback == {
-            "final_global:expr.float_literal.nonfinite": 1}, fallback
+        assert "MY_INF" in routed and "MY_NEG_INF" in routed
+        assert "MY_INF" not in ast_rendered
+        assert fallback == {}, fallback
 
     def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
+        hpp, cpp = _assert_byte_identical(self.SRC)
+        both = hpp + cpp
+        assert ("inline constexpr double MY_INF = "
+                "std::numeric_limits<double>::infinity();") in both
+        assert ("inline constexpr double MY_NAN = "
+                "std::numeric_limits<double>::quiet_NaN();") in both
 
 
 class TestTupleSlotOutsideConstantFamilyFallsBack:
@@ -372,14 +381,28 @@ class TestTupleSlotOutsideConstantFamilyFallsBack:
         _assert_byte_identical(self.SRC)
 
 
-class TestConstantFallbackIsNotRatcheted:
-    """The constant positions tally like every other component so their
-    residue is visible, but the per-case ratchet does not read them yet: an
-    unmarked case must still route every BODY, not every constant."""
+class TestConstantFallbackIsRatcheted:
+    """The constant positions are in the ratchet like every body: they render
+    through the same `gen_expr` the cutover deletes, so exempting them
+    understated the residue. The exclusion set stays as the mechanism -- an
+    empty one, so a new component defaults INTO the ratchet."""
 
-    def test_ratchet_total_excludes_constant_components(self):
-        from .fallback import ratchet_total
+    def test_ratchet_total_counts_every_component(self):
+        from .fallback import NON_RATCHET_COMPONENTS, ratchet_total
         tally = {"body:stmt.assign": 2, "ctor:ctor.mil": 1,
                  "class_const:expr.call": 3, "final_global:expr.call": 4}
-        assert ratchet_total(tally) == 3
+        assert not NON_RATCHET_COMPONENTS
+        assert ratchet_total(tally) == 10
         assert sum(tally.values()) == 10
+
+    def test_exclusion_set_is_still_honoured(self):
+        # The mechanism must keep working, or re-populating the set later
+        # would be a silent no-op.
+        from . import fallback as fb
+        tally = {"body:stmt.assign": 2, "class_const:expr.call": 3}
+        saved = fb.NON_RATCHET_COMPONENTS
+        try:
+            fb.NON_RATCHET_COMPONENTS = frozenset({"class_const"})
+            assert fb.ratchet_total(tally) == 2
+        finally:
+            fb.NON_RATCHET_COMPONENTS = saved

@@ -9,7 +9,7 @@ from .nodes import (
 )
 from .testutil import (
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
-    _assert_byte_identical, _top_level,
+    _assert_byte_identical, _assert_routes_byte_identical, _top_level,
 )
 
 # --- Bare numeric-literal call args + negated int literals (increment 45) ---
@@ -54,13 +54,16 @@ class TestNumericLiteralArgs:
         assert isinstance(lit, THIRLiteral) and lit.value == 1.5
         assert _emit_expr(lit) == "1.5f"
 
-    def test_inf_literal_arg_ineligible(self):
-        # `1e400` parses to inf; repr(inf) is not valid C++ -> AST path.
-        thir = _lower(
-            _NUMLIT_PRELUDE
-            + "def f(x: Float64) -> Float64:\n    return x\n"
-            + "def g() -> None:\n    v = f(1e400)\n    print(1)\n")
-        assert _fn(thir, "g") is None
+    def test_inf_literal_arg_routes_as_numeric_limits(self):
+        # `1e400` parses to inf, which has no C++ literal form: both paths
+        # fold it to the constexpr numeric_limits spelling.
+        src = (_NUMLIT_PRELUDE
+               + "def f(x: Float64) -> Float64:\n    return x\n"
+               + "def g() -> None:\n    v = f(1e400)\n    print(v)\n")
+        thir = _lower(src)
+        assert _fn(thir, "g") is not None
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "f(std::numeric_limits<double>::infinity())" in hpp + cpp
 
     def test_bigint_slot_literal_routes_wrapped(self):
         # An int literal into a BigInt slot wraps `::tpy::BigInt(3)` -- the

@@ -1,7 +1,6 @@
 ---
 name: prep-merge
 description: Squash current branch changes into a fresh branch ready to merge to master.
-disable-model-invocation: true
 ---
 
 # Prepare branch for merge
