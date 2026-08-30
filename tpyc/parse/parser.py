@@ -3983,7 +3983,19 @@ class Parser:
             return TpyLiteralPattern(node.value, loc=loc)
 
         elif isinstance(node, ast.MatchOr):
-            patterns = [self._parse_pattern(p) for p in node.patterns]
+            # A parenthesized alternative group survives in CPython's ast as a
+            # nested MatchOr, but every downstream consumer treats an
+            # alternative list as terminal. Splice a direct or-pattern child in;
+            # bottom-up recursion makes one level of splicing enough at any
+            # depth. An `as` child is NOT spliced -- it is a binding boundary,
+            # and merging through it would drop the name.
+            patterns: list[TpyPattern] = []
+            for p in node.patterns:
+                sub = self._parse_pattern(p)
+                if isinstance(sub, TpyOrPattern):
+                    patterns.extend(sub.patterns)
+                else:
+                    patterns.append(sub)
             return TpyOrPattern(patterns, loc=loc)
 
         raise ParseError(f"Unsupported pattern: {type(node).__name__}", node)

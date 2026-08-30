@@ -1,0 +1,1 @@
+main.py:18: error: unreachable case after wildcard pattern

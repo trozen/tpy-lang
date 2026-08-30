@@ -1,0 +1,1 @@
+main.py:12: error: bytes literal pattern against subject type 'bytes' is not yet implemented; compare in a guard instead (e.g. `case _ if <subject> == b"...":`)

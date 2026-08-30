@@ -1,0 +1,1 @@
+main.py:44: warning: non-exhaustive match on 'None | Dog | Fox'; missing: Fox (add 'case _: pass' to suppress)

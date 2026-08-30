@@ -13,7 +13,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType,
     NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
-    unwrap_readonly, unwrap_ref_type, unwrap_own, make_union,
+    unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers, make_union,
     is_float_type, is_any_str_type, is_protocol_type,
     polymorphic_source_inner, deref_dispatch_inner,
     same_nominal_symbol_loose,
@@ -23,8 +23,8 @@ from .flow_facts import FlowFacts
 from .protocols import dynamic_dispatch_type_conforms
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
-    is_str_category, is_char_type, is_float_category,
-    is_enum_type, enum_info_of, is_free_copy_scalar,
+    is_str_category, is_char_type, is_float_category, is_bytes_category,
+    is_enum_type, is_int_enum_type, enum_info_of, is_free_copy_scalar,
 )
 from ..parse import (
     TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyIntLiteral,
@@ -75,6 +75,38 @@ def _parts_may_alias(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
     return True
 
 
+def _strip_match_qualifiers(typ: TpyType) -> TpyType:
+    """Drop the qualifier wrappers a match dispatch or comparison sees through.
+
+    Every wrapper here renders as the same C++ value (or a reference to it),
+    so none of them changes what a pattern tests. Between them the two unwrap
+    orders below take any two-wrapper nesting apart in a single pass; the loop
+    is what covers a deeper stack, where one pass can leave a layer behind.
+    """
+    while True:
+        stripped = unwrap_own(
+            unwrap_ref_type(unwrap_readonly(unwrap_qualifiers(typ))))
+        if stripped == typ:
+            return typ
+        typ = stripped
+
+
+def _matches_every_value(pat: TpyPattern) -> bool:
+    """Whether `pat` matches every subject value, so no later arm is reachable.
+
+    A wildcard or capture alternative subsumes the alternatives beside it, so an
+    or-group holding one is a catch-all exactly like a bare wildcard arm. The
+    dispatch cannot be trusted to make the later arms dead on its own: an
+    irrefutable group lowers to the switch default, and a C++ switch ignores
+    source order, so the arms after it would stay live case labels.
+    """
+    if isinstance(pat, TpyAsPattern):
+        pat = pat.pattern
+    if isinstance(pat, TpyOrPattern):
+        return any(_matches_every_value(alt) for alt in pat.patterns)
+    return isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
+
+
 def _subst_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     """Substitute TypeParamRef instances in a type according to subst map."""
     if isinstance(typ, TypeParamRef) and typ.name in subst:
@@ -105,7 +137,7 @@ class MatchAnalyzer:
         # (`match make_box():` -> `Own[Box[T]]`); the match reads the owned
         # value, so dispatch sees its inner type. Reachable only since
         # expression subjects were allowed (a name local is never Own-typed).
-        effective_type = unwrap_own(unwrap_ref_type(unwrap_readonly(subject_type)))
+        effective_type = _strip_match_qualifiers(subject_type)
         # Expand recursive union alias placeholder to its underlying
         # UnionType so match dispatch sees the variant arms.
         if isinstance(effective_type, AliasRef):
@@ -175,6 +207,11 @@ class MatchAnalyzer:
         )
 
         had_wildcard = False
+        # Separate from `had_wildcard`, which also grants exhaustiveness credit:
+        # a union subject's coverage is counted from the variant labels its arms
+        # claim, and an or-group's wildcard names none, so crediting it here
+        # would silently widen coverage as a side effect of the arm-order rule.
+        saw_irrefutable_arm = False
         # Optional subjects have two coverage sides: a class pattern matches
         # every non-None value but never None, while wildcard/capture match
         # both. Exhaustiveness and unreachable-arm checks track each side.
@@ -201,7 +238,7 @@ class MatchAnalyzer:
         capture_bind_types: dict[str, list[TpyType | None]] = {}
 
         for case in stmt.cases:
-            if had_wildcard:
+            if had_wildcard or saw_irrefutable_arm:
                 raise self.ctx.error(
                     "unreachable case after wildcard pattern", case.pattern
                 )
@@ -375,6 +412,8 @@ class MatchAnalyzer:
             pat = case.pattern
             if isinstance(pat, TpyAsPattern):
                 pat = pat.pattern
+            if case.guard is None and _matches_every_value(pat):
+                saw_irrefutable_arm = True
             if is_optional:
                 if case.guard is None:
                     if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)):
@@ -395,8 +434,7 @@ class MatchAnalyzer:
                             if (isinstance(alt, TpyLiteralPattern)
                                     and alt.value is None):
                                 covers_none = True
-                            elif isinstance(alt, (TpyWildcardPattern,
-                                                  TpyCapturePattern)):
+                            elif _matches_every_value(alt):
                                 covers_none = True
                                 covers_value = True
                             elif (isinstance(alt, TpyClassPattern)
@@ -1249,7 +1287,10 @@ class MatchAnalyzer:
             elif isinstance(sub_pattern, TpyLiteralPattern):
                 if sub_pattern.value is None:
                     self._check_none_field_nullable(field_name, field_type, sub_pattern)
-                # Other literal comparisons are validated at codegen time.
+                else:
+                    self._validate_literal_pattern(
+                        sub_pattern, field_type,
+                        where=f"field '{field_name}' of type")
             elif isinstance(sub_pattern, TpyValuePattern):
                 # Named-constant field comparison (e.g. `size=Size.BIG`) is not
                 # yet emitted; only literal field comparisons are. Point at the
@@ -1278,6 +1319,10 @@ class MatchAnalyzer:
                 elif isinstance(inner_sub, TpyLiteralPattern):
                     if inner_sub.value is None:
                         self._check_none_field_nullable(field_name, field_type, inner_sub)
+                    else:
+                        self._validate_literal_pattern(
+                            inner_sub, field_type,
+                            where=f"field '{field_name}' of type")
                     bindings[sub_pattern.name] = field_type
                 elif isinstance(inner_sub, (TpyWildcardPattern, TpyCapturePattern)):
                     bindings[sub_pattern.name] = field_type
@@ -1500,45 +1545,141 @@ class MatchAnalyzer:
                             f"but '{ty}' in another", alt
                         )
 
+        if kind is OrPatternKind.UNION:
+            self._check_union_or_alternatives(pattern)
+
         if first_bindings:
             bindings.update(first_bindings)
 
+    def _check_union_or_alternatives(self, pattern: TpyOrPattern) -> None:
+        """Reject an or-pattern alternative a union subject cannot dispatch on.
+
+        Both union tiers select an alternative by the variant index of the
+        member class it names, so an alternative naming none (`case A() |
+        None:`) has no label to emit. `case None:` on its own arm is fine --
+        the arm is the union's None member, not one of several labels.
+
+        Runs after the binding pass so a binding disagreement between
+        alternatives, which points at the more specific mistake, still
+        reports first.
+        """
+        # A wildcard or capture alternative makes the whole group irrefutable,
+        # so the emitters dispatch it as the switch default and never ask the
+        # other alternatives for a label. Nothing is undispatchable there, and
+        # rejecting it would refuse a program CPython accepts.
+        if any(isinstance(alt, (TpyWildcardPattern, TpyCapturePattern))
+               for alt in pattern.patterns):
+            return
+        for alt in pattern.patterns:
+            if isinstance(alt, (TpyClassPattern, TpyWildcardPattern,
+                                TpyCapturePattern)):
+                continue
+            raise self.ctx.error(
+                "unsupported alternative in an or-pattern over a union "
+                f"subject: {type(alt).__name__}; every alternative must name "
+                "a union member class -- give 'None' or a literal its own "
+                "'case' arm", alt
+            )
+
     def _validate_literal_pattern(
         self, pattern: TpyLiteralPattern, subject_type: TpyType,
+        where: str = "subject type",
     ) -> None:
-        """Validate that a literal pattern is compatible with the subject type."""
-        # Unwrap LiteralType to base_type for validation
-        check_type = subject_type.base_type if isinstance(subject_type, LiteralType) else subject_type
+        """Validate that a literal pattern is compatible with the subject type.
+
+        `where` names what the literal is being compared against, so a field
+        sub-pattern reads as a field rather than as the match subject.
+        """
+        # Descend to the type the emitted comparison actually reads. Every
+        # wrapper stripped here still renders as `<value> == <literal>`: a
+        # readonly/borrowed view compares by value, and an empty
+        # `std::optional` compares false, which is CPython's answer for a
+        # None-valued slot. Enumerating the wrappers instead of descending is
+        # what let a wrapped type reach the kind checks unrecognized.
+        check_type = subject_type
+        while True:
+            stripped = _strip_match_qualifiers(check_type)
+            if isinstance(stripped, LiteralType):
+                stripped = stripped.base_type
+            elif isinstance(stripped, OptionalType):
+                stripped = stripped.inner
+            if stripped == check_type:
+                break
+            check_type = stripped
         val = pattern.value
         if val is None:
             raise self.ctx.error(
                 "None literal pattern requires an Optional subject", pattern
             )
+        # A UnionType that still carries None has at least two non-None
+        # members (`make_union` collapses the single-member form to
+        # OptionalType), so the emitted flat `== <literal>` would be applied
+        # to a std::variant and not compile. CPython does match here.
+        if isinstance(check_type, (UnionType, AliasRef,
+                                   RecursiveAliasInstanceType)):
+            raise self.ctx.error(
+                f"literal pattern not yet implemented for union {where} "
+                f"'{subject_type}'; select the member with a class pattern "
+                f"first, or compare in a guard instead",
+                pattern,
+            )
         if isinstance(val, bool):
             if not is_bool_type(check_type):
                 raise self.ctx.error(
-                    f"bool literal pattern not valid for subject type '{subject_type}'",
+                    f"bool literal pattern not valid for {where} '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, int):
-            if not (is_fixed_int_type(check_type) or is_big_int_type(check_type)
-                    or is_enum_type(check_type)):
+            # CPython does match an int literal against an IntEnum, so this is
+            # a gap rather than a type error -- say so, and keep it distinct
+            # from the plain-Enum case, where the comparison is meaningless.
+            if is_int_enum_type(check_type):
                 raise self.ctx.error(
-                    f"int literal pattern not valid for subject type '{subject_type}'",
+                    f"int literal pattern against IntEnum {where} "
+                    f"'{subject_type}' is not yet implemented; match the member "
+                    f"(e.g. `case {subject_type}.MEMBER:`) or use a guard",
+                    pattern,
+                )
+            if not (is_fixed_int_type(check_type) or is_big_int_type(check_type)):
+                raise self.ctx.error(
+                    f"int literal pattern not valid for {where} '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, float):
             if not is_float_type(check_type):
                 raise self.ctx.error(
-                    f"float literal pattern not valid for subject type '{subject_type}'",
+                    f"float literal pattern not valid for {where} '{subject_type}'",
                     pattern,
                 )
         elif isinstance(val, str):
             if not is_any_str_type(check_type):
                 raise self.ctx.error(
-                    f"str literal pattern not valid for subject type '{subject_type}'",
+                    f"str literal pattern not valid for {where} '{subject_type}'",
                     pattern,
                 )
+        elif isinstance(val, bytes):
+            # Against a bytes-family type the KIND matches and CPython does
+            # match the arm -- TPy just cannot render the comparison yet, so
+            # report a gap. Any other type is a genuine kind mismatch.
+            if is_bytes_category(check_type):
+                raise self.ctx.error(
+                    f"bytes literal pattern against {where} "
+                    f"'{subject_type}' is not yet implemented; compare in a "
+                    f"guard instead (e.g. `case _ if <subject> == b\"...\":`)",
+                    pattern,
+                )
+            raise self.ctx.error(
+                f"bytes literal pattern not valid for {where} '{subject_type}'",
+                pattern,
+            )
+        else:
+            # Exhaustive: a literal kind with no arm above has no comparison
+            # codegen can emit, so admitting it silently drops the arm's test.
+            raise self.ctx.error(
+                f"{type(val).__name__} literal pattern not valid for "
+                f"{where} '{subject_type}'",
+                pattern,
+            )
 
     def _extract_literal_pattern_values(
         self, pattern: TpyPattern, lit_type: LiteralType,
@@ -1663,8 +1804,17 @@ class MatchAnalyzer:
         """Check if a field sub-pattern adds a constraint (not always-matching)."""
         if isinstance(sub, (TpyLiteralPattern, TpyValuePattern, TpyClassPattern)):
             return True
-        if isinstance(sub, TpyAsPattern) and isinstance(sub.pattern, TpyClassPattern):
-            return True
+        # An `as` binding is transparent to the test: `x=3 as v` still only
+        # matches x == 3, and codegen emits that comparison. Answering False
+        # here made the arm read as a catch-all, so the fallthrough became
+        # `std::unreachable()` for the values the arm does not match.
+        if isinstance(sub, TpyAsPattern):
+            return MatchAnalyzer._is_constraining_sub_pattern(sub.pattern)
+        # An or-pattern is missing on purpose: a field sub-pattern rejects it
+        # before this runs, so answering False for it costs nothing today.
+        # Whoever lifts that reject wants `all(...)` over the alternatives and
+        # not `any(...)` -- one always-matching alternative makes the whole
+        # group a catch-all.
         return False
 
     @staticmethod

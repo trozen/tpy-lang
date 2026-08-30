@@ -1,0 +1,5 @@
+none-or-small
+none-or-small
+none-or-small
+medium
+other

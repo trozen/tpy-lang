@@ -2726,11 +2726,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.union_alias",            # `auto& __case_i = [*]std::get<idx>(...)`
     "match.union_none_arm",         # `case None:` -> the monostate index
     "match.union_default",          # wildcard/capture -> `default:` in place
+    "match.or_wildcard_default",    # or-group holding a wildcard/capture ->
+                                    # the same `default:` block
     "match.guarded_union",          # per-index guard groups + goto end (M4b)
     "match.if_elif_record",         # record-subject unguarded chain
     "match.guarded_record",         # record standalone-if + goto tier
     "match.record_or",              # or-pattern of condition-only class alts
     "match.field_cond",             # literal field condition (`==` compare)
+    "match.field_cond_as",          # `f=<lit> as x`: the condition plus the
+                                    # `as` name aliasing the tested field
     "match.field_none",             # field=None -> has_value/monostate check
     "match.field_bind",             # field capture: `{base}.{f}` rhs binding
     "match.field_bind_assign_addr",  # ptr-hoisted field capture: the

@@ -989,9 +989,19 @@ Minor differences where TPy's compiled model diverges:
 | Polymorphic subject expression | Any expression | Any expression (bound once into `__match_subject`); `isinstance` still requires a bare name | Match: no difference. Deliberate divergence from `isinstance`, which stays bare-name-only |
 | Shadowed polymorphic arm | Silently allowed (dead arm) | Compile error (`unreachable case`) | Stricter: rejects an arm CPython would accept-but-never-run |
 | Non-conformer polymorphic arm | Silently allowed (never matches) | Compile error | Stricter: a `case T()` whose `T` can't match the subject is rejected, not dead code |
+| Literal pattern of an incompatible kind | Silently allowed (dead arm) | Compile error | Stricter: rejects an arm CPython would accept-but-never-run |
+| Same, inside a class pattern's field sub-pattern | Silently allowed (dead arm) | Compile error | Same rule, applied where it previously was not checked at all |
+| `bytes` literal against a `bytes` subject or field | Matches | Compile error, reported as not yet implemented | Missing feature, not a semantic difference -- a guard is the workaround |
+| `int` literal against an `IntEnum` subject | Matches | Compile error, reported as not yet implemented | Missing feature, not a semantic difference -- a guard is the workaround |
+| `int` literal against a plain `Enum` subject | Silently allowed (dead arm) | Compile error | Stricter: no matching program exists either way, since the guard form is rejected too |
+| `complex` literal pattern | Matches when equal (`5 == 5+0j`) | Compile error | TPy has no `complex` type; a zero-imaginary literal CPython would match is unsupported |
 
-All three polymorphic-dispatch rejections emit explicit diagnostics, so no silent
-divergence -- they tighten valid-but-buggy CPython into a compile error.
+The three polymorphic-dispatch rejections emit explicit diagnostics, so no silent
+divergence -- they tighten valid-but-buggy CPython into a compile error. The
+literal-kind rows split two ways: the ones marked *stricter* follow that same
+rule, while the two marked *not yet implemented* are GAPS -- CPython matches
+there and TPy simply cannot render the comparison yet, so they name a guard
+workaround rather than claiming the program is wrong.
 
 ---
 
@@ -1003,7 +1013,9 @@ divergence -- they tighten valid-but-buggy CPython into a compile error.
 |-----------|---------|
 | Class pattern on non-member of union | `'Triangle' is not a member of union 'Circle \| Rect'` |
 | Duplicate case for same type | `duplicate case for 'Circle' in match statement` |
-| Incompatible literal type | `cannot match 'str' literal against 'Int32' subject` |
+| Incompatible literal type | `str literal pattern not valid for subject type 'Int32'` |
+| Literal kind not renderable against an otherwise-compatible subject | `<kind> literal pattern against subject type '<T>' is not yet implemented; ...` |
+| Or-pattern alternative a switch tier cannot label | `unsupported alternative in an or-pattern over a <union/enum/int-or-bool> subject: ...` |
 | Or-pattern variable mismatch | `variable 'n' not bound in all alternatives of or-pattern` |
 | Or-pattern type mismatch | `variable 'n' has type 'Int32' in first alternative but 'str' in second` |
 | Too many positional args | `'Point' accepts 2 positional patterns but 3 were given` |

@@ -1,0 +1,1 @@
+main.py:16: error: int literal pattern not valid for subject type 'Color'

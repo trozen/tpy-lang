@@ -1,0 +1,1 @@
+main.py:18: error: duplicate case for 'A' in match statement

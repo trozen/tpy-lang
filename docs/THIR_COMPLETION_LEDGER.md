@@ -5161,6 +5161,19 @@ by reading the item, never by trusting a sibling's summary of it.
      pattern nodes, all in `match.py`. Their reachability is UNESTABLISHED --
      two constructed witnesses for them were both falsified -- so they are
      neither safely demoted to internal errors nor safely budgeted as work.
+   - **A `match`-defect branch moved the ratchet the WRONG WAY first, and the
+     correction is the reusable lesson (2026-08-30).** Converting a bare
+     `assert` into a real diagnostic stops an ICE -- but putting that
+     diagnostic in a module the cutover DELETES buys the fix with new
+     AST-only debt, and the ratchet duly grew. Two of the three entries that
+     branch added were pre-existing reality a triage newly WITNESSED, which
+     is the instrument working; the third was self-inflicted and was moved
+     into sema before merge, taking the entry back out. **Ask where a new
+     diagnostic should LIVE, not only whether it should exist** -- the same
+     branch's enum and primitive rejections were already decided in sema, so
+     the union one was the inconsistent case and its own sibling docstrings
+     said so. A diagnostic decidable in sema belongs there: same message,
+     survives the cutover, and lowering never sees the body.
    - **A NEW risk class the re-homing introduces: lowering can now reject by
      RAISING.** Before it, a too-broad THIR predicate cost a fallback --
      invisible and safe, because the AST re-emitted the body. Now five

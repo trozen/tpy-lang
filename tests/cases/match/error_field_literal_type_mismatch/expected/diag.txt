@@ -1,0 +1,1 @@
+main.py:14: error: int literal pattern not valid for field 's' of type 'str'

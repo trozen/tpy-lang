@@ -1,0 +1,1 @@
+main.py:16: error: literal pattern not yet implemented for union field 'x' of type 'None | int | str'; select the member with a class pattern first, or compare in a guard instead

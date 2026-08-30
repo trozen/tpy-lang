@@ -1,0 +1,1 @@
+main.py:14: error: int literal pattern against IntEnum subject type 'Level' is not yet implemented; match the member (e.g. `case Level.MEMBER:`) or use a guard

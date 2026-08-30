@@ -404,10 +404,22 @@ def _match_keywords_ok(
                 return False
             continue
         if isinstance(inner, TpyLiteralPattern):
-            if as_node is not None or not allow_conds:
+            if not allow_conds:
                 return False
             if _match_field_cond(pattern, fname, inner.value, analyzer) is None:
                 return False
+            if as_node is not None:
+                # `f=<lit> as x` renders the literal condition AND the plain
+                # field binding, so it needs both eligibility answers. The
+                # hoisted pointer/frame flavors keep rejecting -- only the
+                # `auto&`/copy alias is mirrored here.
+                if (as_node.name in pointers or as_node.name in narrowed
+                        or as_node.name in storage_tuple_locals):
+                    return False
+                as_ft = _match_record_field_type(pattern, fname, analyzer)
+                if as_ft is None or not _match_capture_field_ok(as_ft, analyzer):
+                    return False
+                arm_declared[as_node.name] = as_ft
             continue
         if isinstance(inner, TpyCapturePattern):
             if as_node is not None:
@@ -580,6 +592,17 @@ def _guarded_union_arm_ok(
                                     else subj_type)
     return True
 
+def _or_group_irrefutable(test) -> bool:
+    """Whether an or-pattern matches every subject value.
+
+    A wildcard or capture alternative subsumes the ones beside it, so the
+    group dispatches as the switch default and its other alternatives never
+    render a label.
+    """
+    return (isinstance(test, TpyOrPattern)
+            and any(isinstance(alt, (TpyWildcardPattern, TpyCapturePattern))
+                    for alt in test.patterns))
+
 def _union_arm_ok(
         case, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
@@ -612,7 +635,10 @@ def _union_arm_ok(
     elif isinstance(test, TpyOrPattern):
         if bnode is not None:
             return False
-        for alt in test.patterns:
+        # An irrefutable group is the default block, so no alternative claims
+        # an index -- leaving `seen` untouched keeps a later arm naming one of
+        # them routed the way the AST routes it.
+        for alt in ([] if _or_group_irrefutable(test) else test.patterns):
             if not (isinstance(alt, TpyClassPattern)
                     and alt.resolved_type is not None
                     and not alt.positional):
@@ -1557,13 +1583,30 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
         as_node = sub if isinstance(sub, TpyAsPattern) else None
         inner = sub.pattern if as_node is not None else sub
         if isinstance(inner, TpyLiteralPattern):
-            assert as_node is None, \
-                "ineligible as-literal sub-pattern reached lowering"
             pair = _match_field_cond(pattern, fname, inner.value, lc.analyzer)
             assert pair is not None, "ineligible field cond reached lowering"
             _witness("match.field_none" if inner.value is None
                      else "match.field_cond")
             field_conds.append((pair[0] + cpre, csuf + pair[1]))
+            if as_node is not None:
+                # The `as` name aliases the field the condition just tested,
+                # independently of the condition's own base composition.
+                mode = ("assign" if as_node.name in declared
+                        else "copy" if as_node.bind_by_value else "ref")
+                _witness("match.field_cond_as")
+                field_bindings.append(THIRMatchBinding(
+                    name=as_node.name, mode=mode, from_case_var=from_case_var,
+                    subject_prefix=bpre, subject_suffix=f"{bsuf}.{fname}",
+                    base_name=base))
+                as_ft = _match_record_field_type(pattern, fname, lc.analyzer)
+                assert as_ft is not None, \
+                    "ineligible as-literal sub-pattern reached lowering"
+                arm_declared[as_node.name] = as_ft
+                as_ft_u = unwrap_readonly(as_ft)
+                if _value_opt_scalar(as_ft_u, lc.analyzer) is not None:
+                    lc.value_opt_bindings[as_node.name] = ValueOptKind.SCALAR
+                elif _value_opt_owned_view(as_ft_u, lc.analyzer) is not None:
+                    lc.value_opt_bindings[as_node.name] = ValueOptKind.VIEW
         elif isinstance(inner, TpyCapturePattern):
             if (inner.name in lc.opt_ptr_frame_locals
                     and inner.name in lc.pointers
@@ -2892,6 +2935,11 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                 subj_name, subj_type, members, seen):
             raise ThirUnsupported("stmt.match")
         test, bnode = _match_arm_parts(case)
+        if _or_group_irrefutable(test):
+            # Same arm as a bare `case _:` -- the group's other alternatives
+            # are subsumed and render nothing.
+            _witness("match.or_wildcard_default")
+            test = None
         facts = case.type_facts or {}
         if arm_body_hooks:
             # Hook mode: the arm body lowers as skeleton-walked BB leaves

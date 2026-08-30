@@ -956,6 +956,14 @@ AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset({
     # suspension-in-a-@dynamic-match reject exists only in the AST match
     # emitter, so there is nothing to re-home it from yet.
     "async/error_async_match_dyn_await",
+    # Blocked: no THIR lowering raises this diagnostic. The simple-generator
+    # lowering rejects the mixed walrus + argument-temp condition wholesale,
+    # so the reject text exists only in the AST lambda peephole.
+    "generators/error_gen_while_walrus_temp_cond",
+    # Blocked: no THIR lowering raises this diagnostic. THIR's variant-index
+    # scan reports a miss as a body reject, so the text exists only in the AST
+    # match emitter.
+    "match/error_recursive_union_union_arg",
 })
 
 

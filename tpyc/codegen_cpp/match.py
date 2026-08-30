@@ -678,7 +678,8 @@ class MatchGenerator:
                     raise CodeGenError(
                         "internal: field-value sub-pattern reached the "
                         "unconditional union switch path", loc=case.loc)
-                idx = self._variant_index(subject_type, pattern.resolved_type)
+                idx = self._variant_index(
+                    subject_type, pattern.resolved_type, case.loc)
                 out.write(f"{indent}case {idx}: {{\n")
                 case_var: str | None = None
                 if pattern.keywords or case.type_facts:
@@ -721,8 +722,9 @@ class MatchGenerator:
                 elif not has_bindings:
                     # No bindings: case fallthrough
                     for alt in pattern.patterns:
-                        assert isinstance(alt, TpyClassPattern) and alt.resolved_type is not None
-                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        alt_loc = alt.loc or case.loc
+                        member = self._union_or_alt_member(alt, alt_loc)
+                        idx = self._variant_index(subject_type, member, alt_loc)
                         out.write(f"{indent}case {idx}:\n")
                     out.write(f"{indent}{{\n")
                     self.ctx.indent_level += 1
@@ -733,8 +735,9 @@ class MatchGenerator:
                 else:
                     # With bindings: body duplication per alternative
                     for j, alt in enumerate(pattern.patterns):
-                        assert isinstance(alt, TpyClassPattern) and alt.resolved_type is not None
-                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        alt_loc = alt.loc or case.loc
+                        member = self._union_or_alt_member(alt, alt_loc)
+                        idx = self._variant_index(subject_type, member, alt_loc)
                         out.write(f"{indent}case {idx}: {{\n")
                         case_var = f"__case_{i}_{j}"
                         out.write(f"{inner}auto& {case_var} = {va.get_by_index(idx)};\n")
@@ -754,7 +757,7 @@ class MatchGenerator:
                     indent, inner, case.type_facts)
 
             elif isinstance(pattern, TpyLiteralPattern) and pattern.value is None:
-                idx = self._variant_index(subject_type, NoneType())
+                idx = self._variant_index(subject_type, NoneType(), case.loc)
                 out.write(f"{indent}case {idx}: {{\n")
                 self.ctx.indent_level += 1
                 self._emit_case_body(out, case.body, case.type_facts)
@@ -837,12 +840,9 @@ class MatchGenerator:
                 else:
                     labels = []
                     for alt in pattern.patterns:
-                        if kind == "enum":
-                            assert isinstance(alt, TpyValuePattern)
-                            labels.append(self.expressions.gen_expr(alt.expr))
-                        else:
-                            assert isinstance(alt, TpyLiteralPattern)
-                            labels.append(self._switch_literal_label(alt))
+                        labels.append(
+                            self._switch_or_alt_label(
+                                alt, kind, alt.loc or case.loc))
                     key = "|".join(labels)
                     entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts, dict(self._cur_arm_bind))
                     if key in groups:
@@ -1157,7 +1157,8 @@ class MatchGenerator:
 
             if isinstance(pattern, TpyClassPattern):
                 assert pattern.resolved_type is not None
-                idx = self._variant_index(subject_type, pattern.resolved_type)
+                idx = self._variant_index(
+                    subject_type, pattern.resolved_type, case.loc)
                 type_arms[idx].append((case, pattern, as_name, as_raw_name))
 
             elif isinstance(pattern, TpyOrPattern):
@@ -1167,7 +1168,8 @@ class MatchGenerator:
                 for alt in pattern.patterns:
                     if isinstance(alt, TpyClassPattern):
                         assert alt.resolved_type is not None
-                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        idx = self._variant_index(
+                            subject_type, alt.resolved_type, alt.loc or case.loc)
                         type_arms[idx].append((case, alt, as_name, as_raw_name))
                         or_covered.add(idx)
                     elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1185,7 +1187,7 @@ class MatchGenerator:
             elif isinstance(pattern, TpyLiteralPattern) and pattern.value is None:
                 # `case None:` -- monostate alternative, same dispatch as the
                 # unguarded union switch path.
-                idx = self._variant_index(subject_type, NoneType())
+                idx = self._variant_index(subject_type, NoneType(), case.loc)
                 type_arms[idx].append((case, pattern, as_name, as_raw_name))
 
             else:
@@ -2079,7 +2081,8 @@ class MatchGenerator:
         elif isinstance(val, str):
             return f'{subject_expr} == {cpp_string_literal_expr(val)}'
         else:
-            raise CodeGenError(f"Unsupported literal in match: {val!r}")
+            raise CodeGenError(
+                f"Unsupported literal in match: {val!r}", loc=pattern.loc)
 
     def _gen_match_optional_cond(
         self, out: TextIO, pattern: TpyPattern, indent: str,
@@ -2276,6 +2279,13 @@ class MatchGenerator:
                     conds.append(f"{subject_expr}.{field_name} == {val!r}")
                 elif isinstance(val, str):
                     conds.append(f'{subject_expr}.{field_name} == {cpp_string_literal_expr(val)}')
+                else:
+                    # Sema validates every field literal against the field
+                    # type, so an unrenderable kind means that gate broke --
+                    # fail loud, never silently drop the check.
+                    raise CodeGenError(
+                        f"internal: unsupported literal {val!r} in field "
+                        f"pattern `{field_name}=`", loc=pattern.loc)
             elif isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
                 # Union-typed field: runtime holds_alternative check
                 assert inner.resolved_type is not None
@@ -2304,30 +2314,88 @@ class MatchGenerator:
                 pat = pat.pattern
             indices: list[int] = []
             if isinstance(pat, TpyClassPattern) and pat.resolved_type is not None:
-                indices.append(self._variant_index(subject_type, pat.resolved_type))
+                indices.append(
+                    self._variant_index(subject_type, pat.resolved_type, case.loc))
             elif isinstance(pat, TpyOrPattern):
                 for alt in pat.patterns:
                     if isinstance(alt, TpyClassPattern) and alt.resolved_type is not None:
-                        indices.append(self._variant_index(subject_type, alt.resolved_type))
+                        indices.append(
+                            self._variant_index(
+                                subject_type, alt.resolved_type,
+                                alt.loc or case.loc))
             for idx in indices:
                 if idx in seen:
                     return True
                 seen.add(idx)
         return False
 
-    def _variant_index(self, union_type: UnionType, member_type: TpyType) -> int:
+    def _union_or_alt_member(
+        self, alt: TpyPattern, loc: 'SourceLocation | None',
+    ) -> TpyType:
+        """The union member an or-pattern alternative selects in a union switch.
+
+        Defensive only: sema rejects every alternative that names no union
+        member before codegen, so neither reject below has a source witness.
+        They stay because an alternative with no member would otherwise emit
+        an arm dispatching on the wrong variant index."""
+        if not isinstance(alt, TpyClassPattern):
+            raise CodeGenError(
+                "unsupported alternative in an or-pattern over a union "
+                f"subject: {type(alt).__name__}; every alternative must name "
+                "a union member class -- give 'None' or a literal its own "
+                "'case' arm",
+                loc=loc)
+        if alt.resolved_type is None:
+            raise CodeGenError(
+                "internal: unresolved class pattern reached the union switch "
+                "path", loc=loc)
+        return alt.resolved_type
+
+    def _switch_or_alt_label(
+        self, alt: TpyPattern, kind: str, loc: 'SourceLocation | None',
+    ) -> str:
+        """The switch label for one alternative of an enum/primitive or-pattern.
+
+        Defensive only: sema now rejects every mixed-kind alternative before
+        codegen, so neither reject below has a source witness. They stay
+        because an alternative with no label would otherwise emit an arm that
+        silently drops its test."""
+        if kind == "enum":
+            if not isinstance(alt, TpyValuePattern):
+                raise CodeGenError(
+                    "unsupported alternative in an or-pattern over an enum "
+                    f"subject: {type(alt).__name__}; every alternative must "
+                    "name an enum member",
+                    loc=loc)
+            return self.expressions.gen_expr(alt.expr)
+        if not isinstance(alt, TpyLiteralPattern):
+            raise CodeGenError(
+                "unsupported alternative in an or-pattern over an int/bool "
+                f"subject: {type(alt).__name__}; every alternative must be an "
+                "int or bool literal",
+                loc=loc)
+        return self._switch_literal_label(alt)
+
+    def _variant_index(
+        self, union_type: UnionType, member_type: TpyType,
+        loc: 'SourceLocation | None',
+    ) -> int:
         """Find the index of a member type in a union's canonical member ordering.
 
         For recursive unions (including narrowed-by-None subsets), indices are
         resolved against the alias's full member tuple so they match the
         wrapper struct's variant ordering.
+
+        `loc` is the arm the index is being resolved for: the failure is
+        reachable from user source, so it has to point at that arm.
         """
         wrapper = union_type.wrapper_info()
         members = wrapper.full_members if wrapper is not None else union_type.members
         for i, m in enumerate(members):
             if m == member_type:
                 return i
-        raise CodeGenError(f"type '{member_type}' not found in union '{union_type}'")
+        raise CodeGenError(
+            f"type '{member_type}' not found in union '{union_type}'", loc=loc)
 
     def _switch_literal_label(self, pattern: TpyLiteralPattern) -> str:
         """Generate a C++ case label for a literal pattern (int or bool)."""
@@ -2337,7 +2405,8 @@ class MatchGenerator:
         elif isinstance(val, int):
             return str(val)
         else:
-            raise CodeGenError(f"Cannot use literal {val!r} in switch case label")
+            raise CodeGenError(
+                f"Cannot use literal {val!r} in switch case label", loc=pattern.loc)
 
     def _record_field_type(
         self, pattern: TpyClassPattern, field_name: str,

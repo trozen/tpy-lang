@@ -724,6 +724,67 @@ class TestMatchSwitchUnion:
         cpp = _cpp(src, thir=True)
         assert cpp == _cpp(src, thir=False)
 
+    _OR_WILDCARD_SRC = UNION_PREAMBLE + (
+        "def kind(a: Cat | Dog | None) -> str:\n"
+        "    match a:\n"
+        "        case Cat():\n"
+        "            return \"cat\"\n"
+        "        case Dog() | None | _:\n"
+        "            return \"rest\"\n"
+        "    return \"no\"\n"
+        "def main() -> None:\n"
+        "    print(kind(None))\n"
+        "main()\n"
+    )
+
+    def test_or_pattern_wildcard_alt_routes(self):
+        # A wildcard alternative subsumes the group, which then dispatches as
+        # the default block -- the alternatives beside it render nothing.
+        _assert_routes_byte_identical(self._OR_WILDCARD_SRC)
+        thir = _lower_ctx(self._OR_WILDCARD_SRC)
+        m = _fn(thir, "kind").body[0]
+        assert [a.labels for a in m.arms] == [("1",), ()]
+        cpp = _cpp(self._OR_WILDCARD_SRC, thir=True)
+        assert "default: {" in cpp
+        _, w = _lower_ctx_witnessed(self._OR_WILDCARD_SRC)
+        assert w.get("match.or_wildcard_default", 0) > 0
+
+    def test_or_pattern_none_alt_without_wildcard_rejects(self):
+        # The boundary: with no wildcard beside it, `None` names no member
+        # class and so has no case label to dispatch on.
+        src = UNION_PREAMBLE + (
+            "def kind(a: Cat | Dog | None) -> str:\n"
+            "    match a:\n"
+            "        case Cat() | None:\n"
+            "            return \"cat-or-none\"\n"
+            "        case Dog():\n"
+            "            return \"dog\"\n"
+            "def main() -> None:\n"
+            "    print(kind(None))\n"
+            "main()\n"
+        )
+        with pytest.raises(SemanticError, match="unsupported alternative"):
+            _compile(src)
+
+    def test_guarded_tier_keeps_rejecting_wildcard_alt(self):
+        # The guarded tier distributes alternatives per variant index with no
+        # default block to fold them into, so the group stays unlowerable.
+        src = UNION_PREAMBLE + (
+            "def kind(a: Cat | Dog | None, ok: bool) -> str:\n"
+            "    match a:\n"
+            "        case Cat() if ok:\n"
+            "            return \"cat\"\n"
+            "        case Dog() | None | _:\n"
+            "            return \"rest\"\n"
+            "    return \"no\"\n"
+            "def main() -> None:\n"
+            "    print(kind(None, True))\n"
+            "main()\n"
+        )
+        with pytest.raises(CodeGenError) as exc:
+            _cpp(src, thir=True)
+        assert not _raised_in_lowering(exc.value)
+
     def test_field_binding_routes(self):
         # A keyword field capture binds off the `__case_{i}` alias
         # (previously a gate reject; the record-pattern cell admitted it).
@@ -1353,19 +1414,18 @@ class TestMatchRecordRejections:
         assert self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
-    def test_field_as_subpattern_rejects(self):
-        # `field=(<pat> as v)` sub-patterns are a deferred row. (No arm may
-        # follow: sema counts the as-wrapped literal as non-constraining and
-        # flags any later arm unreachable.)
+    def test_field_as_subpattern_routes(self):
+        # `field=(<lit> as v)` renders the literal condition plus the `as`
+        # name aliasing the tested field.
         src = RECORD_PREAMBLE + (
             "def f(p: Point) -> Int32:\n"
             "    match p:\n"
             "        case Point(x=(0 as v)):\n"
             "            return v\n"
-            "    return 9\n"
-            "f(Point(0, 1))\n"
+            "        case _:\n"
+            "            return 9\n"
         )
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
         assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_union_guard_reads_cond_capture_rejects(self):
