@@ -844,7 +844,18 @@ What shipped vs. the v1 plan, for the next person:
 - **Generic narrowing to the leaf**: a fully generic `[T]` traversal can't
   bind the `T` leaf value (`case _` only); leaf extraction needs a concrete
   leaf type + class pattern (`case int()`). Bare `isinstance(x, list)` is
-  unsupported (pre-existing).
+  unsupported (pre-existing). **A UNION leaf is narrower still: no member of
+  it is nameable.** `Tree[Int32 | str]` rejects `case Int32():` and
+  `case str():` alike, because the wrapper's variant carries one slot for the
+  whole leaf and a member has no slot of its own to dispatch on. Sema owns
+  that rejection (it reads the same member list codegen does); the residual
+  wants nested-variant dispatch. Filed in `BUGS.md`.
+- **`None` as a leaf, by spelling**: `Tree[None]` compiles and matches
+  (`tests/cases/match/union_recursive_none_leaf`), but the direct union
+  `type Nest = None | list[Nest]` is rejected at parse time -- the parser
+  canonicalizes a `None`-bearing union into an optional and then sees no
+  union to recurse through. Same canonicalization class one layer earlier,
+  so the two want fixing together. Filed in `BUGS.md`.
 - **Filed in `BUGS.md` (adjacent, surfaced here):** member-template call on a
   dependent receiver inside a generic function omits `.template`; generic-class
   ctor inference doesn't deduce `T` through a nested `Box[Tree[T]]` arg

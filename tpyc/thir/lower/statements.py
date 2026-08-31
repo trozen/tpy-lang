@@ -151,6 +151,7 @@ from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
                         polymorphic_subclass_into_optional)
+from ...codegen_cpp.type_resolution import resolve_stmt_recorded_type
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
 from ...liveness import stmts_terminate, try_terminates_ignoring_finally
@@ -7608,6 +7609,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             note_detail("decl.branch_first_decl")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         vtype = _var_decl_type(stmt, analyzer)
+        if vtype is None and resolve_stmt_recorded_type(
+                stmt, analyzer,
+                include_global_binding=lc.top_level_scope) is None:
+            # No recorded type anywhere means the binding cannot be emitted at
+            # all -- it is a user-facing rejection, not a shape this lowering
+            # has yet to learn, so it must not leave as a fallback that hands
+            # the same verdict to a second emitter. The global-binding leg is
+            # the one `_var_decl_type` omits and is what a module-scope
+            # binding resolves through.
+            emit_prims.reject_undeducible_local_type(stmt.name, stmt.loc)
         # Pre-shape registration, mirroring the AST decl arm's: an
         # Own-element tuple with no borrow element is by-value storage with
         # no borrow form, whichever arm the decl lowers through -- register

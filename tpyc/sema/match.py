@@ -13,7 +13,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType,
     NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
-    unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers, make_union,
+    unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
     is_float_type, is_any_str_type, is_protocol_type,
     polymorphic_source_inner, deref_dispatch_inner,
     same_nominal_symbol_loose,
@@ -149,9 +149,12 @@ class MatchAnalyzer:
         # subject -- its wrapper_info() drives .value variant dispatch. For the
         # (UnionType-centric) pattern arm-analysis below, stand in a synthesized
         # union of its substituted alternatives so the existing union path
-        # applies unchanged.
+        # applies unchanged. The alternatives are taken verbatim, NOT through
+        # `make_union`: the wrapper struct's std::variant arms are exactly this
+        # tuple, so re-canonicalizing (sorting, flattening a union alternative)
+        # would let an arm name a type that has no variant to dispatch on.
         if isinstance(effective_type, RecursiveAliasInstanceType):
-            effective_type = make_union(*effective_type.alternatives())
+            effective_type = UnionType(effective_type.alternatives())
         is_union = isinstance(effective_type, UnionType)
         is_enum = is_enum_type(effective_type)
         is_literal = isinstance(effective_type, LiteralType)
@@ -1105,7 +1108,7 @@ class MatchAnalyzer:
         # like list[Tree], Box[str] matched by bare list(), Box()).
         record = self.ctx.registry.get_record(cls_name)
         resolved_type = self._resolve_pattern_type(
-            cls_name, subject_type, record is not None, pattern)
+            cls_name, subject_type, record is not None, pattern, stmt)
 
         pattern.resolved_type = resolved_type
 
@@ -1128,7 +1131,7 @@ class MatchAnalyzer:
 
     def _resolve_pattern_type(
         self, name: str, subject_type: UnionType,
-        is_record: bool, pattern: TpyClassPattern,
+        is_record: bool, pattern: TpyClassPattern, stmt: TpyMatch,
     ) -> TpyType:
         """Resolve a type name in a match class pattern against a union subject.
 
@@ -1136,6 +1139,10 @@ class MatchAnalyzer:
         1. Exact match: record NominalType or primitive (Int32, str, bool, ...)
         2. Name-based member search: find the union member whose base name
            matches (handles parameterized types like list[T], Box[str])
+
+        `subject_type` may be a stand-in union synthesized from a wrapper's
+        alternatives, which has no user-facing spelling, so rejections name
+        `stmt.subject_type` -- the type as written at the match.
         """
         resolved = _resolve_concrete_type_name(name)
         if resolved is None and is_record:
@@ -1154,7 +1161,8 @@ class MatchAnalyzer:
                          if getattr(m, 'name', None) == name]
             if not same_name:
                 raise self.ctx.error(
-                    f"'{name}' is not a member of union '{subject_type}'", pattern
+                    f"'{name}' is not a member of union "
+                    f"'{stmt.subject_type}'", pattern
                 )
             # A same-bare-named member that is NOT parameterized is a distinct
             # (e.g. alias-imported) record: exact qname identity already failed

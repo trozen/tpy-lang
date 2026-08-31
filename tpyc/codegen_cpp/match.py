@@ -2386,8 +2386,10 @@ class MatchGenerator:
         resolved against the alias's full member tuple so they match the
         wrapper struct's variant ordering.
 
-        `loc` is the arm the index is being resolved for: the failure is
-        reachable from user source, so it has to point at that arm.
+        Sema resolves every arm against this same member list and rejects a
+        name the list does not hold, so a miss here means the two sides read
+        different lists -- not that the user named a non-member. `loc` is the
+        arm being resolved, which is the only place such a drift is visible.
         """
         wrapper = union_type.wrapper_info()
         members = wrapper.full_members if wrapper is not None else union_type.members

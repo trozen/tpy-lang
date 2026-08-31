@@ -38,7 +38,6 @@ from ..parse import (
 )
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
-from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.literal_utils import (
     fixed_int_literal_value_from_expr,
     literal_value_from_expr,
@@ -59,7 +58,9 @@ from ..type_def_registry import (
 )
 from .expressions import _is_concrete_user_record
 from .functions import default_to_cpp
-from .type_resolution import resolve_stmt_binding_type, resolve_stmt_type_cascade
+from .type_resolution import (resolve_stmt_binding_type,
+                              resolve_stmt_recorded_type,
+                              resolve_stmt_type_cascade)
 from .types import resolve_pending_container
 from ..prescan import match_is_none, parse_deref_view_key
 from .match import MatchGenerator
@@ -858,17 +859,13 @@ class StatementGenerator:
         if stmt.type:
             return self._cpp_decl_type(self._resolve_literal_view_storage(stmt.name, stmt.type))
         elif stmt.init:
-            resolved_type = resolve_stmt_binding_type(
+            resolved_type = resolve_stmt_recorded_type(
                 stmt,
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, (*PENDING_CONTAINER_TYPES, PendingViewType)):
-                resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
-                raise CodeGenError(
-                    f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
-                )
+                emit_prims.reject_undeducible_local_type(stmt.name, stmt.loc)
             return self._cpp_decl_type(resolved_type)
         raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 

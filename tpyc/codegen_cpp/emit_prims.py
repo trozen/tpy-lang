@@ -1396,6 +1396,17 @@ def reject_overload_return_mismatch(value_type: TpyType,
     )
 
 
+def reject_undeducible_local_type(name: str,
+                                  loc: SourceLocation | None) -> NoReturn:
+    """A binding whose initializer sema recorded no type for.
+
+    There is no semantic type left to spell the C++ slot with, so the emit
+    cannot proceed. Reached when a node arrives at codegen un-analyzed -- a
+    body spliced in after the inference pass, or a post-sema rewrite that
+    replaced an expression without typing the replacement."""
+    raise CodeGenError(f"Could not infer type for variable '{name}'", loc=loc)
+
+
 def reject_polymorphic_rvalue_into_optional_local(
         name: str, target_type: OptionalType, sub: NominalType,
         loc: SourceLocation | None) -> NoReturn:

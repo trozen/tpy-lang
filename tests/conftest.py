@@ -956,14 +956,6 @@ AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset({
     # suspension-in-a-@dynamic-match reject exists only in the AST match
     # emitter, so there is nothing to re-home it from yet.
     "async/error_async_match_dyn_await",
-    # Blocked: no THIR lowering raises this diagnostic. The simple-generator
-    # lowering rejects the mixed walrus + argument-temp condition wholesale,
-    # so the reject text exists only in the AST lambda peephole.
-    "generators/error_gen_while_walrus_temp_cond",
-    # Blocked: no THIR lowering raises this diagnostic. THIR's variant-index
-    # scan reports a miss as a body reject, so the text exists only in the AST
-    # match emitter.
-    "match/error_recursive_union_union_arg",
 })
 
 
@@ -977,8 +969,6 @@ BODY_DIAGNOSTIC_FUNCTIONS: frozenset[tuple[str, str]] = frozenset({
     # callers: the AST ctor member-init arm, which the ctor lowering replaces
     ("tpyc.codegen_cpp.records", "_reject_nondef_ctor_field_in_body"),
     ("tpyc.codegen_cpp.records", "_extract_base_inits"),
-    # the mixed walrus + temps generator cond, rejected by the sgen lowering
-    ("tpyc.codegen_cpp.gen_generators", "_gen_simple_while_generator"),
 })
 
 

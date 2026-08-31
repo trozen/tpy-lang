@@ -529,6 +529,75 @@ class TestSlicedOutShapes:
         assert not fallback
 
 
+class TestSkeletonAuthoredReject:
+    """The mixed walrus + arg-temp `while` condition: the shape the skeleton
+    refuses, but which lowering must nonetheless ADMIT.
+
+    The skeleton check runs after the condition renders, and the leaf queues
+    its temps on the same sink the check inspects -- so it fires on a routed
+    body just as it did on an AST one. Nothing observable about the
+    diagnostic distinguishes the two: a body that fell back re-emits through
+    the AST and raises the same text on the same line, which is why the
+    witnessing corpus case cannot detect a routing regression here."""
+
+    PRELUDE = (_ITER
+               + "def total(*xs: Int32) -> Int32:\n"
+               + "    n = 0\n"
+               + "    for x in xs:\n"
+               + "        n += x\n"
+               + "    return n\n\n")
+
+    MIXED = (PRELUDE
+             + "def counted(limit: Int32) -> Iterator[Int32]:\n"
+             + "    i = 0\n"
+             + "    while (i := i + 1) < total(limit, limit):\n"
+             + "        yield i\n")
+
+    def test_mixed_walrus_temp_cond_routes_then_skeleton_rejects(self):
+        # Routing is the whole claim, so it is asserted twice over, from both
+        # sides. Negative: no body folded, so no fallback reason exists to
+        # explain the diagnostic. Positive: the condition face's witness
+        # survived -- a folded attempt rolls its journal back, so a surviving
+        # witness means this body committed.
+        compiler, modules = _compile(self.MIXED)
+        with pytest.raises(CodeGenError, match="walrus binding") as ei:
+            compiler.generate_code_to_strings(
+                _entry(modules),
+                options=CodeGenOptions(emit_source_comments=False,
+                                       thir_codegen=True))
+        assert not _raised_in_lowering(ei.value)
+        assert not compiler._thir_fallback
+        assert compiler._thir_face_witnesses.get("sgen.while_cond") == 1
+
+    def test_walrus_only_cond_routes(self):
+        # Boundary: only the MIX is refused, so a walrus condition with no
+        # argument temp must keep routing and emitting.
+        src = (self.PRELUDE
+               + "def counted() -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while (i := i + 1) < 4:\n"
+               + "        yield i\n\n"
+               + "def main() -> None:\n"
+               + "    for v in counted():\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.while_cond") == 1
+        assert not fallback
+
+    def test_temp_only_cond_routes(self):
+        # The other half of the boundary: an argument temp with no walrus.
+        src = (self.PRELUDE
+               + "def counted(limit: Int32) -> Iterator[Int32]:\n"
+               + "    i = 0\n"
+               + "    while i < total(limit, limit):\n"
+               + "        i += 1\n"
+               + "        yield i\n\n"
+               + "def main() -> None:\n"
+               + "    for v in counted(2):\n        print(v)\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("sgen.while_cond") == 1
+        assert not fallback
+
+
 class TestForeachCallers:
     """The caller half of the generator track: foreach over a generator call
     / user-iterator name routes via THIRForIterProto (the universal

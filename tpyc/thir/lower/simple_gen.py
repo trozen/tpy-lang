@@ -63,7 +63,7 @@ from ...codegen_cpp.gen_generators import (
 from .context import _ExprResultUse, _ExprUse, _LowerCtx
 from .checks import _narrow_cond_info
 from .expressions import (_lower_expr, _lower_truthy,
-                          _cond_mixed_walrus_temps, _slot_literal_retype,
+                          _slot_literal_retype,
                           _lower_yield_tuple_literal, _lower_copy_record)
 from .functions import (_check_callable_structure, _seed_global_scope,
                         cross_scope_rebind_site)
@@ -263,10 +263,6 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         try:
             cond = _lower_truthy(last.condition, lc, declared, temps_ok=True)
         except ThirUnsupported:
-            return _reject("sgen.cond")
-        if _cond_mixed_walrus_temps(cond):
-            # The AST skeleton raises CodeGenError for mixed walrus + temps
-            # conds; fall back so it does so identically.
             return _reject("sgen.cond")
         _witness("sgen.while_cond")
         pre_l, yv, post_l = _lower_loop_body(last, lc, declared, loop_depth=1)
