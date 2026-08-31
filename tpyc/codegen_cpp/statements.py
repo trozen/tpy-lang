@@ -63,7 +63,6 @@ from .type_resolution import resolve_stmt_binding_type, resolve_stmt_type_cascad
 from .types import resolve_pending_container
 from ..prescan import match_is_none, parse_deref_view_key
 from .match import MatchGenerator
-from .gen_async import POLL_VOID_READY_RETURN
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -71,6 +70,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionGenerator
     from .builtins import BuiltinGenerator
     from .protocols import ProtocolGenerator
+    from .gen_async import AsyncCoroCodegen
 
 
 class StatementGenerator:
@@ -91,6 +91,10 @@ class StatementGenerator:
         self.expressions = expressions
         self.match = MatchGenerator(ctx, types, expressions, self)
         self._reassigned_param_copies: list[tuple[str, TpyType]] = []
+        # Back-reference wired by the resumable-frame emitter's constructor:
+        # a `return` reaching this walk inside a frame body lowers as frame
+        # scaffolding, which lives there.
+        self.gen_async: AsyncCoroCodegen
 
     def _gen_buffered_body(self, out: TextIO, stmts: list[TpyStmt],
                            track_stmt_line: bool = False) -> None:
@@ -410,19 +414,12 @@ class StatementGenerator:
                     self._gen_error_return_call(stmt.expr), indent)
             return f"{indent}{self.expressions.gen_expr(stmt.expr)};\n"
         elif isinstance(stmt, TpyReturn):
-            if self.ctx.in_async_coro_body:
-                return self._make_async_return(stmt, indent)
-            if self.ctx.in_generator_resumable_body:
-                # Generator on the resumable frame: bare return / end ->
-                # StopIteration done, via the while/switch (no __done label).
-                return self._make_generator_resumable_return(stmt, indent)
-            if self.ctx.in_generator_finally_helper:
-                # return inside a helper-based finally body: set the stop flag
-                # and void-return; __next__() checks __finally_stop after the
-                # helper call and emits StopIteration (Python: return in finally
-                # suppresses any pending exception).
-                return (f"{indent}this->__finally_stop = true;\n"
-                        f"{indent}return;\n")
+            if (self.ctx.in_async_coro_body
+                    or self.ctx.in_generator_resumable_body
+                    or self.ctx.in_generator_finally_helper):
+                # Inside a resumable frame the return's shape is frame
+                # scaffolding, not a sync return.
+                return self.gen_async._resumable_return_code(stmt, indent)
             if stmt.value:
                 ret_type = self.ctx.current_return_type
                 # The const twin of an auto_readonly accessor (implicit on
@@ -3510,34 +3507,16 @@ class StatementGenerator:
                       is_const=self.ctx.is_const_storage_source(src)),
             dst_type=bare, dst_form=CppForm.BORROW)
 
-    def _async_return_value_cpp(self, stmt: TpyReturn, ret_type,
+    def _async_return_value_ast(self, stmt: TpyReturn, ret_type,
                                 *, to_borrow: bool,
                                 allow_move: bool = False) -> str:
-        """The value render for `_make_async_return`'s three scaffolding
-        sites (pending-slot store / pre-finally capture / direct ready) --
-        and the resumable THIR seam's return-value chokepoint: a routed
-        body renders the value from its lowered node, the scaffolding
-        around it is shared skeleton either way. `allow_move` is True only
-        at the direct-ready site: the pre-finally sites must copy, because
-        an alias bound before the try can still read the local from the
-        finally body (liveness's alias tracking does not survive the
-        return arm, so the last-use fact alone cannot rule that out)."""
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            # A routed body renders position-blind, replacing only the value
-            # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
-            # it skips are covered at lowering for every admitted return
-            # shape: STORAGE forms need no lift, the generic TRAIT lift is
-            # mirrored (the async_ret_val_or_ptr THIRCoerce), and BORROW
-            # forms reject to AST fallback. The last-use move it skips is
-            # mirrored too (THIRMove in _lower_resumable_return_value) with
-            # the same site rule via allow_move below -- so every
-            # scaffolding site stays identical. Serves ReturnT terminators
-            # AND nested leaf returns (THIRResumableReturn's emit hook
-            # re-enters _make_async_return, which lands back here).
-            # Widening the return-shape gate must revisit this seam -- see
-            # the THIRResumableBody return_values contract.
-            return leaf.render_return_value(stmt, allow_move=allow_move)
+        """The AST path's value render for a `return` inside a resumable
+        frame, at each of the scaffolding sites the frame's return maker
+        holds. `allow_move` is True only at the direct-ready site: the
+        pre-finally sites must copy, because an alias bound before the try
+        can still read the local from the finally body (liveness's alias
+        tracking does not survive the return arm, so the last-use fact
+        alone cannot rule that out)."""
         if isinstance(stmt.value, TpyNoneLiteral):
             # The coroutine return slot is storage form: None needs the
             # target-typed spelling (std::nullopt / monostate), not the
@@ -3585,162 +3564,6 @@ class StatementGenerator:
         if to_borrow:
             expr_cpp = self._async_ret_to_borrow(stmt.value, ret_type, expr_cpp)
         return expr_cpp
-
-    def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
-        """Lower `return v` inside an `async def` body. When a CFG-based
-        finally is active, ctx state routes the return through the
-        pending-return slot: save value + flag, walk finally frames
-        inside the finally's body (above the boundary), transition to
-        the finally entry. AsyncFinallyExit emits the actual Poll::ready
-        at the finally tail. Otherwise emit Poll::ready directly after
-        walking the finally chain."""
-        ret_type = unwrap_ref_type(self.ctx.current_return_type)
-        done_state = self.ctx.async_coro_done_state or "S_DONE"
-        out = io.StringIO()
-        pending_flag = self.ctx.async_pending_return_flag
-        if pending_flag is not None:
-            if stmt.finally_deferred_capture:
-                # The CFG pending-slot store has no deferred-capture recipe;
-                # keep the retract invariant so the restored move mark can
-                # never turn the eager slot store into a moved-from read.
-                # (Liveness suppresses stamps under a suspending finally, so
-                # this is a defensive backstop.)
-                self._retract_deferred_return_mark(stmt)
-            pending_slot = self.ctx.async_pending_return_slot
-            target_state = self.ctx.async_pending_return_target_state
-            boundary = self.ctx.async_pending_return_boundary
-            assert target_state is not None
-            if pending_slot is not None and stmt.value is not None:
-                # The pending slot is typed as the Poll payload (`ret_cpp`),
-                # so a borrow-form return stores its pointer here -- alias-
-                # correct through the suspending finally. For STORAGE
-                # payloads this remains the KNOWN-WRONG eager COPY: a
-                # mutation of the returned local by the suspending finally
-                # is invisible in the returned object (CPython's pending
-                # return aliases), and a @nocopy payload fails to build. A
-                # move is NOT the fix (an alias in the finally would read a
-                # gutted object); the deferral needs a parked discriminant
-                # at AsyncFinallyExit -- tracked in BUGS.md.
-                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                        to_borrow=True)
-                out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
-            out.write(f"{indent}this->{pending_flag} = true;\n")
-            # Walk finally frames pushed by regions INSIDE the CFG-
-            # based finally (above the boundary). Frames pushed by
-            # regions outside run later in AsyncFinallyExit.
-            terminated = self._emit_finally_chain(out, indent,
-                                                   stop_at=boundary)
-            if not terminated:
-                out.write(f"{indent}__state = {target_state};\n")
-                out.write(f"{indent}continue;\n")
-            return out.getvalue()
-        # Walk enclosing finally chain (try/with around an `await` or just a
-        # return inside try/finally). Same machinery as sync _make_return:
-        # the return value must be captured BEFORE the chain runs (Python
-        # evaluates the return expression first, then finally bodies).
-        ret_tmp: str | None = None
-        deferred_materialize: str | None = None
-        ret_cpp = self.ctx.async_coro_return_cpp or "void"
-        if (not isinstance(ret_type, VoidType) and stmt.value is not None
-                and self.ctx.finally_stack):
-            recipe = None
-            if stmt.finally_deferred_capture:
-                recipe = self._deferred_return_recipe(stmt, ret_type)
-                if recipe is None:
-                    self._retract_deferred_return_mark(stmt)
-            if recipe is not None:
-                ptr, capture_rhs, deferred_materialize = recipe
-                chain = io.StringIO()
-                terminated = self._emit_finally_chain(chain, indent)
-                maybe_unused = "[[maybe_unused]] " if terminated else ""
-                out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
-                out.write(chain.getvalue())
-            else:
-                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                        to_borrow=True)
-                ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
-                self.ctx.iter_counter += 1
-                chain = io.StringIO()
-                terminated = self._emit_finally_chain(chain, indent)
-                maybe_unused = "[[maybe_unused]] " if terminated else ""
-                # For deferral-INELIGIBLE reference shapes (declared unions,
-                # tuples, ...) this eager capture is a KNOWN-WRONG pre-chain
-                # COPY: a finally mutation of the local is invisible in the
-                # returned object (CPython's pending return aliases) --
-                # tracked in BUGS.md; a move here would be worse (the
-                # finally can still read the local through an alias).
-                out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
-                out.write(chain.getvalue())
-        else:
-            terminated = self._emit_finally_chain(out, indent)
-        if terminated:
-            return out.getvalue()
-        out.write(f"{indent}__state = {done_state};\n")
-        if isinstance(ret_type, VoidType):
-            out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
-        else:
-            if stmt.value is None:
-                # Non-void async def with bare return -- sema should have
-                # caught this; emit a panic as a guardrail.
-                out.write(
-                    f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
-            else:
-                if deferred_materialize is not None:
-                    out.write(
-                        f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
-                        f"{deferred_materialize});\n")
-                    return out.getvalue()
-                if ret_tmp is None:
-                    # Direct ready: no finally chain follows, so this is the
-                    # one site where a last-use move is unconditionally safe.
-                    expr_cpp = self._async_return_value_cpp(stmt, ret_type,
-                                                            to_borrow=True,
-                                                            allow_move=True)
-                    # Bind to a local first so `std::move` has a typed source:
-                    # `std::move({1, 2, 3})` (braced initializer) doesn't
-                    # compile because the template parameter can't be deduced.
-                    ret_tmp = "__tpy_async_ret"
-                    out.write(f"{indent}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
-                out.write(
-                    f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
-                    f"std::move({ret_tmp}));\n")
-        return out.getvalue()
-
-    def _make_generator_resumable_return(self, stmt: TpyReturn,
-                                         indent: str) -> str:
-        """Lower a `return` inside a generator body lowered onto the
-        resumable frame. Generators reject return-with-value (sema), so
-        this is always a bare `return` meaning "stop iteration": walk the
-        enclosing finally chain, then (if not already terminated) set the
-        done state and return StopIteration. Parallels _make_async_return
-        but with the generator's `expected<T, StopIteration>` done shape.
-
-        When a CFG-based finally is active (ctx.async_pending_return_flag),
-        the return is deferred: set the pending flag, walk finallies inside
-        the boundary, transition the state machine to the finally entry.
-        The finally tail will emit StopIteration once it completes."""
-        out = io.StringIO()
-        pending_flag = self.ctx.async_pending_return_flag
-        if pending_flag is not None:
-            # CFG-based finally (yield-in-finally): defer the StopIteration.
-            target_state = self.ctx.async_pending_return_target_state
-            boundary = self.ctx.async_pending_return_boundary
-            assert target_state is not None
-            # No return-value slot for generators (always StopIteration).
-            out.write(f"{indent}this->{pending_flag} = true;\n")
-            terminated = self._emit_finally_chain(out, indent, stop_at=boundary)
-            if not terminated:
-                out.write(f"{indent}__state = {target_state};\n")
-                out.write(f"{indent}continue;\n")
-            return out.getvalue()
-        terminated = self._emit_finally_chain(out, indent)
-        if terminated:
-            return out.getvalue()
-        done_state = self.ctx.generator_resumable_done_state or "S_DONE"
-        out.write(f"{indent}__state = {done_state};\n")
-        out.write(f"{indent}return ::tpy::make_unexpected("
-                  f"::tpy::StopIteration{{}});\n")
-        return out.getvalue()
 
     def _make_break_continue(self, indent: str, *, is_break: bool) -> str:
         """Generate break/continue, walking finally chain inline first.

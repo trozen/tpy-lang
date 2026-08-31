@@ -6046,13 +6046,6 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     slot's view->owned copy, shared with the sync return tail
     (`_wrap_view_owned_return`), and value-tuple / generic-tuple literals
     (the AST's tuple-literal-targeted arm in `_async_return_value_cpp`)."""
-    if ret.finally_deferred_capture:
-        # The finally-deferred capture (borrow before the chain, move
-        # after) renders inside the HOOK (_make_async_return's own
-        # _deferred_return_recipe) now that the leaf finally bridge mirrors
-        # the frame -- the value render below feeds the recipe through the
-        # seam's return_values table like any leaf return.
-        _witness("res.leaf_deferred_capture")
     if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
     if (lc.prescan.ret_res_container is not None
@@ -6976,9 +6969,11 @@ def _finally_deferred_recipe(
     name = value.name
     # Any rename layer would change the AST's base render (`gen_expr` on the
     # name); none of those shapes is stamped today -- reject rather than
-    # bake the wrong spelling.
+    # bake the wrong spelling. A forwarded proto-param alias has no storage
+    # of its own, so its reads resolve to the backing param -- another rename.
     if (name in lc.narrow.narrowed or name in lc.narrow.spelled
             or name in lc.walrus_slot_locals or name in lc.walrus_predeclared
+            or name in lc.forwarded_map
             or name not in declared):
         return None
     ret = _fn_return_type(lc)
@@ -6986,17 +6981,47 @@ def _finally_deferred_recipe(
     if ret_u is None:
         return None
     indirect = name in lc.pointers
-    cpp = escape_cpp_name(name)
+    # A resumable frame slot reads `(*name)`, which is the local's own
+    # spelling rather than a pointer wrap -- so it rides the capture
+    # expression and a C++-local shadow of the field can still suppress it at
+    # emit. The two are exclusive by frame classification; a name carrying
+    # both would render a double deref, so refuse it rather than guess.
+    frame_slot = name in lc.frame_slots
+    if frame_slot and indirect:
+        return None
+    base = THIRName(result_type=declared[name], name=name, deref=frame_slot,
+                    loc=getattr(value, "loc", None))
     if isinstance(ret_u, OptionalType) and not ret_u.uses_pointer_repr():
         if not indirect:
             return None
-        return THIRFinallyDeferredReturn(capture_cpp=cpp, optional_move=True,
+        return THIRFinallyDeferredReturn(capture=base, optional_move=True,
                                          loc=loc)
     if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
         return None
-    lvalue = f"(*{cpp})" if indirect else cpp
-    return THIRFinallyDeferredReturn(capture_cpp=f"&({lvalue})",
+    return THIRFinallyDeferredReturn(capture=base, indirect=indirect,
                                      optional_move=False, loc=loc)
+
+
+def _resumable_deferred_recipe(ret: TpyReturn, lc: _LowerCtx,
+                               declared: dict
+                               ) -> 'THIRFinallyDeferredReturn | None':
+    """The finally-deferred capture recipe a routed frame's return
+    scaffolding consults, or None when sema did not stamp this return.
+
+    A stamped shape the recipe table does not cover rejects the whole body:
+    routing is already committed by the time the scaffolding runs, so there
+    is nothing left to fall back to there, and the AST's alternative -- an
+    emit-time retraction of the sema move mark -- mutates analysis state that
+    no gate can observe."""
+    if not ret.finally_deferred_capture:
+        return None
+    recipe = _finally_deferred_recipe(ret.value, lc, declared,
+                                      getattr(ret, "loc", None))
+    if recipe is None:
+        note_detail("return.finally_deferred_capture")
+        raise ThirUnsupported(stmt_reject_reason(ret))
+    _witness("res.leaf_deferred_capture")
+    return recipe
 
 
 def _overload_is_elif(outer: TpyIf, inner: TpyIf) -> bool:
@@ -7308,7 +7333,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported("res.leaf_return")
             value = (None if stmt.value is None
                      else _lower_resumable_return_value(stmt, lc, declared))
-            node = THIRResumableReturn(ast_stmt=stmt, value=value, loc=loc)
+            node = THIRResumableReturn(
+                ast_stmt=stmt, value=value, loc=loc,
+                deferred=_resumable_deferred_recipe(stmt, lc, declared))
             lc.nested_returns.append(node)
             _witness("res.nested_return")
             return node

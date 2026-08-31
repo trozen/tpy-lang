@@ -2492,6 +2492,24 @@ def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
         out.write(f"{indent}return {tmp};\n")
 
 
+def _deferred_return_triple(stmt: THIRFinallyDeferredReturn,
+                            state: _EmitState) -> 'tuple[str, str, str]':
+    """(pointer name, capture RHS, materialize expression) for a
+    finally-deferred return, shared by the sync statement emit and the
+    resumable frame's leaf seam.
+
+    The local's own render comes first and the pointer name second, so the
+    counter draws land in the AST recipe's order; both happen before the
+    finally chain renders, which is where the chain's own draws belong."""
+    assert stmt.capture is not None
+    base = _emit_expr(stmt.capture, state)
+    ptr = f"__tpy_retp_{state.iter_counter.draw()}"
+    if stmt.optional_move:
+        return ptr, base, f"::tpy::ptr_to_optional_move({ptr})"
+    lvalue = f"(*{base})" if stmt.indirect else base
+    return ptr, f"&({lvalue})", f"std::move(*{ptr})"
+
+
 def _er_check_inline(tmp: str, state: _EmitState) -> str:
     # The one-line has_value check of the expression-level unwrap
     # (_maybe_error_return_unwrap's three dispositions). The propagate arm
@@ -4291,22 +4309,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}return {value_cpp};\n")
     elif isinstance(stmt, THIRFinallyDeferredReturn):
         # Mirrors _gen_finally_deferred_return: the pointer capture binds
-        # BEFORE the chain (bumping the shared iter counter first, like the
-        # AST's recipe), the materialize move runs after it, and a
+        # BEFORE the chain, the materialize move runs after it, and a
         # terminating finally keeps the [[maybe_unused]] capture -- Python
         # still evaluates the return expression it then overrides.
         _witness_chain("return", state, 0)
-        ptr = f"__tpy_retp_{state.iter_counter.draw()}"
+        ptr, capture_rhs, materialize = _deferred_return_triple(stmt, state)
         chain = io.StringIO()
         terminated = _emit_finally_chain(chain, indent, state)
         maybe_unused = "[[maybe_unused]] " if terminated else ""
-        out.write(f"{indent}{maybe_unused}auto* {ptr} = {stmt.capture_cpp};\n")
+        out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
         out.write(chain.getvalue())
         if terminated:
             _witness("try.chain_terminated")
         else:
-            materialize = (f"::tpy::ptr_to_optional_move({ptr})"
-                           if stmt.optional_move else f"std::move(*{ptr})")
             out.write(f"{indent}return {materialize};\n")
     elif isinstance(stmt, THIRIf):
         _emit_if(out, stmt, indent_level, state)
@@ -4930,6 +4945,20 @@ class ResumableLeafEmitter:
         if not allow_move and isinstance(node, THIRMove):
             node = node.value
         return _emit_expr(node, self._state)
+
+    def render_deferred_return(self, ret) -> 'tuple[str, str, str]':
+        """The (pointer name, capture RHS, materialize expression) triple the
+        frame's return scaffolding binds around its inline finally chain, for
+        a sema-stamped finally-deferred return.
+
+        Lowering rejects a body whose stamped return it cannot build a recipe
+        for, so a routed body always has one: a missing entry is a
+        lowering/seam disagreement and `_lookup`'s raise is the only correct
+        answer. Falling through to the eager arms instead would move storage
+        the finally chain still reads."""
+        node = self._lookup(self._body.deferred_returns, ret,
+                            "deferred return recipe")
+        return _deferred_return_triple(node, self._state)
 
     def render_yield_value(self, ys) -> str:
         """Render a generator `yield v`'s value -- the seam replacement for

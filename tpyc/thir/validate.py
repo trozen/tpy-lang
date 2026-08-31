@@ -570,6 +570,10 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
         _walk(owner, expr)
     for expr in body.yield_values.values():
         _walk(owner, expr)
+    # The deferred-return recipe is consulted by the return scaffolding, which
+    # renders the capture into an `auto* p = ...;` line with no flush point.
+    for stmt in body.deferred_returns.values():
+        _walk(owner, stmt)
     # Flushable seams: the sub-coro emplace, the await operand and the sync
     # for-head source are statement positions where the skeleton flushes
     # temps ahead of the line. Both maps below pool entries from several

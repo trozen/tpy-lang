@@ -372,6 +372,11 @@ class AwaitPayload:
     # complete via its header), or an erased/bound-handle await with no
     # statically-named callee.
     dep_unit: 'tuple[str, str | None] | None' = None
+    # Namespace qualifier of a cross-module callee, recorded where the callee
+    # is RESOLVED. Struct emit re-spells the sub-coro name when the callee has
+    # static-protocol params, and re-deriving the qualifier there would put a
+    # second copy of the resolution rules a merge could drift apart.
+    sub_struct_module_qual: str | None = None
 
 
 @dataclass(frozen=True)

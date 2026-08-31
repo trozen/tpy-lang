@@ -442,7 +442,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 else f"{pad}return"]
     if isinstance(stmt, THIRFinallyDeferredReturn):
         kind = "opt-move" if stmt.optional_move else "move"
-        return [f"{pad}return [finally-deferred {kind}] {stmt.capture_cpp}"]
+        cap = _expr(stmt.capture)
+        return [f"{pad}return [finally-deferred {kind}] "
+                f"{'*' if stmt.indirect else ''}{cap}"]
     if isinstance(stmt, THIRIf):
         lines = [f"{pad}if {_expr(stmt.condition)}:"]
         for s in stmt.then_body:

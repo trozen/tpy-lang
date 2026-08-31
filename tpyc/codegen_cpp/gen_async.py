@@ -26,6 +26,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from ..binding_audit import end_ast_body as _binding_end_body
+from .. import move_audit
 from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
@@ -315,6 +316,13 @@ class AsyncCoroCodegen:
         # the frame-layout plan but runs on the ctx, which has no emitter
         # back-reference -- hand it the builder.
         ctx.frame_layout_builder = self._frame_layout
+        # The linear statement walk reaches a `return` inside a resumable
+        # frame, whose lowering is frame scaffolding and lives here. Written
+        # through the bare parameter rather than `self.statements` so the
+        # write is not read as handing a body-emitter method outward: this
+        # points from the dying module to the surviving one, the direction
+        # that needs no guarding, and it disappears with that module.
+        statements.gen_async = self
         # Set by CodeGenerator after init; the resumable for-loop emit reuses
         # the legacy strategy analysis (`_analyze_for_strategy`).
         self.gen_generators: GeneratorCodegen
@@ -1469,7 +1477,7 @@ class AsyncCoroCodegen:
             else:
                 out.write(f"{INDENT}{ftype} {fname};\n")
 
-        self._emit_resumable_sub_future_fields(out, func, yields)
+        self._emit_resumable_sub_future_fields(out, func, cfg, record_name)
 
         # Generators with helper-based finallies that contain a `return` need a
         # stop flag: the helper sets it so `__next__()` emits StopIteration
@@ -1942,9 +1950,82 @@ class AsyncCoroCodegen:
             return []
         return ["__cancel_pending(false)"]
 
+    def _protocol_template_args_by_suspension(
+            self, func: TpyFunction, record_name: str | None,
+            cfg: 'rcfg.CFG') -> 'dict[int, list[str]]':
+        """The `T_<pname>` template args each suspension's sub-coro struct
+        name needs, keyed by suspension index.
+
+        Rendered here rather than where the callee is resolved, because the
+        spelling must equal what the emplace hands the ctor and the emplace
+        coercions are only decidable under the frame body scope: the `self`
+        -> `__self` rewrite and the frame-slot deref come from that scope,
+        and so do the narrowing facts the coercions read. Entering it is also
+        what keeps `frame_field_shadows` this body's, rather than whatever the
+        previously emitted body left behind.
+
+        The working movable set is seeded from the sema fact because no
+        statement has run yet: the emplace sees every frame local already
+        promoted by its declaration, while this render sees none, and an owned
+        argument would then render as a copy into a temp whose name does not
+        exist at class scope. The deduced capture type is the same either way
+        -- an `Own`-shaped param renders an rvalue whether it moves the source
+        or a materialized copy of it -- so the seed decides only whether the
+        spelling names a temp, never what the field's type comes out as.
+
+        A spelling that disagrees with the emplace fails at the C++ bind:
+        the sub-coro ctor takes `T_<pname>&&`, so a value-category flip does
+        not compile. The exception is a `T` deduced as a const reference,
+        which binds an rvalue and would capture a dangling one -- the seed
+        only ever widens toward moving, never toward borrowing, which is
+        what keeps that shape out of reach rather than any check here.
+
+        Nothing is published from here: the render is discarded, so it drives
+        no emitted move and must not stand as a witness in the cross-path
+        move join. The body walk records the authoritative verdict when it
+        renders the same argument at the emplace.
+
+        The leaf emitter is installed for the same reason the body scope is:
+        a routed body renders its emplace arguments off its own lowered
+        nodes, so the capture type has to be read from the same author or the
+        two spellings can only agree by accident.
+        """
+        pending = [y for y in cfg.yield_sites
+                   if y.payload.prebuilt_slot is None
+                   and self._protocol_param_positions(y.payload.operand_expr)]
+        if not pending:
+            return {}
+        # Lowering must run while the move audit is still live: this is the
+        # first thing that triggers it for the frame, and the audit records
+        # its THIR-side verdicts there, not at render time. Constructing the
+        # leaf inside the window below would drop every verdict for this
+        # function, and an unrecorded node reads as "not asked" rather than
+        # as a divergence, so nothing would report it.
+        #
+        # The suppression below is load-bearing, not hygiene: the join folds
+        # per node with OR, and the seeded set only ever widens toward
+        # moving, so a verdict recorded from this discarded render would
+        # stick and fail a case the real body walk renders correctly.
+        leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
+        args: dict[int, list[str]] = {}
+        was_auditing = move_audit.enabled()
+        move_audit.set_enabled(False)
+        try:
+            with self._resumable_frame_ctx(func, record_name):
+                self.ctx.movable_locals |= self.ctx.sema_movable_locals
+                with self._thir_leaf_scope(leaf):
+                    for y in pending:
+                        extra = self._extra_template_args_for_await(
+                            y.payload.operand_expr)
+                        if extra:
+                            args[y.suspension_index] = extra
+        finally:
+            move_audit.set_enabled(was_auditing)
+        return args
+
     def _emit_resumable_sub_future_fields(
-            self, out: "TextIO", func: TpyFunction,
-            yields: 'list[rcfg.Yield]') -> None:
+            self, out: "TextIO", func: TpyFunction, cfg: 'rcfg.CFG',
+            record_name: str | None = None) -> None:
         """Sub-future frame fields -- async-only (policy seam). One per
         Yield (suspension_index = field ordinal): Inline ->
         optional<sub-coro struct>, Erased -> optional<value awaitable>,
@@ -1958,13 +2039,24 @@ class AsyncCoroCodegen:
         state = rcfg.resumable_state(func)
         struct_names = state.async_with_struct_names
         for_struct_names = state.async_for_struct_names
-        for y in yields:
+        protocol_args = self._protocol_template_args_by_suspension(
+            func, record_name, cfg)
+        for y in cfg.yield_sites:
             p = y.payload
             if p.prebuilt_slot is not None:
                 # Bound-coroutine await: polls the handle's own frame
                 # field; no dedicated sub-future slot.
                 continue
             sub_cpp = p.sub_field_cpp_type
+            extra = protocol_args.get(y.suspension_index)
+            if extra:
+                sub_cpp = self._sub_struct_qualname(
+                    p.await_node.awaited_method_owner_type,
+                    p.await_node.awaited_async_func_name,
+                    getattr(p.await_node.value, "inferred_type_args", None),
+                    module_qual=p.sub_struct_module_qual,
+                    extra_template_args=extra,
+                    loc=p.await_node.loc)
             if p.async_with_kind is not None and p.async_with_ctx_n is not None:
                 entry = struct_names.get(p.async_with_ctx_n)
                 if entry is not None:
@@ -2090,26 +2182,10 @@ class AsyncCoroCodegen:
                                  CtxTempSink, ResumableLeafEmitter)
 
         def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
-            # Nested leaf return: the same dispatch as the AST gen_stmt
-            # return arm (both flags are set by _resumable_return_lowering
-            # for the whole body emission). The value render inside re-enters
-            # the leaf seam's return_values table via
-            # _async_return_value_cpp.
-            indent = INDENT * indent_level
-            if self.ctx.in_async_coro_body:
-                return self.statements._make_async_return(stmt, indent)
-            if self.ctx.in_generator_resumable_body:
-                return self.statements._make_generator_resumable_return(
-                    stmt, indent)
-            if self.ctx.in_generator_finally_helper:
-                # Mirror of the AST return arm's helper branch: set the stop
-                # flag and void-return; __next__() checks __finally_stop
-                # after the helper call (return in finally suppresses any
-                # pending exception).
-                return (f"{indent}this->__finally_stop = true;\n"
-                        f"{indent}return;\n")
-            raise CodeGenError(
-                "resumable leaf return outside a resumable body emission")
+            # Nested leaf return: the same scaffolding a ReturnT terminator
+            # gets. The value render inside re-enters the leaf seam's
+            # return_values table via _async_return_value_cpp.
+            return self._resumable_return_code(stmt, INDENT * indent_level)
 
         return ResumableLeafEmitter(
             rb,
@@ -2141,6 +2217,234 @@ class AsyncCoroCodegen:
             yield
         finally:
             self.ctx.thir_resumable_leaf = old
+
+    # =====================================================================
+    # `return` inside a resumable frame body (shape-dispatched scaffolding).
+    # =====================================================================
+
+    def _resumable_return_code(self, stmt: TpyReturn, indent: str) -> str:
+        """Lower a source-level `return` for the frame shape currently being
+        emitted -- the flags `_resumable_return_lowering` and the generator
+        finally-helper scope set around the whole body emission."""
+        if self.ctx.in_async_coro_body:
+            return self._make_async_return(stmt, indent)
+        if self.ctx.in_generator_resumable_body:
+            # Generator on the resumable frame: bare return / end ->
+            # StopIteration done, via the while/switch (no __done label).
+            return self._make_generator_resumable_return(stmt, indent)
+        if self.ctx.in_generator_finally_helper:
+            # return inside a helper-based finally body: set the stop flag
+            # and void-return; __next__() checks __finally_stop after the
+            # helper call and emits StopIteration (Python: return in finally
+            # suppresses any pending exception).
+            return (f"{indent}this->__finally_stop = true;\n"
+                    f"{indent}return;\n")
+        raise CodeGenError(
+            "internal: resumable return outside a resumable body emission")
+
+    def _async_return_value_cpp(self, stmt: TpyReturn, ret_type,
+                                *, to_borrow: bool,
+                                allow_move: bool = False) -> str:
+        """The value render for `_make_async_return`'s three scaffolding
+        sites (pending-slot store / pre-finally capture / direct ready) --
+        and the resumable THIR seam's return-value chokepoint: a routed
+        body renders the value from its lowered node, the scaffolding
+        around it is shared skeleton either way. `allow_move` is True only
+        at the direct-ready site: the pre-finally sites must copy, because
+        an alias bound before the try can still read the local from the
+        finally body (liveness's alias tracking does not survive the
+        return arm, so the last-use fact alone cannot rule that out)."""
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is not None:
+            # A routed body renders position-blind, replacing only the value
+            # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
+            # it skips are covered at lowering for every admitted return
+            # shape: STORAGE forms need no lift, the generic TRAIT lift is
+            # mirrored (the async_ret_val_or_ptr THIRCoerce), and BORROW
+            # forms reject to AST fallback. The last-use move it skips is
+            # mirrored too (THIRMove in _lower_resumable_return_value) with
+            # the same site rule via `allow_move` -- so every scaffolding
+            # site stays identical. Serves ReturnT terminators AND nested
+            # leaf returns (THIRResumableReturn's emit hook re-enters
+            # _make_async_return, which lands back here). Widening the
+            # return-shape gate must revisit this seam -- see the
+            # THIRResumableBody return_values contract.
+            return leaf.render_return_value(stmt, allow_move=allow_move)
+        return self.statements._async_return_value_ast(
+            stmt, ret_type, to_borrow=to_borrow, allow_move=allow_move)
+
+    def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
+        """Lower `return v` inside an `async def` body. When a CFG-based
+        finally is active, ctx state routes the return through the
+        pending-return slot: save value + flag, walk finally frames
+        inside the finally's body (above the boundary), transition to
+        the finally entry. AsyncFinallyExit emits the actual Poll::ready
+        at the finally tail. Otherwise emit Poll::ready directly after
+        walking the finally chain."""
+        ret_type = unwrap_ref_type(self.ctx.current_return_type)
+        done_state = self.ctx.async_coro_done_state or "S_DONE"
+        out = io.StringIO()
+        pending_flag = self.ctx.async_pending_return_flag
+        if pending_flag is not None:
+            if (stmt.finally_deferred_capture
+                    and self.ctx.thir_resumable_leaf is None):
+                # The CFG pending-slot store has no deferred-capture recipe;
+                # keep the retract invariant so the restored move mark can
+                # never turn the eager slot store into a moved-from read.
+                # (Liveness suppresses stamps under a suspending finally, so
+                # this is a defensive backstop.) A routed body needs no
+                # retraction: its store renders through the seam without
+                # `allow_move`, which strips the lowered move outright, so
+                # the mark has no reader left to mislead.
+                self.statements._retract_deferred_return_mark(stmt)
+            pending_slot = self.ctx.async_pending_return_slot
+            target_state = self.ctx.async_pending_return_target_state
+            boundary = self.ctx.async_pending_return_boundary
+            assert target_state is not None
+            if pending_slot is not None and stmt.value is not None:
+                # The pending slot is typed as the Poll payload (`ret_cpp`),
+                # so a borrow-form return stores its pointer here -- alias-
+                # correct through the suspending finally. For STORAGE
+                # payloads this remains the KNOWN-WRONG eager COPY: a
+                # mutation of the returned local by the suspending finally
+                # is invisible in the returned object (CPython's pending
+                # return aliases), and a @nocopy payload fails to build. A
+                # move is NOT the fix (an alias in the finally would read a
+                # gutted object); the deferral needs a parked discriminant
+                # at AsyncFinallyExit -- tracked in BUGS.md.
+                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                        to_borrow=True)
+                out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
+            out.write(f"{indent}this->{pending_flag} = true;\n")
+            # Walk finally frames pushed by regions INSIDE the CFG-
+            # based finally (above the boundary). Frames pushed by
+            # regions outside run later in AsyncFinallyExit.
+            terminated = emit_prims.emit_finally_chain(self.ctx, out, indent,
+                                                       stop_at=boundary)
+            if not terminated:
+                out.write(f"{indent}__state = {target_state};\n")
+                out.write(f"{indent}continue;\n")
+            return out.getvalue()
+        # Walk enclosing finally chain (try/with around an `await` or just a
+        # return inside try/finally). Same machinery as sync _make_return:
+        # the return value must be captured BEFORE the chain runs (Python
+        # evaluates the return expression first, then finally bodies).
+        ret_tmp: str | None = None
+        deferred_materialize: str | None = None
+        ret_cpp = self.ctx.async_coro_return_cpp or "void"
+        if (not isinstance(ret_type, VoidType) and stmt.value is not None
+                and self.ctx.finally_stack):
+            recipe = None
+            if stmt.finally_deferred_capture:
+                leaf = self.ctx.thir_resumable_leaf
+                if leaf is not None:
+                    # A routed body's stamped return ALWAYS has a recipe:
+                    # lowering rejects the whole body when it cannot build
+                    # one, because routing is already committed here and the
+                    # AST's alternative (retracting the sema move mark at
+                    # emit) mutates analysis state.
+                    recipe = leaf.render_deferred_return(stmt)
+                else:
+                    recipe = self.statements._deferred_return_recipe(
+                        stmt, ret_type)
+                    if recipe is None:
+                        self.statements._retract_deferred_return_mark(stmt)
+            if recipe is not None:
+                ptr, capture_rhs, deferred_materialize = recipe
+                chain = io.StringIO()
+                terminated = emit_prims.emit_finally_chain(self.ctx, chain,
+                                                           indent)
+                maybe_unused = "[[maybe_unused]] " if terminated else ""
+                out.write(f"{indent}{maybe_unused}auto* {ptr} = {capture_rhs};\n")
+                out.write(chain.getvalue())
+            else:
+                expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                        to_borrow=True)
+                ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
+                self.ctx.iter_counter += 1
+                chain = io.StringIO()
+                terminated = emit_prims.emit_finally_chain(self.ctx, chain,
+                                                           indent)
+                maybe_unused = "[[maybe_unused]] " if terminated else ""
+                # For deferral-INELIGIBLE reference shapes (declared unions,
+                # tuples, ...) this eager capture is a KNOWN-WRONG pre-chain
+                # COPY: a finally mutation of the local is invisible in the
+                # returned object (CPython's pending return aliases) --
+                # tracked in BUGS.md; a move here would be worse (the
+                # finally can still read the local through an alias).
+                out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
+                out.write(chain.getvalue())
+        else:
+            terminated = emit_prims.emit_finally_chain(self.ctx, out, indent)
+        if terminated:
+            return out.getvalue()
+        out.write(f"{indent}__state = {done_state};\n")
+        if isinstance(ret_type, VoidType):
+            out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
+        else:
+            if stmt.value is None:
+                # Non-void async def with bare return -- sema should have
+                # caught this; emit a panic as a guardrail.
+                out.write(
+                    f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
+            else:
+                if deferred_materialize is not None:
+                    out.write(
+                        f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
+                        f"{deferred_materialize});\n")
+                    return out.getvalue()
+                if ret_tmp is None:
+                    # Direct ready: no finally chain follows, so this is the
+                    # one site where a last-use move is unconditionally safe.
+                    expr_cpp = self._async_return_value_cpp(stmt, ret_type,
+                                                            to_borrow=True,
+                                                            allow_move=True)
+                    # Bind to a local first so `std::move` has a typed source:
+                    # `std::move({1, 2, 3})` (braced initializer) doesn't
+                    # compile because the template parameter can't be deduced.
+                    ret_tmp = "__tpy_async_ret"
+                    out.write(f"{indent}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
+                out.write(
+                    f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
+                    f"std::move({ret_tmp}));\n")
+        return out.getvalue()
+
+    def _make_generator_resumable_return(self, stmt: TpyReturn,
+                                         indent: str) -> str:
+        """Lower a `return` inside a generator body lowered onto the
+        resumable frame. Generators reject return-with-value (sema), so
+        this is always a bare `return` meaning "stop iteration": walk the
+        enclosing finally chain, then (if not already terminated) set the
+        done state and return StopIteration. Parallels _make_async_return
+        but with the generator's `expected<T, StopIteration>` done shape.
+
+        When a CFG-based finally is active (ctx.async_pending_return_flag),
+        the return is deferred: set the pending flag, walk finallies inside
+        the boundary, transition the state machine to the finally entry.
+        The finally tail will emit StopIteration once it completes."""
+        out = io.StringIO()
+        pending_flag = self.ctx.async_pending_return_flag
+        if pending_flag is not None:
+            # CFG-based finally (yield-in-finally): defer the StopIteration.
+            target_state = self.ctx.async_pending_return_target_state
+            boundary = self.ctx.async_pending_return_boundary
+            assert target_state is not None
+            # No return-value slot for generators (always StopIteration).
+            out.write(f"{indent}this->{pending_flag} = true;\n")
+            terminated = emit_prims.emit_finally_chain(self.ctx, out, indent,
+                                                       stop_at=boundary)
+            if not terminated:
+                out.write(f"{indent}__state = {target_state};\n")
+                out.write(f"{indent}continue;\n")
+            return out.getvalue()
+        terminated = emit_prims.emit_finally_chain(self.ctx, out, indent)
+        if terminated:
+            return out.getvalue()
+        done_state = self.ctx.generator_resumable_done_state or "S_DONE"
+        out.write(f"{indent}__state = {done_state};\n")
+        out.write(f"{indent}return ::tpy::make_unexpected("
+                  f"::tpy::StopIteration{{}});\n")
+        return out.getvalue()
 
     # =====================================================================
     # CFG-based state-machine emitter (replaces _emit_switch_body).
@@ -2634,6 +2938,22 @@ class AsyncCoroCodegen:
             extra_template_args=extra_template_args, loc=loc)
 
 
+    def _protocol_param_positions(self, call: TpyExpr) -> list[int]:
+        """Callee param positions carrying a static protocol -- one extra
+        `T_<pname>` template arg on the sub-coro struct each.
+
+        A pure signature test, so it settles whether a suspension needs the
+        (rendering) template-arg computation at all without entering a body
+        scope.
+        """
+        if not isinstance(call, (TpyCall, TpyMethodCall)):
+            return []
+        fi = call.resolved_function_info
+        if fi is None or not fi.params:
+            return []
+        return [i for i, p in enumerate(fi.params)
+                if self.functions.protocols.is_static_protocol_param(p.type)]
+
     def _extra_template_args_for_await(self, call: TpyExpr) -> list[str]:
         """Compute the per-static-protocol `T_<pname>` template-arg
         spellings for the sub-coro struct of an inline await.
@@ -2647,29 +2967,25 @@ class AsyncCoroCodegen:
         via `::tpy::await_arg_capture_t<decltype((arg))>` (the double parens
         carry value category) rather than `remove_cvref_t`, which decays the
         reference and would break the in-place lvalue bind.
-        Temps queued by gen_expr are discarded -- decltype doesn't
-        evaluate, and the same arg's gen_expr will re-run at emplace time.
+
+        The arguments go through the SAME render the emplace uses -- the whole
+        list, positionally, so a routed body reads the spelling off its own
+        lowered nodes. The field type has to name exactly what the ctor
+        receives, so a coercion applied at one site and not the other (the
+        narrowed-Optional unwrap, an `Own[T]` move-out) is an ill-formed C++
+        build, not a style difference. Temps queued by that render are
+        discarded -- decltype doesn't evaluate, and the same args re-render at
+        emplace time.
         """
-        if not isinstance(call, (TpyCall, TpyMethodCall)):
+        positions = self._protocol_param_positions(call)
+        if not positions:
             return []
-        fi = call.resolved_function_info
-        if fi is None or not fi.params:
-            return []
-        if not any(
-                self.functions.protocols.is_static_protocol_param(p.type)
-                for p in fi.params):
-            return []
-        out: list[str] = []
-        checkpoint = self.ctx.temps.checkpoint()
-        for i, pinfo in enumerate(fi.params):
-            if not self.functions.protocols.is_static_protocol_param(pinfo.type):
-                continue
+        for i in positions:
             if i >= len(call.args):
                 # Defensive: callee param without a corresponding arg
                 # at the call site (defaults aren't supported on async
                 # static-protocol params today; bail rather than emit
                 # a malformed template arg).
-                self.ctx.temps.rollback_to(checkpoint)
                 return []
             arg = call.args[i]
             unwrapped = arg
@@ -2682,19 +2998,19 @@ class AsyncCoroCodegen:
                 # field. Reject cleanly rather than emit ill-formed C++.
                 # Binding it to a typed local first does not yet work either
                 # (the collection-literal-in-coro gap, BUGS.md).
-                self.ctx.temps.rollback_to(checkpoint)
                 raise CodeGenError(
                     "awaiting a coroutine with a protocol-typed parameter "
                     "does not yet support a collection literal argument; pass "
                     "a named iterable instead",
                     loc=getattr(arg, "loc", None) or call.loc)
-            arg_cpp = self.expressions.gen_expr(arg)
-            # `await_arg_capture_t` models the callee factory's `T&&` deduction:
-            # lvalue arg -> `U&` (borrow), rvalue -> `U` (own). `decltype((arg))`
-            # (double parens) carries the value category.
-            out.append(f"::tpy::await_arg_capture_t<decltype(({arg_cpp}))>")
+        checkpoint = self.ctx.temps.checkpoint()
+        rendered = self._emplace_args(call)
         self.ctx.temps.rollback_to(checkpoint)
-        return out
+        # `await_arg_capture_t` models the callee factory's `T&&` deduction:
+        # lvalue arg -> `U&` (borrow), rvalue -> `U` (own). `decltype((arg))`
+        # (double parens) carries the value category.
+        return [f"::tpy::await_arg_capture_t<decltype(({rendered[i]}))>"
+                for i in positions]
 
 
     def _record_with_target_payloads(self, stmt: TpyWith,
@@ -3155,6 +3471,7 @@ class AsyncCoroCodegen:
                 prebuilt_slot=await_node.awaited_prebuilt_slot,
             )
         dep_unit: 'tuple[str, str | None] | None' = None
+        module_qual: str | None = None
         if await_node.awaited_async_func_name is not None:
             mode = rcfg.AwaitMode.INLINE
             inferred_type_args = getattr(
@@ -3163,7 +3480,6 @@ class AsyncCoroCodegen:
             # operand is a TpyMethodCall whose receiver is the module
             # (no class owner). Use the module qualifier to namespace
             # the sub-coro struct name.
-            module_qual = None
             if (isinstance(await_node.value, TpyMethodCall)
                     and await_node.awaited_method_owner_type is None):
                 module_qual = (await_node.value.user_module_call
@@ -3179,14 +3495,16 @@ class AsyncCoroCodegen:
                 if (fi is not None and fi.originating_module is not None
                         and fi.originating_module != cur):
                     module_qual = fi.originating_module
-            extra_template_args = self._extra_template_args_for_await(
-                await_node.value)
+            # The `T_<pname>` args for a static-protocol callee are NOT added
+            # here: they must be spelled from the same render the emplace
+            # passes to the ctor, and that render is only decidable under the
+            # body scope (narrowing, move-out) which does not exist yet at CFG
+            # build. Struct emit re-spells the name with them.
             sub_cpp = self._sub_struct_qualname(
                 await_node.awaited_method_owner_type,
                 await_node.awaited_async_func_name,
                 inferred_type_args,
                 module_qual=module_qual,
-                extra_template_args=extra_template_args,
                 loc=await_node.loc)
             # Same-module callee only -- a cross-module struct is already
             # complete via its header, and the bare-name unit key would match a
@@ -3229,6 +3547,7 @@ class AsyncCoroCodegen:
             host_stmt=host_stmt,
             await_node=await_node,
             dep_unit=dep_unit,
+            sub_struct_module_qual=module_qual,
         )
 
     def _compute_case_entries(self, cfg: 'rcfg.CFG') -> dict[int, _StateLabel]:
@@ -4238,12 +4557,24 @@ class AsyncCoroCodegen:
                 self._emit_yield_terminator(out, body_indent, t, func)
                 return
             if isinstance(t, rcfg.ReturnT):
-                # gen_stmt routes a TpyReturn inside async-coro context
-                # through _make_async_return, which walks the active
-                # finally chain (ctx.finally_stack) before emitting the
-                # Poll<T>::ready(...). A routed body swaps only the VALUE
-                # render inside that scaffolding (_async_return_value_cpp).
-                self.statements.gen_stmt(out, t.return_stmt)
+                # The return maker walks the active finally chain
+                # (ctx.finally_stack) before emitting the Poll<T>::ready(...);
+                # a routed body swaps only the VALUE render inside that
+                # scaffolding (_async_return_value_cpp). The surrounding
+                # comment/temp emission mirrors the linear statement walk --
+                # minus its top-level line tracking, which is module-init
+                # state and module init never emits a resumable frame.
+                stmt_indent = self.ctx.indent()
+                comment_loc = (
+                    None if getattr(t.return_stmt, "no_source_comment", False)
+                    else t.return_stmt.loc)
+                self.ctx.emit_inline_comments(out, comment_loc, stmt_indent)
+                code = self._resumable_return_code(t.return_stmt, stmt_indent)
+                self.ctx.emit_source_comment(out, comment_loc, stmt_indent)
+                # The maker's renders can queue temps; they belong ahead of
+                # the code that reads them, so flush only after it is built.
+                self.ctx.temps.flush(out, stmt_indent)
+                out.write(code)
                 return
             if isinstance(t, rcfg.RaiseT):
                 # Emit the raise as an ordinary TpyRaise statement; the

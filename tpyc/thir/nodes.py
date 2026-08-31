@@ -1943,9 +1943,12 @@ class THIRResumableReturn(THIRStmt):
     (`render_return_value`, keyed by id(ast_stmt)) for the value render, the
     same table entry ReturnT terminators use. `value` is that lowered value
     (None for a bare return); the lowering registers it into the body's
-    `return_values` table -- it is not read at emit."""
+    `return_values` table -- it is not read at emit. `deferred` carries the
+    same for a sema-stamped finally-deferred return, registered into
+    `deferred_returns`."""
     ast_stmt: object
     value: 'THIRExpr | None' = None
+    deferred: 'THIRStmt | None' = None
 
 
 @dataclass(frozen=True)
@@ -1986,13 +1989,22 @@ class THIRFinallyDeferredReturn(THIRStmt):
     `_gen_finally_deferred_return`): bind a pointer to the local's storage
     BEFORE the inline finally chain, materialize the value out of it AFTER,
     so finally mutations of the local stay visible in the returned object
-    (CPython's pending return is an alias). `capture_cpp` is the pointer RHS
-    (`&(name)` / `&((*name))` for the Own[T] shape, the bare pointer local
-    for the storage-Optional shape); `optional_move` picks the materialize
-    arm (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). The
-    `__tpy_retp_N` name draws from the emit-side iter counter so the two
-    paths' counter draws stay in step."""
-    capture_cpp: str = ""
+    (CPython's pending return is an alias).
+
+    `capture` is the local's OWN render, not the pointer RHS: a resumable
+    frame slot spells `(*name)`, and leaving that render to emit is what lets
+    a C++-local shadow of the frame field suppress the peel exactly where the
+    AST's does. `indirect` adds the `(*p)` lvalue wrap a pointer-bound local
+    needs before the address-of; `optional_move` picks the materialize arm
+    (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). The `__tpy_retp_N`
+    name draws from the emit-side iter counter so the two paths' counter
+    draws stay in step.
+
+    A resumable frame carries the same node through its leaf seam rather than
+    emitting it: the Poll wrap and done-state transition around the capture
+    are skeleton emission in every position."""
+    capture: 'THIRExpr | None' = None
+    indirect: bool = False
     optional_move: bool = False
 
 
@@ -3377,6 +3389,12 @@ class THIRResumableBody:
     # position keeps its THIRFrameNestedDef marker.
     nested_def_bodies: 'Mapping[int, tuple[THIRStmt, ...]]' = (
         field(default_factory=dict))
+    # Sema-stamped finally-deferred returns (keyed by id() of the TpyReturn):
+    # the capture recipe the skeleton's return scaffolding consults. Present
+    # for EVERY stamped return of a routed body -- lowering rejects the body
+    # when the recipe table does not cover the shape -- so the seam never
+    # decides anything at emit and a missing entry is a disagreement.
+    deferred_returns: 'Mapping[int, THIRStmt]' = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

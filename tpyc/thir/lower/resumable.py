@@ -186,6 +186,7 @@ from .statements import (
     _nested_def_entry_reject,
     _nested_def_lowering_scope,
     _persistent_alias_name,
+    _resumable_deferred_recipe,
     _var_decl_type,
 )
 
@@ -1796,6 +1797,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     suspend_exprs: dict[int, THIRExpr] = {}
     region_exprs: dict[int, THIRExpr] = {}
     match_dispatches: dict[int, THIRStmt] = {}
+    deferred_returns: dict[int, THIRStmt] = {}
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
@@ -2078,6 +2080,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # contract).
             return_values[id(ret)] = _lower_resumable_return_value(
                 ret, lc, declared)
+            deferred = _resumable_deferred_recipe(ret, lc, declared)
+            if deferred is not None:
+                deferred_returns[id(ret)] = deferred
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
             leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
@@ -2505,6 +2510,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     for nr in lc.nested_returns:
         if nr.value is not None:
             return_values[id(nr.ast_stmt)] = nr.value
+        if nr.deferred is not None:
+            deferred_returns[id(nr.ast_stmt)] = nr.deferred
 
     if saw_try_region:
         _witness("res.try_region")
@@ -2522,7 +2529,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         return_values=return_values, yield_values=yield_values,
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
         match_dispatches=match_dispatches,
-        nested_def_bodies=nested_def_bodies)
+        nested_def_bodies=nested_def_bodies,
+        deferred_returns=deferred_returns)
     validate_resumable_body(func.name, res_body)
     publish_binding_facts(lc)
     return res_body

@@ -200,12 +200,13 @@ wraps, state transitions). The ONLY places it renders user source are:
     name -- structural.
 
 (f) Returns inside regions: routed through `_make_async_return`
-    (statements.py:3907) which already delegates the VALUE render to the
-    seam (`_async_return_value_cpp` :3879-3895 ->
-    `leaf.render_return_value`). Two scaffolding paths become reachable
+    (gen_async.py, relocated there 2026-08-31 with the leaf-dispatch half
+    of `_async_return_value_cpp` -- both used to live in statements.py,
+    which the cutover deletes) which already delegates the VALUE render to
+    the seam (`_async_return_value_cpp` -> `leaf.render_return_value`). Two scaffolding paths become reachable
     for routed bodies once regions admit: the pending-slot store
-    (`to_borrow=False`, :3924-3927) and the pre-finally `__tpy_async_ret_N`
-    capture (:3944-3954). For the admitted return shapes (value scalars,
+    (`to_borrow=False`) and the pre-finally `__tpy_async_ret_N`
+    capture. For the admitted return shapes (value scalars,
     value-opt scalars, value tuples, container storage) both are
     render-identical (the `_wrap_view_to_storage` / `_async_ret_to_borrow`
     wraps are no-ops for them -- the latter short-circuits on anything but
@@ -223,7 +224,12 @@ wraps, state transitions). The ONLY places it renders user source are:
     / `_make_generator_resumable_return` via
     `_EmitState.resumable_return_hook` -- scaffolding stays skeleton in
     every position, the value rides the same `return_values` table as
-    ReturnT terminators. GENERATOR helper returns route too (the hook's
+    ReturnT terminators. Refined 2026-08-31: the scaffolding is still
+    skeleton everywhere, but a routed body's finally-DEFERRED capture no
+    longer reaches back into the AST recipe for it -- the recipe is decided
+    at lowering and read through `render_deferred_return`, because deciding
+    it at the hook offers no way to reject, and the AST's alternative there
+    is an emit-time mutation of sema state. GENERATOR helper returns route too (the hook's
     in_generator_finally_helper arm renders the fixed __finally_stop
     pair); ASYNC helper returns stay a named reject
     (`res.finally_return`, the Poll-replay render); an early-return

@@ -2012,6 +2012,56 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: the cutover gate's OPEN set emptied** (2026-08-31, branch
+  thir-discharge-gen-async-open; gate OPEN 4 -> 0, dial unchanged at
+  3765/3765, suite 13423 green with full exec, zero snapshots regenerated).
+  All four survivors were in `gen_async.py`. Two lanes:
+  (1) The resumable return scaffolding (`_make_async_return`,
+  `_make_generator_resumable_return`, the leaf-dispatch half of
+  `_async_return_value_cpp`) moved out of the dying `statements.py` into the
+  surviving `gen_async.py`, and the finally-deferred return recipe DECISION
+  moved from AST emit time to lowering time -- a new `_resumable_deferred_recipe`
+  rejects the whole body for a stamped shape the mirror cannot spell, which
+  is available at lowering and is not available at the hook, where routing is
+  already committed. The sync arm had made exactly this choice already; the
+  resumable arm had opted out. New seam `ResumableLeafEmitter.render_deferred_return`;
+  the sync emit and the seam were unified onto one `_deferred_return_triple`.
+  The AST recipe and its emit-time retraction of `all_last_uses` stay behind
+  in the dying module, now `leaf is None`-guarded.
+  (2) `_extra_template_args_for_await` moved from CFG-build time to struct-emit
+  time and now spells the sub-coro capture type from the EMPLACE render rather
+  than a bare `gen_expr`, then routes through the existing emplace-argument
+  seam. That repaired TWO pre-existing wrong-code defects nobody had looked
+  for -- a narrowed `Optional` argument and an `Own[<static protocol>]`
+  argument each made the frame field's deduced type disagree with what the
+  emplace passed, ill-formed C++ on valid Python CPython runs. Both were
+  invisible because all nine corpus cases render the two spellings
+  identically; the equality now holds by construction, through one chokepoint.
+  **Neither defect could be covered by a corpus case, for DIFFERENT reasons
+  -- do not collapse them.** The `Own[<static protocol>]` shape has no
+  lowering at all (the static-protocol resumable param rung), so its case
+  falls back, and with zero markers a falling-back case fails the ratchet.
+  The narrowed-`Optional` shape is not blocked by any rung: its case fails
+  the BYTE-DIFF, which no marker exempts. Coverage is therefore units plus
+  manual build probes, and the two shapes unblock independently.
+  A cutover consequence of the first: once the fallback is gone, an
+  `Own[<static protocol>]` coro param turns valid Python into an internal
+  error rather than a diagnostic, so `AST_ONLY_DIAGNOSTICS` will not flag it.
+  **One thing the deletion must now also strip, and no gate reports it:**
+  `gen_async.py` -- which SURVIVES -- imports `tpyc/move_audit.py`, which the
+  cutover DELETES, for the suppression around the discarded capture render.
+  Before this wave the only `codegen_cpp` importer of it was `expressions.py`,
+  which dies anyway. The reverse-import gate cannot see this: it is scoped to
+  the four body emitters, not to the detector modules that go with them. The
+  two go together -- the audit is a dual-path join and is meaningless once
+  there is one author -- so the deletion removes the import and its two calls
+  along with the module, but it has to know to.
+  Also surfaced and filed, not fixed: a `return <value>` in a NON-suspending
+  async finally helper emits into the void helper (THIR mirrors it, so it
+  survives the cutover), and a `T | None` local from an `Own[T] | None` call
+  binds a pointer into a payload-typed slot (AST-only, so it dies AT the
+  cutover -- but adding a case for it before then would bake the miscompile
+  into a committed snapshot).
 - **Landed: the six-forks batch** (2026-08-21, branch thir-forks-0821; 6
   flips, dial 3627 -> 3633; fallback bodies 387 -> ~381 user; cutover gate
   OPEN 5 -> 4). The 2026-08-20 handoff's six "decision-bound" forks were
@@ -5030,14 +5080,24 @@ by reading the item, never by trusting a sibling's summary of it.
    confirmed by an emit-side census that spied the AST body arms directly: 0
    AST-arm body emissions, 0 AST ctor-tail extractions. The CPython glue
    emitter depends only on skeleton modules and needs no porting.
-4. **Skeleton call-site inventory: 4 OPEN** (from 34, then 5). The scan is
-   COMMITTED as `tpyc/codegen_cpp/test_cutover_gate.py`, so this number is
+4. **Skeleton call-site inventory: 0 OPEN -- DISCHARGED 2026-08-31.** The scan
+   is COMMITTED as `tpyc/codegen_cpp/test_cutover_gate.py`, so this number is
    reproducible rather than re-derived -- which is the fix for the grep that
-   once priced this at 2 against a real 26. All four are in `gen_async.py`;
-   three are ONE behavior (the async-return recipe) whose home is wrong rather
-   than whose logic is missing, ~320 lines of relocation. The fourth,
-   `_extra_template_args_for_await`, dispatches an arbitrary user expression on
-   the routed path and is the only genuine routing work.
+   once priced this at 2 against a real 26. The count went 34 -> 5 -> 4 -> 0,
+   and the test now asserts the OPEN set is EMPTY rather than counting down.
+   **Both halves of this item's former framing were wrong, and the framing is
+   what misdirected the work that closed it, so it is recorded rather than
+   deleted.** It called three of the four "~320 lines of relocation" whose
+   "home is wrong rather than whose logic is missing": relocating them moved
+   the OPEN entry instead of discharging it, because the finally-deferred
+   return recipe is reachable on the routed path and reaches an expression
+   render, so the recipe DECISION had to move to lowering time behind a new
+   seam. It called the fourth, `_extra_template_args_for_await`, "the only
+   genuine routing work": that one turned out to be the better-understood of
+   the two, discharged by reusing the existing emplace-argument seam, and it
+   was sitting on two wrong-code defects nobody had looked for. The lesson is
+   the one this ledger keeps recording: a per-item status assembled from
+   reading tags rather than from an ablation errs, and it errs confidently.
    **The reverse direction: DISCHARGED 2026-08-31, and now gated.** THIR
    lowering used to import FROM the four doomed modules -- 7 `import`
    statements across 4 files in `thir/lower/`, reaching 7 names (three
@@ -12492,7 +12552,10 @@ re-closes item 4 from 34 to 5 -- the paragraph above calls the placement
 "an open design question", and for these it is now answered.
 
 **The 5 survivors are all in `gen_async`, and all genuinely undecided**
-(now 4 -- `gen_nested_def_body` resolved 2026-08-21, see the six-forks
+(now 0 -- ALL RESOLVED 2026-08-31, see checklist item 4 and the wave entry
+under "Maintaining this ledger"; the "needs a decision, not a move" verdict
+below held for three of the four and was wrong for the fourth)
+(was 4 -- `gen_nested_def_body` resolved 2026-08-21, see the six-forks
 entry under "Maintaining this ledger") --
 they are not relocation. `gen_nested_def_body` (a nested def inside a coro
 finally), `_make_async_return` / `_make_generator_resumable_return` (the

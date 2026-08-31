@@ -40,6 +40,13 @@ over the whole package. The shared home for what more than one layer needs is
 `emit_prims.py`, guarded by
 `test_shared_prims_module_never_names_a_body_emitter`.
 
+A third limit, in the dispositions rather than the scan: SEAM / AST_ARM /
+OPEN are DECLARED here and matched only against the call's text and its
+occurrence count. Nothing checks that an AST_ARM actually sits behind the
+routing guard that makes it one, so deleting an `if leaf is None:` while
+leaving the call unchanged keeps this table green while reopening exactly
+the property it claims to hold. Read the guard when adding an entry.
+
 Also out of scope here, and easy to under-count when scoping the cutover: the
 deletion takes THREE cross-path detectors with it, not just the corpus
 byte-diff. `move_audit.py` and `binding_audit.py` are dual-path joins whose
@@ -157,6 +164,10 @@ FROZEN_SITES: dict[tuple[str, str, str], tuple[int, str | tuple[str, ...]]] = {
         (1, AST_ARM),
     ("gen_async.py", "_suspend_expr_cpp", "self.expressions.gen_expr"):
         (1, AST_ARM),
+    # The emplace-arg coercions have two callers -- the suspension itself and
+    # the frame's `T_<pname>` capture-type spelling, which must render the
+    # same argument the same way. Both reach them through `_emplace_args`, so
+    # both skip them on a routed body.
     ("gen_async.py", "_gen_coro_emplace_arg", "self.expressions.gen_expr"):
         (1, AST_ARM),
     ("gen_async.py", "_gen_coro_emplace_arg",
@@ -174,26 +185,24 @@ FROZEN_SITES: dict[tuple[str, str, str], tuple[int, str | tuple[str, ...]]] = {
     # at frame lowering); this call is the fallback frame's arm.
     ("gen_async.py", "gen_coro_finally_top_def",
      "self.statements.gen_nested_def_body"): (1, AST_ARM),
-    # Frame scaffolding that runs for routed bodies too. What is left after
-    # the emit-primitive relocation is not primitive: `_walk_inline`'s
-    # ReturnT `gen_stmt` dispatch walks a body,
-    # `_extra_template_args_for_await` dispatches an arbitrary expression,
-    # and `_make_async_return` reaches `gen_expr` through its deferred-return
-    # recipe. Where each belongs post-cutover is an open decision, not a
-    # relocation.
-    ("gen_async.py", "_thir_resumable_leaf_emitter",
-     "self.statements._make_async_return"): (1, OPEN),
-    ("gen_async.py", "_thir_resumable_leaf_emitter",
-     "self.statements._make_generator_resumable_return"): (1, OPEN),
-    ("gen_async.py", "_extra_template_args_for_await",
-     "self.expressions.gen_expr"): (1, OPEN),
-    # Three occurrences, one disposition each: the BB-statement walk and the
-    # RaiseT terminator both sit in the `else` of a `thir_resumable_leaf is
-    # not None` check, so a routed body emits them through the leaf emitter.
-    # Only the ReturnT terminator dispatches unconditionally -- gen_stmt is
-    # what runs the active finally chain around the Poll<T>::ready.
+    # The BB-statement walk and the RaiseT terminator, both in the `else` of
+    # a `thir_resumable_leaf is not None` check -- a routed body emits them
+    # through the leaf emitter.
     ("gen_async.py", "_walk_inline", "self.statements.gen_stmt"):
-        (3, (AST_ARM, OPEN, AST_ARM)),
+        (2, AST_ARM),
+    # The AST tail of the frame's return-value render, behind the same leaf
+    # check: a routed body renders the value off its lowered node instead.
+    ("gen_async.py", "_async_return_value_cpp",
+     "self.statements._async_return_value_ast"): (1, AST_ARM),
+    # The deferred-return recipe now comes off the lowered body through the
+    # leaf seam, and all three calls below sit behind a `leaf is None` check.
+    # Neither retraction has a routed counterpart by construction: the seam
+    # renders both pre-finally sites without `allow_move`, so the sema move
+    # mark they would retract has no reader on that path.
+    ("gen_async.py", "_make_async_return",
+     "self.statements._deferred_return_recipe"): (1, AST_ARM),
+    ("gen_async.py", "_make_async_return",
+     "self.statements._retract_deferred_return_mark"): (2, AST_ARM),
 }
 
 
@@ -493,15 +502,16 @@ def test_frozen_site_dispositions_cover_every_occurrence() -> None:
 
 def test_cutover_gate_open_sites() -> None:
     """The cutover gate: zero skeleton calls into a body emitter that the
-    ROUTED path still takes. Until that set is empty this test pins its exact
-    membership, so discharging one is a visible, deliberate edit.
+    ROUTED path still takes. The set is EMPTY -- every remaining entry is a
+    seam or an arm the routed path skips, so re-opening one is a regression
+    rather than a step backwards along a countdown.
     """
     open_calls = sorted(
         (k, i) for k, (n, d) in FROZEN_SITES.items()
         for i, disp in enumerate(_dispositions(n, d)) if disp == OPEN)
-    assert len(open_calls) == 4, (
-        f"the cutover gate's OPEN set changed ({len(open_calls)} calls); "
-        f"update the count when a site is discharged: {open_calls}")
+    assert not open_calls, (
+        f"a skeleton call into an AST body emitter fires on the routed path "
+        f"again: {open_calls}")
 
 
 def test_import_resolver_reads_the_shapes_it_was_wrong_about(
