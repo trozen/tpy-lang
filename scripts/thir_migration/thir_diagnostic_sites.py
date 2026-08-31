@@ -23,15 +23,19 @@ function is placed in a call graph over the whole of `tpyc/` and read two ways:
   BOTH      reached both ways. The AST caller dies and the other survives,
             which is exactly what a re-homed diagnostic looks like.
 
-Three things make a function part of the dying layer. The obvious one is living
-in a deleted module. The second is being an AST arm: `test_cutover_gate.py`
-freezes each skeleton entry into the emitters with a disposition, and a
-raise-hosting function whose every such entry is AST_ARM only reaches that
-raise when a body did not route. The third is a guard in the CALLER -- the ctor
-tail returns early on a lowered constructor, so its extraction helpers never
-run for a routed body. No static analysis sees that, so it is read from the
-recorded body-diagnostic list the harness ratchet already keys on. All three
-are read from their existing homes rather than restated here.
+Two things make a function part of the dying layer. The obvious one is living
+in a deleted module. The second is a guard in the CALLER -- the ctor tail
+returns early on a lowered constructor, so its extraction helpers never run
+for a routed body. No static analysis sees that, so it is read from the
+recorded body-diagnostic list the harness ratchet already keys on. Both are
+read from their existing homes rather than restated here.
+
+A frozen AST_ARM disposition is NOT a third one, and reading it as one
+over-counts BODY. It says the CALL into the emitter dies, not the function
+around it: a frame emitter carries its routing check INSIDE the body it
+emits, so it runs for every routed body and the raises it hosts outside that
+arm survive with it. Whether a raise dies is a question about the raise's
+own callers, which the graph below already answers.
 
 The reported figure is WITNESSED crossed with BODY and deliberate: a deliberate
 BODY diagnostic that no committed `diag.txt` contains is one nothing in the
@@ -210,19 +214,7 @@ class Graph:
             defaultdict(set)
         self.nodes: set[tuple[str, str]] = set()
         self.value_refs: set[tuple[str, str]] = set()
-        self.frozen_arm_only: set[tuple[str, str]] = set()
         self.recorded_body: set[tuple[str, str]] = set()
-        self.raise_hosts: set[tuple[str, str]] = set()
-
-
-def _ast_arm_only_functions() -> set[tuple[str, str]]:
-    """Skeleton functions whose every frozen entry into a deleted module is an
-    AST arm -- they reach the emitter only when a body did not route."""
-    per_func: dict[tuple[str, str], set[str]] = defaultdict(set)
-    for (mod, func, _call), (count, disp) in GATE.FROZEN_SITES.items():
-        rel = _rel(CODEGEN_DIR / mod)
-        per_func[(rel, func)].update(GATE._dispositions(count, disp))
-    return {key for key, disps in per_func.items() if disps == {GATE.AST_ARM}}
 
 
 def _recorded_body_functions() -> set[tuple[str, str]]:
@@ -284,28 +276,8 @@ def build_graph() -> Graph:
                 for target in graph.defs.get(name, ()):
                     graph.value_refs.add((target, name))
 
-    graph.frozen_arm_only = _ast_arm_only_functions()
     graph.recorded_body = _recorded_body_functions()
-    graph.raise_hosts = {(rel, func) for rel, func, _line in _raise_sites()}
     return graph
-
-
-def _raise_sites() -> list[tuple[str, str, int]]:
-    out: list[tuple[str, str, int]] = []
-    for path in sorted(CODEGEN_DIR.glob("*.py")):
-        if path.name.startswith("test_"):
-            continue
-        rel = _rel(path)
-        tree = ast.parse(path.read_text())
-        owner = _owners(tree)
-        for node in ast.walk(tree):
-            if (isinstance(node, ast.Raise)
-                    and isinstance(node.exc, ast.Call)
-                    and isinstance(node.exc.func, ast.Name)
-                    and node.exc.func.id == "CodeGenError"):
-                out.append((rel, owner.get(node.lineno, "<module>"),
-                            node.lineno))
-    return out
 
 
 def _resolve(chain: list[str], rel: str, binds: dict[str, str],
@@ -342,11 +314,6 @@ def _closure(seeds: set[tuple[str, str]], graph: Graph,
 def dead_functions(graph: Graph) -> set[tuple[str, str]]:
     dead = {n for n in graph.nodes if n[0] in DELETED_FILES}
     dead |= {n for n in graph.recorded_body if n in graph.nodes}
-    # An arm-only entry says the CALL dies, not the function -- a frame emitter
-    # can hold a leaf-guarded arm and still run for every routed body. It is
-    # the whole answer only where the raise itself sits in such a function.
-    dead |= {n for n in graph.frozen_arm_only
-             if n in graph.raise_hosts and n in graph.nodes}
     return dead
 
 
@@ -465,12 +432,8 @@ def record_drift(graph: Graph) -> dict[str, list[str]]:
         for f, n in sorted(graph.recorded_body)
         if any(cf.startswith("tpyc/thir/")
                for cf, _cn in graph.callers.get((f, n), ())))
-    unrecorded = [f"{f}::{n}" for f, n in sorted(graph.frozen_arm_only)
-                  if n in {h[1] for h in graph.raise_hosts if h[0] == f}
-                  and (f, n) not in graph.recorded_body]
     return {"recorded_but_gone": missing,
-            "recorded_with_thir_caller": thir_callers,
-            "ast_arm_raise_host_not_recorded": unrecorded}
+            "recorded_with_thir_caller": thir_callers}
 
 
 def report(payload: dict) -> None:
@@ -546,8 +509,6 @@ def main() -> int:
     graph = build_graph()
     payload = {
         "deleted_modules": sorted(DELETED_FILES),
-        "ast_arm_only_functions": sorted(f"{f}::{n}" for f, n
-                                         in graph.frozen_arm_only),
         "dead_functions": len(dead_functions(graph)),
         "record_drift": record_drift(graph),
         "sites": collect_sites(graph),

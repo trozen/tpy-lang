@@ -2012,6 +2012,76 @@ bare store).
 ## Maintaining this ledger
 
 - Flip cells / update statuses when a rung lands or a deferral is discovered.
+- **Landed: body-authored diagnostics re-homed, and the site instrument
+  corrected** (2026-08-31, branch thir-rehome-body-diagnostics; suite 13425
+  green, 3763 cases full exec, dial 3766/3766, one existing snapshot
+  regenerated for a message change).
+
+  **Name the key before quoting a figure -- three exist here and they are
+  not interchangeable.** K1 = total BODY sites; K2 = BODY + deliberate
+  (user-facing message shape); K3 = BODY + deliberate + witnessed by a
+  committed diagnostic. On the CORRECTED instrument, base -> tip is
+  K1 42 -> 40, K2 8 -> 6, K3 3 -> 1. An "8 -> 1" figure was stated during
+  this work and is WRONG: it pairs K2's start with K3's end. Recorded
+  rather than deleted, because the same two-keys-one-number error has now
+  been made on the stdlib dial and here.
+
+  The instrument was itself over-counting: the uncorrected script read
+  base as K1 45. Its dead-set seed treated a function as dying when all
+  its frozen gate dispositions were AST_ARM and it hosted a raise. But a
+  disposition is a statement about ONE CALL, not about the enclosing
+  function, and a frame emitter carries its routing check INSIDE the body
+  it emits -- selecting between two renderers -- so it runs for every
+  body, routed or not, and the raises it hosts outside that arm survive.
+  Verified by instrumenting rather than by reading tags: the raises fire
+  with the leaf BOUND. THREE sites moved BODY -> SKELETON from the rule
+  itself: one directly, plus two entailed by reachability closure once
+  their only caller stopped being falsely dead. A FOURTH site moved on
+  this branch for an unrelated reason -- a bookkeeping entry naming it was
+  removed when its diagnostic changed author -- and attributing it to the
+  rule was itself a miscount, made in the paragraph that exists to record
+  a miscount. The docstring's "BODY is a lower bound, never an upper one"
+  was false BECAUSE of that clause; removing it makes the claim true.
+
+  Of the eight K2 sites the scoping pass examined, four were already
+  DEAD CODE -- guards mutually exclusive by construction, a total sema
+  dispatch upstream, an identical sema raise firing first, and a loop
+  guard asserting exactly the disjunction its raise tests. They still
+  COUNT in K2 until the modules go, which is the gap between "sites
+  needing work" and "sites the instrument reports". A fifth was never a
+  blocker (skeleton, running before the routing decision).
+
+  `match.py::_variant_index` is now DEAD FROM USER SOURCE, not merely
+  unwitnessed: a 14-program adversarial sweep recorded 50 AST-path scans
+  with zero misses, every non-member arm being rejected by sema first.
+  Methodological note worth more than the verdict -- the same sweep run
+  under routed codegen records ZERO scans, because the routed path uses
+  THIR's own index lookup, so it would have "confirmed" any hypothesis
+  put to it. The AST-path run is the one carrying evidence.
+
+  It nonetheless still COUNTS in K2, because that key is keyed on a
+  message's SHAPE -- a user-facing sentence rather than an `internal:`
+  invariant -- and not on whether any program can reach it. Phrased as
+  the invariant check it has become, K2 would read 5. Left as it is
+  rather than re-phrased mid-count, but a reader comparing K2 against a
+  list of reachable diagnostics should expect exactly this one to be
+  absent from the latter.
+
+  What remains in K2 after this: one architectural item, the
+  suspension-inside-a-dynamic-dispatched-match rejection, which is layered
+  behind two earlier resumable fences and partly blocked on how the
+  cutover writes the leaf seam.
+
+  **A second failure class sits outside this count entirely and is not
+  measured by anything.** The countdown tracks diagnostics that stop
+  existing; it is blind to CORRECT code that loses its only emitter. Two
+  concrete witnesses surfaced here: an `async def` with a `@dynamic`
+  protocol param and no match at all, which the AST compiles and runs
+  correctly today, and a simple-generator condition whose temp comes from
+  a variant-union argument. Both fold, so no case can carry them without
+  failing the ratchet, and the ratchet only runs past codegen success.
+  These want an ablation sweep of the fence families, separate from the
+  diagnostics countdown.
 - **Landed: the cutover gate's OPEN set emptied** (2026-08-31, branch
   thir-discharge-gen-async-open; gate OPEN 4 -> 0, dial unchanged at
   3765/3765, suite 13423 green with full exec, zero snapshots regenerated).
