@@ -127,8 +127,6 @@ from ...type_def_registry import (
     is_str_view_type,
 )
 from ...modules.type_resolution import is_native_iterable
-from ...codegen_cpp.expressions import (_check_literal_chain,
-                                        _check_literal_in)
 from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
@@ -7055,8 +7053,8 @@ def _overload_resolve_static(cond: TpyExpr, narrowing,
     """Mirror of _resolve_isinstance_statically for the per-stub fold, plus
     its literal half over `lit_facts` (the stub-narrowing-derived facts,
     plus a literal-only group's injected map): equality, bool truthiness,
-    membership (`_check_literal_in`), and the or-coverage/and-contradiction
-    chain fold (`_check_literal_chain`) -- the last two through the SAME
+    membership (`check_literal_in`), and the or-coverage/and-contradiction
+    chain fold (`check_literal_chain`) -- the last two through the SAME
     helpers the AST fold calls."""
     if lit_facts is None:
         lit_facts = _overload_literal_facts(narrowing)
@@ -7120,11 +7118,11 @@ def _overload_resolve_static(cond: TpyExpr, narrowing,
         # Coverage / contradiction on unresolved operands (the AST's
         # `_resolve_literal_chain_statically` fallthrough).
         if lit_facts and left is None and right is None:
-            return _check_literal_chain(cond, lit_facts)
+            return emit_prims.check_literal_chain(cond, lit_facts)
         return None
     if (isinstance(cond, TpyBinOp) and cond.op in ("in", "not in")
             and lit_facts):
-        result = _check_literal_in(cond, lit_facts)
+        result = emit_prims.check_literal_in(cond, lit_facts)
         if result is not None:
             return result
     if isinstance(cond, TpyUnaryOp) and cond.op == "!":

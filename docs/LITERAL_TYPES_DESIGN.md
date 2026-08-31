@@ -262,16 +262,17 @@ operators, and `not` wrapping.
 
 ### What was implemented
 
-**Shared helpers** (`codegen_cpp/expressions.py`): Module-level functions
-used by both statement-level and expression-level folding:
+**Shared helpers** (`codegen_cpp/emit_prims.py`): module-level functions
+used by statement-level folding, expression-level folding and THIR lowering
+alike -- one table of verdicts, so the paths cannot drift:
 
-- `_flatten_chain(expr, op)`: flattens left-recursive `&&`/`||` chains.
-- `_extract_literal_value(expr)`: extracts `LiteralValue` from AST nodes.
-- `_check_literal_chain(expr, literal_facts)`: flattens a `&&`/`||` chain,
+- `literal_value_from_expr(expr)` (`sema/literal_utils.py`): extracts
+  `LiteralValue` from AST nodes.
+- `check_literal_chain(expr, literal_facts)`: flattens a `&&`/`||` chain,
   extracts `(var_name, LiteralValue)` from each `var == lit` operand.
   For `||`: returns True if collected values cover the full `LiteralType` set.
   For `&&`: returns False if the same variable must equal two different values.
-- `_check_literal_in(expr, literal_facts)`: checks `in`/`not in` with
+- `check_literal_in(expr, literal_facts)`: checks `in`/`not in` with
   tuple/set literal RHS against `LiteralType` value sets.
 
 **Statement-level** (`codegen_cpp/statements.py`): `_resolve_isinstance_statically`
@@ -279,8 +280,8 @@ extended with three new resolution paths:
 
 - **`&&`/`||` chains**: Recursively resolves both operands. Short-circuits
   when possible (`||` any True -> True, `&&` any False -> False). When both
-  operands are unresolved, delegates to `_check_literal_chain`.
-- **`in`/`not in`**: Delegates to `_check_literal_in`.
+  operands are unresolved, delegates to `check_literal_chain`.
+- **`in`/`not in`**: Delegates to `check_literal_in`.
 - **`not` fix**: Pre-existing bug fixed -- the negation handler compared
   `op == "not"` but the parser emits `"!"`. Now correctly recurses through
   negation.

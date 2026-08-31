@@ -1749,7 +1749,7 @@ class TestBool:
     def test_mixed_sign_comparison_routes_via_cmp_helper(self):
         # A signed-vs-unsigned comparison emits std::cmp_* -- now mirrored
         # via THIRBinOp's template_override (the spelling imported from
-        # codegen's _CMP_HELPER); this pin used to record it deferring.
+        # the shared CMP_HELPER); this pin used to record it deferring.
         src = (_PRELUDE + "from tpy import UInt32\n"
                "def f(a: Int32, b: UInt32) -> bool:\n    return a < b\n")
         thir = _lower(src)

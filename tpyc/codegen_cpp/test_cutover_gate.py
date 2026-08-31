@@ -31,15 +31,14 @@ arm next to an open one would read as wholly open (or wholly discharged).
 Adding a call fails this test on purpose. Discharging one means deleting its
 entry here in the same change.
 
-KNOWN LIMIT -- ONE DIRECTION ONLY. The scan walks skeleton -> body-emitter
-calls. It does not see the reverse dependency: THIR lowering IMPORTS from the
-four deleted modules at production sites (predicates and constants pulled out
-of `expressions` / `builtins`, and the `match` helpers), and nothing scans
-that. An empty OPEN set therefore means "no skeleton call survives routing",
-NOT "the four modules are unreferenced". Those imports have to be inventoried
-and relocated separately before the deletion commit -- the shared home for
-what both layers need is `emit_prims.py`, guarded by
-`test_shared_prims_module_never_names_a_body_emitter` below.
+The call scan runs one way, skeleton -> body emitter, so on its own an empty
+OPEN set means "no skeleton call survives routing", NOT "the four modules are
+unreferenced". The reverse dependency -- another layer IMPORTING a name out of
+one of the four -- is a separate way for the deletion to stop being wholesale,
+and `test_no_layer_outside_the_body_emitters_imports_one` below scans for it
+over the whole package. The shared home for what more than one layer needs is
+`emit_prims.py`, guarded by
+`test_shared_prims_module_never_names_a_body_emitter`.
 
 Also out of scope here, and easy to under-count when scoping the cutover: the
 deletion takes THREE cross-path detectors with it, not just the corpus
@@ -324,6 +323,136 @@ def test_skeleton_never_passes_a_body_emitter_method_as_a_value() -> None:
         f"of calling it: {offenders}")
 
 
+# The modules the cutover KEEPS that still name one of the four at import
+# time. Every entry here is deleted-with-them, not relocated; the freeze is
+# what stops a new one appearing.
+FROZEN_IMPORTERS: dict[str, tuple[str, ...]] = {
+    # The composition root: it constructs the three generators and hands them
+    # to each other. This wiring is deleted along with them.
+    "codegen_cpp/generator.py": ("builtins", "expressions", "statements"),
+    # TYPE_CHECKING-only, for the parameter annotations on skeleton seams that
+    # take a body emitter. Each annotation goes when its seam does.
+    "codegen_cpp/functions.py": ("statements",),
+    "codegen_cpp/gen_async.py": ("expressions", "statements"),
+    "codegen_cpp/gen_generators.py": ("expressions", "statements"),
+    "codegen_cpp/records.py": ("expressions",),
+}
+
+# Test-side importers. They are frozen separately because the rationale
+# differs per file and one of them is a cutover EDIT, not a cutover deletion:
+# `testutil.py` holds the canonical routing / byte-identity helpers that
+# outlive the AST path, so the deletion commit has to reach into a surviving
+# file. Recording that here is the point -- otherwise it is found by the
+# deletion failing.
+FROZEN_TEST_IMPORTERS: dict[str, tuple[str, ...]] = {
+    # Dual-path units: they exist to compare the two authors, so they are
+    # deleted with the path they compare against.
+    "thir/test_thir_movable_set.py": ("expressions",),
+    "thir/test_thir_resumable.py": ("statements",),
+    # SURVIVES. Only `_constant_positions` is dual-path; the other helpers
+    # here are what every routing pin in the suite calls.
+    "thir/testutil.py": ("expressions",),
+}
+
+# Importing a body emitter's own class out of a module the cutover KEEPS is
+# the same dependency wearing a different import path -- and the freeze above
+# makes such a module an attractive place to launder one through, since its
+# entry keeps matching while the laundered import stays invisible.
+BODY_EMITTER_CLASS_HOME = {
+    "ExpressionGenerator": "expressions",
+    "StatementGenerator": "statements",
+    "MatchGenerator": "match",
+    "BuiltinGenerator": "builtins",
+}
+
+
+def _body_emitter_imports(path: Path, pkg: str) -> set[str]:
+    """Which of the four `codegen_cpp` body emitters `path` imports.
+
+    Resolved against the file's own package, because `expressions.py`,
+    `statements.py` and `match.py` are also module names under `sema/` and
+    `thir/lower/` -- a relative import of a same-named sibling is not a
+    reference to the module the cutover deletes.
+
+    Static imports only. Reaching a body emitter dynamically -- through
+    `importlib`, `__import__`, or an attribute off the package object -- is
+    out of scope and stays invisible here.
+    """
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            dotted = [a.name for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                parts = pkg.split(".")
+                base = ".".join(parts[:len(parts) - node.level + 1])
+                target = f"{base}.{node.module}" if node.module else base
+            else:
+                target = node.module or ""
+            # A body emitter's class re-exported by a module the cutover keeps
+            # resolves to THAT module's path, so key the class to its home.
+            # Scoped to `tpyc` rather than to `codegen_cpp`: the laundering
+            # module need not be a sibling -- `thir/testutil.py` is frozen
+            # here AND survives the cutover, which is exactly the shape. The
+            # four names are unique within the package, so anything importing
+            # one from inside `tpyc` means the doomed class.
+            if (target + ".").startswith("tpyc."):
+                for alias in node.names:
+                    home = BODY_EMITTER_CLASS_HOME.get(alias.name)
+                    if home is not None:
+                        found.add(home)
+            dotted = [f"{target}.{a.name}" for a in node.names] + [target]
+        else:
+            continue
+        for name in dotted:
+            if name.startswith("tpyc.codegen_cpp."):
+                head = name[len("tpyc.codegen_cpp."):].split(".")[0]
+                if head in BODY_EMITTER_MODULES:
+                    found.add(head)
+    return found
+
+
+def test_no_layer_outside_the_body_emitters_imports_one() -> None:
+    """No production module outside the four may import a name out of them.
+
+    The other half of the gate. A call into a body emitter is not the only
+    thing that makes the deletion partial -- so does a predicate or constant
+    that another layer reaches for by import, and the call scan cannot see
+    one. THIR lowering held seven such imports; they were relocated to
+    `emit_prims`, and this keeps them from coming back.
+
+    Test files are frozen too, in their own table -- not excluded. The
+    rationale differs per file, and treating them as one bucket hides that
+    `testutil.py` SURVIVES the cutover, so the deletion commit has to edit it
+    rather than delete it.
+    """
+    root = Path(__file__).parents[2]
+    frozen = {**FROZEN_IMPORTERS, **FROZEN_TEST_IMPORTERS}
+    doomed = {f"codegen_cpp/{m}.py" for m in BODY_EMITTER_MODULES}
+
+    def imports_of(rel: str) -> set[str]:
+        head = rel.rsplit("/", 1)[0] if "/" in rel else ""
+        pkg = "tpyc." + head.replace("/", ".") if head else "tpyc"
+        return _body_emitter_imports(root / "tpyc" / rel, pkg)
+
+    offenders = {}
+    for path in sorted((root / "tpyc").rglob("*.py")):
+        rel = path.relative_to(root / "tpyc").as_posix()
+        if rel in doomed:
+            continue
+        hits = imports_of(rel) - set(frozen.get(rel, ()))
+        if hits:
+            offenders[rel] = sorted(hits)
+    assert not offenders, (
+        f"a layer the cutover keeps imports out of a module it deletes -- "
+        f"relocate the name to {SHARED_PRIMS_MODULE}: {offenders}")
+    stale = {rel: mods for rel, mods in frozen.items()
+             if set(mods) != imports_of(rel)}
+    assert not stale, (
+        f"frozen body-emitter importers no longer match the source (update "
+        f"the freeze table): {stale}")
+
+
 def test_shared_prims_module_never_names_a_body_emitter() -> None:
     """The shared emit-primitives module must not reach the four modules the
     cutover deletes -- not by import, and not through a collaborator either.
@@ -373,3 +502,48 @@ def test_cutover_gate_open_sites() -> None:
     assert len(open_calls) == 4, (
         f"the cutover gate's OPEN set changed ({len(open_calls)} calls); "
         f"update the count when a site is discharged: {open_calls}")
+
+
+def test_import_resolver_reads_the_shapes_it_was_wrong_about(
+        tmp_path: Path) -> None:
+    """`_body_emitter_imports` pins, per shape, what it must and must not see.
+
+    The scan above only ever runs over the real tree, where it reports
+    nothing; a resolver that silently stopped matching would keep passing.
+    Every row here is a shape the resolver got wrong at some point, so this
+    is a regression pin rather than a restatement of the implementation.
+    """
+    rows: list[tuple[str, str, str, set[str]]] = [
+        # (label, file's package, source, expected)
+        ("plain dotted import", "tpyc.thir.lower",
+         "import tpyc.codegen_cpp.expressions", {"expressions"}),
+        ("plain dotted import, aliased", "tpyc.thir.lower",
+         "import tpyc.codegen_cpp.match as m", {"match"}),
+        ("relative, deep", "tpyc.thir.lower",
+         "from ...codegen_cpp.builtins import X", {"builtins"}),
+        ("relative, module not name", "tpyc.thir.lower",
+         "from ...codegen_cpp import statements", {"statements"}),
+        # A same-named sibling is a different module: `sema/` and
+        # `thir/lower/` both hold an `expressions.py`.
+        ("same-named sibling", "tpyc.thir.lower",
+         "from .expressions import X", set()),
+        ("same-named sibling, sema", "tpyc.sema",
+         "from .statements import X", set()),
+        # Laundering: the class re-exported by a module the cutover KEEPS.
+        ("class via a kept sibling", "tpyc.thir.lower",
+         "from ...codegen_cpp.generator import ExpressionGenerator",
+         {"expressions"}),
+        ("class via a surviving test helper", "tpyc.thir",
+         "from .testutil import MatchGenerator", {"match"}),
+        # ... but the name is only decisive INSIDE the package.
+        ("same name, foreign package", "tpyc.thir.lower",
+         "from renderlib.html import ExpressionGenerator", set()),
+    ]
+    wrong = {}
+    for label, pkg, src, expected in rows:
+        f = tmp_path / "probe.py"
+        f.write_text(src)
+        got = _body_emitter_imports(f, pkg)
+        if got != expected:
+            wrong[label] = (sorted(got), sorted(expected))
+    assert not wrong, f"resolver misreads a shape (got, expected): {wrong}"

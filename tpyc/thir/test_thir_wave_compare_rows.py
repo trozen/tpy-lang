@@ -1,6 +1,6 @@
 """Pins for the two compare rows at the binop terminal: the mixed-sign
 fixed-int `::std::cmp_*` slice (target-less, non-literal operands; the
-spelling table is IMPORTED from codegen's _CMP_HELPER so the two paths
+spelling table is IMPORTED from the shared CMP_HELPER so the two paths
 cannot drift) and the pointer-repr tuple FIELD compare pair
 (`this->pair == other.pair` -> `::tpy::tuple_eq(bare, bare)`).
 Boundaries: a literal-side mixed compare and the field-vs-name pair keep

@@ -21,6 +21,7 @@ from ..parse import (
     TpyBoolLiteral, TpyFieldAccess, TpyName,
 )
 
+from . import emit_prims
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name, cpp_string_literal_expr
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_list,
@@ -31,24 +32,6 @@ from ..type_def_registry import (
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
-
-
-# float(str) special-value tokens that fold to constexpr numeric_limits at
-# codegen, bypassing the non-constexpr runtime tpy::float_from_str. Matches
-# CPython's case-insensitive, whitespace-trimming semantics. Note: CPython
-# preserves the sign bit for float("-nan"), so emitting -quiet_NaN() (IEEE 754
-# sign-bit flip) is bit-for-bit equivalent, not just functionally-isnan.
-_FLOAT_STR_CONSTANTS: dict[str, str] = {
-    "nan": "std::numeric_limits<double>::quiet_NaN()",
-    "+nan": "std::numeric_limits<double>::quiet_NaN()",
-    "-nan": "-std::numeric_limits<double>::quiet_NaN()",
-    "inf": "std::numeric_limits<double>::infinity()",
-    "+inf": "std::numeric_limits<double>::infinity()",
-    "-inf": "-std::numeric_limits<double>::infinity()",
-    "infinity": "std::numeric_limits<double>::infinity()",
-    "+infinity": "std::numeric_limits<double>::infinity()",
-    "-infinity": "-std::numeric_limits<double>::infinity()",
-}
 
 
 class BuiltinGenerator:
@@ -206,7 +189,7 @@ class BuiltinGenerator:
         arg = args[0]
         if not isinstance(arg, TpyStrLiteral):
             return None
-        return _FLOAT_STR_CONSTANTS.get(arg.value.strip().lower())
+        return emit_prims.FLOAT_STR_CONSTANTS.get(arg.value.strip().lower())
 
     def gen_template_or_native_call(self, args: list[TpyExpr],
                                     overloads: list[FunctionInfo], *,

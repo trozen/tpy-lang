@@ -67,7 +67,7 @@ class TestOverloadDefaultLocals:
         assert "if ((count == 0))" in cpp[1]
 
     def test_membership_on_fact_param_folds(self):
-        # `count in (0, 1)` folds through the mirrored `_check_literal_in`
+        # `count in (0, 1)` folds through the mirrored `check_literal_in`
         # for the SHORT stub (default 0 injects Literal[0], a subset of the
         # tuple -> True splices the then-body); the long stub keeps the
         # runtime membership compare.

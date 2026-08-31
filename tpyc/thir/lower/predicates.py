@@ -140,8 +140,8 @@ from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     reads_storage_form_optional,
 )
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp.param_const import decide_param_const
-from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...codegen_cpp.context import (
     bigint_index_narrow_type,
@@ -7228,7 +7228,7 @@ def _tuple_elem_slots_record_lvalue(e: 'TpyTupleLiteral', slot: 'TupleType',
         if (tb.value_form() is not ValueForm.BORROW_REF
                 or not TupleType._element_is_pointer_repr(tb)):
             return False
-        if not _is_simple_lvalue(e.elements[i]):
+        if not emit_prims.is_simple_lvalue(e.elements[i]):
             return False
     return True
 

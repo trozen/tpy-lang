@@ -115,8 +115,7 @@ from ...type_def_registry import (
     is_set,
     is_varargs,
 )
-from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
-from ...codegen_cpp.expressions import _CMP_HELPER
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import TypeResolver, resolve_pending_container
 from ...modules.defs import BINOP_TO_METHOD
 from ...modules.type_resolution import (
@@ -148,10 +147,6 @@ from ..fallback import (ThirUnsupported, call_reject_reason, expr_kind_tag,
                         note_detail)
 from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
-from ...codegen_cpp.expressions import (ExpressionGenerator,
-                                        _check_literal_chain,
-                                        _check_literal_in,
-                                        _is_simple_lvalue)
 from ...sema.literal_utils import literal_value_from_expr
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
@@ -3044,7 +3039,7 @@ def _fold_literal_comparison(e: TpyBinOp,
 
 def _fold_literal_chain(e: TpyBinOp, literal_facts: dict) -> 'bool | None':
     """Mirror of `_try_fold_literal_chain`: operand folds decide first,
-    then the coverage/contradiction combiner (`_check_literal_chain`).
+    then the coverage/contradiction combiner (`check_literal_chain`).
     Membership operands stay None -- their decided fold rejects at the
     membership fence, so folding them here would skip that gate."""
     def operand(x) -> 'bool | None':
@@ -3072,7 +3067,7 @@ def _fold_literal_chain(e: TpyBinOp, literal_facts: dict) -> 'bool | None':
         if left is True and right is True:
             return True
     if left is None and right is None:
-        return _check_literal_chain(e, literal_facts)
+        return emit_prims.check_literal_chain(e, literal_facts)
     return None
 
 
@@ -3134,7 +3129,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                form=Form.VALUE, loc=loc)
 
     if (e.op in _MEMBERSHIP_OPS and _literal_fold_name(e.left)
-            and _check_literal_in(e, lc.literal_facts) is not None):
+            and emit_prims.check_literal_in(e, lc.literal_facts) is not None):
         # A DECIDED membership fold (`_try_fold_literal_in`) has no
         # witnessed render -- keep rejecting; the undecided flavor renders
         # plain on both paths.
@@ -3543,7 +3538,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                   IntLiteralType)):
                 reject()
             _witness("binop.mixed_sign_cmp")
-            mixed_cmp_tpl = f"{_CMP_HELPER[e.op]}({{self}}, {{0}})"
+            mixed_cmp_tpl = f"{emit_prims.CMP_HELPER[e.op]}({{self}}, {{0}})"
     elif e.op in _LOGICAL_OPS:
         if rtype is None or not is_bool_type(rtype):
             # Value-position and/or: Python operand semantics via the
@@ -3844,7 +3839,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # A non-trivial needle binds to a `__in_lhs` temp in a statement
         # expression (mirrors _gen_binop's need_temp).
         need_temp = (len(elems) > 1
-                     and not ExpressionGenerator._is_trivial_needle(e.left))
+                     and not emit_prims.is_trivial_needle(e.left))
         return THIRTupleMembership(
             result_type=rtype,
             left=_lower_expr(e.left, lc, declared),
@@ -6818,7 +6813,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if e.pairs is None:
             raise ThirUnsupported("expr.chained_compare")
         assert e.pairs is not None
-        if all(ExpressionGenerator._is_duplicable_expr(c)
+        if all(emit_prims.is_duplicable_expr(c)
                for c in e.comparators[:-1]):
             # Inline arm of _gen_chained_compare: left-fold the sema pairs with
             # the bare && (resolved None), reproducing `((a < b) && (b < c))`.
@@ -11361,7 +11356,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 # slots (uniform T* shape) ahead of the lvalue rule.
                 mode = (TupleElemCapture.CONST_REF if target_readonly
                         else TupleElemCapture.REF)
-            elif _is_simple_lvalue(e.elements[i]):
+            elif emit_prims.is_simple_lvalue(e.elements[i]):
                 mode = (TupleElemCapture.CONST_REF
                         if (storage_context
                             or isinstance(
@@ -11913,7 +11908,7 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
         if 0 < i < n:
             bound.append(True)
         elif i == 0:
-            bound.append(not ExpressionGenerator._is_duplicable_expr(all_operands[0]))
+            bound.append(not emit_prims.is_duplicable_expr(all_operands[0]))
         else:
             bound.append(False)
     return THIRChainedCompareStmtExpr(
@@ -14902,7 +14897,7 @@ def _lower_float_str_fold(fi, args, callee: str, rtype: 'TpyType | None',
             or len(args) != 1 or kwargs
             or not isinstance(args[0], TpyStrLiteral)):
         return None
-    fold_cpp = _FLOAT_STR_CONSTANTS.get(args[0].value.strip().lower())
+    fold_cpp = emit_prims.FLOAT_STR_CONSTANTS.get(args[0].value.strip().lower())
     if fold_cpp is None:
         return None
     _witness("call.float_str_fold")

@@ -4,10 +4,19 @@ Gate D3 fixed the migration's end state as bodies-only: `expressions`,
 `statements`, `match` and `builtins` are deleted in one cutover commit, while
 the structural skeleton (module driver, signatures, record/protocol/enum
 drivers, the resumable + simple-generator frames) stays as the permanent
-printer layer. The resumable frame skeleton needs a handful of small
-predicates, type decisions and fragment renders that happened to live in
-`statements` / `expressions`. Those survive the deletion, so they cannot live
-in a module being deleted -- they live here instead.
+printer layer. A handful of small predicates, type decisions, constant tables
+and fragment renders happened to live in `statements` / `expressions` /
+`builtins` but are needed past the deletion, so they cannot stay in a module
+being deleted -- they live here instead, as the single definition every layer
+that wants them calls.
+
+Which layer that is differs by section, and the difference outlives the
+cutover. The signature renders, scope setup and fragment emitters are what the
+resumable frame skeleton needs. The expression-shape predicates, literal-fact
+folds and render constants below them have NO skeleton consumer at all: their
+only caller once the four modules are gone is `tpyc/thir/lower/`, which makes
+this module their temporary home rather than their final one -- moving them
+into `thir/` today would have made the dying modules import from `thir`.
 
 Everything in this module is a self-contained predicate, type decision, ctx
 mutation or fragment render: none of it dispatches a statement or an
@@ -24,20 +33,24 @@ the skeleton and the body emitter call them, and neither owns them.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Callable, Iterator, NoReturn, TextIO, TYPE_CHECKING
+from typing import Callable, Final, Iterator, NoReturn, TextIO, TYPE_CHECKING
 
 from .. import binding_audit
 from ..namespace import Namespace
 from ..parse.nodes import (
-    SourceLocation, TpyAsPattern, TpyAssign, TpyBinOp, TpyCapturePattern,
-    TpyClassPattern, TpyExpr, TpyFieldAccess, TpyFunction,
-    TpyIfExpr, TpyLiteralPattern, TpyMatchCase, TpyMethodCall, TpyName,
-    TpyNoneLiteral, TpyOrPattern, TpyPattern, TpyStmt, TpySubscript,
-    TpyTupleUnpack, TpyUnaryOp, TpyVarDecl, TpyWildcardPattern,
+    SourceLocation, TpyAsPattern, TpyAssign, TpyBinOp, TpyBoolLiteral,
+    TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr, TpyFieldAccess,
+    TpyFloatLiteral, TpyFunction,
+    TpyIfExpr, TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
+    TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral, TpyStmt,
+    TpyStrLiteral, TpySubscript,
+    TpyTupleLiteral, TpyTupleUnpack, TpyUnaryOp, TpyVarDecl,
+    TpyWildcardPattern,
     walrus_bindings,
 )
 from ..prescan import parse_deref_view_key
-from ..sema.literal_utils import fixed_int_literal_value_from_expr
+from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
+                                  literal_value_from_expr)
 from ..sema.registration import build_record_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import (
@@ -1179,6 +1192,184 @@ def partition_optional_cases(
     return none_cases, inner_cases
 
 
+# -- expression-shape predicates -------------------------------------------
+
+def is_simple_lvalue(expr: TpyExpr) -> bool:
+    """Check if expression is a variable or field access (safe to capture by ref).
+
+    Excludes subscripts -- they may yield const refs (e.g. Span[readonly[T]])
+    which can't bind to T&.
+    """
+    if isinstance(expr, TpyCoerce):
+        return is_simple_lvalue(expr.expr)
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return is_simple_lvalue(expr.obj)
+    return False
+
+
+def is_trivial_needle(expr: TpyExpr) -> bool:
+    """Whether a membership needle may render once per tuple element.
+
+    An ALLOWLIST, where `is_duplicable_expr` is a denylist -- that is
+    the reason the two stay separate rather than the shapes they happen
+    to disagree on. Nothing reaches this arm unless it is named here, so
+    a node kind or a newly attached call slot binds a temp by default;
+    the denylist admits a field access unless a veto names its slot, and
+    so has to be kept in step with the node.
+
+    (The `__in_lhs` binding is `auto&&`, so on an lvalue it aliases
+    rather than snapshots. It makes the access path run once; it does not
+    make the value stable against an element that assigns to it.)
+    """
+    return isinstance(expr, (TpyName, TpyIntLiteral, TpyFloatLiteral,
+                             TpyStrLiteral, TpyBoolLiteral))
+
+
+def is_duplicable_expr(expr: TpyExpr) -> bool:
+    """Whether this expression's render may be emitted more than once, or
+    emitted out of source order relative to a sibling operand.
+
+    Answers duplication only. Ordering is a separate question this does
+    NOT settle: a duplicable operand can still be reordered against a
+    sibling that assigns to it, and the membership needle wants a
+    narrower test again (`is_trivial_needle`).
+
+    A field access is duplicable only when nothing user-written runs
+    behind it -- a property or `__getattr__` access is a method call
+    wearing a field access's node kind (`hidden_call`). The remaining
+    sema markers (module/class-constant access, optional deref checks,
+    deref narrowing) render idempotently and stay duplicable.
+
+    TODO: replace with an `is_pure` bit computed during sema and attached
+    to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
+    misses cases like `Int32(0)` -- a primitive-type constructor call
+    that codegen elides to a bare literal -- so chained-compare endpoint
+    inlining still binds a temp for it.
+    """
+    if isinstance(expr, TpyCoerce):
+        return is_duplicable_expr(expr.expr)
+    if isinstance(expr, (
+        TpyName, TpyIntLiteral, TpyFloatLiteral,
+        TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
+    )):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        if expr.hidden_call is not None:
+            return False
+        return is_duplicable_expr(expr.obj)
+    return False
+
+
+# -- literal-fact folds ----------------------------------------------------
+
+def _flatten_chain(expr: TpyExpr, op: str) -> list[TpyExpr]:
+    """Flatten a left-recursive &&/|| chain into a list of operands."""
+    result: list[TpyExpr] = []
+    while isinstance(expr, TpyBinOp) and expr.op == op:
+        result.append(expr.right)
+        expr = expr.left
+    result.append(expr)
+    result.reverse()
+    return result
+
+
+def check_literal_chain(
+    expr: TpyBinOp, literal_facts: dict[str, TpyType],
+) -> bool | None:
+    """Check if a flattened &&/|| chain of == comparisons can be resolved.
+
+    For ||: returns True if collected values cover the variable's full
+    LiteralType set (full-set coverage).
+    For &&: returns False if the same variable is required to equal two
+    different values (contradiction).
+    """
+    operands = _flatten_chain(expr, expr.op)
+    eq_facts: dict[str, set] = {}
+    for operand in operands:
+        if not isinstance(operand, TpyBinOp) or operand.op != "==":
+            return None
+        extracted = False
+        for var_side, lit_side in [(operand.left, operand.right),
+                                   (operand.right, operand.left)]:
+            if not isinstance(var_side, TpyName):
+                continue
+            lit_val = literal_value_from_expr(lit_side)
+            if lit_val is None:
+                continue
+            eq_facts.setdefault(var_side.name, set()).add(lit_val)
+            extracted = True
+            break
+        if not extracted:
+            return None
+    if expr.op == "||":
+        for var_name, values in eq_facts.items():
+            lit_type = literal_facts.get(var_name)
+            if isinstance(lit_type, LiteralType) and set(lit_type.values) <= values:
+                return True
+    else:
+        for values in eq_facts.values():
+            if len(values) > 1:
+                return False
+    return None
+
+
+def check_literal_in(
+    expr: TpyBinOp, literal_facts: dict[str, TpyType],
+) -> bool | None:
+    """Check if `x in (a, b, ...)` / `x not in (a, b, ...)` can be resolved."""
+    if not isinstance(expr.left, TpyName):
+        return None
+    lit_type = literal_facts.get(expr.left.name)
+    if not isinstance(lit_type, LiteralType):
+        return None
+    if not isinstance(expr.right, (TpyTupleLiteral, TpySetLiteral)):
+        return None
+    rhs_values: set = set()
+    for elem in expr.right.elements:
+        val = literal_value_from_expr(elem)
+        if val is None:
+            return None
+        rhs_values.add(val)
+    lit_values = set(lit_type.values)
+    is_in = expr.op == "in"
+    if lit_values <= rhs_values:
+        return True if is_in else False
+    if lit_values.isdisjoint(rhs_values):
+        return False if is_in else True
+    return None
+
+
+# -- render constants ------------------------------------------------------
+
+CMP_HELPER: Final = {
+    "<":  "::std::cmp_less",
+    "<=": "::std::cmp_less_equal",
+    ">":  "::std::cmp_greater",
+    ">=": "::std::cmp_greater_equal",
+    "==": "::std::cmp_equal",
+    "!=": "::std::cmp_not_equal",
+}
+
+# float(str) special-value tokens that fold to constexpr numeric_limits at
+# codegen, bypassing the non-constexpr runtime tpy::float_from_str. Matches
+# CPython's case-insensitive, whitespace-trimming semantics. Note: CPython
+# preserves the sign bit for float("-nan"), so emitting -quiet_NaN() (IEEE 754
+# sign-bit flip) is bit-for-bit equivalent, not just functionally-isnan.
+FLOAT_STR_CONSTANTS: dict[str, str] = {
+    "nan": "std::numeric_limits<double>::quiet_NaN()",
+    "+nan": "std::numeric_limits<double>::quiet_NaN()",
+    "-nan": "-std::numeric_limits<double>::quiet_NaN()",
+    "inf": "std::numeric_limits<double>::infinity()",
+    "+inf": "std::numeric_limits<double>::infinity()",
+    "-inf": "-std::numeric_limits<double>::infinity()",
+    "infinity": "std::numeric_limits<double>::infinity()",
+    "+infinity": "std::numeric_limits<double>::infinity()",
+    "-infinity": "-std::numeric_limits<double>::infinity()",
+}
+
+
 # -- user-facing rejections ------------------------------------------------
 #
 # Every codegen diagnostic a BODY emit can reach lives here, message and all,
@@ -1304,12 +1495,16 @@ def reject_nondef_ctor_field_in_body(field_name: str, record_name: str,
 
 
 __all__ = [
+    "CMP_HELPER",
     "CTOR_DEMOTE_BODY_LOCAL",
     "CTOR_DEMOTE_NEEDS_TEMP",
     "CTOR_DEMOTE_NESTED_DEF",
     "CTOR_DEMOTE_PRIOR_STATEMENT",
     "CTOR_DEMOTE_READS_INHERITED",
+    "FLOAT_STR_CONSTANTS",
     "PARAM_LOCAL_SET_FIELDS",
+    "check_literal_chain",
+    "check_literal_in",
     "compute_borrow_tuple_const",
     "cpp_declared_type",
     "declared_type_incl_globals",
@@ -1321,7 +1516,10 @@ __all__ = [
     "gen_range_overflow_check",
     "is_const_borrow_source",
     "is_const_indirect",
+    "is_duplicable_expr",
     "is_plain_nonvalue",
+    "is_simple_lvalue",
+    "is_trivial_needle",
     "match_subject_is_lvalue",
     "maybe_unwrap_narrowed_optional",
     "narrowed_value_optional_iter_type",

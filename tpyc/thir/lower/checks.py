@@ -113,8 +113,6 @@ from ...type_def_registry import (
     is_string_type,
 )
 from ...codegen_cpp import emit_prims
-from ...codegen_cpp.builtins import _FLOAT_STR_CONSTANTS
-from ...codegen_cpp.expressions import _is_simple_lvalue
 from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list
@@ -3666,12 +3664,12 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     # Excluded: exactly the folding shape -- `float("nan"/"inf"/...)` becomes
     # a constexpr numeric_limits constant on the AST path (not float_from_str),
     # so mirror `_try_float_str_fold`'s trigger (raw un-peeled literal, the
-    # shared `_FLOAT_STR_CONSTANTS` table). Ordinary literals
+    # shared `FLOAT_STR_CONSTANTS` table). Ordinary literals
     # (`int("not_a_number")`) render identically through the native arm.
     would_fold = (
         fi.owning_type_qname == "builtins.float" and len(e.args) == 1
         and isinstance(e.args[0], TpyStrLiteral)
-        and e.args[0].value.strip().lower() in _FLOAT_STR_CONSTANTS)
+        and e.args[0].value.strip().lower() in emit_prims.FLOAT_STR_CONSTANTS)
     native_free_ctor = (
         fi.native_function and fi.is_method and fi.name == "__init__"
         and not would_fold)
@@ -4334,7 +4332,7 @@ def _proto_tuple_elem_borrow(a: 'TpyTupleLiteral', slot: 'TupleType',
             if _resolved_str_value(base, analyzer) is not None:
                 unmirrored = True
             continue
-        if _is_simple_lvalue(el):
+        if emit_prims.is_simple_lvalue(el):
             lvalues += 1
         else:
             unmirrored = True

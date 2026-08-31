@@ -5038,11 +5038,45 @@ by reading the item, never by trusting a sibling's summary of it.
    than whose logic is missing, ~320 lines of relocation. The fourth,
    `_extra_template_args_for_await`, dispatches an arbitrary user expression on
    the routed path and is the only genuine routing work.
-   **The gate scans one direction only.** THIR imports FROM the four doomed
-   modules at 8 production sites (10 symbols: pure predicates, constant tables,
-   static methods). Deleting those modules today breaks THIR at import time,
-   and no gate would say so. Widen the gate with a cross-package import check
-   before relying on it.
+   **The reverse direction: DISCHARGED 2026-08-31, and now gated.** THIR
+   lowering used to import FROM the four doomed modules -- 7 `import`
+   statements across 4 files in `thir/lower/`, reaching 7 names (three
+   expression-shape predicates, two literal-fact folds, two render constant
+   tables), two of them through `ExpressionGenerator` as a namespace for its
+   statics. Deleting the modules would have broken THIR at import time and no
+   gate said so. All seven moved to `emit_prims` (plus `_flatten_chain`, which
+   only `check_literal_chain` calls), losing the leading underscore that a
+   cross-package import made meaningless, and `expressions` / `builtins` /
+   `statements` now call them there too, so there is one definition rather
+   than a relocated copy. `test_no_layer_outside_the_body_emitters_imports_one`
+   scans the whole package for a recurrence and freezes the five modules that
+   legitimately still name one of the four -- the composition root plus four
+   TYPE_CHECKING annotations, all deleted WITH them. The freeze is
+   bidirectional: an entry that stops matching the source fails too. Test
+   files are frozen in a SECOND table rather than excluded, because one of the
+   three is not a deletion: `thir/testutil.py` holds the routing and
+   byte-identity helpers every pin in the suite calls, so it survives and the
+   cutover has to EDIT it (only `_constant_positions` is dual-path).
+   **Two residues this leaves, both for the deletion commit, neither
+   detectable by anything:**
+   - **The seven relocated names have no skeleton consumer.** Measured: every
+     caller is one of the four doomed modules or `thir/lower/`. Post-cutover
+     `emit_prims` holds ~200 lines whose only consumer is `thir/lower/`, in
+     the printer package. Their end home is `tpyc/thir/`; moving them there
+     today would have made the dying modules import from `thir`, which is
+     worse, so this is deliberate but temporary. `emit_prims`' docstring says
+     so at the section.
+   - **~1151 prose lines under `tpyc/thir/**` (non-test) name a symbol
+     defined ONLY in one of the four modules** -- NAME THE KEY: lines whose
+     text matches one of the 734 symbols exclusive to those modules, counted
+     2026-08-31; 158 of them say "Mirror". These are mirror references, not
+     imports, so they block nothing; they become dangling pointers to deleted
+     code the moment the cutover lands. The set is far too large to sweep in
+     the deletion commit, so the cutover has to STATE a policy (rewrite the
+     text to name the invariant, or accept the dangling references) rather
+     than discover the size. A first estimate of this put it at ~15 by
+     grepping four CLASS names instead of the symbol population -- the
+     recorded probe-a-subset failure again, off by two orders of magnitude.
 5. **The faces detector. The increment-site defect is ALREADY FIXED** (witnesses
    are journalled per attempt and rolled back on fallback). Three records
    asserted otherwise, one of them written three days after the fix; they are

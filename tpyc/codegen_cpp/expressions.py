@@ -39,16 +39,6 @@ from . import emit_prims
 from .variant_access import VariantAccess
 
 
-_CMP_HELPER: Final = {
-    "<":  "::std::cmp_less",
-    "<=": "::std::cmp_less_equal",
-    ">":  "::std::cmp_greater",
-    ">=": "::std::cmp_greater_equal",
-    "==": "::std::cmp_equal",
-    "!=": "::std::cmp_not_equal",
-}
-
-
 def _mixed_sign_fixed_int(left_type: "TpyType", right_type: "TpyType") -> bool:
     """True when comparing fixed-int operands with different signedness.
 
@@ -99,98 +89,6 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 
-
-
-def _flatten_chain(expr: TpyExpr, op: str) -> list[TpyExpr]:
-    """Flatten a left-recursive &&/|| chain into a list of operands."""
-    result: list[TpyExpr] = []
-    while isinstance(expr, TpyBinOp) and expr.op == op:
-        result.append(expr.right)
-        expr = expr.left
-    result.append(expr)
-    result.reverse()
-    return result
-
-
-def _check_literal_chain(
-    expr: TpyBinOp, literal_facts: dict[str, TpyType],
-) -> bool | None:
-    """Check if a flattened &&/|| chain of == comparisons can be resolved.
-
-    For ||: returns True if collected values cover the variable's full
-    LiteralType set (full-set coverage).
-    For &&: returns False if the same variable is required to equal two
-    different values (contradiction).
-    """
-    operands = _flatten_chain(expr, expr.op)
-    eq_facts: dict[str, set] = {}
-    for operand in operands:
-        if not isinstance(operand, TpyBinOp) or operand.op != "==":
-            return None
-        extracted = False
-        for var_side, lit_side in [(operand.left, operand.right),
-                                   (operand.right, operand.left)]:
-            if not isinstance(var_side, TpyName):
-                continue
-            lit_val = literal_value_from_expr(lit_side)
-            if lit_val is None:
-                continue
-            eq_facts.setdefault(var_side.name, set()).add(lit_val)
-            extracted = True
-            break
-        if not extracted:
-            return None
-    if expr.op == "||":
-        for var_name, values in eq_facts.items():
-            lit_type = literal_facts.get(var_name)
-            if isinstance(lit_type, LiteralType) and set(lit_type.values) <= values:
-                return True
-    else:
-        for values in eq_facts.values():
-            if len(values) > 1:
-                return False
-    return None
-
-
-def _check_literal_in(
-    expr: TpyBinOp, literal_facts: dict[str, TpyType],
-) -> bool | None:
-    """Check if `x in (a, b, ...)` / `x not in (a, b, ...)` can be resolved."""
-    if not isinstance(expr.left, TpyName):
-        return None
-    lit_type = literal_facts.get(expr.left.name)
-    if not isinstance(lit_type, LiteralType):
-        return None
-    if not isinstance(expr.right, (TpyTupleLiteral, TpySetLiteral)):
-        return None
-    rhs_values: set = set()
-    for elem in expr.right.elements:
-        val = literal_value_from_expr(elem)
-        if val is None:
-            return None
-        rhs_values.add(val)
-    lit_values = set(lit_type.values)
-    is_in = expr.op == "in"
-    if lit_values <= rhs_values:
-        return True if is_in else False
-    if lit_values.isdisjoint(rhs_values):
-        return False if is_in else True
-    return None
-
-
-def _is_simple_lvalue(expr: TpyExpr) -> bool:
-    """Check if expression is a variable or field access (safe to capture by ref).
-
-    Excludes subscripts -- they may yield const refs (e.g. Span[readonly[T]])
-    which can't bind to T&.
-    """
-    if isinstance(expr, TpyCoerce):
-        return _is_simple_lvalue(expr.expr)
-    if isinstance(expr, TpyName):
-        return True
-    if isinstance(expr, TpyFieldAccess):
-        return _is_simple_lvalue(expr.obj)
-    return False
 
 
 def _is_concrete_user_record(t: TpyType | None, registry) -> bool:
@@ -1202,7 +1100,7 @@ class ExpressionGenerator:
                     if lifted != gen_arg:
                         return lifted
                 moved = self._maybe_move(arg, gen_arg)
-                if moved is gen_arg and _is_simple_lvalue(arg):
+                if moved is gen_arg and emit_prims.is_simple_lvalue(arg):
                     # cpp_template callees (push_back, insert, etc.) accept
                     # lvalues natively -- skip the redundant copy+move.
                     # Exclude str: locals are string_view but containers
@@ -1941,7 +1839,7 @@ class ExpressionGenerator:
                 left = self.gen_expr(expr.left)
                 elems = [self.gen_expr(e) for e in expr.right.elements]
                 need_temp = (len(elems) > 1
-                             and not self._is_trivial_needle(expr.left))
+                             and not emit_prims.is_trivial_needle(expr.left))
                 if need_temp:
                     conditions = [f"(__in_lhs == {e})" for e in elems]
                     joined = " || ".join(conditions)
@@ -2218,7 +2116,7 @@ class ExpressionGenerator:
                     and _mixed_sign_fixed_int(left_raw, right_raw)):
                 left = self.gen_expr_deref(expr.left)
                 right = self.gen_expr_deref(expr.right)
-                return f"{_CMP_HELPER[expr.op]}({left}, {right})"
+                return f"{emit_prims.CMP_HELPER[expr.op]}({left}, {right})"
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
 
@@ -2408,59 +2306,6 @@ class ExpressionGenerator:
 
         return f"({left_str} {pair.op} {right_str})"
 
-    @staticmethod
-    def _is_trivial_needle(expr: TpyExpr) -> bool:
-        """Whether a membership needle may render once per tuple element.
-
-        An ALLOWLIST, where `_is_duplicable_expr` is a denylist -- that is
-        the reason the two stay separate rather than the shapes they happen
-        to disagree on. Nothing reaches this arm unless it is named here, so
-        a node kind or a newly attached call slot binds a temp by default;
-        the denylist admits a field access unless a veto names its slot, and
-        so has to be kept in step with the node.
-
-        (The `__in_lhs` binding is `auto&&`, so on an lvalue it aliases
-        rather than snapshots. It makes the access path run once; it does not
-        make the value stable against an element that assigns to it.)
-        """
-        return isinstance(expr, (TpyName, TpyIntLiteral, TpyFloatLiteral,
-                                 TpyStrLiteral, TpyBoolLiteral))
-
-    @staticmethod
-    def _is_duplicable_expr(expr: TpyExpr) -> bool:
-        """Whether this expression's render may be emitted more than once, or
-        emitted out of source order relative to a sibling operand.
-
-        Answers duplication only. Ordering is a separate question this does
-        NOT settle: a duplicable operand can still be reordered against a
-        sibling that assigns to it, and the membership needle wants a
-        narrower test again (`_is_trivial_needle`).
-
-        A field access is duplicable only when nothing user-written runs
-        behind it -- a property or `__getattr__` access is a method call
-        wearing a field access's node kind (`hidden_call`). The remaining
-        sema markers (module/class-constant access, optional deref checks,
-        deref narrowing) render idempotently and stay duplicable.
-
-        TODO: replace with an `is_pure` bit computed during sema and attached
-        to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
-        misses cases like `Int32(0)` -- a primitive-type constructor call
-        that codegen elides to a bare literal -- so chained-compare endpoint
-        inlining still binds a temp for it.
-        """
-        if isinstance(expr, TpyCoerce):
-            return ExpressionGenerator._is_duplicable_expr(expr.expr)
-        if isinstance(expr, (
-            TpyName, TpyIntLiteral, TpyFloatLiteral,
-            TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
-        )):
-            return True
-        if isinstance(expr, TpyFieldAccess):
-            if expr.hidden_call is not None:
-                return False
-            return ExpressionGenerator._is_duplicable_expr(expr.obj)
-        return False
-
     def _gen_chained_compare(self, expr: TpyChainedCompare) -> str:
         """Generate chained comparison with hybrid strategy.
 
@@ -2471,7 +2316,7 @@ class ExpressionGenerator:
         """
         assert expr.pairs is not None
         intermediates = expr.comparators[:-1]
-        if all(self._is_duplicable_expr(e) for e in intermediates):
+        if all(emit_prims.is_duplicable_expr(e) for e in intermediates):
             return self._gen_chained_compare_inline(expr)
         return self._gen_chained_compare_lambda(expr)
 
@@ -2529,7 +2374,7 @@ class ExpressionGenerator:
             if left is True and right is True:
                 return "true"
         if left is None and right is None:
-            result = _check_literal_chain(expr, self.ctx.literal_facts)
+            result = emit_prims.check_literal_chain(expr, self.ctx.literal_facts)
             if result is True:
                 return "true"
             if result is False:
@@ -2556,7 +2401,7 @@ class ExpressionGenerator:
 
     def _try_fold_literal_in(self, expr: TpyBinOp) -> str | None:
         """Fold `x in (a, b, ...)` / `x not in (a, b, ...)` using literal_facts."""
-        result = _check_literal_in(expr, self.ctx.literal_facts)
+        result = emit_prims.check_literal_in(expr, self.ctx.literal_facts)
         if result is True:
             return "true"
         if result is False:
@@ -2649,7 +2494,7 @@ class ExpressionGenerator:
             if 0 < i < n:
                 must_bind = True
             elif i == 0:
-                must_bind = not self._is_duplicable_expr(all_operands[0])
+                must_bind = not emit_prims.is_duplicable_expr(all_operands[0])
             else:
                 must_bind = False  # last operand always inlined
             if must_bind:
@@ -6035,7 +5880,7 @@ class ExpressionGenerator:
                 # but borrow contexts (call args) need REF -- the literal
                 # itself can't bind a T& to an rvalue, so codegen wraps it
                 # in tuple_value_to_borrow.
-                if _is_simple_lvalue(expr.elements[i]):
+                if emit_prims.is_simple_lvalue(expr.elements[i]):
                     # Deliberately blind to owning_sink: a bare-lvalue
                     # reference element keeps its borrow slot even at an
                     # `Own[tuple]` sink, and is safe only because the caller

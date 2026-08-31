@@ -5023,13 +5023,11 @@ class StatementGenerator:
 
     def _resolve_literal_chain_statically(self, condition: TpyBinOp) -> bool | None:
         """Resolve || / && chains of == comparisons using literal_facts."""
-        from .expressions import _check_literal_chain
-        return _check_literal_chain(condition, self.ctx.literal_facts)
+        return emit_prims.check_literal_chain(condition, self.ctx.literal_facts)
 
     def _resolve_literal_in_statically(self, condition: TpyBinOp) -> bool | None:
         """Resolve `x in (a, b, ...)` / `x not in (a, b, ...)` using literal_facts."""
-        from .expressions import _check_literal_in
-        return _check_literal_in(condition, self.ctx.literal_facts)
+        return emit_prims.check_literal_in(condition, self.ctx.literal_facts)
 
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
