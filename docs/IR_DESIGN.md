@@ -8,7 +8,7 @@
 | AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Same -- see the fallback tally for what is left |
 | `--dump-thir` debug output | Done |
 | THIR-backed codegen context | Default-on per-case for user modules (`tpyc/thir/emit.py`); `thir_all_modules` lifts the scoping gate for the stdlib sweeps |
-| Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (3767/3767, interop 34/34). **Stdlib: 0 fallback bodies / 1245 routed** (2026-08-30), so the routing metric is saturated too; what stands between here and deleting the AST body emitter is the cutover itself |
+| Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (markers at zero + armed ratchet == numerator equals denominator; the interop corpus likewise). **Stdlib: 0 fallback bodies / 1245 routed** (2026-08-30), so the routing metric is saturated too; what stands between here and deleting the AST body emitter is the cutover itself |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
@@ -904,7 +904,7 @@ for the eventual full AST deletion, not for the near-term separation/debuggabili
 win.
 
 *Where that left the tree (2026-08).* The marker scheme has run its course: zero
-`no_thir.txt` remain and the dial read 3746/3746, so neither the markers nor
+`no_thir.txt` remain and the dial necessarily reads N/N, so neither the markers nor
 `--thir-check-flip` can select work any more -- they now only guard against
 regression. The stdlib is still AST-scoped for real emission, but it is measured
 and byte-diffed through THIR by two always-on gates (the per-case wide oracle and
@@ -935,8 +935,7 @@ Measurement is separated from emission and tiered so the always-on cost is ~zero
   fallback count for them, but the dial ignores it on purpose: the marker is the
   contract, and a marked-but-clean case is benign porting progress, not a
   regression to fail on. `--thir-check-flip` turns that drift into un-mark
-  candidates. **SATURATED since 2026-08** (3767/3767 as of 2026-09-01, zero
-  markers): the dial
+  candidates. **SATURATED since 2026-08** (zero markers, so the dial is N/N by construction): the dial
   still reports, but it can no longer select work -- only regress.
 - **Tier 2 -- exact sweep (whole corpus).** THIR emit + byte-compare runs for
   EVERY case on a plain run -- the marker gates the ratchet, not the overlay,

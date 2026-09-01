@@ -2117,3 +2117,34 @@ Benchmarked with a large JSON dataset (15MB, 20K records). Library-level optimiz
   Also open, net-correct but leaving units on the table: `_required_protocol_union_arg` is wired into `_plain_call_arg_ok` only, not the ctor admission ladder, so a required protocol union at a CTOR slot falls back even though `_lower_call_arg` would render it correctly -- gate/arm drift in the conservative direction.
   Also unbuilt, and deliberately NOT shipped in that wave: the storage-side arg lifts (a storage tuple NAME / container ELEMENT read at a borrow-tuple param slot). They were written and then removed rather than shipped unpinned, because neither paid a case at the time. **That gating premise is DEAD:** the `subscript.elem.tuple` reject it named no longer exists anywhere in `tpyc/`, and `tuple/tuple_optional_in_list` routes clean -- so the SUBSCRIPT arm is no longer blocked behind anything and the work is not gated on it. NB the removal note first claimed both were unwitnessable from a unit-sized shape -- that is FALSE for the storage-NAME arm: the for-each loop var shape now pinned as `test_storage_loop_var_does_not_take_the_bare_pass` reaches exactly that position and is routing- and byte-identity-pinnable with the arm present. Rebuild the storage-NAME arm first; it is cheap and pinnable today. Rebuild both WITH the classifier above, re-priced against a fresh probe rather than against the retired blocker.
   No boundary pin exists for the simple-generator self-capturing lambda's resumable exclusion (`self_cpp == "__self"`): every shape probed routes, so a `stays AST` assertion there would be vacuous. Needs a genuinely resumable self-capturing lambda witness before it can be pinned.
+
+- **[docs] Twelve unfixed claim defects from the pre-push audit of `parked-master..master`.** A sweep of every numeric and
+  status claim in that window checked ~120 assertions; the primary migration metrics (dial, markers, fallback ceiling and
+  floor, the cutover gate's OPEN set) all reproduced exactly, and what broke was secondary tallies and restated status
+  sentences. Three were fixed on the branch that filed this (the detector count in CLAUDE.md, the stale case dial in five
+  places, and an already-fixed BUGS entry still open). The rest, worst first:
+  **`docs/IR_DESIGN.md`'s status table calls THIR-backed codegen "Default-on per-case for user modules"** -- it is default-on
+  in the TEST HARNESS only; `--thir-codegen` is `store_true` and the shipped compiler emits through the AST path. That is a
+  harness property presented as a compiler property, the same class as the detector-count error, and it is the one on this
+  list that would mislead someone about what users are running.
+  **~1/3 of the window's new `BUGS.md` `file:LINE` citations no longer resolve** (58 checked: 26 exact, 11 near, 20 miss);
+  `tpyc/` compiler-source citations are only 27% exact, while `lib/tpy` and `runtime/cpp` are 14/14. Four were wrong when
+  written. This is the measured case for citing by slug and for preferring `file` + SYMBOL over `file:LINE`.
+  **The ledger's cutover checklist is stale in three places** it presents as authoritative: "9 re-homed, the tenth is not
+  re-homable at all" (the tenth WAS re-homed and `AST_ONLY_DIAGNOSTICS` is now empty), "five predicates raise `CodeGenError`"
+  in `emit_prims.py` (seven do), and "the fifteen skeleton modules" (`SKELETON_MODULES` holds sixteen -- the wording was
+  copied from a commit message into the ledger and is wrong in both).
+  **`tests/test_thir_stdlib_gate.py` contradicts itself:** its comment says both numbers must be re-armed together and move
+  by the same amount, but `MIN_BODIES_CLASSIFIED` has sat at 2400 against a measured 2843 across the six commits that
+  touched the file, while its partner was re-armed each time.
+  **The stdlib-fallback zero has an undisclosed population caveat:** the sweep reports 0 fallback but also 32 `not_attempted`
+  bodies (resumable bodies the entry program never instantiates), which the figure's presentation does not mention.
+  **Miscounted secondary tallies, each attached to a rigorously measured primary:** "removes THIR's last import from a module
+  scheduled for deletion" (seven remained across four files; a later commit exists solely to remove them), "five of them HIGH"
+  (six), "files nine bugs" (eight), a dial denominator inherited from the branch base rather than re-derived at squash, a
+  "13x" ratio whose own measurements give 15.5x, and `TODO.md`'s own arg-table figures (386 cells / 194 rows, now 391 / 197,
+  and "all 367 cells" where the count is of `_ArgRow` constructions).
+  **The pattern, which matters more than the list:** every one is a status sentence restated somewhere it was not re-measured.
+  The ledger's own checklist preamble already forbids exactly this and is broken a few lines below it. Prefer stating the
+  invariant that forces a figure over recording the figure -- a number the suite defends is worth writing down, a number
+  nothing defends is a liability.

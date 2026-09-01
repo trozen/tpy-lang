@@ -11,7 +11,7 @@ is CLAUDE.md's "THIR migration" section -- read it, do not re-derive it.
 ## The corpus is done; the live population is the STDLIB
 
 `no_thir.txt` markers are at ZERO repo-wide and the case dial is saturated
-(3767/3767, interop 34/34). **Nothing below that selects work from
+(markers at zero force it to N/N; likewise interop). **Nothing below that selects work from
 `tests/cases` can select anything**: every corpus-scoped probe here filters on
 `no_thir.txt`, so it now measures the empty set and prints a clean sheet that
 reads as "nothing to do". The remaining population is stdlib bodies

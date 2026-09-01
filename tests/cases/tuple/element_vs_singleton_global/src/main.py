@@ -1,4 +1,4 @@
-# PINS A KNOWN-WRONG SHIPPING STATE -- see the module-global entry in BUGS.md.
+# PINS A KNOWN-WRONG SHIPPING STATE (BUGS.md#global-tuple-ref-storage-form).
 #
 # A tuple element at a GLOBAL does NOT behave as the same type would as a
 # singleton there. The scalar global takes a borrow slot (`Box*`) and ALIASES,

@@ -30,7 +30,10 @@ class H:
     # credit copy() at a field store, though the MIL genuinely moves v.
     def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
         # The line under test: same-named `v` must NOT take the leaked
-        # pointer-variant wrap.
+        # pointer-variant wrap. copy() is only here to silence a second
+        # false positive -- the bare store warns "copies A | B into field"
+        # although the emit moves it; the render is identical either way
+        # (BUGS.md#own-union-field-store-copy-warning).
         self.u = copy(v)  # tpyc: ok
         self.n = 0
 
