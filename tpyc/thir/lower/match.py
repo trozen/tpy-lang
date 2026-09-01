@@ -49,6 +49,7 @@ from ...codegen_cpp.emit_prims import (
     partition_optional_cases,
     pattern_has_field_condition,
     reject_nonlvalue_resumable_match_ptr_bind,
+    resumable_match_subject_is_stable,
     sub_has_field_condition,
 )
 from ...codegen_cpp.protocols import narrow_cast_rhs
@@ -1121,10 +1122,11 @@ def _select_match_route(
     # `opt_ptr_frame_locals` is empty outside a resumable body, and a
     # non-empty set says nothing on its own -- only a capture NAMING one of
     # those locals builds the aliasing field.
-    # Narrowing is deliberately NOT part of this condition: a narrowed subject
-    # that is an lvalue is still frame-rooted, so only the non-lvalue case can
-    # dangle -- folding narrowing in here would reject valid programs.
-    if lc.opt_ptr_frame_locals and not match_subject_is_lvalue(stmt.subject):
+    # Stability is the shared predicate, so it covers the narrowed-name subject
+    # too: that renders to the enclosing arm's extraction alias rather than to
+    # the frame field, which is just as dispatch-local as a copy.
+    if (lc.opt_ptr_frame_locals
+            and not resumable_match_subject_is_stable(stmt.subject, narrowed)):
         for _case in stmt.cases:
             for _bind in iter_capture_bindings(_case.pattern):
                 if _bind.name in lc.opt_ptr_frame_locals:

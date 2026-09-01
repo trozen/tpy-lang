@@ -3776,6 +3776,61 @@ class TestOptPtrFrameFieldCapture:
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "v = ::tpy::optional_to_ptr(__match_subject_1.maybe);" in cpp
 
+    _UNION = (
+        "class A:\n"
+        "    maybe: Optional[Inner]\n"
+        "    def __init__(self, m: Optional[Inner]) -> None:\n"
+        "        self.maybe = m\n"
+        "class B:\n"
+        "    y: Int32\n"
+        "    def __init__(self, y: Int32) -> None:\n"
+        "        self.y = y\n")
+
+    def test_narrowed_subject_capture_raises_from_lowering(self):
+        # A subject NARROWED by an enclosing arm is syntactically a plain
+        # name, but it renders to that arm's dispatch-local extraction alias
+        # rather than to the frame field -- so a ptr-Optional capture off it
+        # dangles exactly like one off a copied rvalue subject. Lowering
+        # decides that itself; a plain reject would fall the body back and
+        # leave the message to whoever emits it next.
+        src = self._PRE + self._UNION + (
+            "def gen(u: A | B) -> Iterator[Int32]:\n"
+            "    match u:\n"
+            "        case A():\n"
+            "            match u:\n"
+            "                case A(maybe=v):\n"
+            "                    yield 1\n"
+            "                    if v is not None:\n"
+            "                        yield v.n\n"
+            "        case B():\n"
+            "            yield 3\n")
+        with pytest.raises(CodeGenError,
+                           match="would dangle across a suspension") as exc:
+            _cpp(src, thir=True)
+        # Both paths share one message builder and a fallback body re-emits
+        # through the other, so the text cannot say which layer decided.
+        assert _raised_in_lowering(exc.value)
+
+    def test_nested_match_on_an_unnarrowed_subject_still_routes(self):
+        # BOUNDARY on the NARROWING axis: the same nested-match-inside-an-arm
+        # shape, but the inner subject is a separate name no enclosing arm
+        # narrowed, so it still reads its own frame field and the capture is
+        # frame-rooted. A verdict widened to "nested match in a resumable
+        # body" starts rejecting this.
+        src = self._PRE + self._UNION + (
+            "def gen(u: A | B, b: Box) -> Iterator[Int32]:\n"
+            "    match u:\n"
+            "        case A():\n"
+            "            match b:\n"
+            "                case Box(maybe=v):\n"
+            "                    yield 1\n"
+            "                    if v is not None:\n"
+            "                        yield v.n\n"
+            "        case B():\n"
+            "            yield 3\n")
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "v = ::tpy::optional_to_ptr(__match_subject_2.maybe);" in cpp
+
 
 class TestScalarFieldSubjectFlavors:
     """The kind-gate widening's other flavors: a GUARDED switch-kind

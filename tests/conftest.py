@@ -945,18 +945,27 @@ def _frontend_registry_for(src_file: Path):
 # raises; deleting those emitters turns it into a crash on source that is
 # supposed to be cleanly rejected. Drive this to empty -- an entry that starts
 # passing must be REMOVED, which is why the check runs in both directions.
-AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset({
-    # Blocked, not merely unmigrated: THIR rejects a narrowed-name match
-    # subject outright, so there is no lowering to raise from. The reject is
-    # also wrong -- this program compiles and runs correctly with the AST's
-    # guard removed -- so the fix belongs in the AST first, and mirroring the
-    # guard into THIR would make a known-wrong rejection permanent.
-    "iterators/error_gen_match_nested_narrowed_ptr_bind",
-    # Blocked: no THIR lowering raises this diagnostic at all -- the
-    # suspension-in-a-@dynamic-match reject exists only in the AST match
-    # emitter, so there is nothing to re-home it from yet.
-    "async/error_async_match_dyn_await",
-})
+AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset()
+# EMPTY: every codegen diagnostic a case reaches is now authored by a layer
+# that survives the body-emitter deletion. An entry added here is normally a
+# case that would crash instead of diagnosing once those modules are gone, so
+# adding one is normally a regression rather than a park.
+#
+# The exception, because it is foreseeable and the absolute reading would send
+# someone in circles: a case whose AST diagnostic is itself KNOWN-WRONG and
+# which THIR therefore declines to mirror belongs here, since the gate sees
+# only that the two paths disagree and cannot tell a correct refusal from an
+# unmigrated one. A regression case for a filed over-rejection is exactly that
+# shape. Park it here with the bug reference and it comes out when the AST
+# side is fixed.
+#
+# The check stays bidirectional -- a case that stops depending on a
+# body-authored diagnostic fails until its entry is removed -- which is what
+# keeps this set honest in both directions.
+#
+# Note the KEY this set counts: CASES that reach a body-authored diagnostic.
+# A body-authored diagnostic no case reaches is invisible here by
+# construction, so an empty set is not an empty cutover blocker list.
 
 
 # Diagnostics that live in a module the cutover KEEPS but are reached only

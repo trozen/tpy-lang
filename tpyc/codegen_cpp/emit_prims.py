@@ -33,7 +33,8 @@ the skeleton and the body emitter call them, and neither owns them.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Callable, Final, Iterator, NoReturn, TextIO, TYPE_CHECKING
+from typing import (Callable, Container, Final, Iterator, NoReturn, TextIO,
+                    TYPE_CHECKING)
 
 from .. import binding_audit
 from ..namespace import Namespace
@@ -1078,6 +1079,22 @@ def match_subject_is_lvalue(expr: TpyExpr) -> bool:
     return False
 
 
+def resumable_match_subject_is_stable(
+        expr: TpyExpr, narrowed: 'Container[str]') -> bool:
+    """Whether a `match` subject is storage a pointer-form arm binding may
+    alias across a suspension.
+
+    A non-lvalue subject is a dispatch-local copy of the subject. So is a
+    NARROWED name, even though it is syntactically a plain name: it renders to
+    the enclosing arm's extraction alias rather than to the frame field, and
+    that alias dies with the dispatch. A pointer-repr `Optional` capture points
+    INTO whichever of the two it was bound from, so neither survives the first
+    resumption."""
+    if isinstance(expr, TpyName) and expr.name in narrowed:
+        return False
+    return match_subject_is_lvalue(expr)
+
+
 def sub_has_field_condition(sub: 'TpyPattern') -> bool:
     """Whether a field sub-pattern emits a runtime condition (mirrors what
     `_record_field_conditions` produces): a literal comparison, a union
@@ -1440,6 +1457,21 @@ def reject_rebind_slot_crosses_scope(
         loc=loc)
 
 
+def reject_suspending_polymorphic_match(
+        loc: SourceLocation | None) -> NoReturn:
+    """A `match` on a @dynamic / polymorphic subject whose arm bodies can
+    suspend.
+
+    The dispatch is a plain `dynamic_cast` chain, so it has no seam to route
+    an arm body back through the state machine -- the suspension would be
+    emitted as straight-line code and silently dropped from the frame."""
+    raise CodeGenError(
+        "a `yield` / `await` inside a `match` on a @dynamic / "
+        "polymorphic value is not yet supported",
+        loc=loc,
+    )
+
+
 def reject_nonlvalue_resumable_match_ptr_bind(
         loc: SourceLocation | None) -> NoReturn:
     """A pointer-form `match` capture aliases a subject that is not stable
@@ -1545,8 +1577,10 @@ __all__ = [
     "reject_overload_return_mismatch",
     "reject_polymorphic_rvalue_into_optional_local",
     "reject_rebind_slot_crosses_scope",
+    "reject_suspending_polymorphic_match",
     "resolve_field_declared_type",
     "resolve_target_type",
+    "resumable_match_subject_is_stable",
     "returns_bare_reference",
     "seed_param_locals",
     "seed_param_locals_scoped",

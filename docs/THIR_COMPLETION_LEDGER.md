@@ -4358,6 +4358,40 @@ which a type-param receiver does not have.
   C++). Neither is covered by "exec + cpy". Re-decide D4's user half against
   three detectors, not one -- see cutover-checklist item 8.]
 
+  **RE-DECIDED 2026-09-01 against all three, and the answer does not change:
+  ACCEPT the loss; build no successor.** The reasoning, which is the part
+  worth keeping rather than the verdict: what the two audits catch is a fact
+  that is wrong, harmless TODAY, and harmful only once some future render
+  starts consulting it -- and at that moment the emitted C++ changes, so the
+  ordinary snapshot check catches it. The single path where a wrong verdict
+  escapes is a change that adds the consuming render AND regenerates the
+  snapshot in the same commit. That is not a new exposure: it is exactly the
+  "a wrongly-regenerated snapshot is self-consistent" risk this entry already
+  examined and accepted, with snapshot-churn approval as the compensating
+  control. Three detectors instead of one widens the surface, not the class.
+  Building single-path invariants for facts currently checked differentially
+  would be real design work and would delay the cutover for a risk already
+  accepted in its general form.
+  **The one thing to actually do: run both audits across the full corpus in
+  the commit before the deletion and record the joined-node counts here.** It
+  buys no ongoing protection -- it pins that the verdicts agreed at the moment
+  the second author was removed, so a later suspicion has a baseline to argue
+  from instead of nothing. It rides a suite run that has to happen anyway.
+  **BASELINE, measured 2026-09-01 on a green full suite (13436 passed, 23
+  skipped) at the tree that empties the known-unmigrated set: the move join
+  reports 0 divergences over 1012 JOINED NODES, and the binding join 0 gaps
+  over 11958 JOINED BODIES.** Name the key when quoting these: nodes and
+  bodies are different denominators and neither is a case count. An earlier
+  figure of 1010 joined nodes elsewhere in the tree is a different tree, not
+  a contradiction -- the join count moves with the corpus. Re-measure at the
+  deletion commit rather than carrying these forward; they are recorded now
+  because this is the run that had to happen anyway, not because they are
+  final.
+  Do NOT read this as a decision that the audits were low value: `move_audit`
+  caught a wrong-code move at a position the byte-diff could not see, which is
+  why it exists. The decision is that its class is bounded by the snapshot
+  regime once there is one author, not that it never mattered.
+
   **DECISION -- two-commit cutover, and the proof is free.**
   `_thir_flag_conflict` (`tests/conftest.py`:1256) currently FORBIDS THIR under
   `--update-snapshots` ("snapshots must capture the default (AST) codegen
@@ -5227,7 +5261,17 @@ by reading the item, never by trusting a sibling's summary of it.
    - For ~224 faces the witness fires at a GATE, so "witnessed" means a row
      admitted, not that the named render ran. Post-cutover a reader will assume
      the stronger meaning. That semantics needs writing down.
-6. **The two-commit cutover per Gate D4.** Mechanically ready -- the corpus
+6. **The two-commit cutover per Gate D4.**
+   **TIME-BOXED PREREQUISITE, and it is unrecoverable if missed: run a large
+   adversarial `dualgen` sweep in the commit BEFORE the deletion.** `dualgen`
+   needs two authors, so it dies permanently at commit 2 and section C
+   records that no successor exists. It is the only instrument that has ever
+   caught the out-of-corpus AST/THIR divergence class -- the one the
+   acceptance record (section H, near the end of this file) prices as the
+   flip's real residual risk. Everything else on this checklist can be done
+   after the fact; this cannot. Stated here as well as in section H because
+   this checklist is what a reader is pointed at for cutover readiness.
+   Mechanically ready otherwise -- the corpus
    dial is saturated, so THIR can author every snapshot. The blockers:
    - **Error cases had never been lowered through THIR at all. A DETECTOR now
      exists (2026-08-30); the re-homing work does not.** The overlay runs after
@@ -5419,8 +5463,14 @@ by reading the item, never by trusting a sibling's summary of it.
    BOTH and must be re-homed rather than deleted.
    **The D4 inventory this item refers to is stale in every number and missing
    about half the surface** -- it predates the stdlib gate, the cutover gate,
-   both audit modules, the migration scripts and two CI rows. Rewrite it before
-   executing it.
+   both audit modules, the migration scripts and two CI rows. **REWRITTEN
+   2026-09-01 at tree `0abcc8feb`; see "Gate D4 teardown inventory" at the end
+   of this file, and read that rather than the numbers in this item.** The
+   headline correction is that the deletion is smaller and the surface around
+   it larger than stated here: the four modules are 15,759 lines and only
+   THREE real import sites, but the corpus byte-diff SURVIVES (cases assert
+   against committed AST-authored snapshots, not a live AST emit), while the
+   two audits, the interop overlay and `dualgen.py` do not.
    Post-cutover `ThirUnsupported` becomes an internal error with no fallback
    behind it, so every reachable raise site turns into a hard compile failure
    on user source. There are **651 raise sites**, and the split was MEASURED
@@ -5430,6 +5480,11 @@ by reading the item, never by trusting a sibling's summary of it.
      never reached by the corpus or the stdlib at all. Adding the 275 THIR
      unit-test files -- the only population that reaches a raise site ON
      PURPOSE -- takes it to 279 reached / 372 unreached.
+     [Re-measured 2026-09-01 at a later tree: **655 sites, 283 reached, 372
+     unreached, 241 fatal-capable**, of which 81 sit at guard depth 0-1. The
+     shape of the finding is unchanged and the unreached count landing on 372
+     twice is coincidence, not stability -- the site population itself moved.
+     Quote the dated figure that matches the tree you are on.]
    - **The reason the unreached bucket is huge is structural, and it gets
      WORSE as the migration improves.** THIR raises only to reject: 29,829
      routed attempts produced zero raises. A corpus case reaches a site only
@@ -5556,6 +5611,31 @@ unknown quantities that could move it either way -- the 33 unwitnessed
 diagnostics, and the never-reached bucket of the 651. The critical path is NOT
 the deletion. It is the four `gen_async.py` decisions and the error-diagnostic
 re-homing, both of which are blocked on judgement rather than effort.
+**[STALE 2026-09-01 -- BOTH critical-path items are discharged, so this figure
+no longer describes anything. Corrected in place rather than deleted, because
+what the estimate got RIGHT is the useful part: it predicted the bottleneck
+would be judgement, not effort, and that is exactly how both items cleared --
+by decisions, not by grinding.** The four `gen_async.py` decisions landed
+2026-08-21 and the cutover gate's OPEN set is now empty; the error-diagnostic
+re-homing finished 2026-09-01, and the site instrument reads
+`BODY + deliberate, witnessed: 0`, which is the same fact as an empty
+`AST_ONLY_DIAGNOSTICS` measured a different way.
+**The two unknowns both moved, and NAME THE KEY on each because they are not
+the same measurement.** The "33 unwitnessed diagnostics" came from a reading
+that counted raise sites in the doomed files; the committed instrument now
+reports **5** in the narrower `BODY + deliberate, NO witnessing case` key --
+user-facing diagnostics that die at the cutover with no case able to watch
+them fire. 33 and 5 are NOT a delta; they are two keys, and the second is the
+one to work. Each of the 5 needs a re-home or an explicit accept.
+The never-reached bucket stopped being an open quantity at all: it is now 372
+of 655 raise sites, and section H accepts it as priced risk rather than
+scheduled work, because probing was measured and cannot close it -- 58 probes
+reached 19 sites with 3 of them the intended target.
+**No replacement figure is offered on purpose.** The residue is the 5
+diagnostics, the time-boxed `dualgen` sweep, the two cutover commits, and a
+teardown this same section calls roughly a week of mechanical work. Anyone
+wanting a number should derive it from those four, at the tree they are
+standing on.]
 What changed NOW rather than at the checklist: `--thir-codegen` implies
 `--thir-stdlib` (the stdlib oracle rides every measurement run instead of
 depending on someone remembering a flag; ~10-15% wall on a comp-only run)
@@ -14824,3 +14904,329 @@ inherits them rather than re-deriving them:
   count, byte count, which modules moved -- not line by line. A change that
   moves ONE module's emission is reviewable; one that moves eighty is not,
   and the second case is the one to be suspicious of.
+
+## Gate D4 teardown inventory, REWRITTEN 2026-09-01 (tree `0abcc8feb`)
+
+Checklist item 7 said its inventory was "stale in every number and missing
+about half the surface" and to rewrite it before executing. This is that
+rewrite. Every figure below was measured at `0abcc8feb`; per the checklist
+preamble a figure is valid only for the tree it names, so re-measure rather
+than inherit these.
+
+**The scope changed since the old inventory, and that is the substantive
+correction.** The old one counted lines in the four body emitters. The
+deletion's real cost is spread across five more surfaces -- the detectors,
+the two committed gates, the harness, the migration tooling and the CI rows
+-- and none of those were in it.
+
+**Read this whole inventory knowing it is organized around the DELETION,
+while the risk lives in the FLIP that precedes it.** The cutover is two
+acts, not one: commit 1 makes `thir_codegen` the default and hands
+authorship of every compile in the project to THIR for the first time
+(it defaults to `False` today and rides the corpus as an overlay, with the
+AST emit still feeding exec); commit 2 removes the emitter that used to be
+the author. Everything catalogued below -- lines, imports, detectors, gates,
+tooling -- belongs to commit 2 and is mechanical. The part that can produce
+a wrong answer rather than a missing one belongs to commit 1, and it is
+priced in section H, not here.
+
+### A. The deletion proper
+
+The four AST body emitters, deleted wholesale:
+
+| module | lines |
+|---|---|
+| `codegen_cpp/expressions.py` | 7042 |
+| `codegen_cpp/statements.py` | 5754 |
+| `codegen_cpp/match.py` | 2486 |
+| `codegen_cpp/builtins.py` | 477 |
+| **total** | **15,759** |
+
+For scale, `tpyc/thir/` (non-test) is 85,583 lines across 289 test files, so
+the deletion removes about 18% as much code as the replacement already
+carries.
+
+### B. Wiring -- smaller than the old inventory implied
+
+Nine import sites reference the four modules from outside them, and only
+THREE are real:
+
+- `codegen_cpp/generator.py:29-31` -- `BuiltinGenerator`, `ExpressionGenerator`,
+  `StatementGenerator`. The actual construction.
+- Six are `TYPE_CHECKING`-only annotations: `functions.py:54`, `records.py:52`,
+  `gen_async.py:119-120`, `gen_generators.py:211-212`.
+
+A repo-wide reverse-import scan is already committed and enforcing
+(`test_no_layer_outside_the_body_emitters_imports_one`), so this list cannot
+silently grow. **The cutover gate's OPEN set is empty** -- no skeleton call
+survives routing -- which is the property that makes the deletion wholesale
+rather than archaeology.
+
+### C. Detectors that die, and what actually replaces each
+
+This is the half the old inventory omitted entirely.
+
+- **Corpus byte-diff -- SURVIVES, contrary to the standing framing.** Every
+  unmarked case asserts THIR against its COMMITTED, AST-authored snapshot
+  (`tests/conftest.py:1636`), not against a live AST emit. The snapshots are
+  files on disk; deleting the emitter does not touch them. What degrades is
+  AUTHORSHIP -- after cutover THIR authors new snapshots, so the oracle stops
+  being independent for anything added later. The existing 3767 stay as an
+  AST-authored baseline.
+- **`move_audit.py` (155 lines) and `binding_audit.py` (273) -- DIE.** Both are
+  dual-path joins whose AST-side recorder lives inside the deleted emitter.
+  Nothing replaces them. Their class is narrow but real: a verdict at a site
+  whose render ignores it emits identical C++, so snapshots are blind to it.
+  That makes them LATENT-bug detectors -- what they catch bites when a future
+  render starts consulting the verdict, not today.
+- **The interop overlay (`run_interop_thir_overlay`) -- DIES, and NEEDS NO
+  SUCCESSOR. Its unique coverage was never checked before being treated as a
+  blocker; when it was, there was none.** The overlay emits both sides itself
+  because the CLI the ext-exec harness drives does not route THIR, and it
+  turns source comments ON, which the harness's own snapshots do not carry --
+  so it covers a comment-placement class the interop snapshot compare cannot
+  see. That class is real (a THIR arm once emitted a leading match-arm comment
+  the AST never wrote, fixed at 15 sites). **But it is emitted by the ordinary
+  module codegen, which the whole `tests/cases` corpus already exercises with
+  comments on and byte-diffs on every run -- and the corpus is what caught
+  that defect.** What is unique to interop is the CPython glue emitter, and
+  the glue is comment-INSENSITIVE: turning comments on changed 33 `.cpp` and
+  23 `.hpp` files and ZERO of the 34 `_ext.cpp` files. So interop contributes
+  nothing to the class the overlay protects.
+  **The reason is structural, not a coincidence about comments: an interop
+  case's module `.hpp`/`.cpp` is ORDINARY emission.** `@export` shows up in
+  the glue, not in the module -- an exported function's body renders exactly
+  as the same source would in a plain case, with no `PyObject`, no `Py_`, no
+  export marking anywhere in it. Interop cases exist to test interop; regular
+  emission is the corpus's job. An overlay that byte-diffs their module
+  emission is checking the wrong layer, which is why it had nothing of its own
+  to protect.
+  An attempt to build a successor (author interop snapshots at
+  `--emit-source`) was made and REVERTED 2026-09-01. It worked -- strictly
+  additive, 56 files, +1387 lines, no code line changed -- but it solved a
+  problem that did not exist, and it dragged in a real cost: the CLI has no
+  knob for `comment_line_numbers`, so every comment carried a `.py` line
+  number and a one-line insertion in a case source re-authored that file's
+  entire comment set. **The lesson is the ordering: establish that a dying
+  detector's coverage is UNIQUE before scoping a replacement for it.** The
+  same question is worth re-asking of every other row in this list.
+- **The error-path gate (`_assert_thir_raises_too` + `_diagnostic_author` +
+  `AST_ONLY_DIAGNOSTICS` + `BODY_DIAGNOSTIC_FUNCTIONS`) -- DIES**, since it
+  fires only from the handler for a `CodeGenError` raised by the AST emit.
+  **Post-cutover `diag.txt` is sufficient for every case the corpus carries**,
+  which is more than the earlier "most of the coverage" wording granted: the
+  gate re-raises, so a codegen error already lands in the committed
+  diagnostic, and wrong text, a wrong line and a missing error all fail that
+  byte compare. Its two unique contributions -- the AST-vs-THIR comparison
+  and the author classification -- both lose their subject entirely once one
+  author remains. **What dies is coverage of shapes NO CASE CARRIES**, which
+  is the same blind class the rest of this file tracks and not something the
+  gate was ever going to cover. Do not restate this as "fully covered": the
+  denominator is the corpus, not the language.
+- **`dualgen.py` -- DIES.** Note it is NOT compiler code: it lives at
+  `.claude/skills/tpy-thir-wave/scripts/dualgen.py` (1393 lines of skill
+  scripts in total). It needs two authors, so the `/tpy-thir-wave` skill's
+  adversarial half retires with the cutover. Worth stating because several
+  defect classes in this ledger were found ONLY by dualgen, and no successor
+  exists.
+
+### D. Committed gates to retire or rewrite
+
+- `codegen_cpp/test_cutover_gate.py` (559 lines) -- its whole subject is the
+  skeleton/body boundary. Retires with the deletion.
+- `tests/test_thir_stdlib_gate.py` -- ALREADY SPLIT, so the deletion is a
+  whole-file removal with nothing to hand-pick out of it. What survives moved
+  to `tests/test_stdlib_render_coverage.py`: the assertion keeping
+  `harness/stdlib_render`'s import list equal to `lib/tpy` (without it the
+  library's committed render silently narrows) and the snapshot-path
+  injectivity check, plus the lib/tpy module scan both halves share. One
+  survivor did NOT move and dies with the file: `_assert_every_family_reached`
+  asserts every registered arg-table family is reached by SOME stdlib body,
+  which is a THIR-only property with no AST in it. It rides the doomed
+  compile, and the sweep that reaches all ~2800 stdlib bodies has no cheaper
+  host -- rehome it onto a THIR-only compile of the same entry rather than
+  letting the deletion take it.
+- `tests/conftest.py` -- 457 THIR references. The overlay, both audit hookups,
+  the ratchet, the classify/check-flip options and the marker machinery all
+  go; `thir_codegen=True` stops being a test-only flip and becomes the
+  default.
+
+### E. Migration tooling -- 2664 lines that stop having a subject
+
+Eight scripts under `scripts/thir_migration/` (`thir_reject_reach` 706,
+`thir_matrix_reach` 674, `thir_diagnostic_sites` 525, `thir_stdlib_fallback`
+300, `thir_ast_arm_residency` 196, `thir_scan` 121, `thir_stdlib_sites` 106,
+`thir_resid_plugin` 36). Most measure fallback, reject sites or AST-arm
+residency -- all concepts that stop existing. `thir_reject_reach` is the
+exception worth keeping in some form: after cutover its unreached bucket
+becomes the set of shapes that ICE, which is the post-cutover work queue.
+
+Two CI rows key on the same dead concepts: `thir-stdlib` and
+`thir-stdlib-fallback` in `ci/nightly/configs.json`.
+
+### F. The real blockers, and they are few
+
+- **ZERO cases now depend on a body-authored diagnostic** (`AST_ONLY_DIAGNOSTICS`
+  is `frozenset()`), down from two on 2026-09-01. Note the KEY: this is a CASE
+  count, not a raise site count, and it is not comparable to the site figures
+  elsewhere in this file.
+  **An empty set is NOT an empty blocker list, and reading it that way is the
+  mistake this entry exists to prevent.** The ratchet can only see a
+  diagnostic some CASE reaches; a body-authored diagnostic with no case is
+  invisible to it by construction, and BUGS.md already carries at least one
+  filed HIGH instance -- the rebind half of the polymorphic-rvalue-into-an-
+  Optional-local reject, whose raise is reached from
+  `codegen_cpp/statements.py::_gen_pointer_local_rebind`, a caller the
+  deletion removes. Its message builder lives in a module the cutover keeps,
+  which is exactly why a file-based reading misses it: classify by CALLER.
+  That one is also NOT mechanical to re-home -- the AST gates it on a
+  local-form membership whose THIR equivalent is an open question, and an
+  ungated mirror would reject valid code. **So the honest state is: zero
+  case-covered body diagnostics, at least one uncovered one, and no
+  instrument that can enumerate the rest.** Before the deletion, sweep the
+  raise sites reached from the doomed modules rather than trusting this set.
+  `async/error_async_match_dyn_await`: the verdict now runs ahead of every
+  admission gate in the resumable lowering, because the case's body is
+  rejected first by an unrelated parameter gate and anything placed after
+  admission is never reached.
+  **That one is deliberately NOT a mirror, and the property is worth claiming
+  rather than leaving implicit.** The AST tests whether an arm walk is in
+  progress; THIR tests whether the match's own dispatch suspends. Those are
+  different conditions, chosen that way because the AST's is filed as a
+  defect -- it refuses a suspension-free polymorphic match that merely sits
+  before an enclosing arm's first `await`. The divergence is benign in its
+  direction (AST rejects, THIR accepts), so the cutover RETIRES that
+  over-rejection as a side effect. A reader's default assumption for a
+  re-homing is a faithful mirror, so a deliberate condition change needs
+  saying out loud; the two re-homings on this branch used opposite
+  methodologies, the other one consolidating both paths onto a single shared
+  predicate.
+  `iterators/error_gen_match_nested_narrowed_ptr_bind`: both paths now read
+  one shared subject-stability predicate, so THIR raises the diagnostic
+  instead of rejecting the body and letting the AST raise it.
+  **That second one was written against an explicit instruction in a filed
+  HIGH bug** ("the THIR mirror must not be written until it is fixed"),
+  because the reasoning behind that instruction does not hold: nothing about
+  a mirrored raise is permanent, and consolidating the disputed condition
+  into ONE shared predicate makes the eventual fix a single-line edit rather
+  than two spellings that can drift. The re-homing is also behaviourally
+  inert -- identical message, identical committed diagnostic, no snapshot
+  moved -- so only the author changed. Whether the condition itself is right
+  remains open and is tracked in BUGS.md; if it resolves toward "wrong", the
+  fix is to drop one conjunct from the shared predicate. Recording the
+  override here rather than silently taking it, since the instruction it
+  overrides is still worth its author's reasoning.
+- **The lowering gaps found by the 2026-09-01 fence sweep** (see TODO.md):
+  9 shapes that compile and run correctly today only via fallback, and 7 that
+  fold in front of AST renders that do not compile at all. After cutover the
+  first group becomes hard errors and the second stops being reachable in its
+  broken form. Neither blocks the deletion; both are the queue behind it.
+
+### G. What is NOT a blocker, and was treated as one
+
+- Snapshot regeneration -- and the framing above got this backwards, so read
+  the D4 decision itself rather than this correction of it. Regeneration is
+  not the hazard to avoid; it is commit 1's PROOF. D4 splits the cutover so
+  that commit 1 flips authorship to THIR and regenerates, with the
+  correctness criterion `git diff tests/cases` EMPTY -- a non-empty diff says
+  the corpus was not ready and says exactly where. Commit 2 then deletes the
+  emitter touching NO `expected/` file. The order is forced: the proof only
+  works while the AST still exists to have authored the baseline. What must
+  not happen is regeneration in the DELETION commit, where nothing would be
+  left to check it against. Lifting `_thir_flag_conflict`
+  (`tests/conftest.py`), which currently forbids THIR under
+  `--update-snapshots`, is commit 1's first step.
+- Driving the unreached reject set to zero first. Measured 2026-09-01 as not
+  achievable by probing at any sane cost -- 58 probes reached 19 sites, only
+  3 of them targeted, because a body folds at whichever fence it meets first
+  and cannot be reliably aimed. After cutover a reject is an ordinary compile
+  error, so the corpus regains reach and the set becomes discoverable for
+  free. The cutover is a better instrument for that job than any sweep
+  preceding it.
+
+### H. What the cutover SHIPS BROKEN, accepted 2026-09-01
+
+Recorded before the flip rather than after the first bug report, so the
+breakage is a decision with reasoning attached and not a surprise. The
+decision was taken knowing the list below is incomplete and cannot be
+completed.
+
+**The structural argument, stated with the denominator it actually has.** The
+cutover changes one thing for a body that already routes -- nothing -- and
+one thing for a body that FALLS BACK: it stops having anywhere to fall. So
+**for shapes the corpus or the stdlib covers, the cutover cannot introduce
+silent wrong code**: those are byte-diffed on every run, both have ZERO
+fallback, and neither changes at all.
+
+**Outside that set the guarantee does NOT hold, and an earlier draft of this
+section claimed it did.** Two facts kill the absolute version. First, THIR
+has never been the primary author anywhere: `thir_codegen` defaults to
+`False`, the corpus's own primary emit is the AST path (that is the C++ that
+feeds exec), and THIR rides as an overlay -- so commit 1 makes THIR the
+author of record for the first time, and its render is verified exactly where
+a byte-diff ran. Second, a THIR/AST divergence on valid code with NO corpus
+witness is a DEMONSTRATED class, not a hypothetical: section C of this
+inventory records defects found only by adversarial `dualgen`, including a
+render emitting `::tpy::BigInt(2)` where the AST renders a bare `2`, and a
+field-write lift where "byte-diff green over 3590 cases was not sufficient".
+Those were divergences, not crashes.
+
+So the honest form is: **loud crashes are the only NEW failure mode the
+deletion adds, but the FLIP that precedes it promotes an author whose
+out-of-corpus renders have unknown residual divergence.** That is accepted
+because 3767 cases plus the whole library is a wide oracle, because the AST
+is not a proven oracle either, and because nothing cheaper than the cutover
+finds the residue -- not because the residue is zero. Anyone citing this
+section for "the cutover is safe" must carry the denominator with it.
+
+**Accepted, with the key named for each:**
+
+- **9 witness SHAPES** (not cases, not sites) found by the 2026-09-01 fence
+  sweep: valid Python that compiles and runs correctly today only because a
+  fallback re-emits it through the AST. Each becomes a hard error. They are
+  enumerated in TODO.md with reproducers. This is the worst category here,
+  because the code is correct.
+- **7 further shapes** from the same sweep that fold in front of AST renders
+  which do not compile at all. These lose a bad-C++ error and gain a crash;
+  no working program is affected.
+- **At least ONE body-authored diagnostic with no case behind it** -- the
+  rebind half of the polymorphic-rvalue-into-an-Optional-local reject, plus a
+  second frame-scope shape in the same family, both filed HIGH in BUGS.md.
+  These turn a clean diagnostic into a crash on INVALID code, which is
+  strictly less bad than the witness category above and is why holding the
+  cutover for them while accepting the witnesses would not have followed.
+- **An unenumerated remainder.** In the RAISE-SITE key, 372 of 655 sites are
+  never reached by anything we compile. Some fraction of those is reachable
+  from user source and will surface as crashes. Nobody knows which, and the
+  measurement that would settle it does not exist: probing reached 19 sites
+  in 58 attempts, only 3 of them the intended target, because a body folds at
+  whichever fence it meets first and cannot be reliably aimed.
+
+**Why not wait until the list is empty.** It cannot be certified empty. The
+ratchet only sees a diagnostic some CASE reaches, so a body-authored reject
+with no case is invisible to it by construction; that is exactly how the
+rebind one survived to be found by hand. Waiting for a bar nobody can measure
+trades a definite cost -- delay, and spending the AST's value as an
+independent oracle on nothing -- for an undefinable benefit.
+
+**What the cutover BUYS on the same axis, which is the other half of the
+trade:** after it, a reject is an ordinary compile error rather than an
+invisible routing decision. The corpus regains reach, every one of the 372
+becomes discoverable by ordinary use, and each arrives with a stack trace
+naming its site. The cutover is a better instrument for finding this tail
+than any sweep that precedes it.
+
+**What would reverse this decision:** evidence that the out-of-corpus
+divergence residue is LARGE, rather than evidence that it is non-zero -- the
+latter is already established above and priced in. The cheapest probe of that
+residue is the one instrument that has ever sampled it, so:
+
+**SCHEDULED, and it has a closing window: run a large adversarial `dualgen`
+sweep in the commit BEFORE the deletion.** `dualgen` needs two authors, so it
+dies permanently at commit 2 and no successor exists -- section C says so.
+The same "it rides a run that has to happen anyway" logic that justified
+capturing the audit baselines applies here with strictly more force, because
+the audits catch a latent class this inventory argues is bounded by the
+snapshot regime, while `dualgen` is the only thing that has ever caught the
+unbounded one. Scheduling nothing against it while scheduling a baseline for
+the audits was backwards on value, and is corrected here.

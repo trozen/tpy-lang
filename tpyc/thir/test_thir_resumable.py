@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from ..codegen_cpp.context import CodeGenOptions
-from .testutil import _assert_rejects_at, _compile, _entry, _thir_ctx
+from ..codegen_cpp.context import CodeGenError, CodeGenOptions
+from .testutil import (_assert_rejects_at, _compile, _entry,
+                       _raised_in_lowering, _thir_ctx)
 
 _PRE = "from tpy import Int32, Int64\n\n"
 
@@ -1938,6 +1939,138 @@ class TestMatchDispatch:
         assert witnesses.get("res.match_dispatch", 0) >= 1
         _, _hpp, cpp = _gen(src, thir=True)
         assert "y = __match_subject_1;" in cpp
+
+
+_PETS = ("import asyncio\n"
+         + "from typing import Protocol\n"
+         + "from tpy import dynamic\n\n"
+         + "@dynamic\n"
+         + "class Pet(Protocol):\n"
+         + "    def name(self) -> str: ...\n\n"
+         + "class Dog(Pet):\n"
+         + "    def name(self) -> str:\n        return 'dog'\n\n"
+         + "async def step() -> None:\n    pass\n\n")
+
+
+class TestSuspendingPolyMatchDiagnostic:
+    """A `match` on a @dynamic / polymorphic subject dispatches through a
+    `dynamic_cast` chain, which offers no seam to route an arm body back
+    through the state machine -- so a suspension in an arm has no correct
+    lowering and the user gets a diagnostic. Lowering decides that itself:
+    leaving the message to whoever emits the body next makes it depend on a
+    reject firing for an unrelated reason (here, the @dynamic protocol
+    param)."""
+
+    _SUSPENDING_ENUM = ("from typing import Iterator\n"
+                        + "from enum import Enum\n"
+                        + "from tpy import Int32\n\n"
+                        + "class Color(Enum):\n"
+                        + "    RED = 1\n"
+                        + "    GREEN = 2\n\n"
+                        + "def emit(c: Color) -> Iterator[Int32]:\n"
+                        + "    match c:\n"
+                        + "        case Color.RED:\n"
+                        + "            yield 1\n"
+                        + "            yield 2\n"
+                        + "        case Color.GREEN:\n"
+                        + "            yield 3\n\n")
+
+    def test_suspending_poly_match_raises_from_lowering(self):
+        src = _PETS + (
+            "async def describe(p: Pet) -> str:\n"
+            "    match p:\n"
+            "        case Dog():\n"
+            "            await step()\n"
+            "            return 'dog'\n"
+            "        case _:\n"
+            "            return 'other'\n\n"
+            "def main() -> None:\n    pass\nmain()\n")
+        with pytest.raises(CodeGenError,
+                           match="inside a `match` on a @dynamic") as exc:
+            _gen(src, thir=True)
+        # The text alone cannot say which layer decided: both paths share one
+        # message builder, and a fallback body re-emits through the other.
+        assert _raised_in_lowering(exc.value)
+
+    def test_suspending_poly_match_in_a_generator_raises_from_lowering(self):
+        # The other half of the message's own sentence: a `yield` arm builds
+        # the same dispatch terminator in the same frame skeleton.
+        src = _PETS + (
+            "from typing import Iterator\n"
+            "from tpy import Int32\n\n"
+            "def emit(p: Pet) -> Iterator[Int32]:\n"
+            "    match p:\n"
+            "        case Dog():\n"
+            "            yield 1\n"
+            "            yield 2\n"
+            "        case _:\n"
+            "            yield 0\n\n"
+            "def main() -> None:\n    pass\nmain()\n")
+        with pytest.raises(CodeGenError,
+                           match="inside a `match` on a @dynamic") as exc:
+            _gen(src, thir=True)
+        assert _raised_in_lowering(exc.value)
+
+    def test_nonsuspending_poly_match_in_a_frame_is_untouched(self):
+        # BOUNDARY on the SUSPENSION axis: the same poly dispatch with every
+        # arm suspension-free is an ordinary statement in a block, not a
+        # dispatch terminator, and it compiles. A verdict widened to "any poly
+        # match in a resumable body" starts rejecting this.
+        src = _PETS + (
+            "async def describe(p: Pet) -> str:\n"
+            "    await step()\n"
+            "    match p:\n"
+            "        case Dog():\n"
+            "            return 'dog'\n"
+            "        case _:\n"
+            "            return 'other'\n\n"
+            "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+
+    def test_suspension_free_poly_match_after_an_arm_suspension_is_not_rejected(
+            self):
+        # BOUNDARY on the ARM-POSITION axis. The AST's guard tests whether an
+        # arm walk is in progress rather than whether the match it refuses
+        # suspends, so an identical suspension-free poly match is accepted
+        # here (after the arm's own suspension) and refused one statement
+        # earlier. Whichever way that asymmetry is settled, THIS half must
+        # keep drawing no verdict: the match contains no suspension and
+        # dispatches inline, so nothing has grounds to reject it.
+        #
+        # Scope, because the name of this test would otherwise overstate it:
+        # what is asserted is that both paths emit the same bytes and neither
+        # raises. It is NOT evidence that the program builds -- the fixture
+        # holds a @dynamic protocol value in a local across a suspension,
+        # which types its frame slot with the abstract protocol and fails the
+        # C++ build for reasons that have nothing to do with the match. This
+        # is a unit test with no exec phase, so nothing here would notice.
+        src = _PETS + (
+            "from tpy import Int32\n\n"
+            "async def describe(x: Int32) -> str:\n"
+            "    p: Pet = Dog()\n"
+            "    match x:\n"
+            "        case 1:\n"
+            "            await step()\n"
+            "            match p:\n"
+            "                case Dog():\n"
+            "                    pass\n"
+            "                case _:\n"
+            "                    pass\n"
+            "            return 'one'\n"
+            "        case _:\n"
+            "            return 'other'\n\n"
+            "def main() -> None:\n    pass\nmain()\n")
+        _assert_identical(src)
+
+    def test_nonpoly_suspending_match_still_routes(self):
+        # BOUNDARY on the DISPATCH-KIND axis: an ordinary suspending match
+        # keeps routing through the hook. A verdict keyed on the terminator
+        # alone, without the polymorphic test, would reject every one of them.
+        src = (self._SUSPENDING_ENUM
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses, fallback = _assert_identical(src)
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestNarrowedResume:

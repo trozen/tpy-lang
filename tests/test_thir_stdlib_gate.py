@@ -9,7 +9,10 @@ case, tests/cases/harness/stdlib_render, which imports every non-macro module
 and snapshots them all through options.json. What this file adds is the
 AST-vs-THIR diff: two authors checking each other, which goes away with the AST
 body emitter. The case's snapshot outlives it, and is what the library's render
-is checked against from then on.
+is checked against from then on; the guards that keep that case's coverage from
+narrowing outlive it too, and live in tests/test_stdlib_render_coverage.py.
+Everything in THIS file loses its subject once one emitter remains, which is
+why the two are separate files.
 
 *Complementary to the wide overlay, not superseded by it.* The default corpus run
 also routes lib/tpy through THIR per case and diffs it (conftest's stdlib
@@ -42,7 +45,6 @@ programs) added zero bodies over the import-only sweep.
 
 from __future__ import annotations
 
-import ast
 import dataclasses
 import importlib.util
 import json
@@ -58,10 +60,17 @@ from conftest import (
     _format_unified_diff,
     enclosing_function,
     first_divergent_line,
-    module_to_expected_path,
+)
+# The lib/tpy module scan is shared with the render-coverage guards, which
+# survive this file; it is imported rather than copied so the two readers
+# cannot drift on what counts as a library module.
+from test_stdlib_render_coverage import (
+    LIB_TPY,
+    MIN_MODULES,
+    is_macro_module,
+    lib_module_names,
 )
 
-from tpyc import get_lib_dir
 from tpyc.compiler import Compiler
 # The two table modules are imported for their SIDE EFFECT: a family exists
 # only once its `register_sink` call has run. conftest already pulls both in
@@ -69,13 +78,6 @@ from tpyc.compiler import Compiler
 # an empty one would assert nothing -- naming them here keeps this gate from
 # depending on somebody else's import graph.
 from tpyc.thir.lower import arg_table, checks, expressions  # noqa: F401
-
-LIB_TPY = get_lib_dir() / "tpy"
-
-# The case that commits the library's render. It compiles what this gate
-# compiles, so its import list is the coverage and the guard below pins it.
-RENDER_CASE_MAIN = (Path(__file__).resolve().parent / "cases" / "harness"
-                    / "stdlib_render" / "src" / "main.py")
 
 # The families the arg table has sinks for, snapshotted at COLLECTION time so
 # a unit test registering a throwaway sink (tpyc/thir/test_arg_table.py has
@@ -97,10 +99,11 @@ _fb_spec.loader.exec_module(fallback_sweep)
 
 # Self-check floors. A past harness in this repo reported "IDENTICAL" having
 # compared ZERO files, because its path mapping silently found no counterpart.
-# These are deliberately hard-coded well below the measured values (88 modules /
-# 110 file compares / ~1.37 MB as of 2026-08-24) rather than tracking them, so
-# they never need touching -- but a refactor that stops comparing fails loudly.
-MIN_MODULES = 80
+# These are deliberately hard-coded well below the measured values (110 file
+# compares / ~1.37 MB as of 2026-08-24) rather than tracking them, so they
+# never need touching -- but a refactor that stops comparing fails loudly.
+# MIN_MODULES is the same kind of floor, imported above because the
+# render-coverage guards need it for the same reason.
 MIN_COMPARES = 100
 MIN_EMITTING_MODULES = 50
 MIN_BYTES = 500_000
@@ -171,32 +174,6 @@ def _collapsed(per_module: dict[str, list[dict]]) -> tuple[int, int]:
         fallback_sweep.merge_module(collapsed, mod, bodies)
     rows = [b for bodies in collapsed.values() for b in bodies.values()]
     return sum(1 for b in rows if b["status"] == "fallback"), len(rows)
-
-
-def _lib_module_names() -> list[str]:
-    """Every importable module name under lib/tpy, package dirs included."""
-    names: list[str] = []
-    for path in sorted(LIB_TPY.rglob("*.py")):
-        if "__pycache__" in path.parts:
-            continue
-        parts = list(path.relative_to(LIB_TPY).parts)
-        if parts[-1] == "__init__.py":
-            parts = parts[:-1]
-        else:
-            parts[-1] = parts[-1][: -len(".py")]
-        if parts:
-            names.append(".".join(parts))
-    return names
-
-
-def _is_macro_module(name: str) -> bool:
-    path = LIB_TPY / (name.replace(".", "/") + ".py")
-    if not path.exists():
-        path = LIB_TPY / (name.replace(".", "/") + "/__init__.py")
-    if not path.exists():
-        return False
-    # Directives live in the header comment block; the parser scans the same way.
-    return "macro_module" in path.read_text(errors="replace")[:4000]
 
 
 def _render_divergences(rows: list[tuple[str, str]], heading: str,
@@ -280,8 +257,8 @@ def _compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:
     all: the dependency graph is walked once (~6s instead of ~73s) and each
     module is emitted with the union of the instantiations its siblings
     request, not just its own."""
-    all_names = _lib_module_names()
-    macro_names = [n for n in all_names if _is_macro_module(n)]
+    all_names = lib_module_names()
+    macro_names = [n for n in all_names if is_macro_module(n)]
     names = [n for n in all_names if n not in set(macro_names)]
     assert 0 < len(macro_names) <= MAX_MACRO_MODULES, (
         f"macro_module detection returned {len(macro_names)} of "
@@ -490,69 +467,3 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
           f"reached over {sum(_cells.values())} argument verdicts; "
           f"{len(_decided & THIR_ARG_CELLS)}/{len(THIR_ARG_CELLS)} cells "
           f"decided at least one")
-
-
-def test_snapshot_path_scheme_round_trips() -> None:
-    """The dotted-name -> path mapping is injective and reversible.
-
-    A module name holds no `/` and a path component holds no `.`, so splitting
-    on dots inverts exactly. The pair that looks like a collision is a package
-    and its submodule: `tplib.json` lands on the file `json.hpp` beside the
-    directory `json/` that `tplib.json.parser` lives in, which a filesystem
-    holds side by side. Asserted over the whole library because the render case
-    puts all of it in ONE expected/ tree, where a collision would silently
-    overwrite one module's render with another's.
-    """
-    names = [n for n in _lib_module_names() if not _is_macro_module(n)]
-    assert len(names) >= MIN_MODULES
-    base = RENDER_CASE_MAIN.parent.parent / "expected"
-
-    def invert(path: Path, ext: str) -> str:
-        rel = path.relative_to(base)
-        parts = list(rel.parts[1:])  # drop include/ or src/
-        parts[-1] = parts[-1][: -len(ext)]
-        return ".".join(parts)
-
-    seen: dict[Path, str] = {}
-    for name in names:
-        for ext in (".hpp", ".cpp"):
-            path = module_to_expected_path(base, name, ext)
-            assert invert(path, ext) == name
-            assert seen.setdefault(path, name) == name, (
-                f"{name} and {seen[path]} both map to {path}")
-
-    pkg = module_to_expected_path(base, "tplib.json", ".hpp")
-    sub = module_to_expected_path(base, "tplib.json.parser", ".hpp")
-    assert pkg != sub and sub.parent.name == "json"
-
-
-def test_render_case_imports_every_lib_module() -> None:
-    """The render case's import list equals the non-macro lib/tpy module set.
-
-    Its options.json snapshots `*`, which takes every library module that
-    COMPILES -- so the import list alone decides what gets a committed render.
-    A module nobody imports there is matched by nothing, and the pattern
-    reports no error because it did match the modules that were compiled.
-    """
-    want = {n for n in _lib_module_names() if not _is_macro_module(n)}
-    tree = ast.parse(RENDER_CASE_MAIN.read_text())
-    got = {a.name for node in tree.body if isinstance(node, ast.Import)
-           for a in node.names}
-    missing = sorted(want - got)
-    extra = sorted(got - want)
-    assert len(want) >= MIN_MODULES, (
-        f"only {len(want)} non-macro modules found under {LIB_TPY} -- the "
-        f"module scan broke, so this guard is comparing against nothing")
-    if missing or extra:
-        pytest.fail(
-            f"{RENDER_CASE_MAIN} does not import every non-macro module under "
-            f"{LIB_TPY}, so the library's committed render has holes.\n"
-            + (f"  ADD these lines: "
-               f"{', '.join('import ' + n for n in missing)}\n"
-               if missing else "")
-            + (f"  REMOVE these lines (no such non-macro module): "
-               f"{', '.join('import ' + n for n in extra)}\n"
-               if extra else "")
-            + f"Then refresh with `uv run python tests/update_snapshots.py "
-              f"-k stdlib_render`.",
-            pytrace=False)

@@ -415,10 +415,17 @@ def test_error_gate_fires_on_an_unrecorded_body_diagnostic(
 
 
 def test_error_gate_fires_when_a_recorded_case_starts_passing(
-        tmp_path: Path) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The other direction, which is what makes the record a ratchet rather
-    than a suppression list: progress must force the entry out."""
-    recorded = sorted(conftest.AST_ONLY_DIAGNOSTICS)[0]
+    than a suppression list: progress must force the entry out.
+
+    The recorded set is synthesized rather than sampled: it is empty whenever
+    every diagnostic is authored by a surviving layer, which is the state the
+    project is trying to reach and hold, so borrowing a real entry makes this
+    assertion disappear exactly when the gate matters most."""
+    recorded = "harness/error_synthetic_recorded_case"
+    monkeypatch.setattr(conftest, "AST_ONLY_DIAGNOSTICS",
+                        frozenset({recorded}))
     case_dir = tmp_path / Path(recorded).parent.name / Path(recorded).name
 
     def same():

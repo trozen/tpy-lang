@@ -106,6 +106,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_dict, is_list, is_set
+from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
 from ...codegen_cpp.forms import is_plain_nonvalue
@@ -1014,6 +1015,28 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     return None
 
 
+def _check_suspending_poly_match(cfg: 'rcfg.CFG') -> None:
+    """Refuse a `match` on a @dynamic / polymorphic subject that suspends.
+
+    A suspending match becomes a `MatchDispatch` terminator, and a
+    polymorphic one dispatches through a `dynamic_cast` chain that has no
+    seam to route arm bodies back through the state machine -- so no
+    lowering of the enclosing body is correct, on either emit path. That
+    makes it a verdict rather than an admission decision, so it runs ahead of
+    every admission gate below: rejecting the body instead would only defer
+    the user-facing message to whichever layer emits it next, and the gates
+    it would have to clear first are unrelated to the shape diagnosed here.
+
+    A poly match with no suspension in it is untouched -- it is an ordinary
+    statement in some block, dispatches inline, and compiles."""
+    for bb_id in sorted(cfg.blocks):
+        term = cfg.blocks[bb_id].terminator
+        if (isinstance(term, rcfg.MatchDispatch)
+                and term.match_stmt.polymorphic_dispatch):
+            emit_prims.reject_suspending_polymorphic_match(
+                term.match_stmt.loc)
+
+
 def lower_resumable(func: TpyFunction, analyzer, render_type,
                     cfg: 'rcfg.CFG',
                     record_name: 'str | None' = None,
@@ -1064,6 +1087,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     aliases as `__{var}`. Reused (vs re-derived) so the narrowed-BB alias
     environments match the walker exactly; None (unit callers) keeps every
     narrowed body on the fallback path."""
+    _check_suspending_poly_match(cfg)
     is_generator = bool(func.is_generator)
     # R2: instance-method coros route with a `__self` receiver. Static /
     # property / dunder-operator kinds keep their own dispatch shapes;

@@ -1,8 +1,8 @@
 # Compiles every non-macro module under lib/tpy so the whole library's
 # generated C++ is committed next to this case -- the render oracle that
 # outlives the AST body emitter. options.json snapshots "*", so this import
-# list alone decides what is covered; tests/test_thir_stdlib_gate.py asserts
-# it stays equal to the set of non-macro modules under lib/tpy.
+# list alone decides what is covered; tests/test_stdlib_render_coverage.py
+# asserts it stays equal to the set of non-macro modules under lib/tpy.
 import _bindings
 import _bindings.hinnant_date
 import _bindings.mbedtls

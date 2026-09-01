@@ -30,6 +30,7 @@ from .emit_prims import (
     match_subject_is_lvalue,
     partition_optional_cases,
     pattern_has_field_condition,
+    resumable_match_subject_is_stable,
     sub_has_field_condition,
 )
 from .context import INDENT, CodeGenError, escape_cpp_name, cpp_string_literal_expr
@@ -168,21 +169,15 @@ class MatchGenerator:
                 and self.ctx.is_storage_form_optional_source(stmt.subject)):
             subject_code = f"::tpy::optional_to_ptr({subject_code})"
             binding = "auto"
-        # Record whether the subject is a stable frame-resident lvalue, for
-        # the resumable pointer-form binding emit: a pointer-into-subject arm
-        # binding survives a suspension only if the subject's storage outlives
-        # it. A non-lvalue subject is a dispatch-local copy; a *narrowed* name
-        # (union/isinstance) renders to a dispatch-local extraction alias
-        # (`__case_N`) even though it is syntactically a name -- so a nested
-        # `match` on a narrowed subject is NOT frame-stable. Both are unsafe
-        # for a pointer-form binding (the emit rejects that combination).
-        # Set unconditionally; read only on the resumable pointer-form path.
-        # Re-set per match (incl. nested) -- arm bindings emit before any
-        # nested-match arm body runs, so no save/restore is needed.
-        subject_is_narrowed = (isinstance(stmt.subject, TpyName)
-                               and stmt.subject.name in self.ctx.narrowed_vars)
+        # Record whether the subject is stable frame-resident storage, for the
+        # resumable pointer-form binding emit (the shared predicate both emit
+        # paths decide this from). Set unconditionally; read only on the
+        # resumable pointer-form path. Re-set per match (incl. nested) -- arm
+        # bindings emit before any nested-match arm body runs, so no
+        # save/restore is needed.
         self.ctx.resumable_match_subject_is_lvalue = (
-            subject_is_lvalue and not subject_is_narrowed)
+            resumable_match_subject_is_stable(stmt.subject,
+                                              self.ctx.narrowed_vars))
         self.ctx.resumable_match_loc = stmt.loc
         out.write(f"{indent}{binding} {self.subject} = {subject_code};\n")
 
@@ -283,11 +278,7 @@ class MatchGenerator:
         # frame's arm routing (the dispatch is a plain dynamic_cast chain, not
         # the decomposed state machine) -- refuse rather than drop it.
         if self.ctx.resumable_arm_emitter is not None:
-            raise CodeGenError(
-                "a `yield` / `await` inside a `match` on a @dynamic / "
-                "polymorphic value is not yet supported",
-                loc=stmt.loc,
-            )
+            emit_prims.reject_suspending_polymorphic_match(stmt.loc)
 
         subject = stmt.subject
         subject_name = subject.name if isinstance(subject, TpyName) else None
