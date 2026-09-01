@@ -1,4 +1,4 @@
-"""The library's committed render cannot silently narrow.
+"""Coverage guards over lib/tpy that outlive the second codegen path.
 
 Every module under lib/tpy has its generated C++ committed by one ordinary
 test case, tests/cases/harness/stdlib_render, whose options.json snapshots
@@ -9,19 +9,34 @@ match everything that was compiled. The same case also lands the whole library
 in ONE expected/ tree, where two module names mapping to one snapshot path
 would overwrite each other just as quietly.
 
-Both guards are name-level scans over lib/tpy: no compile, no toolchain.
+The first two guards are name-level scans: no compile, no toolchain. The third
+compiles the library and emits it through THIR alone, because what it asks --
+does anything ever DISPATCH to each arg-table family -- has no other reliable
+answer and needs only one emitter. It lives here rather than beside the
+AST/THIR byte-diff (tests/test_thir_stdlib_gate.py) so that deleting the diff
+does not take a coverage guard with it that has nothing to do with having two
+authors.
 """
 
 from __future__ import annotations
 
 import ast
+import dataclasses
+import os
 from pathlib import Path
 
 import pytest
 
-from conftest import module_to_expected_path
+from conftest import TEST_CODEGEN_OPTIONS, module_to_expected_path
 
 from tpyc import get_lib_dir
+from tpyc.compiler import Compiler
+# The two table modules are imported for their SIDE EFFECT: a family exists
+# only once its `register_sink` call has run. conftest already pulls both in
+# transitively, but the expected set below is derived from the registry, so
+# an empty one would assert nothing -- naming them here keeps this guard from
+# depending on somebody else's import graph.
+from tpyc.thir.lower import arg_table, checks, expressions  # noqa: F401
 
 LIB_TPY = get_lib_dir() / "tpy"
 
@@ -29,11 +44,30 @@ LIB_TPY = get_lib_dir() / "tpy"
 RENDER_CASE_MAIN = (Path(__file__).resolve().parent / "cases" / "harness"
                     / "stdlib_render" / "src" / "main.py")
 
-# Self-check floor: both guards below compare the case against the SCANNED
-# module set, so a scan that quietly found nothing would assert nothing.
-# Deliberately hard-coded well below the measured value (88 modules as of
-# 2026-08-24) rather than tracking it, so it never needs touching.
+# Self-check floor: the two scan guards below compare the case against the
+# SCANNED module set, so a scan that quietly found nothing would assert
+# nothing. Deliberately hard-coded well below the measured value (88 modules
+# as of 2026-08-24) rather than tracking it, so it never needs touching.
 MIN_MODULES = 80
+
+# Detection sanity: macro modules run under CPython at compile time and emit no
+# C++ at all, so they are excluded from the compile below. Over-exclusion is
+# already caught by MIN_MODULES; this catches the mirror failure of a detector
+# that suddenly classifies nothing (or everything) as a macro module.
+MAX_MACRO_MODULES = 20
+
+# The families the arg table has sinks for, snapshotted at COLLECTION time so
+# a unit test registering a throwaway sink (tpyc/thir/test_arg_table.py has
+# three) cannot join the set the reach floor demands. Derived from the
+# registry rather than listed, so a family a later sink adds is covered
+# without editing anything here.
+THIR_ARG_FAMILIES = arg_table.registered_families()
+THIR_ARG_CELLS = arg_table.registered_cells()
+
+# Self-check floor for the family gate: a registry snapshotted before the sink
+# modules were imported is empty, and an empty expected set is satisfied by
+# reaching nothing.
+MIN_ARG_FAMILIES = 10
 
 
 def lib_module_names() -> list[str]:
@@ -60,6 +94,102 @@ def is_macro_module(name: str) -> bool:
         return False
     # Directives live in the header comment block; the parser scans the same way.
     return "macro_module" in path.read_text(errors="replace")[:4000]
+
+
+def compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:
+    """Compile every non-macro lib/tpy module from ONE entry that imports them
+    all: the dependency graph is walked once (~6s instead of ~73s) and each
+    module is emitted with the union of the instantiations its siblings
+    request, not just its own."""
+    all_names = lib_module_names()
+    macro_names = [n for n in all_names if is_macro_module(n)]
+    names = [n for n in all_names if n not in set(macro_names)]
+    assert 0 < len(macro_names) <= MAX_MACRO_MODULES, (
+        f"macro_module detection returned {len(macro_names)} of "
+        f"{len(all_names)} modules -- the detector is broken, not the stdlib"
+    )
+    entry = tmp_path / "thir_stdlib_gate_entry.py"
+    entry.write_text("".join(f"import {n}\n" for n in names))
+    compiler = Compiler(entry, lib_dirs=[LIB_TPY])
+    compiled = compiler.compile()
+    # A cycle peer also emits a `<mod>_fwd.hpp`, which generate_code_to_strings
+    # has no slot for -- it would go unsnapshotted and undiffed in silence. No
+    # lib/tpy module is one today; if that changes, this must grow a third
+    # artifact rather than quietly stop covering it.
+    assert not compiler._cycle_peers, (
+        f"lib/tpy now has import cycles ({sorted(compiler._cycle_peers)}); "
+        f"their _fwd.hpp headers are outside everything this gate compares")
+    return compiler, compiled
+
+
+def test_every_arg_family_is_reached(request: pytest.FixtureRequest,
+                                     tmp_path: Path) -> None:
+    """Every registered arg-table family is REACHED by the stdlib sweep.
+
+    Not an audit join against the ladders the table replaced -- that one proved
+    a cell decides what its ladder decided, and is gone with them. This proves
+    anything ever asks. The second question has no other reliable answer: an
+    unreached family's bodies fall back, a fallback emits the AST's own bytes,
+    so a byte-diff stays silent; the fallback ratchet notices only while it
+    happens to carry no slack; and only a minority of the table's cells carry a
+    face, so the zero-witness census covers some rows and no family as a whole.
+
+    Asserted over ~2800 stdlib bodies through every callee shape the library
+    uses, which no single corpus case reaches. Non-zero, never a fixed count:
+    the population moves with every routing change. The family SET comes from
+    the sink registry, so a step that adds a sink is covered without touching
+    this -- and if the stdlib genuinely cannot reach a newly folded family,
+    that is the gate saying the family has no witness, which is the thing
+    worth knowing.
+    """
+    if request.config.getoption("--no-thir"):
+        pytest.skip("--no-thir disables THIR entirely")
+    if (request.config.getoption("--update-snapshots")
+            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
+        # Snapshot authoring runs the AST path; a full second library compile
+        # through THIR buys nothing there and can fail a regeneration run over
+        # a property regeneration does not touch.
+        pytest.skip("--update-snapshots authors snapshots from the AST path")
+    assert len(THIR_ARG_FAMILIES) >= MIN_ARG_FAMILIES, (
+        f"only {len(THIR_ARG_FAMILIES)} arg-table families registered "
+        f"(expected >= {MIN_ARG_FAMILIES}) -- the snapshot was taken before "
+        f"the sink modules were imported, so this gate asserts nothing")
+
+    compiler, compiled = compile_lib_tpy(tmp_path)
+    # thir_all_modules lifts the user-module scoping gate (compiler.py
+    # `_make_codegen`) -- the same knob --thir-stdlib uses, so routing keeps
+    # one definition. Only THIR emits: the question is which families lowering
+    # dispatches to, which one author answers.
+    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True,
+                                    thir_all_modules=True)
+    for mod in compiled:
+        if not mod.is_entry_point:
+            compiler.generate_code_and_thir(mod, thir_opts)
+
+    reached = arg_table.reached_families(compiler)
+    missing = [f for f in THIR_ARG_FAMILIES if f not in reached]
+    assert not missing, (
+        f"the arg table's {', '.join(missing)} family/families decided ZERO "
+        f"arguments over the whole stdlib sweep -- nothing dispatches to "
+        f"them here, so their cells are unexercised and an over- or "
+        f"under-admission in them has nothing pointed at it.\n"
+        f"Reached: {sorted(reached)}\n"
+        f"Check the gate that selects the sink still routes to it "
+        f"(tpyc/thir/lower/checks.py, tpyc/thir/lower/expressions.py).")
+
+    # Per-CELL coverage is REPORTED, never asserted. A cell no sweep reaches
+    # is not a defect -- some are deliberate fences, some transcribe a ladder
+    # leg the stdlib has no shape for -- so a floor here would be a
+    # false-alarm generator. The number is a trend line, and having it at all
+    # is the point: the fold's own coverage question went unanswerable once
+    # its instruments came down.
+    cells = arg_table.reached(compiler)
+    decided = {(f, c.removeprefix("!")) for f, c in cells
+               if c not in (arg_table.PROLOGUE_CELL, arg_table.NO_CELL)}
+    print(f"\ntpy| thir arg-table: {len(THIR_ARG_FAMILIES)} families all "
+          f"reached over {sum(cells.values())} argument verdicts; "
+          f"{len(decided & THIR_ARG_CELLS)}/{len(THIR_ARG_CELLS)} cells "
+          f"decided at least one")
 
 
 def test_snapshot_path_scheme_round_trips() -> None:

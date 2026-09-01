@@ -64,28 +64,7 @@ from conftest import (
 # The lib/tpy module scan is shared with the render-coverage guards, which
 # survive this file; it is imported rather than copied so the two readers
 # cannot drift on what counts as a library module.
-from test_stdlib_render_coverage import (
-    LIB_TPY,
-    MIN_MODULES,
-    is_macro_module,
-    lib_module_names,
-)
-
-from tpyc.compiler import Compiler
-# The two table modules are imported for their SIDE EFFECT: a family exists
-# only once its `register_sink` call has run. conftest already pulls both in
-# transitively, but the expected set below is derived from the registry, so
-# an empty one would assert nothing -- naming them here keeps this gate from
-# depending on somebody else's import graph.
-from tpyc.thir.lower import arg_table, checks, expressions  # noqa: F401
-
-# The families the arg table has sinks for, snapshotted at COLLECTION time so
-# a unit test registering a throwaway sink (tpyc/thir/test_arg_table.py has
-# three) cannot join the set the reach floor demands. Derived from the
-# registry rather than listed, so a family a later sink adds is covered
-# without editing anything here.
-THIR_ARG_FAMILIES = arg_table.registered_families()
-THIR_ARG_CELLS = arg_table.registered_cells()
+from test_stdlib_render_coverage import MIN_MODULES, compile_lib_tpy
 
 # The routing classifier lives with the standalone sweep script rather than
 # being copied here: a new lowering kind must not be able to be taught to one
@@ -107,11 +86,6 @@ _fb_spec.loader.exec_module(fallback_sweep)
 MIN_COMPARES = 100
 MIN_EMITTING_MODULES = 50
 MIN_BYTES = 500_000
-# Detection sanity: macro modules run under CPython at compile time and emit no
-# C++ at all, so they are excluded from the sweep. Over-exclusion is already
-# caught by MIN_MODULES; this catches the mirror failure of a detector that
-# suddenly classifies nothing (or everything) as a macro module.
-MAX_MACRO_MODULES = 20
 
 # The fallback ratchet: stdlib bodies THIR cannot lower. EXCEEDING this fails;
 # beating it passes, so routing progress never needs a config edit (lowering the
@@ -139,11 +113,6 @@ MAX_FALLBACK_BODIES = 0
 MIN_BODIES_CLASSIFIED = 2400
 MIN_ROUTED_BODIES = 1245
 MIN_CLASSIFIED_MODULES = 70
-
-# Arg-table reach floor: the registry is the expected set, so this is only a
-# self-check that the set was snapshotted after the sinks registered. Well
-# below the 12 families the fold produced, and never needs touching.
-MIN_ARG_FAMILIES = 10
 
 MAX_REPORTED_DIVERGENCES = 10
 DIFF_CONTEXT = 2
@@ -216,68 +185,6 @@ def _fallback_report(per_module: dict[str, list[dict]]) -> str:
     return "\n".join(lines)
 
 
-def _assert_every_family_reached(compiler: Compiler) -> None:
-    """Every registered arg-table family is REACHED by the stdlib sweep.
-
-    Not the fold's audit join, which compared the table against the ladders
-    it replaced and is gone with them. That join proved a cell decides what
-    its ladder decided; this proves anything ever asks. Different questions,
-    and the second has no other reliable answer: an unreached family's
-    bodies fall back, a fallback emits the AST's own bytes, so the byte-diff
-    stays silent; the fallback ratchet notices only while it happens to
-    carry no slack; and only a minority of the table's cells carry a face,
-    so the zero-witness census covers some rows and no family as a whole.
-
-    Assert on the sweep that reaches all of them -- ~2800 stdlib bodies
-    through every callee shape the library uses, which no single corpus case
-    does. Non-zero, never a fixed count: the population moves with every
-    routing change. The family SET comes from the sink registry, so a step
-    that adds a sink is covered by this gate without touching it -- and if
-    the stdlib genuinely cannot reach a newly folded family, that is the gate
-    saying the family has no witness, which is the thing worth knowing.
-    """
-    assert len(THIR_ARG_FAMILIES) >= MIN_ARG_FAMILIES, (
-        f"only {len(THIR_ARG_FAMILIES)} arg-table families registered "
-        f"(expected >= {MIN_ARG_FAMILIES}) -- the snapshot was taken before "
-        f"the sink modules were imported, so this gate asserts nothing")
-    reached = arg_table.reached_families(compiler)
-    missing = [f for f in THIR_ARG_FAMILIES if f not in reached]
-    assert not missing, (
-        f"the arg table's {', '.join(missing)} family/families decided ZERO "
-        f"arguments over the whole stdlib sweep -- nothing dispatches to "
-        f"them here, so their cells are unexercised and an over- or "
-        f"under-admission in them has nothing pointed at it.\n"
-        f"Reached: {sorted(reached)}\n"
-        f"Check the gate that selects the sink still routes to it "
-        f"(tpyc/thir/lower/checks.py, tpyc/thir/lower/expressions.py).")
-
-
-def _compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:
-    """Compile every non-macro lib/tpy module from ONE entry that imports them
-    all: the dependency graph is walked once (~6s instead of ~73s) and each
-    module is emitted with the union of the instantiations its siblings
-    request, not just its own."""
-    all_names = lib_module_names()
-    macro_names = [n for n in all_names if is_macro_module(n)]
-    names = [n for n in all_names if n not in set(macro_names)]
-    assert 0 < len(macro_names) <= MAX_MACRO_MODULES, (
-        f"macro_module detection returned {len(macro_names)} of "
-        f"{len(all_names)} modules -- the detector is broken, not the stdlib"
-    )
-    entry = tmp_path / "thir_stdlib_gate_entry.py"
-    entry.write_text("".join(f"import {n}\n" for n in names))
-    compiler = Compiler(entry, lib_dirs=[LIB_TPY])
-    compiled = compiler.compile()
-    # A cycle peer also emits a `<mod>_fwd.hpp`, which generate_code_to_strings
-    # has no slot for -- it would go unsnapshotted and undiffed in silence. No
-    # lib/tpy module is one today; if that changes, this must grow a third
-    # artifact rather than quietly stop covering it.
-    assert not compiler._cycle_peers, (
-        f"lib/tpy now has import cycles ({sorted(compiler._cycle_peers)}); "
-        f"their _fwd.hpp headers are outside everything this gate compares")
-    return compiler, compiled
-
-
 def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
                                  tmp_path: Path) -> None:
     """Emit every non-macro lib/tpy module through both codegen paths from one
@@ -297,7 +204,7 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
         pytest.skip("--update-snapshots authors snapshots from the AST path")
 
     t0 = time.monotonic()
-    compiler, compiled = _compile_lib_tpy(tmp_path)
+    compiler, compiled = compile_lib_tpy(tmp_path)
 
     ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
     # thir_all_modules lifts the user-module scoping gate (compiler.py
@@ -412,7 +319,6 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
         f"only {with_bodies} modules contributed any body (expected >= "
         f"{MIN_CLASSIFIED_MODULES})")
 
-    _assert_every_family_reached(compiler)
     if ratchet_problem:
         pytest.fail(ratchet_problem, pytrace=False)
 
@@ -454,16 +360,3 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
           f"fallback {fallback}/{MAX_FALLBACK_BODIES} over {classified} bodies "
           f"({routed} routed; {collapsed} under the nightly row's collapsed "
           f"key)")
-    # Per-CELL coverage is REPORTED, never asserted. A cell no sweep reaches
-    # is not a defect -- some are deliberate fences, some transcribe a ladder
-    # leg the stdlib has no shape for -- so a floor here would be a
-    # false-alarm generator. The number is a trend line, and having it at all
-    # is the point: the fold's own coverage question went unanswerable once
-    # its instruments came down.
-    _cells = arg_table.reached(compiler)
-    _decided = {(f, c.removeprefix("!")) for f, c in _cells
-                if c not in (arg_table.PROLOGUE_CELL, arg_table.NO_CELL)}
-    print(f"tpy| thir arg-table: {len(THIR_ARG_FAMILIES)} families all "
-          f"reached over {sum(_cells.values())} argument verdicts; "
-          f"{len(_decided & THIR_ARG_CELLS)}/{len(THIR_ARG_CELLS)} cells "
-          f"decided at least one")

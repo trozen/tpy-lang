@@ -9,13 +9,22 @@ the corpus green. A non-empty `fallback` line means the shape fell back --
 byte-identity via fallback proves routing did NOT happen, not that the arm
 is correct.
 
+ONE WIDTH IS NOT ENOUGH. `default_int` is compilation-wide and reaches every
+module's sema, so a divergence gated on it is invisible at any single setting --
+and at least one known divergence appears at BigInt and at neither of the others.
+Smoke a shape at all three unless there is a reason not to.
+
+The scratch tree is keyed by file STEM, so probes that share a name (a tree of
+`main.py`) overwrite each other and the later one reads as agreement. Give
+probes distinct stems, or point this at one file at a time.
+
 Needs BOTH emit paths, so it does not survive the AST body-emitter deletion as
 written -- like the move-verdict and binding joins, its replacement is part of
 the cutover decision, not a follow-on.
 
 Usage (from the repo root):
     uv run python .claude/skills/tpy-thir-wave/scripts/dualgen.py \
-        /tmp/agents/thir-wave/smoke/main.py
+        /tmp/agents/thir-wave/smoke/main.py [Int32] [Int64] [BigInt]
 """
 from __future__ import annotations
 
@@ -35,12 +44,12 @@ from tpyc.codegen_cpp import CodeGenOptions  # noqa: E402
 SCRATCH = Path("/tmp/agents/thir-wave/__dual__")
 
 
-def gen(main_src: Path, out: Path, thir: bool):
+def gen(main_src: Path, out: Path, thir: bool, default_int: str = "Int32"):
     lib_dirs = list(C.DEFAULT_LIB_DIRS)
     opts = dataclasses.replace(
         CodeGenOptions(emit_source_comments=True, comment_line_numbers=False),
         thir_codegen=thir)
-    compiler = Compiler(main_src, default_int="Int32", lib_dirs=lib_dirs)
+    compiler = Compiler(main_src, default_int=default_int, lib_dirs=lib_dirs)
     compiled_modules = compiler.compile()
     entry_module = next(m for m in compiled_modules if m.is_entry_point)
     src_dir = main_src.parent.resolve()
@@ -54,12 +63,13 @@ def gen(main_src: Path, out: Path, thir: bool):
     return dict(compiler._thir_fallback)
 
 
-def main():
-    src = Path(sys.argv[1]).resolve()
-    base = SCRATCH / src.stem
-    fallback = gen(src, base / "thir", thir=True)
-    gen(src, base / "ast", thir=False)
-    print(f"fallback: {fallback}")
+def smoke(src: Path, default_int: str) -> None:
+    # The scratch tree is keyed by width as well as by stem, so the three runs
+    # cannot overwrite each other's output and read as agreement.
+    base = SCRATCH / src.stem / default_int
+    fallback = gen(src, base / "thir", thir=True, default_int=default_int)
+    gen(src, base / "ast", thir=False, default_int=default_int)
+    print(f"[{default_int}] fallback: {fallback}")
     ok = True
     cmp = 0
     for f in sorted((base / "ast").rglob("*.[ch]pp")):
@@ -70,18 +80,24 @@ def main():
         cmp += 1
         if a != b:
             ok = False
-            print(f"DIVERGES: {rel}")
+            print(f"[{default_int}] DIVERGES: {rel}")
             for line in difflib.unified_diff(a, b, "ast", "thir",
                                              lineterm="", n=1):
                 print(line)
     # `cmp` guards the vacuous green: a path-mapping slip that finds no
     # counterpart file skips silently and would otherwise print IDENTICAL
     # having compared nothing.
-    print(f"cmp={cmp}")
+    print(f"[{default_int}] cmp={cmp}")
     if cmp == 0:
-        print("VACUOUS -- compared zero files")
+        print(f"[{default_int}] VACUOUS -- compared zero files")
         return
-    print("IDENTICAL" if ok else "DIVERGENT")
+    print(f"[{default_int}] " + ("IDENTICAL" if ok else "DIVERGENT"))
+
+
+def main():
+    src = Path(sys.argv[1]).resolve()
+    for width in (sys.argv[2:] or ["Int32"]):
+        smoke(src, width)
 
 
 if __name__ == "__main__":

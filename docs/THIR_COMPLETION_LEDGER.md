@@ -5271,6 +5271,31 @@ by reading the item, never by trusting a sibling's summary of it.
    flip's real residual risk. Everything else on this checklist can be done
    after the fact; this cannot. Stated here as well as in section H because
    this checklist is what a reader is pointed at for cutover readiness.
+   **RUN 2026-09-01, and it paid: 162 adversarial probes over three integer
+   widths, 4 divergences, 39 fallbacks (at Int32), 16 filed BUGS entries.**
+   Every figure here names its key. The entry count has been wrong FOUR times -- 9 on an unnamed key,
+   then 13, then 15, each correction written in the same commit that filed
+   more entries and never re-derived against them. Derive it from BUGS.md at
+   the moment of writing, or do not state it. Full
+   result in TODO.md, including the 39 shapes written out; neither the probes
+   nor their batch runner were kept, both having been second copies of things
+   that already exist. One of the four appears at BigInt ONLY -- the first option-gated
+   AST/THIR divergence anyone has caught, and the reason a single-width sweep
+   would have been a weaker instrument than it looked. The divergences
+   are the class this prerequisite exists for, and THIR is the better author
+   wherever the two disagree observably -- but the number that should change
+   a reader's expectations
+   is the 39: nearly a quarter of hand-written probes hit a routing gap in a
+   corpus that reads 3767/3767 with zero fallback. The dial measures the
+   corpus, not the language, and this is the first measurement that separates
+   the two. Rerun before the deletion if the tree has moved much since, with
+   `dualgen.py` over fresh probes: pass it every integer width (it takes them
+   as trailing arguments and DEFAULTS TO Int32 alone, so the default is the
+   mistake -- the BigInt-only divergence is why), and build what it says is
+   identical, since several of the filed entries are programs both paths agreed
+   on and neither can compile. (No count: the two attempts to put one here were
+   both wrong, and the advice does not need one.) `dualgen.py` has no build stage of its own, so
+   that second half is a manual `tpy` run per probe.
    Mechanically ready otherwise -- the corpus
    dial is saturated, so THIR can author every snapshot. The blockers:
    - **Error cases had never been lowered through THIR at all. A DETECTOR now
@@ -5369,6 +5394,87 @@ by reading the item, never by trusting a sibling's summary of it.
      pattern nodes, all in `match.py`. Their reachability is UNESTABLISHED --
      two constructed witnesses for them were both falsified -- so they are
      neither safely demoted to internal errors nor safely budgeted as work.
+     **MEASURED 2026-09-01, and the QUESTION was wrong before the answer
+     was.** Reachability of an AST raise site is not what makes the deletion
+     unsafe. Delete a site whose shape THIR also refuses and a diagnostic
+     merely changes; delete one whose shape THIR can lower and the rejection
+     was the defect. It is dangerous in exactly one direction: a shape the
+     AST REFUSES and THIR RENDERS, where the refusal disappears and the
+     program compiles to unreviewed output. That asymmetry is directly
+     testable and does not require establishing reachability at all -- and it
+     cannot be faked by a fallback, since a fallback re-emits through the AST
+     and would raise too, so THIR succeeding where the AST raises means THIR
+     ROUTED.
+     **672 generated programs over the tier-selection matrix: ZERO
+     asymmetries, in either direction** -- re-derivable, which an earlier
+     version of this entry was not: the instrument is
+     `scripts/thir_migration/asym/check_asym.py` and it GENERATES its probes,
+     so the claim is a command rather than a number somebody wrote down. Two
+     rounds -- every pattern kind
+     against every subject kind with and without a guard (480), then
+     multi-arm programs carrying enough homogeneous literal arms to actually
+     SELECT the switch tiers with one odd arm spliced at each position (192).
+     The second round exists because the first probed the STRING tier without
+     entering it -- that one is arm-count gated, and four arms sat below the
+     threshold of five. **It is the only one that was**: the primitive, enum
+     and union switches are selected from the subject TYPE alone, so the
+     single-arm round already entered those three, and the rationale
+     originally given for the whole second round held for one family of four. Verified by grepping the emitted C++ for real
+     `switch` statements rather than trusting the intent.
+     **The first run of this matrix ALSO recorded three probes where THIR fell
+     back, and reported them as agreement** -- the field was collected and
+     never printed, so "120 emitted identically on both paths" was true and
+     misleading, three of the 120 being identical only because the AST emitted
+     them twice. Two distinct shapes, now in TODO.md's queue. The instrument
+     buckets a fallback separately and prints it; counting one as agreement is
+     the single reading that makes a dual-path diff worthless, and it is the
+     same mistake the corpus ratchet exists to prevent one level up.
+     **The negative result has a mechanism, which is what makes it worth
+     something: SEMA gates the whole class.** 552 of the 672 were refused
+     before either emitter ran, every one a located `SemanticError`
+     **about the pattern or the subject -- which took a fix to become true.**
+     An earlier run had 74 of those 552 refused as UNDEFINED NAMES, because a
+     subject was generated with only its own preamble and an arm naming
+     another type resolved to nothing: 74 crossings counted as "sema gated the
+     pattern class" that were never probed at all. Every subject now carries
+     every preamble, the name errors are zero, and the totals are unchanged --
+     the 74 came back as genuine tier refusals instead ("int literal pattern
+     not valid for subject type", "None literal pattern requires an Optional
+     subject"). **The coincidence is worth flagging**: a headline that does not
+     move is not evidence a fix did nothing, and here the denominator was wrong
+     while the number was right. The codegen sites sit behind that
+     check as defence in depth, which `_variant_index`'s own docstring
+     already said of itself. The other 120 emitted on both paths -- 113 identically, and 7 only
+     because THIR fell back, which is not the same thing.
+     **The controls are the load-bearing half**, per the prober that once
+     reported zero folds everywhere including on a positive control: the five
+     committed cases known to refuse AT CODEGEN all report both-refuse, so
+     the detector demonstrably sees a refusal when one exists -- and THIR
+     raises for all five, which is the re-homing working.
+     **NAME THE POPULATION, because three different ones are in play in this
+     one bullet and an earlier draft ran them together.** The instrument
+     reports 39 BODY sites, of which 34 are internal-shaped (29 in `match.py`,
+     2 in `records.py`, 3 in `statements.py`) and 5 deliberate; `match.py`
+     holds 32 BODY sites in all. The paragraph this note follows is about a
+     fourth figure -- the sites in `match.py` wearing the specific
+     `Unsupported <thing>: {type(pattern).__name__}` message, which is 20 and
+     is STILL exactly 20. **An earlier version of this very bullet said that
+     figure "reads 29 today", which was the population conflation the bullet
+     exists to warn about, committed inside it**: 29 is every `match.py` BODY
+     site the instrument calls internal, a broader set adding nine the "20"
+     never named (two field-value sub-pattern asserts, an unsupported-literal
+     raise carrying no `__name__`, two field-pattern guards, three lowercase
+     or-pattern-alternative raises, and an unresolved-class-pattern guard on
+     the union switch path). The figure did not drift; the
+     sentence swapped sets. None of those is "the
+     34", and the asymmetry result above is scoped to none of them: it is
+     scoped to match SHAPES, which is why it needs no reachability count.
+     This does NOT prove any of those sets unreachable; it makes three
+     independent attempts that failed for an understood reason. Going
+     further means hand-reading `match.py`'s internal-shaped guards for
+     shapes sema admits. Nothing here has a closing window -- both emitters
+     exist until the deletion -- so it is available afterwards on the same
+     terms.
    - **A `match`-defect branch moved the ratchet the WRONG WAY first, and the
      correction is the reusable lesson (2026-08-30).** Converting a bare
      `assert` into a real diagnostic stops an ICE -- but putting that
@@ -15046,6 +15152,13 @@ This is the half the old inventory omitted entirely.
   compile, and the sweep that reaches all ~2800 stdlib bodies has no cheaper
   host -- rehome it onto a THIR-only compile of the same entry rather than
   letting the deletion take it.
+  **DONE 2026-09-01**: it is its own test beside the render-coverage guards,
+  compiling the same mega-entry and emitting through THIR alone, with the
+  shared compile helper moved across so the two readers cannot drift. Ablated
+  to confirm it is load-bearing on its own work -- with the emission loop
+  removed, zero of twelve families read as reached. Costs one extra library
+  compile; the two tests run in parallel. The per-cell coverage line moved
+  with it, being the same question at a finer key.
 - `tests/conftest.py` -- 457 THIR references. The overlay, both audit hookups,
   the ratchet, the classify/check-flip options and the marker machinery all
   go; `thir_codegen=True` stops being a test-only flip and becomes the
@@ -15056,7 +15169,12 @@ This is the half the old inventory omitted entirely.
 Eight scripts under `scripts/thir_migration/` (`thir_reject_reach` 706,
 `thir_matrix_reach` 674, `thir_diagnostic_sites` 525, `thir_stdlib_fallback`
 300, `thir_ast_arm_residency` 196, `thir_scan` 121, `thir_stdlib_sites` 106,
-`thir_resid_plugin` 36). Most measure fallback, reject sites or AST-arm
+`thir_resid_plugin` 36) -- that 2664 is the EIGHT-SCRIPT figure and predates
+the directory below. Plus `asym/` (count the files and lines in the tree rather
+than trusting a number here: the ones first written into this line went stale
+inside the same branch, twice, as the tool was hardened), whose whole question
+-- does THIR admit anything the AST refuses -- stops existing when one emitter
+does; its README says so. Most measure fallback, reject sites or AST-arm
 residency -- all concepts that stop existing. `thir_reject_reach` is the
 exception worth keeping in some form: after cutover its unreached bucket
 becomes the set of shapes that ICE, which is the post-cutover work queue.
@@ -15083,8 +15201,10 @@ Two CI rows key on the same dead concepts: `thir-stdlib` and
   local-form membership whose THIR equivalent is an open question, and an
   ungated mirror would reject valid code. **So the honest state is: zero
   case-covered body diagnostics, at least one uncovered one, and no
-  instrument that can enumerate the rest.** Before the deletion, sweep the
-  raise sites reached from the doomed modules rather than trusting this set.
+  instrument that can enumerate the rest.**
+  **The last clause is now FALSE and the enumeration is below** -- the site
+  instrument grew the split, and the uncovered set is five, not unbounded.
+  Read the successor entry before acting on this paragraph.
   `async/error_async_match_dyn_await`: the verdict now runs ahead of every
   admission gate in the resumable lowering, because the case's body is
   rejected first by an unrelated parameter gate and anything placed after
@@ -15116,6 +15236,43 @@ Two CI rows key on the same dead concepts: `thir-stdlib` and
   fix is to drop one conjunct from the shared predicate. Recording the
   override here rather than silently taking it, since the instruction it
   overrides is still worth its author's reasoning.
+- **The five uncovered body diagnostics, enumerated and each accepted
+  (2026-09-01).** `scripts/thir_migration/thir_diagnostic_sites.py` now splits
+  body-authored raises into witnessed and unwitnessed, so the set the entry
+  above called unbounded is five. Each was chased to a verdict; none blocks
+  the deletion, and the reasons differ enough that a single blanket "internal
+  guard" reading would have been wrong about one of them.
+  - `match.py::_variant_index` "type not found in union" -- an internal drift
+    check between two readings of one member list, as its own docstring says.
+    Sema resolves and rejects arm names first. Dies with its file.
+  - `match.py::_switch_literal_label` "cannot use literal in switch case
+    label" -- reached only once the primitive-switch tier is selected, and
+    THIR's tier gate positively admits int (and bool) literals only, so any
+    other literal is declined before a label is rendered. Dies with its file.
+  - `records.py::_extract_base_inits` "base __init__ call without resolved
+    parent type" -- an internal invariant; sema resolves the parent for every
+    base-init call. The enclosing helper survives the cutover but this one
+    does not: it is on the AST leg of a ctor tail that routes through THIR
+    otherwise, which is why the harness records it by NAME rather than by
+    file. THIR's counterpart declines the same condition.
+  - `statements.py::_resolve_cpp_type` "variable has no type annotation and
+    no initializer" -- every parser construction of a variable declaration
+    supplies one or the other; only a compile-time macro can build the
+    neither-nor shape. Internal. Dies with its file.
+  - `match.py::_gen_match_overload_specialized` "a yield/await inside a match
+    on an @overload-specialized parameter is not yet supported" -- the only
+    one of the five that refuses VALID PYTHON rather than asserting an
+    invariant, and the only one worth the chase. **Its precondition cannot
+    hold.** The overload-specialized emitter is reached from the function-def
+    router, and generators and async functions divert to the resumable-frame
+    emitter before that router, so the specialization map is never populated
+    while an arm walk is in progress. Confirmed by emitting an overloaded
+    generator: one union-typed factory, no specialization.
+    **And the shape the guard names is broken one level earlier**, which is
+    the finding, not the verdict: an overloaded generator emits a factory
+    whose signature and whose body disagree about constness, and a call site
+    resolved against the narrow stub cannot convert to it. Filed HIGH. So the
+    guard was never the thing standing between that program and a miscompile.
 - **The lowering gaps found by the 2026-09-01 fence sweep** (see TODO.md):
   9 shapes that compile and run correctly today only via fallback, and 7 that
   fold in front of AST renders that do not compile at all. After cutover the
@@ -15124,6 +15281,19 @@ Two CI rows key on the same dead concepts: `thir-stdlib` and
 
 ### G. What is NOT a blocker, and was treated as one
 
+- **The partially-re-homed diagnostics -- audited 2026-09-01, one already
+  known and the rest clean.** A raise whose message builder survives can
+  still lose a CONDITION, because the site-level class asks whether the
+  function is reachable, not whether each of its callers is. Splitting all
+  fourteen such deliberate sites into their dead and live callers: every one
+  has a live THIR caller, and only the polymorphic-rvalue-into-an-Optional-
+  local reject has a dead caller with no counterpart -- the rebind half
+  already filed in section F. The native C++ template expander looked like
+  the risky one (two of its callers die) and is not: THIR's emitter reaches it
+  from six distinct FUNCTIONS (eight call sites -- the instrument's caller key
+  is per-function, so name which when quoting it). This is a READ, not a build, and it is the cheapest check
+  on the list -- worth repeating if the bucket ever grows, because the one
+  real instance did hide there.
 - Snapshot regeneration -- and the framing above got this backwards, so read
   the D4 decision itself rather than this correction of it. Regeneration is
   not the hazard to avoid; it is commit 1's PROOF. D4 splits the cutover so
