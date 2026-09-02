@@ -1,0 +1,16 @@
+generated 480 single-arm + 192 switch-tier probes
+
+2016 runs: BOTH_EMIT=339, FRONTEND=1656, THIR_FELL_BACK=21
+
+THIR FELL BACK on 7 probe(s) -- shapes that work today and lose their only emitter at the cutover:
+  optrec__capture__g  body:stmt.match
+  strsw__odd0__first__g  body:stmt.match
+  strsw__odd0__mid__g  body:stmt.match
+  strsw__odd6__first__g  body:stmt.match
+  strsw__odd6__mid__g  body:stmt.match
+  union__or_cls_as  body:stmt.match
+  union__or_cls_as__g  body:stmt.match
+control: error_gen_rebind_slot_after_drain=BOTH_REFUSE, error_gen_rebind_slot_crosses_lambda=BOTH_REFUSE, error_async_match_dyn_await=BOTH_REFUSE, error_gen_match_nested_narrowed_ptr_bind=BOTH_REFUSE, error_gen_match_nonlvalue_ptr_bind=BOTH_REFUSE, error_gen_rebind_slot_after_drain=BOTH_REFUSE, error_gen_rebind_slot_crosses_lambda=BOTH_REFUSE, error_async_match_dyn_await=FRONTEND, error_gen_match_nested_narrowed_ptr_bind=BOTH_REFUSE, error_gen_match_nonlvalue_ptr_bind=BOTH_REFUSE, error_gen_rebind_slot_after_drain=BOTH_REFUSE, error_gen_rebind_slot_crosses_lambda=BOTH_REFUSE, error_async_match_dyn_await=FRONTEND, error_gen_match_nested_narrowed_ptr_bind=BOTH_REFUSE, error_gen_match_nonlvalue_ptr_bind=BOTH_REFUSE
+
+CONTROL FAILED (2) -- the zero above means nothing. These cases refuse at codegen, so each must come back BOTH_REFUSE; anything else says this instrument is reading the wrong signal, not that the tree is clean.
+ASYM_EXIT=1

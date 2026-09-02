@@ -1,0 +1,112 @@
+[
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 7287,
+    "title": "_lower_stmt_dispatch is a 7562-line single function; a same-level if-ladder with per-arm bodies inlined instead of delegated",
+    "detail": "The function dispatches on ~20 TpyStmt subtypes via sequential `if isinstance(stmt, ...)` blocks that all `return`, so it behaves as an elif chain, but several arms (TpyVarDecl 7470-10226 = 2756 lines, TpyReturn 11140-12908 = 1768 lines, TpyAssign 10226-10914 = 688 lines, TpyForEach 13913-14461 = 548 lines, TpyTupleUnpack 13585-13913 = 328 lines) inline their whole shape-classification tree in place instead of calling a top-level `_lower_x` function the way TpyWith/TpyTry/TpyRaise already do (single-line delegations at 14819-14846). The inconsistency is itself informative: the small arms already prove the extraction pattern works. Converting the ladder to a `type(stmt) -> handler` table (keyed at the existing `_lower_stmt` chokepoint, line 4889, which already wraps `_lower_stmt_dispatch` for exception re-tagging) and pulling VarDecl/Return/Assign/ForEach out to named functions is close to free (the file already has plenty of module-level `_lower_*` helpers) and would let each huge arm be worked on independently.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 7470,
+    "title": "The TpyVarDecl arm is an unbroken sequential if-chain of ~25+ shape families sharing one mutable scope",
+    "detail": "Within the VarDecl arm (7470-10226), each shape family (forwarded alias, native-global, no-init value slot, opt-ptr-slot, narrowed rebind, global-ptr-slot, branch-hoisted, borrow-tuple, rebind-slot, pointer reseat, str/bytes literal, dyn-protocol, ...) is a top-level `if` (not elif) that classifies AND immediately mutates `declared`/`lc.pointers`/`lc.rebind_slot_locals` AND returns or falls through to the next check. `field_write.py`'s (classify, lower) plan-table pattern (frozen `_XPlan` dataclasses + an ordered `_FAMILIES` list, `lower_field_write`) would apply well to the ~15 families that are pure alternatives (mutually exclusive on stmt shape) but less cleanly to the ones that thread persistent scope-mutation (hoist registration, `lc.pointers.add`, `declared[name]=`) across the classify/lower boundary -- those mutations would need to move into the lower step of each plan, which field_write.py's plans mostly avoid needing.",
+    "size": "XL",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/nodes.py",
+    "line": 2050,
+    "title": "THIRDynNarrowAlias.cast_rhs_cpp pre-renders a C++ RHS expression string at lowering time",
+    "detail": "`_make_dyn_narrow_alias` (statements.py:4956) calls `codegen_cpp.protocols.narrow_cast_rhs` (a text-composing helper returning `str`) and stores the result verbatim in the THIR node's `cast_rhs_cpp: str` field, rather than storing the typed facts (cast kind: dynamic_cast vs dyn_adapter_cast, member type, const-ness, source) and letting the emitter compose the string. `narrow_cast_rhs` is explicitly documented as shared between the AST emitter and THIR (\"the AST emit and THIR lowering share one composition\"), so no logic is duplicated, but the DECISION of which C++ cast form to use is made and flattened to text during lowering rather than at emit -- exactly the class of `*_cpp: str` field the review brief calls out.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 2623,
+    "title": "hoist_decls is threaded through THIR (If/Try/With/While) as tuple[tuple[str, str], ...] -- pre-rendered (name, cpp_type_str) pairs, not typed facts",
+    "detail": "`_lower_hoist_predecls` builds `hoist_decls: list[tuple[str, str]]` by calling `.to_cpp_return()` / `render_type` at lowering time; the tuple-of-strings shape is then stored verbatim on THIRIf, THIRTry, THIRWith, and THIRWhile (grep `hoist_decls: tuple[tuple[str, str], ...]` in nodes.py, 5 node types). The emitter has no choice but to print the string as-is; the actual fact (a name plus its TpyType) could be stored and rendered by the printer via the same `render_type` primitive the emitter already owns for every other declaration, keeping the C++ spelling decision in one layer.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 10285,
+    "title": "TpyAssign's global-slot-write arm fabricates a synthetic TpyVarDecl parser node inside lowering to reuse a helper",
+    "detail": "To lower `g = value` for a non-value global, the code constructs `TpyVarDecl(name=stmt.target.name, type=None, init=stmt.value, loc=loc)` on the spot and calls `_lower_global_slot_write` on it -- a helper that otherwise only ever sees real parser-emitted TpyVarDecl nodes. This is a one-off (only occurrence in the file) but is exactly the kind of AST-node manufacture a THIR-consuming layer should avoid; `_lower_global_slot_write` (already flagged for a split in TODO.md line 159) should take `(name, init, loc)` directly so no caller needs to build a fake parse node.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 130,
+    "title": "Imports from codegen_cpp -- most are legitimate shared decision/render primitives, two type-resolution helpers are misplaced in the codegen_cpp package",
+    "detail": "Eight import lines pull from codegen_cpp. `escape_cpp_name` (context.py) is a pure name-mangling primitive: fine, survives as printer. `sub_struct_qualname` (gen_async) and `emit_prims`/`resumable_cfg` are part of the resumable-frame skeleton CLAUDE.md already designates as permanent codegen_cpp: fine. `classify_dyn_own_arg`, `dynamic_adapter_type`, `dynamic_base_name`, `record_inherits_dynamic`, `protocol_param_template_name`, `narrow_cast_rhs` (protocols.py) are explicitly documented as shared chokepoints between the AST emitter and THIR (\"so the two paths cannot drift\") -- the right pattern, and this file is a correct consumer, but after the AST emitter is deleted these become pure decision/render functions that arguably belong to THIR's own layer rather than codegen_cpp's, since nothing calls them from an AST arm anymore; a package move (not a behavior change) is worth considering, not urgent. `resolve_stmt_recorded_type` (type_resolution.py) and `resolve_pending_container` (types.py) are genuine type-resolution logic (deriving a TpyType from sema's records) living in codegen_cpp only because the AST's TypeResolver also needs them; once the AST path is gone their only caller family is THIR + typesys-adjacent code, so they read more naturally in typesys.py/type_resolver.py.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 1,
+    "title": "~120 lines / 41 distinct AST-emitter symbol names cited in docstrings and comments -- all become dangling pointers at cutover",
+    "detail": "Grepping `_gen_[a-zA-Z_]+` finds 41 unique symbols (e.g. `_gen_var_decl_code` x4, `_gen_tuple_unpack` x8, `_gen_with` x4, `_gen_pointer_local_rebind` x4, `_gen_return` x2) referenced across ~120 lines, almost always in the form \"mirrors `_gen_x`'s ... arm\" used to justify why a lowering shape is admitted or rejected. Once the AST emitters are deleted these names resolve to nothing. Rewrite policy: replace each such reference with the INVARIANT the mirroring was preserving (e.g. \"a narrowed-alias iterable renders the universal __iter__/__next__ loop, never a begin/end peephole\" -- which several comments in this file already do alongside the AST pointer, so the raw material for the rewrite already exists in most cases and this is largely a mechanical pass, not a research one).",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 993,
+    "title": "_ForEachRoute.route is a stringly-typed discriminant over 5 literal values, plus 9 loosely-related boolean flags on one dataclass",
+    "detail": "`route: str` takes exactly `\"range\" | \"container\" | \"enum\" | \"tuple_unpack\" | \"iter_proto\"` (set at 11 construction sites, compared with `==` at 6 consumer sites in the TpyForEach dispatch arm, e.g. 13981, 14294, 14336, 14390) alongside `step_kind: str = \"plus_one\"` and boolean flags (`iterable_lvalue`, `str_list_method`, `container_field`, `value_tuple_elem`, `bigint_counter`, `str_literal_iterable`, `iter_proto`, `consuming_native_name`, `consuming_name`) whose validity depends on which route is active. This is exactly the shape the IR's `PtrSlotKind`/`WithTargetArm` enums already fixed elsewhere; `_ForEachRoute` is lowering-internal (not a THIR node) so it is lower risk to fix, but would read better as a tagged union (an Enum for `route`/`step_kind` plus a per-route payload) than as one dataclass with a discriminant string and a flag grab-bag.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 7287,
+    "title": "MIR-boundary read: pointer-local/hoist bookkeeping (lc.pointers, rebind_slot_locals, frame_slots, opt_storage hoists) is C++-representation machinery layered directly into THIR statement lowering, not a semantic fact",
+    "detail": "The var-decl/hoist machinery decides things like: does this name need a `T*` local (a pointer-local), does it need a rebind slot (`__slot_N`), does an Optional get OPTIONAL_STORAGE vs OPT_PTR_SLOT representation, does a branch-hoisted decl predeclare at function top. None of these are semantic (ownership/aliasing/last-use are already decided upstream and available as facts on the node/type); they are all slot-shape choices for a specific C++ lowering strategy (locals-as-pointers, rebind slots, static predecls). A MIR stage would naturally own the `Place`/storage-class decision (this name lives in a stack slot vs a pointer-indirected slot vs a hoisted-static slot) and hand THIR/the printer a resolved storage class, rather than the printer (today's THIR-lowering) re-deriving pointer-ness from scattered per-name sets (`lc.pointers`, `lc.rebind_slot_locals`, `lc.global_ptr_slots`, `lc.opt_ptr_frame_locals`) at each of dozens of call sites. This matches CLAUDE.md's explicit callout that 'slot hoisting, frame_slot, pointer locals, rebind slots' are late-lowering/printer concerns, not THIR/MIR facts -- so today's design is already roughly right per that doc, but the sheer number of independent per-name sets consulted ad hoc through this file (rather than one small storage-class enum per name) is the concrete cost of not yet having that boundary.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 15111,
+    "title": "Reject-gate population: most local rejects in this file are explicitly self-documented as 'no witness yet', not real TPy restrictions",
+    "detail": "Representative migration-debt example: `_lower_with`'s hoist loop rejects any with-target hoisted out of a branch or loop (`in_branch or loop_depth > 0`, note_detail(\"with.hoist\")) with the docstring caveat \"Nothing is known to break if this widens; it simply has no witness, so the narrower gate stands until one appears\" -- an admission the restriction is not semantic. The same framing recurs at `decl.narrowed_rebind` (statements.py ~7546, narrowing kill on rebind is admitted for exactly one mirrored shape and rejects the rest pending a witness) and in TODO.md's own tracked items (e.g. line 1137's `with.opt_slot_target`, \"zero witnesses -- determine whether the shape still exists\"). Genuine-restriction rejects are rarer and mostly upstream-mirrored: e.g. `decl.self_rebind` (self is never a rebindable target) and the `forbidden_writes` check at the top of dispatch (7292, an admission-control invariant owned by match.py's pattern-binding scope, not migration debt). Population size in this file: 273 raise sites, the large majority routed through the shared `stmt_reject_reason(stmt)` tag rather than a literal string, so the reason text itself does not distinguish the two kinds -- distinguishing them requires reading the surrounding comment, as done here.",
+    "size": "XL",
+    "churn": "unknown",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/statements.py",
+    "line": 7311,
+    "title": "A second dispatch axis (resumable_leaf_mode) is interleaved into the top of the statement-type ladder rather than factored out",
+    "detail": "Before the main isinstance ladder runs, ~145 lines (7311-7455) special-case TpyReturn/TpyVarDecl/TpyTupleUnpack/TpyTry/TpyMatch/TpyNestedDef specifically for resumable (async/generator) leaf bodies, each re-checking `isinstance(stmt, ...)` a second time and either handling the statement fully or falling through into the very same isinstance ladder below for the sync case. This means every reader of the sync arms must also hold the resumable pre-ladder in mind, and a new statement kind added to one axis has to be checked against the other by hand. Splitting resumable-leaf handling into its own dispatcher that falls back to the sync dispatcher (rather than living inside it) would make the two axes independently reviewable.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  }
+]

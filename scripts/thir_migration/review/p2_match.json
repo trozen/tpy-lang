@@ -1,0 +1,132 @@
+[
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/nodes.py",
+    "line": 3050,
+    "title": "THIRMatch.strategy is a 14-value stringly-typed enum, mirrored in both lower/match.py and emit.py",
+    "detail": "THIRMatch.strategy: str carries 14 literal values ('switch_enum','if_elif','switch_union','guarded_record','optional_partition',...) set in tpyc/thir/lower/match.py (_match_strategy, _MatchRoute.kind, _lower_match) and dispatched by an identical if-elif chain of string comparisons in tpyc/thir/emit.py:2956-2979 (plus THIRIf.inner_strategy at emit.py:3374). CLAUDE.md already names this exact fix pattern done elsewhere in the same file (PtrSlotKind, TupleSourceBind, WithTargetArm, PrintForm) -- a Strategy Enum would let both call sites exhaustively match and remove the two-file string-lockstep risk noted generally by the [thir] reason-swallowing TODO entries.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 760,
+    "title": "_MatchRoute.hoist_types carries a second stringly-typed micro-enum ('value'/'ptr'/'ptr_const'/'ptr_slot'/'opt_storage'/'opt_ptr'/'opt_ptr_frame')",
+    "detail": "hoist_kind is a bare str threaded through _route_hoists -> _MatchRoute.hoist_types -> _lower_match's hoist-decl loop (match.py:1258-1319), branched with a chain of string equality checks. Same shape as the strategy field above and the same precedent fix (an Enum) applies; today a typo in a new hoist-kind string would silently fall through to the else-branch rather than erroring.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 112,
+    "title": "match strategy selection is a pure C++ codegen-strategy choice (switch vs if/elif vs discriminator-switch), not a semantic fact -- MIR/printer territory",
+    "detail": "_match_strategy's only inputs are the subject's resolved type and a syntactic literal/guard count (STRING_SWITCH_THRESHOLD); nothing about ownership, aliasing or narrowing feeds it. Once byte-identity with the AST is no longer required, this decision (switch-worthy vs chain-worthy) is exactly the kind of thing a printer/late-lowering stage could derive from a structurally-uniform 'match on scrutinee, arms as (pattern, guard, body)' THIR node, rather than THIR itself pre-selecting and storing one of 14 strategy tags. Flag for the MIR design doc as a candidate to push out of the IR entirely.",
+    "size": "L",
+    "churn": "output-changing",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/field_write.py",
+    "line": 1102,
+    "title": "field_write.py's (classify, lower) plan-table is the strongest of the three files and a good template -- with caveats",
+    "detail": "_FAMILIES is a flat list of (classify, lower) pairs tried in order; classify returns a frozen dataclass Plan carrying every decided fact (render kind, field type, move/copy verdict) or None, and lower consumes only the Plan -- no re-inspection of the AST node. Effects: max function length 111 lines (vs 190+ elsewhere), only 3 raise sites (rejection is 'no family claims it', not scattered raises), zero codegen_cpp imports, and only 7 AST-emitter-symbol docstring mentions vs 79/29 in match.py/comprehensions.py. The pattern generalizes cleanly to any shape where alternatives are mutually exclusive REWRITES of one statement kind keyed off type/shape (field-write, and comprehensions' per-container-kind routing). It does NOT fit match.py's per-strategy lowerers as-is: those differ in control-flow shape (switch vs if-chain vs union-variant walk), not just which facts feed one render, so forcing them into a single classify/lower pair would just relocate the existing dispatch, not simplify it. The cost worth naming: first-match-wins order is load-bearing and undocumented-by-type (TODO.md 'Field-write family-table pins' entry already flags this) -- a table is only safer than an if-elif chain if illegal reorderings are caught, which today they are not.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 1,
+    "title": "match.py docstring debt: ~79 lines/mentions naming AST emitter symbols, far above comprehensions.py (29) and field_write.py (7)",
+    "detail": "Grep for _gen_*/_emit_*/'mirrors the AST'/\"AST's\" across the file returns ~79 hits, including whole-function docstrings whose only content is 'mirror of _gen_match_dispatch's scalar routing' or 'the AST's _emit_case_body narrowed_vars/alias restores'. Every one becomes a dangling pointer once expressions.py/statements.py/match.py (AST) are deleted. Propose: at cutover, rewrite each such docstring to state the INVARIANT the code now enforces (e.g. which subject shapes route to a switch vs a chain, and why) rather than naming the AST function it used to mirror; do this as part of the AST-deletion commit itself so the two never drift, and grep for the same symbol patterns as a completion check.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 838,
+    "title": "Lowering reads a sema fact off an id(node)-keyed side table (analyzer.if_branch_decls), not a materialized AST-node field",
+    "detail": "analyzer.if_branch_decls: dict[int, dict[str, TpyType]] (tpyc/sema/context.py:1153) is populated by sema and consumed via analyzer.if_branch_decls.get(id(stmt), {}) in match.py:838 (also statements.py and simple_gen.py, outside this layer). This is precisely the anti-pattern CLAUDE.md's front-end-perf section calls out ('side tables keyed by id(node) ... bitrot and block THIR migration'). Pre-existing sema architecture, not introduced by these three files, but THIR inherits and widens its consumer set rather than migrating it to a TpyIf/TpyMatch/TpyTry field; worth fixing before/alongside the cutover since it is exactly the kind of fact THIR/MIR should carry as a first-class node field.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 43,
+    "title": "codegen_cpp imports in match.py/comprehensions.py are (per Gate D3's own design) the surviving shared layer, not migration debt -- but their permanent home is not yet decided",
+    "detail": "match.py imports from codegen_cpp.forms (is_plain_nonvalue), .types (resolve_pending_container), .context (cpp_string_literal_expr, escape_cpp_name), .emit_prims (match_subject_is_lvalue, partition_optional_cases, pattern_has_field_condition, reject_nonlvalue_resumable_match_ptr_bind, resumable_match_subject_is_stable, sub_has_field_condition), .protocols (narrow_cast_rhs) and .string_dispatch (STRING_SWITCH_THRESHOLD, case_label, discriminator_key, find_best_discriminator); comprehensions.py imports .context (contains_named_expr, escape_cpp_name, is_lvalue_iterable, loop_var_binding) and .types (resolve_pending_container). Every one of these is a pure predicate/type-decision/render-fragment function that emit_prims.py's own module docstring documents as designed to survive the cutover (it explicitly says its only caller post-cutover will be tpyc/thir/lower/). None of them dispatch a statement or arbitrary expression through a body emitter, so none is a body-emitter decision the cutover must cut. The residual issue is placement, not correctness: emit_prims.py's docstring itself says this is a 'temporary home' for THIR-only consumers -- these functions logically belong under thir/lower/ or a shared predicates module once codegen_cpp's four body-emitter files are gone, not permanently in codegen_cpp.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 3335,
+    "title": "no_source_comment is a byte-identity-only flag threaded through THIRMatchFoldBind/THIRFoldedBlock construction",
+    "detail": "THIRMatchFoldBind is constructed exactly once, always with no_source_comment=True (match.py:3335); THIRStmt.no_source_comment (nodes.py:88) exists solely to reproduce the AST's decision not to emit a `// stmt` source-line comment for a desugar-expanded statement. In match.py's one call site the flag never varies, so post-cutover it is dead configurability -- the emitted comment policy for a folded-match splice can just be a constant in the printer. The broader mechanism (no_source_comment threaded through statements.py at ~20 sites) is out of this layer's scope, but match.py's instance is a clean, isolated candidate to fold away first.",
+    "size": "S",
+    "churn": "output-changing",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/comprehensions.py",
+    "line": 1198,
+    "title": "genexpr.iterable_shape: representative migration-debt reject, not a language restriction -- already a witnessed correctness gap",
+    "detail": "_lower_genexpr rejects a dict iterable with a comment reading 'dict deferred: its *__beg yields a key/value pair, so the scalar loop-var binding would need the AST's key-extraction shape'. This is not a TPy restriction (`sum(k for k in d)` compiles and runs correctly on the AST path today) -- it is purely 'we have not mirrored that shape yet', and TODO.md's 2026-08-31 cutover-blind-class entry already lists this exact case (genexpr.iterable_shape) as one of 9 confirmed witnesses that will become a hard compile error on valid user code once the AST emitter is deleted. Population characterization for this layer: comprehensions.py has 14 raise sites, nearly all of the same migration-debt shape (genexpr.* raises gate on container-family/shape, not on anything TPy itself disallows); match.py has 87, dominated by res.match_strategy-style 'resumable hook mechanics unverified' gates that are the same debt shape rather than real semantics gates (e.g. literal/value sub-patterns in _lower_overload_folded_match, match.overload_fold_subpattern, silently drop cases the AST fold itself also drops -- that one IS a real mirrored-AST-limitation, not migration debt, since the AST's own fold has the same restriction).",
+    "size": "XL",
+    "churn": "unknown",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/comprehensions.py",
+    "line": 460,
+    "title": "_container_family_slot duplicates a widely-repeated 'is this a list/dict/set(/array)' predicate rather than calling a shared one",
+    "detail": "comprehensions.py:460-464 (is_list(su) or is_array(su) or is_dict(su)) and field_write.py:190/236/640 (variants of is_dict/is_list/is_set/is_array) each hand-roll the same builtin-reference-container-family test with slightly different member sets (some include array, some include bytearray, none agree on set). The identical pattern recurs at ~15+ other sites across predicates.py, functions.py, resumable.py, simple_gen.py, match.py:335 -- not introduced by these three files alone, but neither file reuses a shared helper where one would remove the divergence risk (a future container kind, e.g. a new Span variant, has to be added at each site by hand). A single is_container_family(t, *, include_array=..., include_bytearray=...) in type_def_registry.py would collapse these.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/comprehensions.py",
+    "line": 1169,
+    "title": "THIRGenExpr pre-renders C++ strings at lowering time where its sibling THIRComprehension defers the same facts to emit -- already tracked in TODO.md",
+    "detail": "_lower_genexpr pre-renders binding_cpp and both capture lists into THIRGenExpr, while THIRComprehension carries the equivalent facts (var, elem_type) structured and defers rendering to _emit_comprehension. TODO.md's [thir][hygiene] entry (grep 'THIRGenExpr stores pre-rendered') already records this exact finding with a proposed fix (carry var/elem_type + a structured capture tuple, build the render once in _emit_genexpr) -- citing rather than re-deriving per the brief.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/match.py",
+    "line": 931,
+    "title": "_match_route (178 lines) and several per-strategy lowerers (146-197 lines each) are monoliths mixing classification and lowering in one function body",
+    "detail": "_lower_match_optional_chain (197), _lower_match_guarded_union (188), _lower_field_subpatterns (188), _match_route (178), _lower_match_union (176), _lower_match (172), _lower_match_poly (163) each interleave shape classification, hoist bookkeeping and THIR node construction inline rather than through a classify-then-lower split. comprehensions.py's _comp_route (266 lines) is the largest single function in either file. Splitting each into a classify step producing a frozen fact object (as field_write.py already does) plus a lower step consuming only that object would shrink these to the field_write.py size band, but is a substantial per-function effort (each has its own arm shapes) -- do not attempt as one mechanical pass.",
+    "size": "XL",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/field_write.py",
+    "line": 339,
+    "title": "field_write.py's per-family Plan dataclasses mix semantic and C++-representation facts in one object; a MIR boundary would need to split them",
+    "detail": "_ValueFieldPlan.render (_ValueRender enum: PLAIN/VALUE_OPT/STR/BYTES) is a genuine C++-representation choice (does this field write need std::string(x) vs bytes_copy vs a bare assign) with no bearing on ownership/aliasing, while other fields on the same and sibling Plan classes (e.g. move-vs-copy verdicts in _classify_record/_classify_container) are ownership facts that belong on THIR/MIR proper. Today both live on the same frozen dataclass consumed once by one lower_* function, which is fine for THIR-only lowering; a MIR stage would need the ownership half to survive as a MIR-level field-write instruction while the render-kind half moves to the printer. Not urgent -- noted for the MIR design doc.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  }
+]

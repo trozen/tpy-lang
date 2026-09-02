@@ -5296,6 +5296,9 @@ by reading the item, never by trusting a sibling's summary of it.
    on and neither can compile. (No count: the two attempts to put one here were
    both wrong, and the advice does not need one.) `dualgen.py` has no build stage of its own, so
    that second half is a manual `tpy` run per probe.
+   **DECIDED 2026-09-02: flip, then delete, then fix rejects as they
+   surface; two pre-flip crash fixes; ordered steps in
+   `docs/THIR_CUTOVER_REVIEW.md` Phase 0.**
    Mechanically ready otherwise -- the corpus
    dial is saturated, so THIR can author every snapshot. The blockers:
    - **Error cases had never been lowered through THIR at all. A DETECTOR now
@@ -15178,6 +15181,9 @@ does; its README says so. Most measure fallback, reject sites or AST-arm
 residency -- all concepts that stop existing. `thir_reject_reach` is the
 exception worth keeping in some form: after cutover its unreached bucket
 becomes the set of shapes that ICE, which is the post-cutover work queue.
+[2026-09-02: the concrete successor is the per-site bins under
+`scripts/thir_migration/review/` -- the census reaches 2 of 655 sites from
+the program corpora, the read bins name 402 live ones with reproducers.]
 
 Two CI rows key on the same dead concepts: `thir-stdlib` and
 `thir-stdlib-fallback` in `ci/nightly/configs.json`.
@@ -15281,6 +15287,12 @@ Two CI rows key on the same dead concepts: `thir-stdlib` and
 
 ### G. What is NOT a blocker, and was treated as one
 
+[2026-09-02: the "cannot be enumerated by probing" claim below is
+superseded -- all 655 raise sites were read and probed one slice per
+reviewer: 402 BREAKS with a reproducer each, 141 DEAD, 108 UNSURE, 4
+REFUSAL. See `docs/THIR_CUTOVER_REVIEW.md` Phase 0 and
+`scripts/thir_migration/review/bins_*.json`.]
+
 - **The partially-re-homed diagnostics -- audited 2026-09-01, one already
   known and the rest clean.** A raise whose message builder survives can
   still lose a CONDITION, because the site-level class asks whether the
@@ -15365,7 +15377,9 @@ section for "the cutover is safe" must carry the denominator with it.
   These turn a clean diagnostic into a crash on INVALID code, which is
   strictly less bad than the witness category above and is why holding the
   cutover for them while accepting the witnesses would not have followed.
-- **An unenumerated remainder.** In the RAISE-SITE key, 372 of 655 sites are
+- **An unenumerated remainder** [ENUMERATED 2026-09-02: see the note at
+  the head of section G and `docs/THIR_CUTOVER_REVIEW.md`]. In the
+  RAISE-SITE key, 372 of 655 sites are
   never reached by anything we compile. Some fraction of those is reachable
   from user source and will surface as crashes. Nobody knows which, and the
   measurement that would settle it does not exist: probing reached 19 sites

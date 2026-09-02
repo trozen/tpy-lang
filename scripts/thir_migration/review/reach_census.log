@@ -1,0 +1,669 @@
+static raise sites (AST-counted, non-test tpyc/thir): 655
+  reached at least once            : 2
+  (b) fallback-causing             : 1
+  (b') reached only as a recomposed inner reject: 0
+  (a) caught internally only       : 1
+  (c) never reached by this sweep  : 653
+  in BOTH (a) and (b) across attempts: 0
+
+counters: {"attempt_escaped": 13}
+attempts: {"fallback": 1, "routed": 30000}
+sweep outcomes: {"crash:CodeGenError": 34, "crash:CompileError": 186, "crash:ParseError": 21, "crash:ResolutionFailure": 13, "crash:SemanticError": 1333, "ok": 3812, "sema_error": 6}
+
+(c) unreached, by reason NAMESPACE (the wide-guard tags first):
+   204  stmt_reject_reason(stmt)
+   105  stmt
+    64  expr
+    62  call_reject_reason('expr
+    47  res
+    19  match
+    15  truthy
+    12  sig
+    11  ield
+    11  name
+    11  genexpr
+     9  protocol arg-temp outsid
+     6  subscript
+     6  stmt_reject_reason(stmt,
+     5  binop
+     5  stmt_reject_reason(ret)
+     4  getattr
+     4  reason_for()
+     3  body
+     3  _mil_reject_detail(stmt,
+     3  union ctor arg-temp outs
+     3  comp
+     2  arg
+     2  const
+     2  sgen
+     2  ifexpr
+     2  nested_def
+     2  reject
+     2  ctor mutated-slot rvalue
+     2  detail
+     2  _overload_reject_detail(
+     2  {_mil_reject_detail(stmt
+     1  print
+     1  deref-coerce arg-temp ou
+     1  optional-ptr container f
+     1  argtemp
+     1  unrouted
+     1  optional-ptr ctor face o
+     1  expr_kind_tag(e)
+     1  optional-ptr adapter poi
+     1  top_level
+     1  optional-ptr scalar face
+     1  protocol literal temp ou
+     1  call
+     1  method
+     1  generic ref-slot literal
+     1  optional-ptr adapter fac
+     1  ctor container-literal t
+     1  actory-method borrow tem
+     1  ctor arg shape
+     1  optional-ptr adapter sou
+     1  stmt_reject_reason(ys)
+     1  reason
+
+(c) unreached, grouped by ARM (nearest witness/detail tag):
+    11  guard>=1  functions.py::_check_callable_structure
+    11  guard>=2  expressions.py::name.closure_local
+    11  guard>=1  match.py::match.optional_value_only
+    10  guard>=1  match.py::_lower_match_poly
+     9  guard>=2  match.py::_lower_match_optional_chain
+     8  guard>=4  statements.py::tuple_unpack.ref_source_form
+     8  guard>=3  match.py::match.optional_chain_or
+     7  guard>=1  statements.py::top_level.global_slot_shape
+     7  guard>=1  comprehensions.py::_lower_genexpr
+     6  guard>=3  statements.py::while.or_chain
+     6  guard>=2  statements.py::if.cond_facts_unmirrored
+     5  guard>=2  match.py::_lower_match_switch_str
+     5  guard>=2  match.py::_lower_scalar_arms
+     5  guard>=2  expressions.py::method.fi_kind
+     5  guard>=3  statements.py::print.kwargs
+     4  guard>=4  statements.py::decl.opt_reseat_source
+     4  guard>=4  statements.py::decl.opt_slot_source
+     4  guard>=1  expressions.py::_lower_dyn_synth_call
+     4  guard>=2  expressions.py::truthy.value_opt_whole
+     4  guard>=2  match.py::match.optional_none_arm
+     4  guard>=2  match.py::_lower_match_record
+     3  guard>=3  resumable.py::res.for_iter_setup
+     3  guard>=1  statements.py::raise.bare
+     3  guard>=3  statements.py::stmt.del_var_sink
+     3  guard>=3  expressions.py::btuple.elem_source
+     3  guard>=1  match.py::_lower_match_optional
+     3  guard>=2  expressions.py::fstr.container_call_arg
+     3  guard>=3  statements.py::if.dyn_narrow_shape
+     3  guard>=3  match.py::match.or_labels
+     3  guard>=4  statements.py::unpack.name_source
+     3  guard>=1  statements.py::try.hoist
+     3  guard>=2  expressions.py::call.native_range_shape
+     3  guard>=3  statements.py::return.tuple_source
+     3  guard>=3  expressions.py::walrus.borrow_alias_shape
+     3  guard>=1  comprehensions.py::_lower_genexpr_range
+     3  guard>=2  match.py::match.optional_value_dispatch
+     3  guard>=2  statements.py::with.frame_target_family
+     3  guard>=3  expressions.py::optptr.record_call_temp
+     3  guard>=1  expressions.py::truthy.optional_field_whole
+     3  guard>=1  statements.py::with.hoist
+     3  guard>=1  statements.py::container_lit.rebound
+     3  guard>=2  statements.py::if.hoist_type
+     2  guard>=2  expressions.py::call.callable_shadow
+     2  guard>=2  expressions.py::coerce.into_any_container
+     2  guard>=1  statements.py::error_return.stmt_shape
+     2  guard>=1  statements.py::return.finally_deferred_capture
+     2  guard>=3  statements.py::res.btuple_write
+     2  guard>=2  statements.py::res.branch_block_local
+     2  guard>=2  expressions.py::call.protocol_arg_pending
+     2  guard>=1  expressions.py::containerlit.tuple_storage
+     2  guard>=4  statements.py::reseat.dyn_protocol_erased
+     2  guard>=0  field_write.py::assign.field_write_shape
+     2  guard>=2  expressions.py::containerlit.union_name_lift
+     2  guard>=3  expressions.py::method.ptr_template_call_recv
+     2  guard>=1  expressions.py::_lower_lambda
+     2  guard>=2  statements.py::top_level.global_hoist_shape
+     2  guard>=14  statements.py::setitem.union_value_shape
+     2  guard>=3  statements.py::return.dyn_own_source
+     2  guard>=4  resumable.py::res.narrow_scope
+     2  guard>=0  statements.py::expr_stmt.subscript_discard
+     2  guard>=1  expressions.py::_lower_module_var
+     2  guard>=2  statements.py::stmt.del_attr
+     2  guard>=1  statements.py::decl.dyn_protocol_erased
+     2  guard>=2  statements.py::reseat.opt_storage_source
+     2  guard>=2  statements.py::if.overload_live_extraction
+     2  guard>=3  expressions.py::ctor.typed_dict
+     2  guard>=2  functions.py::fn.macro_staticmethod
+     2  guard>=2  statements.py::assert.protocol_concept
+     2  guard>=17  expressions.py::call.inst_arg_shape
+     2  guard>=3  expressions.py::argtemp.protocol
+     2  guard>=8  expressions.py::cond.bool_field
+     2  guard>=3  expressions.py::isnone.any_typeid
+     2  guard>=3  resumable.py::_lower_resumable
+     2  guard>=4  expressions.py::method.ret_type
+     2  guard>=10  expressions.py::cond.isinstance_static
+     2  guard>=2  expressions.py::method.native_ret_cast
+     2  guard>=2  statements.py::top_level.global_slot_elem
+     2  guard>=2  resumable.py::_lower_for_iter_setup
+     2  guard>=1  functions.py::_admit_literal_only_stub
+     2  guard>=3  expressions.py::method.arity_defaults
+     2  guard>=4  statements.py::print.walrus_arg
+     2  guard>=1  expressions.py::field.class_const_recv_effect
+     2  guard>=2  functions.py::lower_top_level
+     2  guard>=4  expressions.py::cfield.container_arg
+     2  guard>=3  expressions.py::subscript.container_slice
+     2  guard>=1  comprehensions.py::comp.global_shadow
+     2  guard>=2  statements.py::ret.narrowed_union_addr
+     2  guard>=2  expressions.py::enum.neg
+     2  guard>=10  statements.py::setitem.btuple_value_shape
+     2  guard>=4  expressions.py::call.type_ctor.owned_str_arg
+     2  guard>=4  statements.py::decl.reseat_param_source
+     2  guard>=2  statements.py::return.optval_coerced_param
+     2  guard>=1  match.py::match.union_wrapper_value
+     2  guard>=1  resumable.py::_apply_leaf_post_if
+     2  guard>=3  statements.py::error_return.assign_target
+     2  guard>=5  match.py::match.poly_or_arm
+     2  guard>=2  expressions.py::_lower_ctor_call_args
+     2  guard>=2  statements.py::foreach.hoist_type
+     2  guard>=3  statements.py::unpack.alias_elem
+     2  guard>=1  match.py::match.guarded_union_wrapper
+     2  guard>=0  match.py::_hook_mode_binding
+     2  guard>=3  expressions.py::call.macro_expansion
+     2  guard>=3  match.py::match.guard_arm
+     2  guard>=2  statements.py::foreach.narrowed_src
+     2  guard>=6  resumable.py::res.branch_cond
+     1  guard>=5  statements.py::decl.none_unit_slot
+     1  guard>=3  statements.py::return.ptr_opt_leaf_shape
+     1  guard>=0  expressions.py::print.file_name_sink
+     1  guard>=3  expressions.py::call.copy_iter_elem
+     1  guard>=3  expressions.py::subscript.bytes_field
+     1  guard>=11  expressions.py::cond.bool_call
+     1  guard>=4  statements.py::stmt.super_del
+     1  guard>=1  statements.py::if.nullproto_hoist
+     1  guard>=2  statements.py::unpack.target_family
+     1  guard>=1  statements.py::error_return.bind_target
+     1  guard>=5  statements.py::decl.union_reseat_source
+     1  guard>=6  statements.py::decl.ptr_none
+     1  guard>=2  expressions.py::arg.deref_coerce_inline
+     1  guard>=4  statements.py::alias.bind_source
+     1  guard>=2  statements.py::del_attr.unresolved
+     1  guard>=2  expressions.py::arg.own_opt_container_move
+     1  guard>=2  expressions.py::btuple.proto_mixed
+     1  guard>=2  resumable.py::nesteddef.param_unresolved
+     1  guard>=13  statements.py::setitem.value_tuple_value_shape
+     1  guard>=3  expressions.py::call.enum_from_value.arg
+     1  guard>=3  expressions.py::arg.type_ctor_protocol_field
+     1  guard>=2  expressions.py::subscript.enum_from_name
+     1  guard>=3  expressions.py::optptr.subscript
+     1  guard>=2  expressions.py::_check_cond_eager_temps
+     1  guard>=1  match.py::lower_binding
+     1  guard>=4  expressions.py::fstring.arg_wrap
+     1  guard>=2  expressions.py::walrus.frame_opt_ptr_type
+     1  guard>=1  match.py::match.guard_const_fold
+     1  guard>=3  expressions.py::field.user_deref_chain
+     1  guard>=7  statements.py::btuple.decl
+     1  guard>=1  statements.py::decl.record_slot_polymorphic
+     1  guard>=3  expressions.py::optptr.scalar_temp
+     1  guard>=5  expressions.py::field.whole_optional
+     1  guard>=3  statements.py::return.wrapper_ref_tuple_source
+     1  guard>=2  constants.py::_lower_constant_expr
+     1  guard>=1  statements.py::try.return_handlers
+     1  guard>=3  statements.py::decl.branch_ptr_union
+     1  guard>=1  simple_gen.py::_lower_loop_body
+     1  guard>=3  statements.py::decl.opt_slot_const
+     1  guard>=4  expressions.py::subscript.record_getitem
+     1  guard>=1  statements.py::top_level.global_slot_protocol
+     1  guard>=2  statements.py::aug.inplace_dunder
+     1  guard>=18  expressions.py::call.inst_arg_lastuse
+     1  guard>=1  expressions.py::walrus.frame_coro_handle
+     1  guard>=1  statements.py::setattr.overloads
+     1  guard>=3  statements.py::res.finally_stop
+     1  guard>=4  statements.py::ret.btuple_name
+     1  guard>=2  statements.py::return.union_borrow
+     1  guard>=3  expressions.py::call.own_opt_copy
+     1  guard>=4  statements.py::error_return.ret_slot
+     1  guard>=1  statements.py::nesteddef.param_default
+     1  guard>=2  statements.py::tuple_unpack.target_form
+     1  guard>=1  expressions.py::_lower_narrowed_ternary
+     1  guard>=1  expressions.py::_consuming_iter_wrap
+     1  guard>=3  statements.py::if.folded_narrow_shape
+     1  guard>=4  statements.py::top_level.global_slot_branch
+     1  guard>=3  expressions.py::call.expr_callee_arity
+     1  guard>=1  statements.py::decl.dyn_protocol_own
+     1  guard>=3  statements.py::if.hoist_nonvalue_resumable
+     1  guard>=3  resumable.py::nesteddef.hoisted_vars
+     1  guard>=2  expressions.py::walrus.frame_btuple_src
+     1  guard>=9  statements.py::setitem.ru_value_shape
+     1  guard>=2  statements.py::decl.self_rebind
+     1  guard>=2  expressions.py::ctor.nested_record
+     1  guard>=1  match.py::_lower_match
+     1  guard>=2  predicates.py::if.post_narrow_unmirrored
+     1  guard>=2  statements.py::nesteddef.param_unresolved
+     1  guard>=3  expressions.py::walrus.opt_ptr_src
+     1  guard>=4  expressions.py::call.type_ctor.scalar_arg
+     1  guard>=4  statements.py::error_return.ret_shape
+     1  guard>=1  functions.py::_lower_ctor_mil_init
+     1  guard>=9  statements.py::setitem.optview_value_shape
+     1  guard>=3  expressions.py::call.enum_from_value.shape
+     1  guard>=2  expressions.py::ifexpr.record_prvalue_arm
+     1  guard>=12  statements.py::setitem.nested_tuple_value_shape
+     1  guard>=4  statements.py::decl.ptr_union_source
+     1  guard>=3  statements.py::if.multi_narrow_shape
+     1  guard>=1  statements.py::nesteddef.signature
+     1  guard>=3  statements.py::decl.coro_frame_rebind_source
+     1  guard>=1  expressions.py::containerlit.tuple_name_storage
+     1  guard>=2  expressions.py::containerlit.make
+     1  guard>=5  statements.py::decl.wrapper_none_reassign
+     1  guard>=1  statements.py::nesteddef.narrowed_capture
+     1  guard>=8  statements.py::assign.field_write_shape
+     1  guard>=2  statements.py::_lower_stmt
+     1  guard>=0  expressions.py::expr.value_tuple_self_typed
+     1  guard>=1  match.py::_lower_optional_subject
+     1  guard>=3  statements.py::return.wrapper_borrow_source
+     1  guard>=2  expressions.py::_lower_union_arg_lift
+     1  guard>=6  match.py::match.bind_reuse_ptr
+     1  guard>=1  expressions.py::yield.own_tuple_literal
+     1  guard>=3  expressions.py::walrus.btuple_const
+     1  guard>=2  expressions.py::_lower_field_source
+     1  guard>=3  expressions.py::call.inst_shape
+     1  guard>=1  expressions.py::btuple.arity
+     1  guard>=3  expressions.py::call.arity_defaults
+     1  guard>=1  statements.py::decl.record_slot_const
+     1  guard>=2  statements.py::del_attr.multi_target
+     1  guard>=1  statements.py::if.nullproto_shape
+     1  guard>=2  expressions.py::call.own_str_no_flush
+     1  guard>=3  statements.py::ret.record_value_opt_name
+     1  guard>=1  statements.py::if.constexpr_shape
+     1  guard>=1  statements.py::unpack.source_elems
+     1  guard>=2  statements.py::nesteddef.hoisted_vars
+     1  guard>=2  statements.py::aug.class_const
+     1  guard>=3  expressions.py::call.type_ctor.result_kind
+     1  guard>=3  functions.py::lower_function
+     1  guard>=3  expressions.py::call.expr_callee_shape
+     1  guard>=2  statements.py::return.slot_type
+     1  guard>=1  expressions.py::walrus.frame_tuple_reassign
+     1  guard>=3  statements.py::return.callable_source
+     1  guard>=4  statements.py::assign.global_slot_branch
+     1  guard>=3  statements.py::return.container_source
+     1  guard>=5  expressions.py::ctor.call
+     1  guard>=2  expressions.py::call.opt_own_copy
+     1  guard>=2  expressions.py::call.generic_open_slot_elem
+     1  guard>=2  statements.py::with.manager_borrowed_field
+     1  guard>=3  statements.py::if.narrow_shape
+     1  guard>=19  statements.py::setitem.record_value_shape
+     1  guard>=2  expressions.py::call.tparam_default_construct
+     1  guard>=6  resumable.py::res.poly_cond
+     1  guard>=2  resumable.py::_lower_leaf
+     1  guard>=1  statements.py::nesteddef.name_collision
+     1  guard>=2  statements.py::if.hoist_native_global
+     1  guard>=6  statements.py::setitem.typed_dict_field
+     1  guard>=1  statements.py::with.leaf_return
+     1  guard>=1  expressions.py::_require_method_call_arg
+     1  guard>=4  expressions.py::method.recv.name_absent
+     1  guard>=3  expressions.py::optptr.container_call_temp
+     1  guard>=2  expressions.py::list_repeat.lazy
+     1  guard>=5  expressions.py::ifexpr.value_opt_arm
+     1  guard>=2  expressions.py::arg.nullproto_none
+     1  guard>=5  statements.py::decl.container_call_reassigned
+     1  guard>=2  expressions.py::argtemp.marker_protocol_range
+     1  guard>=7  expressions.py::ifexpr.bytes_owned_elems
+     1  guard>=4  expressions.py::_name_read_deref
+     1  guard>=2  statements.py::decl.record_slot_resumable
+     1  guard>=7  resumable.py::res.yield_container_walrus
+     1  guard>=3  expressions.py::method.marker.callable_field
+     1  guard>=7  resumable.py::res.yield_own_ctor
+     1  guard>=1  statements.py::nesteddef.global_decl
+     1  guard>=2  expressions.py::unionlift.bytes_literal_temp
+     1  guard>=5  statements.py::setitem.optional_value_shape
+     1  guard>=1  statements.py::unpack.helper_position
+     1  guard>=1  expressions.py::gentuple.arity
+     1  guard>=1  functions.py::fn.overload_template_stub
+     1  guard>=2  statements.py::if.narrow_hoist
+     1  guard>=2  statements.py::_lower_frame_slot_write
+     1  guard>=3  expressions.py::method.user_deref_stub
+     1  guard>=3  statements.py::return.own_union_source
+     1  guard>=3  expressions.py::call.coro_handle_adapter
+     1  guard>=4  resumable.py::res.for_narrowed_opt_ptr_src
+     1  guard>=7  statements.py::setitem.optval_value_shape
+     1  guard>=2  constants.py::lower_constant
+     1  guard>=4  expressions.py::name.storage_opt_whole
+     1  guard>=3  statements.py::error_return.nested_call
+     1  guard>=1  statements.py::decl.opt_slot_pointee
+     1  guard>=13  expressions.py::truthy.storage_opt_bare
+     1  guard>=3  statements.py::if.constexpr_nullproto_guard
+     1  guard>=1  statements.py::_lower_with
+     1  guard>=5  functions.py::mil.optional_container_literal
+     1  guard>=2  expressions.py::expr.walrus_btuple_emplace
+     1  guard>=2  expressions.py::vararg.empty
+     1  guard>=3  statements.py::top_level.tuple_global_source
+     1  guard>=1  statements.py::nesteddef.self_capture
+     1  guard>=9  resumable.py::res.btuple_yield_elem_lift
+     1  guard>=3  expressions.py::walrus.btuple_pending
+     1  guard>=1  statements.py::if.constexpr_no_renderer
+     1  guard>=3  match.py::match.or_wildcard_default
+     1  guard>=1  expressions.py::_lower_literal_arg
+     1  guard>=1  expressions.py::call.own_template_call_arg
+     1  guard>=3  expressions.py::btuple.elem_rvalue
+     1  guard>=2  expressions.py::coerce.str_field_view
+     1  guard>=2  expressions.py::argtemp.gen_factory
+     1  guard>=2  statements.py::error_return.bind_slot
+     1  guard>=2  functions.py::mil.demote_mirror
+     1  guard>=3  comprehensions.py::_lower_comp_container_elem
+     1  guard>=5  expressions.py::walrus.btuple_src
+     1  guard>=8  statements.py::setitem.unit_value_shape
+     1  guard>=1  statements.py::setattr.name_shape
+     1  guard>=2  expressions.py::expr.walrus_owned_viewfam
+     1  guard>=1  statements.py::if.constexpr_hoist
+     1  guard>=1  simple_gen.py::sgen.yield_value
+     1  guard>=3  statements.py::return.overload_mismatch
+     1  guard>=1  expressions.py::_ref_slot_temp
+     1  guard>=2  statements.py::unpack.ref_element
+     1  guard>=5  statements.py::setitem.container_value_shape
+     1  guard>=1  expressions.py::_lower_truthy
+     1  guard>=6  simple_gen.py::sgen.tuple_yield_elem_lift
+     1  guard>=2  statements.py::assign.value_opt_target
+     1  guard>=3  expressions.py::call.ord_fold
+     1  guard>=3  expressions.py::name.global_seeded
+     1  guard>=2  statements.py::setattr.value_shape
+     1  guard>=5  statements.py::decl.branch_slot_type
+     1  guard>=6  statements.py::stmt.tuple_unpack.ref_target_iter
+     1  guard>=1  expressions.py::coerce.from_any_container
+     1  guard>=4  statements.py::return.str_field_form
+     1  guard>=2  statements.py::reseat.opt_btuple_source
+     1  guard>=1  statements.py::setattr.call_shape
+     1  guard>=1  expressions.py::_lower_tuple_literal
+     1  guard>=1  expressions.py::_unbound_self_field_access
+     1  guard>=2  statements.py::nesteddef.param_type
+     1  guard>=6  statements.py::decl.none_init_slot
+     1  guard>=3  resumable.py::res.coro_handle_write
+     1  guard>=2  expressions.py::containerlit.union_member_prefix
+     1  guard>=1  statements.py::setitem.slice
+     1  guard>=4  expressions.py::call.type_ctor.slice_arg
+     1  guard>=2  expressions.py::arg.own_elem_tuple_literal
+     1  guard>=3  expressions.py::ifexpr.record_arm
+     1  guard>=3  expressions.py::call.type_ctor.no_template_fi
+     1  guard>=3  statements.py::with.manager_hoist_global
+     1  guard>=2  expressions.py::containerlit.tparam_copy_elem
+     1  guard>=3  functions.py::mil.nested_tuple_literal
+     1  guard>=3  expressions.py::method.er_expr_shape
+     1  guard>=4  expressions.py::fstring.conversion
+     1  guard>=5  match.py::match.bind_assign
+     1  guard>=2  statements.py::if.hoist_const
+     1  guard>=1  expressions.py::ifexpr.nested_container_elem
+     1  guard>=3  statements.py::if.any_narrow_shape
+     1  guard>=7  statements.py::ret.btuple_ternary
+     1  guard>=1  expressions.py::_lower_checked_container_elem
+     1  guard>=3  statements.py::decl.no_init
+     1  guard>=4  statements.py::decl.tuple_literal_shape
+     1  guard>=2  expressions.py::method.er_expr_unwrap
+     1  guard>=6  expressions.py::argtemp.ctor_mut_rvalue
+     1  guard>=11  statements.py::ret.ptr_opt_self
+     1  guard>=2  statements.py::decl.ptr_alias_borrow
+     1  guard>=2  statements.py::top_level.import_scope
+     1  guard>=3  statements.py::if.hoist_dyn_resumable
+     1  guard>=2  expressions.py::btuple.elem_slot
+     1  guard>=3  statements.py::return.consuming_self_field
+     1  guard>=3  expressions.py::_lower_class_constant
+     1  guard>=3  statements.py::if.overload_true_after_dynamic
+     1  guard>=2  expressions.py::move.own_proto_container
+     1  guard>=1  statements.py::decl.dyn_protocol_hoisted
+     1  guard>=1  field_write.py::field_write.optrec_upcast_inner
+     1  guard>=2  expressions.py::walrus.frame_opt_ptr_src
+     1  guard>=4  match.py::match.field_bind_assign_addr
+     1  guard>=3  expressions.py::method.deref_narrowed_shape
+     1  guard>=4  statements.py::decl.rebind_source
+     1  guard>=2  comprehensions.py::genexpr.unpack
+     1  guard>=3  expressions.py::binop.opt_scalar_eq
+     1  guard>=2  statements.py::if.overload_live_branch_decls
+     1  guard>=12  statements.py::ret.ptr_opt_ptr_name
+     1  guard>=3  statements.py::decl.char_literal
+     1  guard>=3  statements.py::reseat.borrow_tuple_source
+     1  guard>=1  expressions.py::call.own_coerce_nonplain_name
+     1  guard>=3  expressions.py::enum.nested_from_value
+     1  guard>=3  statements.py::return.generic_tuple_source
+     1  guard>=3  expressions.py::subscript.borrow_tuple_elem
+     1  guard>=2  statements.py::if.hoist_inner_scope
+     1  guard>=3  match.py::_lower_optional_value_dispatch
+     1  guard>=5  expressions.py::call.inst_range_shape
+     1  guard>=1  expressions.py::slice.bound_widened_local
+     1  guard>=1  match.py::_select_match_route
+     1  guard>=2  expressions.py::call.range_shape
+     1  guard>=5  statements.py::print.narrowed_arg
+     1  guard>=4  statements.py::decl.storage_tuple_alias_field_subscript
+     1  guard>=5  expressions.py::field.opt_record_recv
+     1  guard>=0  expressions.py::ifexpr.union_arm
+     1  guard>=1  expressions.py::binop.literal_fact_fold
+     1  guard>=3  statements.py::reseat.opt_btuple_binding
+     1  guard>=1  statements.py::error_return.alias_bind
+     1  guard>=0  expressions.py::call.copy_scalar
+     1  guard>=3  statements.py::return.container_borrow_source
+     1  guard>=3  statements.py::reseat.branch_rvalue_source
+     1  guard>=1  statements.py::return.empty_container_literal
+     1  guard>=2  expressions.py::unionlift.none
+     1  guard>=1  statements.py::decl.dyn_protocol_noinit
+     1  guard>=3  expressions.py::argtemp.optptr_container_literal
+     1  guard>=2  expressions.py::call.opt_callable_unwrap
+     1  guard>=3  expressions.py::argtemp.iter_proto
+     1  guard>=3  statements.py::return.own_wrapper_source
+     1  guard>=3  statements.py::if.deref_view_shape
+     1  guard>=1  expressions.py::gentuple.elem_slot
+     1  guard>=1  statements.py::_lower_stmt_dispatch
+     1  guard>=2  statements.py::decl.branch_first_decl
+     1  guard>=1  statements.py::_lower_resumable_return_value
+     1  guard>=1  statements.py::setattr.recv_shape
+     1  guard>=3  expressions.py::method.typed_dict.recv
+     1  guard>=1  statements.py::_literal_fact_fence
+     1  guard>=1  statements.py::return.borrow_form
+     1  guard>=3  statements.py::if.hoist_move_through
+     1  guard>=1  expressions.py::_lower_class_const_write_target
+     1  guard>=1  statements.py::_lower_erased_handle_write
+     1  guard>=6  statements.py::foreach.hoist_ptr_target
+     1  guard>=7  statements.py::return.storage_opt_source
+     1  guard>=6  statements.py::decl.container_call_borrow
+     1  guard>=3  expressions.py::argtemp.marker_protocol_literal
+     1  guard>=3  expressions.py::call.cast.shape
+     1  guard>=0  expressions.py::rej
+     1  guard>=3  statements.py::return.dyn_borrow_source
+     1  guard>=10  statements.py::decl.reseat_source
+     1  guard>=2  statements.py::decl.linkage
+     1  guard>=3  statements.py::if.or_chain_shape
+     1  guard>=3  resumable.py::res.coro_handle_move
+     1  guard>=2  expressions.py::walrus.frame_alias_src
+     1  guard>=3  statements.py::return.union_view_insert
+     1  guard>=2  expressions.py::gentuple.elem_capture
+     1  guard>=14  expressions.py::cond.walrus_always_true
+     1  guard>=4  statements.py::reseat.dyn_protocol
+     1  guard>=3  expressions.py::gentuple.elem_source
+     1  guard>=6  statements.py::decl.dyn_ptr_none
+     1  guard>=1  match.py::match.optional_inner_record
+     1  guard>=5  statements.py::decl.tuple_literal
+     1  guard>=11  resumable.py::res.await_prebuilt
+     1  guard>=4  functions.py::mil.value_tuple_literal
+     1  guard>=4  statements.py::while.narrow_folded
+     1  guard>=3  statements.py::return.genrec_source
+     1  guard>=3  expressions.py::_lower_marker_method_arg
+     1  guard>=6  functions.py::mil.optional_str_literal
+     1  guard>=3  expressions.py::walrus.btuple_reassign_shape
+     1  guard>=1  statements.py::top_level.global_slot_opt_source
+     1  guard>=3  resumable.py::res.narrow_kill
+     1  guard>=1  statements.py::nesteddef.resumable_func
+     1  guard>=1  statements.py::foreach.narrowed_proto_src
+     1  guard>=0  expressions.py::reject
+     1  guard>=3  statements.py::delitem.container
+     1  guard>=2  expressions.py::ifexpr.result_type
+     1  guard>=0  expressions.py::ifexpr.optptr_arm
+     1  guard>=3  statements.py::return.opt_view_source
+     1  guard>=0  match.py::_reject
+     1  guard>=1  expressions.py::walrus.frame_field_kind
+     1  guard>=3  statements.py::decl.narrowed_rebind
+     1  guard>=1  resumable.py::nesteddef.name_collision
+     1  guard>=1  statements.py::setitem.const_narrowed_recv
+
+(c) unreached, by GUARD DEPTH (0-1 = a whole construct kind falls in; deep = a shape probe):
+  depth  0:   11
+  depth  1:  121
+  depth  2:  169
+  depth  3:  172
+  depth  4:   68
+  depth  5:   39
+  depth  6:   22
+  depth  7:   17
+  depth  8:    7
+  depth  9:    4
+  depth 10:    4
+  depth 11:    4
+  depth 12:    4
+  depth 13:    4
+  depth 14:    2
+  depth 15:    1
+  depth 17:    2
+  depth 18:    1
+  depth 19:    1
+
+(c) unreached at guard depth <= 1 -- the widest untested rejects:
+  d0  tpyc/thir/lower/expressions.py:10673  lower_print_sink  'print.file_sink_shape'
+  d0  tpyc/thir/lower/expressions.py:15106  _lower_copy_special  call_reject_reason('expr.call')
+  d0  tpyc/thir/lower/expressions.py:15692  _lower_ptr_opt_ternary_arm  'expr.ifexpr'
+  d0  tpyc/thir/lower/expressions.py:15730  _lower_ptr_union_ternary_arm  'expr.ifexpr'
+  d0  tpyc/thir/lower/expressions.py:2838  rej  f'binop.shape.{e.op}'
+  d0  tpyc/thir/lower/expressions.py:3093  reject  f'binop.shape.{e.op}{_binop_operand_suffix(e, declared, analyzer)}'
+  d0  tpyc/thir/lower/expressions.py:9995  _lower_expr_impl  expr_kind_tag(e)
+  d0  tpyc/thir/lower/field_write.py:1128  lower_field_write  stmt_reject_reason(stmt)
+  d0  tpyc/thir/lower/match.py:1796  _hook_mode_binding  'res.match_binding'
+  d0  tpyc/thir/lower/match.py:3298  _reject  stmt_reject_reason(stmt)
+  d0  tpyc/thir/lower/statements.py:14848  _lower_stmt_dispatch  f'stmt.unhandled:{type(stmt).__name__}'
+  d1  tpyc/thir/lower/comprehensions.py:1200  _lower_genexpr  'genexpr.iterable_shape'
+  d1  tpyc/thir/lower/comprehensions.py:1202  _lower_genexpr  'genexpr.iterable_shape'
+  d1  tpyc/thir/lower/comprehensions.py:1205  _lower_genexpr  'genexpr.elem_type'
+  d1  tpyc/thir/lower/comprehensions.py:1346  _lower_genexpr_range  'genexpr.range'
+  d1  tpyc/thir/lower/comprehensions.py:1354  _lower_genexpr_range  'genexpr.range'
+  d1  tpyc/thir/lower/comprehensions.py:1365  _lower_genexpr_range  'genexpr.borrow_slot'
+  d1  tpyc/thir/lower/comprehensions.py:916  _lower_comprehension  'comp.route'
+  d1  tpyc/thir/lower/expressions.py:10062  _lower_frame_walrus  'expr.walrus'
+  d1  tpyc/thir/lower/expressions.py:10069  _lower_frame_walrus  'expr.walrus'
+  d1  tpyc/thir/lower/expressions.py:10164  _lower_frame_walrus  'expr.walrus'
+  d1  tpyc/thir/lower/expressions.py:10241  _lower_from_any  'expr.coerce'
+  d1  tpyc/thir/lower/expressions.py:10362  _lower_lambda  'expr.lambda'
+  d1  tpyc/thir/lower/expressions.py:10480  _lower_dyn_synth_call  'getattr.recv_shape'
+  d1  tpyc/thir/lower/expressions.py:10489  _lower_dyn_synth_call  'getattr.call_shape'
+  d1  tpyc/thir/lower/expressions.py:10495  _lower_dyn_synth_call  'getattr.overloads'
+  d1  tpyc/thir/lower/expressions.py:10502  _lower_dyn_synth_call  'getattr.name_shape'
+  d1  tpyc/thir/lower/expressions.py:10574  _lower_class_constant  'field.class_const_type'
+  d1  tpyc/thir/lower/expressions.py:10577  _lower_class_constant  'field.class_const_spelling'
+  d1  tpyc/thir/lower/expressions.py:10598  _lower_class_const_write_target  'field.class_const_spelling'
+  d1  tpyc/thir/lower/expressions.py:10634  _lower_module_var  'field.module_var_type'
+  d1  tpyc/thir/lower/expressions.py:10637  _lower_module_var  'field.module_var_lookup'
+  d1  tpyc/thir/lower/expressions.py:10704  _lower_checked_container_elem  'expr.container_literal'
+  d1  tpyc/thir/lower/expressions.py:10869  _lower_container_elem_impl  'expr.tuple_literal.slot'
+  d1  tpyc/thir/lower/expressions.py:10980  _lower_container_elem_impl  'expr.tuple_literal.slot'
+  d1  tpyc/thir/lower/expressions.py:11265  _lower_tuple_literal  'expr.tuple_literal'
+  d1  tpyc/thir/lower/expressions.py:11322  _lower_borrow_tuple_literal  'expr.tuple_literal'
+  d1  tpyc/thir/lower/expressions.py:11683  _lower_yield_tuple_literal  reject
+  d1  tpyc/thir/lower/expressions.py:11708  _lower_generic_tuple_literal  'expr.tuple_literal'
+  d1  tpyc/thir/lower/expressions.py:11769  _lower_generic_tuple_literal  'expr.tuple_literal'
+  d1  tpyc/thir/lower/expressions.py:11978  _ref_slot_temp  'generic ref-slot literal temp outside a flush position'
+  d1  tpyc/thir/lower/expressions.py:12133  _lower_literal_arg  reject
+  d1  tpyc/thir/lower/expressions.py:12861  _consuming_iter_wrap  call_reject_reason('expr.call')
+  d1  tpyc/thir/lower/expressions.py:14122  _lower_call_arg  call_reject_reason('expr.call')
+  d1  tpyc/thir/lower/expressions.py:14153  _lower_call_arg  call_reject_reason('expr.call')
+  d1  tpyc/thir/lower/expressions.py:15198  _lower_truthy  'truthy.literal'
+  d1  tpyc/thir/lower/expressions.py:15250  _lower_truthy  'truthy.optional_field_narrow'
+  d1  tpyc/thir/lower/expressions.py:15265  _lower_truthy  'truthy.narrowed_record_mode'
+  d1  tpyc/thir/lower/expressions.py:15777  _lower_narrowed_ternary  'ifexpr.narrow_result'
+  d1  tpyc/thir/lower/expressions.py:15884  _lower_if_expr  'expr.ifexpr'
+  d1  tpyc/thir/lower/expressions.py:16303  _unbound_self_field_access  'field.unbound_self_receiver'
+  d1  tpyc/thir/lower/expressions.py:2065  _require_method_call_arg  call_reject_reason('expr.method_call')
+  d1  tpyc/thir/lower/expressions.py:3136  _lower_binop  'match.literal_fold'
+  d1  tpyc/thir/lower/expressions.py:5981  _bound  'expr.subscript'
+  d1  tpyc/thir/lower/field_write.py:511  _classify_record  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/functions.py:2282  _lower_ctor_mil_init  _mil_reject_detail(stmt, analyzer)
+  d1  tpyc/thir/lower/functions.py:374  _admit_literal_only_stub  'sig.overload_set.arity'
+  d1  tpyc/thir/lower/functions.py:420  _admit_overload_stub  detail
+  d1  tpyc/thir/lower/functions.py:471  _check_callable_structure  'sig.special_callable'
+  d1  tpyc/thir/lower/functions.py:542  _check_callable_structure  'sig.builtin_decorator'
+  d1  tpyc/thir/lower/functions.py:558  _check_callable_structure  'sig.error_return'
+  d1  tpyc/thir/lower/match.py:1139  _select_match_route  'stmt.match'
+  d1  tpyc/thir/lower/match.py:1191  _lower_match_guard  'match.guard_type'
+  d1  tpyc/thir/lower/match.py:1251  _lower_match  'res.match_strategy'
+  d1  tpyc/thir/lower/match.py:1791  _hook_mode_binding  'res.match_binding'
+  d1  tpyc/thir/lower/match.py:1984  _lower_match_poly  'match.poly_resumable'
+  d1  tpyc/thir/lower/match.py:1994  _lower_match_poly  'match.poly_ptr_source'
+  d1  tpyc/thir/lower/match.py:2165  _lower_optional_subject  'match.optional_subject_shape'
+  d1  tpyc/thir/lower/match.py:2196  _lower_match_optional  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2208  _lower_match_optional  'res.match_strategy'
+  d1  tpyc/thir/lower/match.py:2217  _lower_match_optional  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2237  _lower_match_optional  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2240  _lower_match_optional  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2308  _lower_optional_inner_record  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2819  lower_binding  'stmt.match'
+  d1  tpyc/thir/lower/match.py:2926  _lower_match_union  'stmt.match'
+  d1  tpyc/thir/lower/match.py:3110  _lower_match_guarded_union  'stmt.match'
+  d1  tpyc/thir/lower/resumable.py:1952  _apply_leaf_post_if  'res.narrowed_resume'
+  d1  tpyc/thir/lower/resumable.py:2588  _lower_member_nested_def  'res.nested_def_member'
+  d1  tpyc/thir/lower/simple_gen.py:402  _lower_loop_body  'sgen.bare_yield'
+  d1  tpyc/thir/lower/simple_gen.py:498  _lower_loop_body  'body.hoisted_vars'
+  d1  tpyc/thir/lower/statements.py:14871  _lower_try  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:14929  _lower_try  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:15068  _lower_raise  'stmt.raise'
+  d1  tpyc/thir/lower/statements.py:15121  _lower_with  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:15159  _lower_with  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:15351  _lower_with  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:2093  _select_for_each_route  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:3272  _lower_error_return_bind  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:3329  _lower_error_return_bind  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:3355  _lower_error_return_bind  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:3992  _lower_opt_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4139  _lower_record_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4146  _lower_record_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4198  _lower_container_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4204  _lower_container_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4212  _lower_container_ptr_slot_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4253  _lower_global_slot_write  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4330  _lower_global_slot_write  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4367  _lower_global_slot_write  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4428  _lower_global_slot_write  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4609  _lower_dyn_protocol_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4612  _lower_dyn_protocol_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4617  _lower_dyn_protocol_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4625  _lower_dyn_protocol_decl  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4770  _nested_def_entry_reject  reason_for()
+  d1  tpyc/thir/lower/statements.py:4773  _nested_def_entry_reject  reason_for()
+  d1  tpyc/thir/lower/statements.py:4776  _nested_def_entry_reject  reason_for()
+  d1  tpyc/thir/lower/statements.py:4779  _nested_def_entry_reject  reason_for()
+  d1  tpyc/thir/lower/statements.py:4803  _lower_nested_def  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4810  _lower_nested_def  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:4843  _lower_nested_def  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:5064  _literal_fact_fence  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:5651  _reject_const_narrowed_write_recv  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:5897  _lower_slice_assign  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:6051  _lower_resumable_return_value  stmt_reject_reason(ret)
+  d1  tpyc/thir/lower/statements.py:6063  _lower_resumable_return_value  stmt_reject_reason(ret)
+  d1  tpyc/thir/lower/statements.py:6206  _lower_resumable_return_value  stmt_reject_reason(ret)
+  d1  tpyc/thir/lower/statements.py:6259  _lower_frame_tuple_unpack  'res.unpack'
+  d1  tpyc/thir/lower/statements.py:6372  _lower_frame_tuple_unpack  'res.unpack'
+  d1  tpyc/thir/lower/statements.py:6667  _lower_erased_handle_write  'res.erased_handle_source'
+  d1  tpyc/thir/lower/statements.py:6870  _lower_nullproto_guard_if  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:6875  _lower_nullproto_guard_if  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:6900  _lower_constexpr_if  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:6903  _lower_constexpr_if  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:6908  _lower_constexpr_if  stmt_reject_reason(stmt)
+  d1  tpyc/thir/lower/statements.py:7023  _resumable_deferred_recipe  stmt_reject_reason(ret)
+  d1  tpyc/thir/lower/statements.py:714  _lower_dyn_setattr_call  'stmt.assign'
+  d1  tpyc/thir/lower/statements.py:724  _lower_dyn_setattr_call  'stmt.assign'
+  d1  tpyc/thir/lower/statements.py:7293  _lower_stmt_dispatch  'stmt.match'
+  d1  tpyc/thir/lower/statements.py:731  _lower_dyn_setattr_call  'stmt.assign'
+  d1  tpyc/thir/lower/statements.py:735  _lower_dyn_setattr_call  'stmt.assign'
+
+(b) fallback-causing sites, by attempts blocked:
+       1  tpyc/thir/lower/expressions.py:7704  _lower_expr_impl  call_reject_reason('expr.call')
+            reason: expr.call:call.arg_shape.union
+            unit  : case:/home/tommy/dev/turbo-python/tpy-m1/tests/cases/iterators/error_gen_match_nested_narrowed_ptr_bind/src/main.py
+
+(b') inner deciders of a recomposed fatal reject (fatal too, via their composer):
+
+(a) caught-internally-only sites:
+       2  tpyc/thir/lower/expressions.py:12736  _lower_vararg_pack  'call.vararg_pack_flush'
+
+note-only rejects (frame gates -- NOT part of the raise-site key):
+
+json: /tmp/claude-1000/-home-tommy-dev-turbo-python-tpy-m1/efc1d3b7-349d-4ee6-ba47-6cb69e1bdac7/scratchpad/reach.json
+REACH_EXIT=0

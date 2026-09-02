@@ -1,0 +1,3932 @@
+[
+ {
+  "file": "tpyc/thir/constants.py",
+  "line": 100,
+  "func": "lower_constant",
+  "reason": "\"const.needs_statement_scope\""
+ },
+ {
+  "file": "tpyc/thir/constants.py",
+  "line": 136,
+  "func": "_lower_constant_expr",
+  "reason": "\"const.tuple_slot\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 916,
+  "func": "_lower_comprehension",
+  "reason": "\"comp.route\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1200,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.iterable_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1202,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.iterable_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1205,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.elem_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1346,
+  "func": "_lower_genexpr_range",
+  "reason": "\"genexpr.range\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1354,
+  "func": "_lower_genexpr_range",
+  "reason": "\"genexpr.range\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1365,
+  "func": "_lower_genexpr_range",
+  "reason": "\"genexpr.borrow_slot\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1186,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.iterable_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1194,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.iterable_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1221,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1262,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.binding_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 815,
+  "func": "_lower_comp_container_elem",
+  "reason": "\"comp.container_value\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 979,
+  "func": "_lower_comprehension",
+  "reason": "\"comp.storage_opt_const\""
+ },
+ {
+  "file": "tpyc/thir/lower/comprehensions.py",
+  "line": 1234,
+  "func": "_lower_genexpr",
+  "reason": "\"genexpr.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9995,
+  "func": "_lower_expr_impl",
+  "reason": "expr_kind_tag(e)"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10673,
+  "func": "lower_print_sink",
+  "reason": "\"print.file_sink_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15106,
+  "func": "_lower_copy_special",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15692,
+  "func": "_lower_ptr_opt_ternary_arm",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15730,
+  "func": "_lower_ptr_union_ternary_arm",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2065,
+  "func": "_require_method_call_arg",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2838,
+  "func": "_lower_value_select.rej",
+  "reason": "f\"binop.shape.{e.op}\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 3093,
+  "func": "_lower_binop.reject",
+  "reason": "f\"binop.shape.{e.op}\"\n            f\"{_binop_operand_suffix(e, declared, analyzer)}\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 3136,
+  "func": "_lower_binop",
+  "reason": "\"match.literal_fold\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10062,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10069,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10164,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10241,
+  "func": "_lower_from_any",
+  "reason": "\"expr.coerce\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10362,
+  "func": "_lower_lambda",
+  "reason": "\"expr.lambda\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10480,
+  "func": "_lower_dyn_synth_call",
+  "reason": "\"getattr.recv_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10489,
+  "func": "_lower_dyn_synth_call",
+  "reason": "\"getattr.call_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10495,
+  "func": "_lower_dyn_synth_call",
+  "reason": "\"getattr.overloads\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10502,
+  "func": "_lower_dyn_synth_call",
+  "reason": "\"getattr.name_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10574,
+  "func": "_lower_class_constant",
+  "reason": "\"field.class_const_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10577,
+  "func": "_lower_class_constant",
+  "reason": "\"field.class_const_spelling\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10598,
+  "func": "_lower_class_const_write_target",
+  "reason": "\"field.class_const_spelling\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10634,
+  "func": "_lower_module_var",
+  "reason": "\"field.module_var_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10637,
+  "func": "_lower_module_var",
+  "reason": "\"field.module_var_lookup\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10704,
+  "func": "_lower_checked_container_elem",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10869,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.tuple_literal.slot\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10980,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.tuple_literal.slot\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11265,
+  "func": "_lower_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11322,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11683,
+  "func": "_lower_yield_tuple_literal",
+  "reason": "reject"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11708,
+  "func": "_lower_generic_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11769,
+  "func": "_lower_generic_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12133,
+  "func": "_lower_literal_arg",
+  "reason": "reject"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12736,
+  "func": "_lower_vararg_pack",
+  "reason": "\"call.vararg_pack_flush\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12861,
+  "func": "_consuming_iter_wrap",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14122,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14153,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15198,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15250,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.optional_field_narrow\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15265,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.narrowed_record_mode\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15777,
+  "func": "_lower_narrowed_ternary",
+  "reason": "\"ifexpr.narrow_result\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15884,
+  "func": "_lower_if_expr",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 16303,
+  "func": "_unbound_self_field_access",
+  "reason": "\"field.unbound_self_receiver\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2215,
+  "func": "_lower_marker_method_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4807,
+  "func": "_check_cond_eager_temps",
+  "reason": "\"argtemp.cond_defer\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4944,
+  "func": "_lower_expr_impl",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4946,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.global_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5002,
+  "func": "_lower_expr_impl",
+  "reason": "unrouted"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5017,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.value_opt_view_inner_local\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5046,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.optspan_narrowed_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5054,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.optcallable_narrowed_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5059,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.union_binding_divergent\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5831,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.optional_check\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6799,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.unary\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6814,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.chained_compare\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6849,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6876,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7194,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7266,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7343,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7467,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7471,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8485,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.list_repeat\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8511,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8595,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8677,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8832,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9390,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9794,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.coerce\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9801,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.coerce\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9992,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10095,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10101,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10130,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10150,
+  "func": "_lower_frame_walrus",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10189,
+  "func": "_lower_into_any",
+  "reason": "\"expr.coerce\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10196,
+  "func": "_lower_into_any",
+  "reason": "\"expr.coerce\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11043,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11078,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11098,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11112,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11523,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11718,
+  "func": "_lower_generic_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11971,
+  "func": "_lower_generic_plain_call",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12307,
+  "func": "_lower_free_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12551,
+  "func": "_lower_free_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12671,
+  "func": "_lower_free_call_arg",
+  "reason": "\"deref-coerce arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 12743,
+  "func": "_lower_vararg_pack",
+  "reason": "\"call.vararg_star_mixed\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13071,
+  "func": "_lower_call_arg",
+  "reason": "\"arg.own_proto_container_live\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13078,
+  "func": "_lower_call_arg",
+  "reason": "\"arg.own_proto_container_live\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13264,
+  "func": "_lower_call_arg",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13497,
+  "func": "_lower_call_arg",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13566,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol literal temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13781,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14216,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14253,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14697,
+  "func": "_lower_ctor_call_args",
+  "reason": "\"ctor arg shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14757,
+  "func": "_lower_union_arg_lift",
+  "reason": "\"union ctor arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14772,
+  "func": "_lower_union_arg_lift",
+  "reason": "\"union ctor arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14799,
+  "func": "_lower_union_arg_lift",
+  "reason": "\"union ctor arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15273,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.ptr_record_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15303,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.optional_name_narrow\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 16031,
+  "func": "_lower_if_expr",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 16348,
+  "func": "_lower_field_source",
+  "reason": "\"field.opt_receiver\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2152,
+  "func": "_lower_marker_method_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2178,
+  "func": "_lower_marker_method_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2198,
+  "func": "_lower_marker_method_arg",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 2200,
+  "func": "_lower_marker_method_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4016,
+  "func": "_lower_binop",
+  "reason": "\"binop.union_none_narrowed_subject\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4021,
+  "func": "_lower_binop",
+  "reason": "\"binop.union_none_protocol_subject\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4225,
+  "func": "_lower_binop",
+  "reason": "\"binop.narrowed_char_eq_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5022,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.optval_unproven_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5025,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.optstr_unproven_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5030,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.optspan_unproven_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5037,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.opttuple_unproven_read\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5174,
+  "func": "_lower_expr_impl",
+  "reason": "\"name.storage_opt_narrow\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5796,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.typed_dict_recv\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6055,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.tuple_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6571,
+  "func": "_lower_expr_impl",
+  "reason": "detail"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6647,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.ru_narrowed_nonmap\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6908,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6963,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6995,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7002,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7043,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7284,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7288,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7325,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7383,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7536,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7556,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7567,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7620,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7994,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8208,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8226,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8352,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8355,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8665,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8694,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8724,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8791,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8797,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8818,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8876,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9122,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9207,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9262,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9276,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9279,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9324,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9388,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10409,
+  "func": "_lower_lambda",
+  "reason": "\"expr.lambda\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 10553,
+  "func": "_lower_class_constant",
+  "reason": "\"field.class_const_receiver\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11004,
+  "func": "_lower_container_elem_impl",
+  "reason": "\"expr.container_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11532,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11559,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11754,
+  "func": "_lower_generic_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11978,
+  "func": "_lower_generic_plain_call._ref_slot_temp",
+  "reason": "\"generic ref-slot literal temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13713,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13726,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13739,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13760,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 13790,
+  "func": "_lower_call_arg",
+  "reason": "\"protocol arg-temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14272,
+  "func": "_lower_call_arg",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14447,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr container face outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14473,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr scalar face outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14489,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr ctor face outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14526,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr adapter face outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14529,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr adapter pointer source\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14535,
+  "func": "_lower_call_arg",
+  "reason": "\"optional-ptr adapter source type\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 14702,
+  "func": "_lower_ctor_call_args",
+  "reason": "\"ctor mutated-slot rvalue temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 16036,
+  "func": "_lower_if_expr",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 4599,
+  "func": "_name_read_deref",
+  "reason": "\"name.scalar_ptr_opt_unwired\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5344,
+  "func": "_lower_expr_impl",
+  "reason": "\"field.enum_member\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5937,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.slice_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5981,
+  "func": "_lower_expr_impl._bound",
+  "reason": "\"expr.subscript\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6142,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.record_getitem\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6717,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.fstring\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6723,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.fstring\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6783,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.unary\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6913,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6928,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7704,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8250,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8256,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8270,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8932,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8975,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9008,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9020,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9185,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9202,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9567,
+  "func": "_lower_expr_impl._method_arg",
+  "reason": "\"method.gen_factory_arg_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11583,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11605,
+  "func": "_lower_borrow_tuple_literal",
+  "reason": "\"expr.tuple_literal\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15320,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.unary_operand\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5472,
+  "func": "_lower_expr_impl",
+  "reason": "\"field.result_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 5528,
+  "func": "_lower_expr_impl",
+  "reason": "\"field.receiver_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6744,
+  "func": "_lower_expr_impl",
+  "reason": "f\"expr.fstring:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7070,
+  "func": "_lower_expr_impl",
+  "reason": "\"expr.walrus\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7611,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7712,
+  "func": "_lower_expr_impl",
+  "reason": "\"ctor mutated-slot rvalue temp outside a flush position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7872,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8004,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9029,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.method_call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 9541,
+  "func": "_lower_expr_impl._method_arg",
+  "reason": "\"factory-method borrow temp outside a flush \"\n                            \"position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15638,
+  "func": "_lower_value_opt_ternary_arm",
+  "reason": "\"expr.ifexpr\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 7734,
+  "func": "_lower_expr_impl",
+  "reason": "\"ctor container-literal temp outside a flush \"\n                            \"position\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15345,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.name\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 16150,
+  "func": "_lower_if_expr",
+  "reason": "\"ifexpr.bytes_mixed\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15349,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.field_nonbool\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15356,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.binop\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15359,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.method_nonbool\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15382,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.call_nonbool\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15384,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.call_nonbool\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15389,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.ifexpr_nonbool\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15420,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 15414,
+  "func": "_lower_truthy",
+  "reason": "\"truthy.walrus_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8151,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8160,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 8174,
+  "func": "_lower_expr_impl",
+  "reason": "call_reject_reason(\"expr.call\")"
+ },
+ {
+  "file": "tpyc/thir/lower/field_write.py",
+  "line": 1128,
+  "func": "lower_field_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/field_write.py",
+  "line": 511,
+  "func": "_classify_record",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/field_write.py",
+  "line": 678,
+  "func": "_lower_container_field",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 374,
+  "func": "_admit_literal_only_stub",
+  "reason": "\"sig.overload_set.arity\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 420,
+  "func": "_admit_overload_stub",
+  "reason": "detail"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 471,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.special_callable\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 542,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.builtin_decorator\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 558,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.error_return\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 2282,
+  "func": "_lower_ctor_mil_init",
+  "reason": "_mil_reject_detail(stmt, analyzer)"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 381,
+  "func": "_admit_literal_only_stub",
+  "reason": "\"sig.overload_set.literal_fact_write\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 454,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.receiver_record\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 469,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.staticmethod_flag\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 545,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.async\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 550,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.generator_simple\"\n                if GeneratorCodegen.is_simple_generator(func)\n                else \"sig.generator_resumable\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 572,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.linkage\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 1041,
+  "func": "lower_function",
+  "reason": "\"body.hoisted_vars\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 1052,
+  "func": "lower_function",
+  "reason": "\"nested_def.rebind_slot_hoist\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 1934,
+  "func": "lower_constructor",
+  "reason": "\"nested_def.rebind_slot_hoist\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 3028,
+  "func": "lower_top_level",
+  "reason": "\"body.hoisted_vars\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 3033,
+  "func": "lower_top_level",
+  "reason": "\"top_level.slot_alloc\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 943,
+  "func": "lower_function",
+  "reason": "\"sig.overload_set.param_names\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 2536,
+  "func": "_lower_ctor_mil_init",
+  "reason": "f\"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 532,
+  "func": "_check_callable_structure",
+  "reason": "_overload_reject_detail(func, overloads)"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 540,
+  "func": "_check_callable_structure",
+  "reason": "_overload_reject_detail(func, fis)"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 596,
+  "func": "_check_callable_structure",
+  "reason": "\"sig.param_reassign_copy\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 2522,
+  "func": "_lower_ctor_mil_init",
+  "reason": "f\"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 2561,
+  "func": "_lower_ctor_mil_init",
+  "reason": "_mil_reject_detail(stmt, analyzer)"
+ },
+ {
+  "file": "tpyc/thir/lower/functions.py",
+  "line": 2576,
+  "func": "_lower_ctor_mil_init",
+  "reason": "_mil_reject_detail(stmt, analyzer)"
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1796,
+  "func": "_hook_mode_binding",
+  "reason": "\"res.match_binding\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1139,
+  "func": "_select_match_route",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1191,
+  "func": "_lower_match_guard",
+  "reason": "\"match.guard_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1251,
+  "func": "_lower_match",
+  "reason": "\"res.match_strategy\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1791,
+  "func": "_hook_mode_binding",
+  "reason": "\"res.match_binding\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1984,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_resumable\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1994,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_ptr_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2165,
+  "func": "_lower_optional_subject",
+  "reason": "\"match.optional_subject_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2196,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2208,
+  "func": "_lower_match_optional",
+  "reason": "\"res.match_strategy\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2217,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2237,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2240,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2308,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2926,
+  "func": "_lower_match_union",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 3110,
+  "func": "_lower_match_guarded_union",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 3298,
+  "func": "_lower_overload_folded_match._reject",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1422,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1424,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1427,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1847,
+  "func": "_lower_match_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2001,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2008,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_arm_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2015,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_facts\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2020,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_bind_name\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2224,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2227,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2246,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2248,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2255,
+  "func": "_lower_match_optional",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2315,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2318,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2330,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2335,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2436,
+  "func": "_lower_optional_value_dispatch",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2440,
+  "func": "_lower_optional_value_dispatch",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2443,
+  "func": "_lower_optional_value_dispatch",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2584,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2587,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2780,
+  "func": "_lower_match_switch_str",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2783,
+  "func": "_lower_match_switch_str",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2806,
+  "func": "_lower_match_switch_str",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2819,
+  "func": "_lower_match_switch_str.lower_binding",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2938,
+  "func": "_lower_match_union",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 3123,
+  "func": "_lower_match_guarded_union",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1436,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1452,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1460,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1479,
+  "func": "_lower_scalar_arms",
+  "reason": "\"res.match_strategy\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1853,
+  "func": "_lower_match_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2341,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2354,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2429,
+  "func": "_lower_optional_value_dispatch",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2663,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2671,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2679,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2800,
+  "func": "_lower_match_switch_str",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2810,
+  "func": "_lower_match_switch_str",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2958,
+  "func": "_lower_match_union",
+  "reason": "\"res.match_strategy\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1440,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1446,
+  "func": "_lower_scalar_arms",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1664,
+  "func": "_lower_field_subpatterns",
+  "reason": "\"match.field_bind_ptr_hoist\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1873,
+  "func": "_lower_match_record",
+  "reason": "\"match.capture_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2029,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_pattern\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2044,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_fields\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2598,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 3202,
+  "func": "_lower_match_guarded_union.lower_entry",
+  "reason": "\"res.match_strategy\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1881,
+  "func": "_lower_match_record",
+  "reason": "\"match.capture_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2061,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_or_bind\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2085,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_pattern\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2347,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2350,
+  "func": "_lower_optional_inner_record",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2603,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2695,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 1889,
+  "func": "_lower_match_record",
+  "reason": "\"match.capture_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2067,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_or_alt\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2079,
+  "func": "_lower_match_poly",
+  "reason": "\"match.poly_wildcard_pos\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2608,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2612,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2617,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2620,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2658,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2628,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2640,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2645,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2654,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/match.py",
+  "line": 2651,
+  "func": "_lower_match_optional_chain",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/predicates.py",
+  "line": 1793,
+  "func": "_post_if_narrow_plan",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2588,
+  "func": "_lower_member_nested_def",
+  "reason": "\"res.nested_def_member\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 858,
+  "func": "_lower_for_iter_setup",
+  "reason": "\"res.for_range_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 1952,
+  "func": "_lower_resumable._apply_leaf_post_if",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2593,
+  "func": "_lower_member_nested_def",
+  "reason": "\"res.nested_def_member\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 881,
+  "func": "_lower_for_iter_setup",
+  "reason": "\"res.for_narrowed_optional\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 1830,
+  "func": "_lower_resumable._lower_leaf",
+  "reason": "\"stmt.decl.no_init\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 1964,
+  "func": "_lower_resumable._apply_leaf_post_if",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2449,
+  "func": "_lower_resumable",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2459,
+  "func": "_lower_resumable",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2609,
+  "func": "_lower_member_nested_def",
+  "reason": "\"res.nested_def_member\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 898,
+  "func": "_lower_for_iter_setup",
+  "reason": "\"res.for_narrowed_optional\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 1865,
+  "func": "_lower_resumable._lower_leaf",
+  "reason": "\"res.coro_handle_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 1906,
+  "func": "_lower_resumable._lower_leaf",
+  "reason": "\"res.leaf_field_write\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2004,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "reason"
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2058,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2070,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2078,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2512,
+  "func": "_lower_resumable",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2514,
+  "func": "_lower_resumable",
+  "reason": "\"res.narrowed_resume\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2172,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "f\"res.cond:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2187,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.bare_yield\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2196,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "stmt_reject_reason(ys)"
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2281,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.yield_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2326,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.yield_type\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2245,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "\"res.btuple_yield_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/resumable.py",
+  "line": 2411,
+  "func": "_lower_resumable._lower_bb",
+  "reason": "f\"res.await_operand_shape:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/simple_gen.py",
+  "line": 402,
+  "func": "_lower_loop_body",
+  "reason": "\"sgen.bare_yield\""
+ },
+ {
+  "file": "tpyc/thir/lower/simple_gen.py",
+  "line": 498,
+  "func": "_lower_loop_body",
+  "reason": "\"body.hoisted_vars\""
+ },
+ {
+  "file": "tpyc/thir/lower/simple_gen.py",
+  "line": 463,
+  "func": "_lower_loop_body",
+  "reason": "\"sgen.tuple_yield_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14848,
+  "func": "_lower_stmt_dispatch",
+  "reason": "f\"stmt.unhandled:{type(stmt).__name__}\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 714,
+  "func": "_lower_dyn_setattr_call",
+  "reason": "\"stmt.assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 724,
+  "func": "_lower_dyn_setattr_call",
+  "reason": "\"stmt.assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 731,
+  "func": "_lower_dyn_setattr_call",
+  "reason": "\"stmt.assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 735,
+  "func": "_lower_dyn_setattr_call",
+  "reason": "\"stmt.assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 2093,
+  "func": "_select_for_each_route",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3272,
+  "func": "_lower_error_return_bind",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3329,
+  "func": "_lower_error_return_bind",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3355,
+  "func": "_lower_error_return_bind",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3992,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4139,
+  "func": "_lower_record_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4146,
+  "func": "_lower_record_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4198,
+  "func": "_lower_container_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4204,
+  "func": "_lower_container_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4212,
+  "func": "_lower_container_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4253,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4330,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4367,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4428,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4609,
+  "func": "_lower_dyn_protocol_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4612,
+  "func": "_lower_dyn_protocol_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4617,
+  "func": "_lower_dyn_protocol_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4625,
+  "func": "_lower_dyn_protocol_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4770,
+  "func": "_nested_def_entry_reject",
+  "reason": "reason_for()"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4773,
+  "func": "_nested_def_entry_reject",
+  "reason": "reason_for()"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4776,
+  "func": "_nested_def_entry_reject",
+  "reason": "reason_for()"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4779,
+  "func": "_nested_def_entry_reject",
+  "reason": "reason_for()"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4803,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4810,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4843,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 5064,
+  "func": "_literal_fact_fence",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 5651,
+  "func": "_reject_const_narrowed_write_recv",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 5897,
+  "func": "_lower_slice_assign",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6051,
+  "func": "_lower_resumable_return_value",
+  "reason": "stmt_reject_reason(ret)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6063,
+  "func": "_lower_resumable_return_value",
+  "reason": "stmt_reject_reason(ret)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6206,
+  "func": "_lower_resumable_return_value",
+  "reason": "stmt_reject_reason(ret)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6259,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6372,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6667,
+  "func": "_lower_erased_handle_write",
+  "reason": "\"res.erased_handle_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6870,
+  "func": "_lower_nullproto_guard_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6875,
+  "func": "_lower_nullproto_guard_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6900,
+  "func": "_lower_constexpr_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6903,
+  "func": "_lower_constexpr_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6908,
+  "func": "_lower_constexpr_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7023,
+  "func": "_resumable_deferred_recipe",
+  "reason": "stmt_reject_reason(ret)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7293,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.match\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14871,
+  "func": "_lower_try",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14929,
+  "func": "_lower_try",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15068,
+  "func": "_lower_raise",
+  "reason": "\"stmt.raise\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15121,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15159,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15351,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 762,
+  "func": "_lower_dyn_setattr_call",
+  "reason": "\"stmt.assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 2056,
+  "func": "_select_for_each_route",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 2061,
+  "func": "_select_for_each_route",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3056,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3078,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3148,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3206,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3381,
+  "func": "_lower_error_return_bind",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3700,
+  "func": "_lower_borrow_local",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4156,
+  "func": "_lower_record_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4336,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4393,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4434,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4437,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4445,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4486,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4632,
+  "func": "_lower_dyn_protocol_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4849,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4864,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4882,
+  "func": "_lower_nested_def",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4913,
+  "func": "_lower_stmt",
+  "reason": "stmt_reject_reason(stmt, ex.reason)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6089,
+  "func": "_lower_resumable_return_value",
+  "reason": "stmt_reject_reason(ret)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6428,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6434,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6610,
+  "func": "_lower_frame_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7220,
+  "func": "_lower_overload_folded_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7223,
+  "func": "_lower_overload_folded_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7406,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"res.leaf_field_write\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7461,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7492,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7544,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7610,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8197,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8428,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10921,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.aug_assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11022,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.aug_assign\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11099,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.aug_assign:widened_value\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11312,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12572,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12609,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12612,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12950,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13234,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13283,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.break\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13287,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.continue\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13404,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13408,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13419,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.while\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13591,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13609,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14009,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14810,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14882,
+  "func": "_lower_try",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14934,
+  "func": "_lower_try",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15136,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15220,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15227,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15259,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3096,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3119,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3131,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3154,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3159,
+  "func": "_lower_if_hoist_predecls",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 3256,
+  "func": "_reject_nested_error_return_arg",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4012,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4316,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4480,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6391,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6405,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6569,
+  "func": "_lower_borrow_tuple_frame_write",
+  "reason": "\"res.btuple_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6583,
+  "func": "_lower_borrow_tuple_frame_write",
+  "reason": "\"res.btuple_source\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7196,
+  "func": "_lower_overload_folded_if",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7228,
+  "func": "_lower_overload_folded_if",
+  "reason": "stmt_reject_reason(\n                stmt, f\"if.overload_live_cond:{ex.reason}\")"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7270,
+  "func": "_overload_adjusted_return",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7334,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"res.leaf_return\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7537,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7566,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7660,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8156,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8244,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8320,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8344,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8392,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9046,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9200,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10261,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10273,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11201,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11216,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11325,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11360,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11391,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11795,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11909,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12111,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12151,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12253,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12310,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12352,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12404,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12451,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12514,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12550,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12658,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12716,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12727,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12750,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12773,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12927,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12987,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13013,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13025,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13038,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13050,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13082,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13108,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13143,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13185,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13207,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13332,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.global:global.unseeded\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13345,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.del_item:subscript_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13349,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.del_item:recv_shape\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13369,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.del_item:recv_or_index\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13434,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.while\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13533,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.assert\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13960,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14477,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14491,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15079,
+  "func": "_lower_raise",
+  "reason": "\"stmt.raise\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15173,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15281,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4026,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4051,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4081,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4469,
+  "func": "_lower_global_slot_write",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6294,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6514,
+  "func": "_lower_alias_bind",
+  "reason": "\"res.alias_bind\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7326,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"res.finally_return\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7428,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"res.leaf_try\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7602,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8035,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8499,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8536,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8573,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8579,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8895,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9064,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9801,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10285,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11229,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11237,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11419,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12781,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13226,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13312,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.del_var:binding\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13453,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.while\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13476,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.while:while.mixed_walrus_temps\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13482,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.while:while.cond_facts_unmirrored\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13758,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14520,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14524,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14716,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15075,
+  "func": "_lower_raise",
+  "reason": "\"stmt.raise\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 4061,
+  "func": "_lower_opt_ptr_slot_decl",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6318,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 7882,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8585,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8633,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8673,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8812,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9074,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9322,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9695,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9806,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(\n                    stmt, f\"decl.tuple_literal_shape:{ex.reason}\")"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9982,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10471,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10491,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 12413,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(\n                        stmt, f\"return.tuple_source:{ex.reason}\")"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13472,
+  "func": "_lower_stmt_dispatch",
+  "reason": "f\"stmt.while:{ex.reason}\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13509,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.assert\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14514,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14530,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14584,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14726,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 6332,
+  "func": "_lower_frame_tuple_unpack",
+  "reason": "\"res.unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9342,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9712,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9715,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9753,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(\n                        stmt,\n                        f\"decl.tuple_literal_shape:{ex.reason}\")"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10323,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13567,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.assert\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13582,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.assert\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14109,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 14162,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 15215,
+  "func": "_lower_with",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 8855,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9775,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(\n                            stmt,\n                            f\"decl.tuple_literal_shape:{ex.reason}\")"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10518,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11487,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11570,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13787,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13793,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13821,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13826,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13858,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10351,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10578,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13848,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 13853,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"stmt.tuple_unpack\""
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10569,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10593,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 9021,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10622,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11716,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10687,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 11743,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10675,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10704,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10717,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10726,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 10806,
+  "func": "_lower_stmt_dispatch",
+  "reason": "stmt_reject_reason(stmt)"
+ }
+]

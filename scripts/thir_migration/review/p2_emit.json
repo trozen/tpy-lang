@@ -1,0 +1,212 @@
+[
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/emit.py",
+    "line": "1606-2046",
+    "title": "_emit_expr is a 441-line isinstance ladder over ~40 THIR expr node types",
+    "detail": "Every arm is `if isinstance(e, THIRFoo): ...` in construction order with no completeness check. Because each node type already fully determines its render (the classification happened at lowering), the field_write.py classify/lower plan-table pattern does not apply here -- there is nothing left to classify. The natural fix is a type-keyed dispatch table (dict[type, Callable] or functools.singledispatch), which also buys an exhaustiveness assertion the current ladder lacks.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/emit.py",
+    "line": "3711-4661",
+    "title": "_emit_stmt is a 951-line isinstance ladder over ~50 THIR stmt node types",
+    "detail": "Same shape and same fix as _emit_expr. The two ladders together are the bulk of the file's line count; a shared dispatch-table helper (keyed on type(node)) would let both drop most of the boilerplate isinstance checks and would make missing a new node type a KeyError at first use instead of a silent fall-through to the final else/THIRCodeGenError.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/emit.py",
+    "line": "2956-2982",
+    "title": "_emit_match dispatches THIRMatch.strategy (14 string values) to 13 separate sibling functions",
+    "detail": "_emit_match_if_elif, _emit_match_switch_union, _emit_match_guarded_union, _emit_match_optional, _emit_match_poly_if_elif, etc. (each 30-90 lines, spanning emit.py:2931-3711) are selected by a flat if/elif chain on a string field. This is the field_write.py plan-table pattern's natural home in this file: a dict[str, Callable] keyed on strategy (or, better, on the enum from finding under rubric 7) would replace the chain and make an unhandled strategy value fail loudly instead of silently falling through to _emit_match_switch (the `else` arm at line 2982).",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/dump.py",
+    "line": "143-500(approx)",
+    "title": "dump.py maintains a second, independently-hand-written isinstance ladder over the same THIR node hierarchy as emit.py",
+    "detail": "dump.py's expr/stmt dump functions re-list every concrete THIR node type in their own isinstance chain, parallel to _emit_expr/_emit_stmt. Adding a node type means editing two hand-maintained, non-exhaustiveness-checked ladders in lockstep; TODO.md line 223 already records that 3 of 30 arms added in one pass to a similar ladder shipped wrong, evidencing this exact drift risk. A single type-keyed registry (see rubric-1 findings) that both emit.py and dump.py register against per node type would remove the duplication.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/validate.py",
+    "line": "n/a",
+    "title": "Already-filed duplication: a shared _walk_call_args for validate.py's THIRRaise/THIRCall/MethodCall/CtorCall arms",
+    "detail": "TODO.md line 259(b) already records this: validate.py repeats an arg-walk over THIRRaise and THIRCall/THIRMethodCall/THIRCtorCall that should be one helper. Citing per the brief's instruction rather than re-deriving.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/emit.py",
+    "line": "196-412",
+    "title": "TempSink/ModuleCounter/IterCounter each have a standalone impl AND a Ctx* adapter that forwards straight into the AST-side CodeGenContext",
+    "detail": "CtxTempSink.create (line 321-325) delegates to `self._ctx.temps.create_typed`, an AST-side TempState method; CtxCounter.next and CtxIterCounter.draw read/write named attributes directly on the live CodeGenContext. Their own docstrings say why: 'the codegen seam supplies CtxTempSink instead, backed by the module-cumulative ctx.temps counter shared with AST-emitted bodies (interleaved THIR/AST numbering must stay continuous)'. This is the one place in the file where emit.py genuinely reaches into a body-emitter's live state rather than a stateless printer primitive -- and it exists purely to keep counters synchronized with bodies still emitted by the doomed AST path.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/emit.py",
+    "line": "21-28",
+    "title": "Inventory of every `from ..codegen_cpp import` in emit.py",
+    "detail": "Two import lines: `from ..codegen_cpp.context import (INDENT, CondRegion, _as_expression, _slot_spellable, any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span, cpp_string_literal_expr, escape_cpp_char, escape_cpp_name, escape_cpp_string, expand_cpp_template, loop_var_binding, qualify_native_name)` and `from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue`. All 16 names are module-level, ctx-free functions/small dataclasses that render C++ text from typed facts (several docstrings say explicitly 'shared by the AST arm and THIR's emit so the spellings cannot drift') -- these are the type/value-rendering printer primitives the ledger's Gate D3 decision keeps permanently in codegen_cpp, so this dependency is FINE and should NOT be cut at cutover. The one real body-emitter dependency (CtxTempSink/CtxCounter/CtxIterCounter reaching into `ctx.temps`/`ctx.iter_counter`) is duck-typed with no import, so it does not appear in this list -- see the separate finding on that.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/nodes.py",
+    "line": "n/a (THIRGenExpr vs THIRComprehension)",
+    "title": "Already-filed: THIRGenExpr pre-renders C++ strings at lowering time where its sibling THIRComprehension keeps the same facts structured",
+    "detail": "TODO.md line 305 records this precisely: THIRGenExpr's binding_cpp/iife_captures/inner_captures are rendered via loop_var_binding/_genexpr_captures at LOWERING time, while THIRComprehension carries var/elem_type structured and defers the same render to _emit_comprehension in emit.py. This is exactly the rubric-3 question (decision made in the wrong layer) and is already tracked; cite rather than re-derive, but it is the clearest example of a lower/emit boundary inconsistency in this slice.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/emit.py",
+    "line": "455-472",
+    "title": "Module-cumulative counters (with_counter, try_counter, finally_guard_counter, temps) exist only to interleave numbering with still-AST-emitted sibling bodies",
+    "detail": "_EmitState's docstring is explicit: these streams are 'NOT per-function... the seam passes a CtxTempSink so the numbering stays module-cumulative across interleaved THIR/AST bodies'. C++ requires only that a name be unique within its own function scope, not across a translation unit's functions, so module-cumulative numbering is an artifact of the AST's original (never-reset) counter design, not a real constraint. Post-cutover these can reset per-function like match_counter/iter_counter already do, eliminating the Ctx* adapter classes and the ctx pass-through entirely.",
+    "size": "M",
+    "churn": "output-changing",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/emit.py",
+    "line": "1963, 2032, 2038, 2213, 2453-2589, 2857-2886, 3851, 4040",
+    "title": "34 in-line _witness(...) calls thread migration-coverage bookkeeping through the render code",
+    "detail": "These calls (imported from faces.py at line 156) record which THIR arm fired, purely for the corpus-wide zero-witness census reported by --thir-codegen. The ledger's own retrospective already found this exact class of debt once: 'faces.py survives but its only READER (conftest.py) is on the DIES list, so the census would survive unread.' Each call site is harmless dead weight once nothing reads the tally, but they are woven into render logic (not isolated at the top), so removing/repurposing them touches every one individually.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "TODO.md:157",
+    "line": "cited, not in emit.py directly",
+    "title": "Already-filed byte-identity-adjacent divergence: _EmitState.rebind_slots is not block-scoped where the AST's now is",
+    "detail": "Cite per the brief's instruction: TODO.md documents that master b6f95ce5f added scope-restore of ctx.rebind_slots at branch/loop/try/except/match boundaries on the AST side, which emit.py's _EmitState never mirrored except across nested defs -- a latent (currently unwitnessed) byte divergence at PtrSlotKind.BRANCH_RVALUE. Not re-derived here.",
+    "size": "S",
+    "churn": "output-changing",
+    "confidence": "high"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/emit.py",
+    "line": "159-164",
+    "title": "This layer raises no ThirUnsupported; its only error is an internal-consistency assertion",
+    "detail": "emit.py, validate.py, dump.py, faces.py and shape.py contain zero ThirUnsupported raises -- that reject-gate population belongs entirely to tpyc/thir/lower/ (a different agent's layer per the brief). The one exception, THIRCodeGenError (emit.py:159), fires when a node the emitter does not handle reaches emission at all -- its own docstring says this means 'lowering and the emitter disagree on the supported set', i.e. a bug, not migration debt to characterize.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/emit.py",
+    "line": "throughout (128 lines)",
+    "title": "128 lines in emit.py name an AST emitter symbol or say 'mirrors the AST'",
+    "detail": "grep for _gen_*, gen_*(, ExpressionGenerator/StatementGenerator, and 'mirrors ...' across the file hits 128 lines -- almost all of the layer's docstring debt. faces.py has 13, dump.py 3, validate.py 2, fallback.py and shape.py 0. Many of these docstrings (e.g. THIRMatch's own doc in nodes.py:3012-3045) already state the C++ shape/invariant alongside the AST-symbol pointer, so most fixes are deletion of the trailing AST-name clause rather than a rewrite from nothing; propose scanning for the literal substrings '_gen_', 'mirrors', 'the AST' and stripping the pointer while keeping the shape description that is usually already adjacent to it.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/nodes.py",
+    "line": "3046-3050",
+    "title": "THIRMatch.strategy: str with 14 legal values conflates two independent axes into one flat string enum",
+    "detail": "Comment lists 14 values: switch_enum/switch_primitive/if_elif/if_elif_guarded/switch_union/guarded_union/if_elif_record/guarded_record/optional_partition/if_elif_optional/if_elif_optional_guarded/switch_str/poly_if_elif/poly_guarded. Unlike the good precedents cited in the brief (PtrSlotKind, WithTargetArm -- each one clean axis), this looks like a (subject-kind x guarded) product that never got factored into two fields, which is also why _emit_match's dispatch (rubric 1 finding) is a 13-way chain instead of a 5-way switch plus a bool. Not a clean cross-product though (switch_str/switch_enum have no guarded sibling in the list), so this needs a real design pass, not a mechanical split.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/emit.py",
+    "line": "485-501, 563-568",
+    "title": "_EmitState's resumable-leaf hooks are the one legitimate permanent THIR/codegen_cpp seam in this layer, but are five loose untyped Callables",
+    "detail": "frame_shadow_probe, match_arm_hook, resumable_return_hook, ast_finally_push, ast_finally_pop bind emit.py's leaf renderers to the LIVE codegen_cpp resumable-frame skeleton, which the completion ledger's Gate D3 decision keeps as a permanent printer-layer component (not deleted at cutover). Unlike the byte-identity-driven Ctx* counters, this seam is not migration debt -- it is the genuine, permanent boundary between THIR body semantics and the C++ state-machine mechanics of async/generator frames. It is currently five duck-typed Callable fields documented only in prose; naming it as an explicit small Protocol (e.g. ResumableLeafHost) would make the contract checkable instead of implicit.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/emit.py",
+    "line": "440-591",
+    "title": "Every other _EmitState field is pure C++-representation state and already sits correctly below where a MIR boundary would go",
+    "detail": "slot_counter, slot_prefix/slot_static, rebind_slots, union_slot_locals, btuple_slot_locals, inline_rvalue_slots, hoist_lines, finally_frames, live_finally_guards, match_counter/switch_depth/loop_break_labels/loop_else_labels are all late-lowering/printer bookkeeping (slot numbers, hoisted decl text, label names) with no ownership/aliasing/form/last-use fact among them -- those facts are decided in thir/nodes.py and thir/lower/ and only READ here. So for this layer specifically, the printer/semantic split the brief asks about is already correctly drawn at the THIR-node boundary; a future MIR stage would sit between lower/ and this state, not inside it.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": "survival",
+    "file": "tpyc/thir/fallback.py",
+    "line": "1-25",
+    "title": "fallback.py DIES at cutover -- its entire subject (why a body did not route) stops existing",
+    "detail": "The whole module records the first ThirUnsupported reject reason per body for the migration backlog report. Once there is no AST fallback destination, 'why didn't this body route' is no longer an answerable (or askable) question -- every body either lowers or the compile fails. The older teardown inventory in the completion ledger already marked this DIES (269 lines then; now 388). Deletion is mechanical: no downstream code outside the migration harness reads it.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": "survival",
+    "file": "tpyc/thir/shape.py",
+    "line": "1-30",
+    "title": "shape.py loses its subject at cutover -- 'distinct routed / distinct total' becomes vacuous",
+    "detail": "The module's reported metric is a fraction of distinct body shapes that route vs. don't. With zero non-routed bodies possible post-cutover, the denominator's non-routed side is always empty and the ratio is trivially 100%/undefined -- the question the module exists to answer stops being interesting or askable. Same fate as fallback.py; not previously itemized by name in the ledger's rewritten inventory, so this is new to this review.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": "survival",
+    "file": "tpyc/thir/faces.py",
+    "line": "1-40",
+    "title": "faces.py's mechanism could survive as a permanent coverage instrument, but its only current reader dies with the harness -- an open design decision, not a mechanical fact",
+    "detail": "The per-face witness tally is a genuinely useful idea post-cutover (which render arms has the corpus never exercised), but conftest.py's --thir-codegen zero-witness summary is the only consumer today and it dies with the marker/ratchet machinery. The completion ledger already found this exact gap once for the pre-rewrite inventory ('faces.py survives but its only READER is on the DIES list, so the census would survive unread'). Keeping faces.py means: (a) building a new permanent reader (e.g. a committed unit-test-driven arm census, distinct from the migration-era CLI flags), and (b) re-justifying the ~34 witness() call sites embedded in emit.py's render logic (plus many more in lower/) as intentional instrumentation rather than stripping them as dead weight. This is a decision for the user, not something to execute mechanically.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": "survival",
+    "file": "tpyc/thir/validate.py",
+    "line": "1-12",
+    "title": "validate.py SURVIVES cleanly and functions independently of the AST/THIR byte-diff",
+    "detail": "It is a genuine THIR-internal structural-invariant checker (form-tag correctness at THIRFormConvert/THIRCoerce and pointer-lifted-storage sink positions) that never inspects or compares against AST output -- only 2 lines mention the AST at all, and both are framing ('a second gate beside the whole-corpus byte-diff'), not functional dependencies. The only change needed at cutover is a docstring rewrite: state the invariant it enforces without describing itself relative to the byte-diff gate that is going away.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": "survival",
+    "file": "tpyc/thir/dump.py",
+    "line": "1-6",
+    "title": "dump.py SURVIVES cleanly as a permanent debug-inspection tool",
+    "detail": "Its own docstring says it is 'not consumed by codegen; purely for inspecting the sema/codegen seam' and has nothing to do with migration measurement. TODO.md line 139(f) already confirms this explicitly ('this branch's own teardown inventory, which lists dump.py under SURVIVES... the duplication outlives the migration'). Only needed cleanup: its 3 lines of AST-symbol docstring debt (rubric 6) and de-duplicating its isinstance ladder against emit.py's (rubric 2 finding above).",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  }
+]

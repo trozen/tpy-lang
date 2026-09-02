@@ -34,6 +34,8 @@ The shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) measures
 distinct-shape coverage; it was once used as the honest progress dial, but the
 percentage is asymptotic by construction and no longer steers anything. Steer
 by the stdlib fallback tally in `tests/test_thir_stdlib_gate.py` instead.
+The cutover's decision record (2026-09-02: flip, delete, fix as we go) and
+the post-cutover health review of the IR are `THIR_CUTOVER_REVIEW.md`.
 
 ## Motivation
 

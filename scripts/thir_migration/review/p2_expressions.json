@@ -1,0 +1,152 @@
+[
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 4836,
+    "title": "_lower_expr_impl is a 5,162-line function with 18 top-level isinstance arms",
+    "detail": "Lines 4836-9998; each of 18 `if isinstance(e, TpyXxx)` arms at the top level is itself a large sub-ladder (TpyCall spans ~1190 lines at 2436-3626-equivalent offset, TpyMethodCall ~1159 lines, TpySubscript ~913 lines). The function also carries 14+ boolean kwargs (already ratcheted per TODO.md's flush-position entry). This is the single largest architectural liability in the file: splitting per-node-type into separate `_lower_<nodetype>` functions dispatched from a small table would let each sub-ladder be reviewed, tested and eventually converted to the field_write.py plan-table pattern independently.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 12962,
+    "title": "_lower_call_arg is a 1,719-line flat cascade of 80 independent gate-then-return predicates",
+    "detail": "Lines 12962-14681, 80 top-level `if <predicate>: return <lowered>` arms tried in declaration order. This is exactly the shape field_write.py's (classify, lower) plan-table pattern was built to replace, and TODO.md already records an APPROVED 2026-08-25 design for this exact fold ('Arg-ladder fold... measured inventory: 10 arg ladders... 352 row instances over 177 distinct source shapes; 74 shapes carried by 2+ ladders; 170 redundant copies = 48%'). Cite rather than re-derive; flag only that it remains undone and is the single highest-value structural fix in this layer.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 3074,
+    "title": "_lower_binop is a 1,327-line function with ~23 top-level branches",
+    "detail": "Lines 3074-4401. Smaller than the two above but the same shape: a long ordered sequence of shape-specific arms for comparison/arithmetic/membership operators. A candidate for the same table-driven split once the arg-ladder fold establishes the pattern in this file, but lower priority since it dispatches on a much smaller (op, operand-shape) space.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 1450,
+    "title": "value_opt_name_pass vs value_opt_pass_through: near-duplicate predicate pair already recorded in TODO.md",
+    "detail": "TODO.md ('Reconcile value_opt_name_pass vs value_opt_pass_through') already tracks this exact pair as a near-duplicate predicate (declared-binding-required vs analyzer-fallback; one excludes function refs) and classifies it as hole-filling, not fold work. Citing rather than re-deriving per the brief.",
+    "size": "S",
+    "churn": "unknown",
+    "confidence": "high"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 1568,
+    "title": "Two parallel predicate families (_x_* gate predicates and _r_* arg_table rows) answer overlapping questions about the same _ArgReq without a shared vocabulary",
+    "detail": "Lines ~1503-1705 define ~30 small `_r_*`/`_x_*` predicates over `_ArgReq`, registered into arg_table.py's gate, while the un-prefixed lowering functions above them (_own_move_source_slice, _own_opt_ptr_name_move_arg, etc. at 1359-1450) independently re-derive the same shape facts inside _lower_call_arg. TODO.md's arg-ladder-fold entry already names this exact split ('_lower_call_arg's ~1600-line render cascade independently re-invokes at least 8 of the same predicates the gate already ran... rather than consuming any verdict the gate produced' -- the classic tag-where-decided-not-consumed anti-pattern, and a candidate THIR node field). Cited, not re-derived.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 118,
+    "title": "emit_prims import is self-documented temporary-home debt, not a live layering violation",
+    "detail": "emit_prims.py's own module docstring states these predicates/constants/literal-fold helpers have 'NO skeleton consumer at all: their only caller once the four [AST] modules are gone is tpyc/thir/lower/, which makes this module their temporary home rather than their final one -- moving them into thir/ today would have made the dying modules import from thir'. Post-cutover this import (emit_prims.check_literal_chain, .CMP_HELPER, .is_trivial_needle, .is_duplicable_expr) should move bodily into thir/lower or thir/emit; it is a pure relocation, no logic change.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 211,
+    "title": "codegen_cpp.forms (is_plain_nonvalue, is_ptr_variant_union, reads_storage_form_optional) is semantic Form classification living under codegen_cpp",
+    "detail": "forms.py's own docstring frames it as shared infrastructure so 'the legacy AST codegen path and THIR lowering reach it identically' -- a deliberate no-drift precedent, not an accident. But these functions decide THIR's own 'Form' fact (IR_DESIGN.md's 'Form as a First-Class THIR Fact'), which is exactly the kind of semantic classification that belongs to THIR/typesys, not the printer package. After the AST emitter is deleted this module has zero non-THIR callers and should move to typesys.py or thir/forms.py; leaving it under codegen_cpp inverts the intended dependency direction (printer depending on nothing, THIR depending on the printer for a semantic fact).",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 132,
+    "title": "codegen_cpp.protocols text-composers (narrow_cast_rhs, dynamic_adapter_type, dynamic_base_name, dynamic_ref_adapter_type, record_inherits_dynamic) are correctly-factored shared C++-text primitives, not migration debt",
+    "detail": "narrow_cast_rhs's docstring says it is 'Module-level (analyzer-pure) so the AST emit and the THIR lowering share one composition' -- this is the right shape already (a single chokepoint both paths call, preventing drift) rather than a duplicated decision. Post-cutover this can simply move out of codegen_cpp (its only remaining caller is thir/lower) but is not a body-emitter dependency the cutover needs to 'cut or absorb' in the risky sense -- it is a printer-layer primitive that happens to currently live in the doomed package's sibling file.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 119,
+    "title": "codegen_cpp.types.{TypeResolver, resolve_pending_container} and codegen_cpp.context.{escape_cpp_name, qualified_cpp_name, enum_cpp_name, qualify_native_name, view_key_target} are pure type-rendering / naming primitives",
+    "detail": "Used throughout expressions.py purely to resolve pending container types and to render C++ names (escaping, qualification). These are the 'type-rendering primitive (fine)' category the brief calls out -- no body-emit decision-making, safe to leave as-is or fold into typesys.py at leisure.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 16263,
+    "title": "paren_wrap=True on THIRBinOp is an AST-parenthesization accident baked into lowering",
+    "detail": "_slot_literal_retype sets `resolved=None, paren_wrap=True` on the fallback (non-fixed-int-template) arm of a both-literal binop retyped to a fixed-int slot, purely to reproduce the AST's bare `(l op r)` parenthesization for that one shape. This is a printer-level formatting decision (whether the emitted expression needs surrounding parens for precedence) computed at lowering time instead of derivable at emit time from operator precedence + parent context. Once byte-identity is no longer required, the emitter could compute this itself.",
+    "size": "S",
+    "churn": "output-changing",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 751,
+    "title": "THIRArgTemp defers temp numbering to emit time -- a positive counter-example worth preserving",
+    "detail": "Unlike the paren_wrap case, THIRArgTemp (nodes.py) explicitly documents 'Carries NO temp number: numbering is emit-time via the TempSink... drawing real numbers from the module-cumulative ctx.temps counter so THIR and AST bodies interleaved in one module [agree]'. This is the right pattern (semantic fact in THIR, ordering/naming left to the printer) and should be the template when un-baking the paren_wrap and similar flags found elsewhere in this file.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 0,
+    "title": "221 ThirUnsupported raise sites in this file alone (roughly a third of the corpus-wide 655 sites TODO.md's reject-reach sweep counts)",
+    "detail": "Population is a mix: (a) real semantic restrictions (e.g. 4016 'binop.union_none_narrowed_subject', 4021 'binop.union_none_protocol_subject' -- narrowing shapes THIR genuinely does not model yet), and (b) pure migration debt where the AST path itself has no equivalent construct or the reason is purely 'not mirrored yet' (e.g. 4944 'stmt.match' guarding a forbidden-read name, 4946 'name.global_read' which is a real cross-module boundary not yet lowered). Per the brief, full raise-site classification is another review's job; this count anchors that this file carries the largest single share of the corpus's still-open reject population, so its resolution order should be sequenced with (not ahead of) the arg-ladder fold above, since many raises here are downstream of arg-ladder gate results.",
+    "size": "XL",
+    "churn": "unknown",
+    "confidence": "low"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 0,
+    "title": "~124 lines name an AST emitter symbol directly (41 distinct _gen_* names plus ExpressionGenerator/'mirrors the AST' phrasing)",
+    "detail": "Counted via grep for `_gen_[a-zA-Z_]+|ExpressionGenerator|mirrors (the AST|_gen_|gen_)`. Every one of these becomes a dangling pointer the moment codegen_cpp/expressions.py is deleted. Rewrite policy: state the invariant the AST used to enforce (e.g. 'a member-valued scalar into a value-union slot must materialize a named temp because C++ variant construction cannot bind a bitfield-narrowed rvalue in place') rather than naming the function that used to enforce it; this is a large but entirely mechanical doc-only pass with zero code or snapshot churn, ideally done file-by-file alongside (not instead of) the arg-ladder fold so the two edits do not collide.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 4836,
+    "title": "_lower_expr_impl's boolean-kwarg surface (14 flags) is already flagged and ratcheted in TODO.md",
+    "detail": "TODO.md's flush-position entry documents the flag zoo directly: allow_whole_optional, allow_unrouted_name, allow_union_divergent, field_prechecked, field_owned_str_ok, field_value_tuple_ok, own_slot_coerce, subscript_prechecked, container_threaded, array_retype, error_return_raw, er_expr_unwrap, elem_storage, mil_record_prvalue -- 'now ratcheted by a unit beside the _ExprUse ceiling, since capping one of the two parallel channels only redirects the next flag to the other'. Cited per the brief rather than re-derived; the proposed fix (a `field_read_kind` discriminator folding field_owned_str_ok/field_value_tuple_ok) is already scoped there.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/expressions.py",
+    "line": 2169,
+    "title": "THIRArgTemp is the clean MIR-boundary example in this file; most of the rest of the file conflates the two levels inline",
+    "detail": "THIRArgTemp cleanly separates the semantic decision (this arg must be materialized because of an aliasing/construction hazard -- ownership/lifetime, belongs to THIR/MIR) from the printer decision (temp numbering, statement placement -- belongs to the emit-time TempSink). Most other rendering-adjacent facts in this file are NOT split this cleanly: Form (is_ptr_variant_union / is_plain_nonvalue, semantic) and cpp-name/paren_wrap/template_override strings (printer) are frequently decided in the SAME function and sometimes the SAME return statement (e.g. _slot_literal_retype at 16223 returns a node carrying both a semantic result_type change and a printer-only paren_wrap flag in one replace() call). A MIR boundary should sit exactly at the THIRArgTemp precedent: THIR nodes carry the semantic verdict (needs-temp, move-vs-copy, Form), and a later lowering/printer pass owns naming, counters, and parenthesization -- none of the second category should gain new fields in thir/nodes.py going forward.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  }
+]

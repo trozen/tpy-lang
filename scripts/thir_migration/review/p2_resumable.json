@@ -1,0 +1,112 @@
+[
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/nodes.py",
+    "line": 3344,
+    "title": "THIRResumableBody is 10 separate id()-of-AST-node Mapping tables, not a THIR-owned CFG",
+    "detail": "THIRResumableBody (and THIRSimpleGenBody after it) carries leaves/conds/await_args/return_values/yield_values/suspend_exprs/region_exprs/match_dispatches/nested_def_bodies/deferred_returns, each keyed by id() of a TpyStmt/TpyExpr the AST-walking skeleton in codegen_cpp/resumable_cfg.py + gen_async.py holds. The same pattern repeats at the outer seam: CodeGenContext.thir_functions/thir_resumables/thir_simple_gens/thir_constructors (codegen_cpp/context.py:1341-1365; consumed at generator.py:539/570/585, gen_async.py:2142, records.py:920) are id()-keyed dicts of whole lowered bodies. This is the exact 'side table keyed by id(node), becomes future lowering work' pattern CLAUDE.md's front-end-perf section calls out, applied at both the leaf-map and whole-body granularity. It works today only because it is an overlay on a printer-owned AST walk that both sides agree to keep alive.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/codegen_cpp/resumable_cfg.py",
+    "line": 511,
+    "title": "resumable_cfg.py already IS a basic-block CFG (Fall/Branch/ReturnT/RaiseT/Unreachable terminators, BB.stmts) but is scoped to async/generator bodies only and lives permanently in codegen_cpp",
+    "detail": "CFGBuilder (783-1847) builds a genuine BB graph with typed terminators (Branch, Fall, ReturnT, RaiseT, Unreachable, MatchDispatch, AsyncForAdvance/IterSetup, AsyncFinallyExit, WithEnter/AsyncWithSetup) over raw TpyStmt/TpyExpr AST nodes -- this is MIR-shaped vocabulary (docs/IR_DESIGN.md 'MIR: basic blocks, places') already built once, for one narrow purpose (resumable-frame desugaring), and deliberately kept as permanent printer-layer machinery per the D3 skeleton decision. If a general MIR CFG is later built for every body (not just async/generator), the natural move is to generalize resumable_cfg's CFG into that MIR CFG rather than let a second BB-graph builder exist beside it -- otherwise the codebase carries two independent CFG constructions over the same source shapes (rubric 8's 'generalize, don't parallelize' case one level up from ordinary duplication).",
+    "size": "XL",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 254,
+    "title": "MIR-relevant facts in this layer are the eligibility families, not the leaf renders",
+    "detail": "The genuinely semantic content the lowering layer decides -- which param/local/return/yield SLOT FAMILIES are admitted (_res_value_ok/_res_capture_ok/_res_param_ok/_res_local_ok, 195-402), narrowed-resume aliasing (_resume_narrow_envs, 660-756), and the with/for/match region shapes -- is ownership/aliasing/control-flow-shape knowledge that belongs at THIR or MIR. Everything downstream of that (frame_slot placement, case-label numbering, `__{var}` resume-alias spelling, the id()-map plumbing itself) is a C++ representation choice that belongs in the late-lowering/printer layer sitting on top of a MIR CFG. Today both live in the same file with no seam between them, so a MIR cut would have to split this file rather than lift it wholesale.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 1062,
+    "title": "_lower_resumable is a 1498-line monolith (1062-2560)",
+    "detail": "Single function combining routing gates (method/static/property/generic), per-param/return/yield family checks, region setup, and the entire _lower_bb/_lower_leaf walk as nested closures over shared mutable state (lc, declared, region_exprs, narrow_kill). Not a simple isinstance ladder over a fixed node set, so field_write.py's classify-then-lower plan-table pattern would need real redesign (the state threaded through -- narrow_kill snapshots, postif_saved, frame_fields -- doesn't decompose into an up-front plan-record) rather than a mechanical extraction.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 1978,
+    "title": "_lower_bb's structural-marker branches (462 lines, 1978-2440) are a partial dispatch-table candidate",
+    "detail": "The leading isinstance checks against WithEnter/AsyncWithSetup, AsyncForIterSetup, AsyncFinallyExit, and the narrowing-assert test (1998-2110ish) are each self-contained and end in `continue`, so field_write.py's (classify, lower) table pattern would apply cleanly there -- unlike the plain-AST-statement tail of the same function, which needs the full shared statement-lowering machinery and does not decompose the same way.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 109,
+    "title": "Lowering imports codegen_cpp classifiers (emit_prims, forms.is_plain_nonvalue) that are body-representation decisions, not type-rendering primitives",
+    "detail": "resumable.py:109-113 imports codegen_cpp.emit_prims (a ~1500-line grab-bag including is_const_indirect, resolve_target_type, is_duplicable_expr, check_literal_chain -- borrow/const-ness and literal-folding DECISIONS, not pure type-to-string rendering) and forms.is_plain_nonvalue. functions.py:78-93 similarly pulls codegen_cpp.functions helpers, forms.LocalBinding, and gen_generators.GeneratorCodegen. Per rubric 8's own criterion these ARE representation-shape decisions (pointer-local vs ref-alias vs rebind-slot), so their current codegen_cpp home is defensible as the late/printer layer that outlives cutover -- but emit_prims itself is not a coherent module (it mixes printer primitives with body-emitter decision logic under one name), which is worth splitting before or during cutover so the surviving printer surface is legible.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/codegen_cpp/gen_async.py",
+    "line": 2142,
+    "title": "codegen_cpp owns CFG construction (a structural body analysis), not just rendering",
+    "detail": "_thir_resumable_attempt (2134-2170) both builds the async CFG via resumable_cfg.CFGBuilder and drives THIR lowering over it; the skeleton walker in the same file (_emit_state_machine et al.) performs case-entry computation, frame-layout planning, and narrowing-alias bookkeeping -- all per-body ANALYSIS, not printing. This is the sanctioned D3 exception (structural skeleton stays permanent), so it's not a violation of today's contract, but it means 'codegen does not run analysis' is already not literally true for resumable bodies, and any future MIR CFG will have to either replace resumable_cfg's analysis or coexist with it (see the CFG-duplication finding above).",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 1062,
+    "title": "Reject population in resumable.py/functions.py/simple_gen.py is essentially 100% migration debt, not language semantics",
+    "detail": "Sampled the res.*/sig.*/sgen.*/nested_def.* reject sites (~126 total across the three files): every one gates a foundation-slice boundary explicitly documented as narrower than the AST's support (e.g. res.method/res.static_method/res.property, res.await_kwargs, res.generator_shape, sig.staticmethod_flag, sgen.tuple_yield_source) -- none reflect a genuine TPy language restriction. The file's own docstring frames this as deliberate ('Foundation slice (deliberately tight; the fan-out cells widen it)'). This matches TODO.md's large existing '[thir]' backlog for these exact files (e.g. the res.* reject-reason pin backlog, line ~691); no new characterization is needed beyond noting the population is uniform, so post-cutover none of these raises can be reinterpreted as a real diagnostic -- each is either widened or becomes a hard compile-error regression per the cutover's blind-class risk already tracked in TODO.md's lead entry.",
+    "size": "XL",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/functions.py",
+    "line": 1242,
+    "title": "~24 lines across the three files name AST emitter symbols in docstrings/comments (dangling pointers at cutover)",
+    "detail": "Representative sites: resumable.py:424,1131,1634,1839,1929-1943,2190,2632 (_gen_var_decl, _gen_tuple_unpack, gen_yield_value, _gen_concrete_coro_write, _gen_assert, _gen_if, _rebinds_narrowed); simple_gen.py:338; functions.py:225,355,602,963,1242,1519,1556,1594,1920,2108,2548 (_overload_resolve_static, _gen_literal_specialized_function, _gen_buffered_body, _gen_copy_expr, _gen_array_literal, _extract_field_inits). Count is modest relative to file size (~6200 lines combined), concentrated in eligibility-gate rationale comments. Rewrite policy: replace 'mirrors AST symbol X's Y arm' with the stated invariant the comment is actually asserting (e.g. 'a for-loop var promoted to a frame slot needs the same ownership rule as any owning frame local') so the comment survives the emitter's deletion.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/resumable.py",
+    "line": 223,
+    "title": "The four _res_*_ok eligibility predicates are a documented near-duplicate family, but already tracked and deliberately NOT merged",
+    "detail": "_res_value_ok/_res_capture_ok/_res_param_ok/_res_local_ok (195-402) answer overlapping 'is this type admitted at slot kind X' questions with per-position divergence the docstrings justify individually (param/return/yield each capture a bare T for a different reason). TODO.md already records this as a test-gap ('Pin the resumable eligibility-predicate differences', matching this file) rather than a design defect -- citing rather than re-deriving per the brief.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/codegen_cpp/generator.py",
+    "line": 478,
+    "title": "THIR imports inside generator.py's function body, not at module top",
+    "detail": "generator.py:478-486 imports thir.lower symbols inside the emit method rather than at module scope, deviating from the house style ('imports at top of file only'). This is very likely unavoidable (codegen_cpp/generator.py is imported before thir/lower, and thir/lower imports codegen_cpp helpers, so a top-level import would cycle) -- the style rule's own carve-out for unavoidable cases applies -- but worth a one-line comment stating that reason explicitly rather than leaving it implicit, since the cutover will change what depends on what.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "low"
+  }
+]

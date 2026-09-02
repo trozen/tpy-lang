@@ -1,0 +1,18 @@
+from tpy import Int32
+class Dog:
+    def sound(self) -> str:
+        return "woof"
+class Cat:
+    def sound(self) -> str:
+        return "meow"
+async def step(n: Int32) -> Int32:
+    return n + 1
+async def f(a: Dog | Cat) -> str:
+    __a = 1
+    await step(__a)
+    if isinstance(a, Cat):
+        return "c"
+    return a.sound()
+def main() -> None:
+    pass
+main()

@@ -1,0 +1,112 @@
+[
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/context.py",
+    "line": 671,
+    "title": "_LowerCtx carries ~30 C++-representation sets that are exactly the design's own 'MIR fold' target",
+    "detail": "Of the ~45 tracked per-name sets on _LowerCtx (pointers, ptr_variant_locals, rebind_slot_locals, storage_tuple_locals, own_borrow_tuple_locals, frame_slots, opt_storage_call_locals, walrus_slot_locals, coro_handle_slots, etc.), roughly 30 are pure C++ slot-shape facts (LocalCppForm-equivalent) rather than semantic facts (ownership/aliasing/narrowing). docs/IR_DESIGN.md's Form section explicitly names this class ('12 predicates + 22 side-sets') as MIR's fold target, not THIR's. Cataloguing which sets are semantic (movable_locals, sema_movable_locals, ref_alias_locals, narrow, forbidden_reads/writes) vs representation-only would let a later MIR pass absorb the latter without touching THIR's semantic surface.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/context.py",
+    "line": 116,
+    "title": "_ExprUse's 18 boolean flags -- already tracked in TODO.md",
+    "detail": "TODO.md ([thir][hygiene], grep '_ExprUse is now eighteen independent bool flags') already records that _ExprUse has no legality invariant and the ptr_opt_lift/ptr_opt_passthrough pair gates an identical condition. Citing rather than re-deriving; confirmed still present at context.py:116-219 unchanged from the TODO description.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 4060,
+    "title": "_optional_ptr_borrow / _optional_ptr_borrow_wide (+ their _name variants) are one classifier parameterized by pointee-eligibility, spelled as four near-duplicate functions",
+    "detail": "_optional_ptr_borrow_wide's own docstring says it is '_optional_ptr_borrow over _opt_pointee_wide' -- same unwrap/guard sequence, differing only in the pointee-eligibility predicate (_f1_record vs _opt_pointee_wide-or-scalar). The _name-suffixed siblings (_optional_ptr_borrow_name at 4153, _optional_ptr_borrow_wide_name at 4086) repeat the same split again over a name lookup. A single function taking the eligibility predicate as a parameter would remove the pairing risk noted inline (the wide variant even flags its own trailing 'or _eligible_scalar(inner)' clause as dead/redundant left-in-place code at line 4079-4081).",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 6581,
+    "title": "_field_receiver_or_unbound_self_ok wrapper invariant is unenforced -- already tracked in TODO.md",
+    "detail": "TODO.md ([thir] '_field_receiver_or_unbound_self_ok is an invariant asserted by a comment, not enforced') already records this exact predicate at this location: a future receiver-shape gate can call the narrower _field_receiver_ok directly and silently under-admit. Citing rather than re-deriving.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 312,
+    "title": "THIRCoerce.wrap is a hand-assembled C++ text template, not the typed CoercionKind the design specifies",
+    "detail": "docs/IR_DESIGN.md's THIRCoerce spec calls for 'kind: CoercionKind' (widening, own-strip, optional-wrap, ...). The actual implementation (_coerce_wrap here, feeding THIRCoerce.coercion_name: str + wrap: str|None in nodes.py:1221) instead computes an f-string template ('static_cast<{T}>({{0}})', '::tpy::EnumUtil<{T}>::name({{0}})', etc.) at lowering time and defers only positional substitution to emit. This re-derives the coercion's codegen-lambda text per coercion name rather than letting emit render from (coercion_name, expected_type) -- the coercion registry (coercions.py) already has this mapping once; predicates.py is a second, string-based rendering of the same table entries.",
+    "size": "M",
+    "churn": "output-changing",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 368,
+    "title": "_coerce_disposition returns a bare string tag ('identity' | 'materialize' | 'template' | None) instead of an enum",
+    "detail": "A 3-way closed classification (plus None) spelled as string literals, consumed by callers doing string comparisons. Same subsystem as the THIRCoerce.wrap finding above -- both live in the coercion-lowering corner of predicates.py and would tighten together if that corner is revisited. The IR already has the right pattern elsewhere (TupleSourceBind, PtrSlotKind in nodes.py); this is the same fix.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 1,
+    "title": "~387 of 10,956 lines name an AST-emitter symbol or 'the AST' -- dozens of distinct _gen_* functions cited by name",
+    "detail": "grep for _gen_/gen_/'the AST'/'mirrors' matches 387 lines in predicates.py and 65 of 1414 in context.py. Distinct AST symbols named include _gen_union_arg, _gen_binop, _gen_field_access, _gen_call, _gen_span_coercion, _gen_if, _gen_protocol_arg, _gen_optional_ptr_arg, _gen_copy_expr, _gen_method_call, _gen_tuple_unpack, _gen_pointer_local_rebind, _gen_logical_value, gen_expr, gen_call_from_fi -- each a dangling pointer once codegen_cpp/{expressions,statements,match,builtins}.py are deleted. Proposed policy: replace 'mirrors _gen_X's Y arm' with a statement of the INVARIANT the code enforces (e.g. what render shape is expected and why), done as a doc-only pass with no code change, ideally in the same commit as the AST-emitter deletion so the docstrings and the deleted code disappear from review together rather than needing a separate stale-reference sweep.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/context.py",
+    "line": 11,
+    "title": "codegen_cpp imports in this layer are shared pure classifiers/naming primitives, not body-emitter decisions -- confirmed clean",
+    "detail": "Audited every codegen_cpp import reached from predicates.py/context.py: resolve_stmt_binding_type, forms.is_ptr_variant_union/reads_storage_form_optional/LocalBinding, emit_prims (whose own module docstring declares it the deliberate shared home post-cutover, enforced by test_cutover_gate.py), param_const.decide_param_const (documented as a centralized post-Phase-2 ABI decision, not a live-walk re-derivation), types.resolve_pending_container, context.{bigint_index_narrow_type,enum_cpp_name,escape_cpp_name,is_constructor_call,qualified_cpp_name} (pure naming/type predicates, several explicitly documented as 'shared rather than re-derived... both THIR mirrors'), and protocols.{dynamic_adapter_type,dynamic_base_name,dynamic_ref_adapter_type,record_inherits_dynamic} (naming conventions). None of these walk a body or dispatch a statement/expression tree -- they are the printer-layer primitives the cutover plan (Gate D3) says survive. No dependency here needs cutting.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/lower/context.py",
+    "line": 746,
+    "title": "binding-audit plumbing (binding_union field, _binding_capture/_binding_ack calls) is migration-detector scaffolding that should be deleted at cutover, not carried into the permanent shape",
+    "detail": "CLAUDE.md's THIR migration section states the cutover deletes both audits (binding_audit.py and move_audit.py) because their AST-side recorder lives inside the deleted emitter. _LowerCtx.binding_union (context.py:746) and the _binding_capture/_binding_ack hooks threaded through branch_scope (line ~1329) and param seeding (e.g. line 1117) exist solely to feed that comparison. They have zero effect on emitted C++ (audit-only), so removing them is pure deletion with zero snapshot churn, and should happen in the same commit as deleting binding_audit.py itself rather than lingering as inert plumbing.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 1,
+    "title": "predicates.py is a single 10,956-line, 463-function file with no internal module boundary",
+    "detail": "No individual function is a monolith (longest is ~220 lines, most are 10-50), so the field_write.py plan-table pattern does not apply here -- there is no isinstance/if-elif dispatch ladder over statement/expression kinds to tabularize, since this file is leaf predicates called BY such tables elsewhere (checks.py, expressions.py). The real rubric-1 issue is file-level: the module mixes unrelated domains (scalar/enum eligibility, F1/F2/F3/F4 record and tuple binding facts, coercion disposition, narrowing-condition facts, field-write facts, protocol/dynamic facts) in one file with no sub-module split, unlike the sibling layers (checks/expressions/statements/functions are already separate files per docs/thir/lower/__init__.py's stated layer order). Splitting along the F1/F2/F3/F4 rung boundaries the docstrings already use as a taxonomy would be a pure move with no behavior change.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/predicates.py",
+    "line": 1793,
+    "title": "predicates.py contributes almost no ThirUnsupported raise sites -- confirmed clean by design",
+    "detail": "Only one raise site in the whole file (line 1793); the module's docstring (line 1-7) states it holds leaf classifiers consumed locally by lowering arms elsewhere, and the actual reject/admit decisions live in checks.py (out of this layer's scope per the brief). No population to characterize here.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  }
+]

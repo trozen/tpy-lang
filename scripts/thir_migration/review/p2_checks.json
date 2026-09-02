@@ -1,0 +1,162 @@
+[
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 8124,
+    "title": "_marker_call_kind pre-renders C++ callee text and stores it as a (kind, cpp-string) pair",
+    "detail": "checks.py:8124-8386 (_marker_call_kind, 263 lines) calls codegen_cpp.context helpers (module_qualified_callee_cpp, static_method_callee_cpp, module_static_class_cpp, qualified_cpp_name, escape_cpp_name) to build the callee's literal C++ spelling at lowering time, and returns a tuple['qualified'|'native'|'template'|..., str] that lands verbatim on THIRCall.callee_cpp / cpp_template / template_args_cpp (see nodes.py:574-614, whose docstring calls callee_cpp 'PRE-RENDERED'). This is the '*_cpp: str field composed from pieces' pattern CLAUDE.md's front-end-perf section calls out directly. Post-cutover the emitter should compute the qualified spelling itself from a semantic fact (resolved FunctionInfo + call shape), not consume a string lowering already rendered.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 115,
+    "title": "checks.py imports six codegen_cpp modules; two (forms, protocols) carry real semantic classifiers, not renderers",
+    "detail": "Imports at lines 115-131: emit_prims (predicates: is_simple_lvalue, reject_polymorphic_rvalue_into_optional_local, plus FLOAT_STR_CONSTANTS) and codegen_cpp.functions.literal_mangled_name / codegen_cpp.types.resolve_pending_container are name/type-rendering primitives -- fine, that layer survives. But codegen_cpp.forms.classify_local_binding/reads_storage_form_optional and codegen_cpp.protocols.classify_dyn_own_arg/dyn_forward_ok/resolve_own_source_type are genuine borrow-vs-storage-form and dyn-protocol-forwarding DECISIONS (exactly the 'Form as a First-Class THIR Fact' concept IR_DESIGN.md describes), homed in codegen_cpp only because both the AST emitter and THIR need to call the identical function during the byte-identity era. Both modules' own docstrings say they exist to keep the two paths from drifting, which stops mattering once the AST emitter is deleted.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/codegen_cpp/emit_prims.py",
+    "line": 1,
+    "title": "emit_prims.py already documents its own post-cutover move; forms.py/protocols.py need the same plan written down",
+    "detail": "emit_prims.py's module docstring explicitly says its predicates/constants are homed there only because 'moving them into thir/ today would have made the dying modules import from thir' -- i.e. it is already a scheduled post-cutover relocation into tpyc/thir/. codegen_cpp/forms.py and codegen_cpp/protocols.py are the same shape (dual AST+THIR consumers of a real classifier) but carry no equivalent note, so the cutover checklist should name all three, not just emit_prims's contents, or the other two will be missed.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 698,
+    "title": "_container_lit_elem_ok (512 lines) is a string-keyed if/elif ladder that could be a family dispatch table",
+    "detail": "_container_lit_elem_ok dispatches on `fam = _container_lit_slot_family(slot, analyzer)` (a bare str: 'bytes'/'enum'/'callable'/'optional'/'union'/'tuple'/'container'/'record'/'tparam'/'any'/'view'/'untyped', defined at checks.py:1211) through a long chain of `if fam == ...: ...`. Each arm is independent (no shared state threaded between arms besides the common note/threaded/forced kwargs), so this is a clean candidate for a dict[str, Callable] or Enum-keyed table, the same shape field_write.py already uses for its (classify, lower) families -- one arm per family instead of one 512-line function.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 1211,
+    "title": "_container_lit_slot_family returns a bare str used for BOTH control-flow dispatch and diagnostic tag suffix",
+    "detail": "The function returns plain strings ('bytes', 'union', 'tuple', ...) that _container_lit_elem_ok switches on for real control flow AND that get spliced directly into note_detail('container_lit.elem.' + fam)-style diagnostic tags at several call sites (lines ~649, 722, 1021). A str Enum would give the dispatch side type safety while keeping the same literal values for the diagnostic tag, so the fix is compatible with the existing reject-tag histograms the migration tooling greps on.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 12308,
+    "title": "_record_method_call_supported now at 13 boolean kwargs (TODO already tracks this at 12)",
+    "detail": "checks.py:12308-12322 defines a 395-line function with 13 mutually-exclusive-by-position boolean kwargs (temps_ok, record_ret_ok, storage_ret_ok, coro_factory_ok, suspend_ok, iterable_ret_ok, value_opt_ret_ok, ptr_opt_passthrough, owned_tuple_ret_ok, btuple_ret_ok, union_subject_ret_ok, raw_stmt_handled, narrowed). TODO.md's '[thir] _record_method_call_supported is at 12 caller-supplied boolean gates' entry already names this and proposes a ret-kind enum/allowed-kinds set; citing rather than re-deriving. Count has grown by one (raw_stmt_handled -> now also union_subject_ret_ok/btuple_ret_ok not previously enumerated), so the growth is ongoing.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 8,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 1635,
+    "title": "_borrow_local_binding: the borrow/storage FORM verdict (semantic, MIR-worthy) is fetched from a codegen module and then re-derived by hand for the OTHER carve-outs",
+    "detail": "_borrow_local_binding calls codegen_cpp.forms.classify_local_binding to get a LocalBinding enum (REF_ALIAS/POINTER/OPTIONAL_TO_PTR/OTHER -- a genuine semantic Form fact), then, when it comes back OTHER, re-inspects the AST node (TpyIfExpr ternary arms, TpyName-in-pointers) by hand to re-tag three more cases into OPTIONAL_TO_PTR. This is exactly the boundary the brief asks about: the classifier itself is semantic and belongs on the THIR/MIR side (owned by lowering, not the printer layer it currently sits in), while the follow-on re-tagging is evidence the single enum does not yet cover every case the caller needs.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 0,
+    "title": "Reject population in checks.py is overwhelmingly migration debt, not language semantics",
+    "detail": "Sampled ~70 distinct note_detail() tags: the large majority ('method.ptr_template.*', 'method.marker.*', 'container_lit.elem.*', 'call.callee_kind*', 'method.scalar.cpp_ret_substitution', etc.) are framed in their own docstrings as 'the AST's <arm> does X, not mirrored here' -- pure coverage gaps against the AST emitter, with no TPy-language restriction behind them. A smaller minority reflect a real, load-bearing design boundary rather than un-mirrored coverage, e.g. the F1-record-only receiver pin threaded through _f1_record (generic/native records are excluded by design, not by oversight, per TODO's union-splits entry: 'generic records with UNION type args stay AST by design'), and the super()/unbound-self parent arm's exclusion of cpp_template/native/non-default-linkage bases (checks.py:8239-8243), which reflects the C++ inheritance shape rather than a missing arm. Do not read the tag population as evenly split -- it is lopsided toward debt.",
+    "size": "XL",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 6,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 0,
+    "title": "~80 lines name a specific AST emitter symbol; ~210 more say 'the AST' without naming one -- both rot at deletion",
+    "detail": "grep counts: 81 lines match _gen_*/gen_*/_emit_*/ExpressionGenerator-style symbol names (these become dangling references the moment codegen_cpp/{expressions,statements,match,builtins}.py are deleted); 210 lines reference 'the AST' more loosely (behavioral oracle framing, e.g. 'the AST arm', 'the AST's own render'). Propose rewrite policy: replace 'mirrors _gen_method_call's marker arm' with a statement of the invariant being preserved (e.g. 'a receiver-less call whose callee resolves to a DEFAULT-linkage, non-generic, non-native module function') -- doable mechanically at each site during the cutover commit since the docstring already states the shape, just anchored to the wrong noun.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 4,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 2853,
+    "title": "paren_wrap=False threading exists only to reproduce the AST's exact parenthesization of a bytes-concat aug-assign",
+    "detail": "_bytes_aug_concat_ok's docstring explains the desugared `target = (target OP value)` render is emitted unwrapped (paren_wrap=False) purely to match _gen_aug_assign_code's spelling. Once byte-identity stops being the bar, this can likely collapse to the default (always-parenthesized) render with a snapshot update; low value, flagged for completeness of the rubric-4 sweep rather than as a priority.",
+    "size": "S",
+    "churn": "output-changing",
+    "confidence": "low"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/arg_table.py",
+    "line": 65,
+    "title": "arg_table.py's own row-registration discipline is the fix rubric 2 is asking for -- cite as a positive pattern, not a defect",
+    "detail": "register_sink() (arg_table.py:175-199) asserts at import time that two families naming the same row string reach the same predicate function, which mechanically prevents the exact 'same question, different spelling' drift class rubric 2 is looking for, within the arg-gate population. TODO.md's 'THE ARG-LADDER FOLD -- COMPLETE' entry confirms this already absorbed the ten legacy ladders (386 cells over 194 distinct rows). Any remaining near-duplicate classifiers in checks.py that are NOT arg-table rows (see next findings) are the residue outside this net.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 7,
+    "file": "tpyc/thir/lower/arg_table.py",
+    "line": 48,
+    "title": "_ArgReq has grown to 19 positional fields; TODO.md already has a concrete split plan (H3), cite rather than re-derive",
+    "detail": "_ArgReq (arg_table.py:48-109) is a 19-field NamedTuple built once per argument-admission call; TODO.md's 'H3 -- split _ArgReq' entry already measures that 9 of the 19 fields are per-body constants (analyzer, locals_, param_names, narrowed, inline_narrowed, movable_locals, pointers, storage_tuple_locals, func_name) rebuilt on every argument, proposes splitting those into a per-body context record, and found the perf angle is a red herring (+0.7% when doubled). This is the arg-table analog of the _ExprUse flag-bag pattern (TODO entry 97) one layer over; the fix is designed but not yet landed.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 3,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 134,
+    "title": "checks.py depends on ..faces.witness and ..fallback for migration-only journalling, which the cutover deletes wholesale",
+    "detail": "_witness/witness calls (over 100 sites in checks.py) exist to build the per-attempt face census used by migration tooling (thir_stdlib_fallback.py, probe_corpus.py) -- not consumed by the emitter or by any correctness check that survives cutover. This is fine as migration-phase instrumentation (already understood as temporary per the THIR migration section of CLAUDE.md), but it means a large fraction of the ~100+ witness() call sites in this file are pure scaffolding to be stripped in the same commit that deletes the AST emitter and the ratchet; flagging so the cutover checklist sizes that deletion pass (it touches most of the 511 functions in this file, one call each) rather than treating it as free.",
+    "size": "M",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 2,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 5723,
+    "title": "_protocol_slot_arg's admission decision is re-derived by shape inspection at its consumer (already filed in TODO, cite)",
+    "detail": "TODO.md's '[thir] The container-field protocol-slot arg's use-threading duplicates its admission decision' entry names this exact pair: _protocol_slot_arg (checks.py:5723) decides the container-field-into-structural-slot shape, and expressions.py's _lower_call_arg re-derives the same fact independently to thread the iterable-result use. A second instance in the same entry (_lower_container_elem's _vu_field vs the elem gate's containerlit.union_field_elem row) is also named. Citing rather than re-deriving; both are 'tag where decided, not consumed' violations per CLAUDE.md's front-end-perf rule.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "high"
+  },
+  {
+    "rubric": 1,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 3543,
+    "title": "_free_callee_kind (256 lines) mirrors _marker_call_kind's shape one function away -- same monolith pattern, same fix",
+    "detail": "_free_callee_kind classifies a plain (non-marker) free call into an emit kind + pre-rendered callee text using the same imported_free_callee_cpp/qualified_cpp_name helpers _marker_call_kind uses for the receiver-less marker family. The two functions are parallel ladders over sibling call shapes (free vs marker-carrying) rather than one dispatch keyed on shape; a shared classify step (resolve fi -> shape tag -> one render helper) would collapse both monoliths into one table with two shape-selection entry points instead of two hand-written 250+ line ladders.",
+    "size": "L",
+    "churn": "zero",
+    "confidence": "medium"
+  },
+  {
+    "rubric": 5,
+    "file": "tpyc/thir/lower/checks.py",
+    "line": 8152,
+    "title": "_marker_call_kind rejects kwargs/double-star unconditionally at the top of the ladder -- worth confirming this is a real vs a debt boundary before cutover",
+    "detail": "Line 8152: `if e.kwargs or e.double_star_unpack is not None: return None`. Unlike most of the surrounding rejects (which name a specific unmirrored AST arm), this one is a blanket exclusion with no per-shape docstring explaining whether kwargs at a receiver-less call site is unsupported by THIR's calling convention in general or just not wired up for this one family. Worth a one-line check before the cutover checklist assumes every raise in this function is 'AST arm not ported' -- if kwargs genuinely cannot round-trip through the arg-table machinery (positional-only by design, per arg_table.py's docstring on ROW ORDER), this is closer to a real restriction than debt.",
+    "size": "S",
+    "churn": "zero",
+    "confidence": "low"
+  }
+]
