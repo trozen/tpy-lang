@@ -617,6 +617,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.field_chain",
     "method.recv.free_call",        # `make(3).get()` -- a plain F1-record
                                     # free-call result receiver, `.` access
+    "method.recv.select_str",       # `(t := "ab").upper()` / `(s if c else t).upper()` -- a
+                                    # str/bytes-VALUE ternary or walrus receiver, bare render
+    "method.recv.select_record",    # `(a if c else b).area()` -- a plain F1-record ternary /
+                                    # walrus receiver, `.` access
     "method.recv.binop",            # `(dt + td).isoformat()` -- a record-
                                     # result dunder-binop receiver (gate)
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal

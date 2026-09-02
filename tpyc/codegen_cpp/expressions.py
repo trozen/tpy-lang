@@ -37,6 +37,7 @@ from .. import move_audit
 from ..symbol_binding import lookup_imported, SymbolKind
 from . import emit_prims
 from .variant_access import VariantAccess
+from .types import resolve_pending_container
 
 
 def _mixed_sign_fixed_int(left_type: "TpyType", right_type: "TpyType") -> bool:
@@ -529,7 +530,12 @@ class ExpressionGenerator:
 
     def _gen_copy_expr(self, arg: TpyExpr) -> str:
         """Generate an explicit copy of arg as an rvalue for Own[T] ownership transfer."""
+        # A literal-seeded container keeps its pending list-vs-Array type
+        # until sema's resolution pass; only THAT is resolved here. The wider
+        # `get_resolved_type` reads a narrowed Optional local at its declared
+        # pointer-repr type and would return the raw pointer instead of a copy.
         arg_type = self.ctx.get_expr_type(arg)
+        arg_type = resolve_pending_container(arg_type, self.ctx.analyzer) or arg_type
         if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
             return self.gen_expr(arg)
         # Pointer-variant union locals: visit variant and copy active member

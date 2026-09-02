@@ -7899,11 +7899,8 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # keeps `.` access on both paths (probe-verified bare render); the
         # inner call lowers via the shared free-call machinery at
         # BORROW_BIND use. Pointer / Optional / non-record results defer.
-        if (_resolved_str_value(analyzer.get_expr_type(recv), analyzer)
-                is not None
-                # The bytes twin (`make_bytes().strip()`).
-                or _resolved_bytes_value(analyzer.get_expr_type(recv),
-                                         analyzer) is not None):
+        kind = _dot_receiver_value_kind(analyzer.get_expr_type(recv), analyzer)
+        if kind == "str":
             # A str/bytes-VALUE free-call result feeding a view-method (the
             # free-call twin of the literal receiver arms).
             return _witness("method.recv.str_method")
@@ -7912,19 +7909,70 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
             # -> `(::tpy::BigInt(0)).bit_length()`): the scalar family's
             # stub method composes over the bare inner render.
             return True
-        rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            analyzer.get_expr_type(recv))))
-        if isinstance(rt, OwnType):
-            rt = unwrap_readonly(rt.wrapped)
-        if not (isinstance(rt, NominalType) and _f1_record(rt, analyzer)):
+        if kind == "dyn":
             # A @dynamic-protocol call result: an `Own[P]` handle composes
             # `f()->m()` (the own-dyn arrow at the emit node), a borrow
             # `P&` result `f().m()` -- both off the bare inner render.
-            if isinstance(rt, NominalType) and is_dyn_protocol(rt):
-                return _witness("method.recv.dyn_call")
+            return _witness("method.recv.dyn_call")
+        if kind != "record":
             return False
         return _witness("method.recv.free_call")
-    return _method_field_receiver_ok(recv, locals_, analyzer)
+    if isinstance(recv, TpyFieldAccess):
+        return _method_field_receiver_ok(recv, locals_, analyzer)
+    if isinstance(recv, (TpyIfExpr, TpyNamedExpr)):
+        # A ternary / walrus over BARE value operands renders as the plain
+        # C++ select / comma form with `.` access on both paths. An operand
+        # that is a pointer-local or a narrowed Optional name renders through
+        # its pointer (`&(a)` on the AST, `(*a)` here), so those stay out.
+        if not _select_operands_bare(recv, locals_, pointers):
+            return False
+        kind = _dot_receiver_value_kind(analyzer.get_expr_type(recv), analyzer)
+        if kind == "str":
+            return _witness("method.recv.select_str")
+        if kind == "record":
+            return _witness("method.recv.select_record")
+        return False
+    # Every other receiver kind (a literal, an f-string, an operator
+    # result) has no admitted row yet.
+    return False
+
+
+def _dot_receiver_value_kind(t: 'TpyType | None', analyzer) -> 'str | None':
+    """Which bare `.`-access receiver family a non-name receiver's TYPE puts
+    it in: "str" (a str/bytes value, the view-method rows), "record" (a plain
+    F1 record), "dyn" (a @dynamic protocol handle), or None. One peel chain
+    for every arm that asks, so the arms cannot drift apart on it."""
+    if (_resolved_str_value(t, analyzer) is not None
+            or _resolved_bytes_value(t, analyzer) is not None):
+        return "str"
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(rt, OwnType):
+        rt = unwrap_readonly(rt.wrapped)
+    if isinstance(rt, NominalType) and _f1_record(rt, analyzer):
+        return "record"
+    if isinstance(rt, NominalType) and is_dyn_protocol(rt):
+        return "dyn"
+    return None
+
+
+def _select_operands_bare(recv: TpyExpr, locals_: dict[str, TpyType],
+                          pointers: 'AbstractSet[str]') -> bool:
+    """Every value operand of a ternary / walrus tree is a name that renders
+    bare (declared, not a pointer-local, not an Optional binding that a
+    narrowing may have retyped) or a non-name operand. The AST spells a
+    pointer-bound operand through its address, so admitting one would put the
+    two paths on different renders."""
+    if isinstance(recv, TpyIfExpr):
+        return (_select_operands_bare(recv.then_expr, locals_, pointers)
+                and _select_operands_bare(recv.else_expr, locals_, pointers))
+    if isinstance(recv, TpyNamedExpr):
+        return _select_operands_bare(recv.value, locals_, pointers)
+    if isinstance(recv, TpyName):
+        if recv.name not in locals_ or recv.name in pointers:
+            return False
+        dt = unwrap_readonly(unwrap_ref_type(locals_[recv.name]))
+        return not isinstance(dt, OptionalType)
+    return True
 
 def _method_call_receiver_ok(recv: TpyMethodCall, locals_: dict[str, TpyType],
                              analyzer) -> bool:

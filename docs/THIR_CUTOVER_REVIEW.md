@@ -93,7 +93,7 @@ The evidence sections stand unchanged.
 
 1. Fix the two known lowering crashes (`checks.py:7701`, reached through
    `_method_nonname_receiver_ok`), via `/tpy-fix-bug`. Independent of
-   the flip.
+   the flip. DONE 2026-09-02.
 2. Commit 1 per D4: flip `thir_codegen` to the default, regenerate the
    snapshots, prove `git diff tests/cases` is EMPTY. Lifting
    `_thir_flag_conflict` in `tests/conftest.py` is the first step.
@@ -224,8 +224,7 @@ sees and which the deletion turns into a compiler crash on valid code:
   `_method_nonname_receiver_ok` (`checks.py:7927`), which forwards every
   non-Name, non-Call receiver to the field-receiver check. A ternary
   receiver on a `@dynamic` protocol takes the same path. Re-run for this
-  report on the one-liner; the AST emits it. To file (report-only scope:
-  flagged here, not filed).
+  report on the one-liner; the AST emits it. Filed and fixed 2026-09-02.
 - `test_thir_wave_freecall_ret.py::test_bugs_repro_validator_escapes_fallback`
   pins a `THIRValidationError` on code the AST emits, the same class.
 - One routed byte DIVERGENCE: `isinstance(v, Int32) and v is None` on

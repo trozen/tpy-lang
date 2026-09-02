@@ -14915,6 +14915,9 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     non-pointer; concrete record copies keep their AST sub-arms."""
     analyzer = lc.analyzer
     st = analyzer.get_expr_type(src)
+    # A literal-seeded container reads as its pending type until sema's
+    # resolution pass; the copy spells the RESOLVED container, like the AST.
+    st = resolve_pending_container(st, analyzer) or st
     def _open_t_copy(face: str, use: '_ExprUse | None' = None) -> THIRCall:
         """The type-blind `U(<read>)` tail every open-T copy source shares.
 
@@ -14952,7 +14955,8 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     # local reads as its member record, but the copy is still the whole
     # variant's (the AST keys on ptr_variant_locals + the binding).
     _cb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        declared[src.name])))
+        resolve_pending_container(declared[src.name], analyzer)
+        or declared[src.name])))
            if isinstance(src, TpyName) and src.name in declared else None)
     if (isinstance(src, TpyName) and src.name in lc.narrow.narrowed
             and lc.narrow.subject_union.get(src.name) is not None):
