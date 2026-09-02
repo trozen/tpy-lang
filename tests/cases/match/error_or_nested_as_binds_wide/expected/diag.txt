@@ -1,1 +1,1 @@
-main.py:24: error: variable 'y' has type 'Bird | Cat | Dog' in first alternative but 'Bird' in another
+main.py:26: error: variable 'y' has type 'Bird | Cat | Dog' in first alternative but 'Bird' in another

@@ -1,1 +1,0 @@
-CPython raises ValueError for invalid enum value; TPy panics

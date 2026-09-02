@@ -1,2 +1,0 @@
-Macro-time error test; CPython's argparse rejects (or accepts) these
-patterns differently from our compiler, so skip the cpy phase.

@@ -1562,10 +1562,12 @@ class MatchAnalyzer:
     def _check_union_or_alternatives(self, pattern: TpyOrPattern) -> None:
         """Reject an or-pattern alternative a union subject cannot dispatch on.
 
-        Both union tiers select an alternative by the variant index of the
-        member class it names, so an alternative naming none (`case A() |
-        None:`) has no label to emit. `case None:` on its own arm is fine --
-        the arm is the union's None member, not one of several labels.
+        Both union tiers select an or-group alternative by the variant index
+        of the member CLASS it names and stack nothing else, so `case A() |
+        None:` is refused here rather than miscompiled. `case None:` on its
+        own arm is fine -- the None arm dispatches on its own variant index.
+        That the or-group could stack the same label is the gap filed as
+        BUGS.md#or-pattern-none-alt-union.
 
         Runs after the binding pass so a binding disagreement between
         alternatives, which points at the more specific mistake, still

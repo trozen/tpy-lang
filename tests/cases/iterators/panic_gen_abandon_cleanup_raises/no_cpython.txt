@@ -1,3 +1,0 @@
-CPython prints "Exception ignored in: <generator ...>" to stderr and
-continues; TPy panics (destructor is noexcept, fail-fast convention).
-Acknowledged divergence -- see LANGUAGE_FEATURES.md.

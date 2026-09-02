@@ -1,6 +1,7 @@
-# `case A() | None:` over a nullable union. Union dispatch selects an
-# alternative by its member class's variant index, and `None` names no member
-# class, so sema rejects the alternative -- `case None:` needs its own arm.
+# `case A() | None:` over a nullable union is rejected today: the union
+# or-pattern tiers only stack member-CLASS labels, so `case None:` needs its
+# own arm. A limitation, not a rule -- `None` has a variant index like any
+# member; see BUGS.md#or-pattern-none-alt-union.
 
 
 class A:

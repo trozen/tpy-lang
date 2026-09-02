@@ -1,5 +1,7 @@
 # Recursive union alias instantiated with a union type argument: an arm naming
 # a type INSIDE that leaf union has no wrapper variant to dispatch on.
+# A capability gap, not a rule -- CPython runs this; see
+# BUGS.md#recursive-alias-leaf-union-member-unnameable.
 from tpy import Int32
 
 type Tree[T] = T | list[Tree[T]]
