@@ -2014,12 +2014,14 @@ Beyond the immediate fixes, THIR is the natural cache boundary for any future
 incremental compilation work, and MIR is what the planned LSP target depends on
 (structured per-construct facts that survive across compiler versions).
 
-**Current state**: IN PROGRESS -- THIR is active, on by default per-case (see
-CLAUDE.md "THIR migration" for the operating model and `docs/IR_DESIGN.md`'s
+**Current state**: IN PROGRESS -- THIR authors every emitted body by default, in
+every module, with the AST path kept alive as the byte-diff's second opinion and
+as the fallback for a body THIR cannot lower (see CLAUDE.md "THIR migration" for
+the operating model and `docs/IR_DESIGN.md`'s
 increment-by-increment landing log). See `docs/IR_DESIGN.md` for the full design --
 THIR node set, lowering plan, MIR node set, liveness + move/copy + borrow
 passes, rollout phasing, and what *doesn't* change. Per the design doc's
-status table, the THIR half has landed and is default-on per-case (THIR nodes,
+status table, the THIR half has landed and is the default author (THIR nodes,
 lowering, codegen migration -- increments 1-5+); the MIR half (MIR nodes,
 liveness, move lowering, borrow checker, opt-in safe mode, MIR-backed codegen,
 retirement of old AST codegen) is not started.

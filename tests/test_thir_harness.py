@@ -42,8 +42,9 @@ class _StubConfig:
 
 def test_thir_flag_conflict() -> None:
     """The mutually-exclusive THIR flag guard: --no-thir (disable) can't pair
-    with the force-on flags, and none of the force-on flags can pair with
-    --update-snapshots (snapshots must be AST-authored). Anything else is fine."""
+    with the force-on flags nor with --update-snapshots (THIR authors the
+    snapshots), and the two marker-managing flags can't pair with
+    --update-snapshots either. Anything else is fine."""
     conflict = conftest._thir_flag_conflict
 
     # --no-thir vs each force-on flag -> conflict.
@@ -51,15 +52,26 @@ def test_thir_flag_conflict() -> None:
         assert conflict(_StubConfig({"--no-thir": True, forcing: True}),
                         updating=False) is not None
 
-    # force-on vs --update-snapshots (updating=True) -> conflict.
-    assert conflict(_StubConfig({"--thir-codegen": True}), updating=True) is not None
+    # Regenerating through the AST would commit the wrong author's output.
+    assert conflict(_StubConfig({"--no-thir": True}), updating=True) is not None
 
-    # --thir-stdlib needs THIR ACTIVE, so it conflicts with both ways of
+    # The marker writers/readers have no business in a regeneration run.
+    for marker_flag in ("--thir-classify", "--thir-check-flip"):
+        assert conflict(_StubConfig({marker_flag: True}),
+                        updating=True) is not None
+
+    # --thir-stdlib needs THIR ACTIVE, so it conflicts with the one way of
     # turning it off. It is not a force-on flag (it respects no_thir markers),
     # hence its own branch rather than membership in the loop above.
-    assert conflict(_StubConfig({"--thir-stdlib": True}), updating=True) is not None
     assert conflict(_StubConfig({"--thir-stdlib": True, "--no-thir": True}),
                     updating=False) is not None
+
+    # --thir-strict needs THIR active too: with the overlay off there is no
+    # fallback to refuse, so the flag would be silently inert.
+    assert conflict(_StubConfig({"--thir-strict": True}), updating=True) is not None
+    assert conflict(_StubConfig({"--thir-strict": True, "--no-thir": True}),
+                    updating=False) is not None
+    assert conflict(_StubConfig({"--thir-strict": True}), updating=False) is None
 
     # ...and asking for it on and off at once.
     assert conflict(_StubConfig({"--thir-stdlib": True,
@@ -70,13 +82,13 @@ def test_thir_flag_conflict() -> None:
     assert conflict(_StubConfig({}), updating=False) is None          # default
     assert conflict(_StubConfig({"--no-thir": True}), updating=False) is None
     assert conflict(_StubConfig({"--thir-codegen": True}), updating=False) is None
-    assert conflict(_StubConfig({"--no-thir": True}), updating=True) is None
     assert conflict(_StubConfig({"--thir-stdlib": True}), updating=False) is None
     assert conflict(_StubConfig({"--thir-stdlib": True, "--thir-codegen": True}),
                     updating=False) is None
-    # The DEFAULT-derived overlay meeting --update-snapshots / --no-thir must
-    # NOT error -- it auto-offs (see test_thir_stdlib_default_on). Erroring here
-    # would abort every snapshot regeneration.
+    # Regeneration is an ordinary THIR run: the oracle and the marker-ignoring
+    # flag both ride along rather than aborting it.
+    assert conflict(_StubConfig({"--thir-stdlib": True}), updating=True) is None
+    assert conflict(_StubConfig({"--thir-codegen": True}), updating=True) is None
     assert conflict(_StubConfig({"--no-thir-stdlib": True}), updating=True) is None
     assert conflict(_StubConfig({}), updating=True) is None
 
@@ -89,15 +101,14 @@ def test_thir_stdlib_default_on() -> None:
     explicit."""
     on = conftest._thir_stdlib_enabled
 
-    assert on(_StubConfig({}), updating=False) is True
-    assert on(_StubConfig({"--thir-codegen": True}), updating=False) is True
+    assert on(_StubConfig({})) is True
+    assert on(_StubConfig({"--thir-codegen": True})) is True
     # The explicit flag stays a no-op, not a second switch.
-    assert on(_StubConfig({"--thir-stdlib": True}), updating=False) is True
+    assert on(_StubConfig({"--thir-stdlib": True})) is True
 
-    # The opt-out, and the two states with nothing to diff against.
-    assert on(_StubConfig({"--no-thir-stdlib": True}), updating=False) is False
-    assert on(_StubConfig({"--no-thir": True}), updating=False) is False
-    assert on(_StubConfig({}), updating=True) is False
+    # The opt-out, and the one state with nothing to diff against.
+    assert on(_StubConfig({"--no-thir-stdlib": True})) is False
+    assert on(_StubConfig({"--no-thir": True})) is False
 
 
 def _mode(**kw):
@@ -119,8 +130,8 @@ def test_thir_case_mode_overlay_runs_for_marked_cases() -> None:
 
 
 def test_thir_case_mode_off_disables_both() -> None:
-    """--no-thir / --update-snapshots (thir_codegen=False): no overlay, no
-    ratchet, marked or not."""
+    """--no-thir (thir_codegen=False): no oracle pass, no ratchet, marked or
+    not."""
     for marked in (False, True):
         assert _mode(thir_codegen=False, no_thir=marked) == (False, False)
 
@@ -173,22 +184,22 @@ def _compile_fixture_case(tmp_path: Path, marked: bool):
 
 def _require_thir():
     if not conftest.TEST_CODEGEN_OPTIONS.thir_codegen:
-        pytest.skip("THIR off (--no-thir / --update-snapshots)")
+        pytest.skip("THIR off (--no-thir)")
 
 
 def test_marked_case_still_gets_an_overlay(tmp_path: Path) -> None:
     """The integration half of `_thir_case_mode`: a no_thir-marked case must
-    STILL regenerate its user modules through THIR, because the marker is
-    per-case while fallback is per-body.
+    STILL re-emit its user modules through the AST oracle, because the marker
+    is per-case while fallback is per-body.
 
-    Nothing else can catch a regression here. Re-gating the overlay on the
+    Nothing else can catch a regression here. Re-gating the oracle pass on the
     marker leaves the whole corpus green -- a marked case byte-diffs identically
-    whether or not the overlay ran, since the overlay only ADDS a check. So a
-    green suite is not evidence; this assertion is."""
+    whether or not that pass ran, since it only ADDS a check. So a green suite
+    is not evidence; this assertion is."""
     _require_thir()
     result = _compile_fixture_case(tmp_path, marked=True)
     assert result.success, result.diagnostics
-    assert result.thir_modules, "marked case got no THIR overlay"
+    assert result.ast_modules, "marked case got no AST oracle pass"
     # Depends on the fixture body staying routable; if THIR ever stops routing
     # `return x + 1`, this fires on the routing, not on the overlay.
     assert result.thir_routed_names, "marked case recorded no routed bodies"
@@ -206,7 +217,7 @@ def test_unmarked_case_arms_the_ratchet(tmp_path: Path) -> None:
         pytest.skip("ratchet suppressed by the marker-ignoring flags")
     result = _compile_fixture_case(tmp_path, marked=False)
     assert result.success, result.diagnostics
-    assert result.thir_modules, "unmarked case got no THIR overlay"
+    assert result.ast_modules, "unmarked case got no AST oracle pass"
     assert result.thir_ratchet_fell == 0, "ratchet not armed for an unmarked case"
 
 
@@ -223,10 +234,8 @@ def test_thir_stdlib_wiring_reaches_the_compile(request: pytest.FixtureRequest,
     evidence; these assertions are. The flag is monkeypatched both ways so the
     list is pinned to THIS switch, not merely to being non-empty."""
     _require_thir()
-    updating = (bool(request.config.getoption("--update-snapshots"))
-                or conftest.UPDATE_EXPECTED)
     assert conftest.THIR_STDLIB is conftest._thir_stdlib_enabled(
-        request.config, updating), (
+        request.config), (
         "pytest_configure did not publish the resolver's verdict as THIR_STDLIB")
 
     monkeypatch.setattr(conftest, "THIR_STDLIB", True)
@@ -261,7 +270,7 @@ def test_thir_stdlib_wiring_reaches_the_compile(request: pytest.FixtureRequest,
 
 
 class _StubCodegenModule:
-    """The two attributes `_assert_thir_raises_too` reads off a module."""
+    """The two attributes `_assert_both_paths_reject` reads off a module."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -282,22 +291,24 @@ class _StubCompiler:
         return None, None
 
 
-def _run_error_gate(tmp_path: Path, re_emit, case_dir: Path | None = None):
-    """Drive `_assert_thir_raises_too` over a stub whose THIR re-emit is
+def _run_error_gate(tmp_path: Path, re_emit, case_dir: Path | None = None,
+                    thir_err=None):
+    """Drive `_assert_both_paths_reject` over a stub whose AST re-emit is
     `re_emit`. Returns the stub, so a caller can prove the re-emit ran."""
     src = tmp_path / "src" / "main.py"
     src.parent.mkdir(parents=True)
     src.write_text("x = 1\n")
     entry = _StubCodegenModule(src)
     stub = _StubCompiler(re_emit)
-    conftest._assert_thir_raises_too(
-        stub, [entry], entry, src.parent.resolve(), tmp_path / "out", src,
+    conftest._assert_both_paths_reject(
+        stub, [entry], entry, tmp_path / "out", src,
         case_dir if case_dir is not None else tmp_path,
-        conftest.CodeGenError("cannot lower this"))
+        thir_err if thir_err is not None
+        else conftest.CodeGenError("cannot lower this"))
     return stub
 
 
-def test_error_gate_fires_when_thir_emits_where_the_ast_raised(
+def test_error_gate_fires_when_the_ast_emits_where_thir_raised(
         tmp_path: Path) -> None:
     """The gate's whole point is its FAILING branch, and with both known
     offenders fixed the corpus only ever takes its passing one. Deleting the
@@ -305,17 +316,16 @@ def test_error_gate_fires_when_thir_emits_where_the_ast_raised(
     that it still catches anything; this assertion is.
 
     Constructed at the gate rather than from source: the shape it must catch is
-    a body THIR routes and emits where the AST raises, and no such source is
-    supposed to exist in the tree."""
+    a body THIR rejects and the AST emits, and no such source is supposed to
+    exist in the tree."""
     with pytest.raises(pytest.fail.Exception) as excinfo:
         _run_error_gate(tmp_path, lambda: None)
-    assert "THIR emitted code where the AST path raised" in str(excinfo.value)
+    assert "the AST path emitted code where THIR raised" in str(excinfo.value)
 
 
 def test_error_gate_fires_on_a_different_diagnostic(tmp_path: Path) -> None:
-    """The other failing branch: THIR rejecting for its OWN reason is not the
-    same as reproducing the AST's diagnostic, and the case's `diag.txt` would
-    record the AST's."""
+    """The other failing branch: the AST rejecting for its OWN reason is not
+    the same as agreeing with the diagnostic the case's `diag.txt` records."""
     def other():
         raise conftest.CodeGenError("some unrelated reject")
 
@@ -325,9 +335,9 @@ def test_error_gate_fires_on_a_different_diagnostic(tmp_path: Path) -> None:
 
 
 def test_error_gate_passes_on_the_same_diagnostic(tmp_path: Path) -> None:
-    """The complement, and the branch a body THIR REJECTS takes: the AST
-    re-emits it and raises, so the diagnostic matches and the gate is silent.
-    Asserting the re-emit RAN is what keeps this from passing vacuously."""
+    """The complement: the AST re-emit raises the same diagnostic, so the gate
+    is silent. Asserting the re-emit RAN is what keeps this from passing
+    vacuously."""
     def same():
         raise conftest.CodeGenError("cannot lower this")
 
@@ -402,15 +412,17 @@ def test_body_diagnostic_functions_all_exist() -> None:
 
 def test_error_gate_fires_on_an_unrecorded_body_diagnostic(
         tmp_path: Path) -> None:
-    """A diagnostic the cutover would delete, not recorded as such. Without
-    this branch the gate is satisfied by the AST re-emit and a re-parked
-    diagnostic reads exactly like a re-homed one."""
-    def from_body():
-        raise _raise_from("tpyc.codegen_cpp.statements", "_gen_simple_stmt",
-                          "cannot lower this")
+    """A diagnostic the cutover would delete, not recorded as such. The
+    emitting path raises it from a body emitter because the body FELL BACK, so
+    without this branch the matching text reads exactly like a re-homed
+    diagnostic."""
+    def same():
+        raise conftest.CodeGenError("cannot lower this")
 
+    from_body = _raise_from("tpyc.codegen_cpp.statements", "_gen_simple_stmt",
+                            "cannot lower this")
     with pytest.raises(pytest.fail.Exception) as excinfo:
-        _run_error_gate(tmp_path, from_body)
+        _run_error_gate(tmp_path, same, thir_err=from_body)
     assert "authored by an AST body emitter" in str(excinfo.value)
 
 

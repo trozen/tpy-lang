@@ -191,9 +191,9 @@ def test_container_script_no_exec_row_is_front_end_only() -> None:
          "pytest_args": ["--thir-stdlib"]}, smoke=False)
     assert "--no-exec" in s and "--no-cpy" in s and "--thir-stdlib" in s
     assert "--force-exec" not in s and "--cxx" not in s
-    # --thir-stdlib errors out when combined with either of these
-    # (conftest `_thir_flag_conflict`).
-    assert "--update-snapshots" not in s and "--no-thir" not in s
+    # --thir-stdlib errors out when combined with --no-thir (conftest
+    # `_thir_flag_conflict`).
+    assert "--no-thir" not in s
 
 
 def test_configs_json_rows_keep_their_phase_selection() -> None:

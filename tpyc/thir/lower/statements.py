@@ -4908,9 +4908,16 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
     try:
         result = _lower_stmt_dispatch(stmt, scope)
     except ThirUnsupported as ex:
+        # Attribute the reject to the INNERMOST statement it unwound through,
+        # so the strict diagnostic points at the offending line rather than at
+        # the enclosing `def`. Set-if-empty: an inner frame already stamped a
+        # nested statement, and the outer one must not overwrite it.
+        if ex.loc is None:
+            ex.loc = getattr(stmt, "loc", None)
         if not ex.detail:
             raise
-        raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason)) from None
+        raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason),
+                              loc=ex.loc) from None
     if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
         return replace(result, no_source_comment=True)
     return result

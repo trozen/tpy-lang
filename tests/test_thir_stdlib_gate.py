@@ -48,7 +48,6 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import json
-import os
 import shlex
 import time
 from pathlib import Path
@@ -197,21 +196,12 @@ def test_stdlib_thir_matches_ast(request: pytest.FixtureRequest,
     """
     if request.config.getoption("--no-thir"):
         pytest.skip("--no-thir disables THIR entirely")
-    if (request.config.getoption("--update-snapshots")
-            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
-        # Same rule --thir-stdlib follows (conftest `_thir_flag_conflict`):
-        # snapshots are AST-authored, so THIR does not run in update mode.
-        pytest.skip("--update-snapshots authors snapshots from the AST path")
 
     t0 = time.monotonic()
     compiler, compiled = compile_lib_tpy(tmp_path)
 
     ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
-    # thir_all_modules lifts the user-module scoping gate (compiler.py
-    # `_make_codegen`) -- the same knob --thir-stdlib uses, so routing keeps one
-    # definition.
-    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True,
-                                    thir_all_modules=True)
+    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True)
 
     modules = compares = emitting = total_bytes = 0
     divergences: list[tuple[str, str]] = []

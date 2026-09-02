@@ -45,6 +45,7 @@ import os
 import re
 from collections.abc import Iterator
 from dataclasses import fields as dataclass_fields, is_dataclass
+from typing import TYPE_CHECKING
 
 from ..compilation_context import get_current_compiler
 from .faces import (begin_witness_journal, commit_witnesses,
@@ -56,6 +57,7 @@ from ..binding_audit import (begin_body as begin_binding_audit,
                              commit_body as commit_binding_audit,
                              rollback_body as rollback_binding_audit)
 from ..parse.nodes import (
+    SourceLocation,
     TpyAwait,
     TpyComprehensionGenerator,
     TpyDictComprehension,
@@ -73,6 +75,11 @@ from ..parse.nodes import (
     TpyStmt,
     TpyWithItem,
 )
+
+if TYPE_CHECKING:
+    # Runtime import stays local to _strict_error: codegen_cpp.context imports
+    # this package transitively.
+    from ..codegen_cpp.context import ThirRejectError
 
 # Landmark constructs the statement-shape axis has not opened: their
 # presence anywhere in a rejecting statement names the frontier that must
@@ -118,10 +125,15 @@ class ThirUnsupported(Exception):
     not always a fallback.
     """
 
-    def __init__(self, reason: str, *, detail: bool = False) -> None:
+    def __init__(self, reason: str, *, detail: bool = False,
+                 loc: 'SourceLocation | None' = None) -> None:
         super().__init__(reason)
         self.reason = reason
         self.detail = detail
+        # The offending source position, stamped by the statement chokepoint as
+        # the reject unwinds (innermost frame wins). Only the strict diagnostic
+        # reads it; a fallback run never looks.
+        self.loc = loc
 
 
 def is_bodyless_binding(fn) -> bool:
@@ -144,13 +156,18 @@ def is_bodyless_binding(fn) -> bool:
             or fn.cpp_template is not None or fn.is_stub)
 
 
-def note(reason: str) -> bool:
+def note(reason: str, loc: 'SourceLocation | None' = None) -> bool:
     """Record `reason` as the current attempt's first reject, if none is
     recorded yet. Returns False so admission sites can `return note("sig.x")`
-    without restructuring."""
+    without restructuring.
+
+    `loc` is stored with the reason and never on its own: the pair is what the
+    strict diagnostic prints, so a location outliving the reason it belongs to
+    would point the user at an unrelated line."""
     compiler = get_current_compiler()
     if compiler is not None and compiler._thir_reject_reason is None:
         compiler._thir_reject_reason = reason
+        compiler._thir_reject_loc = loc
     return False
 
 
@@ -179,6 +196,7 @@ def begin_attempt() -> None:
     if compiler is not None:
         compiler._thir_reject_reason = None
         compiler._thir_reject_detail = None
+        compiler._thir_reject_loc = None
     begin_witness_journal()
     begin_move_audit()
     begin_binding_audit()
@@ -194,19 +212,31 @@ def commit_attempt() -> None:
     commit_binding_audit()
 
 
-def fold_attempt(component: str, node: object = None) -> None:
+def fold_attempt(component: str, node: object = None, *,
+                 strict: bool = False, where: str | None = None,
+                 loc: 'SourceLocation | None' = None) -> None:
     """Fold a failed attempt's reason into the per-compilation tally.
     `component` is the deletion-target population: "body" (functions and
     methods -- the gen_body/gen_expr target) or "ctor" (the MIL target).
 
     `node` is the AST callable that failed; passing it also records the
     reason per body (`--dump-thir` names it), so the aggregate tally and the
-    per-body attribution cannot drift apart."""
+    per-body attribution cannot drift apart.
+
+    `strict` refuses the fallback: the reject becomes the user-facing
+    CodeGenError it will be once the AST body emitters are gone. The tally is
+    folded first either way, so what strict reports and what a permissive run
+    counts are the same event. `where` names the enclosing unit, and `loc` the
+    position to report, for the positions whose `node` carries neither."""
     rollback_witnesses()
     rollback_move_audit()
     rollback_binding_audit()
+    if loc is None:
+        loc = getattr(node, "loc", None)
     compiler = get_current_compiler()
     if compiler is None:
+        if strict:
+            raise _strict_error(component, node, where, loc, 'unclassified')
         return
     reason = compiler._thir_reject_reason or 'unclassified'
     key = f"{component}:{reason}"
@@ -214,6 +244,34 @@ def fold_attempt(component: str, node: object = None) -> None:
     fb[key] = fb.get(key, 0) + 1
     if node is not None:
         compiler._thir_reject_by_node[id(node)] = reason
+    if strict:
+        # The reject's own position when lowering recorded one; the enclosing
+        # unit's `def`/decl line is the floor, never a stale sibling's.
+        raise _strict_error(component, node, where,
+                            compiler._thir_reject_loc or loc, reason)
+
+
+def _strict_error(component: str, node: object, where: str | None,
+                  loc: 'SourceLocation | None',
+                  reason: str) -> 'ThirRejectError':
+    """The diagnostic a reject becomes when falling back is refused.
+
+    Phrased for a TPy user reading a compile error, not for the migration: the
+    reason tag is the only internal token in the sentence."""
+    from ..codegen_cpp.context import ThirRejectError
+    if where is None:
+        name = getattr(node, "name", None)
+        if component == "ctor":
+            where = "in a constructor"
+        elif name:
+            where = f"in function '{name}'"
+        elif component == "top_level":
+            where = "at module level"
+        else:
+            where = "in this module"
+    return ThirRejectError(
+        f"{where}: this construct is not yet supported by C++ code "
+        f"generation ({reason})", loc=loc)
 
 
 def _arm_kind(node_type: type) -> str:

@@ -1108,20 +1108,29 @@ class CodeGenError(Exception):
         return f"{name}: error: {self.message}"
 
 
+class ThirRejectError(CodeGenError):
+    """A body THIR cannot lower, reported instead of falling back to the AST
+    path. Kept distinct from other codegen diagnostics because the AST path
+    still emits code for the same source, so a harness comparing the two
+    paths' verdicts must not read this one as a disagreement."""
+
+
 @dataclass
 class CodeGenOptions:
     """Options for C++ code generation."""
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
     comment_line_numbers: bool = True   # Include .py line numbers in source comments
     no_main: bool = False               # Skip main() generation, emit __tpy_main() only
-    # Route THIR-eligible functions through the THIR codegen backend instead of
-    # the AST path (migration dual-mode; byte-identical for the supported slice).
-    thir_codegen: bool = False
-    # Lift the user-module scoping gate so `lib/tpy` + stdlib route THIR too
-    # (cutover gate A5). Measurement/verification only: stdlib emission has no
-    # committed snapshot, so its only oracle is a same-run diff against the AST
-    # output -- never set this on a path that ships the generated C++.
-    thir_all_modules: bool = False
+    # THIR authors every body it can lower, in every module. Setting this False
+    # emits the whole module through the AST path instead -- the dual-path test
+    # helpers and the same-run stdlib oracle need that side until the AST body
+    # emitters are gone.
+    thir_codegen: bool = True
+    # Refuse to fall back: a body THIR cannot lower raises CodeGenError instead
+    # of being re-emitted through the AST path. This is the behaviour once the
+    # AST body emitters are gone, so it is how a reject is seen (and pinned)
+    # while both paths still exist.
+    thir_strict: bool = False
 
 
 class LocalCppForm(Enum):
@@ -1333,11 +1342,12 @@ class CodeGenContext:
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
-    # THIR migration dual-mode: when set, functions in `thir_functions`
-    # (keyed by id() of the source TpyFunction, or by (id(impl), id(stub))
-    # for a per-@overload-stub specialization) emit their bodies from THIR
-    # instead of the AST path. Populated per-module in CodeGenerator.generate.
-    thir_codegen: bool = False
+    # Mirror of CodeGenOptions.thir_codegen, always supplied by the generator.
+    # When set, functions in `thir_functions` (keyed by id() of the source
+    # TpyFunction, or by (id(impl), id(stub)) for a per-@overload-stub
+    # specialization) emit their bodies from THIR instead of the AST path.
+    # Populated per-module in CodeGenerator.generate.
+    thir_codegen: bool = True
     thir_functions: dict["int | tuple[int, int]", "THIRFunction"] = field(default_factory=dict)
     # THIR module-init frontier: the `__tpy_init` body when top-level lowering
     # routed it (None = the AST path emits it). Seeded right before

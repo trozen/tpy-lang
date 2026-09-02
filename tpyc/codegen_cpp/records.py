@@ -407,7 +407,8 @@ class RecordGenerator:
                 self.ctx.emit_source_comment(out, cc_fld.loc, indent=INDENT)
                 cpp_type = self.types.type_to_cpp(cc_fld.type)
                 if cc_fld.default_expr is not None:
-                    init = self._thir_class_const_init(cc_fld, const_scope)
+                    init = self._thir_class_const_init(cc_name, cc_fld,
+                                                       const_scope)
                     if init is None:
                         init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
                     # Unconditional: the C++ member exists whichever path
@@ -747,8 +748,8 @@ class RecordGenerator:
         from ..thir.constants import add_constant_scope_entry
         add_constant_scope_entry(const_scope, name, declared, self.ctx.analyzer)
 
-    def _thir_class_const_init(self, cc_fld, const_scope: 'dict | None'
-                               ) -> 'str | None':
+    def _thir_class_const_init(self, cc_name: str, cc_fld,
+                               const_scope: 'dict | None') -> 'str | None':
         """Render a class constant's initializer through THIR, or None when
         it did not lower (the caller falls back to `gen_expr`)."""
         if const_scope is None:
@@ -765,7 +766,9 @@ class RecordGenerator:
             render_type_stored=self.types.type_to_cpp_stored,
             render_resolve=self.types.resolve_type)
         if init is None:
-            fold_attempt("class_const")
+            fold_attempt("class_const", strict=self.ctx.options.thir_strict,
+                         where=f"in the initializer of '{cc_name}'",
+                         loc=cc_fld.loc)
         else:
             commit_attempt()
         return init

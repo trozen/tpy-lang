@@ -7,7 +7,7 @@
 | THIR node definitions (`tpyc/thir/nodes.py`) | Covers the whole body surface the corpus and stdlib exercise |
 | AST + sema -> THIR lowering (`tpyc/thir/lower/`) | Same -- see the fallback tally for what is left |
 | `--dump-thir` debug output | Done |
-| THIR-backed codegen context | Default-on per-case for user modules (`tpyc/thir/emit.py`); `thir_all_modules` lifts the scoping gate for the stdlib sweeps |
+| THIR-backed codegen context | The default author for every module (`tpyc/thir/emit.py`); an explicit `thir_codegen=False` is the AST opt-out the dual-path checks use |
 | Codegen migration from analyzer/AST to THIR | **User bodies: complete for the committed corpus** -- `no_thir.txt` markers are at ZERO, the case dial is saturated (markers at zero + armed ratchet == numerator equals denominator; the interop corpus likewise). **Stdlib: 0 fallback bodies / 1245 routed** (2026-08-30), so the routing metric is saturated too; what stands between here and deleting the AST body emitter is the cutover itself |
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
@@ -757,8 +757,8 @@ and lambda-return cases are proven -- not blessed up front.
 The form work is a sub-stream of the THIR migration, sequenced one family/
 representation-subset at a time, each rung gated by zero snapshot diffs, each
 closing named `THIR_FORM_INVENTORY.md` items. The eligibility gate keeps every
-intermediate state correct (anything unsupported stays on the proven AST path,
-flag off by default), so "partially migrated" is never "broken." Completion is the
+intermediate state correct (anything unsupported falls back to the proven AST
+path), so "partially migrated" is never "broken." Completion is the
 defined end state: the gate excludes nothing form-related and the AST form-codegen
 is deleted (F-final). Buggy exhibits (BUGS.md union match-capture, `key=` lambda,
 async/await union) are migrated FAITHFULLY (byte-identical, bug preserved -- THIR
@@ -985,30 +985,32 @@ Unsupported nested statements and expressions are now discovered by recursive
 lowering and reported with `ThirUnsupported`; there is no separate recursive
 admission pass.
 
-##### AST stays the oracle: emit AST, overlay THIR (2026-07 correction)
+##### THIR authors, the AST is the second opinion
 
-The first cut of this made THIR the *emitted* artifact for unmarked cases -- so
-their AST codegen was no longer exercised at all in the default run (it was
-replaced, not supplemented). But the snapshot is AST-authored, so **AST is the
-oracle and must be tested every run**: a regression in the AST codegen path for a
-migrated case would otherwise go unseen until the next `--update-snapshots`. Fixed
-by making AST the always-emitted artifact (it feeds exec and the oracle byte-diff
-for every case) and running THIR as an **overlay**: every case regenerates its
-user modules through THIR to a scratch dir and byte-diffs that against the same
-snapshot. So each case is checked on both paths -- AST vs snapshot
-(oracle) and THIR vs snapshot (divergence) -- and the ratchet still catches
-fallback. The second codegen pass is user-modules-only (stdlib is user-scoped-out
-and already AST-tested); measured cost on the whole corpus is within run-to-run
-noise (front-end codegen is a small fraction of a comp-only run). `--no-thir` skips
-the overlay for a pure-AST run.
+Both paths must run every session, because each is the only check on the other.
+For a while the AST was the author and THIR the overlay; that is now reversed.
+THIR emits every module of every case -- user code, `lib/tpy` and the stdlib
+alike -- and that C++ is what feeds exec, what the snapshot byte-diff compares,
+and what `--update-snapshots` writes. The AST path runs as a second pass over
+the same source and is byte-diffed against the same snapshot, so a divergence
+fails whichever path introduced it.
 
-The overlay remains whole-body during migration: a lowering rejection discards
-that body's partial THIR and the complete AST emitter handles it. Consequently,
+The check the reversal costs is AUTHORSHIP INDEPENDENCE, not the byte-diff: the
+snapshots are still committed files, but they are no longer regenerable from an
+oracle the migration does not own. The wide stdlib pass keeps the independent
+comparison where no committed snapshot exists (a case's own instantiations emit
+something other than the library's committed render, so its only oracle is the
+same run's AST output). `--no-thir` puts the AST back in the author's seat and
+drops the second pass; it is the only way off THIR and conflicts with
+`--update-snapshots`.
+
+Routing remains whole-body until the cutover: a lowering rejection discards that
+body's partial THIR and the complete AST emitter handles it. Consequently,
 individual AST emit arms are not deleted when their construct reaches zero corpus
 residual -- an unrelated rejection can still send a body containing that construct
 through AST codegen. Arm residuals prioritize THIR work and audit the remaining
-surface. After every in-scope body kind has zero fallback and the completion ledger
-is closed, THIR becomes mandatory and the AST body/form emitter is deleted as one
+surface. `thir_strict` refuses that fallback, so a reject becomes the compile
+error it will be once the AST body emitters are gone; the deletion itself is one
 atomic cutover.
 
 #### Phase-1 spike validation (2026-06)
@@ -1161,13 +1163,12 @@ by theme; each is a rule the next cell should apply.
   mid-cell divergences (a guarded match mis-promoted to the if-elif-guarded chain;
   a view-resolved promoted str local over-moved; a container-element over-move; a
   BigInt frame-field write rendered position-blind). Trust the diff, not the reasoning.
-- The byte-diff covers a case's **local** modules only, and that is the whole scope
-  THIR has: `compiler.py` forces non-user modules to the AST path, so `lib/tpy` and
-  the stdlib never lower through THIR on any shipping path, and a case migrates on
-  its OWN code's portability, not its imports'. The one exception is
-  verification-only: `--thir-stdlib` (via `CodeGenOptions.thir_all_modules`) lifts
-  that gate and diffs the stdlib THIR output against the same run's AST output,
-  which is the only oracle stdlib emission has.
+- The AST oracle pass covers a case's **local** modules, and the RATCHET is scoped
+  to them, so a case migrates on its OWN code's portability, not its imports'.
+  Routing itself is not scoped: THIR authors `lib/tpy` and the stdlib too. Their
+  check is the stdlib oracle (`--no-thir-stdlib` turns it off), which re-emits them
+  through the AST and diffs that against the emitted output -- the only oracle
+  stdlib emission has.
 - **Green byte-diff does not mean a face is covered.** A gate arm or render no corpus
   case reaches is invisible to the diff -- several latent call-arg bugs, and a
   template-keyword miscompile, sat in exactly such witness-free faces. Register each

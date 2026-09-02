@@ -2165,7 +2165,8 @@ class AsyncCoroCodegen:
             commit_attempt()
             record_shape(func, "resumable", routed=True)
         else:
-            fold_attempt("resumable", func)
+            fold_attempt("resumable", func,
+                         strict=self.ctx.options.thir_strict)
             record_arm_residual(func.body)
             record_shape(func, "resumable", routed=False)
         return rb

@@ -33,6 +33,7 @@ from .type_def_registry import (
     attach_dynamic_type_def, TypeCategory, TypeDef as _TypeDef,
 )
 from .codegen_cpp import CodeGenerator, CodeGenOptions
+from .codegen_cpp.context import ThirRejectError
 from .codegen_cpp.context import qualified_cpp_name, get_include_path, module_to_include_path
 from .compilation_context import activate_compiler
 from .typesys import (
@@ -659,7 +660,7 @@ class Compiler:
         # Routed-body count for the THIR byte-diff gate's non-vacuity check.
         self._thir_routed_bodies = 0
         # Per-face witness counts (thir/faces.py) for the harness's
-        # zero-witness report; only ever written under --thir-codegen.
+        # zero-witness report; empty when a run emits through the AST path.
         self._thir_face_witnesses: dict[str, int] = {}
         # Witnesses recorded since the current lowering attempt began, so a
         # body that falls back can undo them (thir/faces.py rollback_witnesses).
@@ -672,9 +673,12 @@ class Compiler:
         self._thir_routed_names: dict[str, frozenset[str]] = {}
         # First-reject slot + `component:reason` fallback counts for the
         # harness's per-component AST-fallback breakdown (thir/fallback.py);
-        # only ever written under --thir-codegen.
+        # empty when a run emits through the AST path.
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
+        # Source position of the recorded first reject, written with the reason
+        # and only ever read by the strict diagnostic (CodeGenOptions.thir_strict).
+        self._thir_reject_loc: 'SourceLocation | None' = None
         self._thir_fallback: dict[str, int] = {}
         # First-reject reason per fallback body, keyed by id() of its AST
         # callable -- the same reason the tally aggregates, kept per body so
@@ -701,8 +705,8 @@ class Compiler:
         # only when $THIR_ARM_RESIDUAL_JSON is set.
         self._thir_arm_residual: dict[str, int] = {}
         # Per-shape tally (thir/shape.py): signature -> {slot: count}, the
-        # distinct-shape complement of the body-weighted routed count. Only ever
-        # written under --thir-codegen.
+        # distinct-shape complement of the body-weighted routed count. Empty
+        # when a run emits through the AST path.
         self._thir_shapes: dict[str, dict[str, int]] = {}
         # Arg-table reach tally (thir/lower/arg_table.py): (family, cell) ->
         # count of arguments that cell DECIDED. The stdlib gate asserts every
@@ -1054,20 +1058,30 @@ class Compiler:
 
     def _make_codegen(self, compiled: CompiledModule,
                       options: "CodeGenOptions | None") -> "CodeGenerator":
-        """Build a CodeGenerator with THIR scoped to USER modules: lib/tpy +
-        stdlib stay on the AST path (a stable AST leaf behind the user-code
-        boundary), so a case migrates on its own code's portability, not its
-        imports'. Shared by the build path (generate_code) and the string path
-        (generate_code_to_strings, i.e. --dump-code / -vv) so the two never
-        diverge on the routing decision.
+        """Build a CodeGenerator for one module. Routing is uniform: every
+        module -- user code, lib/tpy and the stdlib alike -- emits through the
+        path `options.thir_codegen` names. Shared by the build path
+        (generate_code) and the string path (generate_code_to_strings, i.e.
+        --dump-code / -vv) so the two never diverge."""
+        return CodeGenerator(compiled.analyzer, options)
 
-        `thir_all_modules` lifts the gate for the A5 measurement and the
-        stdlib-oracle run, whose output is discarded or same-run-diffed."""
-        codegen = CodeGenerator(compiled.analyzer, options)
-        if (codegen.ctx.thir_codegen and not self.is_user_module(compiled)
-                and not (options is not None and options.thir_all_modules)):
-            codegen.ctx.thir_codegen = False
-        return codegen
+    def _run_codegen(self, codegen: "CodeGenerator", compiled: CompiledModule,
+                     mod_name: str, **kwargs) -> tuple[str, str]:
+        """Emit one module. A THIR reject names the file of the module being
+        emitted: codegen itself only knows module names, and a reject inside
+        an imported library would otherwise be reported against whatever
+        file the caller formats diagnostics with (the entry point). The entry
+        point is left unstamped for exactly that reason -- the caller already
+        names it, and the spelling is the caller's to choose."""
+        try:
+            return codegen.generate(compiled.ast, mod_name,
+                                    is_entry_point=compiled.is_entry_point,
+                                    **kwargs)
+        except ThirRejectError as err:
+            if (err.filename is None and compiled.path is not None
+                    and not compiled.is_entry_point):
+                err.filename = os.path.relpath(compiled.path)
+            raise
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -3504,16 +3518,15 @@ class Compiler:
         # (cycle-breaking forward declarations) and to emit our own
         # <mod>_fwd.hpp. Empty for non-cycle modules.
         cycle_peers = self._cycle_peers.get(mod_name, frozenset())
-        hpp_code, cpp_code = codegen.generate(
-            compiled.ast, mod_name,
-            is_entry_point=compiled.is_entry_point,
+        hpp_code, cpp_code = self._run_codegen(
+            codegen, compiled, mod_name,
             actual_user_modules=actual_user_modules,
             implicit_stdlib_modules=implicit_stdlib,
             cycle_peers=cycle_peers,
         )
         # ctx.thir_functions / thir_constructors hold the bodies lowered through
-        # THIR -- empty (not absent) when --thir-codegen is off, so this is 0 by
-        # default. Constructors count toward the non-vacuity tally too (the M3
+        # THIR -- empty (not absent) when the module emitted through the AST
+        # path. Constructors count toward the non-vacuity tally too (the M3
         # ctor frontier), so the gate sees the ctor-MIL tail routing.
         self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
                                      + len(codegen.ctx.thir_constructors))
@@ -3562,9 +3575,8 @@ class Compiler:
             codegen = self._make_codegen(compiled, options)
             actual_user_modules = set(self.modules.keys())
             implicit_stdlib = self._implicit_stdlib_set()
-            sources = codegen.generate(
-                compiled.ast, compiled.name,
-                is_entry_point=compiled.is_entry_point,
+            sources = self._run_codegen(
+                codegen, compiled, compiled.name,
                 actual_user_modules=actual_user_modules,
                 implicit_stdlib_modules=implicit_stdlib,
             )

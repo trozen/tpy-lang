@@ -100,7 +100,7 @@ def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
             raise ThirUnsupported("const.needs_statement_scope")
         return rendered
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 

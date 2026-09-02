@@ -181,6 +181,31 @@ def test_parse_options_file_rejects_non_string_snapshot_lib_module(
         conftest._parse_options_file(p)
 
 
+def test_parse_options_file_thir_strict(tmp_path: Path) -> None:
+    p = tmp_path / "options.json"
+    p.write_text('{"thir_strict": true}')
+    assert conftest._parse_options_file(p) == {"thir_strict": True}
+
+
+def test_parse_options_file_rejects_non_bool_thir_strict(
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / "options.json"
+    p.write_text('{"thir_strict": "yes"}')
+    with pytest.raises(BaseException, match="thir_strict"):
+        conftest._parse_options_file(p)
+
+
+def test_get_case_thir_strict_defaults_off_and_reads_the_case(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case_dir = _layered_case_dir(tmp_path, group_cfg=None, case_cfg=None)
+    monkeypatch.setattr(conftest, "CASES_DIR", tmp_path / "cases")
+    assert conftest.get_case_thir_strict(case_dir) is False
+    (case_dir / "options.json").write_text('{"thir_strict": true}')
+    assert conftest.get_case_thir_strict(case_dir) is True
+
+
 def test_get_case_snapshot_lib_modules_defaults_to_empty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

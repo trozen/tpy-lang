@@ -191,9 +191,7 @@ def run_entry(source: str, tmpdir: Path, tag: str) -> tuple[dict, list[str]]:
     modules = compiler.compile()
     errors: list[str] = []
     per_module: dict[str, list[dict]] = {}
-    # THE measurement lever -- the same knob `--thir-stdlib` uses, so the
-    # scoping gate keeps ONE definition (compiler.py `_make_codegen`).
-    opts = CodeGenOptions(thir_codegen=True, thir_all_modules=True)
+    opts = CodeGenOptions(thir_codegen=True)
     for m in modules:
         if m.is_entry_point:
             continue

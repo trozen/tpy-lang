@@ -32,6 +32,7 @@ from ..validate import validate_simple_gen_body
 from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import Form, THIRFormConvert, THIRSimpleGenBody
 from ...parse.nodes import (
+    SourceLocation,
     TpyArrayLiteral,
     TpyFieldAccess,
     TpyForEach,
@@ -178,7 +179,7 @@ def lower_simple_generator(func: TpyFunction, analyzer, render_type,
             render_type_stored=render_type_stored,
             render_resolve=render_resolve)
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
     return body
 
 
@@ -205,7 +206,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         _check_callable_structure(
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
     # Generic FUNCTION peepholes admit like the generic-record flavor:
     # the template header is skeleton, the `auto`/`auto&&` leaf binds are
     # type-param-neutral, and each leaf's own arm gates any T-typed shape
@@ -514,6 +515,6 @@ def _reject_cross_scope_rebind(init, pre_l, post_l) -> None:
         emit_prims.reject_rebind_slot_crosses_scope(*site)
 
 
-def _reject(reason: str):
-    note(reason)
+def _reject(reason: str, loc: 'SourceLocation | None' = None) -> None:
+    note(reason, loc)
     return None

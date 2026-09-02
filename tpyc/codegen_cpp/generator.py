@@ -10,7 +10,6 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import contextlib
 import heapq
 import io
-import os
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
@@ -105,11 +104,8 @@ class CodeGenerator:
         self.ctx = CodeGenContext(
             analyzer=analyzer,
             options=self.options,
+            thir_codegen=self.options.thir_codegen,
         )
-        # Env var enables the THIR dual-mode for whole-suite verification runs
-        # without threading a CLI flag through every call site.
-        self.ctx.thir_codegen = self.options.thir_codegen or bool(
-            os.environ.get("TPY_THIR_CODEGEN"))
 
         # Create component generators (ordered by dependencies)
         self.protocols = ProtocolGenerator(self.ctx)
@@ -491,6 +487,7 @@ class CodeGenerator:
                                          record_arm_residual)
             from ..thir.shape import record_shape
 
+            _thir_strict = self.options.thir_strict
             _ng = _thir_native_globals(module)
 
             _render_concept = self.protocols.concept_test_cpp
@@ -540,7 +537,7 @@ class CodeGenerator:
                         commit_attempt()
                         record_shape(f, "body", routed=True)
                     else:
-                        fold_attempt("body", f)
+                        fold_attempt("body", f, strict=_thir_strict)
                         record_arm_residual(f.body)
                         record_shape(f, "body", routed=False)
                     continue
@@ -571,7 +568,7 @@ class CodeGenerator:
                         commit_attempt()
                         record_shape(f, "body", routed=True)
                     else:
-                        fold_attempt("body", f)
+                        fold_attempt("body", f, strict=_thir_strict)
                         record_arm_residual(f.body)
                         record_shape(f, "body", routed=False)
                     continue
@@ -586,7 +583,7 @@ class CodeGenerator:
                     commit_attempt()
                     record_shape(f, "body", routed=True)
                 else:
-                    fold_attempt("body", f)
+                    fold_attempt("body", f, strict=_thir_strict)
                     record_arm_residual(f.body)
                     record_shape(f, "body", routed=False)
             self.ctx.thir_constructors = {}
@@ -607,7 +604,8 @@ class CodeGenerator:
                     commit_attempt()
                     record_shape(init, "ctor", routed=True)
                 else:
-                    fold_attempt("ctor", init)
+                    fold_attempt("ctor", init, strict=_thir_strict,
+                                 where=f"in the constructor of '{rec.name}'")
                     record_arm_residual(init.body)
                     record_shape(init, "ctor", routed=False)
 
@@ -812,7 +810,8 @@ class CodeGenerator:
                 user_module_imports=self.ctx.user_module_imports,
                 all_user_modules=self.ctx.all_user_modules)
             if self.ctx.thir_top_level is None:
-                fold_attempt("top_level", module)
+                fold_attempt("top_level", module,
+                             strict=self.options.thir_strict)
                 record_arm_residual(module.top_level_stmts)
             else:
                 commit_attempt()

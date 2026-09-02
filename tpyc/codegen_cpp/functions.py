@@ -1962,7 +1962,9 @@ class FunctionGenerator:
             render_type_stored=self.types.type_to_cpp_stored,
             render_resolve=self.types.resolve_type)
         if init is None:
-            fold_attempt("final_global")
+            fold_attempt("final_global", strict=self.ctx.options.thir_strict,
+                         where=f"in the initializer of '{stmt.name}'",
+                         loc=stmt.loc)
         else:
             commit_attempt()
         return init

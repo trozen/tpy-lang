@@ -430,7 +430,7 @@ c = -2147483648  # Int32 (exactly Int32 min)
 d = -2147483649  # BigInt with warning (below Int32 min)
 ```
 
-Constant-folded expressions (`1 << 100`, `2 ** 40`) are evaluated at compile time and use the same range check on the result.
+Constant folding is uniform: every variable-free integer binop (`1 << 100`, `2 ** 40`, `1024 * 1024 * 1024 * 4`) is evaluated at compile time wherever it appears, and the slot it lands in decides only how the folded literal is spelled -- never whether the fold happens. The range check above applies to the folded result, so a value too wide for its slot is a sema error rather than an overflowing chain of run-time checked ops.
 
 See `docs/INTEGER_INFERENCE_DESIGN.md` for the full design rationale.
 

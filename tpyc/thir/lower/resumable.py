@@ -60,6 +60,7 @@ from ..nodes import (
     THIRStmtSeq,
 )
 from ...parse.nodes import (
+    SourceLocation,
     TpyAssert,
     TpyAssign,
     TpyAugAssign,
@@ -1056,7 +1057,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
             frame_layout=frame_layout,
         )
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
 
 
 def _lower_resumable(func: TpyFunction, analyzer, render_type,
@@ -1111,7 +1112,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         _check_callable_structure(
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
     # A generic frame (`async def f[T]` / a coro method on a generic record)
     # needs no gate of its own: the template header, and the value-vs-reference
     # frame-field choice (`val_or_ref_t<T>`), are skeleton -- every leaf reads
@@ -1824,6 +1825,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     deferred_returns: dict[int, THIRStmt] = {}
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
+        try:
+            return _lower_leaf_inner(stmt)
+        except ThirUnsupported as ex:
+            # The frame-field arms below bypass the sync statement chokepoint,
+            # so this is the innermost frame that knows the rejecting line.
+            if ex.loc is None:
+                ex.loc = getattr(stmt, "loc", None)
+            raise
+
+    def _lower_leaf_inner(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
             begin_stmt()
             if stmt.init is None:
@@ -2620,8 +2631,8 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
     return out
 
 
-def _reject(reason: str):
-    note(reason)
+def _reject(reason: str, loc: 'SourceLocation | None' = None) -> None:
+    note(reason, loc)
     return None
 
 

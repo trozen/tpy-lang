@@ -39,6 +39,7 @@ from conftest import (
     compile_with_diagnostics,
     get_case_default_int,
     get_case_snapshot_lib_modules,
+    get_case_thir_strict,
     validate_annotations,
     validate_type_annotations,
     validate_non_null_annotations,
@@ -130,6 +131,7 @@ def test_case(case_dir, main_src, request):
     result = compile_with_diagnostics(
         main_src, build_dir, default_int=get_case_default_int(case_dir),
         snapshot_lib_modules=get_case_snapshot_lib_modules(case_dir),
+        thir_strict=get_case_thir_strict(case_dir),
     )
 
     # Diagnostics snapshot
@@ -192,23 +194,24 @@ def test_case(case_dir, main_src, request):
             pairs.append((".cpp", cpp_path))
         return pairs
 
-    # AST (oracle) snapshots: every local module -- plus any library module the
+    # The emitted artifact -- every local module, plus any library module the
     # case's options.json names, whose emission at these options and these
     # instantiations no import-only sweep reproduces -- byte-compared to the
-    # AST-authored expected files. This check holds for EVERY case -- migrated
-    # or not -- so a regression in the AST codegen path can't hide behind THIR
-    # (the AST path is the snapshot oracle as long as snapshots are
-    # AST-authored).
+    # expected files. This is the C++ exec builds, so a divergence here is a
+    # divergence in what ships.
     snapshotted: set[Path] = set()
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
         if not is_local and mod_name not in result.snapshot_lib_modules:
             continue
+        routed = (result.thir_routed_names.get(mod_name, frozenset())
+                  if result.thir_routed_names is not None else None)
         for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
             expected_file = module_to_expected_path(expected_dir, mod_name, ext)
             snapshotted.add(expected_file)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
-            check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
+            check_or_update(gen_path.read_text(), expected_file,
+                            f"{mod_name}{ext}", thir_routed_names=routed)
 
     # The snapshotted set is derived from what compiled, so a module that was
     # renamed, dropped, or dropped out of a snapshot_lib_modules pattern leaves
@@ -231,20 +234,19 @@ def test_case(case_dir, main_src, request):
                   "rewrites the tree from scratch.",
                 pytrace=False)
 
-    # THIR overlay snapshots: the migrated user modules regenerated through THIR,
-    # byte-compared to the SAME expected files. A mismatch here is a THIR
-    # divergence (labeled with the routed function), not an oracle regression.
-    if not UPDATE_EXPECTED and result.thir_modules is not None:
-        for mod_name, hpp_path, cpp_path in result.thir_modules:
-            thir_names = (result.thir_routed_names.get(mod_name, frozenset())
-                          if result.thir_routed_names is not None else None)
+    # AST oracle: the same user modules re-emitted through the AST path and
+    # byte-compared to the SAME expected files. A mismatch here that the
+    # compare above did NOT report is a regression in the AST path alone, which
+    # nothing else would catch while THIR authors the artifact.
+    if not UPDATE_EXPECTED and result.ast_modules is not None:
+        for mod_name, hpp_path, cpp_path in result.ast_modules:
             for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
                 expected_file = module_to_expected_path(expected_dir, mod_name, ext)
                 if not gen_path.exists():
-                    pytest.fail(f"{gen_path} (THIR overlay) not generated",
+                    pytest.fail(f"{gen_path} (AST oracle) not generated",
                                 pytrace=False)
                 check_or_update(gen_path.read_text(), expected_file,
-                                f"{mod_name}{ext} (THIR)", thir_routed_names=thir_names)
+                                f"{mod_name}{ext} (AST)")
 
     # Stdlib oracle (--thir-stdlib): only the import-only, Int32, whole-library
     # render is committed (tests/cases/harness/stdlib_render), and a case's own

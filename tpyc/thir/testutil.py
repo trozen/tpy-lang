@@ -184,6 +184,29 @@ def _assert_routes_byte_identical(source: str, default_int: str = "Int32",
     return thir
 
 
+def _strict_reject(source: str, default_int: str = "Int32",
+                   extra_lib_dirs=None):
+    """Emit `source` with the fallback refused and return the CodeGenError it
+    raised, plus the fallback tally recorded on the way.
+
+    Fails if nothing rejects: a shape that has since started routing must break
+    the pin rather than leave it asserting a diagnostic no program produces."""
+    from ..codegen_cpp.context import CodeGenError, CodeGenOptions
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    try:
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False,
+                                   thir_codegen=True, thir_strict=True))
+    except CodeGenError as err:
+        return err, dict(compiler._thir_fallback)
+    raise AssertionError(
+        "nothing rejected under thir_strict -- the shape now routes, so the "
+        f"pin no longer covers the diagnostic it names.\nsource:\n{source}")
+
+
 def _constant_positions(source: str, default_int: str = "Int32",
                         extra_lib_dirs=None, comments: bool = True):
     """The routing lens for the two NON-BODY constant positions (class

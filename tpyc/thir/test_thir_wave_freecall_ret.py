@@ -1236,7 +1236,7 @@ class TestF3BorrowTupleReturnSources:
 
 class TestUnpackCtorArgTempCrash:
     def test_bugs_repro_validator_escapes_fallback(self):
-        # BUGS.md repro (the tuple-unpack ctor-arg crash): the gate admits
+        # BUGS.md#thir-validator-escapes-unpack-temp: the gate admits
         # a temp-needing ctor arg at the non-flushable unpack source, and
         # the validator raises OUT of the per-body fallback boundary. This
         # pin documents the CURRENT broken behavior -- the fix flips it to

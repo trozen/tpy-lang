@@ -15084,6 +15084,13 @@ This is the half the old inventory omitted entirely.
   AST-authored baseline.
 - **`move_audit.py` (155 lines) and `binding_audit.py` (273) -- DIE.** Both are
   dual-path joins whose AST-side recorder lives inside the deleted emitter.
+  [2026-09-02: wrong for `binding_audit` -- its AST-side recorders live in
+  `codegen_cpp/emit_prims.py`, `context.py`, `generator.py` and
+  `gen_async.py`, four modules the cutover KEEPS. Only `move_audit`'s
+  recorder (`codegen_cpp/expressions.py:630`) sits in a deleted module. Both
+  joins still die, because the AST SIDE of the join stops being produced once
+  nothing emits through the AST -- but the deletion's mechanical cost here is
+  four kept modules to unwire, not zero.]
   Nothing replaces them. Their class is narrow but real: a verdict at a site
   whose render ignores it emits identical C++, so snapshots are blind to it.
   That makes them LATENT-bug detectors -- what they catch bites when a future
@@ -15414,3 +15421,148 @@ the audits catch a latent class this inventory argues is bounded by the
 snapshot regime, while `dualgen` is the only thing that has ever caught the
 unbounded one. Scheduling nothing against it while scheduling a baseline for
 the audits was backwards on value, and is corrected here.
+## Cutover step 2 executed, 2026-09-02: THIR authors every body (`606898e04`)
+
+The flip landed. `CodeGenOptions.thir_codegen` now defaults to True and the
+compiler routes every module -- user code, `lib/tpy` and the stdlib alike --
+through THIR; the per-module user-code gate, the `thir_all_modules` lift, the
+`--thir-codegen` flag and the `TPY_THIR_CODEGEN` override are gone. An
+explicit `thir_codegen=False` still emits through the AST, which the
+dual-path helpers and the same-run stdlib oracle need until the body emitters
+are deleted. The harness flipped with it: the primary emit (what exec builds,
+what `--update-snapshots` writes) is THIR and the AST is the second opinion.
+**Proof:** a full regeneration left every file under `tests/cases` and
+`tests/interop` byte-identical.
+
+**Audit baselines AT THE FLIP.** The Gate D4 inventory asked for exactly this
+re-measurement at the deletion; these are the FLIP's figures, and the
+deletion commit must quote its own.
+
+| gate | key | reading |
+|---|---|---|
+| move-verdict join | joined NODES | 0 divergences / 1,012 |
+| binding join | joined BODIES | 0 gaps / 11,972 |
+| ratchet | bodies routed / cases | 13,277 / 3,772, zero fallback |
+| interop | cases / bodies | 34 of 34, 285 bodies |
+| suite | tests | 13,461 passed, 23 skipped |
+
+### The final adversarial `dualgen` sweep
+
+Ran on tree `1be2cf003`, the flip's parent (the flip changed no lowering and
+no emission, so it applies to the flipped tree). FRONT END ONLY -- no C++
+toolchain ran, so every verdict below is about EMITTED TEXT, and a claim that
+a render "would not compile" is an inference, not a measurement.
+
+Population 1 -- the 405 committed per-site reproducers under
+`scripts/thir_migration/review/probes/`, x 3 widths:
+
+| bucket | Int32 | Int64 | BigInt |
+|---|---|---|---|
+| AGREE | 6 | 6 | 5 |
+| BOTH_REFUSE | 4 | 4 | 4 |
+| DIVERGE | 1 | 1 | 1 |
+| FALLBACK | 394 | 361 | 379 |
+| FRONTEND_REFUSED | 0 | 33 | 16 |
+
+Population 2 -- the 4,875 whole programs embedded in the THIR unit tests
+(`probe_programs.py`'s `collect()`), x 3 widths, byte-diffed (which
+`probe_programs.py` itself does not do, and it runs at one width):
+
+| verdict | Int32 | Int64 | BigInt |
+|---|---|---|---|
+| BOTH_REFUSE | 2 | 3 | 2 |
+| BREAKS_AT_CUTOVER | 485 | 443 | 510 |
+| DIVERGE | 0 | 4 | 10 |
+| DIVERGE_WITH_FALLBACK | 0 | 0 | 2 |
+| FRONTEND_REFUSES | 2959 | 3108 | 3019 |
+| ROUTES | 1428 | 1316 | 1331 |
+| THIR_RAISES_PLAIN | 1 | 1 | 1 |
+| *front-end accepted* | 1916 | 1767 | 1856 |
+
+The break ratio is unchanged from the review's `program_verdicts.json`: 25%
+(485/1916 here, 478/1901 there; +20 programs from the two intervening
+commits' unit tests).
+
+Population 3 -- the generated `match` matrix (`asym/matrix.py`), 672 programs
+x 3 widths plus 5 controls per width:
+
+| status | Int32 | Int64 | BigInt |
+|---|---|---|---|
+| BOTH_EMIT | 113 | 113 | 113 |
+| BOTH_REFUSE | 5 | 4 | 4 |
+| FRONTEND | 552 | 553 | 553 |
+| THIR_FELL_BACK | 7 | 7 | 7 |
+
+0 DIVERGE, 0 ASYMMETRY, 0 THIR_ONLY_REFUSES at every width -- reproducing the
+committed `asym_run.log` exactly. **The zero is QUALIFIED by the
+instrument's own control:** 2 of the 15 control runs came back FRONTEND
+instead of BOTH_REFUSE (`error_async_match_dyn_await` at Int64 and BigInt,
+where sema refuses before either emitter runs), so the population-3 zero is
+validated at Int32 ONLY. Not new -- the committed log records the identical
+failure at the review's tree.
+
+**Four new divergences found; two fixed in this unit, two filed:**
+
+- BUGS.md#thir-module-global-foreach-no-peephole -- `for a in sys.argv:`
+  (another module's pointer-slot global) loses the native begin/end peephole
+  under THIR; all three widths; quality, and THIR's spelling now ships.
+- BUGS.md#thir-folded-wide-literal-drops-int64-cast -- a folded constant
+  outside Int32 range loses its `static_cast<int64_t>`; Int64 only.
+- BUGS.md#thir-int-methodarg-shift-not-folded -- `c.bump((1 << 33) + 1)` is
+  folded by the AST, emitted as the checked-op chain by THIR. Filed as an
+  Int64-only spelling difference; the review built and ran the repro and
+  found the DEFAULT Int32 width silently panics at run time (`Int32
+  overflow in multiplication`), so the row is wrong behaviour rather than
+  quality. Re-rated HIGH. A fix (uniform constant folding in both authors)
+  exists on the parked branch `thir-fold-wip`; it is not part of the
+  switch, because it grew into a redesign of a spelling accident in the
+  AST emitter the cutover deletes.
+- BUGS.md#ast-frame-inner-tuple-default-width -- the AST spells a generator
+  frame's inner tuple at the DEFAULT width against an `int32_t` target;
+  Int64 and BigInt; THIR follows the annotation and is the right side.
+
+**Re-confirmed, already on file:** the BigInt literal-wrapping class at eight
+further sinks plus a reverse-direction walrus witness (added to that entry),
+and the `THIRValidationError` escape on `a, b = f(M())`, filed verbatim
+together with its `raise X(f(a))` sibling.
+
+**Lesson:** a front-end-only sweep can DETECT a divergence but cannot rate
+one -- it rated the method-arg row an Int64 spelling issue, and the row was
+a silent default-width run-time panic, found only when the review built and
+ran the repro. Text-level diffing cannot distinguish "two spellings of one
+value" from "one folds, one traps", so a sweep's severity column is a
+hypothesis until something is built and run.
+
+**Verdict against section H's standing criterion** ("what would reverse this
+decision: evidence that the residue is LARGE"): four new shapes out of about
+5,300 programs at three widths is not large. The criterion is not met and the
+cutover stands. Note that the review RECLASSIFIED one of the four -- the
+method-arg fold row moved from an Int64 spelling difference to a silent
+default-width run-time panic -- so the count held while the severity did
+not; the verdict is about the residue's SIZE and is unaffected.
+
+**The fold was an ACCIDENT of the render sites, on both authors.** Chasing
+the method-arg row further showed integer constant folding was never a
+policy either path held: each author folded wherever its own render happened
+to thread a target type, so the two agreed by coincidence and disagreed
+wherever the threading differed. The class is not exotic -- an ordinary
+byte-size constant failed the C++ build, which rates HIGH.
+A fix giving both authors ONE policy (`int_literals.const_fold_int_target`
+deciding the target width for every constant position, 36 snapshot files
+churned) was built and reviewed through six rounds, each finding a
+neighbouring render site that assumed the old behaviour, and it is PARKED
+on the unmerged branch `thir-fold-wip`, with its last review's findings
+recorded in that branch's TODO. It is not part of the switch: the switch's
+goal is to make THIR the author and delete the AST body emitters, and the
+fold work had become a redesign of a spelling accident inside the emitter
+the next unit deletes. The method-arg panic itself is filed HIGH
+(`BUGS.md#thir-int-methodarg-shift-not-folded`).
+
+**Lesson:** mirroring an accident position by position cost a full round and
+produced a sibling table that was wrong in BOTH directions -- positions
+listed as agreeing that did not, and positions listed as differing that
+already matched. When the divergence is that one author's behaviour is a
+by-product of where a value happens to be threaded, the repair is one shared
+policy, not a per-position table; the table can only ever be as complete as
+the enumeration behind it, and the enumeration is the thing the accident
+makes untrustworthy.

@@ -97,13 +97,22 @@ The evidence sections stand unchanged.
 2. Commit 1 per D4: flip `thir_codegen` to the default, regenerate the
    snapshots, prove `git diff tests/cases` is EMPTY. Lifting
    `_thir_flag_conflict` in `tests/conftest.py` is the first step.
+   DONE 2026-09-02.
 3. Make a body-boundary reject a diagnostic, behind `--thir-strict`: a
    `CodeGenError` carrying the source line and the reject tag instead of
    the fallback. Default off until commit 2; pin the wording with unit
    tests and an `error_*` case now. Running the corpus with the flag on
-   lists exactly the bodies that would break.
+   lists exactly the bodies that would break. DONE 2026-09-02, as
+   `ThirRejectError` (a `CodeGenError` subclass, so a harness comparing
+   both paths' verdicts does not read it as a disagreement) behind
+   `--thir-strict`, with the wording, location and fold positions pinned
+   in `tpyc/thir/test_thir_strict.py`. The `error_*` case is deferred to
+   the deletion unit: while the fallback still exists the case would
+   need the option, and the diagnostic it pins changes wording when
+   `--thir-strict` goes away.
 4. Run `dualgen.py` once at all three integer widths on the tree about
    to be deleted; it needs both authors and has no successor.
+   DONE 2026-09-02.
 5. Commit 2: delete the four AST body emitters and the migration
    scaffolding -- the full teardown list is the ledger's Gate D4
    inventory, sections D and E (the two committed gates, the
@@ -111,10 +120,11 @@ The evidence sections stand unchanged.
    error-path gate, the interop overlay, `fallback.py`, `shape.py`, the
    migration scripts and the two nightly rows). Remove the
    `--thir-strict` option so strict is the only behaviour, touch no
-   `expected/` file, and rewrite CLAUDE.md's THIR contract bullets that
-   go false ("AST is the oracle", "THIR is off under
-   `--update-snapshots`", the detector count). The detector-successor designs (M1, M2, B1) are
-   not built; they were insurance for a staged window.
+   `expected/` file, and finish rewriting CLAUDE.md's THIR contract
+   bullets that go false (the flip already redid the oracle and
+   `--update-snapshots` bullets; the detector count still describes a
+   world with two authors). The detector-successor designs (M1, M2, B1)
+   are not built; they were insurance for a staged window.
 6. Fix rejects as they surface, from the everyday-shape list and
    `program_verdicts.json`; each ends as supported (with a corpus case),
    a deliberate diagnostic, or a filed defect. Phase 2's zero-churn

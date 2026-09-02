@@ -95,14 +95,34 @@ class TestCompilerFromSource:
 
 
 
-class TestThirScoping:
-    """The per-module THIR scoping gate (compiler.py `_generate_code_impl`):
-    with thir_codegen on, USER modules route THIR while non-user (stdlib)
-    modules stay on the AST path. Guards against a silent scope inversion --
-    the byte-diff can't catch that (THIR output is byte-identical to AST
-    regardless of routing), so this asserts the routing DECISION, not output."""
+class TestThirRouting:
+    """THIR is the default author for EVERY module -- user code, lib/tpy and
+    the stdlib alike -- and `thir_codegen=False` is the whole-module opt-out
+    back onto the AST path. Both are routing DECISIONS the byte-diff cannot
+    see: THIR output is byte-identical to the AST's, so a silent scope
+    inversion leaves every snapshot green."""
 
-    def test_user_routes_thir_stdlib_stays_ast(self, tmp_path):
+    def test_every_module_routes_thir_by_default(self, tmp_path):
+        src_file = tmp_path / "main.py"
+        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
+        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        for m in modules:
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name)
+        routed = compiler._thir_routed_names
+        assert routed.get(entry.name), "user entry module routed no THIR bodies"
+        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
+        assert non_user, "fixture compiled no library module -- test is vacuous"
+        assert any(routed.get(name) for name in non_user), (
+            "no non-user module routed THIR -- the library is back on the AST "
+            "path")
+
+    def test_thir_codegen_false_routes_nothing(self, tmp_path):
+        """The AST opt-out the dual-path test helpers and the stdlib oracle
+        depend on: an explicit False must keep meaning "emit this whole module
+        through the AST path"."""
         src_file = tmp_path / "main.py"
         src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
@@ -111,17 +131,10 @@ class TestThirScoping:
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
                                    entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
-        routed = compiler._thir_routed_names
-        # The user entry actually routed THIR bodies -- guards against a silent
-        # all-AST fall-through (THIR never running for user code).
-        assert routed.get(entry.name), "user entry module routed no THIR bodies"
-        # No non-user (stdlib) module routed THIR -- the scoping gate holds; an
-        # inversion would surface a stdlib module here.
-        for m in modules:
-            if not compiler.is_user_module(m):
-                assert not routed.get(m.name), (
-                    f"non-user module {m.name!r} routed THIR -- scoping gate failed")
+                                   options=CodeGenOptions(thir_codegen=False))
+        assert not compiler._thir_routed_names, (
+            f"thir_codegen=False routed bodies: "
+            f"{sorted(compiler._thir_routed_names)}")
 
     def test_real_codegen_closes_the_witness_journal(self, tmp_path):
         """Codegen leaves no journal open, so a witness recorded after the last
@@ -152,27 +165,6 @@ class TestThirScoping:
             "missing its commit_attempt(), so these witnesses are exposed to "
             "the next attempt's rollback")
 
-    def test_thir_all_modules_lifts_the_stdlib_gate(self, tmp_path):
-        """The A5 / stdlib-oracle knob: `thir_all_modules` routes non-user
-        modules too. Asserts the routing DECISION (the sibling test pins the
-        default scoped behaviour); without it the stdlib surface can be neither
-        measured nor byte-diffed at a case's own instantiations and
-        options, which no committed snapshot covers."""
-        src_file = tmp_path / "main.py"
-        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
-        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
-        for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True,
-                                                          thir_all_modules=True))
-        routed = compiler._thir_routed_names
-        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
-        assert any(routed.get(name) for name in non_user), (
-            "thir_all_modules routed no non-user module -- the gate did not lift")
-
     def test_clean_body_has_zero_fallback(self, tmp_path):
         """The THIR ratchet's PASS condition: a fully-routable user body records
         zero fallback -- so an unmarked case built from it has thir_ratchet_fell
@@ -184,11 +176,13 @@ class TestThirScoping:
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
+        # Route the user module only: the tally is global, so a library body
+        # would otherwise be counted against this fixture's claim.
         for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
-        # User-scoped: stdlib is forced to AST, so this counts only user bodies.
+            compiler.generate_code(
+                m, tmp_path / "out", entry_module_name=entry.name,
+                options=CodeGenOptions(
+                    thir_codegen=compiler.is_user_module(m)))
         assert sum(compiler._thir_fallback.values()) == 0, (
             f"clean body recorded fallback: {compiler._thir_fallback}")
 
@@ -230,10 +224,12 @@ class TestThirScoping:
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
+        # User-scoped like its clean sibling, so the count is about this body.
         for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
+            compiler.generate_code(
+                m, tmp_path / "out", entry_module_name=entry.name,
+                options=CodeGenOptions(
+                    thir_codegen=compiler.is_user_module(m)))
         assert sum(compiler._thir_fallback.values()) > 0, (
             "un-migrated body recorded no fallback -- either the construct "
             "was migrated (swap in another) or the fallback counter broke")

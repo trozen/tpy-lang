@@ -942,7 +942,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                     or func.error_return is not None):
                 raise ThirUnsupported("sig.overload_set.param_names")
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
     # A static method has no receiver -- it lowers like a free function, but
     # keeps `record_name` so `_param_is_const` resolves its param verdicts from
@@ -1054,7 +1054,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         publish_binding_facts(lc)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
@@ -1936,7 +1936,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         publish_binding_facts(lc)
         return ctor
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 _MIL_DEMOTE_TAGS = frozenset({
@@ -1976,6 +1976,10 @@ def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
                 stmt, own_param_names, own_field_names, declared, lc)
     except ThirUnsupported as ex:
         if ex.reason not in _MIL_DEMOTE_TAGS:
+            # A member-init never reaches the statement chokepoint, so this is
+            # the innermost frame that knows which source line rejected.
+            if ex.loc is None:
+                ex.loc = getattr(stmt, "loc", None)
             raise
         declared.clear()
         declared.update(decl_snap)
@@ -3029,12 +3033,15 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         fn = THIRFunction(name="__tpy_init", params=(),
                           return_type=VoidType(), body=body,
                           layout=THIRFunctionLayout())
-        if any(_rejects_global_slot(n) for n in _iter_thir(fn.body)):
-            raise ThirUnsupported("top_level.slot_alloc")
+        slot_node = next((n for n in _iter_thir(fn.body)
+                          if _rejects_global_slot(n)), None)
+        if slot_node is not None:
+            raise ThirUnsupported("top_level.slot_alloc",
+                                  loc=getattr(slot_node, "loc", None))
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 

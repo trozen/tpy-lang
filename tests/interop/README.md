@@ -35,8 +35,10 @@ gitignored `__tpyc__/` build output stay at the case root:
   `-bundle -undefined dynamic_lookup`. Windows is the remaining gap, so the
   phase still skips there; the snapshot, cpy-parity, and facade self-check
   run everywhere.
-- **THIR overlay** (always, when THIR is on): the case's module is re-emitted
-  through THIR and byte-diffed against the AST oracle, and an unmarked case
+- **THIR overlay** (always, when THIR is on): the committed snapshot above is
+  THIR-authored (the CLI emits through THIR by default), so the overlay's AST
+  side is the oracle -- the case's module is emitted through both paths and
+  byte-diffed against each other, and an unmarked case
   must route every user body (the ratchet) -- the same contract the main
   harness enforces, with `no_thir.txt` at the case root exempting a case from
   the ratchet only, never from the diff. `--thir-classify` /

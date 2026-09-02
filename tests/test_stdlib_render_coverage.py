@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import ast
 import dataclasses
-import os
 from pathlib import Path
 
 import pytest
@@ -144,24 +143,15 @@ def test_every_arg_family_is_reached(request: pytest.FixtureRequest,
     """
     if request.config.getoption("--no-thir"):
         pytest.skip("--no-thir disables THIR entirely")
-    if (request.config.getoption("--update-snapshots")
-            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
-        # Snapshot authoring runs the AST path; a full second library compile
-        # through THIR buys nothing there and can fail a regeneration run over
-        # a property regeneration does not touch.
-        pytest.skip("--update-snapshots authors snapshots from the AST path")
     assert len(THIR_ARG_FAMILIES) >= MIN_ARG_FAMILIES, (
         f"only {len(THIR_ARG_FAMILIES)} arg-table families registered "
         f"(expected >= {MIN_ARG_FAMILIES}) -- the snapshot was taken before "
         f"the sink modules were imported, so this gate asserts nothing")
 
     compiler, compiled = compile_lib_tpy(tmp_path)
-    # thir_all_modules lifts the user-module scoping gate (compiler.py
-    # `_make_codegen`) -- the same knob --thir-stdlib uses, so routing keeps
-    # one definition. Only THIR emits: the question is which families lowering
-    # dispatches to, which one author answers.
-    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True,
-                                    thir_all_modules=True)
+    # Only THIR emits: the question is which families lowering dispatches to,
+    # which one author answers.
+    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True)
     for mod in compiled:
         if not mod.is_entry_point:
             compiler.generate_code_and_thir(mod, thir_opts)
