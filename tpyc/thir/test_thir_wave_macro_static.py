@@ -92,11 +92,12 @@ class TestMacroStaticOverloadLookup:
 
     def test_same_named_free_overload_set_does_not_gate_the_static(
             self, tmp_path):
-        from .testutil import _rejects_at, _thir_ctx
-        ctx, fb = _thir_ctx(COLLIDE_MAIN,
-                            extra_lib_dirs=_with_macro(tmp_path))
-        names = {f.name for f in ctx.thir_functions.values()}
-        assert "field_count" in names
+        from .testutil import (_rejects_at, _lower_ctx_witnessed,
+                               _reject_tally)
+        libs = _with_macro(tmp_path)
+        thir, _w = _lower_ctx_witnessed(COLLIDE_MAIN, extra_lib_dirs=libs)
+        fb = _reject_tally(COLLIDE_MAIN, extra_lib_dirs=libs)
+        assert "field_count" in {f.name for f in thir.functions}
         # Only the FREE overload impl stays back, and for its own reason.
         # Matched on the landmark: the arity gate may record a blocking
         # shape after it, which a whole-key test would stop seeing.
@@ -113,7 +114,7 @@ class TestFreeCallableWithFlagStillRejects:
         from .testutil import _compile, _entry
         from ..compilation_context import activate_compiler
         from .lower.functions import _check_callable_structure
-        from .fallback import ThirUnsupported
+        from .reject import ThirUnsupported
         compiler, modules = _compile(
             "from tpy import Int32\n"
             "def helper() -> Int32:\n"

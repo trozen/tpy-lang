@@ -6,6 +6,8 @@ fences at the unmirrored assert/while seeding sites."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -125,9 +127,7 @@ class TestLiteralFactFences:
                + "    if mode == 'rb':\n"
                + "        print('always')\n"
                + "def main() -> None:\n    f('rb')\nmain()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.assert")
 
     def test_while_seed_stays_ast(self):
         # BOUNDARY: the while-body seed is unmirrored -- fenced.
@@ -138,9 +138,8 @@ class TestLiteralFactFences:
                + "            print('spin')\n"
                + "        break\n"
                + "def main() -> None:\n    f('r')\nmain()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.while:while.literal_fact")
 
     def test_decided_membership_stays_ast(self):
         # BOUNDARY: a DECIDED `in` fold has no witnessed render.
@@ -150,6 +149,5 @@ class TestLiteralFactFences:
                + "        if mode in ('rb', 'wb'):\n"
                + "            print('member')\n"
                + "def main() -> None:\n    f('rb')\nmain()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.in.other_literaltype_tuple:match.literal_fold")

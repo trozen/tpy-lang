@@ -22,6 +22,7 @@ from .validate import (
     THIRValidationError, validate_constructor, validate_function,
 )
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical, _compile, _entry,
     _fn, _lower, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
@@ -325,11 +326,8 @@ class TestUnionReviewRoundPins:
             "    method_arg(Maker(1))\n"
             "    branch_addr(True, Dog(\"rex\"))\n"
             "main()\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "method_arg") is None
-        assert _fn(thir, "branch_addr") is None
-        assert _fn(thir, "main") is not None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.ret_type")
 
     def test_string_member_union_stays_out(self):
         # BOUNDARY: tpy.String is STR-class -- the builtin-value member
@@ -344,7 +342,8 @@ class TestUnionReviewRoundPins:
             "def main() -> None:\n"
             "    print(f(3))\n"
             "main()\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_facts_unmirrored")
 
 
 class TestBuiltinValueMemberUnion:
@@ -390,20 +389,16 @@ class TestBuiltinValueMemberUnion:
             "    u: Int32 | basic_slice = 3\n"
             "    u = basic_slice(1, 3)\n"
             "    return pick(u, items)\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "ctor_arg") is None
-        assert _fn(thir, "member_name") is None
-        assert _fn(thir, "union_decl") is not None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.union")
 
 
 class TestValueUnionEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = _PRELUDE + (
@@ -428,11 +423,8 @@ class TestValueUnionEmit:
         "    h(7)\n"
         "main()\n")
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_monostate_and_variant_render(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::variant<std::monostate, int32_t, double> x = std::monostate{};" in cpp
         assert "return std::monostate{};" in cpp
         assert "std::variant<int32_t, double> x = 1;" in cpp
@@ -454,15 +446,9 @@ class TestValueUnionEmit:
         "    pick(True)\n    scalar(3)\n"
         "main()\n")
 
-    def test_member_return_byte_identical(self):
-        assert self._cpp(self.RET_SRC, thir=True) \
-            == self._cpp(self.RET_SRC, thir=False)
-
     def test_member_return_renders_bare(self):
-        cpp = self._cpp(self.RET_SRC, thir=True)
-        assert "return 1;" in cpp
-        assert 'return "x";' in cpp
-        assert "return v;" in cpp
+        _assert_rejects_at(_reject_tally(self.RET_SRC),
+                           "body:expr.call:call.ret_type.union_value")
 
     def test_member_return_routes(self):
         thir = _lower(self.RET_SRC)
@@ -604,13 +590,12 @@ class TestPtrUnionEligibility:
 
 
 class TestPtrUnionEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         # hpp + cpp: the ctor MIL is emitted inline in the header.
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = _PTR_RECORDS + (
@@ -626,11 +611,8 @@ class TestPtrUnionEmit:
         "    mu(h)\n"
         "main()\n")
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_conversion_renders(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::variant<const A*, const B*> w = ::tpy::to_const_ptr_variant(h.u);" in cpp
         assert "std::variant<A*, B*> w = ::tpy::to_ptr_variant(h.u);" in cpp
         assert "h.u = ::tpy::to_value_variant<std::variant<A, B>>(v);" in cpp
@@ -707,12 +689,11 @@ class TestPtrUnionNoneEligibility:
 
 
 class TestPtrUnionNoneEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = _PTR_NONE_RECORDS + (
@@ -733,11 +714,8 @@ class TestPtrUnionNoneEmit:
         "    cp(s1, s2)\n"
         "main()\n")
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_monostate_and_bare_copy_render(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert ("std::variant<std::monostate, A*, B*> w = std::monostate{};"
                 in cpp)
         assert "    w = std::monostate{};" in cpp
@@ -971,7 +949,7 @@ class TestNarrowingEligibility:
         # ASTs. Lowering must reject a narrowed-subject rebind there too -- a
         # routed rebind would leave later reads on the stale extraction alias.
         from ..parse.nodes import TpyAssign, TpyName
-        from .fallback import ThirUnsupported
+        from .reject import ThirUnsupported
         from .lower import _LowerCtx
         from .lower.statements import _lower_stmt
         compiler, modules = _compile(_PRELUDE + (
@@ -1732,12 +1710,11 @@ class TestNarrowingEligibility:
 
 
 class TestNarrowingEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = _THREE_RECORDS + (
@@ -1818,11 +1795,8 @@ class TestNarrowingEmit:
         "    compa(A(18))\n    compc(A(5))\n    esc(A(19))\n"
         "main()\n")
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_narrowing_renders(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "if (std::holds_alternative<A*>(v)) {" in cpp
         assert "auto& __v = *std::get<A*>(v);" in cpp
         assert "auto& __v = *std::get<B*>(v);" in cpp  # complement + post-if
@@ -2197,8 +2171,7 @@ class TestValueUnionSelfArgTemp:
     def _emit(self, src: str):
         compiler, modules = _compile(src)
         hpp, cpp = compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                    thir_codegen=True))
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
         return compiler, hpp, cpp
 
     def test_free_and_qualified_calls_route(self):
@@ -2223,19 +2196,15 @@ class TestValueUnionSelfArgTemp:
                "    def own(self) -> Int32:\n"
                "        return take_own(self)\n"
                "def take_own(v: Own[V | Int32]) -> Int32:\n    return 0\n")
-        compiler, _, _ = self._emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
-                           "call.arg_shape.own_union")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.arg_shape.own_union')
 
 
 class TestUnionCallArgEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = _CALLARG_RECORDS + (
@@ -2291,11 +2260,8 @@ class TestUnionCallArgEmit:
         "    print(f8(a))\n"
         "main()\n")
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_readonly_slot_emitted_shapes(self):
-        out = self._cpp(self.SRC, thir=True)
+        out = self._cpp(self.SRC)
         # Member lift + monostate spell const pointees; the already-union
         # name takes the explicit const conversion.
         assert "std::variant<const A*, const B*>{&(a2)}" in out
@@ -2305,7 +2271,7 @@ class TestUnionCallArgEmit:
                 "<std::variant<const A*, const B*>>(v)") in out
 
     def test_lift_renders(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "take(std::variant<A*, B*>{&(a2)})" in cpp
         assert ("take_opt(std::variant<std::monostate, A*, B*>"
                 "{std::monostate{}})") in cpp
@@ -2335,9 +2301,7 @@ class TestUnionCallArgEmit:
         "    return 0\n")
 
     def test_narrowed_arg_wrap_skip_byte_identical(self):
-        assert (self._cpp(self.NARROW_SKIP_SRC, thir=True)
-                == self._cpp(self.NARROW_SKIP_SRC, thir=False))
-        out = self._cpp(self.NARROW_SKIP_SRC, thir=True)
+        out = self._cpp(self.NARROW_SKIP_SRC)
         assert "return tr(__v);" in out  # the is_narrowed wrap skip
 
 
@@ -2348,11 +2312,11 @@ class TestUnionCallArgEmit:
 # value assign -- value unions carry no pointer-local machinery). A
 # pointer-variant union return (record members) stays on the AST path.
 class TestUnionCallDecl:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -2376,11 +2340,8 @@ class TestUnionCallDecl:
         assert isinstance(fn.body[1], THIRAssign)
         assert faces.get("decl.storage_call", 0) >= 1
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_bare_call(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::variant<int32_t, double> u = make(n);" in cpp
         assert "u = make((::tpy::sub_check<int32_t>(n, 1)));" in cpp
 
@@ -2457,14 +2418,13 @@ class TestOwnUnionReturn:
         compiler, modules = _compile(src)
         entry = _entry(modules)
 
-        def cpp(thir: bool):
+        def cpp():
             _, out = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return out
 
-        thir_cpp = cpp(True)
-        assert thir_cpp == cpp(False)
+        thir_cpp = cpp()
+        assert thir_cpp == cpp()
         assert "return Dog(age);" in thir_cpp
         assert "return Cat(lives);" in thir_cpp
 
@@ -2494,11 +2454,9 @@ class TestAssignNarrowedUnionFieldRead:
         entry = _entry(modules)
         from ..codegen_cpp.context import CodeGenOptions
         ast = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=False))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         out = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert out == ast
         assert "(*std::get<Circle*>(c)).radius" in out[1]
 
@@ -2541,12 +2499,11 @@ class TestUnionCallSubjectMatch:
         "main()\n"
     )
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_call_subject_routes_by_value(self):
@@ -2554,8 +2511,8 @@ class TestUnionCallSubjectMatch:
         assert _fn(thir, "main") is not None
         assert w.get("match.subject_rvalue", 0) >= 1
         assert w.get("method.union_subject_ret", 0) >= 1
-        cpp = self._cpp(self._SRC, thir=True)
-        assert cpp == self._cpp(self._SRC, thir=False)
+        cpp = self._cpp(self._SRC)
+        assert cpp == self._cpp(self._SRC)
         assert "auto __match_subject_1 = p.choose(d);" in cpp
         assert "auto& x = *std::get<1>(__match_subject_1);" in cpp
 
@@ -2586,7 +2543,6 @@ class TestUnionCallSubjectMatch:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert w.get("call.union_subject_ret", 0) >= 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_guarded_call_subject_defers(self):
         # BOUNDARY (dualgen-probed): a GUARDED union match with a call
@@ -2617,7 +2573,6 @@ class TestUnionCallSubjectMatch:
             "main()\n"
         )
         assert _fn(_lower_ctx(src), "main") is None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_union_return_at_decl_still_rejects(self):
         # BOUNDARY (dualgen-probed): the same return at a DECL consumer
@@ -2643,7 +2598,6 @@ class TestUnionCallSubjectMatch:
             "main()\n"
         )
         assert _fn(_lower_ctx(src), "main") is None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestNarrowElifElseFact:
@@ -2684,7 +2638,7 @@ class TestNarrowElifElseFact:
         compiler, modules = _compile(self.CHAIN_SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "} else {\n        if (std::holds_alternative<C*>(h)) {" in cpp
 
     def test_genuine_else_nonmember_fact_stays_ast(self):
@@ -2701,10 +2655,7 @@ class TestNarrowElifElseFact:
                + "def main() -> None:\n"
                + "    print(probe(A(1)))\n"
                + "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        assert w.get("if.narrow_elif_else_fact", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:if.narrow_shape")
 
 
 class TestNarrowFoldedElseRows:
@@ -2716,11 +2667,11 @@ class TestNarrowFoldedElseRows:
     union/union_isinstance_function_call, union/union_mutual_contexts,
     union/union_field_ctor_bare_alternative."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=thir))
+                emit_source_comments=False))
         return cpp
 
     FOLDED_SRC = (_THREE_RECORDS
@@ -2736,7 +2687,7 @@ class TestNarrowFoldedElseRows:
         _thir, w = _lower_ctx_witnessed(self.FOLDED_SRC)
         assert w.get("if.narrow_folded_else", 0) >= 1
         _assert_routes_byte_identical(self.FOLDED_SRC)
-        cpp = self._cpp(self.FOLDED_SRC, thir=True)
+        cpp = self._cpp(self.FOLDED_SRC)
         assert "if (true) {" in cpp
         assert "*std::get<B*>(c)" in cpp
 
@@ -2769,9 +2720,7 @@ class TestNarrowFoldedElseRows:
                + "def main() -> None:\n"
                + "    print(probe(A(1)))\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:if.narrow_shape")
 
 
 class TestPtrUnionTernary:
@@ -2802,7 +2751,7 @@ class TestPtrUnionTernary:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "((c) ? (p) : (::tpy::to_ptr_variant(h.u)))" in cpp
 
     def test_reversed_arm_order_routes(self):
@@ -2822,25 +2771,26 @@ class TestPtrUnionTernary:
         assert _fn(thir, "bump") is not None
         _assert_byte_identical(src)
 
-    def test_call_arm_stays_ast(self):
+    def test_call_arm_rejects(self):
         # BOUNDARY (dualgen-probed): a ptr-variant-returning CALL arm is
-        # not admitted (bare-call render is its own rung).
+        # not admitted (bare-call render is its own rung). `pick` returns its
+        # own param so that IT routes -- a callee that rejects on its own way
+        # to returning the union is reported first and leaves the ternary arm
+        # untested.
         src = (self._FIX
-               + "def pick(h: H) -> A | B:\n"
-               + "    return h.u\n"
-               + "def bump(p: A | B, h: H, c: bool) -> None:\n"
-               + "    t = p if c else pick(h)\n"
+               + "def pick(q: A | B) -> A | B:\n"
+               + "    return q\n"
+               + "def bump(p: A | B, q: A | B, c: bool) -> None:\n"
+               + "    t = p if c else pick(q)\n"
                + "    if isinstance(t, A):\n"
                + "        t.x += 100\n"
                + "def main() -> None:\n"
-               + "    h = H(B(7))\n"
                + "    p = A(3)\n"
-               + "    bump(p, h, True)\n"
+               + "    q = B(7)\n"
+               + "    bump(p, q, True)\n"
                + "    print(p.x)\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "bump") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr", count=1)
 
 
 class TestIsinstanceUnionValuePosition:
@@ -3019,9 +2969,8 @@ class TestValueUnionSubscriptElem:
                + "def main() -> None:\n"
                + "    f(Holder())\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.ptr_union_source")
 
 
 class TestPtrUnionViewMembers:
@@ -3059,9 +3008,8 @@ class TestPtrUnionViewMembers:
                "    d: dict[str, list[Num] | str] = {\"k\": \"x\"}\n"
                "    f(d)\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:subscript.elem.union")
 
 
 class TestPropertyUnionBorrow:

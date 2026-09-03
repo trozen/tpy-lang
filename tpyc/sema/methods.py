@@ -752,8 +752,8 @@ class MethodAnalyzer:
             obj_type = obj_type.wrapped
 
         # General method calls always prefer borrowing overloads.
-        # Consuming __iter__ overloads are selected at call-site by
-        # _gen_consuming_iter in codegen_cpp/expressions.py.
+        # Consuming __iter__ overloads are selected at the call site by
+        # _consuming_iter_wrap in thir/lower/expressions.py.
         is_consuming_receiver = False
 
         if isinstance(obj_type, OwnType):

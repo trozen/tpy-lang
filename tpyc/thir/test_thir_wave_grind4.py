@@ -10,6 +10,7 @@ arrow folds into the deref, so the member access is `.`).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -19,14 +20,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source, extra_lib_dirs=None):
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 class TestNativeIterMethodReturn:
@@ -71,7 +66,7 @@ class TestNativeIterMethodReturn:
             "    consume(a.__iter__())\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         # The reject lands in the structural-temp init's method-call
         # lowering, not at the free call: the arg gate admits the hoist and
         # the inner __iter__ call is what still rejects.

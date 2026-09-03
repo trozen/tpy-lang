@@ -7,6 +7,8 @@ plus the non-F1 and dict boundaries."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx,
@@ -178,10 +180,8 @@ class TestReprFieldBoundaries:
             "    def show(self) -> str:\n"
             "        return repr(self.h)\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is None
-        assert not faces.get("arg.native_protocol_field")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.native_arg.record_nonf1")
 
 
 class TestDictFieldRepr:

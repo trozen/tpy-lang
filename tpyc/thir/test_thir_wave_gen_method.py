@@ -185,7 +185,6 @@ class TestPtrNativeMember:
         )
         thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=self._dirs())
         assert _fn(thir, "f") is None
-        _assert_byte_identical(src, extra_lib_dirs=self._dirs())
 
     def test_native_member_with_args_stays_ast(self, tmp_path):
         # The gate requires a zero-arg member; an arg-taking @native method
@@ -208,7 +207,6 @@ class TestPtrNativeMember:
         )
         thir, _ = _lower_ctx_witnessed(src, extra_lib_dirs=[tmp_path])
         assert _fn(thir, "f") is None
-        _assert_byte_identical(src, extra_lib_dirs=[tmp_path])
 
     def test_repeat_access_keeps_the_checked_spelling_on_both_paths(self):
         # The AST's post-access narrowing does NOT fire for the @native

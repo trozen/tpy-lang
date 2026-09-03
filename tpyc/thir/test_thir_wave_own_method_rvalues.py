@@ -8,6 +8,7 @@ create-lend-drop ArgTemp and the MIL direct construct.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -15,14 +16,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source, extra_lib_dirs=None):
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 _COUNTER = (
@@ -117,8 +112,7 @@ class TestMilRecordMethodRvalue:
         compiler.generate_code_to_strings(
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
+                                   comment_line_numbers=False))
         wit = compiler._thir_face_witnesses
         assert wit.get("mil.record_method_rvalue", 0) >= 1
 
@@ -143,5 +137,5 @@ class TestMilRecordMethodRvalue:
             "    def __init__(self, s: Src) -> None:\n"
             "        self.mine = s.peek()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert any(k.startswith("ctor:") for k in fell), fell

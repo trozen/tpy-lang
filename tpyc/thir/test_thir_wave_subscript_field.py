@@ -10,6 +10,8 @@ Ptr/Optional element shapes must keep rejecting.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _lower_ctx_witnessed,
@@ -77,7 +79,8 @@ class TestSubscriptFieldReceiver:
             "    print(read(Box(1), Box(2)))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ret_type.tuple")
 
     def test_face_witnessed(self):
         src = _PRELUDE + (
@@ -112,8 +115,8 @@ class TestPtrElementKeepsItsCheck:
             "    print(h.pair[1].name)\n"
             "main()\n"
         )
-        cpp = _assert_byte_identical(src)
-        assert "deref_check" in "".join(cpp)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.tuple_shape")
 
 
 class TestBorrowTupleFieldRootedSubscriptSource:
@@ -162,7 +165,8 @@ class TestBorrowTupleFieldRootedSubscriptSource:
             "    print(peek({'a': (1, Box(5))}))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestReadonlyElementReceiver:

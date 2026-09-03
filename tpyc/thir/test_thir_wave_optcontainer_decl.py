@@ -7,6 +7,8 @@ covers list/set beside dict (the AST loop is family-blind)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _fn, _lower_ctx,
     _lower_ctx_witnessed,
 )
@@ -69,10 +71,8 @@ class TestOptionalPtrContainerDecl:
                "def main() -> None:\n"
                "    print(f(H()))\n"
                "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("decl.opt_ptr_container")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_own_container_optional_stays_off_the_row(self):
         # `Own[list[T]] | None` is VALUE-repr (`std::optional<std::vector<>>`),
@@ -87,9 +87,8 @@ class TestOptionalPtrContainerDecl:
                "def main() -> None:\n"
                "    print(f([Int32(1)]))\n"
                "main()\n")
-        _, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("decl.opt_ptr_container")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestNarrowedOptContainerForEach:
@@ -166,6 +165,5 @@ class TestNarrowedOptContainerForEach:
                "def main() -> None:\n"
                "    print(f(R()), f(None))\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.user_iterator.name")

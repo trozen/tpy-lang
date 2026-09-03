@@ -11,6 +11,8 @@ rejecting at the walrus."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -85,9 +87,8 @@ class TestInnerScopeBorrowTupleHoist:
             "        p[1].val = 44 + i\n"
             "    return p[0].val\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.hoist_type")
 
 
 class TestTryBorrowTupleHoist:
@@ -148,9 +149,7 @@ class TestTryBorrowTupleHoist:
             "        t = make_own(v + 1)\n"
             "    return t[0].val + t[1].val\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.try:try.hoist")
 
 
 class TestWalrusMixedOwnCallSource:
@@ -192,6 +191,4 @@ class TestWalrusMixedOwnCallSource:
             "        t[1].val = 73\n"
             "    return t[0].val\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.walrus")

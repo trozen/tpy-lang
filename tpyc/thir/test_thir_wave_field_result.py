@@ -10,7 +10,9 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical)
 
 
@@ -59,8 +61,8 @@ class TestStrFieldReceivers:
             "def f(a: Named, b: Named, c: bool) -> None:\n"
             "    print((a if c else b).name)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.receiver_shape")
 
 
 _HOLDER = (
@@ -353,8 +355,8 @@ class TestCallableFieldContainerArg:
             "    h = H()\n"
             "    h.pair = (a, b)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_narrowed_source_field_write_stays_ast(self):
         # A NARROWED Optional source is excluded from both the ptr-local
@@ -373,8 +375,8 @@ class TestCallableFieldContainerArg:
             "    if o is not None:\n"
             "        h.p = o\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_setitem_covariant_borrow_call_stays_ast(self):
         # The setitem borrow-call row requires EXACT element-type match
@@ -395,8 +397,8 @@ class TestCallableFieldContainerArg:
             "    pts = [Point(1)]\n"
             "    pts[0] = pick(d)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.record_value_shape")
 
     def test_chained_field_copy_source_stays_ast(self):
         # A field copy source off a FIELD receiver (`h.p = h2.inner.p`)
@@ -421,8 +423,8 @@ class TestCallableFieldContainerArg:
             "def f(h: Holder, h2: Holder) -> None:\n"
             "    h.p = h2.inner.p\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_optional_container_family_sets_agree(self):
         # The gate (_container_name_field_write_ok's Optional unwrap) and
@@ -453,7 +455,6 @@ class TestCallableFieldContainerArg:
                 buf = io.StringIO()
                 emit_thir_body(buf, fn)
                 assert "ptr_to_optional" not in buf.getvalue(), ann
-            _assert_byte_identical(src)
 
     def test_nested_borrow_call_arg_no_leak(self):
         # The record_copy_sink flag must not leak into the admitted call's
@@ -506,5 +507,5 @@ class TestCallableFieldContainerArg:
             "    h = hs[0]\n"
             "    h.cb(hs[0].data)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.result_type")

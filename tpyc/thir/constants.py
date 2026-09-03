@@ -23,7 +23,7 @@ from ..parse.nodes import (
 )
 from ..typesys import TpyType, TupleType, VoidType, unwrap_readonly
 from .emit import _EmitState, _NO_COMMENTS, _emit_expr
-from .fallback import ThirUnsupported, note
+from .reject import ThirUnsupported, note
 from .lower.context import _LowerCtx
 from .lower.expressions import (
     _lower_char_targeted,
@@ -56,7 +56,7 @@ def add_constant_scope_entry(scope: 'dict[str, TpyType]', name: str,
     """Admit one constant name into a constant scope, gated by the same
     family predicate a read-only global read is gated by -- a name outside
     it has no verified bare-read render, so leaving it out makes a
-    referencing initializer fall back rather than diverge."""
+    referencing initializer reject rather than diverge."""
     st = _readonly_global_type(declared, analyzer)
     if st is not None:
         scope[name] = st
@@ -67,7 +67,7 @@ def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
                    render_type=None, render_type_stored=None,
                    render_resolve=None) -> 'str | None':
     """Render one compile-time-constant initializer through THIR, or None
-    when it does not lower (the caller then emits it via `gen_expr`).
+    when it does not lower -- the caller turns that into a reject.
 
     `const_scope` is the bare-reading constant names visible here (sibling
     `Final` globals, and for a class constant the earlier constants of the
@@ -117,17 +117,17 @@ def _lower_constant_expr(expr, target_type: 'TpyType | None',
             if isinstance(target_type, TpyType) else None)
     while (isinstance(expr, (TpyCall, TpyMethodCall))
            and expr.macro_expansion is not None):
-        # gen_expr renders a `@call_macro` expansion IN PLACE and carries the
-        # target into it; the general THIR macro arm lowers the expansion
-        # target-LESS, which is invisible at a body position (a literal's
-        # target is reapplied post-hoc) but not here -- a macro expanding to
-        # a tuple literal would spell the literal's own element types.
+        # The general macro arm lowers an expansion target-LESS, which is
+        # invisible at a body position (a literal's target is reapplied
+        # post-hoc) but not here -- a macro expanding to a tuple literal
+        # would spell the literal's own element types. Peeling the expansion
+        # up front keeps the declared target on it.
         expr = expr.macro_expansion
     if isinstance(expr, TpyTupleLiteral) and isinstance(slot, TupleType):
         # The tuple-literal arm of `_lower_expr` self-types from the
         # expression, which is the right rule at its own positions but not
-        # here -- the declared tuple is the AST's target (`gen_expr(init,
-        # var_type)`), and its element types drive the spelling. The family
+        # here -- the declared tuple is the target, and its element types
+        # drive the spelling. The family
         # is the constant one (`_value_tuple_global`), which admits the
         # static `std::string_view` element a runtime tuple literal cannot
         # have.

@@ -8,7 +8,9 @@ and the write lifts through it (`g = &*(__global_slot_N = init);`).
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _top_level
+from .testutil import (
+    _assert_rejects_at, _assert_byte_identical, _top_level,
+                      _reject_tally)
 
 PRELUDE = (
     "from tpy import Int32\n"
@@ -31,7 +33,7 @@ class TestHoistedRecordGlobal:
     def test_routes_and_witnesses(self):
         top, w, fallback = _top_level(_RECORD)
         assert top is not None
-        assert fallback == {}
+        assert not fallback
         assert w.get("top_level.global_hoist_slot", 0) >= 1
         # The bound name is the ordinary pointer-copy write, unchanged.
         assert w.get("top_level.global_ptr_copy", 0) >= 1
@@ -63,13 +65,13 @@ class TestHoistedContainerGlobal:
     def test_record_element_list_routes(self):
         top, w, fallback = _top_level(self.LIST)
         assert top is not None
-        assert fallback == {}
+        assert not fallback
         assert w.get("top_level.global_hoist_slot", 0) >= 1
 
     def test_comprehension_init_routes(self):
         top, w, fallback = _top_level(self.COMP)
         assert top is not None
-        assert fallback == {}
+        assert not fallback
         # The comprehension still renders its stmt-expr through the shared
         # container arm; hoisting only swaps the slot flavor around it.
         assert w.get("top_level.global_slot_comp", 0) >= 1
@@ -95,11 +97,8 @@ class TestHoistedGlobalBoundaries:
             "    print(V.n, S.n)\n"
             "main()\n"
         )
-        top, _w, fallback = _top_level(src)
-        assert top is None
-        assert fallback == {
-            "top_level:stmt.var_decl:top_level.global_hoist_shape": 1}
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_hoist_shape")
 
     def test_unhoisted_global_keeps_the_plain_slot(self):
         # The same global with no second binding takes the plain
@@ -113,7 +112,7 @@ class TestHoistedGlobalBoundaries:
         )
         top, w, fallback = _top_level(src)
         assert top is not None
-        assert fallback == {}
+        assert not fallback
         assert w.get("top_level.global_slot", 0) >= 1
         assert w.get("top_level.global_hoist_slot", 0) == 0
         _assert_byte_identical(src)
@@ -130,6 +129,6 @@ class TestHoistedGlobalBoundaries:
         )
         top, w, fallback = _top_level(src)
         assert top is not None
-        assert fallback == {}
+        assert not fallback
         assert w.get("top_level.global_hoist_slot", 0) == 0
         _assert_byte_identical(src)

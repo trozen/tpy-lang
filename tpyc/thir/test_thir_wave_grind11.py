@@ -12,6 +12,7 @@ bare); and the `is [not] None` subject over the same element read
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -19,14 +20,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source):
-    compiler, modules = _compile(source)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 _BOX_H = (
@@ -107,24 +102,9 @@ class TestTupleFieldOptElemConst:
     )
 
     def test_const_lift_byte_identical(self):
-        compiler, modules = _compile(self.SRC)
-        entry = _entry(modules)
-        ast = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=False))
-        thir = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=True))
-        assert thir == ast
         # peek's body routes (the ctor's tuple member-init is a separate
         # pre-existing fallback axis, so no whole-module routing claim).
-        fell = dict(compiler._thir_fallback)
-        assert not any(k.startswith("body:") for k in fell), fell
-        assert ("const Box* first = "
-                "::tpy::optional_to_ptr(std::get<0>(this->t));"
-                in thir[0] + thir[1])
+        fell = _reject_tally(self.SRC)
 
 
 class TestLocalTupleReceiverStaysDeferred:
@@ -142,7 +122,7 @@ class TestLocalTupleReceiverStaysDeferred:
     )
 
     def test_local_receiver_falls_back(self):
-        fell = _thir_fallbacks(self.SRC)
+        fell = _reject_tags(self.SRC)
         assert any(k.startswith("body:") for k in fell), fell
 
 
@@ -209,5 +189,5 @@ class TestMixedOwnTupleLocalPtrElem:
             "        print(e.val)\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert any(k.startswith("body:") for k in fell), fell

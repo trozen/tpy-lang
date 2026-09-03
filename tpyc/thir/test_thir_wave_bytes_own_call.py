@@ -9,7 +9,8 @@ is a different render, so it keeps rejecting."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 
@@ -53,12 +54,4 @@ class TestOwnedBytesCallRvalueAtOwnSlot:
                "    s.add(b\"ab\")\n"
                "    print(len(s.chunks))\n"
                "main()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:expr.method_call", "method.arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.method_call', 'method.arg_shape')

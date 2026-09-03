@@ -9,6 +9,8 @@ from .compiler import Compiler, BuildLayout
 from .compilation_context import activate_compiler
 from .codegen_cpp import CodeGenOptions
 from .diagnostics import SemanticError
+from .thir.lower import iter_module_callables
+from .thir.reject import is_bodyless_binding
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID, BYTEARRAY,
     PtrType, make_span, make_list, make_dict, make_array, OptionalType,
@@ -96,11 +98,10 @@ class TestCompilerFromSource:
 
 
 class TestThirRouting:
-    """THIR is the default author for EVERY module -- user code, lib/tpy and
-    the stdlib alike -- and `thir_codegen=False` is the whole-module opt-out
-    back onto the AST path. Both are routing DECISIONS the byte-diff cannot
-    see: THIR output is byte-identical to the AST's, so a silent scope
-    inversion leaves every snapshot green."""
+    """THIR is the author for EVERY module -- user code, lib/tpy and the
+    stdlib alike. That is a routing DECISION the snapshot compare cannot see
+    on its own: a module that stopped lowering would still have to emit
+    something, so the routing claim needs its own assertion."""
 
     def test_every_module_routes_thir_by_default(self, tmp_path):
         src_file = tmp_path / "main.py"
@@ -111,30 +112,30 @@ class TestThirRouting:
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
                                    entry_module_name=entry.name)
+        # Compared against an INDEPENDENTLY derived candidate set rather than
+        # against "at least one body somewhere": a module whose bodies stopped
+        # being THIR's would still emit, and a per-module count > 0 is silent
+        # about the ones that did not.
         routed = compiler._thir_routed_names
-        assert routed.get(entry.name), "user entry module routed no THIR bodies"
-        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
-        assert non_user, "fixture compiled no library module -- test is vacuous"
-        assert any(routed.get(name) for name in non_user), (
-            "no non-user module routed THIR -- the library is back on the AST "
-            "path")
-
-    def test_thir_codegen_false_routes_nothing(self, tmp_path):
-        """The AST opt-out the dual-path test helpers and the stdlib oracle
-        depend on: an explicit False must keep meaning "emit this whole module
-        through the AST path"."""
-        src_file = tmp_path / "main.py"
-        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
-        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
+        expected = {}
         for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=False))
-        assert not compiler._thir_routed_names, (
-            f"thir_codegen=False routed bodies: "
-            f"{sorted(compiler._thir_routed_names)}")
+            plain = [fn.name for fn, _self
+                     in iter_module_callables(m.ast, m.analyzer)
+                     # Resumable and simple-generator bodies lower at their
+                     # frame seams and key their own caches, so they are not
+                     # in this map; a bodyless binding has nothing to lower.
+                     if not (is_bodyless_binding(fn) or fn.is_async
+                             or fn.is_generator)]
+            if plain:
+                expected[m.name] = plain
+        assert entry.name in expected, "fixture entry defines no plain callable"
+        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
+        assert any(name in expected for name in non_user), (
+            "fixture compiled no library module with a body -- test is vacuous")
+        missing = sorted(name for name in expected if not routed.get(name))
+        assert not missing, (
+            f"modules with bodies but no THIR routing: {missing} -- their "
+            "bodies were emitted by something other than THIR")
 
     def test_real_codegen_closes_the_witness_journal(self, tmp_path):
         """Codegen leaves no journal open, so a witness recorded after the last
@@ -158,81 +159,27 @@ class TestThirRouting:
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
                                    entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
+                                   )
         assert compiler._thir_face_witnesses, "no face witnessed -- test is vacuous"
         assert compiler._thir_face_journal is None, (
             "witness journal left OPEN after codegen -- a routed branch is "
             "missing its commit_attempt(), so these witnesses are exposed to "
             "the next attempt's rollback")
 
-    def test_clean_body_has_zero_fallback(self, tmp_path):
-        """The THIR ratchet's PASS condition: a fully-routable user body records
-        zero fallback -- so an unmarked case built from it has thir_ratchet_fell
-        == 0 and does not trip the comp-phase failure. The fallback>0 side is
-        exercised live by every no_thir-marked corpus case, so this only pins the
-        clean side (stable: a trivial arithmetic body stays routable forever)."""
+    def test_clean_body_lowers_every_user_callable(self, tmp_path):
+        """A fully-lowerable user body leaves nothing on a second author: every
+        callable in the module has a THIR entry after codegen, which is what
+        makes the emitted C++ THIR's rather than something the skeleton
+        improvised."""
         src_file = tmp_path / "main.py"
         src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
-        # Route the user module only: the tally is global, so a library body
-        # would otherwise be counted against this fixture's claim.
         for m in modules:
-            compiler.generate_code(
-                m, tmp_path / "out", entry_module_name=entry.name,
-                options=CodeGenOptions(
-                    thir_codegen=compiler.is_user_module(m)))
-        assert sum(compiler._thir_fallback.values()) == 0, (
-            f"clean body recorded fallback: {compiler._thir_fallback}")
-
-    def test_unmigrated_body_records_fallback(self, tmp_path):
-        """The THIR ratchet's FIRE signal: a user body outside the THIR slice
-        records a fallback (sum(_thir_fallback) > 0), so an UNMARKED case using
-        it trips the comp-phase ratchet. Pins the >0 side (the pass side is
-        test_clean_body_has_zero_fallback) so an inverted/broken fallback counter
-        can't slip through -- no corpus case can exercise the fire side, since
-        unmarked <=> already clean. Uses a nested-def rebind-slot shape; if
-        that ever migrates, swap in another un-migrated construct."""
-        src_file = tmp_path / "main.py"
-        # A nested def whose local is first declared in an `if`/`else`: the
-        # slot rides `THIRIf.hoist_slots`, whose owner name the nested-def
-        # shadow exemption cannot read, so the enclosing-slot disjunct still
-        # fires. The same residue is pinned directly by
-        # test_thir_lambda_hoist.py -- swap both when it migrates. (Three
-        # earlier fixtures -- `async def f(): return None`, a nested-def-only
-        # rebind, then a nested def reserving its own slot -- all migrated.)
-        src_file.write_text(
-            "from tpy import Int32\n"
-            "class P:\n"
-            "    v: Int32\n"
-            "    def __init__(self, v: Int32) -> None:\n"
-            "        self.v = v\n"
-            "def f(flag: Int32) -> Int32:\n"
-            "    def g(k: Int32) -> Int32:\n"
-            "        if k > 0:\n"
-            "            p = P(k)\n"
-            "        else:\n"
-            "            p = P(0)\n"
-            "        p = P(k * 10)\n"
-            "        return p.v\n"
-            "    p = P(1)\n"
-            "    if flag > 0:\n"
-            "        p = P(99)\n"
-            "    return p.v + g(flag)\n"
-            "print(f(1))\n")
-        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
-        # User-scoped like its clean sibling, so the count is about this body.
-        for m in modules:
-            compiler.generate_code(
-                m, tmp_path / "out", entry_module_name=entry.name,
-                options=CodeGenOptions(
-                    thir_codegen=compiler.is_user_module(m)))
-        assert sum(compiler._thir_fallback.values()) > 0, (
-            "un-migrated body recorded no fallback -- either the construct "
-            "was migrated (swap in another) or the fallback counter broke")
+            compiler.generate_code(m, tmp_path / "out",
+                                   entry_module_name=entry.name)
+        assert compiler._thir_routed_names.get(entry.name) == frozenset({"f"})
 
 
 class TestCodegenStateIsolation:

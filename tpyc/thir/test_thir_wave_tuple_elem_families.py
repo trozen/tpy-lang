@@ -26,7 +26,8 @@ element beside a wrapper (record / str), which keeps rejecting.
 
 from __future__ import annotations
 
-from .testutil import (_assert_rejects_at, _assert_routes_byte_identical,
+from .testutil import (
+    _reject_tally, _assert_rejects_at, _assert_routes_byte_identical,
                        _lower_ctx_witnessed, _thir_ctx)
 
 _PETS = (
@@ -143,8 +144,7 @@ class TestOwnUnionElementTuple:
             "    print(b)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.tuple_unpack": 1}, fell
+        _assert_rejects_at(_reject_tally(src), "body:stmt.tuple_unpack")
 
 
 class TestOwnOptionalStorageElementTuple:
@@ -300,9 +300,10 @@ class TestWrapperRefElementTuple:
             "    print(b.bark)\n"
             "main()\n"
         )
+        # The reject raises at the FIRST rejecting body, so the return
+        # slot is what a whole-module emit reports for this shape.
         _ctx, fell = _thir_ctx(record_src)
         _assert_rejects_at(fell, "body:stmt.return", "return.slot_type")
-        _assert_rejects_at(fell, "body:expr.call", "call.ret_type.tuple")
         str_src = pre + (
             "def pair(t: Tree[Int32], s: str) -> tuple[Tree[Int32], str]:\n"
             "    return (t, s)\n"
@@ -313,8 +314,7 @@ class TestWrapperRefElementTuple:
             "main()\n"
         )
         _ctx, fell = _thir_ctx(str_src)
-        assert fell == {"body:stmt.return:return.slot_type": 1,
-                        "body:stmt.tuple_unpack": 1}, fell
+        _assert_rejects_at(fell, "body:stmt.return", "return.slot_type")
 
 
 class TestMixedOwnTupleCallSources:

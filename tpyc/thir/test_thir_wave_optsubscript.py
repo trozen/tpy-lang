@@ -9,6 +9,8 @@ sources (borrow-form yields) and narrowed loop-var reads stay AST."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -86,8 +88,8 @@ class TestOptionalContainerSubscript:
                "    if d[\"a\"] is not None:\n"
                "        d[\"a\"].x = 5\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_readonly_view_iteration_registers_the_const_twin(self):
         # A CONST dict receiver's `.values()` view (`readonly[dict[..]]`
@@ -127,5 +129,5 @@ class TestOptionalContainerSubscript:
                "    for v in gen():\n"
                "        print(use(v))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.elem_family.optional")

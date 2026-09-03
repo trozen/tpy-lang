@@ -71,7 +71,6 @@ class TestBytesOwnedCallTernary:
                + "    return len(data)\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:ifexpr.bytes_mixed")
-        _assert_byte_identical(src)
 
     def test_bytes_literal_arm_stays_ast(self):
         # A bytes literal renders `bytes_literal_owned(..)`, a different arm
@@ -82,7 +81,6 @@ class TestBytesOwnedCallTernary:
                + "    return len(data)\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:ifexpr.bytes_mixed")
-        _assert_byte_identical(src)
 
     def test_view_returning_call_arms_stay_span(self):
         # Both arms VIEW-returning calls: the ternary IS a span, so the

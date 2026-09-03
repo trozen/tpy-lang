@@ -9,6 +9,8 @@ import pytest
 
 from ..diagnostics import SemanticError
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -80,9 +82,8 @@ class TestNestedTempThreading:
                + "            return v\n"
                + "        case _:\n"
                + "            return -1\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.container")
 
 
 class TestDictSetArrayLiteralArgTemp:
@@ -118,9 +119,8 @@ class TestDictSetArrayLiteralArgTemp:
         src = ("from tpy import Int32\n"
                "def use() -> None:\n"
                "    print(len({'a': 1}))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.native_arg.container")
 
 
 class TestCondTemps:
@@ -217,9 +217,7 @@ class TestCondTemps:
                + "    if (v := x) == eat([1, 2]):\n"
                + "        return v\n"
                + "    return -v\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.walrus")
 
     def test_mixed_walrus_temp_cond_stays_ast(self):
         # Mixed walrus + temps keeps the AST's legacy single-eval flush
@@ -233,9 +231,8 @@ class TestCondTemps:
                + "        total += m\n"
                + "        guard += 1\n"
                + "    return total\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.while:expr.call:call.arg_shape.container")
 
     def test_str_walrus_first_decl_routes(self):
         # A FIRST-DECL owned-str walrus target predeclares the bare owned
@@ -358,9 +355,7 @@ class TestWalrusLadder:
                "    if (x := maybe_get(i)) is not None:\n"
                "        return x.x\n"
                "    return 0\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.walrus")
 
     def test_sibling_branch_nonvalue_rebind_sema_rejected(self):
         # The sibling-branch re-bind hazard for the NEW walrus classes is
@@ -412,9 +407,7 @@ class TestWalrusLadder:
                + "    except ValueError:\n"
                + "        return -1\n"
                + "    return len(h.items)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.walrus")
 
 
 class TestValueSelect:
@@ -547,9 +540,8 @@ class TestContainerPtrSlot:
                "    xs = [3, 4]\n"
                "    ys = xs\n"
                "    return len(ys)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_mixed_walrus_union_temp_cond_stays_ast(self):
         # The mixed-cond reject counts EVERY emit-time temp kind, not just
@@ -571,9 +563,8 @@ class TestContainerPtrSlot:
                "    while (m := k - total) > 0 and check(Dog(m)):\n"
                "        total += 1\n"
                "    return total\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.while:expr.call:call.arg_shape.union")
 
     def test_if_cond_walrus_read_after_block(self):
         # The if-cond walrus binding stays readable AFTER the if block

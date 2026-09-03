@@ -281,7 +281,6 @@ def _cache_options_key(args: argparse.Namespace, input_path: Path,
         "pch": bool(args.pch),
         "no_main": bool(args.no_main),
         "emit_source": bool(args.emit_source),
-        "thir_strict": bool(args.thir_strict),
         "lib_dirs": [str(d) for d in lib_dirs],
         "third_party": {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
                         "date": args.date},
@@ -430,11 +429,7 @@ def _run_cli(is_runner: bool) -> int:
                              "an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
     parser.add_argument("--dump-thir", action="store_true",
-                        help="Print the lowered THIR for every body, naming the ones that fell back and why, and exit (debug)")
-    parser.add_argument("--thir-strict", action="store_true",
-                        help="Refuse the AST fallback: a body THIR cannot lower "
-                             "becomes a compile error instead of being re-emitted "
-                             "through the AST path")
+                        help="Print the lowered THIR for every body, naming the rejected ones and why, and exit (debug)")
     parser.add_argument("--explain-send", metavar="TYPE",
                         help="Print the Send derivation tree for TYPE (e.g. 'list[Order]') and exit")
     parser.add_argument("--explain-sync", metavar="TYPE",
@@ -749,8 +744,7 @@ def _run_cli(is_runner: bool) -> int:
 
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source,
-                                 no_main=args.no_main,
-                                 thir_strict=args.thir_strict)
+                                 no_main=args.no_main)
         all_cpp_paths = []
 
         cpp_config: CppCompilerConfig | None = None
@@ -857,8 +851,8 @@ def _run_cli(is_runner: bool) -> int:
                 # so a standalone pass silently omits both and can diverge on
                 # the rest. The generated C++ is discarded.
                 try:
-                    ctx = compiler.collect_thir(
-                        compiled, CodeGenOptions(thir_codegen=True))
+                    ctx = compiler.collect_thir(compiled, CodeGenOptions(),
+                                                tolerate_reject=True)
                 except CodeGenError as e:
                     if e.filename is None and not compiled.is_entry_point:
                         e.filename = source_name

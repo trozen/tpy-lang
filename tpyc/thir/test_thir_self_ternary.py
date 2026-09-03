@@ -16,6 +16,8 @@ a second deref would be wrong.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -29,18 +31,12 @@ def _gen(source):
     compiler, modules = _compile(source)
     hpp, cpp = compiler.generate_code_to_strings(
         _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
+                                                comment_line_numbers=False))
     return compiler, hpp, cpp
 
 
-def _fallback(source):
-    compiler, modules = _compile(source)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 _ACC = (
@@ -284,8 +280,7 @@ class TestPtrOptTernarySelfArmStillRejects:
     )
 
     def test_stays_ast_byte_identical(self):
-        assert _fallback(self.SRC) == {"body:expr.ifexpr": 1}
-        _assert_byte_identical(self.SRC)
+        _assert_rejects_at(_reject_tally(self.SRC), "body:expr.ifexpr")
 
 
 class TestPtrOptTernaryInMethodUnchanged:

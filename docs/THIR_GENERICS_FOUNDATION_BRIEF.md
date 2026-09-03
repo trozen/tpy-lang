@@ -127,8 +127,8 @@ plus a few genuinely-new pieces (below).
 ## Method (do not skip — this wave's hard-won lesson)
 
 1. **Measure first.** Run the reject probe over ALL marked `generics/` cases
-   (harness: `scripts/thir_migration/thir_scan.py <case>...`; it sets `thir_codegen=True`,
-   wraps the lower fns, prints per-body reject reasons). Build the real
+   (the `thir_scan.py` harness that did this was deleted with the migration
+   scripts; a reject is a compile error today, so `tpyc` on the case names it). Build the real
    per-arm / per-concept residue table. The tags are LOSSY — verify each
    category against the actual body `.py` + `expected/src/*.cpp` oracle before
    costing it. (Three ARCH picks collapsed this wave from trusting tags.)
@@ -138,8 +138,8 @@ plus a few genuinely-new pieces (below).
    method-call + `get` on coerce) — so plan to route a *cluster* of arms before
    any case flips.
 3. `/tpy-add-feature`, present the design (arm-threading plan + the invariant),
-   get approval, implement per-arm with commit-per-cell, flip via
-   `--thir-check-flip`, keep the byte-diff green.
+   get approval, implement per-arm with commit-per-cell, keep the corpus
+   byte-diff green.
 
 ## Coordination with THIR wave 4 (IMPORTANT)
 
@@ -165,4 +165,3 @@ plus a few genuinely-new pieces (below).
 - `docs/IR_DESIGN.md` — THIR design + the per-case operating model + wave
   orchestration lessons. `docs/THIR_COMPLETION_LEDGER.md` — per-construct
   porting reference (M7 = template frames -- routed 2026-07-16; no tier needed).
-- Reject probe: `scripts/thir_migration/thir_scan.py`.

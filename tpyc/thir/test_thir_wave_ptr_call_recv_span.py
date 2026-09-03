@@ -6,7 +6,8 @@ and its `Span[T]` result is a value view that lands bare even with an OPEN
 element. Corpus witness: tplib.array_list's `__span__`
 (`self._storage.ptr().span(Int32.trunc(self._size))`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -16,13 +17,8 @@ _HEAD = ("from tpy import Int32, Ptr, Span, take_ptr, nocopy\n"
          "from tpy.extern import native\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestPtrCallReceiverTemplate:
@@ -132,5 +128,4 @@ class TestPtrCallReceiverTemplateBoundary:
                + "    H().go()\n"
                + "    print(1)\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.method_call")

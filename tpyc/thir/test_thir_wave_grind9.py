@@ -16,6 +16,7 @@ and MIXED-render returns owe the copy lift.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -23,14 +24,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source):
-    compiler, modules = _compile(source)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 _NODE = (
@@ -117,7 +112,7 @@ class TestCompUnpackUnionElemRejects:
     )
 
     def test_union_elem_target_falls_back(self):
-        fell = _thir_fallbacks(self.SRC)
+        fell = _reject_tags(self.SRC)
         assert any(k.startswith("body:") for k in fell), fell
 
 
@@ -197,7 +192,7 @@ class TestPerElementOwnReturnsStillReject:
     )
 
     def test_all_own_return_falls_back(self):
-        fell = _thir_fallbacks(self.ALL_OWN)
+        fell = _reject_tags(self.ALL_OWN)
         assert any(k.startswith("body:") for k in fell), fell
 
     def test_mixed_own_return_routes(self):

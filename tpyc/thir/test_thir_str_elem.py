@@ -8,12 +8,11 @@ from .testutil import _compile, _entry, _fn, _lower
 _PRELUDE = "from tpy import Int32\n"
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -36,11 +35,8 @@ class TestStrElemRows:
         for name in ("recv", "cond", "app"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # The element read feeds the native str view-method positionally.
         assert ('::tpy::str_startswith(::tpy::__getitem__(argv, i), "-")'
                 in out)

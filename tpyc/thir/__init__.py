@@ -2,10 +2,6 @@
 
 An immutable, self-contained representation of a fully-analyzed module that
 codegen consumes without referencing the SemanticAnalyzer. See docs/IR_DESIGN.md.
-
-Covers the non-form value-scalar slice (fixed-int/bool over names, literals,
-arithmetic, same-module calls, if/elif/else, while), behind a flag and
-byte-identical to the AST-driven codegen path.
 """
 
 from .dump import dump_thir

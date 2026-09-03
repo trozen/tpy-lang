@@ -25,8 +25,6 @@ from enum import IntEnum
 from functools import partial
 from typing import TYPE_CHECKING
 
-from ..binding_audit import end_ast_body as _binding_end_body
-from .. import move_audit
 from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
@@ -116,8 +114,6 @@ if TYPE_CHECKING:
     from ..typesys import TpyType
     from .context import CodeGenContext
     from .types import TypeMapper
-    from .expressions import ExpressionGenerator
-    from .statements import StatementGenerator
     from .functions import FunctionGenerator
 
     # Saved (narrowed_vars, protocol_narrowings, literal_facts) snapshots that
@@ -280,8 +276,7 @@ class _StateLabel:
 # `async def -> None` lowers Poll[None]'s type-arg slot to std::monostate
 # (the value-bearing-None unit type); the `ready` factory needs an actual
 # value of that type, so we construct `std::monostate{}` explicitly.
-# Centralised here so the 3 emit sites in this module + 1 in statements.py
-# can't drift apart.
+# Centralised here so the emit sites in this module can't drift apart.
 POLL_VOID_READY_RETURN = (
     "return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});"
 )
@@ -303,33 +298,22 @@ class AsyncCoroCodegen:
         self,
         ctx: "CodeGenContext",
         types: "TypeMapper",
-        expressions: "ExpressionGenerator",
-        statements: "StatementGenerator",
         functions: "FunctionGenerator",
     ):
         self.ctx = ctx
         self.types = types
-        self.expressions = expressions
-        self.statements = statements
         self.functions = functions
         # The body-context seeding (`setup_resumable_frame_locals`) consumes
         # the frame-layout plan but runs on the ctx, which has no emitter
         # back-reference -- hand it the builder.
         ctx.frame_layout_builder = self._frame_layout
-        # The linear statement walk reaches a `return` inside a resumable
-        # frame, whose lowering is frame scaffolding and lives here. Written
-        # through the bare parameter rather than `self.statements` so the
-        # write is not read as handing a body-emitter method outward: this
-        # points from the dying module to the surviving one, the direction
-        # that needs no guarding, and it disappears with that module.
-        statements.gen_async = self
         # Set by CodeGenerator after init; the resumable for-loop emit reuses
         # the legacy strategy analysis (`_analyze_for_strategy`).
         self.gen_generators: GeneratorCodegen
         # Resumable-shape discriminator read by the `_resumable_*` policy
         # seams. ASYNC (await -> __poll__ -> Poll<T>) is the default; the
-        # generator migration sets GENERATOR (yield -> __next__ ->
-        # expected<T, StopIteration>) transiently via `_resumable_shape`.
+        # GENERATOR shape (yield -> __next__ -> expected<T, StopIteration>)
+        # is selected transiently via `_resumable_shape`.
         self._shape: rcfg.ResumableShape = rcfg.ResumableShape.ASYNC
 
     @contextlib.contextmanager
@@ -1654,7 +1638,7 @@ class AsyncCoroCodegen:
             local_ns.bind_variable(pname, ptype)
 
         crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
-        # Mirror sync `_gen_method`: a generator/async method on a generic
+        # Like a sync method: a generator/async method on a generic
         # record needs the record's type-param bounds in scope so for-loop
         # over `self.items: T` resolves T to its protocol bound (otherwise
         # falls back to the universal `::tpy::__iter__` path, missing the
@@ -1716,12 +1700,6 @@ class AsyncCoroCodegen:
         try:
             yield
         finally:
-            # Close the binding-audit window on the frame's own state: the
-            # restores below re-install the PREVIOUS emission's sets, and a
-            # lazily-closed window would attribute that residue to this
-            # function (the exc_val misattribution the audit's first corpus
-            # run surfaced).
-            _binding_end_body(self.ctx)
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_forwarded_locals = old_forwarded_locals
@@ -1756,10 +1734,9 @@ class AsyncCoroCodegen:
         if not cfg.finally_helpers and not nested_defs:
             return
         struct_name = self._struct_name_templated(func, record_name)
-        # A routed body lowers its helper-finally statements into the same
-        # leaf table; the second attempt lookup is cached (free). The scope
-        # install swaps the per-helper gen_stmt to the leaf emitter, so the
-        # helper body renders through the seam like a BB leaf.
+        # Helper-finally statements come from the same lowering attempt as the
+        # body (the second lookup is cached), and render through the installed
+        # leaf emitter like any other BB leaf.
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
         with self._resumable_frame_ctx(func, record_name):
@@ -1771,11 +1748,8 @@ class AsyncCoroCodegen:
                     self.ctx.indent_level = 1
                     with self._generator_finally_helper_scope():
                         for stmt in body_stmts:
-                            if leaf is not None:
-                                leaf.emit_leaf_stmt(
-                                    out, stmt, self.ctx.indent_level)
-                            else:
-                                self.statements.gen_stmt(out, stmt)
+                            leaf.emit_leaf_stmt(
+                                out, stmt, self.ctx.indent_level)
                     self.ctx.indent_level = 0
                     out.write(f"}}\n")
             for nd in nested_defs:
@@ -1786,25 +1760,19 @@ class AsyncCoroCodegen:
                 out.write(f"{ret_str} {struct_name}::"
                           f"{escape_cpp_name(nd.func.name)}({params_str}) {{\n")
                 self.ctx.indent_level = 1
-                if leaf is not None:
-                    # Routed frame: the member body was lowered under the
-                    # member scope at frame lowering; a missing entry is a
-                    # lowering/seam disagreement, never a per-member
-                    # fallback.
-                    leaf.emit_nested_def_body(out, nd.func,
-                                              self.ctx.indent_level)
-                else:
-                    self.statements.gen_nested_def_body(out, nd.func, nd_ret)
+                # The member body was lowered under the member scope at
+                # frame lowering; a missing entry is a lowering/seam
+                # disagreement.
+                leaf.emit_nested_def_body(out, nd.func, self.ctx.indent_level)
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 
     # =====================================================================
     # Resumable-shape policy seam. These methods isolate the decisions
     # that differ between the async (`await` -> `__poll__`) shape and the
-    # future generator (`yield` -> `__next__`) shape so the generator
-    # migration can plug in without forking the state-machine emitter.
-    # Each seam branches on `self._shape`; async output must stay
-    # byte-identical (async never enters the generator branch).
+    # generator (`yield` -> `__next__`) shape, so one state-machine emitter
+    # serves both. Each seam branches on `self._shape`; async never enters
+    # the generator branch.
     # =====================================================================
 
     def _generator_slot_cpp(self, func: TpyFunction) -> str:
@@ -1831,7 +1799,7 @@ class AsyncCoroCodegen:
         T_slot is the iterator slot type from
         `gen_generators._iter_slot_for_yield` -- borrow form
         (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
-        bare cpp type otherwise. `gen_yield_value` already bridges
+        bare cpp type otherwise. The yield emit already bridges
         storage-form sources into the borrow-form slot when
         `ctx.current_yield_type` is set (done by
         `_resumable_return_lowering`)."""
@@ -1981,9 +1949,8 @@ class AsyncCoroCodegen:
         what keeps that shape out of reach rather than any check here.
 
         Nothing is published from here: the render is discarded, so it drives
-        no emitted move and must not stand as a witness in the cross-path
-        move join. The body walk records the authoritative verdict when it
-        renders the same argument at the emplace.
+        no emitted move. The body walk renders the authoritative spelling when
+        it emits the same argument at the emplace.
 
         The leaf emitter is installed for the same reason the body scope is:
         a routed body renders its emplace arguments off its own lowered
@@ -1995,32 +1962,16 @@ class AsyncCoroCodegen:
                    and self._protocol_param_positions(y.payload.operand_expr)]
         if not pending:
             return {}
-        # Lowering must run while the move audit is still live: this is the
-        # first thing that triggers it for the frame, and the audit records
-        # its THIR-side verdicts there, not at render time. Constructing the
-        # leaf inside the window below would drop every verdict for this
-        # function, and an unrecorded node reads as "not asked" rather than
-        # as a divergence, so nothing would report it.
-        #
-        # The suppression below is load-bearing, not hygiene: the join folds
-        # per node with OR, and the seeded set only ever widens toward
-        # moving, so a verdict recorded from this discarded render would
-        # stick and fail a case the real body walk renders correctly.
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
         args: dict[int, list[str]] = {}
-        was_auditing = move_audit.enabled()
-        move_audit.set_enabled(False)
-        try:
-            with self._resumable_frame_ctx(func, record_name):
-                self.ctx.movable_locals |= self.ctx.sema_movable_locals
-                with self._thir_leaf_scope(leaf):
-                    for y in pending:
-                        extra = self._extra_template_args_for_await(
-                            y.payload.operand_expr)
-                        if extra:
-                            args[y.suspension_index] = extra
-        finally:
-            move_audit.set_enabled(was_auditing)
+        with self._resumable_frame_ctx(func, record_name):
+            self.ctx.movable_locals |= self.ctx.sema_movable_locals
+            with self._thir_leaf_scope(leaf):
+                for y in pending:
+                    extra = self._extra_template_args_for_await(
+                        y.payload.operand_expr)
+                    if extra:
+                        args[y.suspension_index] = extra
         return args
 
     def _emit_resumable_sub_future_fields(
@@ -2134,26 +2085,22 @@ class AsyncCoroCodegen:
     def _thir_resumable_attempt(self, func: TpyFunction,
                                 record_name: str | None,
                                 cfg: 'rcfg.CFG'):
-        """Attempt-once THIR leaf lowering for this frame body; returns the
-        THIRResumableBody or None (cached either way, so the fallback tally
-        folds exactly once per function)."""
-        if not self.ctx.thir_codegen:
-            return None
+        """Attempt-once THIR leaf lowering for this frame body, cached so a
+        re-entered frame lowers exactly once."""
         cache = self.ctx.thir_resumables
         key = id(func)
         if key in cache:
             return cache[key]
-        from ..thir.fallback import (begin_attempt, commit_attempt,
-                                     fold_attempt, record_arm_residual)
-        from ..thir.shape import record_shape
+        from ..thir.reject import (begin_attempt, commit_attempt,
+                                   reject_attempt)
         from ..thir.lower.resumable import lower_resumable
         begin_attempt()
         # The case-label set (cached on the CFG) doubles as the lowering's
         # narrowing-alias boundary: case entries re-establish `__{var}`.
         case_entry_ids = frozenset(self._compute_case_entries(cfg))
         # The frame-layout plan is the skeleton's own placement decision;
-        # reusing it (vs re-deriving) keeps the frame-field form decision
-        # identical on both paths.
+        # handing it to lowering (vs re-deriving) keeps the skeleton and the
+        # lowered leaves on one frame-field form decision.
         rb = lower_resumable(func, self.ctx.analyzer, self.types.type_to_cpp,
                              cfg, record_name=record_name,
                              render_type_stored=self.types.type_to_cpp_stored,
@@ -2161,24 +2108,16 @@ class AsyncCoroCodegen:
                              native_globals=self.ctx.native_global_names,
                              frame_layout=self._frame_layout(func))
         cache[key] = rb
-        if rb is not None:
-            commit_attempt()
-            record_shape(func, "resumable", routed=True)
-        else:
-            fold_attempt("resumable", func,
-                         strict=self.ctx.options.thir_strict)
-            record_arm_residual(func.body)
-            record_shape(func, "resumable", routed=False)
+        if rb is None:
+            reject_attempt("resumable", func)
+        commit_attempt()
         return rb
 
     def _thir_resumable_leaf_emitter(self, func: TpyFunction,
                                      record_name: str | None,
                                      cfg: 'rcfg.CFG'):
-        """The routed body's leaf renderer bound to the live ctx sinks, or
-        None when the body stays on the AST leaf path."""
+        """The body's leaf renderer bound to the live ctx sinks."""
         rb = self._thir_resumable_attempt(func, record_name, cfg)
-        if rb is None:
-            return None
         from ..thir.emit import (CtxCommentSink, CtxCounter, CtxIterCounter,
                                  CtxTempSink, ResumableLeafEmitter)
 
@@ -2198,17 +2137,28 @@ class AsyncCoroCodegen:
                 self.ctx, "finally_guard_counter"),
             # The skeleton registers loop-var shadows of frame fields in the
             # LIVE ctx set; leaf renders must suppress the frame `(*name)`
-            # deref exactly while a shadow is in scope, like the AST body.
+            # deref exactly while a shadow is in scope.
             frame_shadow_probe=(
                 lambda n: n in self.ctx.frame_field_shadows),
             resumable_return_hook=_return_hook,
             # The leaf finally bridge: THIR finally frames mirror onto the
-            # AST finally stack (so _make_async_return's chain walk inlines
+            # ctx finally stack (so _make_async_return's chain walk inlines
             # them) with one shared guard-liveness truth.
             live_finally_guards=self.ctx.live_finally_guards,
             ast_finally_push=partial(emit_prims.push_finally, self.ctx),
             ast_finally_pop=lambda: self.ctx.finally_stack.pop(),
             iter_counter=CtxIterCounter(self.ctx))
+
+    @property
+    def _leaf(self) -> "ResumableLeafEmitter":
+        """The live frame's leaf renderer. Every user-source render inside a
+        frame body goes through it, so a missing one is a seam bug rather
+        than a shape this emitter can render itself."""
+        leaf = self.ctx.thir_resumable_leaf
+        if leaf is None:
+            raise CodeGenError(
+                "internal error: no resumable leaf emitter installed", None)
+        return leaf
 
     @contextlib.contextmanager
     def _thir_leaf_scope(self, leaf):
@@ -2255,24 +2205,14 @@ class AsyncCoroCodegen:
         an alias bound before the try can still read the local from the
         finally body (liveness's alias tracking does not survive the
         return arm, so the last-use fact alone cannot rule that out)."""
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            # A routed body renders position-blind, replacing only the value
-            # string; the _wrap_view_to_storage / _async_ret_to_borrow wraps
-            # it skips are covered at lowering for every admitted return
-            # shape: STORAGE forms need no lift, the generic TRAIT lift is
-            # mirrored (the async_ret_val_or_ptr THIRCoerce), and BORROW
-            # forms reject to AST fallback. The last-use move it skips is
-            # mirrored too (THIRMove in _lower_resumable_return_value) with
-            # the same site rule via `allow_move` -- so every scaffolding
-            # site stays identical. Serves ReturnT terminators AND nested
-            # leaf returns (THIRResumableReturn's emit hook re-enters
-            # _make_async_return, which lands back here). Widening the
-            # return-shape gate must revisit this seam -- see the
-            # THIRResumableBody return_values contract.
-            return leaf.render_return_value(stmt, allow_move=allow_move)
-        return self.statements._async_return_value_ast(
-            stmt, ret_type, to_borrow=to_borrow, allow_move=allow_move)
+        # The render is position-blind: it replaces only the value string,
+        # and every view/borrow lift the scaffolding would otherwise apply is
+        # covered at lowering for each admitted return shape. Serves ReturnT
+        # terminators AND nested leaf returns (THIRResumableReturn's emit hook
+        # re-enters _make_async_return, which lands back here). Widening the
+        # return-shape gate must revisit this seam -- see the
+        # THIRResumableBody return_values contract.
+        return self._leaf.render_return_value(stmt, allow_move=allow_move)
 
     def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
         """Lower `return v` inside an `async def` body. When a CFG-based
@@ -2287,17 +2227,6 @@ class AsyncCoroCodegen:
         out = io.StringIO()
         pending_flag = self.ctx.async_pending_return_flag
         if pending_flag is not None:
-            if (stmt.finally_deferred_capture
-                    and self.ctx.thir_resumable_leaf is None):
-                # The CFG pending-slot store has no deferred-capture recipe;
-                # keep the retract invariant so the restored move mark can
-                # never turn the eager slot store into a moved-from read.
-                # (Liveness suppresses stamps under a suspending finally, so
-                # this is a defensive backstop.) A routed body needs no
-                # retraction: its store renders through the seam without
-                # `allow_move`, which strips the lowered move outright, so
-                # the mark has no reader left to mislead.
-                self.statements._retract_deferred_return_mark(stmt)
             pending_slot = self.ctx.async_pending_return_slot
             target_state = self.ctx.async_pending_return_target_state
             boundary = self.ctx.async_pending_return_boundary
@@ -2337,19 +2266,9 @@ class AsyncCoroCodegen:
                 and self.ctx.finally_stack):
             recipe = None
             if stmt.finally_deferred_capture:
-                leaf = self.ctx.thir_resumable_leaf
-                if leaf is not None:
-                    # A routed body's stamped return ALWAYS has a recipe:
-                    # lowering rejects the whole body when it cannot build
-                    # one, because routing is already committed here and the
-                    # AST's alternative (retracting the sema move mark at
-                    # emit) mutates analysis state.
-                    recipe = leaf.render_deferred_return(stmt)
-                else:
-                    recipe = self.statements._deferred_return_recipe(
-                        stmt, ret_type)
-                    if recipe is None:
-                        self.statements._retract_deferred_return_mark(stmt)
+                # A stamped return ALWAYS has a recipe: lowering rejects the
+                # whole body when it cannot build one.
+                recipe = self._leaf.render_deferred_return(stmt)
             if recipe is not None:
                 ptr, capture_rhs, deferred_materialize = recipe
                 chain = io.StringIO()
@@ -2541,7 +2460,7 @@ class AsyncCoroCodegen:
                 func_returns_void=self._is_void_return(func),
             )
             # Build inside the resumable-frame body context so the payload
-            # factory's field-type `gen_expr` (`_extra_template_args_for_await`)
+            # factory's field-type render (`_extra_template_args_for_await`)
             # applies the `self`->`__self` rewrite and `frame_slot` deref,
             # matching the emplace site. `setup_body_scope` is side-effect-free
             # state setup, so entering it here (build) and again at emit is
@@ -2622,11 +2541,10 @@ class AsyncCoroCodegen:
         info_by_uid: dict[int, GeneratorForInfo] = {}
         counter = [0]
         # Loop-var hoists are accumulated here and applied to
-        # func.generator_locals only after the walk completes -- if the walk
-        # raises `_CFGNotYetSupported` mid-way (an unsupported for-loop
-        # shape) the func falls back to the legacy emitter, which must not
-        # inherit partially-appended loop-var entries (they would emit as
-        # duplicate frame fields alongside the legacy for-loop fields).
+        # func.generator_locals only after the walk completes, so a mid-walk
+        # `_CFGNotYetSupported` (an unsupported for-loop shape) leaves no
+        # partially-appended loop-var entries behind -- they would emit as
+        # duplicate frame fields.
         local_hoists: list[tuple[str, "TpyType"]] = []
 
         def walk(stmts: list[TpyStmt]) -> None:
@@ -3174,7 +3092,7 @@ class AsyncCoroCodegen:
         the next `__next__` call) while the pointer still aims at it.
 
         Which writes need a slot is `ptr_slot_field_type`'s call (shared
-        with the emit arms in `_gen_pointer_local_rebind`, which raise on a
+        with the pointer-local reseat lowering, which rejects on a
         missing entry). Fields land on `state.ptr_slot_fields`; the site
         map (`id(stmt) -> field`) on `state.ptr_slot_map`, seeded into the
         body ctx by `setup_resumable_frame_locals`. Per-site fields (no
@@ -4393,11 +4311,6 @@ class AsyncCoroCodegen:
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
 
-    def _resume_index_for_case(self, cfg: 'rcfg.CFG',
-                                 case_entry_bb: int) -> int | None:
-        y = cfg.resume_to_yield().get(case_entry_bb)
-        return y.suspension_index if y is not None else None
-
     def _yield_at_resume(self, cfg: 'rcfg.CFG',
                           resume_bb: int) -> 'rcfg.Yield | None':
         return cfg.resume_to_yield().get(resume_bb)
@@ -4548,11 +4461,9 @@ class AsyncCoroCodegen:
                     self._emit_async_with_setup(out, body_indent, stmt)
                 elif isinstance(stmt, rcfg.AsyncFinallyExit):
                     self._emit_async_finally_exit(out, body_indent, stmt)
-                elif self.ctx.thir_resumable_leaf is not None:
-                    self.ctx.thir_resumable_leaf.emit_leaf_stmt(
-                        out, stmt, self.ctx.indent_level)
                 else:
-                    self.statements.gen_stmt(out, stmt)
+                    self._leaf.emit_leaf_stmt(
+                        out, stmt, self.ctx.indent_level)
             t = bb.terminator
             if isinstance(t, rcfg.Yield):
                 self._emit_yield_terminator(out, body_indent, t, func)
@@ -4580,11 +4491,8 @@ class AsyncCoroCodegen:
             if isinstance(t, rcfg.RaiseT):
                 # Emit the raise as an ordinary TpyRaise statement; the
                 # finally chain is run via C++ exception unwinding.
-                if self.ctx.thir_resumable_leaf is not None:
-                    self.ctx.thir_resumable_leaf.emit_leaf_stmt(
-                        out, t.raise_stmt, self.ctx.indent_level)
-                else:
-                    self.statements.gen_stmt(out, t.raise_stmt)
+                self._leaf.emit_leaf_stmt(
+                    out, t.raise_stmt, self.ctx.indent_level)
                 return
             if isinstance(t, rcfg.Unreachable):
                 self._emit_unreachable_tail(out, body_indent, func)
@@ -4602,10 +4510,7 @@ class AsyncCoroCodegen:
                 cur = t.next_bb
                 continue
             if isinstance(t, rcfg.Branch):
-                if self.ctx.thir_resumable_leaf is not None:
-                    cond_cpp = self.ctx.thir_resumable_leaf.render_cond(t.cond)
-                else:
-                    cond_cpp = self.expressions.gen_truthy_expr(t.cond)
+                cond_cpp = self._leaf.render_cond(t.cond)
                 self.ctx.temps.flush(out, body_indent)
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1
@@ -4638,7 +4543,7 @@ class AsyncCoroCodegen:
                               case_entries: dict[int, _StateLabel],
                               func: TpyFunction, from_bb: int) -> None:
         """Emit a suspending `match` (H1) by reusing the ordinary
-        `gen_match` for the type-aware dispatch, with each arm body routed
+        match dispatch for the type-aware tiers, with each arm body routed
         back through `_walk_inline` via the `_emit_case_body` hook. Arm
         bodies are inlined here (not their own cases); their internal
         suspensions split out resume cases as usual. After the dispatch,
@@ -4648,48 +4553,31 @@ class AsyncCoroCodegen:
         # region, so the arm BB shares `from_bb`'s region stack -- the
         # inline walk handles its own fall-to-join / suspension exits.
         def emit_arm(arm_bb: int) -> None:
-            # gen_match emits the arm's first-BB subject narrowing (__case_N);
+            # The dispatch emits the arm's first-BB subject narrowing (__case_N);
             # pass the arm's stamped facts as chain_entry so a nested branch
             # inside the arm diffs against the already-active subject fact
             # (avoids a redundant re-cast). Resume cases inside the arm
             # re-establish the narrowing via the generic _emit_case_body path.
             self._walk_inline(out, cfg, arm_bb, case_entries, func,
                               chain_entry=cfg.blocks[arm_bb].entry_narrowings)
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            # Routed body: the whole dispatch emits through the THIR match
-            # tiers; the hook walks each arm's BB chain in place (the same
-            # contract gen_match honors via resumable_arm_emitter).
-            arm_bb_by_body = {
-                id(case.body): arm_bb
-                for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
-            }
+        # The whole dispatch emits through the THIR match tiers; the hook
+        # walks each arm's BB chain in place.
+        arm_bb_by_body = {
+            id(case.body): arm_bb
+            for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
+        }
 
-            def arm_hook(body_key: int, lvl: int) -> None:
-                # The tier hands the arm-body depth; the walker's renders
-                # key off ctx.indent_level, so scope it to the arm.
-                old_level = self.ctx.indent_level
-                self.ctx.indent_level = lvl
-                try:
-                    emit_arm(arm_bb_by_body[body_key])
-                finally:
-                    self.ctx.indent_level = old_level
-            leaf.emit_match_dispatch(out, t.match_stmt,
-                                     self.ctx.indent_level, arm_hook)
-        else:
-            old_emitter = self.ctx.resumable_arm_emitter
-            old_map = self.ctx.resumable_arm_bb_by_body
-            self.ctx.resumable_arm_emitter = emit_arm
-            self.ctx.resumable_arm_bb_by_body = {
-                id(case.body): arm_bb
-                for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
-            }
+        def arm_hook(body_key: int, lvl: int) -> None:
+            # The tier hands the arm-body depth; the walker's renders key off
+            # ctx.indent_level, so scope it to the arm.
+            old_level = self.ctx.indent_level
+            self.ctx.indent_level = lvl
             try:
-                self.statements.match.gen_match(out, t.match_stmt,
-                                                body_indent)
+                emit_arm(arm_bb_by_body[body_key])
             finally:
-                self.ctx.resumable_arm_emitter = old_emitter
-                self.ctx.resumable_arm_bb_by_body = old_map
+                self.ctx.indent_level = old_level
+        self._leaf.emit_match_dispatch(out, t.match_stmt,
+                                       self.ctx.indent_level, arm_hook)
         # The dispatch case MUST end in a terminating statement: a switch
         # whose cases all return/continue still "may fall through" to the
         # GCC eye (no default), so without this the next state's `case`
@@ -4853,11 +4741,7 @@ class AsyncCoroCodegen:
         `operator=` is deleted), or bind a borrowed `CM*`. A global manager
         already renders as `CM*`, so the borrowed bind must not re-take its
         address (would double-pointer)."""
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            ctx_expr = leaf.render_region_expr(item.context_expr)
-        else:
-            ctx_expr = self.expressions.gen_expr(item.context_expr)
+        ctx_expr = self._leaf.render_region_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
         if item.manager_borrowed:
             if self.ctx.is_already_pointer_source(item.context_expr):
@@ -4900,18 +4784,13 @@ class AsyncCoroCodegen:
         strategies. When the iterable is a temporary (the pre-scan allocated
         `__for_src_<uid>`), store it once here and return the stored access;
         otherwise return the (re-evaluable) named expression."""
-        # Shares `render_for_iterable` with the sync for-loop: narrowed
-        # Optional unwrap + indirect-name deref with one owner per shape.
-        # (A routed body hands over a BARE leaf for every narrowed-optional
-        # iterable it admits, so this unwrap stays the single owner.)
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            base_cpp = leaf.render_region_expr(iterable_expr)
-            src_cpp = emit_prims.maybe_unwrap_narrowed_optional(
-                self.ctx, iterable_expr, base_cpp,
-                self.ctx.is_indirect_name(iterable_expr))
-        else:
-            src_cpp = self.expressions.render_for_iterable(iterable_expr)
+        # The leaf hands over a BARE render for every narrowed-optional
+        # iterable it admits, so this unwrap is the single owner of the
+        # narrowed-Optional / indirect-name deref.
+        base_cpp = self._leaf.render_region_expr(iterable_expr)
+        src_cpp = emit_prims.maybe_unwrap_narrowed_optional(
+            self.ctx, iterable_expr, base_cpp,
+            self.ctx.is_indirect_name(iterable_expr))
         self.ctx.temps.flush(out, indent)
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
             out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")
@@ -4922,8 +4801,8 @@ class AsyncCoroCodegen:
                                     stmt: 'rcfg.AsyncForIterSetup',
                                     func: TpyFunction) -> None:
         """Initialize for-loop iteration state into the frame, per strategy
-        (mirrors the legacy `_gen_generator_for_*` peephole init so range /
-        begin_end generators keep their fast shape):
+        (mirrors the simple-generator peephole init so range / begin_end
+        generators keep their fast shape):
           async_for: `__for_itr.emplace((it).__aiter__())`
           range:     `__for_i`/`__for_stop`[/`__for_step`] counters
           begin_end: `[__for_src.emplace(...);] __for_it.emplace(src.begin()); __for_end.emplace(...end())`
@@ -4933,10 +4812,7 @@ class AsyncCoroCodegen:
         """
         uid = stmt.uid
         if stmt.is_async:
-            leaf = self.ctx.thir_resumable_leaf
-            iter_cpp = (leaf.render_region_expr(stmt.iterable_expr)
-                        if leaf is not None
-                        else self.expressions.gen_expr(stmt.iterable_expr))
+            iter_cpp = self._leaf.render_region_expr(stmt.iterable_expr)
             self.ctx.temps.flush(out, indent)
             # A global iterable already renders as `Src*`; deref so the
             # `.__aiter__()` call resolves rather than hitting `.`-on-pointer.
@@ -4973,11 +4849,8 @@ class AsyncCoroCodegen:
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
         cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            gen_args = [leaf.render_region_expr(a) for a in range_call.args]
-        else:
-            gen_args = self.statements.builtins.gen_range_args(range_call)
+        gen_args = [self._leaf.render_region_expr(a)
+                    for a in range_call.args]
         self.ctx.temps.flush(out, indent)
         nargs = len(gen_args)
         ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
@@ -5060,7 +4933,7 @@ class AsyncCoroCodegen:
             return (pre, f"!{r}.has_value()",
                     [f"{cpp_var}.emplace(::tpy::unwrap_ref_move(*{r}));"])
         elem = f"::tpy::unwrap_ref(*{r})"
-        # Bind form mirrors the loop var's frame storage shape (D2a):
+        # Bind form mirrors the loop var's frame storage shape:
         # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.
         if info is not None and info.pointer_form_loop_var == stmt.var:
             bind_post = [f"{cpp_var} = &({elem});"]
@@ -5076,10 +4949,7 @@ class AsyncCoroCodegen:
         `__for_src` (temporary) or the re-referencable named expression."""
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
             return f"(*__for_src_{uid})"
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            return leaf.render_region_expr(stmt.iterable)
-        return self.expressions.gen_expr(stmt.iterable)
+        return self._leaf.render_region_expr(stmt.iterable)
 
     def _emit_async_for_advance(self, out: "TextIO", indent: str,
                                   cfg: 'rcfg.CFG',
@@ -5154,59 +5024,16 @@ class AsyncCoroCodegen:
         return AsyncCoroCodegen._sub_field_name(suspension_index)
 
     def _emplace_args(self, call: 'TpyCall | TpyMethodCall') -> 'list[str]':
-        """All emplace args for a sub-coro construction -- the THIR leaf
-        seam's argument chokepoint (a routed body renders them from its
-        lowered nodes; the AST path mirrors sync call-arg coercions)."""
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            return leaf.render_await_args(call)
-        return [self._gen_coro_emplace_arg(a, i, call)
-                for i, a in enumerate(call.args)]
+        """All emplace args for a sub-coro construction -- the leaf seam's
+        argument chokepoint."""
+        return self._leaf.render_await_args(call)
 
     def _suspend_expr_cpp(self, expr: 'TpyExpr') -> str:
         """Render a bound-method await receiver or an ERASED/BORROWED await
         operand -- the THIR leaf seam's suspend-expression chokepoint (the
         skeleton keeps its move / & / .get() / __self-prepend wrap around
         this render)."""
-        leaf = self.ctx.thir_resumable_leaf
-        if leaf is not None:
-            return leaf.render_suspend_expr(expr)
-        return self.expressions.gen_expr(expr)
-
-    def _gen_coro_emplace_arg(self, arg: 'TpyExpr', arg_index: int,
-                                call: 'TpyCall | TpyMethodCall') -> str:
-        """Generate one arg for `__sub_N.emplace(...)` constructing a
-        sub-coroutine. Mirrors the param-type-driven coercions sync call
-        codegen applies in `_gen_call`: pointer-form `Optional[NonValue]`
-        lift (P -> &P) when the callee param is the `T*` shape, the
-        @dynamic-protocol Adapter wrap when the callee takes `Own[P]`
-        (needed for `await wait_for(coro, ...)` so the concrete coro
-        gets boxed into `unique_ptr<Cancellable<T>>`), plus the full
-        `Own[T]` move-out machinery (`std::move(name)` for last-use
-        movable lvalues bound to `Own[T]` params) via `gen_call_arg`.
-        """
-        fi = call.resolved_function_info
-        if fi is None or arg_index >= len(fi.params):
-            return self.expressions.gen_expr(arg)
-        ptype = fi.params[arg_index].type
-        opt_arg = self.expressions._gen_optional_ptr_arg(arg, ptype)
-        if opt_arg is not None:
-            return opt_arg
-        dynamic_arg = self.expressions._gen_dynamic_protocol_arg(arg, ptype)
-        if dynamic_arg is not None:
-            return dynamic_arg
-        # The const verdict lives on the RAW fi only (populated at the end of
-        # sema Phase-2; substitution never copies it) -- a substituted fi for
-        # a generic receiver reads None and drops the const wrap.
-        _dcbp = fi.root.deep_const_borrow_params
-        union_arg = self.expressions._gen_union_arg(
-            arg, ptype,
-            is_readonly_target=(_dcbp is not None and arg_index in _dcbp))
-        if union_arg is not None:
-            return union_arg
-        return self.expressions.gen_call_arg(
-            arg, ptype,
-            target_const_borrow=(_dcbp is not None and arg_index in _dcbp))
+        return self._leaf.render_suspend_expr(expr)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',
@@ -5247,7 +5074,7 @@ class AsyncCoroCodegen:
                 or payload.kind is rcfg.AwaitKind.VARDECL):
             target = escape_cpp_name(payload.bind_target)
             # This bind ASSIGNS a frame field rather than DECLARING a local, so
-            # it never reaches `_gen_var_decl`'s promotion -- register the name
+            # it never reaches the var-decl promotion -- register the name
             # here or the working set under-covers every await-bound local and
             # its last use copies (an uncompilable copy for a @nocopy payload).
             emit_prims.promote_movable(self.ctx, payload.bind_target)
@@ -5331,10 +5158,7 @@ class AsyncCoroCodegen:
             "YieldPayload built from a generator body always carries yield_stmt"
         if ys.loc is not None:
             self.ctx.emit_source_comment(out, ys.loc, indent)
-        if self.ctx.thir_resumable_leaf is not None:
-            yield_expr = self.ctx.thir_resumable_leaf.render_yield_value(ys)
-        else:
-            yield_expr = self.statements.gen_yield_value(ys)
+        yield_expr = self._leaf.render_yield_value(ys)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
         out.write(f"{indent}__state = {resume};\n")

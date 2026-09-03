@@ -1,10 +1,11 @@
 # THIR Construct-Completion Plan
 
-*Built 2026-07-15 on the landed wave-4 collector (`thir-routing-wave4` @
-`0b8681954`, dial 1177). Reorients the migration from opportunistic
-case-flipping to construct-completion, steered toward AST-emit-code
-DELETION. Data from `$THIR_ARM_RESIDUAL_JSON` / `$THIR_FALLBACK_JSON` on
-the landed state.*
+*HISTORICAL. Built 2026-07-15 on the landed wave-4 collector
+(`thir-routing-wave4` @ `0b8681954`, dial 1177). Reorients the migration from
+opportunistic case-flipping to construct-completion, steered toward AST-emit-code
+DELETION -- which happened on 2026-09-03. Its data came from per-run measurement
+dumps that no longer exist; read it as the record of how the remaining
+constructs were sequenced.*
 
 ## The metric shift
 

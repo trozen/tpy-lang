@@ -14,6 +14,7 @@ lift, so it stays out. Corpus witness: hashlib `_drain_blocks`.
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical, _compile, _entry,
 )
@@ -32,8 +33,7 @@ _ACC = (
 def _emit(src: str):
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp + cpp
 
 
@@ -70,10 +70,7 @@ class TestBytearrayFieldWrite:
                "    def fill(self, v: Own[bytearray]) -> None:\n"
                "        nb: bytearray = bytearray()\n"
                "        self.opt = nb\n")
-        compiler, _ = _emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:stmt.assign",
-                           "assign.field_write_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.assign', 'assign.field_write_shape')
 
     def test_bytes_field_keeps_the_view_materialize(self):
         # BOUNDARY: the `bytes` sibling is a VIEW source at an owning slot,

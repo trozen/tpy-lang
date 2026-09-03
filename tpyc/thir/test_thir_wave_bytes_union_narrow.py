@@ -12,6 +12,7 @@ slotless pointer-repr Optional off it takes the plain address-of.
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -96,9 +97,8 @@ class TestBytesUnionNarrowBoundaries:
             "def main() -> None:\n"
             "    print(enc(None))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("reseat.narrow_alias_addr")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_reseat_source")
 
     def test_value_variant_subject_alias_reseat_still_defers(self):
         # A loop element over `list[A | B]` binds the STORAGE variant, so its
@@ -125,6 +125,5 @@ class TestBytesUnionNarrowBoundaries:
             "    xs: list[A | B] = [A(), B()]\n"
             "    print(pick(xs))\n"
         )
-        _, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("reseat.narrow_alias_addr")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_reseat_source")

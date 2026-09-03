@@ -16,12 +16,11 @@ from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
                        _lower_ctx, _lower_ctx_witnessed)
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -29,8 +28,7 @@ def _emit_witnesses(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return compiler._thir_face_witnesses
 
 
@@ -48,7 +46,6 @@ class TestTryFinallyBasic:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "plain") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -61,7 +58,7 @@ class TestTryFinallyBasic:
     def test_emit_shape(self):
         # One finally copy in the catch(...) arm + one on the normal path,
         # both inside the extra brace scope; the catch rethrows.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void plain"):]
         assert body.count("std::cout << 0") == 2
         assert "} catch (...) {" in body
@@ -89,7 +86,6 @@ class TestTryHoistDecls:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "hoisted") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_hoist_decls_render(self):
         # Sorted per sema's predecl order; first assigns become reassigns
@@ -97,7 +93,7 @@ class TestTryHoistDecls:
         thir = _lower_ctx(self.SRC)
         t = _fn(thir, "hoisted").body[0]
         assert [n for n, _ in t.hoist_decls] == ["s", "t", "y"]
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "int32_t y;" in cpp
         assert "y = 5;" in cpp
 
@@ -128,7 +124,6 @@ class TestTryOuterDeclSkip:
         assert fn is not None
         t = fn.body[1].body[0]
         assert isinstance(t, THIRTry) and not t.hoist_decls
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
 
 class TestTryFinallyReturn:
@@ -156,13 +151,12 @@ class TestTryFinallyReturn:
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "ret_through") is not None
         assert _fn(thir, "bare_ret") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_return_captures_then_reemits_finally(self):
         # Python evaluates the return expression before the finally body:
         # the value lands in __tpy_ret_N, the finally copy follows, then the
         # temp returns.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt ret_through"):cpp.index("void bare_ret")]
         i_tmp = body.index("::tpy::BigInt __tpy_ret_0 = ((n) * (::tpy::BigInt(2)));")
         i_fin = body.index("std::cout << 9", i_tmp)
@@ -191,10 +185,9 @@ class TestTryFinallyTerminates:
         thir = _lower_ctx(self.SRC)
         t = _fn(thir, "override").body[0]
         assert isinstance(t, THIRTry) and t.finally_terminates
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_maybe_unused_and_suppressed_return(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("[[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = "
                 "((n) * (::tpy::BigInt(10)));") in cpp
         assert "return __tpy_ret_0;" not in cpp
@@ -231,9 +224,9 @@ class TestTryBodyTerminates:
         assert isinstance(t, THIRTry) and t.body_terminates
         # One copy on the return path, one in the catch arm -- no trailing
         # normal-path copy.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert cpp.count("std::cout << 7") == 2
-        assert cpp == _cpp(self.SRC, thir=False)
+        assert cpp == _cpp(self.SRC)
 
     def test_witness(self):
         _, w = _lower_ctx_witnessed(self.SRC)
@@ -260,10 +253,9 @@ class TestTryLoopExit:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "loop_exit") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_break_reemits_finally(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt loop_exit"):]
         brk = body.index("break;")
         # The finally copy precedes the break inside the frame.
@@ -310,12 +302,11 @@ class TestTryNestedAndMixed:
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "nested") is not None
         assert _fn(thir, "mixed") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_mixed_return_walks_both_frames(self):
         # The return inside try-inside-with re-emits the finally body, then
         # the with's __exit__, then returns the temp.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt mixed"):]
         i_tmp = body.index("__tpy_ret_0 = x;")
         i_fin = body.index("std::cout << 0", i_tmp)
@@ -371,10 +362,9 @@ class TestThrowTier:
         assert _fn(thir, "boom") is not None
         assert _fn(thir, "catch_multi") is not None
         assert _fn(thir, "catch_bare") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_catch_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "} catch (const ::tpy::ValueError&) {" in cpp
         assert "catch (const AppError& e) {" in cpp
         assert "} catch (...) {" in cpp
@@ -435,12 +425,11 @@ class TestThrowTierElseFinally:
         thir = _lower_ctx(self.SRC)
         for name in ("with_else", "with_finally", "reraise"):
             assert _fn(thir, name) is not None, name
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_else_label_and_goto(self):
         # The else label draws from the module-cumulative try_except_counter
         # sink; each handler jumps past the else body.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "goto __after_else_1;" in cpp
         assert "__after_else_1:;" in cpp
         assert "// else:" in cpp
@@ -448,7 +437,7 @@ class TestThrowTierElseFinally:
     def test_except_finally_wraps(self):
         # The whole try/except sits inside the finally frame's try; the
         # handler's return re-emits the finally body before returning.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt with_finally"):
                    cpp.index("::tpy::BigInt reraise")]
         assert body.index("try {") < body.index("} catch (const ::tpy::ValueError&) {")
@@ -458,7 +447,7 @@ class TestThrowTierElseFinally:
         assert body.count("std::cout << n") == 3
 
     def test_bare_reraise(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt reraise"):]
         assert "throw;" in body
 
@@ -495,10 +484,9 @@ class TestRaiseTerminatedFinally:
         thir = _lower_ctx(self.SRC)
         t = _fn(thir, "f").body[0]
         assert isinstance(t, THIRTry) and t.finally_terminates
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_guarded_rethrow_and_suppressed_return(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("::tpy::BigInt f"):cpp.index("void __tpy_init")]
         assert "[[maybe_unused]]" in body
         assert "return __tpy_ret_0;" not in body
@@ -530,9 +518,9 @@ class TestTerminatingFinallyLoopExit:
     def test_break_suppressed_after_terminating_chain(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "break;" not in cpp
-        assert cpp == _cpp(self.SRC, thir=False)
+        assert cpp == _cpp(self.SRC)
 
 
 class TestNestedThrowTier:
@@ -561,7 +549,6 @@ class TestNestedThrowTier:
         assert isinstance(outer, THIRTry) and outer.tier == "finally_only"
         inner = outer.try_body[0]
         assert isinstance(inner, THIRTry) and inner.tier == "throw"
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
 
 class TestTryGateRejections:
@@ -595,7 +582,6 @@ class TestTryGateRejections:
         assert f is not None
         t = f.body[0]
         assert isinstance(t, THIRTry) and t.tier == "return"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_expr_raise_in_except_routes(self):
         # `raise e` (re-raise the caught binding) -> `e.__raise__();`: the expr
@@ -899,7 +885,7 @@ class TestTryHoistFlavors:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert faces.get("try.hoist_const_ptr", 0) >= 1
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "const std::vector<int32_t>* v;" in cpp
         assert "v = &(::tpy::unwrap_ref(*__try_tmp_" in cpp
         assert _emit_witnesses(src).get("er.bind_alias", 0) >= 1

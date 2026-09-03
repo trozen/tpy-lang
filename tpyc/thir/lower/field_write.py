@@ -18,8 +18,10 @@ from typing import Callable
 from ...parse.nodes import (
     TpyArrayLiteral,
     TpyAssign,
+    TpyCall,
     TpyDictLiteral,
     TpyFieldAccess,
+    TpyListRepeat,
     TpyName,
     TpyNoneLiteral,
     TpySetLiteral,
@@ -45,7 +47,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ..faces import witness as _witness
-from ..fallback import (
+from ..reject import (
     ThirUnsupported,
     note_detail,
     stmt_reject_reason,
@@ -68,8 +70,11 @@ from .checks import (
     _field_over_container_subscript_ok,
     _default_ctor_field_write_ok,
     _class_const_write_target_ok,
+    _container_borrow_call_field_write_ok,
     _container_copy_field_write_ok,
     _container_field_write_ok,
+    _container_field_write_slot,
+    _container_prvalue_field_write_ok,
     _optional_container_storage_inner,
     _optional_record_field_inner,
     _optional_record_field_upcast_write_ok,
@@ -128,11 +133,11 @@ from . import statements as _statements
 
 def _lower_field_write_target(stmt: TpyAssign, lc: _LowerCtx,
                               declared: dict[str, TpyType]) -> THIRExpr:
-    """A plain-assign FIELD target renders via gen_expr (not gen_expr_deref):
+    """A plain-assign FIELD target renders WITHOUT the value-position deref:
     a narrowed Optional field assigns into the bare optional storage
-    (`this->f = v;`), so the value-position narrowed deref is stripped from
+    (`this->f = v;`), so the narrowed deref is stripped from
     the top-level node only -- a narrowed RECEIVER inside the chain keeps
-    its unwrap (`(*this->opt).x = v;`, the AST's receiver-deref arm)."""
+    its unwrap (`(*this->opt).x = v;`)."""
     target = _lower_expr(stmt.target, lc, declared, field_prechecked=True)
     if isinstance(target, THIRFieldAccess) and target.narrowed_deref:
         target = replace(target, narrowed_deref=False)
@@ -146,7 +151,7 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     tuple-subscript field READ arm (the `_subscript_yields_borrow_ptr`
     arrow) off an in-scope borrow-tuple NAME receiver; only value-scalar /
     Char field slots admit (record/container slots carry write machinery
-    not mirrored here)."""
+    this family does not render)."""
     target = stmt.target
     if not (isinstance(target, TpyFieldAccess)
             and isinstance(target.obj, TpySubscript)
@@ -155,7 +160,7 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                 target.obj.obj.name, declared,
                 lc.storage_tuple_locals) is not None
             # Plain borrow elements only: an Optional element write needs
-            # the deref_check machinery (stays AST, pinned).
+            # the deref_check machinery (rejects, pinned).
             and _subscript_yields_borrow_ptr(target.obj, lc)):
         return False
     ft = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -168,8 +173,8 @@ def _container_name_field_write_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
         narrowed: AbstractSet[str], analyzer) -> bool:
     """`recv.field = name` where field and name are the same builtin container
-    family: the AST's default field assign renders the bare name and
-    `_maybe_move` moves an owned local at its last use
+    family: the default field assign renders the bare name, moving an
+    owned local at its last use
     (`this->_data = std::move(d);`) -- the container sibling of the F1
     record-name field write."""
     v = stmt.value
@@ -206,7 +211,7 @@ def _container_name_field_write_ok(
              # last use) exactly like the container families -- `std::array`
              # is a plain value member. Callable is NOT here: its store has no
              # borrow->storage convert arm, so admitting it CRASHES the
-             # emitter instead of falling back.
+             # emitter.
              or (is_array(ft) and is_array(vt))
              # `bytearray` is the same owning `std::vector<uint8_t>` member,
              # so the bare copy / last-use move applies unchanged. NOT
@@ -447,7 +452,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
 
 
 class _RecordSlot(Enum):
-    PLAIN = auto()  # F1-record field: the AST's default field assign
+    PLAIN = auto()  # F1-record field: the default field assign
     OPT = auto()    # value-storage Optional[record]: operator= absorbs inner
 
 
@@ -552,8 +557,8 @@ def _lower_record_field(stmt: TpyAssign, plan: _RecordFieldPlan,
         lowered = _lower_expr(stmt.value, lc, declared)
         if plain:
             # A pointer-local source reads through the deref
-            # (`this->result = (*saved);` -- gen_expr_deref's indirect name;
-            # pointers are never movable).
+            # (`this->result = (*saved);` -- an indirect name derefs at a
+            # value-consuming read; pointers are never movable).
             if (stmt.value.name in lc.pointers
                     and isinstance(lowered, THIRName)):
                 lowered = replace(lowered, deref=True)
@@ -616,8 +621,19 @@ class _ContainerFieldPlan:
     # so the value position derefs before the field copies.
     deref_src: bool = False
     # The container inner of a storage-form `Optional[container]` ftype --
-    # the literal row's lowering target (the AST's own Optional unwrap).
+    # the literal row's lowering target, unwrapped from the Optional.
     opt_inner: TpyType | None = None
+    # The value materializes its own owned container (`[e] * n`, a
+    # container-returning method-call rvalue): assigned bare, no move verdict.
+    prvalue_src: bool = False
+    # The value is a BORROW-returning call (`h.peek()`): the `C&` result
+    # copy-assigns bare, with no move verdict to make.
+    borrow_call_src: bool = False
+    # The DECLARED field slot, which the literal and prvalue rows thread into
+    # their value render. Distinct from `ftype`: a flow-narrowed
+    # `Optional[container]` field reads as the bare container, one unwrap
+    # shallower than the storage this field slot holds.
+    decl_ftype: TpyType | None = None
 
 
 def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
@@ -628,19 +644,24 @@ def _classify_container(stmt: TpyAssign, lc: _LowerCtx,
     narrowed = lc.narrow.narrowed.keys()
     deref_src = _container_narrowed_optptr_field_write_ok(
         stmt, declared, pointers, narrowed, analyzer)
+    prvalue_src = _container_prvalue_field_write_ok(stmt, declared, analyzer)
+    borrow_call_src = _container_borrow_call_field_write_ok(
+        stmt, declared, analyzer)
     if not (_container_field_write_ok(stmt, declared, analyzer)
             or _container_copy_field_write_ok(stmt, declared, pointers,
                                               analyzer)
             or _container_name_field_write_ok(stmt, declared, pointers,
                                               narrowed, analyzer)
-            or deref_src):
+            or deref_src or prvalue_src or borrow_call_src):
         return None
     ftype = analyzer.get_expr_type(stmt.target)
+    decl_ftype = _container_field_write_slot(stmt, declared, analyzer)
     return _ContainerFieldPlan(
         container_ft=bool(is_list(ftype) or is_dict(ftype) or is_set(ftype)),
         ftype=ftype, deref_src=deref_src,
-        opt_inner=_optional_container_storage_inner(unwrap_readonly(
-            unwrap_ref_type(unwrap_send_sync(ftype)))))
+        opt_inner=_optional_container_storage_inner(decl_ftype),
+        prvalue_src=prvalue_src, borrow_call_src=borrow_call_src,
+        decl_ftype=decl_ftype)
 
 
 def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
@@ -656,6 +677,39 @@ def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
             return THIRAssign(
                 target=_lower_field_write_target(stmt, lc, declared),
                 value=ccopy, loc=loc)
+    if plan.borrow_call_src:
+        # A borrow-returning call source: the `C&` result copy-assigns into
+        # the field bare (sema warns the copy), so there is no move verdict
+        # and no lift -- the container sibling of the record borrow-call
+        # copy row.
+        _witness("field_write.container_borrow_call")
+        return THIRAssign(
+            target=_lower_field_write_target(stmt, lc, declared),
+            value=_lower_expr(stmt.value, lc, declared,
+                              use=_ExprUse(record_copy_sink=True)),
+            loc=loc)
+    # An owned-prvalue write: the value materializes its own container, so it
+    # assigns bare with no move verdict to make. The repeat threads the FIELD
+    # type -- an untargeted resolve demotes it to the Array flavor.
+    if plan.prvalue_src:
+        if isinstance(stmt.value, TpyListRepeat):
+            _witness("field_write.container_repeat")
+            value = _lower_expr(stmt.value, lc, declared,
+                                target_type=plan.decl_ftype)
+        else:
+            # STORAGE: the field owns its container, so the call's
+            # owned-rvalue result lands by value -- the same sink the
+            # `parts = s.split(sep)` decl init threads. A FREE call's
+            # `Own[container]` return lands through the identical row.
+            _witness("field_write.container_free_call"
+                     if isinstance(stmt.value, TpyCall)
+                     else "field_write.container_method_call")
+            value = _lower_expr(
+                stmt.value, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.STORAGE))
+        return THIRAssign(
+            target=_lower_field_write_target(stmt, lc, declared),
+            value=value, loc=loc)
     # A container-literal write: the target-threaded literal render assigns
     # bare (a literal is never a movable name) -- the same
     # THIRContainerLiteral emit a decl init gets, consumed by the field
@@ -673,7 +727,7 @@ def _lower_container_field(stmt: TpyAssign, plan: _ContainerFieldPlan,
             if isinstance(stmt.value, TpyArrayLiteral):
                 if not isinstance(value, THIRContainerLiteral):
                     # The prefix has nowhere to live; reject rather than let a
-                    # `replace` TypeError escape the per-body fallback.
+                    # `replace` TypeError crash the compiler.
                     note_detail("assign.field_write_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = replace(value,
@@ -718,7 +772,7 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     (`h->v = ptr_to_optional(g);`), so the value-position deref it takes at
     every other sink must not fire -- RECEIVER says exactly that. `copy()`
     over a pointer-repr Optional is the identity, so the peeled source
-    renders (the `_gen_copy_expr` early return); the sink's own lift is what
+    renders (copy() early-returns on it); the sink's own lift is what
     copies, and the explicit copy() suppresses the move even at the peeled
     argument's last use (which is also what copy() means)."""
     peeled = copy_ptr_optional_peel(stmt.value, lc.analyzer)
@@ -774,8 +828,8 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
     # A storage-form source of the field's own type needing no move is a
     # bare copy (`field = v`); the borrow->storage convert would be a no-op
     # (validate.py rejects it). This is the value-bound `Own[T]` field
-    # write: the param is passed by value and copied here, mirroring the
-    # AST method body -- unlike the ctor MIL, which moves. A whole-Optional
+    # write: the param is passed by value and copied here -- unlike the
+    # ctor MIL, which moves. A whole-Optional
     # FIELD read is `std::optional<T>` member STORAGE (the read arm's VALUE
     # tag is the str/bytes view-vs-owned axis, which says nothing here), so
     # it copies bare; the `ptr_to_optional` lift belongs to the borrow `T*`
@@ -1000,14 +1054,14 @@ def _lower_opt_lift_field(stmt: TpyAssign, plan: _OptLiftPlan, lc: _LowerCtx,
 
 @dataclass(frozen=True)
 class _AnyFieldPlan:
-    """An `Any` FIELD write: the AST's default field assign with the value's
+    """An `Any` FIELD write: the default field assign with the value's
     sema-inserted `into_any` coerce rendered by `_lower_into_any`'s `{0}`
     template (`h.payload = ::tpy::make_any(n);`; a movable inner name's last
-    use moves the whole make_any value, mirroring `_maybe_move`), or an
+    use moves the whole make_any value), or an
     already-Any NAME copied bare. Same value slice as the Any-dict setitem
     row:
     placeholder-transparent inners only (bare declared name / str/int
-    literal); container-literal inners stay AST."""
+    literal); container-literal inners reject."""
     ftype: TpyType
 
 
@@ -1032,7 +1086,7 @@ def _lower_any_field(stmt: TpyAssign, plan: _AnyFieldPlan, lc: _LowerCtx,
     _witness("field_write.any")
     value = _lower_expr(stmt.value, lc, declared)
     if _is_move_source(stmt.value, lc):
-        # The AST's `_maybe_move` peels the coerce: a movable inner name's
+        # The move peels the coerce: a movable inner name's
         # last use moves the whole make_any value (`h.payload =
         # std::move(::tpy::make_any(n));` -- not inert, Any owns storage).
         value = THIRMove(result_type=plan.ftype, value=value,

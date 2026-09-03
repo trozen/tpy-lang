@@ -1,20 +1,14 @@
-"""The diagnostic a body gets when THIR cannot lower it (`thir_strict`).
+"""The diagnostic a body gets when THIR cannot lower it.
 
-Once the AST body emitters are gone a lowering reject IS a compile error, so
-the message, its location and the fold positions that produce it are pinned
-here while the fallback still exists to compare against. Every fixture below
-is a shape that rejects TODAY: `_strict_reject` fails loudly if one starts
-routing, so a widened lowering arm retires its pin instead of leaving it
-asserting a diagnostic nothing produces.
+THIR is the only author of an emitted body, so a lowering reject IS a compile
+error: the message, its location and the reject positions that produce it are
+pinned here. Every fixture below is a shape that rejects TODAY --
+`_strict_reject` fails loudly if one starts routing, so a widened lowering arm
+retires its pin instead of leaving it asserting a diagnostic nothing produces.
 
-Each pin also asserts the same program is UNCHANGED with the option off --
-byte-identical to the AST path and folding the same reject into the tally --
-because a strict-mode change that perturbed the default run would move every
-gate the migration reads.
-
-One fold has no pin: the per-stub specialization arm for `@overload` stubs
-shares the body fold, but no reachable program was found that rejects there,
-so the diagnostic it would produce is unwitnessed.
+One position has no pin: the per-stub specialization arm for `@overload` stubs
+shares the body position, but no reachable program was found that rejects
+there, so the diagnostic it would produce is unwitnessed.
 """
 
 from __future__ import annotations
@@ -23,8 +17,8 @@ import os
 
 import pytest
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at, _compile,
-                       _entry, _strict_reject)
+from .testutil import (_assert_rejects_at, _compile, _entry,
+                       _strict_reject)
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 
 # A guarded class pattern over a union subject: the plain-function fold.
@@ -282,8 +276,6 @@ _FRAME_PINS = [
         12, "body:sgen.yield_type", id="simple_generator"),
 ]
 
-_ALL_FIXTURES = [(p.values[0], p.values[3])
-                 for p in _STMT_PINS + _FRAME_PINS]
 
 
 @pytest.mark.parametrize("source,message,line,landmark", _STMT_PINS)
@@ -309,20 +301,6 @@ def test_strict_frame_reject_names_the_callable(
     _assert_rejects_at(fallback, landmark)
 
 
-@pytest.mark.parametrize("source,landmark", _ALL_FIXTURES)
-def test_option_off_still_falls_back(source: str, landmark: str) -> None:
-    """With the option off every fixture emits, byte-identically to the AST
-    path, and folds the same reject -- so the ratchet, the byte-diff and the
-    audits read exactly what they read without this feature."""
-    _assert_byte_identical(source)
-    compiler, modules = _compile(source)
-    compiler.generate_code_to_strings(
-        _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False,
-                               comment_line_numbers=False, thir_codegen=True))
-    _assert_rejects_at(dict(compiler._thir_fallback), landmark)
-
-
 def test_strict_reject_in_an_import_names_that_module(tmp_path) -> None:
     """A reject inside an imported module is reported against THAT file.
 
@@ -335,8 +313,7 @@ def test_strict_reject_in_an_import_names_that_module(tmp_path) -> None:
     target = [m for m in modules if m.name == "rejmod"][0]
     with pytest.raises(CodeGenError) as excinfo:
         compiler.generate_code_to_strings(
-            target, options=CodeGenOptions(thir_codegen=True,
-                                           thir_strict=True))
+            target, options=CodeGenOptions())
     err = excinfo.value
     expected = os.path.relpath(helper)
     assert err.filename == expected
@@ -353,38 +330,6 @@ def test_strict_reject_in_the_entry_keeps_the_callers_name() -> None:
     err, _fallback = _strict_reject(BODY_SRC)
     assert err.filename is None
     assert err.format("main.py").startswith("main.py:19: error:")
-
-
-def test_strict_reports_the_reject_the_tally_counts() -> None:
-    """The diagnostic's reason tag and the folded tally key name one event: a
-    strict run must not report a different blocker than a permissive one
-    measures."""
-    err, strict_fallback = _strict_reject(BODY_SRC)
-    compiler, modules = _compile(BODY_SRC)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(thir_codegen=True))
-    assert set(strict_fallback) <= set(compiler._thir_fallback)
-    assert err.message.endswith("(stmt.match)")
-
-
-def test_strict_leaves_a_clean_program_alone() -> None:
-    """Strict changes nothing for a program whose every body routes."""
-    src = ("from tpy import Int32\n\n\n"
-           "def add(a: Int32, b: Int32) -> Int32:\n"
-           "    return a + b\n\n\n"
-           "def main() -> None:\n"
-           "    print(add(1, 2))\n\n\n"
-           "main()\n")
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    opts = dict(emit_source_comments=False, comment_line_numbers=False)
-    strict = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(thir_codegen=True, thir_strict=True,
-                                      **opts))
-    assert not compiler._thir_fallback
-    plain = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(thir_codegen=True, **opts))
-    assert strict == plain
 
 
 def test_internal_error_is_not_dressed_as_unsupported(monkeypatch) -> None:
@@ -405,4 +350,4 @@ def test_internal_error_is_not_dressed_as_unsupported(monkeypatch) -> None:
     with pytest.raises(RuntimeError, match="lowering bug"):
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(thir_codegen=True, thir_strict=True))
+            options=CodeGenOptions())

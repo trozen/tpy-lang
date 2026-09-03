@@ -3,7 +3,9 @@ points AT the callee-owned storage (`g = &(c->get());`), no slot allocated."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical
+from .testutil import (
+    _assert_rejects_at, _assert_byte_identical,
+                      _reject_tally)
 
 _SRC = (
     "from tpy import Int32, Own\n"
@@ -62,6 +64,5 @@ class TestGlobalAddrBoundaries:
                "h = H(Sub())\n"
                "g: Base = h.get()\n"
                "print(g.n)\n")
-        # Must NOT route through the address-of row; whichever arm takes it,
-        # the render still has to match.
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_slot_shape")

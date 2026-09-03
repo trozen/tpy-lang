@@ -8,17 +8,14 @@ proves the two paths agree rather than THIR quietly mirroring a raw render.
 
 from __future__ import annotations
 
-from .testutil import _compile, _entry, _assert_byte_identical
+from .testutil import (
+    _assert_rejects_at, _compile, _entry, _assert_byte_identical,
+                      _reject_tally)
 from ..codegen_cpp import CodeGenOptions
 
 
-def _fallback(src: str) -> dict:
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str) -> dict:
+    return _reject_tally(src)
 
 
 def _thir_cpp(src: str) -> str:
@@ -27,8 +24,7 @@ def _thir_cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -42,7 +38,7 @@ class TestSimpleGeneratorWhileHead:
         src = _PRE + ("def drain(xs: list[Int32]) -> Iterator[Int32]:\n"
                       "    while xs:\n"
                       "        yield xs.pop()\n")
-        assert not _fallback(src)
+        assert not _reject_tags(src)
         assert "::tpy::__len__(xs) != 0" in _thir_cpp(src)
         _assert_byte_identical(src)
 
@@ -51,8 +47,7 @@ class TestSimpleGeneratorWhileHead:
                       "    while t:\n"
                       "        yield 1\n"
                       "        t = \"\"\n")
-        assert "(!t.empty())" in _thir_cpp(src)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:sig.param_reassign_copy")
 
     def test_bool_head_keeps_its_bare_render(self):
         # The boundary: a genuinely bool condition must not pick up a wrap.
@@ -72,7 +67,7 @@ class TestResumableBranchHead:
                       "    if xs:\n"
                       "        yield 1\n"
                       "    yield 2\n")
-        assert not _fallback(src)
+        assert not _reject_tags(src)
         assert "if ((::tpy::__len__(xs) != 0))" in _thir_cpp(src)
         _assert_byte_identical(src)
 
@@ -81,7 +76,7 @@ class TestResumableBranchHead:
                       "    if not v:\n"
                       "        yield 1\n"
                       "    yield 2\n")
-        assert not _fallback(src)
+        assert not _reject_tags(src)
         assert "if ((!(::tpy::is_truthy(v))))" in _thir_cpp(src)
         _assert_byte_identical(src)
 
@@ -108,6 +103,6 @@ class TestMatchGuard:
                       "            return 10\n"
                       "        case _:\n"
                       "            return 20\n")
-        assert _fallback(src) == {}
+        assert _reject_tags(src) == {}
         assert "::tpy::__len__(xs) != 0" in _thir_cpp(src)
         _assert_byte_identical(src)

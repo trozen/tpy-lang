@@ -6,6 +6,8 @@ RHS -- plus the neighbours that must keep rejecting."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -24,7 +26,7 @@ def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 _PT = ("from tpy import Int32, copy\n"
@@ -440,7 +442,8 @@ class TestNativeIterableFieldArg:
                "def main() -> None:\n"
                "    print(W().n())\n"
                "main()\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:field.result_type")
 
 
 class TestNarrowedForeachSource:
@@ -482,9 +485,8 @@ class TestNarrowedForeachSource:
                "def main() -> None:\n"
                "    print(total(1))\n"
                "main()\n")
-        _assert_byte_identical(src)
-        _thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("foreach.narrowed_proto_src", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.narrowed_src")
 
 
 class TestRecordGetitemBigIntNarrow:
@@ -867,7 +869,8 @@ class TestProtocolMethodDiscard:
                + "    def head(self) -> Own[Node]:\n        return Node(1)\n"
                + "def run(s: Source) -> Int32:\n    h = s.head()\n    return h.n\n"
                + "def main() -> None:\n    print(run(Impl()))\nmain()\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.protocol.ret_type")
 
 
 class TestContainerCopyFieldWrite:
@@ -1047,13 +1050,8 @@ class TestMarkerCallMacroExpansion:
                "    u = dataclasses.astuple(h)\n"
                "    print(u[1])\n"
                "main()\n")
-        # Assert the FALLBACK, not just byte-identity: a fallback body
-        # emits byte-identical AST by construction, so identity alone would
-        # pass even if this shape started routing through some other arm.
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert faces.get("expr.value_tuple_self_typed", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestTupleReturnCallSources:
@@ -1106,8 +1104,8 @@ class TestTupleReturnCallSources:
                "    x, y = f(True)\n"
                "    print(x + y)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.tuple_source")
 
 
 _F3 = ("from tpy import Int32, readonly\n"
@@ -1230,8 +1228,7 @@ class TestF3BorrowTupleReturnSources:
             "    h = Holder(Box(0), 0)\n"
             "    print(mixed(h, True, Box(3))[0])\n"
             "main()\n")
-        assert _fn(_lower_ctx(src), "mixed") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.return")
 
 
 class TestUnpackCtorArgTempCrash:

@@ -11,6 +11,7 @@ make_generator lambda).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -19,15 +20,12 @@ from .testutil import (
 
 
 def _gen(source):
+    """`(compiler, (hpp, cpp))` from one emit -- the compiler is kept for the
+    face-witness reads."""
     compiler, modules = _compile(source)
-    entry = _entry(modules)
-    outs = {}
-    for flag in (False, True):
-        outs[flag] = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=flag))
-    return compiler, outs[False], outs[True]
+    return compiler, compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                comment_line_numbers=False))
 
 
 _PRE = (
@@ -63,9 +61,7 @@ class TestCompAndGenexprUnpackOptional:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "auto& p = std::get<0>(__tup_1);" in thir[1]
         assert "borrow(::tpy::optional_to_ptr(p))" in thir[1]
         assert "auto& __tup_2 = *__beg++;" in thir[1]
@@ -91,11 +87,10 @@ class TestForStatementHeadRoutesOptPtr:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
-        assert not any(k.startswith("body:") for k in fb), fb
+        compiler, _thir = _gen(self.SRC)
         w = compiler._thir_face_witnesses
+        fb = _reject_tally(self.SRC)
+        assert not any(k.startswith("body:") for k in fb), fb
         assert w.get("stmt.tuple_unpack.opt_ptr_target", 0) >= 1
 
 
@@ -161,9 +156,7 @@ class TestViewStrGenexprUnpackTargetDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb.get("body:genexpr.unpack") == 1, fb
 
 
@@ -184,9 +177,7 @@ class TestMovedGenexprUnpackDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb.get("body:genexpr.unpack") == 1, fb
 
 
@@ -204,9 +195,7 @@ class TestFilteredGenexprUnpackRoutes:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert not fb, fb
 
 

@@ -19,12 +19,11 @@ from .testutil import (
 )
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -68,7 +67,6 @@ class TestWithBasic:
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "owned") is not None
         assert _fn(thir, "borrowed") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_item_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -84,7 +82,7 @@ class TestWithBasic:
 
     def test_cleanup_only_elides_tpy_catch(self):
         # can_suppress=False + takes_exc_val=False -> single catch(...).
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "catch (::tpy::BaseException&" not in cpp
 
     def test_witnesses(self):
@@ -95,7 +93,7 @@ class TestWithBasic:
 
     def test_ctx_counter_continuity(self):
         # Module-cumulative __ctx_N: the second routed body keeps counting.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "__ctx_1" in cpp and "__ctx_2" in cpp
 
 
@@ -112,11 +110,8 @@ class TestWithSuppressAndMulti:
         + "multi()\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_suppress_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;" in cpp
         # Foreign-exception catch still cleans up without suppression.
         assert "__ctx_1.__exit__({}, nullptr, {});" in cpp
@@ -124,7 +119,7 @@ class TestWithSuppressAndMulti:
     def test_multi_nests_lifo(self):
         # Inner manager's __exit__ closes first (its catch block appears
         # before the outer's in the emitted text).
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         i3 = cpp.index("__ctx_3.__exit__")
         i2 = cpp.index("__ctx_2.__exit__")
         assert i3 < i2
@@ -158,14 +153,11 @@ class TestWithFinallyChain:
         + "inner_loop(CM(3))\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_return_captures_value_before_exit(self):
         # Python evaluates the return expression before __exit__ runs: the
         # value lands in the signature-typed temp, then the chain, then the
         # temp returns (mirrors _make_return's finally arm).
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         i_tmp = cpp.index("::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(7);")
         i_exit = cpp.index("__ctx_1.__exit__", i_tmp)
         i_ret = cpp.index("return __tpy_ret_0;")
@@ -173,7 +165,7 @@ class TestWithFinallyChain:
 
     def test_continue_walks_with_frame(self):
         # The with sits inside the loop: continue emits its __exit__ first.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void loop_exit"):cpp.index("void inner_loop")]
         i_exit = body.index("__ctx_2.__exit__({}, {}, {});")
         assert "continue;" in body[i_exit:]
@@ -181,7 +173,7 @@ class TestWithFinallyChain:
     def test_break_inside_inner_loop_skips_frame(self):
         # The loop sits inside the with: break stays inside the frame, so no
         # __exit__ chain precedes it (the with's normal exit still runs later).
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void inner_loop"):]
         brk = body.index("break;")
         assert "__exit__" not in body[body.index("if ((i == 1))"):brk]
@@ -193,8 +185,7 @@ class TestWithFinallyChain:
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         w2 = compiler._thir_face_witnesses
         assert w2.get("with.finally_return", 0) > 0
         assert w2.get("with.finally_loop_exit", 0) > 0
@@ -216,9 +207,9 @@ class TestWithBodyTerminates:
         # The try block holds only the finally-chain return; the trailing
         # normal-path __exit__ is elided (one __exit__ on the return path,
         # one in the catch -- `term` is the only with in the module).
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert cpp.count("__exit__") == 2
-        assert cpp == _cpp(self.SRC, thir=False)
+        assert cpp == _cpp(self.SRC)
 
 
 class TestWithFinallyChainMultiFrame:
@@ -243,17 +234,14 @@ class TestWithFinallyChainMultiFrame:
         + "partial(CM(1), CM(2))\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_bare_return_chains_then_returns(self):
         # The value-less _emit_finally_return arm: chain, then `return;`.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void bare_ret"):cpp.index("nested(")]
         assert body.index("__ctx_1.__exit__({}, {}, {});") < body.index("return;")
 
     def test_nested_return_walks_both_frames_innermost_first(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("nested("):cpp.index("void partial")]
         i_tmp = body.index("__tpy_ret_0")
         i_inner = body.index("__ctx_3.__exit__", i_tmp)
@@ -264,7 +252,7 @@ class TestWithFinallyChainMultiFrame:
         # Outer with sits outside the loop, inner inside: break walks only the
         # inner frame (the boundary stops mid-stack, not at 0); the outer
         # frame's __exit__ still runs on the normal path later.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void partial"):]
         guard = body.index("if ((i == 1))")
         chain = body[guard:body.index("break;", guard)]
@@ -291,7 +279,6 @@ class TestWithInCtorBody:
         ctor = _lower_ctor(self.SRC, "K")
         assert ctor is not None
         assert any(isinstance(s, THIRWith) for s in ctor.body)
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
 
 class TestImplicitCtorCallSites:
@@ -313,7 +300,6 @@ class TestImplicitCtorCallSites:
         thir, w = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "f") is not None
         assert w.get("argtemp.record_rvalue", 0) > 0 or w.get("ctor.call", 0) > 0
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_inherited_init_ctor_call_routes(self):
         # A derived record with only an INHERITED param-ful __init__: sema's
@@ -335,10 +321,9 @@ class TestImplicitCtorCallSites:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         # The record rvalue hoists the ref-param temp; the inherited-init
         # param type (int -> BigInt) threads from ri.init_params.
-        assert "Sub __tmp_1 = Sub(::tpy::BigInt(5));" in _cpp(src, thir=True)
+        assert "Sub __tmp_1 = Sub(::tpy::BigInt(5));" in _cpp(src)
 
 
 class TestWithGateRejections:
@@ -352,7 +337,6 @@ class TestWithGateRejections:
             + "f()\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_value_hoist_routes_byte_identical(self):
         # Body-declared value vars visible after the block ride the
@@ -374,8 +358,8 @@ class TestWithGateRejections:
         # Order is sema's if_branch_decls order (shared with the AST arm).
         assert set(w.hoist_decls) == {("y", "int32_t"),
                                       ("s", "std::string_view")}
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert cpp.index("int32_t y;") < cpp.index("__ctx_")
 
     def test_record_hoist_optional_storage(self):
@@ -394,8 +378,8 @@ class TestWithGateRejections:
         assert fn is not None
         w = next(s for s in fn.body if isinstance(s, THIRWith))
         assert w.hoist_decls == (("r", "std::optional<CM>"),)
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert cpp.index("std::optional<CM> r;") < cpp.index("__ctx_")
         assert "r->n" in cpp
 
@@ -411,7 +395,6 @@ class TestWithGateRejections:
             + "f(CM(1), True)\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_walrus_manager_stays_ast(self):
         # The temp-registering manager shape behind the BUGS.md pre-decl
@@ -439,7 +422,6 @@ class TestWithGateRejections:
             + "f(True)\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestValueEnterTargets:
@@ -476,8 +458,8 @@ class TestValueEnterTargets:
         assert _fn(thir, "owned_target") is not None
         assert _fn(thir, "view_target") is not None
         assert w.get("with.str_target", 0) >= 2
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         # The owned target appends in place; the view target reads bare.
         assert 's += "!";' in out
 
@@ -508,7 +490,6 @@ class TestValueEnterTargets:
         thir = _lower_ctx(src)
         assert _fn(thir, "char_target") is not None
         assert _fn(thir, "enum_target") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_string_enter_type_routes(self):
         # `String` is inside the resolved str slice: it binds STORAGE like an
@@ -525,7 +506,6 @@ class TestValueEnterTargets:
             + "f()\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestPtrTargetReuse:
@@ -562,8 +542,8 @@ class TestPtrTargetReuse:
         assert _fn(thir, "f") is not None
         assert w.get("with.ptr_target", 0) > 0
         assert w.get("with.ptr_target_reuse", 0) > 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "G* g = &(__ctx_1.__enter__());" in out
         assert "g = &(__ctx_2.__enter__());" in out
         # Body reads go through the pointer-local.
@@ -587,8 +567,8 @@ class TestPtrTargetReuse:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert w.get("with.manager_hoist", 0) > 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "std::optional<G> __slot_1;" in out
         assert "__slot_1.emplace(G(" in out
         assert "auto& __ctx_2 = (*__slot_1);" in out
@@ -620,8 +600,8 @@ class TestPtrTargetReuse:
         assert _fn(thir, "f") is not None
         assert w.get("with.ptr_target_reuse", 0) >= 2
         assert w.get("with.as_value", 0) > 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "G* g = &(__ctx_1.__enter__());" in out
         assert "auto x = __ctx_2.__enter__();" in out
         assert "g = &(__ctx_3.__enter__());" in out
@@ -660,8 +640,8 @@ class TestPtrTargetReuse:
             + "f()\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "g = &(__ctx_1.__enter__());" in out
 
     def test_with_then_rvalue_reassign_stays_ast(self):
@@ -677,7 +657,6 @@ class TestPtrTargetReuse:
             + "f()\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_reuse_inside_branch_routes(self):
         # The already-declared `g = &(...)` assign is position-neutral, so an
@@ -697,8 +676,8 @@ class TestPtrTargetReuse:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert w.get("with.manager_hoist", 0) > 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "__slot_1.emplace(G(" in out
 
 
@@ -723,7 +702,6 @@ class TestStrArgManager:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert w.get("ctor.str_arg", 0) > 0
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestWithRefTarget:
@@ -751,9 +729,9 @@ class TestWithRefTarget:
         w = fn.body[0]
         assert isinstance(w, THIRWith)
         assert w.items[0].target_arm is WithTargetArm.REF
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "auto& g = __ctx_1.__enter__();" in cpp
-        assert cpp == _cpp(self.SRC, thir=False)
+        assert cpp == _cpp(self.SRC)
 
 
 class TestNativeCtxManager:
@@ -805,7 +783,7 @@ class TestNativeCtxManager:
 
     def test_byte_identical(self):
         for src in (self.MODE, self.NOARG, self.BINARY):
-            assert _cpp(src, thir=True) == _cpp(src, thir=False)
+            assert _cpp(src) == _cpp(src)
 
     def test_native_file_method_body_routes(self):
         # The with-BODY's native file method (`f.write`) routes on the
@@ -819,7 +797,6 @@ class TestNativeCtxManager:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_native_file_read_body_routes(self):
         # A str-returning native file method (`r.read(4)`) used in an expr
@@ -833,7 +810,6 @@ class TestNativeCtxManager:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_native_method_body_emits_dot_member(self):
         # The native rename renders bare `f.write(...)` -- the `.` member form,
@@ -844,7 +820,7 @@ class TestNativeCtxManager:
             "        f.write('hi')\n"
             "main()\n"
         )
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "f.write(\"hi\");" in out
 
 
@@ -886,8 +862,8 @@ class TestAssignOptTarget:
         assert _fn(thir, "f") is not None
         assert w.get("with.hoist_ptr_local", 0) > 0
         assert w.get("with.ptr_target_reuse", 0) > 0
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "G* inner;" in cpp
         assert "inner = &(__ctx_" in cpp
 
@@ -963,8 +939,8 @@ class TestManagerHoistBoundary:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "probe") is not None
         assert w.get("with.manager_hoist", 0) == 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "auto __ctx_1 = Delegate();" in out
         assert "__slot_" not in out
 
@@ -997,8 +973,8 @@ class TestManagerHoistBoundary:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert w.get("with.manager_borrowed_field", 0) > 0
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "auto& __ctx_1 = o.mgr;" in out
 
     def test_top_level_hoist_defers(self):
@@ -1015,7 +991,6 @@ class TestManagerHoistBoundary:
         )
         thir = _lower_ctx(src)
         assert thir.top_level is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_rvalue_reassigned_with_hoist_defers(self):
         # A with-owned hoist name that is ALSO rvalue-reassigned needs the
@@ -1043,7 +1018,6 @@ class TestManagerHoistBoundary:
             "run()\n"
         )
         assert _fn(_lower_ctx(src), "run") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_multi_item_second_hoists(self):
         # One statement, two managers: only the item whose (branch-hoisted,
@@ -1064,5 +1038,5 @@ class TestManagerHoistBoundary:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "run") is not None
         assert w.get("with.manager_hoist", 0) >= 4
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)

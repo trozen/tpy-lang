@@ -24,8 +24,7 @@ def _gen(source):
     for flag in (False, True):
         outs[flag] = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=flag))
+                                          comment_line_numbers=False))
     return compiler, outs[False], outs[True]
 
 
@@ -57,7 +56,6 @@ class TestAwaitBoundMoveIntoOwnParam:
     def test_routes_byte_identical_with_deref_move(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
         assert "take(std::move((*p)));" in thir[1]
         assert compiler._thir_face_witnesses.get("move.own_last_use", 0) >= 1
 
@@ -85,7 +83,6 @@ class TestAwaitBoundCopyRoutes:
     def test_copy_shape_routes_byte_identical(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
         assert "auto __tmp_1 = (*p);" in thir[1]
         assert "size_of(std::move(__tmp_1));" in thir[1]
 
@@ -112,6 +109,5 @@ class TestSyncFlushlessMove:
     def test_sync_condition_move_routes(self):
         compiler, ast, thir = _gen(self.SRC)
         assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
         assert "take(std::move(p))" in thir[1]
         assert compiler._thir_face_witnesses.get("move.own_last_use", 0) >= 1

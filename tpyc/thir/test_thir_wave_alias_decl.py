@@ -17,6 +17,8 @@ value-position design stop.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -230,15 +232,7 @@ class TestUnboundSelfFieldRefAliasDecl:
             "        x = await one()\n"
             "        return Int32(len(nums)) + x\n"
         )
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("resumable:")
-                   and ("res.alias_bind" in k or "unbound_self" in k)
-                   for k in compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.alias_bind")
 
 
 class TestFieldOfRvalueCallCopyDecl:

@@ -99,7 +99,6 @@ class TestValueTupleFieldAtDerefSlot:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.qualcall.arg.other.expr.field_access")
-        _assert_byte_identical(src)
 
     def test_optional_tuple_slot_stays_ast(self):
         # An `Optional[tuple]` slot is not a tuple, so the same field read
@@ -110,7 +109,6 @@ class TestValueTupleFieldAtDerefSlot:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.qualcall.arg.optional")
-        _assert_byte_identical(src)
 
     def test_narrowed_optional_tuple_field_stays_ast(self):
         # DECLARED-type keyed: a narrowed `tuple | None` field types its
@@ -135,7 +133,6 @@ class TestValueTupleFieldAtDerefSlot:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.qualcall.arg.other.expr.field_access")
-        _assert_byte_identical(src)
 
     def test_plain_free_call_slot_stays_ast(self):
         # The cell belongs to the marker families only: the plain free-call
@@ -154,7 +151,6 @@ class TestValueTupleFieldAtDerefSlot:
             "main()\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call", "call.arg_shape.tuple")
-        _assert_byte_identical(src)
 
     def test_user_record_method_slot_stays_ast(self):
         # ... and the user-record method ladder likewise.
@@ -176,7 +172,6 @@ class TestValueTupleFieldAtDerefSlot:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.arg_shape")
-        _assert_byte_identical(src)
 
 
 class TestValueTupleFieldInFString:
@@ -235,7 +230,6 @@ class TestValueTupleFieldInFString:
             "main()\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.var_decl", "field.result_type")
-        _assert_byte_identical(src)
 
     def test_pointer_repr_tuple_field_stays_ast(self):
         # The interpolation half of the boundary: this read owes
@@ -253,7 +247,6 @@ class TestValueTupleFieldInFString:
             "main()\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.fstring", "field.result_type")
-        _assert_byte_identical(src)
 
 
 _NATIVE_HELPER = (
@@ -327,4 +320,3 @@ class TestValueTupleFieldAtNativeSlot:
         _, fallback = _thir_ctx(src, extra_lib_dirs=[tmp_path])
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.qualcall.arg.other.expr.field_access")
-        _assert_byte_identical(src, extra_lib_dirs=[tmp_path])

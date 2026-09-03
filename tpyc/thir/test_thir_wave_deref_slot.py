@@ -13,7 +13,9 @@ non-readonly slot (the AST emits an ill-formed `T&`-from-`const T` bind there
 
 from __future__ import annotations
 
-from .testutil import (_assert_routes_byte_identical, _fn, _lower_ctx_witnessed,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_routes_byte_identical, _fn, _lower_ctx_witnessed,
                        _thir_ctx)
 
 _POINT = (
@@ -83,9 +85,8 @@ class TestDerefCoerceReturn:
             "    print(unwrap(r).x)\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {
-            "body:stmt.return:return.record_source.TpyCoerce.borrow": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.record_source.TpyCoerce.borrow")
 
     def test_ptr_deref_at_own_storage_return_keeps_rejecting(self):
         # BOUNDARY: `Own[Point]` is the by-value direction, so the slot is a
@@ -99,9 +100,8 @@ class TestDerefCoerceReturn:
             "    print(own_from_ptr(ptr).x)\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {
-            "body:stmt.return:return.record_source.TpyCoerce.storage": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.record_source.TpyCoerce.storage")
 
     def test_readonly_ptr_at_mutable_return_keeps_rejecting(self):
         # BOUNDARY (the const fence): `Point& f(const Point* p)` is what the
@@ -117,9 +117,8 @@ class TestDerefCoerceReturn:
             "    print(deref_mut(cp).x)\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {
-            "body:stmt.return:return.record_source.TpyCoerce.borrow": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.record_source.TpyCoerce.borrow")
 
 
 class TestDerefCoerceLocal:
@@ -189,8 +188,8 @@ class TestDerefCoerceLocal:
             "    print(p2.x)\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.slot_type": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_readonly_ptr_at_mutable_local_keeps_rejecting(self):
         # BOUNDARY (the const fence): the AST emits `Point& p2 =
@@ -203,5 +202,5 @@ class TestDerefCoerceLocal:
             "    print(p2.x)\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.slot_type": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")

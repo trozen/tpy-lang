@@ -8,7 +8,8 @@ never reached the ladder. The grant is now the RESULT row only; the receiver
 still goes through the ladder, and a `String` field stays outside the
 str/StrView slice. Corpus witness: `tplib.requests.CookieJar.__getitem__`."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -41,13 +42,8 @@ _MAIN = ("def main() -> None:\n"
          "main()\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestReturnStrFieldOverContainerElem:
@@ -99,6 +95,5 @@ class TestReturnStrFieldOverContainerElemBoundary:
                + "    def get(self, k: str) -> String:\n"
                + "        return self.d[k].owned\n"
                + _MAIN)
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "field.result_type")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:field.result_type")

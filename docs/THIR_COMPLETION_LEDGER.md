@@ -1,5 +1,13 @@
 # THIR Migration Completion Ledger
 
+> **CLOSED 2026-09-03.** The migration finished when the four AST body
+> emitters were deleted; see the final entry, "Cutover step 5 executed". This
+> file is a historical record -- per-wave history, the deletion-target model,
+> the gates and their baselines, and the lessons. Every metric, marker,
+> ratchet, dial and dual-path gate it describes is gone. For the invariant the
+> compiler holds today, see CLAUDE.md "THIR and the codegen boundary"; for the
+> live fix queue, `scripts/thir_migration/review/`.
+
 > **Operating model (2026-07-12):** the goal is COMPLETION (deleting the AST
 > codegen), driven by the zero-whole-body-fallback loop in CLAUDE.md "THIR
 > migration" (metric = migrated cases/fallback bodies, smallest per-construct
@@ -15421,7 +15429,7 @@ the audits catch a latent class this inventory argues is bounded by the
 snapshot regime, while `dualgen` is the only thing that has ever caught the
 unbounded one. Scheduling nothing against it while scheduling a baseline for
 the audits was backwards on value, and is corrected here.
-## Cutover step 2 executed, 2026-09-02: THIR authors every body (`606898e04`)
+## Cutover step 2 executed, 2026-09-02: THIR authors every body (`e5e9274af`)
 
 The flip landed. `CodeGenOptions.thir_codegen` now defaults to True and the
 compiler routes every module -- user code, `lib/tpy` and the stdlib alike --
@@ -15517,7 +15525,7 @@ failure at the review's tree.
   exists on the parked branch `thir-fold-wip`; it is not part of the
   switch, because it grew into a redesign of a spelling accident in the
   AST emitter the cutover deletes.
-- BUGS.md#ast-frame-inner-tuple-default-width -- the AST spells a generator
+- The AST spelled a generator
   frame's inner tuple at the DEFAULT width against an `int32_t` target;
   Int64 and BigInt; THIR follows the annotation and is the right side.
 
@@ -15566,3 +15574,103 @@ by-product of where a value happens to be threaded, the repair is one shared
 policy, not a per-position table; the table can only ever be as complete as
 the enumeration behind it, and the enumeration is the thing the accident
 makes untrustworthy.
+
+## Cutover step 5 executed, 2026-09-03: the AST body emitters are deleted
+
+The migration is over. THIR is the single sema->codegen boundary for every
+body, `codegen_cpp` is the printer/skeleton layer, and a body THIR cannot
+lower is a `ThirRejectError` naming the blocking construct and its line.
+There is no second author and nothing to fall back to.
+
+**What went** (line counts at the deletion's parent, `883448af66`):
+
+| deleted | lines |
+|---|---|
+| `codegen_cpp/expressions.py` | 7,048 |
+| `codegen_cpp/statements.py` | 5,754 |
+| `codegen_cpp/match.py` | 2,477 |
+| `codegen_cpp/builtins.py` | 477 |
+| `move_audit.py` | 155 |
+| `binding_audit.py` | 273 |
+| `thir/fallback.py` (succeeded by the trimmed `thir/reject.py`) | 446 |
+| `codegen_cpp/test_cutover_gate.py` | 559 |
+| `thir/test_binding_audit.py` | 222 |
+| `thir/test_thir_movable_set.py` (working-set half since restored) | 515 |
+| `tests/test_thir_stdlib_gate.py` | 352 |
+| `tests/test_thir_harness.py` | 528 |
+| `scripts/thir_migration/` (8 scripts + 1 shell, minus `review/`) | 2,687 |
+| `scripts/thir_migration/asym/` (2 scripts + README) | 568 |
+| `.claude/skills/tpy-thir-wave/` (SKILL.md + 13 scripts) | 1,656 |
+
+23,717 lines: 18,806 of compiler and test code, 4,911 of tooling.
+
+Plus, inside surviving files: the `conftest.py` AST oracle pass, ratchet,
+case dial, marker machinery and the seven `--thir-*` pytest options; the
+interop overlay in `tests/test_interop_exec.py`; the error-path
+diagnostic-author gate (`AST_ONLY_DIAGNOSTICS`, `_diagnostic_author`,
+`_assert_both_paths_reject`); `CodeGenOptions.thir_codegen` /
+`thir_strict`, the `--thir-strict` CLI and pytest flags and the per-case
+`options.json` key; the reject TALLY, `NON_RATCHET_COMPONENTS`,
+`ratchet_total` and the arm-residual census in `thir/fallback.py`; and the
+two `ci/nightly` rows (`thir-stdlib`, `thir-stdlib-fallback`) with their
+pins in `tests/test_nightly_ci.py`.
+
+**What stayed, against the checklist's original wording.** Step 5 in
+`docs/THIR_CUTOVER_REVIEW.md` listed `fallback.py`, `shape.py`, the
+migration scripts and the nightly rows as one teardown; three of those four
+were narrowed by the 2026-09-02 decisions and the review doc is corrected in
+this commit.
+
+- `thir/reject.py` is the trimmed successor of `thir/fallback.py`: it keeps
+  `ThirUnsupported`, the reject-reason journal (`note` / `note_detail` /
+  `begin_stmt`), the composed-tag helpers, the face journal bracket and the
+  reject error builder. Only the tally died.
+- `thir/shape.py` stays as a module; its per-run recording is gone.
+  `thir/test_thir_shape.py` and `review/shapes_unit.py` both keep working.
+- `thir/faces.py` stays, and its zero-witness report now prints
+  unconditionally.
+- `scripts/thir_migration/review/` stays in place as the post-cutover fix
+  queue. Its three dual-author probes (`probe_fallback.py`, `probe_site.py`,
+  `probe_programs.py`) are retired in place and marked so in its README;
+  `inventory_sites.py`, `classify_tests.py` and `shapes_unit.py` still run.
+
+**Detectors retired, and what replaced each.** Four of the five gates that
+policed the two-author regime had no successor, because each one's subject
+was the disagreement between two authors:
+
+| detector | successor |
+|---|---|
+| move-verdict join (`move_audit.py`) | none -- the AST-side recorder lived inside `expressions.py` |
+| binding-set join (`binding_audit.py`) | none -- its AST recorders lived in surviving files but were reached only from deleted callers |
+| error-path gate (`AST_ONLY_DIAGNOSTICS`) | none -- it fires only when an AST emit raises |
+| the fallback ratchet + case dial | subsumed: a body that does not lower is now a compile error, so a silent fallback is unrepresentable |
+| corpus byte-diff | SURVIVES, against the committed `expected/` tree |
+
+The byte-diff is the one that lives on, and what it lost is authorship
+independence, not the check: every case still asserts its emitted C++
+against a committed snapshot on disk, but those snapshots are no longer
+regenerable from an oracle the migration does not own. The
+detector-successor designs (M1, M2, B1) were never built; they were
+insurance for a staged window that the 2026-09-02 decision closed.
+
+**A correction to the Gate D4 inventory.** Its section C put both audits'
+AST-side recorders inside the doomed modules. Only `move_audit`'s was
+(`codegen_cpp/expressions.py:630`); `binding_audit`'s four recorders lived in
+files the cutover KEEPS -- `emit_prims.py` (`begin_ast_body`), `context.py`
+(`capture_ast`, inside `snapshot_local_scope`), `generator.py` and
+`gen_async.py` (`end_ast_body`). The verdict (both die) was right; the
+deletion edited four surviving files rather than dropping one module.
+
+**The build-cache key changes once more.** `cli.py`'s options key carried
+`"thir_strict"`; removing it misses every warm manifest one time. The flip
+commit already paid the same cost for `"thir_codegen"`. Not a defect.
+
+**Baselines at the deletion.** The flip's own audit figures are in the entry
+above; both audits are deleted here, so these are their last readings and
+nothing re-derives them.
+
+Final full suite on the deletion tree (`a2839c7a7a`, 2026-09-03): 13,370
+passed, 23 skipped, 3 expected failures (the three blocked examples in
+the examples gate); 3,780 cases built and run; 13,419 bodies lowered
+across 3,647 cases; faces 1,451 of 1,473 witnessed. Keys: tests, cases,
+bodies, faces -- none comparable to another.

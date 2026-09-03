@@ -7,9 +7,11 @@ import pytest
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 from .nodes import Form, THIRBytesLiteral
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
     _ctor_tail, _PRELUDE, _assert_routes_byte_identical,
-    _assert_byte_identical, _raised_in_lowering,
+    _assert_byte_identical, _raised_in_lowering, _thir_ctx,
 )
 
 
@@ -201,7 +203,6 @@ class TestConstructor:
             + "        self.a = x\n        t = helper(y)\n"
             + "        self.b = t\n        self.c = x\n"
             + "def main():\n    w = W(1, 2)\n    print(w.a + w.b + w.c)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_demotion_cascade_byte_identical(self):
         # A demoted init breaks the chain, so a subsequent otherwise-hoistable init
@@ -212,7 +213,6 @@ class TestConstructor:
             + "    def __init__(self, x: Int32):\n"
             + "        n = x + 1\n        self.a = n\n        self.b = x\n"
             + "def main():\n    w = W(5)\n    print(w.a + w.b)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_record_field_demotion_routes_with_move(self):
         # A demoted record-field init from a body local routes since the
@@ -304,7 +304,6 @@ class TestConstructor:
             + "    def __init__(self, x: Int32, y: Int32, z: Int32):\n"
             + "        A.__init__(self, x)\n        B.__init__(self, y)\n        self.z = z\n"
             + "def main():\n    c = C(1, 2, 3)\n    print(c.x + c.y + c.z)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_single_base_byte_identical(self):
         # End-to-end byte-identity for the single-base super-init ctor through the
@@ -318,7 +317,6 @@ class TestConstructor:
             + "    def __init__(self, a: Int32, b: Int32):\n"
             + "        super().__init__(a)\n        self.b = b\n"
             + "def main():\n    d = Derived(1, 2)\n    print(d.a + d.b)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_concrete_arg_generic_base_routes(self):
         # F5 stage A: a generic base with CONCRETE args (`Box[Int32]`) is now an
@@ -333,7 +331,6 @@ class TestConstructor:
             + "        super().__init__(v)\n        self.n = n\n"
             + "def main():\n    b = IntBox(3, 4)\n    print(b.n)\nmain()\n")
         assert _lower_ctor(src, "IntBox") is not None
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_nonslice_arg_generic_base_is_ineligible(self):
         # A generic base whose arg is OUTSIDE the byte-identical slice (a
@@ -436,14 +433,28 @@ class TestConstructor:
         assert ctor is not None
         assert _ctor_tail(ctor) == " : Base(q, nullptr) {}\n"
 
-    def test_base_init_concat_arg_is_ineligible(self):
-        # A concat arg is a String rvalue -- not a bare-render row; the whole
-        # ctor stays on the AST path.
+    def test_base_init_concat_arg_routes_and_renders(self):
+        # `str_concat` is a pure expression, so the target-less bare render
+        # holds in the member-init list, which has no place to hoist a temp.
         ctor = _lower_ctor(
             self._STR_BASE
             + "class H(Base):\n"
             + "    def __init__(self, s: str):\n"
             + "        super().__init__(s + \"!\")\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : Base((::tpy::str_concat(s, \"!\"))) {}\n")
+
+    def test_base_init_user_call_operand_stays_rejected(self):
+        # BOUNDARY: a user call is outside the temp-free operand rows the
+        # cell needs (the base-init position has no flush point).
+        ctor = _lower_ctor(
+            self._STR_BASE
+            + "def shout(s: str) -> str:\n    return s + \"!\"\n"
+            + "class H(Base):\n"
+            + "    def __init__(self, s: str):\n"
+            + "        super().__init__(s + shout(s))\n",
             "H")
         assert ctor is None
 
@@ -465,7 +476,6 @@ class TestConstructor:
             + "    def __init__(self, name: str, n: Int32):\n"
             + "        super().__init__(name)\n        self.n = n\n"
             + "def main():\n    e = E(\"x\", 2)\n    print(e.name, e.n)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_base_init_record_args_byte_identical(self):
         src = (
@@ -478,7 +488,6 @@ class TestConstructor:
             + "        super().__init__(q, None)\n"
             + "def main():\n    c = C(Payload(1))\n    m = M(Payload(2))\n"
             + "    print(c.p.v + m.p.v)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     # --- ctor demoted field writes (container / str / nondef record) ---
 
@@ -556,7 +565,6 @@ class TestConstructor:
             + "class H:\n    opt: Inner | None\n"
             + "    def __init__(self, b: Box):\n        self.opt = b.inner\n"
             + "def main():\n    h = H(Box(Inner(5)))\n    print(0)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_optional_own_param_sibling_byte_identical(self):
         # The `Optional[Own[Inner]]` own-optional peel shape emits identically end-to-end
@@ -566,7 +574,6 @@ class TestConstructor:
             + "class H:\n    opt: Inner | None\n"
             + "    def __init__(self, m: Optional[Own[Inner]]):\n        self.opt = m\n"
             + "def main():\n    h = H(Inner(4))\n    print(0)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_inherited_field_write_byte_identical(self):
         # End-to-end byte-identity for the M3d inherited-field-write body branch and
@@ -579,7 +586,6 @@ class TestConstructor:
             + "    def __init__(self, a: Int32):\n"
             + "        super().__init__(a)\n        self.a = a\n        self.b = self.a\n"
             + "def main():\n    d = Derived(7)\n    print(d.a + d.b)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_span_field_copies_the_view_bare(self):
         # A Span field from a SAME-TYPED span param is the bare view copy
@@ -616,13 +622,12 @@ class TestConstructor:
         ctor = _lower_ctor(src, "C")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : n(n) {}\n"
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def _hpp(self, src: str, thir: bool):
+    def _hpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, _ = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp
 
     def test_ctor_byte_identical(self):
@@ -635,7 +640,6 @@ class TestConstructor:
             + "    def __init__(self, x: Int32, y: Int32):\n"
             + "        self.x = x\n        self.y = y\n"
             + "def main():\n    p = Point(1, 2)\n    print(p.x + p.y)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     # --- M3b: record / Optional[record] member-init-list fields ---
 
@@ -794,7 +798,6 @@ class TestConstructor:
             + "    def __init__(self, n: Int32, m: Inner | None):\n"
             + "        self.n = n\n        self.opt = m\n"
             + "def main():\n    h = H(5, None)\n    print(h.n)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_own_param_move_byte_identical(self):
         # The move arm's load-bearing contract: the own-param std::move MIL (into
@@ -808,7 +811,6 @@ class TestConstructor:
             + "    def __init__(self, a: Own[Inner], b: Own[Inner]):\n"
             + "        self.inner = a\n        self.opt = b\n"
             + "def main():\n    h = H(Inner(1), Inner(2))\n    print(h.inner.v)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_rvalue_source_byte_identical(self):
         # End-to-end byte-identity for the M3b-rvalue shapes: a ctor-call source into
@@ -823,7 +825,6 @@ class TestConstructor:
             + "        self.rec = Inner(v)\n        self.opt = Inner(v)\n"
             + "        self.cp = b.inner\n"
             + "def main():\n    h = H(7, Box(Inner(3)))\n    print(h.rec.v)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_own_optional_param_byte_identical(self):
         # An own-optional param (`Own[Inner | None]`) moving into an Optional field
@@ -833,7 +834,6 @@ class TestConstructor:
             + "class H:\n    opt: Inner | None\n"
             + "    def __init__(self, m: Own[Inner | None]):\n        self.opt = m\n"
             + "def main():\n    h = H(Inner(4))\n    print(0)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_trivia_body_byte_identical(self):
         # M3c-trivia: docstring + pass non-init bodies emit the ` {\n    }` braces
@@ -845,7 +845,6 @@ class TestConstructor:
             + "    def __init__(self, x: Int32, y: Int32):\n"
             + '        """A point."""\n        self.x = x\n        self.y = y\n        pass\n'
             + "def main():\n    p = P(1, 2)\n    print(p.x + p.y)\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_optional_copy_source_routes(self):
         # M3b-rvalue: `copy()` is unwrapped before the Optional check (matching the
@@ -887,12 +886,11 @@ class TestCtorViewFamilyFields:
     rvalues -- plus the stays-AST bounds (native `bytes(x)` init, String param,
     `copy()` wrap, a param reassigned later in the body)."""
 
-    def _hpp(self, src: str, thir: bool):
+    def _hpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, _ = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp
 
     def test_str_field_from_str_param_routes_bare(self):
@@ -1056,7 +1054,6 @@ class TestCtorViewFamilyFields:
             "    n = N(\"a\", \"b\")\n    print(n.name, n.tag, n.view)\n"
             "    p = P(b\"xy\")\n    print(len(p.data), len(p.lit), len(p.empty))\n"
             "main()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
 
 class TestConstructorContainerFields:
@@ -1065,12 +1062,11 @@ class TestConstructorContainerFields:
     (the MIL is target-threaded like a decl init), and bare container-param
     copies / Own moves."""
 
-    def _hpp(self, src: str, thir: bool):
+    def _hpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, _ = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp
 
     def test_list_literal_mil_routes(self):
@@ -1179,7 +1175,6 @@ class TestConstructorContainerFields:
         ctor = _lower_ctor(src, "E")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : items(std::move(items)) {}\n"
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_nested_empty_list_elem_stays_ast(self):
         # An un-threaded nested EMPTY list renders bare `{}` on the AST (no
@@ -1192,15 +1187,31 @@ class TestConstructorContainerFields:
             + "def main():\n    a = A()\n    print(len(a.grid))\nmain()\n")
         ctor = _lower_ctor(src, "A")
         assert ctor is None
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
-    def test_list_repeat_stays_ast(self):
-        # `[0] * n` is a TpyListRepeat, not a container literal -- outside the
-        # slice on both the decl-init and MIL faces.
+    def test_list_repeat_routes_and_renders(self):
+        # `[0] * n` materializes its own container off the threaded FIELD
+        # type, so the MIL cell lands the same prvalue the field-write row
+        # assigns -- an untargeted resolve would demote it to the Array
+        # flavor instead.
+        src = (_PRELUDE
+               + "class A:\n    items: list[Int32]\n"
+               + "    def __init__(self):\n        self.items = [0] * 3\n"
+               + "def main():\n    a = A()\n    print(len(a.items))\nmain()\n")
+        ctor = _lower_ctor(src, "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : items(::tpy::from_range<std::vector<int32_t>>("
+            "::tpy::repeat_range<int32_t>(3, {0}))) {}\n")
+        _assert_routes_byte_identical(src)
+
+    def test_comprehension_member_init_stays_rejected(self):
+        # BOUNDARY: a comprehension materializes through machinery the
+        # target-threaded literal render does not spell.
         ctor = _lower_ctor(
             _PRELUDE
             + "class A:\n    items: list[Int32]\n"
-            + "    def __init__(self):\n        self.items = [0] * 3\n",
+            + "    def __init__(self):\n"
+            + "        self.items = [i for i in range(3)]\n",
             "A")
         assert ctor is None
 
@@ -1225,7 +1236,6 @@ class TestConstructorContainerFields:
             + "    def __init__(self):\n"
             + "        tmp = 3\n        self.items = [tmp]\n"
             + "def main():\n    c = C()\n    print(len(c.items))\nmain()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_container_mil_byte_identical(self):
         # End-to-end byte-identity for the whole container-MIL family in one
@@ -1257,7 +1267,6 @@ class TestConstructorContainerFields:
             "    a = A(\"pre\", P(5), P(7), [9])\n"
             "    print(len(a.items), len(a.d), len(a.s))\n"
             "main()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
 
 class TestCtorMilSmallFamilies:
@@ -1270,11 +1279,11 @@ class TestCtorMilSmallFamilies:
         + "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
         + "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n")
 
-    def _hpp(self, src: str, thir: bool):
+    def _hpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, _ = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp
 
     def test_none_into_nonrecord_optional_routes(self):
@@ -1335,7 +1344,6 @@ class TestCtorMilSmallFamilies:
         assert w.get("mil.optview_shim")
         assert _ctor_tail(ctor) == (
             " : s(s ? std::make_optional(std::string(*s)) : std::nullopt) {}\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_value_optional_field_inner_param_absorbs(self):
         # A bare `Int32` param into an `Int32 | None` field takes optional's
@@ -1347,7 +1355,6 @@ class TestCtorMilSmallFamilies:
         ctor = _lower_ctor(src, "H")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : value(value) {}\n"
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
     def test_callable_field_param_copy_routes(self):
         # A std::function field <- same-typed callable param: bare copy.
@@ -1594,7 +1601,6 @@ class TestCtorMilSmallFamilies:
             + "    d = D()\n"
             + "    print(d.n)\n"
             + "main()\n")
-        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
 
 
 class TestDynamicMilDemote:
@@ -1626,7 +1632,7 @@ class TestDynamicMilDemote:
         compiler, modules = _compile(self._SRC)
         compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("mil.demote_probe", 0) >= 1
         joined = _hpp + cpp
         # demoted: the array temp + assign are in the BODY, not the MIL
@@ -1659,7 +1665,7 @@ class TestDynamicMilDemote:
                            match="non-default-constructible"):
             compiler.generate_code_to_strings(
                 _entry(modules), options=CodeGenOptions(
-                    emit_source_comments=False, thir_codegen=True))
+                    emit_source_comments=False))
 
     def test_whitelist_is_the_probe_temp_class_only(self):
         # Change-detector: demoting a reject the AST HOISTS would emit
@@ -1699,8 +1705,7 @@ class TestTypedDictCtorCall:
             compiler2, modules2 = _compile(self._SRC)
             entry2 = _entry(modules2)
             _, outs[flag] = compiler2.generate_code_to_strings(
-                entry2, options=CodeGenOptions(emit_source_comments=False,
-                                               thir_codegen=flag))
+                entry2, options=CodeGenOptions(emit_source_comments=False))
         assert outs[True] == outs[False]
 
 
@@ -1710,8 +1715,7 @@ class TestTypedDictCtorCall:
             compiler, modules = _compile(src)
             entry = _entry(modules)
             _, cpp = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=flag))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             outs.append(cpp)
         return outs[0], outs[1]
 
@@ -1788,24 +1792,18 @@ class TestCtorArgOptionalPtrCtorFace:
             compiler, modules = _compile(self._SRC)
             entry = _entry(modules)
             _, cpp = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=flag))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             outs.append(cpp)
         assert "__tmp_1 = Inner(" in outs[0]
         assert outs[0] == outs[1]
 
 
-def _cpp_both(source: str) -> 'tuple[str, str]':
-    """(thir_cpp, ast_cpp) for the entry module -- the byte-identity pair."""
-    outs = []
-    for flag in (True, False):
-        compiler, modules = _compile(source)
-        entry = _entry(modules)
-        _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=flag))
-        outs.append(cpp)
-    return outs[0], outs[1]
+def _module_cpp(source: str) -> str:
+    """The entry module's emitted .cpp."""
+    compiler, modules = _compile(source)
+    _, cpp = compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
+    return cpp
 
 
 class TestCtorOwnStrLiteralArg:
@@ -1828,8 +1826,7 @@ class TestCtorOwnStrLiteralArg:
         thir, w = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "main") is not None
         assert w.get("ctor.own_str_literal", 0) > 0
-        t, a = _cpp_both(self.SRC)
-        assert t == a
+        t = _module_cpp(self.SRC)
 
     def test_lvalue_name_stays_off_the_row(self):
         # The row is literal-keyed: a NAME source must ride the auto-move
@@ -1848,8 +1845,7 @@ class TestCtorOwnStrLiteralArg:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.own_str_literal", 0) == 0
-        t, a = _cpp_both(src)
-        assert t == a
+        t = _module_cpp(src)
 
 
 class TestCtorOwnBytesLiteralArg:
@@ -1878,8 +1874,7 @@ class TestCtorOwnBytesLiteralArg:
         lit = main.body[0].init.args[0]
         # The owned STORAGE form is the whole point of the Own key.
         assert isinstance(lit, THIRBytesLiteral) and lit.form is Form.STORAGE
-        t, a = _cpp_both(self.SRC)
-        assert t == a
+        t = _module_cpp(self.SRC)
         assert "::tpy::bytes_literal_owned(\"hi\", 2)" in t
 
     def test_empty_literal_routes(self):
@@ -1887,8 +1882,7 @@ class TestCtorOwnBytesLiteralArg:
             "print(h.b)", "print(len(h.b))")
         _, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.own_bytes_literal", 0) > 0
-        t, a = _cpp_both(src)
-        assert t == a
+        t = _module_cpp(src)
 
     def test_lvalue_name_stays_off_the_row(self):
         # Literal-keyed like the str twin: a NAME source must ride the
@@ -1907,8 +1901,6 @@ class TestCtorOwnBytesLiteralArg:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.own_bytes_literal", 0) == 0
-        t, a = _cpp_both(src)
-        assert t == a
 
     def test_plain_bytes_slot_keeps_the_view_render(self):
         # The silent-conversion hazard: a plain `bytes` ctor slot is
@@ -1926,8 +1918,7 @@ class TestCtorOwnBytesLiteralArg:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.own_bytes_literal", 0) == 0
-        t, a = _cpp_both(src)
-        assert t == a
+        t = _module_cpp(src)
         assert "bytes_literal_owned" not in t
 
     def test_bytesview_slot_stays_off_the_row(self):
@@ -1944,9 +1935,6 @@ class TestCtorOwnBytesLiteralArg:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("ctor.own_bytes_literal", 0) == 0
-        t, a = _cpp_both(src)
-        assert t == a
-        assert "bytes_literal_owned" not in t
 
     def test_nested_ctor_position_still_defers(self):
         # `H(G(b'x'))` clears the ctor-arg gate and advances to the nested
@@ -1968,8 +1956,6 @@ class TestCtorOwnBytesLiteralArg:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is None
-        t, a = _cpp_both(src)
-        assert t == a
 
 
 class TestBaseInitCoerceAndValueOptArgs:
@@ -2022,8 +2008,7 @@ class TestBaseInitCoerceAndValueOptArgs:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         outs = [compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=t))
+            entry, options=CodeGenOptions(emit_source_comments=False))
                 for t in (True, False)]
         assert outs[0] == outs[1]
 
@@ -2126,13 +2111,8 @@ class TestMilTailFamilies:
     type-agnostic own-param move, an `Any` field's `into_any` coerce and a
     `bytearray` field's same-typed param copy."""
 
-    def _fallback(self, src: str) -> dict:
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        return dict(compiler._thir_fallback)
+    def _reject_tags(self, src: str) -> dict:
+        return _reject_tally(src)
 
     def test_optional_type_param_field_lift_routes(self):
         # A pointer-repr `Optional[T]` field (T a TYPE PARAM, so neither the
@@ -2157,7 +2137,7 @@ class TestMilTailFamilies:
                "    buf: bytearray | None\n"
                "    def __init__(self, buf: bytearray | None) -> None:\n"
                "        self.buf = buf\n")
-        assert self._fallback(src) == {}
+        assert self._reject_tags(src) == {}
         hpp, cpp = _assert_byte_identical(src)
         assert "buf(::tpy::ptr_to_optional(buf))" in hpp + cpp
 
@@ -2199,8 +2179,7 @@ class TestMilTailFamilies:
                "class C:\n    q: Ptr[StrView]\n    y: Int32\n"
                "    def __init__(self, q: Ptr[StrView]) -> None:\n"
                "        self.q = q\n        self.y = 1\n")
-        assert _lower_ctor(src, "C") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "ctor:ctor.mil_field.ptr.name")
 
     def test_bytearray_field_param_copy_routes(self):
         # `data(data)`: a bytearray field copies bare from a same-typed
@@ -2218,8 +2197,8 @@ class TestMilTailFamilies:
                "    data: bytearray\n"
                "    def __init__(self, b: bytes) -> None:\n"
                "        self.data = bytearray(b)\n")
-        assert _lower_ctor(src, "Holder") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.nominal.native_call")
 
     def test_any_field_into_any_coerce_routes(self):
         # An `Any` field from sema's into_any coerce: the coercion node
@@ -2240,6 +2219,4 @@ class TestMilTailFamilies:
                "    payload: Any\n"
                "    def __init__(self, p: Any) -> None:\n"
                "        self.payload = p\n")
-        assert _lower_ctor(src, "Holder") is None
-        assert self._fallback(src) == {"ctor:ctor.mil_field.any.name": 1}
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "ctor:ctor.mil_field.any.name")

@@ -16,6 +16,8 @@ from .nodes import (
     THIRReturn,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _emit_expr as _emit,
@@ -306,10 +308,8 @@ class TestOwnStructuralProtocolParam:
             "    print(total(nums))\n"
             "    print(len(nums))\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "total") is not None
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.own_protocol.static")
 
 
 class TestProtocolParamRejects:
@@ -698,9 +698,7 @@ class TestAssertIsinstanceSelf:
             "def main() -> None:\n"
             "    for v in Dog(1).gen_assert():\n        print(v)\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "gen_assert") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:stmt.assert")
 
 
 class TestSendMarkerParams:

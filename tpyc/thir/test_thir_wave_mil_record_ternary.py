@@ -15,6 +15,8 @@ The `copy(<pointer-local>)` arm rides here too: the copy-construct spells
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -31,7 +33,7 @@ def _gen_faces(src: str):
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=True,
-                               comment_line_numbers=False, thir_codegen=True))
+                               comment_line_numbers=False))
     return dict(compiler._thir_face_witnesses)
 
 
@@ -98,9 +100,7 @@ class TestMilRecordTernaryBoundaries:
             "    y = Ctx(2)\n"
             "    print(Conn(x, y, True)._ctx.mode)\n"
         )
-        assert _lower_ctor(src, "Conn") is None
-        assert not _gen_faces(src).get("ifexpr.record_prvalue")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "ctor:expr.ifexpr")
 
     def test_prvalue_ternary_at_decl_still_defers(self):
         # A decl binds a REF_ALIAS off a record ternary; the prvalue form is
@@ -112,8 +112,8 @@ class TestMilRecordTernaryBoundaries:
             "def main() -> None:\n"
             "    print(use(None))\n"
         )
-        assert not _gen_faces(src).get("ifexpr.record_prvalue")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_prvalue_ternary_at_arg_slot_still_defers(self):
         # An arg slot materializes its own temp; the prvalue ternary has no
@@ -126,8 +126,7 @@ class TestMilRecordTernaryBoundaries:
             "def main() -> None:\n"
             "    print(use(None))\n"
         )
-        assert not _gen_faces(src).get("ifexpr.record_prvalue")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
     def test_copy_of_pointer_local_at_decl_still_defers(self):
         # The `copy(<pointer-local>)` copy-construct is admitted as a ternary
@@ -141,5 +140,5 @@ class TestMilRecordTernaryBoundaries:
             "def main() -> None:\n"
             "    print(use(None))\n"
         )
-        assert not _gen_faces(src).get("ifexpr.record_prvalue")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.builtin_special")

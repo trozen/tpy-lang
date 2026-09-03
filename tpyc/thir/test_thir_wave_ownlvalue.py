@@ -8,6 +8,8 @@ temp (excluded from the skip and covered by the argtemp.own_str pins)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -73,6 +75,5 @@ class TestInlineTemplateOwnLvalue:
                "    unsafe_drop(p)\n"
                "    unsafe_free(p)\n"
                "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        cpp = _assert_byte_identical(src)
-        assert faces.get("call.native_own_scalar_lvalue", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.native_arg.own")

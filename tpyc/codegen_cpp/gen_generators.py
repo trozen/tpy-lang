@@ -208,8 +208,6 @@ if TYPE_CHECKING:
     from io import TextIO
     from .context import CodeGenContext
     from .types import TypeMapper
-    from .expressions import ExpressionGenerator
-    from .statements import StatementGenerator
     from .functions import FunctionGenerator
     from ..thir.emit import SimpleGenLeafEmitter
 
@@ -221,14 +219,10 @@ class GeneratorCodegen:
         self,
         ctx: CodeGenContext,
         types: TypeMapper,
-        expressions: ExpressionGenerator,
-        statements: StatementGenerator,
         functions: FunctionGenerator,
     ):
         self.ctx = ctx
         self.types = types
-        self.expressions = expressions
-        self.statements = statements
         self.functions = functions
         # Generators defined in the module being emitted, keyed
         # (name, owner_record), plus the names of generic records (whose
@@ -274,8 +268,8 @@ class GeneratorCodegen:
         for-loop, with no early returns or nested control flow around the yield.
 
         Static: the sole routing fact is the function itself, and the THIR
-        gate shares this predicate (its `sig.generator_*` sub-tags must split
-        exactly where the AST router splits peephole vs resumable).
+        gate shares this predicate, so peephole vs resumable is decided in
+        exactly one place.
         """
         if func.force_resumable:
             return False
@@ -329,13 +323,11 @@ class GeneratorCodegen:
         self.ctx.owned_view_frame_params = owned_view_frame_params(func.params)
         try:
             if isinstance(last, TpyForEach):
-                self._gen_simple_for_generator(out, func,
-                                               record_name=record_name,
-                                               leaf=leaf)
+                self._gen_simple_for_generator(out, func, leaf,
+                                               record_name=record_name)
             else:
-                self._gen_simple_while_generator(out, func,
-                                                 record_name=record_name,
-                                                 leaf=leaf)
+                self._gen_simple_while_generator(out, func, leaf,
+                                                 record_name=record_name)
         finally:
             self.ctx.owned_view_frame_params = old_owned_view_params
 
@@ -348,16 +340,15 @@ class GeneratorCodegen:
     # yield value, iterable / range args) to the leaf emitter below; per-body
     # routing stays all-or-nothing.
 
-    def _thir_simple_gen_leaf(self, func: TpyFunction) -> "SimpleGenLeafEmitter | None":
-        """The routed body's leaf renderer bound to the live ctx sinks, or
-        None when the body stays on the AST leaf path. Lowering already ran
-        in the module seeding loop (unlike resumables, it needs no live
-        codegen ctx)."""
-        if not self.ctx.thir_codegen:
-            return None
+    def _thir_simple_gen_leaf(self, func: TpyFunction) -> "SimpleGenLeafEmitter":
+        """The body's leaf renderer bound to the live ctx sinks. Lowering
+        already ran in the module seeding loop (unlike resumables, it needs no
+        live codegen ctx)."""
         sg = self.ctx.thir_simple_gens.get(id(func))
         if sg is None:
-            return None
+            raise CodeGenError(
+                f"internal error: no lowered simple-generator body for "
+                f"'{func.name}'", func.loc)
         from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
                                  SimpleGenLeafEmitter)
         return SimpleGenLeafEmitter(
@@ -369,8 +360,7 @@ class GeneratorCodegen:
             finally_guard_counter=CtxCounter(
                 self.ctx, "finally_guard_counter"),
             # Held-back rebind-slot decls drain into the ctx's nested hoist
-            # scope; _lambda_body_sink flushes them at the lambda prologue
-            # (the AST path's own drain point).
+            # scope; _lambda_body_sink flushes them at the lambda prologue.
             hoist_sink=lambda line: self.ctx.pending_hoist_decls.append(
                 line + "\n"))
 
@@ -392,8 +382,8 @@ class GeneratorCodegen:
 
 
     def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
-                                    record_name: str | None = None,
-                                    leaf: "SimpleGenLeafEmitter | None" = None) -> None:
+                                    leaf: "SimpleGenLeafEmitter",
+                                    record_name: str | None = None) -> None:
         """Lambda codegen for: [init] while(cond): ... yield expr ..."""
         elem_type = func.generator_yield_type
         assert elem_type is not None
@@ -403,7 +393,7 @@ class GeneratorCodegen:
         while_stmt = func.body[-1]
         assert isinstance(while_stmt, TpyWhile)
         init_stmts = func.body[:-1]
-        yield_stmt, pre_yield, post_yield = split_at_yield(while_stmt.body)
+        _, _, post_yield = split_at_yield(while_stmt.body)
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
         # The owned yield local dies as the lambda returns; move it into the
@@ -440,8 +430,8 @@ class GeneratorCodegen:
         saved_ns = self.ctx.current_ns
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
-        self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra, leaf=leaf,
+        self._setup_body_scope(out, func, init_stmts, leaf,
+                               indent_level=1 + extra,
                                record_name=record_name)
 
         captures = self._build_capture_list(func.params, init_stmts)
@@ -456,14 +446,13 @@ class GeneratorCodegen:
             old_indent = self.ctx.indent_level
             self.ctx.indent_level = 3 + extra
             cond_checkpoint = self.ctx.temps.checkpoint()
-            cond_code = (leaf.render_cond() if leaf is not None
-                         else self.expressions.gen_truthy_expr(while_stmt.condition))
+            cond_code = leaf.render_cond()
             # Condition-registered decls have no statement flush inside the
             # lambda: walrus pre-decls go at lambda scope, and anonymous temps
-            # (re-evaluated per iteration, like _gen_while's restructured head)
+            # (re-evaluated per iteration, like a restructured while head)
             # go inside the loop head. Mixed walrus + temps is rejected: the
-            # in-head temp could run before the walrus assignment it reads
-            # (_gen_while's gated fallback hazard), and this shape never
+            # in-head temp could run before the walrus assignment it reads,
+            # and this shape never
             # compiled before, so a loud reject regresses nothing (BUGS.md).
             if (self.ctx.temps.has_pending_since(cond_checkpoint)
                     and contains_named_expr(while_stmt.condition)):
@@ -484,19 +473,10 @@ class GeneratorCodegen:
                 lam.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
             self.ctx.indent_level = 4 + extra
 
-            if leaf is not None:
-                leaf.emit_pre_yield(lam, 4 + extra)
-                yield_expr = leaf.render_yield_value()
-            else:
-                for stmt in pre_yield:
-                    self.statements.gen_stmt(lam, stmt)
-                yield_expr = self.statements.gen_yield_value(yield_stmt)
+            leaf.emit_pre_yield(lam, 4 + extra)
+            yield_expr = leaf.render_yield_value()
             lam.write(f"{INDENT * (4 + extra)}{val_binding} __val = {yield_expr};\n")
-            if leaf is not None:
-                leaf.emit_post_yield(lam, 4 + extra)
-            else:
-                for stmt in post_yield:
-                    self.statements.gen_stmt(lam, stmt)
+            leaf.emit_post_yield(lam, 4 + extra)
 
             self._emit_iter_slot_return(lam, INDENT * (4 + extra), cpp_iter_slot, yld)
             lam.write(f"{INDENT * (3 + extra)}}}\n")
@@ -509,8 +489,8 @@ class GeneratorCodegen:
         self.ctx.current_ns = saved_ns
 
     def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction,
-                                   record_name: str | None = None,
-                                   leaf: "SimpleGenLeafEmitter | None" = None) -> None:
+                                   leaf: "SimpleGenLeafEmitter",
+                                   record_name: str | None = None) -> None:
         """Lambda codegen for: [init] for x in iterable: ... yield expr ..."""
         from .context import is_lvalue_iterable
 
@@ -522,7 +502,7 @@ class GeneratorCodegen:
         for_stmt = func.body[-1]
         assert isinstance(for_stmt, TpyForEach)
         init_stmts = func.body[:-1]
-        yield_stmt, pre_yield, post_yield = split_at_yield(for_stmt.body)
+        _, _, post_yield = split_at_yield(for_stmt.body)
 
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
@@ -554,8 +534,8 @@ class GeneratorCodegen:
         saved_ns = self.ctx.current_ns
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
-        self._setup_body_scope(out, func, init_stmts,
-                               indent_level=1 + extra, leaf=leaf,
+        self._setup_body_scope(out, func, init_stmts, leaf,
+                               indent_level=1 + extra,
                                record_name=record_name)
 
         old_indent = self.ctx.indent_level
@@ -598,14 +578,10 @@ class GeneratorCodegen:
         I = lambda n: INDENT * (n + extra)
 
         def _range_arg(i: int) -> str:
-            if leaf is not None:
-                return leaf.render_range_arg(i)
-            return self.expressions.gen_expr(for_stmt.iterable.args[i])
+            return leaf.render_range_arg(i)
 
         def _iterable_code() -> str:
-            if leaf is not None:
-                return leaf.render_iterable()
-            return self.expressions.gen_expr(for_stmt.iterable)
+            return leaf.render_iterable()
 
         if is_range:
             # range(n) or range(start, stop): counter in lambda captures
@@ -630,19 +606,10 @@ class GeneratorCodegen:
 
                 self.ctx.indent_level = 4 + extra
                 lam.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
-                if leaf is not None:
-                    leaf.emit_pre_yield(lam, 4 + extra)
-                    yield_expr = leaf.render_yield_value()
-                else:
-                    for stmt in pre_yield:
-                        self.statements.gen_stmt(lam, stmt)
-                    yield_expr = self.statements.gen_yield_value(yield_stmt)
+                leaf.emit_pre_yield(lam, 4 + extra)
+                yield_expr = leaf.render_yield_value()
                 lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-                if leaf is not None:
-                    leaf.emit_post_yield(lam, 4 + extra)
-                else:
-                    for stmt in post_yield:
-                        self.statements.gen_stmt(lam, stmt)
+                leaf.emit_post_yield(lam, 4 + extra)
                 self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
                 lam.write(f"{I(3)}}}\n")
                 lam.write(f"{I(3)}return std::nullopt;\n")
@@ -667,9 +634,8 @@ class GeneratorCodegen:
 
             with self._lambda_body_sink(out, I(3)) as lam:
                 self._gen_simple_for_yield_body(
-                    lam, for_stmt, pre_yield, post_yield, yield_stmt,
-                    iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
-                    leaf=leaf)
+                    lam, iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot,
+                    val_binding, yld, I, extra, leaf)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
@@ -710,19 +676,10 @@ class GeneratorCodegen:
                         and iter_elem.has_pointer_repr_element()):
                     self.ctx.storage_form_tuple_locals.add(for_stmt.var)
 
-                if leaf is not None:
-                    leaf.emit_pre_yield(lam, 4 + extra)
-                    yield_expr = leaf.render_yield_value()
-                else:
-                    for stmt in pre_yield:
-                        self.statements.gen_stmt(lam, stmt)
-                    yield_expr = self.statements.gen_yield_value(yield_stmt)
+                leaf.emit_pre_yield(lam, 4 + extra)
+                yield_expr = leaf.render_yield_value()
                 lam.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-                if leaf is not None:
-                    leaf.emit_post_yield(lam, 4 + extra)
-                else:
-                    for stmt in post_yield:
-                        self.statements.gen_stmt(lam, stmt)
+                leaf.emit_post_yield(lam, 4 + extra)
                 self._emit_iter_slot_return(lam, I(4), cpp_iter_slot, yld)
                 lam.write(f"{I(3)}}}\n")
                 lam.write(f"{I(3)}return std::nullopt;\n")
@@ -761,9 +718,8 @@ class GeneratorCodegen:
 
             with self._lambda_body_sink(out, I(3)) as lam:
                 self._gen_simple_for_yield_body(
-                    lam, for_stmt, pre_yield, post_yield, yield_stmt,
-                    iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra,
-                    leaf=leaf)
+                    lam, iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot,
+                    val_binding, yld, I, extra, leaf)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
@@ -796,11 +752,10 @@ class GeneratorCodegen:
                 and builtin_modules.is_native_iterable(resolved, registry=self.ctx.analyzer.registry))
 
     def _gen_simple_for_yield_body(
-        self, out: 'TextIO', for_stmt: TpyForEach,
-        pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
+        self, out: 'TextIO',
         iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
         cpp_iter_slot: str, val_binding: str, yld: str, I: 'Callable[[int], str]', extra: int,
-        leaf: "SimpleGenLeafEmitter | None" = None,
+        leaf: "SimpleGenLeafEmitter",
     ) -> None:
         """Emit the shared yield body for __iter__+__next__ simple generator branches."""
         self.ctx.indent_level = 3 + extra
@@ -818,19 +773,10 @@ class GeneratorCodegen:
         else:
             out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
 
-        if leaf is not None:
-            leaf.emit_pre_yield(out, 4 + extra)
-            yield_expr = leaf.render_yield_value()
-        else:
-            for stmt in pre_yield:
-                self.statements.gen_stmt(out, stmt)
-            yield_expr = self.statements.gen_yield_value(yield_stmt)
+        leaf.emit_pre_yield(out, 4 + extra)
+        yield_expr = leaf.render_yield_value()
         out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
-        if leaf is not None:
-            leaf.emit_post_yield(out, 4 + extra)
-        else:
-            for stmt in post_yield:
-                self.statements.gen_stmt(out, stmt)
+        leaf.emit_post_yield(out, 4 + extra)
         self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
         out.write(f"{I(3)}}}\n")
         out.write(f"{I(2)}}}\n")
@@ -1030,7 +976,7 @@ class GeneratorCodegen:
                 unpack = stmt.body[0]
                 # Optional members are excluded: they go through the existing
                 # pointer-repr-Optional path (`T* = nullptr`, optional_to_ptr)
-                # in the struct emit and `_gen_tuple_unpack`. Only plain
+                # in the struct emit and the tuple-unpack emit. Only plain
                 # reference members alias via `&std::get<i>(...)`.
                 aliased = {
                     tname
@@ -1241,21 +1187,20 @@ class GeneratorCodegen:
         return targets
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
+                          leaf: "SimpleGenLeafEmitter",
                           indent_level: int = 1,
-                          leaf: "SimpleGenLeafEmitter | None" = None,
                           record_name: str | None = None) -> "Namespace":
         """Generate init stmts and set up codegen scope.
 
         Returns the function's local namespace with `current_ns` left pointing
         at it: `gen_body` clears `current_ns` on exit, but the simple-generator
         peephole still emits the loop condition + body afterward, and
-        binding-based dispatch in `_gen_field_access` (module-constant /
+        binding-based field-access dispatch (module-constant /
         enum-member / nested-type access) is gated on `current_ns`. The caller
         restores the prior namespace.
 
-        A THIR-routed body (`leaf`) swaps gen_body's init-stmt emission for
-        the leaf renders (+ the same trailing-comment walk); the namespace
-        setup stays, since skeleton classification still runs either way.
+        The init statements are emitted by the leaf renderer; the namespace
+        setup stays, since skeleton classification still runs.
         """
         from ..namespace import Namespace
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -1266,18 +1211,11 @@ class GeneratorCodegen:
         # receiver `const T&`. gen_body installs them via setup_body_scope;
         # they stay installed for the lambda-body renders that follow.
         crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
-        if leaf is not None:
-            self.ctx.const_ref_params = crp
-            self.ctx.deep_const_borrow_params = dcbp
-            leaf.emit_init(out, indent_level)
-            self.ctx.emit_block_trailing_comments(
-                out, init_stmts, INDENT * indent_level)
-        else:
-            self.statements.gen_body(
-                out, init_stmts, func.params, func.generator_yield_type,
-                func, local_ns, indent_level=indent_level, is_method=False,
-                const_ref_params=crp, deep_const_borrow_params=dcbp,
-            )
+        self.ctx.const_ref_params = crp
+        self.ctx.deep_const_borrow_params = dcbp
+        leaf.emit_init(out, indent_level)
+        self.ctx.emit_block_trailing_comments(
+            out, init_stmts, INDENT * indent_level)
         self.ctx.current_ns = local_ns
         return local_ns
 

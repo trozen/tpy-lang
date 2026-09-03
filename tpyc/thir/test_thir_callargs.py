@@ -11,6 +11,7 @@ from .nodes import (
 )
 from .nodes import Form
 from .testutil import (
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
     _assert_byte_identical, _assert_rejects_at, _assert_routes_byte_identical,
     _thir_ctx, _thir_ctx_witnessed,
@@ -180,7 +181,6 @@ class TestRecordCallArgs:
         fn = _fn(thir, "use")
         assert fn is not None
         assert isinstance(fn.body[0].init.args[0], THIRCtorCall)  # inline
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_record_rvalue_arg_into_ctor_outer_const_inlines(self):
         # The const-slot sibling: the prvalue binds the `const A&` directly,
@@ -275,8 +275,7 @@ class TestRecordCallArgs:
             _PRELUDE
             + "def take_ro(a: readonly[A]) -> Int32:\n    return a.x\n"
             + "def use() -> Int32:\n    return take_ro(A(7))\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "return take_ro(A(7));" in out
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
@@ -307,7 +306,7 @@ class TestRecordCallArgs:
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
         _assert_byte_identical(src)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "Child __tmp_1 = Child(7);" in out
 
     def test_upcast_readonly_slot_name_routes(self):
@@ -347,7 +346,6 @@ class TestRecordCallArgs:
         src = _src("", extra_a="    def through(self) -> Int32:\n"
                                "        return take_rec(self)\n")
         assert _fn(_lower_ctx(src), "through") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestRecordMethodCalls:
@@ -470,8 +468,7 @@ class TestRecordMethodCalls:
         src = _src(
             "", extra_a="    def twice(self) -> Int32:\n"
                         "        return self.get() * 2\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "return (::tpy::mul_check<int32_t>(this->get(), 2));" in out
         assert _fn(_lower_ctx(src), "twice") is not None
 
@@ -495,12 +492,10 @@ class TestRecordMethodCalls:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp_t = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         compiler2, modules2 = _compile(src)
         _, cpp_a = compiler2.generate_code_to_strings(
-            _entry(modules2), options=CodeGenOptions(emit_source_comments=False,
-                                                     thir_codegen=False))
+            _entry(modules2), options=CodeGenOptions(emit_source_comments=False))
         assert cpp_t == cpp_a
 
     def test_own_scalar_method_slot_copy_temp(self):
@@ -514,9 +509,8 @@ class TestRecordMethodCalls:
                     "        return self.x + v\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "auto __tmp_1 = n;" in _cpp(src, thir=True)
-        assert "a.own_scalar(std::move(__tmp_1))" in _cpp(src, thir=True)
+        assert "auto __tmp_1 = n;" in _cpp(src)
+        assert "a.own_scalar(std::move(__tmp_1))" in _cpp(src)
 
     def test_record_returning_method_routes_as_field_receiver(self):
         # A record result routes at the FIELD-RECEIVER position
@@ -527,8 +521,7 @@ class TestRecordMethodCalls:
             "def use(a: A, b: A) -> Int32:\n    return a.pick(b).x\n",
             extra_a="    def pick(self, other: A) -> A:\n        return other\n")
         assert _fn(_lower_ctx(src), "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "return a.pick(b).x;" in _cpp(src, thir=True)
+        assert "return a.pick(b).x;" in _cpp(src)
 
 
 class TestInheritedInitCtor:
@@ -546,8 +539,7 @@ class TestInheritedInitCtor:
         # lowering threads `_ctor_effective_params` into the arg zip.
         src = self.SRC + "def use() -> Int32:\n    s = Sub(7)\n    return s.v\n"
         assert _fn(_lower_ctx(src), "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "Sub s = Sub(7);" in _cpp(src, thir=True)
+        assert "Sub s = Sub(7);" in _cpp(src)
 
     def test_own_container_copy_temp_method_arg(self):
         # A bound container lvalue into a user method's Own[list] slot,
@@ -567,9 +559,8 @@ class TestInheritedInitCtor:
             "    return len(xs)\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "auto __tmp_1 = xs;" in _cpp(src, thir=True)
-        assert "s.take(std::move(__tmp_1))" in _cpp(src, thir=True)
+        assert "auto __tmp_1 = xs;" in _cpp(src)
+        assert "s.take(std::move(__tmp_1))" in _cpp(src)
 
     def test_own_record_method_rvalue_arg(self):
         # A record-returning METHOD-call rvalue into an Own[record] method
@@ -587,8 +578,7 @@ class TestInheritedInitCtor:
             "def f(k: K, m: M) -> None:\n    k.keep(m.mk())\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "k.keep(m.mk())" in _cpp(src, thir=True)
+        assert "k.keep(m.mk())" in _cpp(src)
 
     def test_inherited_init_omitted_default_routes(self):
         # An omitted trailing param whose TRIPLE carries a default renders the
@@ -600,8 +590,7 @@ class TestInheritedInitCtor:
             "class Sub(Base):\n    pass\n"
             "def use() -> Int32:\n    s = Sub()\n    return s.v\n")
         assert _fn(_lower_ctx(src), "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "Sub s = Sub();" in _cpp(src, thir=True)
+        assert "Sub s = Sub();" in _cpp(src)
 
 
 class TestCallArgEmit:
@@ -637,19 +626,15 @@ class TestCallArgEmit:
         + "main()\n"
     )
 
-    def _emit(self, thir: bool):
+    def _emit(self):
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
-    def test_byte_identical(self):
-        assert self._emit(thir=True) == self._emit(thir=False)
-
     def test_emitted_shapes(self):
-        out = self._emit(thir=True)
+        out = self._emit()
         assert "mutate_rec(b);" in out
         assert "return (::tpy::add_check<int32_t>(take_rec(a), a.combine(b)));" in out
         assert "return (::tpy::add_check<int32_t>(take_rec((*p)), p->get()));" in out
@@ -671,12 +656,11 @@ _VU_PRELUDE = (
 )
 
 
-def _cpp(src: str, thir: bool, extra_lib_dirs=None) -> str:
+def _cpp(src: str, extra_lib_dirs=None) -> str:
     compiler, modules = _compile(src, extra_lib_dirs)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -695,9 +679,6 @@ class TestArgTempEmit:
         + "def use_binop(k: Int32) -> Int32:\n    return take_vu(k + 1)\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routing_is_non_vacuous(self):
         thir = _lower(self.SRC)
         for name in ("use_decl", "use_assign", "use_ret", "use_stmt",
@@ -705,7 +686,7 @@ class TestArgTempEmit:
             assert _fn(thir, name) is not None, name
 
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "std::variant<int32_t, double> __tmp_1 = k;\n    int32_t r = take_vu(__tmp_1);" in out
         # Two temps in one statement number left-to-right.
         assert ("std::variant<int32_t, double> __tmp_5 = k;\n"
@@ -720,8 +701,7 @@ class TestArgTempEmit:
             + "def use_ret() -> Int32:\n    return take_rec(A(7))\n"
             + "def use_mut():\n    mutate_rec(A(9))\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "A __tmp_1 = A(7);\n    return take_rec(__tmp_1);" in out
         assert "A __tmp_2 = A(9);\n    mutate_rec(__tmp_2);" in out
         thir = _lower_ctx(src)
@@ -740,8 +720,7 @@ class TestArgTempEmit:
             + "def use_mut() -> Int32:\n    s = Sink(A(1))\n    return s.c\n"
             + "def use_const() -> Int32:\n    s = SinkC(A(2))\n    return s.c\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "A __tmp_1 = A(1);\n    Sink s = Sink(__tmp_1);" in out
         assert "SinkC s = SinkC(A(2));" in out
         thir = _lower_ctx(src)
@@ -760,8 +739,7 @@ class TestArgTempEmit:
             + "def use(k: K, v: Int32) -> Int32:\n"
             + "    k.n = take_vu(v)\n    return k.n\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert ("std::variant<int32_t, double> __tmp_1 = v;\n"
                 "    k.n = take_vu(__tmp_1);") in out
         thir, w = _lower_ctx_witnessed(src)
@@ -782,13 +760,8 @@ class TestArgTempEmit:
             + "        k -= 1\n"
             + "    return n\n"
         )
-        thir = _lower(src)
-        assert _fn(thir, "routed") is not None
-        assert _fn(thir, "unrouted") is None  # mixed walrus+temp cond -> AST
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
-        assert "__tmp_1 = k;\n    return take_vu(__tmp_1);" in out
-        assert "__tmp_2 = k;\n    while ((" in out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.while:expr.call:call.arg_shape.union")
 
     def test_while_mixed_walrus_temp_keeps_preloop_flush(self):
         # The walrus-free gate (contains_named_expr): a condition mixing a
@@ -803,17 +776,13 @@ class TestArgTempEmit:
             + "        k -= 1\n"
             + "    return n\n"
         )
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
-        assert "while (true)" not in out
-        assert "__tmp_1 = k;\n    while ((" in out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.while:expr.call:call.arg_shape.union")
 
     def test_gen_while_mixed_walrus_temp_rejects(self):
         # The peephole face of the mixed shape never compiled (undeclared
         # __tmp on master), so it rejects loudly instead of shipping the
         # sync fallback's single-eval semantics as new silent surface.
-        import pytest
-        from ..codegen_cpp.context import CodeGenError
         src = (
             _VU_PRELUDE
             + "from typing import Iterator\n"
@@ -822,8 +791,7 @@ class TestArgTempEmit:
             + "    while (n := n + 1) < 5 and take_vu(k) > 0:\n"
             + "        yield n\n"
         )
-        with pytest.raises(CodeGenError, match="walrus"):
-            _cpp(src, thir=False)
+        _assert_rejects_at(_reject_tally(src), "body:sgen.cond")
 
     def test_ctor_demotion_body_temp_routes(self):
         # A ctor body statement is the same flushable machinery: the demoted
@@ -836,8 +804,7 @@ class TestArgTempEmit:
             + "        take_vu(k)\n"
             + "        self.x = k\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
                 "    take_vu(__tmp_1);") in out
         from .testutil import _lower_ctor
@@ -873,9 +840,6 @@ class TestOwnSlotArgs:
         + "def scalar_lit_arm() -> Int32:\n    return take_own_s(5)\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)
         for name in ("copy_arm", "scalar_name_arm", "field_arm", "move_arm",
@@ -883,8 +847,8 @@ class TestOwnSlotArgs:
             assert _fn(thir, name) is not None, name
 
     def test_emitted_shapes(self):
-        thir_out = _cpp(self.SRC, thir=True)
-        assert thir_out == _cpp(self.SRC, thir=False)
+        thir_out = _cpp(self.SRC)
+        assert thir_out == _cpp(self.SRC)
         # The copy+move temps (record param, scalar name, scalar field read).
         assert ("auto __tmp_1 = a;\n    "
                 "int32_t r = take_own(std::move(__tmp_1));") in thir_out
@@ -909,8 +873,7 @@ class TestOwnSlotArgs:
             + "    p = h.a\n"
             + "    if flag:\n        p = h.b\n"
             + "    return take_own(p)\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "auto __tmp_1 = (*p);\n    return take_own(std::move(__tmp_1));" in out
         assert _fn(_lower_ctx(src), "use") is not None
 
@@ -921,8 +884,7 @@ class TestOwnSlotArgs:
             + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
             + "def use(o: Own[A]) -> Int32:\n"
             + "    r = take_own(o)\n    return r + o.x\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "auto __tmp_1 = o;\n    int32_t r = take_own(std::move(__tmp_1));" in out
         assert _fn(_lower_ctx(src), "use") is not None
 
@@ -935,8 +897,7 @@ class TestOwnSlotArgs:
             + "def take_gen[T](o: Own[T]) -> Int32:\n    return 1\n"
             + "def use(o: Own[A]) -> Int32:\n"
             + "    r = take_gen(o)\n    return r + o.x\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "auto __tmp_1 = o;" in out
         assert "take_gen<A>(std::move(__tmp_1))" in out
         assert _fn(_lower_ctx(src), "use") is not None
@@ -952,8 +913,7 @@ class TestOwnSlotArgs:
             + "    for x in filter(lambda v: v > 1, xs):\n"
             + "        t = t + x\n"
             + "    return t\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "::tpy::builtin_filter" in out
         assert "[](int32_t v)" in out
         assert _fn(_lower_ctx(src), "use") is not None
@@ -989,7 +949,6 @@ class TestOwnSlotGateRejects:
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def use(n: Int32) -> Int32:\n    return g(take_own_s(n))\n")
         assert _fn(_lower_ctx(src), "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_own_slot_stays_ast(self):
         # An `Own[A] | None` slot takes the ptr_to_optional wrap arms.
@@ -1000,7 +959,6 @@ class TestOwnSlotGateRejects:
             + "    return o.x\n"
             + "def use(a: A) -> Int32:\n"
             + "    r = take_opt(a)\n    return r + a.x\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is None
 
     def test_record_field_arg_stays_ast(self):
@@ -1011,7 +969,6 @@ class TestOwnSlotGateRejects:
             _PRELUDE
             + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
             + "def use(h: H) -> Int32:\n    return take_own(h.a)\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is None
 
     def test_borrow_returning_callee_arg_stays_ast(self):
@@ -1023,7 +980,6 @@ class TestOwnSlotGateRejects:
             + "def take_own(o: Own[A]) -> Int32:\n    return o.x\n"
             + "def get_ref(h: H) -> A:\n    return h.a\n"
             + "def use(h: H) -> Int32:\n    return take_own(get_ref(h))\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is None
 
     def test_narrowed_subject_own_arg_stays_ast(self):
@@ -1037,7 +993,6 @@ class TestOwnSlotGateRejects:
             + "def use(u: A | B) -> Int32:\n"
             + "    if isinstance(u, A):\n        return take_own(u)\n"
             + "    return 0\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is None
 
     def test_coerced_lvalue_into_own_slot_routes(self):
@@ -1049,7 +1004,6 @@ class TestOwnSlotGateRejects:
         src = ("from tpy import Int32, Int64, Own\n"
                "def take64(o: Own[Int64]) -> Int64:\n    return o\n"
                "def use(n: Int32) -> Int64:\n    return take64(n)\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is not None
 
     def test_f2d_own_ctor_arg_stays_ast(self):
@@ -1061,7 +1015,6 @@ class TestOwnSlotGateRejects:
                "    def __init__(self, v: Own[Int32]):\n        self.v = v\n"
                "def f(n: Int32) -> Int32:\n"
                "    p = W(n)\n    p = W(n)\n    return p.v\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "f") is None
 
 
@@ -1092,17 +1045,14 @@ class TestMethodUnionAndSelfArgs:
         "    return a.tag(5)\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)
         for name in ("use", "use_inherited", "use_lit", "outer", "helper"):
             assert _fn(thir, name) is not None, name
 
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
-        assert out == _cpp(self.SRC, thir=False)
+        out = _cpp(self.SRC)
+        assert out == _cpp(self.SRC)
         # Member-valued scalars hoist the variant temp at the method arg
         # (decl-init, reassign, and return positions; inherited callee too).
         assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
@@ -1130,7 +1080,6 @@ class TestMethodUnionAndSelfArgs:
             self.SRC
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def nested(a: A, k: Int32) -> Int32:\n    return g(a.tag(k))\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "nested") is not None
 
 
@@ -1168,9 +1117,6 @@ class TestOptionalPtrArgs:
         + "    return take_opt(p)\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routing_is_non_vacuous(self):
         thir = _lower_ctx(self.SRC)
         for name in ("none_arm", "name_arm", "rvalue_arm", "opt_local_arm",
@@ -1178,8 +1124,8 @@ class TestOptionalPtrArgs:
             assert _fn(thir, name) is not None, name
 
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
-        assert out == _cpp(self.SRC, thir=False)
+        out = _cpp(self.SRC)
+        assert out == _cpp(self.SRC)
         assert "return take_opt(nullptr);" in out
         assert "return take_opt(&(a));" in out
         assert "A __tmp_1 = A(7);\n    return take_opt(&(__tmp_1));" in out
@@ -1219,8 +1165,8 @@ class TestOptionalPtrArgs:
             "    def make() -> Own[A]:\n        return A(9)\n"
             "def marker_arm() -> Int32:\n    return take_opt(F.make())\n"
         )
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "return take_opt(&(__tmp_" in out
         assert _fn(_lower_ctx(src), "marker_arm") is not None
 
@@ -1240,8 +1186,7 @@ class TestOptionalPtrNarrowedArgs:
             + "def use(u: A | B) -> Int32:\n"
             + "    if isinstance(u, A):\n        return take_opt(u)\n"
             + "    return 0\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "return take_opt(&(__u));" in out
         assert _fn(_lower_ctx(src), "use") is not None
 
@@ -1257,8 +1202,7 @@ class TestOptionalPtrNarrowedArgs:
             + "    if isinstance(u, A) and take_opt(u) > 0:\n"
             + "        return 1\n"
             + "    return 0\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "take_opt(&((*std::get<A*>(u))))" in out
         assert _fn(_lower_ctx(src), "use") is not None
 
@@ -1273,7 +1217,6 @@ class TestOptionalPtrGateRejects:
             "    return o.x\n",
             extra_a="    def m(self) -> Int32:\n"
                     "        return take_opt(self)\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "m") is None
 
     def test_optional_param_routes_bare_pass(self):
@@ -1286,7 +1229,6 @@ class TestOptionalPtrGateRejects:
             + "    if o is None:\n        return 0\n"
             + "    return o.x\n"
             + "def use(o: A | None) -> Int32:\n    return take_opt(o)\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
         assert _fn(thir, "take_opt") is not None
@@ -1301,7 +1243,6 @@ class TestOptionalPtrGateRejects:
             + "    return o.x\n"
             + "def g(x: Int32) -> Int32:\n    return x\n"
             + "def use() -> Int32:\n    return g(take_opt(A(7)))\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "use") is not None
 
 
@@ -1320,7 +1261,6 @@ class TestArgTempGateRejects:
                + "    return n\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_if_and_elif_conditions_route(self):
         # An if-cond temp flushes before the `if (`; an elif temp abandons
@@ -1337,7 +1277,6 @@ class TestArgTempGateRejects:
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         assert _fn(thir, "g") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_for_iterable_stays_ast(self):
         thir = _lower(_VU_PRELUDE
@@ -1362,7 +1301,6 @@ class TestArgTempGateRejects:
         assert _fn(thir, "f") is not None
         assert _fn(thir, "g") is not None
         # The temps must FLUSH before the statement line, not just route.
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_scalar_field_write_value_routes(self):
         # A field-write assign is the fifth flushable position (see
@@ -1477,8 +1415,8 @@ class TestMacroNameAssignFlush:
 
     def test_byte_identical(self, tmp_path):
         dirs = self._dirs(tmp_path)
-        out = _cpp(self._MAIN, thir=True, extra_lib_dirs=dirs)
-        assert out == _cpp(self._MAIN, thir=False, extra_lib_dirs=dirs)
+        out = _cpp(self._MAIN, extra_lib_dirs=dirs)
+        assert out == _cpp(self._MAIN, extra_lib_dirs=dirs)
         assert ("std::variant<int32_t, double> __tmp_1 = k;\n"
                 "    r = take_vu(__tmp_1);") in out
 
@@ -1518,7 +1456,6 @@ class TestCtorShapeGateRejects:
             "def take_r(r: R) -> Int32:\n    return r.x\n"
             "def use() -> Int32:\n    return take_r(R())\n"
             "def use_full() -> Int32:\n    return take_r(R(5))\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
         assert _fn(thir, "use_full") is not None
@@ -1646,7 +1583,7 @@ class TestCtorArgUnionOptionalProtocol:
         # The nested member ctor rvalue hoists its own temp at the SAME
         # statement flush, innermost-first, then lifts its address into the
         # pointer variant.
-        out = _cpp(self._UNION, thir=True)
+        out = _cpp(self._UNION)
         assert "Circle __tmp_1 = Circle(5);" in out
         assert ("Canvas __tmp_2 = Canvas(std::variant<Circle*, Square*>"
                 "{&__tmp_1});") in out
@@ -1670,7 +1607,7 @@ class TestCtorArgUnionOptionalProtocol:
     def test_own_optional_record_arg_shape(self):
         # An `Own[record | None]` slot binds a record RVALUE bare (prvalue ->
         # optional<Inner>) and a None literal as std::nullopt (storage-form).
-        out = _cpp(self._OWNOPT, thir=True)
+        out = _cpp(self._OWNOPT)
         assert 'Outer __tmp_1 = Outer("a", Inner(42));' in out
         assert 'Outer __tmp_2 = Outer("c", std::nullopt);' in out
 
@@ -1695,9 +1632,8 @@ class TestCtorArgUnionOptionalProtocol:
     def test_protocol_conformer_ctor_arg_bare(self):
         # A base-class-conforming lvalue passes bare into the @dynamic
         # protocol ctor slot (no adapter temp).
-        out = _cpp(self._PROTO, thir=True)
+        out = _cpp(self._PROTO)
         assert "Holder h = Holder(e);" in out
-        assert _cpp(self._PROTO, thir=True) == _cpp(self._PROTO, thir=False)
 
 
 def _find_call(node, name):
@@ -1804,7 +1740,6 @@ class TestCtorStrArgSlots:
         for name in ("use_lit", "use_param", "use_owned"):
             assert _fn(thir, name) is not None, name
         assert w.get("ctor.str_arg", 0) >= 3
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_string_slot_routes_byte_identical(self):
         # A non-mutated `String` slot is `const std::string&`; the literal
@@ -1824,7 +1759,6 @@ class TestCtorStrArgSlots:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert w.get("ctor.str_arg", 0) > 0
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_string_slot_view_source_routes_byte_identical(self):
         # A view source (str param) into a String slot arrives through the
@@ -1844,7 +1778,6 @@ class TestCtorStrArgSlots:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert w.get("ctor.str_arg", 0) > 0
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_method_ctor_rvalue_str_arg_routes(self):
         # The widened arg loop applies at the method-ctor-rvalue face too
@@ -1863,7 +1796,6 @@ class TestCtorStrArgSlots:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert w.get("ctor.str_arg", 0) > 0
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_mutated_string_slot_stays_ast(self):
         # A MUTATED String slot lowers `std::string&`, where the AST's
@@ -1885,9 +1817,9 @@ class TestCtorStrArgSlots:
         )
         assert _fn(_lower_ctx(src), "use") is None
 
-    def test_own_str_slot_stays_ast(self):
+    def test_own_str_slot_routes(self):
         # An Own[str] slot materializes an owned copy (the auto-move
-        # cascade); `_str_pass_through_arg` rejects Own.
+        # cascade) -- its own row, not the str pass-through one.
         src = (
             "from tpy import Own\n"
             "class O:\n"
@@ -1900,7 +1832,7 @@ class TestCtorStrArgSlots:
             "    return take_o(O(s))\n"
             'print(use("a"))\n'
         )
-        assert _fn(_lower_ctx(src), "use") is None
+        assert _fn(_lower_ctx(src), "use") is not None
 
     def test_record_rvalue_return_const_string_slot_routes(self):
         # `return S("a")` at an Own[S] record slot with a NON-mutated String
@@ -1918,7 +1850,6 @@ class TestCtorStrArgSlots:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_record_rvalue_return_mutated_string_slot_stays_ast(self):
         # The mutated-slot guard on `_is_record_rvalue_source`'s ctor face: a
@@ -1964,7 +1895,6 @@ class TestCtorMutatedSlotArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_container_name_into_mutated_ctor_slot_routes(self):
         # An lvalue container NAME binds the mutated `std::vector<T>&` slot
@@ -1982,7 +1912,6 @@ class TestCtorMutatedSlotArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_view_str_source_into_mutated_string_slot_stays_ast(self):
         # A str (view) source into a MUTATED String slot arrives through the
@@ -2019,7 +1948,6 @@ class TestCtorMutatedSlotArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_value_rows_alongside_mutated_slot_route(self):
         # Value-family args (enum member, float literal) ride their by-value
@@ -2047,7 +1975,6 @@ class TestCtorMutatedSlotArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestArgTempValidator:
@@ -2151,11 +2078,8 @@ class TestNoneValueOptArg:
         + "def tuple_none():\n    use_tuple(None)\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emits_nullopt(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "use_scalar(std::nullopt);" in out
         assert "use_str(std::nullopt);" in out
         assert "use_char(std::nullopt);" in out
@@ -2181,8 +2105,7 @@ class TestNoneValueOptArg:
             + "def use_rec(b: Box | None):\n    print(1)\n"
             + "def rec_none():\n    use_rec(None)\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "use_rec(nullptr);" in out
 
 
@@ -2206,8 +2129,8 @@ class TestCtorValueOptNoneArg:
         assert witnesses.get("call.none_value_opt", 0) >= 1
 
     def test_byte_identical_emits_nullopt(self):
-        out = _cpp(self.SRC, thir=True)
-        assert out == _cpp(self.SRC, thir=False)
+        out = _cpp(self.SRC)
+        assert out == _cpp(self.SRC)
         assert "P p = P(std::nullopt);" in out
 
     def test_coerced_scalar_into_optional_slot_routes(self):
@@ -2217,7 +2140,6 @@ class TestCtorValueOptNoneArg:
         src = self.SRC.replace("P(None)", "P(1)")
         thir = _lower_ctx(src)
         assert _fn(thir, "make") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestOwnSlotCtorArgs:
@@ -2243,9 +2165,6 @@ class TestOwnSlotCtorArgs:
         "    w = W(o)\n    return w.get()\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routes_with_witness(self):
         thir, witnesses = _lower_ctx_witnessed(self.SRC)
         for name in ("move_local", "copy_arm", "own_param_move"):
@@ -2253,7 +2172,7 @@ class TestOwnSlotCtorArgs:
         assert witnesses.get("ctor.own_arg", 0) >= 3
 
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # Body-movable local at last use: the temp-free move.
         assert "W w = W(std::move(t));" in out
         # Still-live param: the copy+move temp at the decl flush point.
@@ -2270,7 +2189,6 @@ class TestOwnSlotCtorArgs:
                + "def nested(a: A) -> Int32:\n    return take_w(W(a))\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "nested") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestQualcallRecordStorageRet:
@@ -2290,13 +2208,10 @@ class TestQualcallRecordStorageRet:
         "    a = F.make(2)\n    return a.x\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_routes(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "use") is not None
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "A a = F::make(2);" in out
 
 
@@ -2317,11 +2232,10 @@ class TestCtorListLiteralArg:
     )
 
     def test_byte_identical_and_routes(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
         thir, witnesses = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "use") is not None
         assert witnesses.get("ctor.container_literal_arg", 0) >= 1
-        assert "Numbers n = Numbers({1, 2, 3});" in _cpp(self.SRC, thir=True)
+        assert "Numbers n = Numbers({1, 2, 3});" in _cpp(self.SRC)
 
     def test_dict_literal_ctor_arg_spelled_inline(self):
         # A dict literal at a ctor slot renders SPELLED and INLINE -- neither
@@ -2339,11 +2253,11 @@ class TestCtorListLiteralArg:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert witnesses.get("ctor.container_literal_arg", 0) >= 1
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert ('Table t = Table(::tpy::ordered_map<std::string, int32_t>'
                 '({{"a", 1}}));') in cpp
         assert "__tmp" not in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_free_call_list_literal_arg_hoists_temp(self):
         # A free-call list-literal arg in a flush position (here a return)
@@ -2356,11 +2270,10 @@ class TestCtorListLiteralArg:
             "    for x in xs:\n        t += x\n"
             "    return t\n"
             "def use() -> Int32:\n    return total([1, 2])\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert witnesses.get("argtemp.container_literal", 0) >= 1
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert "std::vector<int32_t> __tmp_1 = {1, 2};" in out
         assert "return total(__tmp_1);" in out
 
@@ -2381,11 +2294,10 @@ class TestSelfRecordArg:
     )
 
     def test_byte_identical_and_routes(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "fire") is not None
         assert _fn(thir, "calc") is not None
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "on_init((*this));" in out
         assert "return read_of((*this));" in out
 
@@ -2407,10 +2319,9 @@ class TestQualcallOmittedDefaults:
     )
 
     def test_byte_identical_and_routes(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "use") is not None
-        assert "A a = F::make();" in _cpp(self.SRC, thir=True)
+        assert "A a = F::make();" in _cpp(self.SRC)
 
     def test_partial_defaults_route(self):
         # Partial omission (one of two defaulted params): the omitted TRAILING
@@ -2421,10 +2332,9 @@ class TestQualcallOmittedDefaults:
             "def make(x: Int32 = 5, y: Int32 = 2) -> Own[A]:"
         ).replace("return A(x)", "return A(x + y)").replace(
             "F.make()", "F.make(1)")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert "A a = F::make(1);" in _cpp(src, thir=True)
+        assert "A a = F::make(1);" in _cpp(src)
 
 
 class TestPartialOmittedDefaults:
@@ -2439,10 +2349,9 @@ class TestPartialOmittedDefaults:
             "def f(a: Int32, b: Int32 = 2) -> Int32:\n    return a + b\n"
             "def use() -> Int32:\n    return f(1)\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert "return f(1);" in _cpp(src, thir=True)
+        assert "return f(1);" in _cpp(src)
 
     def test_free_call_pairing_threads_leading_slot(self):
         # The provided arg must lower against ITS param slot, not slot-less:
@@ -2454,10 +2363,9 @@ class TestPartialOmittedDefaults:
             "    return a * Float32(b)\n"
             "def use() -> Float32:\n    return f(1.5)\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert "return f(1.5f);" in _cpp(src, thir=True)
+        assert "return f(1.5f);" in _cpp(src)
 
     def test_method_call_partial_defaults_route(self):
         src = (
@@ -2469,10 +2377,9 @@ class TestPartialOmittedDefaults:
             "        return self.x * k + extra\n"
             "def use(r: R) -> Int32:\n    return r.scale(3)\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert "return r.scale(3);" in _cpp(src, thir=True)
+        assert "return r.scale(3);" in _cpp(src)
 
     def test_variadic_empty_pack_routes(self):
         # An empty `*args` pack takes the nullary `::tpy::varargs<E>()` ctor
@@ -2485,10 +2392,9 @@ class TestPartialOmittedDefaults:
             "    return t\n"
             "def use() -> Int32:\n    return f()\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert "return f(::tpy::varargs<const int32_t>());" in _cpp(src, thir=True)
+        assert "return f(::tpy::varargs<const int32_t>());" in _cpp(src)
 
 
 class TestVarargPack:
@@ -2504,8 +2410,7 @@ class TestVarargPack:
             "    return t\n"
             "def use() -> None:\n    print(f(1, 2, 3))\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::array<const int32_t, 3> __tmp_1{1, 2, 3};" in cpp
         assert "f(::tpy::varargs<const int32_t>(__tmp_1))" in cpp
 
@@ -2522,8 +2427,7 @@ class TestVarargPack:
             "def use() -> None:\n"
             "    a = C(0)\n    b = C(0)\n    sink(a, b)\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::array<C*, 2> __tmp_1{&a, &b};" in cpp
         assert "sink(::tpy::varargs<C>(__tmp_1))" in cpp
 
@@ -2538,9 +2442,8 @@ class TestVarargPack:
             "def use() -> None:\n"
             "    xs: list[Int32] = [1, 2, 3]\n    print(f(*xs))\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert ("f(::tpy::varargs<const int32_t>(::tpy::as_span(xs)))"
-                in _cpp(src, thir=True))
+                in _cpp(src))
 
 
 class TestNativeIterableLiteralArg:
@@ -2619,17 +2522,14 @@ class TestContainerCallTempArg:
 
     def test_mutable_slot_hoists_arg_temp(self):
         assert _fn(_lower(self._SRC_MUT), "f") is not None
-        assert _cpp(self._SRC_MUT, thir=True) == _cpp(self._SRC_MUT, thir=False)
-        assert "__tmp_1" in _cpp(self._SRC_MUT, thir=True)
+        assert "__tmp_1" in _cpp(self._SRC_MUT)
 
     def test_readonly_slot_sync_callee_takes_no_temp(self):
-        assert _cpp(self._SRC_RO, thir=True) == _cpp(self._SRC_RO, thir=False)
-        assert "__tmp_" not in _cpp(self._SRC_RO, thir=True)
+        _assert_rejects_at(_reject_tally(self._SRC_RO),
+                           "body:stmt.expr_stmt:call.arg_shape.container")
 
     def test_readonly_slot_generator_callee_hoists_arg_temp(self):
-        assert _cpp(self._SRC_RO_GEN, thir=True) == _cpp(self._SRC_RO_GEN,
-                                                         thir=False)
-        assert "__tmp_1" in _cpp(self._SRC_RO_GEN, thir=True)
+        assert "__tmp_1" in _cpp(self._SRC_RO_GEN)
 
 
 class TestNativeValueCallArg:
@@ -2730,8 +2630,7 @@ class TestUpcastReadonlyTernaryArgs:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert "Dog __tmp_1 = Dog();" in cpp
 
     def test_readonly_record_name_arg_routes_bare(self):
@@ -2825,7 +2724,7 @@ class TestGenericVarargPack:
         assert w.get("call.generic_vararg_pack", 0) == 1
         full = (src + "def main() -> None:\n"
                 "    print(via(Box(1), Box(2)))\nmain()\n")
-        cpp = _cpp(full, thir=True)
+        cpp = _cpp(full)
         assert "std::array<const Box*, 2> __tmp_1{&b, &c};" in cpp
         assert "count_them<Box>(::tpy::varargs<const Box>(__tmp_1))" in cpp
         _assert_byte_identical(full)
@@ -2900,7 +2799,6 @@ class TestVarargPackAugValue:
                + "def main() -> None:\n"
                + "    print(Seg(Box(1), Box(2)).length)\n"
                + "main()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestCopyOwnArgFreeCall:
@@ -2927,8 +2825,8 @@ class TestCopyOwnArgFreeCall:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert faces.get("own.record_copy", 0) >= 1
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "consume(Box(b))" in cpp
 
     def test_pointer_source_copy_arg_defers(self):
@@ -2947,7 +2845,6 @@ class TestCopyOwnArgFreeCall:
                + "    print(pick(xs))\n"
                + "main()\n")
         assert _fn(_lower_ctx(src), "pick") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestNativeArgWidenings:
@@ -3107,9 +3004,8 @@ class TestGenFactoryMethodArgTemps:
                "    u = Use()\n"
                "    print(u.combine(Rec(41)))\n"
                "f()\n")
-        thir = _lower(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.arg_shape")
 
     def test_dyn_protocol_method_slot_hoists_adapter(self):
         # A structural conformer at a USER-record method's @dynamic
@@ -3155,9 +3051,8 @@ class TestGenFactoryMethodArgTemps:
                + "    b: list[Int32] = [3]\n"
                + "    print(sum(lim.first(a + b, 2)))\n"
                + "f()\n")
-        thir = _lower(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.arg_shape")
 
 
 class TestStrViewConstOwnedSinks:
@@ -3250,9 +3145,8 @@ class TestValueOptRecordMethodArgBoundaries:
                "    w = W()\n"
                "    print(h.m(w.v))\n"
                "f()\n")
-        thir = _lower(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.arg_shape")
 
 
 class TestStrViewSetitemBoundaries:
@@ -3291,7 +3185,6 @@ class TestCharScalarCtorArgs:
     Int32(chr) overload flavor keeps deferring."""
 
     def test_char_args_route_int32_defers(self):
-        from .testutil import (_assert_byte_identical, _fn, _lower_ctx)
         src = (
             "from tpy import Int32, Char\n"
             "def a() -> None:\n"
@@ -3306,11 +3199,8 @@ class TestCharScalarCtorArgs:
             "    b()\n"
             "    c2()\n"
             "main()\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "a") is not None
-        assert _fn(thir, "b") is not None
-        assert _fn(thir, "c2") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.type_ctor.scalar_arg")
 
 
 class TestNativeProtocolBytesArg:

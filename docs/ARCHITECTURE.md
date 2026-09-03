@@ -18,13 +18,13 @@ codegen            -> C++ .hpp / .cpp                    [codegen_cpp/]
 ```
 
 A Typed High-level IR sits between sema and codegen: THIR (`tpyc/thir/`) lowers
-a body to immutable IR and emits from it with no analyzer reference,
-byte-identical to the AST codegen path. It AUTHORS every emitted body by
-default, in every module -- user code, `lib/tpy` and the stdlib alike -- and the
-AST path is the second opinion the byte-diff runs against (see CLAUDE.md "THIR
-migration"). Routing is still per-body under the hood: a body THIR cannot lower
-falls back to the AST emitter. The first step of the THIR/MIR migration
-(`docs/IR_DESIGN.md`).
+a body to immutable IR and emits from it with no analyzer reference. It is the
+SINGLE sema->codegen boundary for every body, in every module -- user code,
+`lib/tpy` and the stdlib alike -- and `codegen_cpp/` is the printer/skeleton
+layer around it (module driver, headers, signatures, record/protocol/enum
+drivers, frames at their leaf seams, type rendering). There is no second body
+emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
+reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
 
 The sema half runs as a workspace-wide two-pass loop: every module
 finalizes declarations first, then bodies run as a second sweep.

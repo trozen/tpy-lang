@@ -8,6 +8,8 @@ call), and the unproven value-opt scalar FIELD operand's checked unwrap
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -87,8 +89,8 @@ class TestPtrAliasLongTail:
             "    y.x = 9\n"
             "    print(a.x, b.x)\n"
             "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_value_call_reseat_keeps_rebind_slot(self):
         # A VALUE-returning call reseat addresses a temp if taken by the
@@ -122,8 +124,8 @@ class TestPtrAliasBoundaries:
                "    s = v[1:3]\n"
                "    print(len(s))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_narrowed_union_source_alias_byte_identical(self):
         # A narrowed union member as the reassigned-alias source: the

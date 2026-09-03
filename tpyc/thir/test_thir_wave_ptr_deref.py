@@ -14,9 +14,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestPtrDerefCoerce:
@@ -47,7 +46,7 @@ class TestPtrDerefCoerce:
             "    print(h.get().kind())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert "return ::tpy::deref_check(this->_payload);" in out
         _assert_byte_identical(src)
 
@@ -66,7 +65,6 @@ class TestPtrDerefCoerce:
             "    show(ptr)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "show(::tpy::deref_check(ptr));" in out
         _assert_byte_identical(src)

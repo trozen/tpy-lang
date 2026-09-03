@@ -39,7 +39,6 @@ from conftest import (
     compile_with_diagnostics,
     get_case_default_int,
     get_case_snapshot_lib_modules,
-    get_case_thir_strict,
     validate_annotations,
     validate_type_annotations,
     validate_non_null_annotations,
@@ -131,7 +130,6 @@ def test_case(case_dir, main_src, request):
     result = compile_with_diagnostics(
         main_src, build_dir, default_int=get_case_default_int(case_dir),
         snapshot_lib_modules=get_case_snapshot_lib_modules(case_dir),
-        thir_strict=get_case_thir_strict(case_dir),
     )
 
     # Diagnostics snapshot
@@ -203,15 +201,13 @@ def test_case(case_dir, main_src, request):
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
         if not is_local and mod_name not in result.snapshot_lib_modules:
             continue
-        routed = (result.thir_routed_names.get(mod_name, frozenset())
-                  if result.thir_routed_names is not None else None)
         for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
             expected_file = module_to_expected_path(expected_dir, mod_name, ext)
             snapshotted.add(expected_file)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
             check_or_update(gen_path.read_text(), expected_file,
-                            f"{mod_name}{ext}", thir_routed_names=routed)
+                            f"{mod_name}{ext}", name_function=True)
 
     # The snapshotted set is derived from what compiled, so a module that was
     # renamed, dropped, or dropped out of a snapshot_lib_modules pattern leaves
@@ -233,47 +229,6 @@ def test_case(case_dir, main_src, request):
                   "`uv run python tests/update_snapshots.py -k <case>` "
                   "rewrites the tree from scratch.",
                 pytrace=False)
-
-    # AST oracle: the same user modules re-emitted through the AST path and
-    # byte-compared to the SAME expected files. A mismatch here that the
-    # compare above did NOT report is a regression in the AST path alone, which
-    # nothing else would catch while THIR authors the artifact.
-    if not UPDATE_EXPECTED and result.ast_modules is not None:
-        for mod_name, hpp_path, cpp_path in result.ast_modules:
-            for ext, gen_path in _snapshot_pairs(hpp_path, cpp_path):
-                expected_file = module_to_expected_path(expected_dir, mod_name, ext)
-                if not gen_path.exists():
-                    pytest.fail(f"{gen_path} (AST oracle) not generated",
-                                pytrace=False)
-                check_or_update(gen_path.read_text(), expected_file,
-                                f"{mod_name}{ext} (AST)")
-
-    # Stdlib oracle (--thir-stdlib): only the import-only, Int32, whole-library
-    # render is committed (tests/cases/harness/stdlib_render), and a case's own
-    # instantiations and options emit something else, so the THIR emission is
-    # compared to the AST emission from THIS run -- a transient oracle, never
-    # written to expected/.
-    if result.thir_lib_modules is not None:
-        for mod_name, ast_hpp, ast_cpp, thir_hpp, thir_cpp in result.thir_lib_modules:
-            for ext, ast_path, thir_path in ((".hpp", ast_hpp, thir_hpp),
-                                             (".cpp", ast_cpp, thir_cpp)):
-                if ast_path is None or thir_path is None:
-                    continue
-                check_or_update(thir_path.read_text(), ast_path,
-                                f"{mod_name}{ext} (THIR stdlib)",
-                                compare_only=True)
-
-    # THIR ratchet: an unmarked (migrated) case must route every user body
-    # through THIR. A fallback emits byte-identical AST, so the snapshot compare
-    # above is blind to a silent THIR->AST regression -- assert zero fallback.
-    if not UPDATE_EXPECTED and result.thir_ratchet_fell:
-        pytest.fail(
-            f"THIR ratchet: {main_src} is not marked no_thir but "
-            f"{result.thir_ratchet_fell} user body/bodies fell back to the AST "
-            f"path. Either migrate the construct (widen THIR lowering) or mark "
-            f"the case (run `uv run pytest --thir-classify` to add no_thir.txt).",
-            pytrace=False,
-        )
 
     # Additional semantic annotations
     if not UPDATE_EXPECTED:

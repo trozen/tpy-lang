@@ -6,7 +6,8 @@ make_unique, and nothing the substitution changes. The concrete free-call
 ladder carried the row; the generic one did not. Corpus witness: asyncio's
 `_accept_loop` (`create_task(cb(StreamReader(..), StreamWriter(..)))`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -18,13 +19,8 @@ _HEAD = ("from typing import Callable\n"
          "    c.cancel()\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestGenericDynOwnForward:
@@ -73,6 +69,5 @@ class TestGenericDynOwnForwardBoundary:
                + "def main() -> None:\n"
                + "    print(1)\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.generic_arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.generic_arg_shape")

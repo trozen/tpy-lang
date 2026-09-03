@@ -18,6 +18,8 @@ outside the seeded slice (a value type) keeps the `name.own_read` reject.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _fn, _lower_ctx,
     _lower_ctx_witnessed,
 )
@@ -59,9 +61,8 @@ class TestOwnContainerBindingBoundaries:
         src = ("from tpy import Own, Int32\n"
                "def take(b: Own[bytearray]) -> Int32:\n"
                "    return Int32(len(b))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "take") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:name.own_read")
 
     def test_own_strview_param_read_stays_ast(self):
         # BOUNDARY: a VALUE payload is never movable-seeded, so the
@@ -69,9 +70,8 @@ class TestOwnContainerBindingBoundaries:
         src = ("from tpy import Own, StrView, Int32\n"
                "def take(v: Own[StrView]) -> Int32:\n"
                "    return Int32(len(v))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "take") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:name.own_read")
 
 
 class TestNarrowedOptContainerRecv:
@@ -213,9 +213,8 @@ class TestOwnContainerParamBinding:
                + "    for u in drain([1, 2, 3]):\n"
                + "        print(u)\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "drain") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sgen.iterable_own_binding")
 
     def test_sgen_holding_the_param_off_the_for_head_routes(self):
         # ... and the complement: the same param in every OTHER position of
@@ -245,6 +244,5 @@ class TestOwnContainerParamBinding:
                + "def main() -> None:\n"
                + "    print(f([1, 2]))\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.name_shape")

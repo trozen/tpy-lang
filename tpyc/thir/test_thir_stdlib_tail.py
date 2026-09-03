@@ -1,7 +1,8 @@
 """Stdlib-tail admission rows: the `Ptr[T]` RESULT of a structural-protocol
 method. Corpus witness: tpy/sync's `Condvar.wait` (`lock._raw_mutex()`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _ctor_tail,
                        _entry, _lower_ctor, _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -14,13 +15,8 @@ _NODE = ("from tpy import Int32, Ptr, take_ptr, readonly\n"
          "    def __init__(self) -> None:\n        self.v = 1\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestProtocolPtrResult:
@@ -155,10 +151,8 @@ class TestProtocolPtrResult:
         # spelling) must never reach a routed body. The composing decl slot
         # is what decides here, ahead of the result set -- so widening the
         # pointee rule alone would still not route this shape.
-        fallback = _fallback(self.CONTAINER_POINTEE)
-        _assert_rejects_at(fallback, "body:stmt.var_decl",
-                           shape="decl.slot_type")
-        _assert_byte_identical(self.CONTAINER_POINTEE)
+        _assert_rejects_at(_reject_tally(self.CONTAINER_POINTEE),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 _MO = ("from tpy import Int32\n"
@@ -262,9 +256,8 @@ class TestPtrTemplateEnumAndTparamArgs:
     def test_str_arg_stays_ast(self):
         # A view-family arg respells through the view rows, which this
         # family's bare interpolation does not mirror.
-        _assert_rejects_at(_fallback(self.STR_ARG), "body:expr.method_call",
-                           shape="method.ptr_template.arg_shape")
-        _assert_byte_identical(self.STR_ARG)
+        _assert_rejects_at(_reject_tally(self.STR_ARG),
+                           "body:expr.method_call:method.ptr_template.arg_shape")
 
     CLOSED_TUPLE = (_MO
                     + "@native('tpy::MovableAtomic')\n"
@@ -287,10 +280,8 @@ class TestPtrTemplateEnumAndTparamArgs:
     def test_closed_tuple_result_stays_ast(self):
         # Only the OPEN-T tuple has borrow and storage coinciding; a closed
         # tuple result keeps its own family's rows.
-        _assert_rejects_at(_fallback(self.CLOSED_TUPLE),
-                           "body:expr.method_call",
-                           shape="method.ptr_template.ret_type")
-        _assert_byte_identical(self.CLOSED_TUPLE)
+        _assert_rejects_at(_reject_tally(self.CLOSED_TUPLE),
+                           "body:expr.method_call:method.ptr_template.ret_type")
 
 
 _SLOT = ("from tpy import Int32, readonly\n"
@@ -378,9 +369,8 @@ class TestOptionalToPtrOverContainerSubscript:
         # The reseatable sibling is a different binding kind with its own
         # unwitnessed reseat lift -- the single-assignment lift must not
         # claim it.
-        _assert_rejects_at(_fallback(self.REASSIGNED), "body:stmt.var_decl",
-                           shape="decl.opt_reseat_source")
-        _assert_byte_identical(self.REASSIGNED)
+        _assert_rejects_at(_reject_tally(self.REASSIGNED),
+                           "body:stmt.var_decl:decl.opt_reseat_source")
 
     OPTIONAL_ELEM = (_SLOT
                      + "def peek(slots: list[Slot | None], i: Int32) -> Int32:\n"
@@ -395,9 +385,8 @@ class TestOptionalToPtrOverContainerSubscript:
     def test_optional_element_receiver_stays_ast(self):
         # An unproven-None ELEMENT makes the receiver itself nullable, which
         # takes the runtime deref check rather than the plain borrow lvalue.
-        _assert_rejects_at(_fallback(self.OPTIONAL_ELEM), "body:stmt.var_decl",
-                           shape="decl.slot_type")
-        _assert_byte_identical(self.OPTIONAL_ELEM)
+        _assert_rejects_at(_reject_tally(self.OPTIONAL_ELEM),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestSameProtocolUnionForward:
@@ -474,9 +463,8 @@ class TestSameProtocolUnionForward:
     def test_different_union_stays_ast(self):
         # A slot union that is not the source's own would have to re-select a
         # branch, so only exact identity forwards.
-        _assert_rejects_at(_fallback(self.DIFFERENT_UNION),
-                           "body:expr.method_call", shape="method.arg_shape")
-        _assert_byte_identical(self.DIFFERENT_UNION)
+        _assert_rejects_at(_reject_tally(self.DIFFERENT_UNION),
+                           "body:expr.method_call:method.arg_shape")
 
     DYN_MEMBER = ("from typing import Protocol, Iterable\n"
                   + "from tpy import Int32, Own, Spannable, dynamic\n"
@@ -498,9 +486,8 @@ class TestSameProtocolUnionForward:
     def test_dynamic_member_union_stays_ast(self):
         # A @dynamic member takes the adapter wrap, so the union is not a
         # pure concept selection any more.
-        _assert_rejects_at(_fallback(self.DYN_MEMBER), "body:expr.method_call",
-                           shape="method.arg_shape")
-        _assert_byte_identical(self.DYN_MEMBER)
+        _assert_rejects_at(_reject_tally(self.DYN_MEMBER),
+                           "body:expr.method_call:method.arg_shape")
 
 
 class TestOwnViewFamilyCtorFieldMove:
@@ -521,12 +508,6 @@ class TestOwnViewFamilyCtorFieldMove:
         assert ctor is not None
         assert _ctor_tail(ctor) == (
             " : name(name), content(std::move(content)) {}\n")
-        _assert_byte_identical(
-            self.BYTES_MOVE
-            + "def main() -> None:\n"
-            + "    f = F('a', bytes())\n"
-            + "    print(len(f.content))\n"
-            + "main()\n")
 
     STR_MOVE = ("from tpy import Int32, Own\n"
                 "class F:\n"
@@ -556,11 +537,8 @@ class TestOwnViewFamilyCtorFieldMove:
                "    def __init__(self, content: Own[bytes]) -> None:\n"
                "        self.content = content\n"
                "        self.n = Int32(len(content))\n")
-        assert _lower_ctor(src, "F") is None
-        _assert_byte_identical(
-            src + "def main() -> None:\n"
-            + "    print(F(bytes()).n)\n"
-            + "main()\n")
+        _assert_rejects_at(_reject_tally(src + 'def main() -> None:\n' + '    print(F(bytes()).n)\n' + 'main()\n'),
+                           "body:stmt.expr_stmt:call.ctor_arg.own_bytes")
 
     def test_str_non_last_use_stays_ast(self):
         src = ("from tpy import Int32, Own, String\n"
@@ -570,11 +548,8 @@ class TestOwnViewFamilyCtorFieldMove:
                "    def __init__(self, text: Own[str]) -> None:\n"
                "        self.text = text\n"
                "        self.n = Int32(len(text))\n")
-        assert _lower_ctor(src, "F") is None
-        _assert_byte_identical(
-            src + "def main() -> None:\n"
-            + "    print(F(String('hi')).n)\n"
-            + "main()\n")
+        _assert_rejects_at(_reject_tally(src + 'def main() -> None:\n' + "    print(F(String('hi')).n)\n" + 'main()\n'),
+                           "ctor:ctor.mil_field.nominal.name")
 
     def test_plain_view_param_keeps_the_copy_row(self):
         # The non-Own sibling still takes the view arm's owned copy, so the
@@ -700,9 +675,8 @@ class TestOptionalNoneWriteOverSubscript:
                + "        self.slots[i].opt = Inner(1)\n"
                + "        return True\n"
                + _WMAIN)
-        _assert_rejects_at(_fallback(src), "body:stmt.assign",
-                           "assign.field_write_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_field_chained_over_the_subscript_stays_ast(self):
         # BOUNDARY: `recv[i].mid.opt` is a FIELD receiver whose own receiver
@@ -722,6 +696,5 @@ class TestOptionalNoneWriteOverSubscript:
                + "        self.slots[i].mid.opt = None\n"
                + "        return True\n"
                + _WMAIN)
-        _assert_rejects_at(_fallback(src), "body:stmt.assign",
-                           "assign.field_write_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")

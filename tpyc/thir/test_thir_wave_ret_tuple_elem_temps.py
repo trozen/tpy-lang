@@ -9,7 +9,8 @@ defaults off, and a NESTED tuple element keeps rejecting. Corpus witness:
 `tplib.requests._parse_http_date` (`return (True,
 dt.replace(tzinfo=UTC).timestamp())`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -32,13 +33,8 @@ _SRC = ("from tpy import Int32, Own, StrView\n"
         "    return p.n\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestReturnTupleElemTemps:
@@ -136,9 +132,8 @@ class TestReturnTupleElemTempsBoundary:
                + "def main() -> None:\n"
                + "    print(ret(1)[1][0])\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "return.tuple_source:expr.call:call.arg_shape.union")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.tuple_source:expr.call:call.arg_shape.union")
 
     def test_tuple_literal_decl_init_keeps_rejecting(self):
         # BOUNDARY: the same literal at a DECL init is a different caller of
@@ -150,5 +145,5 @@ class TestReturnTupleElemTempsBoundary:
                + "def main() -> None:\n"
                + "    print(use(3))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.var_decl")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.tuple_literal_shape:expr.call:call.arg_shape.union")

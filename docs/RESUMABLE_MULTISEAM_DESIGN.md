@@ -19,18 +19,19 @@ Evidence:
   emission entry point (`gen_coro_finally_top_def`, gen_async.py:1523).
 - It removes four whole-body gates (`res.region`, `res.pseudo_stmt`,
   `res.for_await`, `res.finally`) whose admission interacts with the
-  pending-return machinery, the finally-chain replay, and the seam contract
-  documented at `tpyc/codegen_cpp/statements.py:3886-3894` ("A future cell
-  lifting either gate must revisit this seam").
+  pending-return machinery and the finally-chain replay. (The seam contract
+  this used to cite lived in the deleted AST statement emitter; the
+  constraint it recorded -- a cell lifting either gate must revisit the
+  seam -- still holds.)
 - It surfaces one genuine lowering-order problem (declaration registration
   vs BB-id order inside regions, section 2.6) that needs a design decision,
   not just an arm widening.
 - Estimated unlock is the largest single remaining resumable lever
   (~103-140 fallback bodies: `res.pseudo_stmt` ~76 + `res.region` ~27 +
   the `res.finally` / `res.for_await` tails; counts from the 2026-07-14
-  whole-corpus drilldown, pre-wave-3 -- a fresh
-  `THIR_ARM_RESIDUAL_JSON=... uv run pytest --thir-codegen --no-exec`
-  re-measure is step 0 of implementation).
+  whole-corpus drilldown, pre-wave-3. Those instruments are gone with the
+  cutover; re-measure against the reject sites in
+  `scripts/thir_migration/review/bins_*.json` instead).
 - It must land as multiple cells in dependency order (section 4), not one
   change.
 
@@ -448,10 +449,8 @@ switch/case scaffolding.
 ## 4. Recommendation: Design A, in these cells (dependency order)
 
 Each cell ends with: focused units in `tpyc/thir/test_thir_resumable.py`,
-a full default run (whole-corpus byte-diff; `rpytest`), a local
-`--thir-check-flip` pass to un-mark newly-clean cases, and a local
-residual re-measure. Snapshots stay AST-authored; expected zero snapshot
-churn in every cell.
+a full default run (whole-corpus byte-diff; `rpytest`), and a local
+residual re-measure. Expected zero snapshot churn in every cell.
 
 - Cell 0 (enabler): two-pass decl registration (2.6) behind the existing
   gates -- pure refactor of `_lower_resumable`'s walk, byte-diff neutral

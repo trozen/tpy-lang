@@ -1,21 +1,25 @@
-"""Unit tests for the per-body AST-fallback tally (fallback.py): the
-helpers record on the active compiler and no-op without one, the
-signature gate notes first-reject reasons through a real lowering
-attempt, and classify_stmt tags landmark constructs."""
+"""Unit tests for the per-body reject journal (reject.py): the helpers
+record on the active compiler and no-op without one, the signature gate
+notes first-reject reasons through a real lowering attempt, and
+classify_stmt tags landmark constructs.
+
+These units drive `lower_function` / `lower_constructor` directly, body by
+body, so they see the reject REASON the journal recorded rather than the
+`ThirRejectError` the attempt driver raises from it. `_record_reject` closes
+one rejected attempt into a per-compiler tally the way the driver would,
+minus the raise, which is what lets a single fixture assert the reasons of
+several bodies at once."""
 
 from __future__ import annotations
 
-from ..compilation_context import _current_compiler, activate_compiler
-from . import fallback as _fb
-from .fallback import (
-    arm_universe,
+from ..compilation_context import (_current_compiler, activate_compiler,
+                                   get_current_compiler)
+from .reject import (
     begin_attempt,
     begin_stmt,
     classify_stmt,
-    fold_attempt,
     note,
     note_detail,
-    record_arm_residual,
     stmt_reject_reason,
 )
 from .lower import (
@@ -25,20 +29,39 @@ from .lower import (
     lower_function,
 )
 from .lower.predicates import _type_family_tag
-from .testutil import _assert_rejects_at, _compile, _entry
+from .testutil import (_assert_rejects_at, _compile, _entry,
+                      _strict_reject)
 
 
-def test_note_and_fold_record_on_active_compiler():
+def _record_reject(component: str) -> None:
+    """Close one rejected lowering attempt into a tally on the active
+    compiler, keyed the way the attempt driver's diagnostic is
+    (`component:reason`). The driver raises instead, which would stop a
+    fixture at its first rejecting body."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return
+    tag = f"{component}:{compiler._thir_reject_reason or 'unclassified'}"
+    tally = _tally(compiler)
+    tally[tag] = tally.get(tag, 0) + 1
+    compiler._reject_counts = tally
+
+
+def _tally(compiler) -> dict:
+    return getattr(compiler, "_reject_counts", None) or {}
+
+
+def test_note_and_reject_record_on_active_compiler():
     compiler, _ = _compile("def f() -> None:\n    pass\n")
     with activate_compiler(compiler):
         begin_attempt()
         assert note("sig.async") is False
         # Set-if-empty: the first recorded reason wins the attempt.
         assert note("stmt.for_each") is False
-        fold_attempt("body")
+        _record_reject("body")
         begin_attempt()
-        fold_attempt("ctor")  # no reason recorded -> unclassified
-    assert compiler._thir_fallback == {
+        _record_reject("ctor")  # no reason recorded -> unclassified
+    assert _tally(compiler) == {
         "body:sig.async": 1,
         "ctor:unclassified": 1,
     }
@@ -52,7 +75,7 @@ def test_noop_without_active_compiler():
     try:
         begin_attempt()
         assert note("sig.async") is False
-        fold_attempt("body")
+        _record_reject("body")
     finally:
         _current_compiler.reset(token)
 
@@ -63,103 +86,6 @@ def _fn_body(src, name):
     f = next(fn for fn, _ in iter_module_callables(entry.ast, entry.analyzer)
              if fn.name == name)
     return compiler, entry, f
-
-
-def test_arm_residual_records_deduped(monkeypatch):
-    # The construct is counted ONCE per fallback unit even with two for-loops
-    # -- the residual is "units containing the construct", not occurrences.
-    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
-    compiler, _, f = _fn_body(
-        "from tpy import Int32\n"
-        "def f(xs: list[Int32]) -> Int32:\n"
-        "    t = 0\n"
-        "    for a in xs:\n        t += a\n"
-        "    for b in xs:\n        if b > 0:\n            t += b\n"
-        "    return t\n", "f")
-    with activate_compiler(compiler):
-        record_arm_residual(f.body)
-    r = compiler._thir_arm_residual
-    assert r["for_each"] == 1   # two loops -> deduped to one unit
-    assert r["if"] == 1 and r["return"] == 1
-
-
-def test_arm_residual_sees_nested_container_fields(monkeypatch):
-    # A class-pattern KEYWORD sub-pattern hangs off `list[tuple[str, pattern]]`,
-    # so a walk that only recurses into node-valued list elements never reaches
-    # it and the arm reads as deletable when it is not.
-    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
-    compiler, _, f = _fn_body(
-        "from tpy import Int32\n"
-        "class Dog:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
-        "def f(d: Dog) -> Int32:\n"
-        "    match d:\n"
-        "        case Dog(n=k):\n            return k\n"
-        "    return 0\n", "f")
-    with activate_compiler(compiler):
-        record_arm_residual(f.body)
-    r = compiler._thir_arm_residual
-    assert r["match"] == 1
-    assert r["capture_pattern"] == 1
-
-
-def test_arm_universe_covers_what_the_walk_names(monkeypatch):
-    # The census counts only OBSERVED kinds, so a residual-0 arm is absent
-    # rather than zero -- the universe is what makes zero reportable. Any kind
-    # the walk can name must be in it, or that arm's 0 is unreportable.
-    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
-    compiler, _, f = _fn_body(
-        "from tpy import Int32\n"
-        "def f(xs: list[Int32]) -> Int32:\n"
-        "    t = 0\n"
-        "    with open('/dev/null') as fh:\n        pass\n"
-        "    try:\n"
-        "        for a in xs:\n            t += a\n"
-        "    except ValueError as e:\n        raise\n"
-        "    print(f'{t}')\n"
-        "    return t\n", "f")
-    with activate_compiler(compiler):
-        record_arm_residual(f.body)
-    named = set(compiler._thir_arm_residual)
-    # Pin the BASELESS group specifically: it is the part of the universe that
-    # cannot be derived, so it is the part that silently rots.
-    assert {"except_handler", "with_item", "f_string_value"} <= named
-    assert named <= arm_universe(), sorted(named - arm_universe())
-
-
-def test_arm_universe_excludes_non_body_nodes():
-    # Decl containers and type-annotation refs are never reached by a BODY
-    # walk, so seeding them would park them at 0 forever and report non-arms
-    # as deletable.
-    u = arm_universe()
-    for kind in ("module", "record", "protocol", "enum",
-                 "type_ref", "union_ref", "callable_ref"):
-        assert kind not in u
-    # ...while the baseless body dataclasses, which have no derivable base,
-    # ARE present.
-    for kind in ("except_handler", "comprehension_generator", "with_item",
-                 "match_case", "f_string_value", "function"):
-        assert kind in u
-
-
-def test_arm_residual_inert_when_gate_off(monkeypatch):
-    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", False)
-    compiler, _, f = _fn_body(
-        "from tpy import Int32\n"
-        "def f(xs: list[Int32]) -> None:\n    for x in xs:\n        pass\n", "f")
-    with activate_compiler(compiler):
-        record_arm_residual(f.body)
-    assert compiler._thir_arm_residual == {}
-
-
-def test_arm_residual_noop_without_active_compiler(monkeypatch):
-    monkeypatch.setattr(_fb, "_ARM_RESIDUAL_ON", True)
-    token = _current_compiler.set(None)
-    try:
-        record_arm_residual([])  # no active compiler -> no error, no record
-    finally:
-        _current_compiler.reset(token)
 
 
 _SRC = (
@@ -188,14 +114,14 @@ def test_end_to_end_first_reject_reasons():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
     # The comprehension is the first-rejecting construct; the landmark scan
     # names the frontier, not the host statement shape. EXACT dict: a routed
     # body recording nothing is part of the claim, and a get()-style probe
     # would keep passing after a widening flips one of these shapes.
-    assert compiler._thir_fallback == {
+    assert _tally(compiler) == {
         "body:sig.async": 1,
         "body:expr.list_comp": 1,
     }
@@ -222,10 +148,10 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get(
+    assert _tally(compiler).get(
         "body:stmt.nested_def:nesteddef.param_default") == 1
     assert "clean" in routed
 
@@ -249,9 +175,9 @@ def test_constructor_lowering_reject_falls_back():
         ctor = lower_constructor(
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
-            fold_attempt("ctor")
+            _record_reject("ctor")
     assert ctor is None
-    assert compiler._thir_fallback.get(
+    assert _tally(compiler).get(
         "ctor:stmt.nested_def:nesteddef.param_default") == 1
 
 
@@ -283,9 +209,9 @@ def test_base_init_arg_lowering_reject_falls_back():
         ctor = lower_constructor(
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
-            fold_attempt("ctor")
+            _record_reject("ctor")
     assert ctor is None
-    _assert_rejects_at(compiler._thir_fallback, "ctor:expr.call", count=1)
+    _assert_rejects_at(_tally(compiler), "ctor:expr.call", count=1)
 
 
 def test_global_lowering_reject_falls_back_at_sync_boundary():
@@ -305,10 +231,10 @@ def test_global_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get(
+    assert _tally(compiler).get(
         "body:stmt.global:global.unseeded") == 1
     assert "clean" in routed
 
@@ -331,9 +257,9 @@ def test_global_lowering_reject_falls_back_at_constructor_boundary():
         ctor = lower_constructor(
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
-            fold_attempt("ctor")
+            _record_reject("ctor")
     assert ctor is None
-    assert compiler._thir_fallback.get(
+    assert _tally(compiler).get(
         "ctor:stmt.global:global.unseeded") == 1
 
 
@@ -356,7 +282,7 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
     # The later local SHADOW excludes `err` from seeding (whole-function
@@ -364,7 +290,7 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
     # reason folds the body back at the sync boundary while `clean` stays
     # routed. (An un-shadowed record global raise routes via the slot
     # seeding now.)
-    assert compiler._thir_fallback.get("body:stmt.raise:name.global_read") == 1
+    assert _tally(compiler).get("body:stmt.raise:name.global_read") == 1
     assert "clean" in routed
 
 
@@ -387,11 +313,11 @@ def test_wide_integer_and_nonfinite_float_both_route():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
     assert "wide" in routed and "nonfinite" in routed
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
 
 
 def test_unhandled_expression_rejects_from_lowering_tail():
@@ -412,10 +338,10 @@ def test_unhandled_expression_rejects_from_lowering_tail():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:expr.walrus") == 1
+    assert _tally(compiler).get("body:expr.walrus") == 1
     assert "clean" in routed
 
 
@@ -436,10 +362,10 @@ def test_while_bool_literal_routes_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
     assert "rejected" in routed
     assert "clean" in routed
 
@@ -462,9 +388,9 @@ def test_while_bool_literal_routes_at_constructor_boundary():
         ctor = lower_constructor(
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
-            fold_attempt("ctor")
+            _record_reject("ctor")
     assert ctor is not None
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
 
 
 def test_for_lowering_reject_falls_back_at_sync_boundary():
@@ -491,7 +417,7 @@ def test_for_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
     # Reason-agnostic (for-loop reject reasons shift as rungs are ported):
@@ -631,7 +557,7 @@ def test_protocol_arg_pending_type_resolves():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is not None
 
 
@@ -686,9 +612,9 @@ def test_for_each_container_route_literal_arg_still_rejects():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
+    _assert_rejects_at(_tally(compiler), "body:expr.call",
                        "call.arg_shape.container")
 
 
@@ -745,9 +671,9 @@ def test_for_each_field_recv_generator_call_defers():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
+    _assert_rejects_at(_tally(compiler), "body:expr.method_call",
                        "method.fi_kind")
 
 
@@ -798,7 +724,7 @@ def test_for_each_spannable_protocol_param_routes_begin_end():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is not None
 
 
@@ -825,7 +751,7 @@ def test_for_each_own_elem_protocol_param_routes():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is not None
 
 
@@ -846,7 +772,7 @@ def test_for_each_native_iterable_protocol_param_routes_begin_end():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is not None
 
 
@@ -980,7 +906,7 @@ def test_for_each_tuple_unpack_over_gen_record_target_routes():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is not None
     assert compiler._thir_face_witnesses.get(
         "stmt.tuple_unpack.ref_target_iter", 0) >= 1
@@ -1030,14 +956,14 @@ def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
     # The reject composes from the subscript source's element read now
     # (the ref-target unpack admits ptr-Optional-element subscript sources,
     # so a plain-record-member tuple rejects one level deeper, with the
     # drilldown detail appended to the tag).
-    assert sum(n for k, n in compiler._thir_fallback.items()
+    assert sum(n for k, n in _tally(compiler).items()
                if k.startswith("body:stmt.tuple_unpack")) == 1
     assert "clean" in routed
 
@@ -1058,10 +984,10 @@ def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get(
+    assert _tally(compiler).get(
         "body:stmt.expr_stmt:expr_stmt.bin_op") == 1
     assert "clean" in routed
 
@@ -1082,10 +1008,10 @@ def test_aug_assign_lowering_reject_falls_back_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback.get("body:stmt.aug_assign") == 1
+    assert _tally(compiler).get("body:stmt.aug_assign") == 1
     assert "clean" in routed
 
 
@@ -1105,10 +1031,10 @@ def test_assert_lowering_routes_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
     assert "rejected" in routed
     assert "clean" in routed
 
@@ -1133,7 +1059,7 @@ def test_assert_message_clean_field_routes():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
     assert fn is not None
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
 
 
 def test_assert_message_optional_field_falls_back():
@@ -1149,9 +1075,9 @@ def test_assert_message_optional_field_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+    assert _tally(compiler) == {"body:stmt.assert": 1}
 
 
 def test_assert_message_property_field_falls_back():
@@ -1173,9 +1099,9 @@ def test_assert_message_property_field_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:stmt.assert": 1}
+    assert _tally(compiler) == {"body:stmt.assert": 1}
 
 
 _DELATTR_RECORD = (
@@ -1199,7 +1125,7 @@ def test_del_attr_routes_at_sync_boundary():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
     assert fn is not None
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
 
 
 def test_del_attr_multi_target_falls_back():
@@ -1210,9 +1136,9 @@ def test_del_attr_multi_target_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {
+    assert _tally(compiler) == {
         "body:stmt.del_attr:del_attr.multi_target": 1}
 
 
@@ -1227,9 +1153,9 @@ def test_del_attr_unresolved_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {
+    assert _tally(compiler) == {
         "body:stmt.del_attr:del_attr.unresolved": 1}
 
 
@@ -1250,10 +1176,10 @@ def test_if_bool_literal_routes_at_sync_boundary():
             begin_attempt()
             fn = lower_function(func, entry.analyzer, self_type=self_type)
             if fn is None:
-                fold_attempt("body")
+                _record_reject("body")
             else:
                 routed.append(fn.name)
-    assert compiler._thir_fallback == {}
+    assert _tally(compiler) == {}
     assert "rejected" in routed
     assert "clean" in routed
 
@@ -1274,9 +1200,9 @@ def test_assign_lowering_reject_falls_back_at_sync_boundary():
         begin_attempt()
         fn = lower_function(func, entry.analyzer, self_type=self_type)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {
+    assert _tally(compiler) == {
         "body:stmt.assign:assign.field_write_shape": 1,
     }
 
@@ -1292,9 +1218,9 @@ def test_return_lowering_reject_falls_back_at_sync_boundary():
         begin_attempt()
         fn = lower_function(func, entry.analyzer, self_type=self_type)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {
+    assert _tally(compiler) == {
         "body:stmt.return:return.opt_view_source": 1,
     }
 
@@ -1315,9 +1241,9 @@ def test_sync_lowering_reports_first_reject_in_source_order():
         begin_attempt()
         fn = lower_function(func, entry.analyzer, self_type=self_type)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
-    assert compiler._thir_fallback == {"body:expr.walrus": 1}
+    assert _tally(compiler) == {"body:expr.walrus": 1}
 
 
 def test_constructor_lowering_reports_first_reject_in_source_order():
@@ -1338,9 +1264,9 @@ def test_constructor_lowering_reports_first_reject_in_source_order():
         ctor = lower_constructor(
             record, init, entry.analyzer, self_type=self_type)
         if ctor is None:
-            fold_attempt("ctor")
+            _record_reject("ctor")
     assert ctor is None
-    assert compiler._thir_fallback == {"ctor:expr.walrus": 1}
+    assert _tally(compiler) == {"ctor:expr.walrus": 1}
 
 
 def test_detail_composes_into_stmt_tag():
@@ -1460,7 +1386,7 @@ def test_reassigned_iterator_object_local_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
 
 
@@ -1485,18 +1411,15 @@ def test_branch_first_iterator_object_decl_falls_back():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
         if fn is None:
-            fold_attempt("body")
+            _record_reject("body")
     assert fn is None
 
 
-def _reasons(src: str) -> dict:
-    from ..codegen_cpp import CodeGenOptions
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reasons(src: str) -> list[str]:
+    """The `component:reason` tags a full emit of `src` reports. The attempt
+    driver raises at the first rejecting body, so this is one tag."""
+    _err, reasons = _strict_reject(src)
+    return reasons
 
 
 def test_native_arg_container_is_not_labelled_a_record():

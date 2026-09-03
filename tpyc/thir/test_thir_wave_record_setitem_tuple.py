@@ -7,6 +7,7 @@ takes the AST's view->owned copy and keeps rejecting.
 """
 
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -56,14 +57,7 @@ class TestViewNameValueKeepsRejecting:
     )
 
     def test_rejects_at_the_setitem_family(self):
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:stmt.assign", shape="setitem.family")
+        _assert_rejects_at(_reject_tally(self.SRC), 'body:stmt.assign', shape='setitem.family')
 
 
 class TestOwnedStrRvalueValue:
@@ -93,8 +87,7 @@ class TestOwnedStrRvalueValue:
         compiler, modules = _compile(self.SRC)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         both = hpp + cpp
         assert "::tpy::__setitem__((*this), \"meth\", ::tpy::str_upper(p))" \
             in both
@@ -112,10 +105,4 @@ class TestOwnedStrRvalueValue:
             "    print(h[\"t\"])\n"
             "main()\n"
         )
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:stmt.assign", shape="setitem.family")
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.assign', shape='setitem.family')

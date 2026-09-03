@@ -32,7 +32,9 @@ at an `Own[...]` STORAGE return, and a ternary with a FIELD-access arm (no
 
 from __future__ import annotations
 
-from .testutil import (_assert_routes_byte_identical, _fn,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_routes_byte_identical, _fn,
                        _lower_ctx_witnessed, _thir_ctx)
 
 # A record whose dunders hand out an operand ALIAS. `__add__` is
@@ -203,8 +205,8 @@ class TestDunderBorrowDecl:
             "    print(c.n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.slot_type": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestRecordTernaryBorrowReturn:
@@ -274,8 +276,7 @@ class TestRecordTernaryBorrowReturn:
             "    print(a.pick(b).n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:expr.ifexpr": 1}, fell
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
     def test_ternary_at_own_storage_return_keeps_rejecting(self):
         # BOUNDARY: the row is gated on `ret_record_borrow`, so the by-value
@@ -292,9 +293,8 @@ class TestRecordTernaryBorrowReturn:
             "    print(pick(True).n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {
-            "body:stmt.return:return.record_source.TpyIfExpr.storage": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.record_source.TpyIfExpr.storage")
 
 
 # The branch-hoisted flavor of `_ACC`: writing the same name in both arms
@@ -468,8 +468,8 @@ class TestDunderBorrowReseat:
             "    print(c.n)\n"
             "pick(True)\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.var_decl:decl.reseat_source": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.reseat_source")
 
     def test_value_type_record_dunder_takes_the_value_hoist(self):
         # BOUNDARY: a ValueType record's dunder returns BY VALUE

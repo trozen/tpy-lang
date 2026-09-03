@@ -67,4 +67,3 @@ class TestOwnTparamCompare:
                "print(pick(1, 2))\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.if")
-        _assert_byte_identical(src)

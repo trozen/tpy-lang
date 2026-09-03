@@ -5,6 +5,8 @@ protocol-typed print name, and the open-T container-element REF_ALIAS."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -114,8 +116,8 @@ class TestProtocolBody:
                + "def main() -> None:\n"
                + "    double_it(Value(21))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "double_it") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.protocol.ret_type")
 
     def test_protocol_binop_nonname_operand_stays_ast(self):
         # The raw protocol binop is sliced to bare NAME operands; a nested
@@ -132,8 +134,8 @@ class TestProtocolBody:
                "    b: Int32 = 2\n"
                "    add3(a, b)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "add3") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:binop.shape.+")
 
     def test_reassigned_tparam_elem_routes(self):
         # A REASSIGNED open-T element local takes the `T*` reseat machinery

@@ -15,6 +15,7 @@ RECEIVER-use `call.recv_borrow_ret` row in `_call_use_supported`.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -22,14 +23,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source):
-    compiler, modules = _compile(source)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 class TestZeroArgTypedInstantiation:
@@ -106,9 +101,7 @@ class TestZeroArgArrayInstantiation:
         entry = _entry(modules)
         _hpp, cpp = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=True))
-        assert not dict(compiler._thir_fallback)
+                                          comment_line_numbers=False))
         assert ("static std::array<int32_t, 8> __global_slot_1 "
                 "= std::array<int32_t, 8>();") in cpp
         # TPy source resolves this call without a constructor fi, so it
@@ -153,8 +146,7 @@ class TestGlobalAddrFreeCall:
         entry = _entry(modules)
         compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=True))
+                                          comment_line_numbers=False))
         w = compiler._thir_face_witnesses
         assert w.get("top_level.global_addr_call", 0) >= 1
         assert w.get("call.recv_borrow_ret", 0) >= 1
@@ -180,7 +172,7 @@ class TestGlobalAddrSubclassStillRejects:
     )
 
     def test_subclass_borrow_falls_back(self):
-        fell = _thir_fallbacks(self.SRC)
+        fell = _reject_tags(self.SRC)
         assert any(k.startswith("top_level:") for k in fell), fell
 
 
@@ -217,9 +209,7 @@ class TestPascalCtorPathContainerWitness:
         entry = [m for m in modules if m.is_entry_point][0]
         _hpp, cpp = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=True))
-        assert not dict(compiler._thir_fallback)
+                                          comment_line_numbers=False))
         assert compiler._thir_face_witnesses.get(
             "ctor.container_empty_instantiation", 0) >= 1
         assert "= std::array<int32_t, 4>();" in cpp

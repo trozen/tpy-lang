@@ -6,15 +6,14 @@ render through the same expression dispatch a body uses, so they route
 through THIR rather than growing a second constant renderer beside the
 overflow-checked arithmetic one.
 
-Every routing pin here goes through `_constant_positions`, which spies on
-the `gen_expr` call each position falls back to: byte-identity and an empty
-fallback tally are both satisfied by a fallback, so neither can carry a
-routing claim on its own.
+Each pin emits the module and asserts the C++ the position renders; a shape
+the constant family does not cover rejects at its own component rather than
+lowering against the literal's own type.
 """
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _constant_positions
+from .testutil import _assert_byte_identical, _assert_rejects_at, _strict_reject
 
 PRELUDE = "from typing import Final\nfrom tpy import Char, Int32\n"
 
@@ -40,13 +39,6 @@ class TestFinalGlobalScalars:
         "\n"
         "main()\n"
     )
-
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert routed == {"__name__", "MAX_SIZE", "NEG_VAL", "PI", "DEBUG",
-                          "NAME", "LETTER", "BIG"}
-        assert fallback == {}, fallback
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
@@ -75,12 +67,6 @@ class TestFinalGlobalArithmetic:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert {"A", "B", "SUM", "NESTED"} <= routed
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
         assert "const ::tpy::BigInt SUM = ((A) + (B));" in thir[1]
@@ -99,12 +85,6 @@ class TestFinalGlobalOverflowChecked:
         "\n"
         "main()\n"
     )
-
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert {"BASE", "DOUBLE"} <= routed
-        assert fallback == {}, fallback
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
@@ -136,12 +116,6 @@ class TestClassConstants:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert {"BASE", "DOUBLE", "TRIPLE", "SCALED", "LABEL"} <= routed
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
         assert ("static constexpr int32_t TRIPLE = "
@@ -171,12 +145,6 @@ class TestTupleConstant:
         "\n"
         "main()\n"
     )
-
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert {"SEMVER", "LABEL"} <= routed
-        assert fallback == {}, fallback
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
@@ -224,13 +192,6 @@ class TestMacroExpandedConstant:
         (tmp_path / "constmacro.py").write_text(MACRO_MOD)
         return [tmp_path]
 
-    def test_routes(self, tmp_path):
-        routed, ast_rendered, fallback = _constant_positions(
-            self.SRC, extra_lib_dirs=self._libs(tmp_path))
-        assert ast_rendered == set(), ast_rendered
-        assert {"PAIR", "COUNT"} <= routed
-        assert fallback == {}, fallback
-
     def test_byte_identical(self, tmp_path):
         thir = _assert_byte_identical(
             self.SRC, extra_lib_dirs=self._libs(tmp_path))
@@ -260,22 +221,15 @@ class TestPrimitiveConstructorCall:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert ast_rendered == set(), ast_rendered
-        assert {"SMALL", "BIG", "BYTE", "HALF", "FLAG"} <= routed
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
         assert ("inline constexpr int64_t BIG = "
                 "::tpy::int_cast_check<int64_t>(SMALL);") in thir[0]
 
 
-class TestCharConstructorRoutes:
+class TestCharConstructor:
     """`Char(65)` is a value-scalar type constructor like the fixed-int ones;
-    the constant position renders its `static_cast<char>(65)` on both paths.
-    Was the last shape keeping a valid program's constant on the AST path."""
+    the constant position renders it as a `static_cast<char>`."""
 
     SRC = PRELUDE + (
         "CH: Final[Char] = Char(65)\n"
@@ -286,20 +240,14 @@ class TestCharConstructorRoutes:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "CH" in routed
-        assert "CH" not in ast_rendered
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
         assert "inline constexpr char CH = static_cast<char>(65);" in thir[0]
 
 
-class TestClassConstantPositionRoutes:
+class TestClassConstantPosition:
     """The class-constant position takes the same render as the Final global,
-    and keys its own component in the tally when either does reject."""
+    and keys its own component when either does reject."""
 
     SRC = PRELUDE + (
         "class Codes:\n"
@@ -312,21 +260,15 @@ class TestClassConstantPositionRoutes:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "CH" in routed
-        assert "CH" not in ast_rendered
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         hpp, _cpp = _assert_byte_identical(self.SRC)
         assert "static constexpr char CH = static_cast<char>(65);" in hpp
 
 
-class TestNonfiniteFloatRoutes:
+class TestNonfiniteFloat:
     """A float literal that overflows to infinity (`math.inf` is spelled this
-    way) has no C++ literal form; both paths fold it to the constexpr
-    `numeric_limits` spelling, so the constant position routes."""
+    way) has no C++ literal form; the constant position folds it to the
+    constexpr `numeric_limits` spelling."""
 
     SRC = (
         "from typing import Final\n"
@@ -342,12 +284,6 @@ class TestNonfiniteFloatRoutes:
         "main()\n"
     )
 
-    def test_routes(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "MY_INF" in routed and "MY_NEG_INF" in routed
-        assert "MY_INF" not in ast_rendered
-        assert fallback == {}, fallback
-
     def test_byte_identical(self):
         hpp, cpp = _assert_byte_identical(self.SRC)
         both = hpp + cpp
@@ -357,7 +293,7 @@ class TestNonfiniteFloatRoutes:
                 "std::numeric_limits<double>::quiet_NaN();") in both
 
 
-class TestTupleSlotOutsideConstantFamilyFallsBack:
+class TestTupleSlotOutsideConstantFamily:
     """Boundary: a tuple element the constant family does not cover (a `Char`
     element -- neither scalar nor str) rejects at the slot rather than
     lowering against the literal's own type, which is where a diverging
@@ -367,42 +303,12 @@ class TestTupleSlotOutsideConstantFamilyFallsBack:
         "PAIR: Final[tuple[Char, Int32]] = (Char(65), 1)\n"
         "\n"
         "def main() -> None:\n"
-        "    print(PAIR[1])\n"
+        "    pass\n"
         "\n"
         "main()\n"
     )
 
-    def test_falls_back(self):
-        routed, ast_rendered, fallback = _constant_positions(self.SRC)
-        assert "PAIR" in ast_rendered
-        assert fallback.get("final_global:const.tuple_slot") == 1, fallback
-
-    def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
-
-
-class TestConstantFallbackIsRatcheted:
-    """The constant positions are in the ratchet like every body: they render
-    through the same `gen_expr` the cutover deletes, so exempting them
-    understated the residue. The exclusion set stays as the mechanism -- an
-    empty one, so a new component defaults INTO the ratchet."""
-
-    def test_ratchet_total_counts_every_component(self):
-        from .fallback import NON_RATCHET_COMPONENTS, ratchet_total
-        tally = {"body:stmt.assign": 2, "ctor:ctor.mil": 1,
-                 "class_const:expr.call": 3, "final_global:expr.call": 4}
-        assert not NON_RATCHET_COMPONENTS
-        assert ratchet_total(tally) == 10
-        assert sum(tally.values()) == 10
-
-    def test_exclusion_set_is_still_honoured(self):
-        # The mechanism must keep working, or re-populating the set later
-        # would be a silent no-op.
-        from . import fallback as fb
-        tally = {"body:stmt.assign": 2, "class_const:expr.call": 3}
-        saved = fb.NON_RATCHET_COMPONENTS
-        try:
-            fb.NON_RATCHET_COMPONENTS = frozenset({"class_const"})
-            assert fb.ratchet_total(tally) == 2
-        finally:
-            fb.NON_RATCHET_COMPONENTS = saved
+    def test_rejects_at_the_slot(self):
+        err, reasons = _strict_reject(self.SRC)
+        assert err.component == "final_global"
+        _assert_rejects_at(reasons, "final_global:const.tuple_slot")

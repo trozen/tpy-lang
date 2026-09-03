@@ -18,6 +18,7 @@ further than the AST does.
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -64,14 +65,8 @@ _CELL = ("from typing import Protocol\n"
          "        return (self.value, Int32(1))\n")
 
 
-def _fallback(src: str) -> dict:
-    from ..codegen_cpp.context import CodeGenOptions
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False,
-                               thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str) -> dict:
+    return _reject_tally(src)
 
 
 class TestOpenTTupleProtocolFamily:
@@ -156,9 +151,8 @@ class TestOpenTTupleBoundaries:
                "    c = Pair[Int32](Int32(4), Int32(5))\n"
                "    print(relay(c))\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call",
-                           "method.protocol.arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.protocol.arg_shape")
 
     def test_open_t_tuple_result_at_a_print_stays_ast(self):
         # BOUNDARY, the statement-position twin: the print gate has no
@@ -169,9 +163,8 @@ class TestOpenTTupleBoundaries:
                + "def main() -> None:\n"
                + "    c = Cell[Int32](Int32(42))\n    print(show(c))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.expr_stmt",
-                           "print.arg.tuple_method_call")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:print.arg.tuple_method_call")
 
     def test_generic_tuple_call_at_the_matching_return_routes(self):
         # The call rvalue's own return slot IS the enclosing return slot, so
@@ -199,9 +192,8 @@ class TestOpenTTupleBoundaries:
                + "    c = Cell[Int32](Int32(42))\n"
                + "    q = relay(c)\n    print(q[1])\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "return.generic_tuple_source")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.generic_tuple_source")
 
     def test_generic_tuple_field_at_the_matching_return_stays_ast(self):
         # BOUNDARY, the other lvalue source: a member read of the same
@@ -217,6 +209,5 @@ class TestOpenTTupleBoundaries:
                "    h = Holder[Int32](Int32(42))\n"
                "    q = h.get()\n    print(q[1])\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "return.generic_tuple_source")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.generic_tuple_source")

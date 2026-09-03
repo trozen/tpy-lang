@@ -15,6 +15,8 @@ pointer-form arm that wrap is ill-formed C++ (`TestNestedElemTernaryStaysOut`).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -23,13 +25,8 @@ from .testutil import (
 )
 
 
-def _fallback(source):
-    compiler, modules = _compile(source, default_int="Int32")
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 _PRE = (
@@ -145,12 +142,12 @@ class TestOptContainerInnerStaysOut:
     )
 
     def test_list_inner_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_LIST)
-        assert _fallback(self.SRC_LIST) == {"body:expr.container_literal": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_LIST),
+                           "body:expr.container_literal")
 
     def test_set_inner_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_SET)
-        assert _fallback(self.SRC_SET) == {"body:expr.container_literal": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_SET),
+                           "body:expr.container_literal")
 
 
 class TestNonLiteralArmStaysOut:
@@ -194,19 +191,16 @@ class TestNonLiteralArmStaysOut:
     )
 
     def test_name_arm_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_NAME)
-        assert _fallback(self.SRC_NAME) == {"body:expr.ifexpr": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_NAME), "body:expr.ifexpr")
 
     def test_call_arm_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_CALL)
-        assert _fallback(self.SRC_CALL) == {"body:expr.ifexpr": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_CALL), "body:expr.ifexpr")
 
     def test_non_optional_result_defers_byte_identical(self):
         # Both arms dict literals: the ternary's own type is the DICT, not the
         # Optional, so the storage-wrap family does not describe it at all.
-        _assert_byte_identical(self.SRC_BOTH_DICTS)
-        assert _fallback(self.SRC_BOTH_DICTS) == {
-            "body:expr.container_literal": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_BOTH_DICTS),
+                           "body:expr.container_literal")
 
 
 class TestViewFormStrElementStaysOut:
@@ -237,13 +231,11 @@ class TestViewFormStrElementStaysOut:
     )
 
     def test_print_row_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_PRINT)
-        assert _fallback(self.SRC_PRINT) == {
-            "body:stmt.expr_stmt:print.arg.tuple_tuple_literal": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_PRINT),
+                           "body:stmt.expr_stmt:print.arg.tuple_tuple_literal")
 
     def test_tuple_arm_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC_ARM)
-        assert _fallback(self.SRC_ARM) == {"body:expr.ifexpr": 1}
+        _assert_rejects_at(_reject_tally(self.SRC_ARM), "body:expr.ifexpr")
 
 
 class TestPrintTupleRecordElemKeepsBorrowSlot:
@@ -286,8 +278,7 @@ class TestNestedElemTernaryStaysOut:
     )
 
     def test_defers_byte_identical(self):
-        _assert_byte_identical(self.SRC)
-        assert _fallback(self.SRC) == {"body:expr.ifexpr": 1}
+        _assert_rejects_at(_reject_tally(self.SRC), "body:expr.ifexpr")
 
 
 class TestPlainPositionsKeepTheirRoute:
@@ -308,7 +299,7 @@ class TestPlainPositionsKeepTheirRoute:
     )
 
     def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
+        _assert_rejects_at(_reject_tally(self.SRC), "body:expr.ifexpr")
 
     def test_does_not_witness_the_element_wrap(self):
         _thir, faces = _lower_ctx_witnessed(self.SRC)

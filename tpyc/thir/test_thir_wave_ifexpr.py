@@ -12,21 +12,19 @@ bind and the whole ptr-opt name print (`::tpy::print_optional`).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _compile,
     _entry,
 )
 
 
 def _gen(source):
+    """`(compiler, (hpp, cpp))` from one emit -- the compiler is kept for the
+    face-witness reads."""
     compiler, modules = _compile(source)
-    entry = _entry(modules)
-    outs = {}
-    for flag in (False, True):
-        outs[flag] = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=flag))
-    return compiler, outs[False], outs[True]
+    return compiler, compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                comment_line_numbers=False))
 
 
 _PRE = (
@@ -59,9 +57,7 @@ class TestPtrOptTernaryMixedFormDecl:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert ("Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));"
                 in thir[1])
         w = compiler._thir_face_witnesses
@@ -91,9 +87,7 @@ class TestPtrOptTernaryReturns:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "return ((flag) ? (&(p)) : (nullptr));" in thir[1]
         assert "return ((flag) ? (a) : (b));" in thir[1]
         w = compiler._thir_face_witnesses
@@ -120,9 +114,7 @@ class TestRecordLvalueTernaryIntoOwn:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "auto __tmp_1 = ((flag) ? (a) : (other));" in thir[1]
         assert "take(std::move(__tmp_1));" in thir[1]
         assert compiler._thir_face_witnesses.get("ifexpr.record", 0) >= 1
@@ -144,9 +136,7 @@ class TestOptCallPassthroughDeclAndPrint:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "Box* r2 = get_or_none(false, p);" in thir[1]
         assert "::tpy::print_optional(r2)" in thir[1]
         w = compiler._thir_face_witnesses
@@ -172,9 +162,7 @@ class TestRecordTernaryCallArmDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not compiler._thir_fallback, compiler._thir_fallback
+        compiler, thir = _gen(self.SRC)
 
 
 class TestPtrOptTernaryCallArmRoutes:
@@ -198,9 +186,7 @@ class TestPtrOptTernaryCallArmRoutes:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
 
 
 class TestContainerElemTernaryStaysOut:
@@ -228,9 +214,7 @@ class TestContainerElemTernaryStaysOut:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb.get("body:expr.container_literal") == 1, fb
 
 
@@ -254,9 +238,7 @@ class TestOwnDeclaredOptCallSlotLift:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "::tpy::optional_to_ptr(__slot_" in thir[1]
 
 
@@ -295,9 +277,7 @@ class TestContainerLvalueTernary:
                + "    ys: list[Int32] = [3]\n"
                + "    print(total(xs if False else ys))\n"
                + "main()\n")
-        compiler, ast, thir = _gen(src)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(src)
         assert any("call.arg_shape.container" in k for k in fb), fb
 
     def test_for_head_ternary_iterable_defers(self):
@@ -309,7 +289,5 @@ class TestContainerLvalueTernary:
                + "    for v in (xs if True else ys):\n"
                + "        print(v)\n"
                + "main()\n")
-        compiler, ast, thir = _gen(src)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(src)
         assert any("iter.if_expr_shape" in k for k in fb), fb

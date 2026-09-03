@@ -21,7 +21,7 @@ from ..typesys import (
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef,
-    TpyPassStmt, SourceLocation,
+    TpyPassStmt,
     TpyWith, TpyTry, TpyRaise,
     is_docstring, is_super_del_call, is_base_init_call,
     collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
@@ -49,7 +49,6 @@ from ..type_def_registry import (
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
-    from .expressions import ExpressionGenerator
     from .functions import FunctionGenerator, MethodEmitMode
     from .gen_async import AsyncCoroCodegen
     from .gen_generators import GeneratorCodegen
@@ -102,13 +101,11 @@ class RecordGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         protocols: ProtocolGenerator,
-        expressions: ExpressionGenerator,
         functions: FunctionGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.protocols = protocols
-        self.expressions = expressions
         self.functions = functions
         self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
         self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
@@ -385,7 +382,7 @@ class RecordGenerator:
                 # registration validated, e.g. `c: Color = Color.RED`).
                 # Rendered directly with the canonical enum qualifier --
                 # the default expr is never sema-analyzed, so the generic
-                # gen_expr path (which needs resolved facts) can't be used.
+                # expression render (which needs resolved facts) can't be used.
                 init = self._render_enum_member_default(fld.default_expr)
                 if init is not None:
                     default = f" = {init}"
@@ -409,10 +406,6 @@ class RecordGenerator:
                 if cc_fld.default_expr is not None:
                     init = self._thir_class_const_init(cc_name, cc_fld,
                                                        const_scope)
-                    if init is None:
-                        init = self.expressions.gen_expr(cc_fld.default_expr, cc_fld.type)
-                    # Unconditional: the C++ member exists whichever path
-                    # rendered it, so a later sibling reads it bare either way.
                     self._thir_add_const(const_scope, cc_name, cc_fld.type)
                 else:
                     init = cc_fld.default_value if cc_fld.default_value is not None else "{}"
@@ -733,8 +726,9 @@ class RecordGenerator:
 
     def _thir_const_scope(self, record_info) -> 'dict | None':
         """The constant names a class body's initializers may reference, or
-        None when THIR is off. Mutated in declaration order by the caller."""
-        if not self.ctx.thir_codegen or not record_info.class_constants:
+        None when the class declares none. Mutated in declaration order by
+        the caller."""
+        if not record_info.class_constants:
             return None
         from ..thir.constants import final_global_scope
         return final_global_scope(self.ctx.analyzer, self.ctx.final_globals)
@@ -749,15 +743,12 @@ class RecordGenerator:
         add_constant_scope_entry(const_scope, name, declared, self.ctx.analyzer)
 
     def _thir_class_const_init(self, cc_name: str, cc_fld,
-                               const_scope: 'dict | None') -> 'str | None':
-        """Render a class constant's initializer through THIR, or None when
-        it did not lower (the caller falls back to `gen_expr`)."""
-        if const_scope is None:
-            return None
+                               const_scope: 'dict') -> str:
+        """Render a class constant's initializer through THIR."""
         # `thir.constants` imports `thir.emit`, so an eager import here would
-        # be a codegen_cpp <-> thir cycle; `thir.fallback` only rides along.
+        # be a codegen_cpp <-> thir cycle; `thir.reject` only rides along.
         from ..thir.constants import lower_constant
-        from ..thir.fallback import begin_attempt, commit_attempt, fold_attempt
+        from ..thir.reject import begin_attempt, commit_attempt, reject_attempt
         begin_attempt()
         init = lower_constant(
             cc_fld.default_expr, cc_fld.type, self.ctx.analyzer,
@@ -766,11 +757,10 @@ class RecordGenerator:
             render_type_stored=self.types.type_to_cpp_stored,
             render_resolve=self.types.resolve_type)
         if init is None:
-            fold_attempt("class_const", strict=self.ctx.options.thir_strict,
-                         where=f"in the initializer of '{cc_name}'",
-                         loc=cc_fld.loc)
-        else:
-            commit_attempt()
+            reject_attempt("class_const",
+                           where=f"in the initializer of '{cc_name}'",
+                           loc=cc_fld.loc)
+        commit_attempt()
         return init
 
     def _gen_nested_ostream_operators(self, out: TextIO, record: TpyRecord) -> None:
@@ -916,73 +906,27 @@ class RecordGenerator:
         """Emit the ctor's ` : mil... { body }` tail after the signature.
         ``body_indent_level`` is 2 in-struct and 1 at namespace scope.
 
-        THIR ctor frontier (M3): an eligible ctor's member-init-list + body
-        tail emits from its THIRConstructor; the signature stays on the
-        AST path (the M1 precedent). The AST MIL extraction is skipped when a
-        THIRConstructor is present -- it already carries the hoisted inits."""
-        thir_ctor = (self.ctx.thir_constructors.get(id(record.init_method))
-                     if self.ctx.thir_codegen else None)
-        if thir_ctor is not None:
-            from ..thir.emit import (
-                CtxCommentSink, CtxCounter, CtxTempSink,
-                emit_thir_constructor_tail,
-            )
-            emit_thir_constructor_tail(
-                out, thir_ctor,
-                comments=CtxCommentSink(self.ctx),
-                temps=CtxTempSink(self.ctx),
-                with_counter=CtxCounter(self.ctx, "with_counter"),
-                try_counter=CtxCounter(self.ctx, "try_except_counter"),
-                finally_guard_counter=CtxCounter(
-                    self.ctx, "finally_guard_counter"),
-                body_indent_level=body_indent_level)
-            return
-        saved_func_params = self.ctx.current_func_params
-        saved_in_method = self.ctx.in_method
-        saved_method_record = self.ctx.current_method_record_type
-        saved_ns = self.ctx.current_ns
-        self.ctx.current_func_params = {
-            pname: ptype for pname, ptype in record.init_method.params}
-        self.ctx.in_method = True
-        # Field-init RHS renders go through the same self-receiver rules as
-        # method bodies (`self.helper()` -> `this->helper()`), which require
-        # the record type to be attached, not just in_method.
-        rec_info = self.ctx.analyzer.registry.get_record(record.name)
-        if rec_info is not None:
-            self.ctx.current_method_record_type = build_record_self_type(
-                rec_info, qname=rec_info.qualified_name())
-        else:
-            self.ctx.current_method_record_type = NominalType(record.name)
-        # Field-init RHS expressions live lexically in the constructor
-        # body, so binding-based dispatch in expression codegen needs the
-        # constructor's namespace. The non-init body gets the same
-        # namespace handed to gen_body below.
-        self.ctx.current_ns = self._build_init_local_ns(record)
-        base_inits = self._extract_base_inits(record.init_method, record)
-        inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
-        self.ctx.current_func_params = saved_func_params
-        self.ctx.in_method = saved_in_method
-        self.ctx.current_method_record_type = saved_method_record
-        self.ctx.current_ns = saved_ns
-        non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
-
-        # Build member init list: base inits (if any) + field inits
-        all_inits = list(base_inits)
-        all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
-        if all_inits:
-            out.write(" : ")
-            out.write(", ".join(all_inits))
-        if non_init_stmts:
-            out.write(" {\n")
-            local_ns = self._build_init_local_ns(record)
-            self.functions.gen_body(out, non_init_stmts, record.init_method.params,
-                                     record.init_method.return_type, record.init_method,
-                                     local_ns, indent_level=body_indent_level, is_method=True,
-                                     record_type_param_bounds=record.type_param_bounds or None,
-                                     owning_record_name=record.name)
-            out.write(f"{INDENT * (body_indent_level - 1)}}}\n")
-        else:
-            out.write(" {}\n")
+        The member-init list and body tail both come off the lowered
+        THIRConstructor, which already carries the hoisted inits; the
+        signature is emitted by the caller."""
+        thir_ctor = self.ctx.thir_constructors.get(id(record.init_method))
+        if thir_ctor is None:
+            raise CodeGenError(
+                f"internal error: no lowered constructor for '{record.name}'",
+                record.init_method.loc)
+        from ..thir.emit import (
+            CtxCommentSink, CtxCounter, CtxTempSink,
+            emit_thir_constructor_tail,
+        )
+        emit_thir_constructor_tail(
+            out, thir_ctor,
+            comments=CtxCommentSink(self.ctx),
+            temps=CtxTempSink(self.ctx),
+            with_counter=CtxCounter(self.ctx, "with_counter"),
+            try_counter=CtxCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=CtxCounter(
+                self.ctx, "finally_guard_counter"),
+            body_indent_level=body_indent_level)
 
     def _gen_ctor_def(self, out: TextIO, record: TpyRecord,
                       *, mode: MethodEmitMode) -> None:
@@ -1311,13 +1255,8 @@ class RecordGenerator:
                     out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
                 else:
                     out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
-                move_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                move_ns.bind_variable("self", NominalType(name))
-                self.functions.gen_body(out, move_method.body, move_method.params,
-                                        move_method.return_type, move_method, move_ns,
-                                        indent_level=body_lvl, is_method=True,
-                                        record_type_param_bounds=record.type_param_bounds or None,
-                                        owning_record_name=name)
+                self.functions.gen_body(out, move_method.body, move_method,
+                                        indent_level=body_lvl)
                 out.write(f"{bind}{cpp_src}.__tpy_owned_ = false;\n")
                 out.write(f"{ind}}}\n")
         elif nonmovable:
@@ -1382,8 +1321,6 @@ class RecordGenerator:
             out.write(f"{INDENT}~{cpp_name}() {{\n")
         out.write(f"{bind}if (!this->__tpy_owned_) return;\n")
         if body_stmts:
-            local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-            local_ns.bind_variable("self", NominalType(name))
             # A C++ destructor is noexcept: a `with`/`try`/`raise` in the body
             # emits a literal `throw` that would std::terminate (a
             # -Werror=terminate compile error). Wrap only those bodies so the
@@ -1396,12 +1333,9 @@ class RecordGenerator:
             wrap = _body_has_literal_throw(body_stmts)
             if wrap:
                 out.write(f"{bind}try {{\n")
-            self.functions.gen_body(out, body_stmts, [], del_method.return_type,
-                                    del_method, local_ns,
-                                    indent_level=body_lvl + 1 if wrap else body_lvl,
-                                    is_method=True,
-                                    record_type_param_bounds=record.type_param_bounds or None,
-                                    owning_record_name=name)
+            self.functions.gen_body(
+                out, body_stmts, del_method,
+                indent_level=body_lvl + 1 if wrap else body_lvl)
             if wrap:
                 out.write(f"{bind}}} catch (const std::exception& __del_exc) {{\n")
                 out.write(f"{bind}{INDENT}::tpy::report_del_exception(__del_exc);\n")
@@ -1475,298 +1409,6 @@ class RecordGenerator:
         # Friend declaration for cross-instantiation member access
         friend_tparams = ", ".join("typename" for _ in record_info.type_params)
         out.write(f"{INDENT}template<{friend_tparams}> friend struct {cpp_name};\n")
-
-    def _build_init_local_ns(self, record: TpyRecord) -> Namespace:
-        """Constructor-body namespace: `self` + every __init__ param.
-
-        Used both for MIL hoist (so binding-based dispatch resolves the same
-        way it does for the body) and as gen_body's starting namespace for
-        the non-init body.
-        """
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        local_ns.bind_variable("self", NominalType(record.name))
-        for pname, ptype in record.init_method.params:
-            local_ns.bind_variable(pname, ptype)
-        return local_ns
-
-    def _extract_base_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[str]:
-        """Extract base-init calls (super().__init__() and BaseN.__init__(self, ...))
-        and return C++ base initializer strings in declaration order.
-
-        Returns zero or one entry for single-base classes (the super() call, if
-        present), and one entry per base with an explicit init call for
-        multi-base classes. C++ runs base constructors in declaration order
-        regardless of how the initializer list is written; emitting in that
-        order avoids -Wreorder when the user writes BaseN.__init__(self, ...)
-        calls in non-declaration order in the child __init__ body.
-        """
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        parent_order: dict[int, int] = {}
-        if record_info is not None:
-            for idx, parent in enumerate(record_info.parents):
-                p_info = self.ctx.analyzer.registry.get_record_for_type(parent)
-                if p_info is not None:
-                    parent_order[id(p_info)] = idx
-
-        entries: list[tuple[int, str]] = []
-        for src_idx, stmt in enumerate(init_method.body):
-            if not is_base_init_call(stmt):
-                continue
-            if not isinstance(stmt, TpyExprStmt):
-                raise CodeGenError("Expected expression statement for base __init__ call", stmt.loc)
-            expr = stmt.expr
-            if not isinstance(expr, TpyMethodCall):
-                raise CodeGenError("Expected method call for base __init__", stmt.loc)
-            parent_type = expr.super_parent_type or expr.unbound_self_parent_type
-            if parent_type is None:
-                raise CodeGenError("base __init__ call without resolved parent type", stmt.loc)
-            # A `None` needs its slot's shape to spell (`std::nullopt` for a
-            # value-form optional, not `nullptr`), which a target-less render
-            # cannot know; every other arg keeps the plain render so the
-            # emitted list stays byte-identical.
-            base_info = self.ctx.analyzer.registry.get_record_for_type(parent_type)
-            base_params = base_info.init_params if base_info else []
-
-            def _base_arg(i: int, a) -> str:
-                pt = base_params[i][1] if i < len(base_params) else None
-                if isinstance(a, TpyNoneLiteral) and pt is not None:
-                    return default_to_cpp(self.ctx, a, pt)
-                return self.expressions.gen_expr(a)
-
-            args = ", ".join(_base_arg(i, a) for i, a in enumerate(expr.args))
-            code = f"{parent_type.to_cpp()}({args})"
-            # Unknown-parent entries sort after all known ones (preserves source
-            # order between them via src_idx). Shouldn't happen for well-formed
-            # programs, but avoids hiding codegen bugs behind a silent drop.
-            p_info = self.ctx.analyzer.registry.get_record_for_type(parent_type)
-            rank = parent_order.get(id(p_info), len(parent_order) + src_idx) if p_info else len(parent_order) + src_idx
-            entries.append((rank, code))
-        entries.sort(key=lambda e: e[0])
-        return [code for _, code in entries]
-
-    def _extract_field_inits(
-        self, init_method: TpyFunction, record: TpyRecord
-    ) -> tuple[list[tuple[str, str]], set[int]]:
-        """Extract field initializations from __init__ body.
-
-        Only extracts initializations for fields that belong to this class directly,
-        not inherited fields. Inherited field assignments must go in the constructor body.
-
-        Returns ``(inits, hoisted_ids)`` -- ``inits`` is the (field, value) pairs to
-        emit in the member init list; ``hoisted_ids`` is the set of ``id(stmt)`` for
-        TpyAssign statements that were hoisted, used by ``_get_non_init_stmts`` to
-        avoid emitting the same assignment again in the constructor body.
-        """
-        # Build field name -> type map for target type passing
-        field_types = {fld.name: fld.type for fld in record.fields}
-        own_field_names = set(field_types.keys())
-        param_names = {p[0] for p in init_method.params}
-        # Own[T] (and Own[T] | None) params are move-eligible at last use in
-        # the member init list; see the move site below.
-        own_param_names = {pname for pname, ptype in init_method.params
-                           if unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype))) is not None}
-        # Collect nested def names -- these are lambdas defined in the body,
-        # so field inits referencing them must go in the body, not the init list.
-        nested_def_names = {
-            s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
-        }
-        # Body-locals: any field-init whose RHS references one of these must
-        # stay in the body (the MIL runs before the constructor body, so the
-        # local isn't in scope there). Captures e.g. `self._x = OwnedBar(tmp)`
-        # which would otherwise hoist into `Foo() : _x(OwnedBar(tmp)) { auto
-        # tmp = ...; }` and fail C++.
-        local_names = collect_top_level_local_names(init_method.body)
-        # Seed the param pointer-form classification so a field initializer
-        # reading a pointer-repr param derefs with `->`; the MIL runs before
-        # setup_body_scope, so the scoped helper seeds and restores around it.
-        # deep_const_borrow is empty because __init__ params are shallow-const in
-        # the ctor signature (use_readonly_params=False), so a pointer-variant
-        # param must NOT be deep-const'd here -- it matches the `std::get<T*>`
-        # the signature expects. (Not "ctors are never @readonly": deep-const is
-        # inference-driven, not decorator-driven.)
-        with self.functions.seed_param_locals_scoped(
-                init_method.params, self.ctx.current_ns, set()):
-            inits = []
-            hoisted_ids: set[int] = set()
-            # MIL runs as a block BEFORE the constructor body, so hoisting a
-            # `self.f = expr` past a side-effecting body statement reorders
-            # the expr's evaluation. Hoist the leading chain of `self.f = expr`
-            # assignments (skipping super().__init__, docstrings, pass); any
-            # non-`self.f = expr` body statement breaks the chain hard.
-            #
-            # Inherited-field assigns (`self.base_field = expr`) are a special
-            # case: they always go to the body (the base ctor owns the MIL
-            # slot) but they only mutate `self.base_field`, nothing else. So
-            # the chain stays alive past them, with the constraint that any
-            # subsequent own-field MIL hoist whose RHS reads `self.base_field`
-            # (or calls a method on self, which could read anything) must
-            # demote to keep source order.
-            chain_broken = False
-            body_written_self_fields: set[str] = set()
-
-            def demote(field_name: str, loc: SourceLocation | None, reason: str) -> None:
-                nonlocal chain_broken
-                chain_broken = True
-                self._reject_nondef_ctor_field_in_body(
-                    field_name, own_field_names, field_types, loc, reason)
-
-            for stmt in init_method.body:
-                if (is_base_init_call(stmt) or is_docstring(stmt)
-                        or isinstance(stmt, TpyPassStmt)):
-                    continue
-                if not (isinstance(stmt, TpyAssign)
-                        and isinstance(stmt.target, TpyFieldAccess)
-                        and isinstance(stmt.target.obj, TpyName)
-                        and stmt.target.obj.name == "self"):
-                    chain_broken = True
-                    continue
-                field_name = stmt.target.field
-                source_expr = stmt.value
-                while isinstance(source_expr, TpyCoerce):
-                    source_expr = source_expr.expr
-                if chain_broken:
-                    demote(field_name, stmt.loc,
-                           emit_prims.CTOR_DEMOTE_PRIOR_STATEMENT)
-                    continue
-                if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
-                    demote(field_name, stmt.loc,
-                           emit_prims.CTOR_DEMOTE_NESTED_DEF)
-                    continue
-                # Bare-name RHS not in params, or any reference to a body-local:
-                # the value isn't in scope at MIL time.
-                blocked_by_bare_name = (
-                    isinstance(source_expr, TpyName)
-                    and source_expr.name not in param_names
-                )
-                blocked_by_body_local = bool(
-                    local_names and (collect_name_refs(stmt.value) & local_names))
-                if blocked_by_bare_name or blocked_by_body_local:
-                    demote(field_name, stmt.loc,
-                           emit_prims.CTOR_DEMOTE_BODY_LOCAL)
-                    continue
-                # Inherited field: the base ctor owns the MIL slot, so we
-                # write through the body but the chain stays alive.
-                if field_name not in own_field_names:
-                    body_written_self_fields.add(field_name)
-                    continue
-                if expr_reads_self_field(stmt.value, body_written_self_fields):
-                    demote(field_name, stmt.loc,
-                           emit_prims.CTOR_DEMOTE_READS_INHERITED)
-                    continue
-                fld_type = field_types[field_name]
-                # Unwrap copy() in member init -- init list copies implicitly
-                source = self.ctx.unwrap_copy(stmt.value)
-                # A copy() of a pointer-repr tuple goes through _gen_copy_expr
-                # (storage form, element-wise value copy) rather than the
-                # unwrapped borrow-form literal, which mismatches a const source.
-                # The result is already storage form, so skip the wrap below.
-                copy_storage_tuple = (source is not stmt.value
-                                      and isinstance(fld_type, TupleType)
-                                      and fld_type.has_pointer_repr_element())
-                # A member-initializer-list expression has no place to declare
-                # temps; if `gen_expr` registers any, demote the assignment to
-                # the body where the next `temps.flush` can emit them. The
-                # probe's discard restores the COUNTER too (rollback_discarded)
-                # so the demoted body re-emit reissues the same `__tmp_N`
-                # names instead of burning one per probe -- the elif-probe
-                # precedent. A walrus probe's NAMED pre-decl cannot roll back
-                # (registry side effects persist): that corner keeps the
-                # burned number via the counter-keeping rollback.
-                checkpoint = self.ctx.temps.probe_checkpoint()
-                value = self.expressions.gen_expr(
-                    stmt.value if copy_storage_tuple else source, fld_type)
-                _mil_probe_temps = (
-                    self.ctx.temps.has_pending_since(checkpoint)
-                    or self.ctx.temps.has_named_since(checkpoint))
-                if _mil_probe_temps:
-                    if self.ctx.temps.has_named_since(checkpoint):
-                        self.ctx.temps.rollback_to(checkpoint[:2])
-                    else:
-                        self.ctx.temps.rollback_discarded(checkpoint)
-                if _mil_probe_temps:
-                    demote(field_name, stmt.loc,
-                           emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
-                    continue
-                # A bytes-view source (e.g. a bytes param's span) into an owned
-                # bytes field copies via the shared view->owned chokepoint --
-                # vector has no span constructor. str needs no arm (std::string's
-                # explicit string_view ctor fires in the direct-init member
-                # list). Pass the (coerce-wrapped) stmt.value: a source sema
-                # already coerced to bytes resolves as non-view here, so
-                # gen_expr's own copy is left unchanged, not double-wrapped.
-                if is_bytes_type(fld_type):
-                    value = self.expressions._view_source_to_owned(
-                        stmt.value, fld_type, value)
-                # Auto-move Own[T] (and Own[T] | None, a std::optional<T> by
-                # value) params at last use in the member init list. Movability
-                # is the Own-param set rather than `movable_locals` (unpopulated
-                # at MIL time): an Own param is storage form, so a `q = p`
-                # aliasing attempt copies rather than aliasing, leaving no live
-                # borrow that the move could dangle -- last-use alone suffices.
-                if self.expressions._is_last_use_movable(source, own_param_names):
-                    value = f"std::move({value})"
-                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
-                # OwnType(OptionalType) params are std::optional<T>&& -- already optional, no conversion.
-                if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():
-                    # Check if the source param is Own[Optional[T]] -- then the C++ param
-                    # is std::optional<T>&& and no ptr_to_optional is needed.
-                    source_is_own_optional = False
-                    if isinstance(source, TpyName):
-                        for pname, ptype in init_method.params:
-                            if pname == source.name and unwrap_optional_own(unwrap_send_sync(ptype)) is not None:
-                                source_is_own_optional = True
-                                break
-                    if not source_is_own_optional and not isinstance(source, TpyFieldAccess):
-                        raw_val_type = self.ctx.get_expr_type(stmt.value)
-                        val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
-                        if isinstance(val_type, OptionalType):
-                            if not (isinstance(val_type.inner, OwnType)):
-                                value = f"::tpy::ptr_to_optional({value})"
-                # Tuple field stores std::optional<T>; the param is T*.
-                # Lift element-wise. Storage-form sources (field, subscript,
-                # global, storage-form local) already match the field shape
-                # and skip the wrap.
-                if (isinstance(fld_type, TupleType)
-                        and fld_type.has_pointer_repr_element()
-                        and self.ctx.needs_tuple_storage_lift(source)
-                        and not copy_storage_tuple):
-                    fld_cpp = self.types.type_to_cpp(fld_type)
-                    value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
-                # Pointer-variant param -> value-variant field: deref+copy.
-                # The param is variant<T*...> but the field stores variant<T...>.
-                # Skip when the source is a bare alternative value (constructor,
-                # field access of a value-variant field, etc.) -- the variant
-                # constructs from it directly, and to_value_variant would fail
-                # template deduction.
-                if (self.ctx.is_ptr_variant_union(fld_type)
-                        and self.ctx.is_ptr_variant_source(source)):
-                    val_cpp = self.types.type_to_cpp(fld_type)
-                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
-                inits.append((field_name, value))
-                hoisted_ids.add(id(stmt))
-            return inits, hoisted_ids
-
-    def _reject_nondef_ctor_field_in_body(
-        self, field_name: str, own_field_names: set[str],
-        field_types: dict[str, TpyType], loc: SourceLocation | None,
-        reason: str,
-    ) -> None:
-        """Raise a CodeGenError when a `self.field = expr` that codegen has
-        demoted to the constructor body targets an own field whose type has
-        a suppressed default ctor (`@nocopy` with `__del__`, etc.). Such a
-        field has no default state, so the C++ MIL would implicitly
-        default-init it to an uncompilable state. The diagnostic guides the
-        user to refactor toward a leading MIL chain (or a @staticmethod
-        factory) before the C++ compiler emits something cryptic.
-        """
-        if field_name not in own_field_names:
-            return
-        fld_type = field_types[field_name]
-        fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
-        if fld_rec is None or not del_suppresses_default_ctor(fld_rec):
-            return
-        emit_prims.reject_nondef_ctor_field_in_body(
-            field_name, fld_rec.name, reason, loc)
 
     def _render_enum_member_default(self, expr) -> str | None:
         """C++ for a validated enum-member field default
@@ -1861,26 +1503,6 @@ class RecordGenerator:
             if not self._fld_type_cpp_default_constructible(p):
                 return False
         return all(self._fld_type_cpp_default_constructible(f.type) for f in record_info.fields)
-
-    def _get_non_init_stmts(
-        self, init_method: TpyFunction, record: TpyRecord, hoisted_ids: set[int]
-    ) -> list[TpyStmt]:
-        """Get statements from __init__ that aren't hoisted into the member init list.
-
-        These need to go in the constructor body. ``hoisted_ids`` is produced by
-        ``_extract_field_inits`` and contains ``id(stmt)`` for every TpyAssign that
-        was successfully placed in the MIL -- the single source of truth so the
-        two functions can never disagree on which assignments belong where.
-        Skips ``super().__init__()`` calls (handled separately as base initializer).
-        """
-        non_init = []
-        for stmt in init_method.body:
-            if is_base_init_call(stmt):
-                continue
-            if id(stmt) in hoisted_ids:
-                continue
-            non_init.append(stmt)
-        return non_init
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator[] for subscript read syntax.
@@ -2019,7 +1641,7 @@ class RecordGenerator:
             # which would collide with `__truediv__`'s `operator/` (a type
             # implementing both -- e.g. timedelta -- would emit two `operator/`
             # with the same operand type). TPy call sites dispatch `//` through a
-            # `__floordiv__` method call (see _gen_binop_from_result), so no
+            # `__floordiv__` method call, so no
             # friend operator is needed; emitting one is both a collision and
             # semantically wrong (external C++ `a / b` would floor-divide).
             if method.name in ("__floordiv__", "__rfloordiv__"):

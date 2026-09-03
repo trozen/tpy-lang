@@ -61,8 +61,6 @@ class TestBranchFirstNullOptionalPointer:
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.var_decl",
                            "decl.branch_slot_type")
-        hpp, cpp = _assert_byte_identical(src)
-        assert "std::optional<Node> __slot_1;" in hpp + cpp
 
     def test_branch_first_rvalue_init_stays_ast(self):
         # BOUNDARY: an F1-record rvalue init carries its own storage line.
@@ -81,5 +79,3 @@ class TestBranchFirstNullOptionalPointer:
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.var_decl",
                            "decl.branch_slot_type")
-        hpp, cpp = _assert_byte_identical(src)
-        assert "Node* sel = &__slot_1;" in hpp + cpp

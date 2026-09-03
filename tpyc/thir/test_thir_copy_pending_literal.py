@@ -69,8 +69,6 @@ class TestNarrowedOptionalCopyKeepsCopying:
         # claim here is the AST render, byte-identical through the fallback.
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call", "call.builtin_special")
-        cpp = _assert_byte_identical(src)
-        assert "R((*x))" in cpp[1]
 
 
 class TestArrayCopyStillRejects:
@@ -86,4 +84,3 @@ class TestArrayCopyStillRejects:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.copy_source.container")
-        _assert_byte_identical(src)

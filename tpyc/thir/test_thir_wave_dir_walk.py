@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical, _compile, _entry,
 )
@@ -20,8 +21,7 @@ from ..diagnostics import SemanticError
 def _emit(src: str):
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp, cpp
 
 
@@ -114,10 +114,7 @@ class TestStrFieldInBorrowYieldTuple:
                + "def lit(r: Rec) -> Int32:\n"
                + "    xs = [r.label]\n"
                + "    return Int32(len(xs))\n")
-        compiler, _, _ = _emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:stmt.var_decl",
-                           "field.result_type")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.var_decl', 'field.result_type')
 
 
 class TestContainerFieldAtInstantiation:
@@ -148,10 +145,7 @@ class TestContainerFieldAtInstantiation:
                + "        a = list(r.opt_rows)\n"
                + "        return Int32(len(a))\n"
                + "    return 0\n")
-        compiler, _, _ = _emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
-                           "call.inst_arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.inst_arg_shape')
 
 
 class TestOwnContainerConstructCtorArg:
@@ -194,7 +188,4 @@ class TestOwnContainerConstructCtorArg:
                + "        self.n = Int32(len(names))\n"
                + "def build_ref(names: list[str]) -> Own[RefBag]:\n"
                + "    return RefBag(list(names))\n")
-        compiler, _, _ = _emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
-                           "call.ctor_arg.container")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.ctor_arg.container')

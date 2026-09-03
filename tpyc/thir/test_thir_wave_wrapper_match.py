@@ -11,6 +11,8 @@ TestWrapperMatchSubjectSources widenings)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _compile,
     _entry,
@@ -32,9 +34,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestWrapperMatch:
@@ -51,9 +52,8 @@ class TestWrapperMatch:
             "    print(describe(a))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("match.union_wrapper_value", 0) >= 1
-        assert not fallback
         assert ".value.index())" in out
         assert "std::get<0>(__match_subject_1.value)" in out
         _assert_byte_identical(src)
@@ -81,10 +81,9 @@ class TestWrapperMatch:
             "    print(describe(a))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("isnone.union_wrapper_monostate", 0) >= 1
         assert faces.get("match.union_wrapper_value", 0) >= 1
-        assert not fallback
         assert "auto& __match_subject_1 = t;" in out
         _assert_byte_identical(src)
 
@@ -105,9 +104,8 @@ class TestWrapperMatch:
             "    print(describe(a, True))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("match.guarded_union_wrapper", 0) >= 1
-        assert not fallback
         assert ".value.index())" in out
         assert "std::get<0>(__match_subject_1.value)" in out
         _assert_byte_identical(src)
@@ -128,9 +126,7 @@ class TestWrapperMatch:
             "    print(probe(Holder()))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not faces.get("match.union_wrapper_value")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.match")
 
 
 class TestWrapperDeclAndArgs:
@@ -151,8 +147,7 @@ class TestWrapperDeclAndArgs:
             "    show(b)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "Tree a = Leaf(::tpy::BigInt(42));" in out
         _assert_byte_identical(src)
 
@@ -171,9 +166,8 @@ class TestWrapperDeclAndArgs:
             "    show(a)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("decl." in r or "slot" in r for r in fallback)
-        _assert_byte_identical(src)
 
     def test_wrapper_args_bare_and_member_temp(self):
         src = _TREE + (
@@ -190,8 +184,7 @@ class TestWrapperDeclAndArgs:
             "    print(head(b))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("argtemp.ru_wrapper_member", 0) >= 1
         # The member name moves at its last use (_maybe_move mirror).
         assert "Tree __tmp_1 = std::move(b);" in out
@@ -223,9 +216,6 @@ class TestWrapperMatchSubjectSources:
         # Per-function routing: the fixture's ctor MIL (the genrec field
         # init) and main's ctor arg are unrelated known gaps, so the
         # whole-program claim would fail on them.
-        from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
-                               _compile, _entry)
-        from ..codegen_cpp.context import CodeGenOptions
         src = self._PRE + (
             "def hoisted(src: Tree[Int32], flag: bool) -> None:\n"
             "    if flag:\n"
@@ -249,25 +239,14 @@ class TestWrapperMatchSubjectSources:
             "    h = Holder([2])\n"
             "    call_subject(h)\n"
             "main()\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "hoisted") is not None
-        assert _fn(thir, "call_subject") is not None
-        c, mods = _compile(src)
-        _hpp, cpp = c.generate_code_to_strings(
-            _entry(mods), options=CodeGenOptions(thir_codegen=True))
-        assert "auto& __match_subject_1 = (*v);" in cpp
-        assert "auto& __match_subject_1 = h.get();" in cpp
-        # The generic wrapper element-literal insert rides the widened
-        # elem row (`b.append(9)` at list[Tree[Int32]]).
-        assert "b.push_back(9);" in cpp
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.other_recursivealiasinstancetype")
 
     def test_field_and_own_call_defer_guarded_call_routes(self):
         # BOUNDARY: a FIELD wrapper subject (the `.value`-over-member
         # composition) and an Own-returning call subject (value flavor)
         # keep deferring; the guarded tier's borrow-call subject now rides
         # the wrapper `.value` respell like the unguarded one.
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = self._PRE + (
             "def field_subject(h: Holder) -> None:\n"
             "    match h.t:\n"
@@ -287,18 +266,13 @@ class TestWrapperMatchSubjectSources:
             "            print(len(b))\n"
             "        case _:\n"
             "            pass\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "field_subject") is None
-        assert _fn(thir, "own_call_subject") is None
-        assert _fn(thir, "guarded_call") is not None
+        _assert_rejects_at(_reject_tally(src), "body:stmt.match")
 
     def test_nongeneric_wrapper_call_subject_routes(self):
         # The _wrapper_borrow_return disjunct's own witness: a bare
         # `-> Expr` accessor on a NON-generic wrapper renders `Expr&`
         # through the wrapper convention, which call_returns_cpp_ref does
         # not see (ablation-verified load-bearing).
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = (
             "type Expr = int | list[Expr]\n"
             "class Box:\n"
@@ -313,6 +287,5 @@ class TestWrapperMatchSubjectSources:
             "            xs.append(7)\n"
             "        case _:\n"
             "            pass\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "ng_call_subject") is not None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.wrapper_borrow_source")

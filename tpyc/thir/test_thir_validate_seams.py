@@ -51,7 +51,7 @@ def _emit_thir(src: str) -> None:
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        options=CodeGenOptions(emit_source_comments=True))
 
 
 def _form_lie() -> THIRCoerce:

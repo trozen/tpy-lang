@@ -1,10 +1,9 @@
-"""THIR -> C++ emission for the value-scalar slice.
+"""THIR -> C++ emission for function bodies.
 
 `emit_thir_body` writes a function body's C++ from THIR alone -- no
 SemanticAnalyzer, no CodeGenContext. It reuses the existing analyzer-free leaf
-helpers (`escape_cpp_name`, `expand_cpp_template`, `TpyType.to_cpp`) so its
-output matches the AST-driven path byte-for-byte. As the slice grows this is
-where the THIR codegen backend accretes.
+helpers (`escape_cpp_name`, `expand_cpp_template`, `TpyType.to_cpp`), and its
+output is pinned by the committed `expected/` snapshots.
 
 Source comments are rendered through a `CommentSink` supplied by the codegen
 seam (the stateless `ctx` comment helpers); the dump/tests pass the no-op
@@ -165,7 +164,7 @@ class THIRCodeGenError(Exception):
 
 
 class CommentSink:
-    """Renders the source comments the AST path emits before/around statements.
+    """Renders the source comments that precede / surround statements.
 
     The codegen seam supplies a subclass backed by the stateless `ctx` comment
     helpers; the no-op default keeps the dump/test paths analyzer-free.
@@ -195,13 +194,13 @@ _NO_COMMENTS = CommentSink()
 
 class TempSink:
     """Allocates `__tmp_N` names for THIRArgTemp and renders the pending
-    declarations at the statement flush point -- the emit-side seam of the
-    AST path's `TempState`. This default implementation is the standalone /
-    unit-test sink: a fresh module-local counter starting at `__tmp_1`, with
+    declarations at the statement flush point -- the emit-side seam of
+    `TempState`. This default implementation is the standalone / unit-test
+    sink: a fresh module-local counter starting at `__tmp_1`, with
     `TempState._render`'s exact decl spelling. The codegen seam supplies
     `CtxTempSink` instead, backed by the module-cumulative `ctx.temps`
-    counter shared with AST-emitted bodies (interleaved THIR/AST numbering
-    must stay continuous)."""
+    counter, so `__tmp_N` numbering runs continuously across every body in
+    the module."""
 
     def __init__(self) -> None:
         self._counter = 0
@@ -310,10 +309,10 @@ class CtxTempSink(TempSink):
     """TempSink backed by a CodeGenContext's `TempState` (duck-typed on `ctx`
     like CtxCommentSink, keeping emit.py free of a CodeGenContext import).
     `create` delegates to `create_typed` -- the type is already rendered at
-    lowering, so both AST arms (`create`'s param-type render and
+    lowering, so both TempState arms (`create`'s param-type render and
     `create_typed`'s explicit string) reduce to the same pending row -- and
-    both draw from the live module-cumulative `__tmp_N` counter, so a THIR
-    body's temps keep every later AST body's numbering unshifted."""
+    both draw from the live module-cumulative `__tmp_N` counter, so numbering
+    runs continuously across the module's bodies."""
 
     def __init__(self, ctx) -> None:
         self._ctx = ctx
@@ -354,11 +353,10 @@ class CtxTempSink(TempSink):
 class ModuleCounter:
     """Module-cumulative int sink for a hidden-name numbering stream
     (`__ctx_N`, `__after_else_N`, ...). Unlike the per-function counters
-    below, these streams are never reset (like `__tmp_N`) and are shared
-    with AST-emitted bodies -- the codegen seam passes `CtxCounter` so
-    interleaved THIR/AST numbering stays continuous. This default is the
-    standalone / unit-test sink (first id is 1, a fresh module's
-    numbering)."""
+    below, these streams are never reset (like `__tmp_N`) -- the codegen seam
+    passes `CtxCounter` so the numbering runs continuously across the
+    module's bodies. This default is the standalone / unit-test sink (first
+    id is 1, a fresh module's numbering)."""
 
     def __init__(self) -> None:
         self._n = 0
@@ -371,8 +369,8 @@ class ModuleCounter:
 class IterCounter:
     """PRE-value draw counter for the `__tpy_ret_N` / `__tpy_retp_N` /
     `__after_else_N` iter stream (first id 0, unlike ModuleCounter's 1).
-    The leaf seam passes a ctx-backed one so hooked AST renders (the
-    skeleton's iter_counter draws) and THIR draws share one stream."""
+    The leaf seam passes a ctx-backed one so the skeleton's iter_counter
+    draws and THIR draws share one stream."""
 
     def __init__(self) -> None:
         self._n = 0
@@ -417,12 +415,12 @@ class _FinallyFrame:
     `FinallyContext`. Two arms: a `with` layer renders the fixed
     `__ctx_N.__exit__(...)` call (`ctx_n`/`exc_null_arg`); a try/finally
     layer re-emits its lowered finally body (`stmts`) at every exit site,
-    counters advancing per copy like the AST's repeated `gen_stmt` runs.
-    `terminates` is the AST's last-stmt raise/return fact -- a terminating
-    frame stops the chain walk and the caller suppresses its trailing exit
-    statement (with frames never terminate). `loop_depth` is the live
-    loop-nesting count at push (`len(ctx.loop_else_labels)` in the AST --
-    every loop appends an entry, labeled or not), so break/continue walk
+    counters advancing per copy. `terminates` is the last-stmt raise/return
+    fact -- a terminating frame stops the chain walk and the caller
+    suppresses its trailing exit statement (with frames never terminate).
+    `loop_depth` is the live loop-nesting count at push
+    (`len(ctx.loop_else_labels)` -- every loop appends an entry, labeled or
+    not), so break/continue walk
     only frames pushed inside the innermost loop body."""
     loop_depth: int
     ctx_n: int | None = None
@@ -441,37 +439,37 @@ class _EmitState:
     """Per-function emit state. `iter_counter` reproduces `ctx.iter_counter`:
     in the eligible slice only range-`for` loops bump it, and it resets per
     function, so a counter seeded at 0 here and bumped once per loop (pre-order)
-    matches the AST path's `__start_N`/`__stop_N` numbering exactly.
+    reproduces the `__start_N`/`__stop_N` numbering exactly.
 
     `slot_counter` reproduces `ctx.slots` for F2d rebind-slot pointer-locals
     and reassigned borrow-tuple walruses: within the eligible slice only
     those bump it (the other `__slot_N` consumers -- unions, @dynamic -- are
     gated out), and it pre-increments per allocation just like
-    `SlotState.next_slot`, so the `__slot_N` numbering matches the AST path.
+    `SlotState.next_slot`, which fixes the `__slot_N` numbering.
     `rebind_slots` maps a rebind-slot local's name to its optional rebind
     slot N (allocated at the decl / first walrus, read at each reseat) --
     the analog of `ctx.rebind_slots`.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
-    the enclosing statement line (after its source comment, mirroring the AST's
-    single flush point in `gen_stmt`). Unlike the counters above it is NOT
-    per-function: the seam passes a CtxTempSink so the numbering stays
-    module-cumulative across interleaved THIR/AST bodies."""
+    the enclosing statement line (after its source comment -- one flush point
+    per statement). Unlike the counters above it is NOT per-function: the seam
+    passes a CtxTempSink so the numbering stays module-cumulative across the
+    module's bodies."""
     comments: CommentSink
     temps: TempSink = field(default_factory=TempSink)
     # `with_counter` numbers `__ctx_N` (ctx attr `with_counter`); `try_counter`
     # numbers the throw tier's `__after_else_N` else labels, the return
     # tier's `__except_N`/`__after_try_N`/`__err_opt_N`, and the error_return
     # unwrap temps `__try_tmp_N`/`__er_N` (ctx attr `try_except_counter` --
-    # one module-cumulative stream shared with the AST path).
+    # one module-cumulative stream).
     with_counter: ModuleCounter = field(default_factory=ModuleCounter)
     try_counter: ModuleCounter = field(default_factory=ModuleCounter)
     # Numbers the `__fin_ran_N` cleanup guards (ctx attr
-    # `finally_guard_counter`); allocated per pushed finally frame, in the
-    # AST's push order, so both paths land on the same names.
+    # `finally_guard_counter`); allocated per pushed finally frame, in push
+    # order.
     finally_guard_counter: ModuleCounter = field(default_factory=ModuleCounter)
     return_cpp: 'str | None' = None
-    # @error_return context, mirroring the AST ctx fields the error_return
+    # @error_return context, mirroring the ctx fields the error_return
     # renders read: `error_return_cpp` is the enclosing function's error type
     # (ctx.current_error_return; seeds bare-return `{}`, the void success
     # tail, and the propagate disposition); `try_except_label`/
@@ -483,8 +481,8 @@ class _EmitState:
     try_except_err_opt: 'str | None' = None
     in_except_tier: 'str | None' = None
     # Resumable-leaf shadow probe: the skeleton registers C++-local shadows of
-    # frame fields (for-loop iter vars) in ctx.frame_field_shadows, and the
-    # AST body-emit suppresses the `(*name)` peel for a shadowed name. The
+    # frame fields (for-loop iter vars) in ctx.frame_field_shadows; a
+    # shadowed name must not take the `(*name)` peel. The
     # leaf emitter wires this to the LIVE ctx set so a THIRName lowered with
     # deref=True (a frame-stored non-value local) renders bare exactly while
     # its shadow is in scope. None outside resumable leaves.
@@ -510,11 +508,11 @@ class _EmitState:
     unpack_counter: int = 0
     # Function-top hoist lines (content only, no indent/newline): a @dynamic
     # rebind slot's `std::optional<slot> __slot_N;` is allocated at the reassign
-    # point but its DECL text precedes the whole body (the AST's
-    # `pending_hoist_decls`). `emit_thir_body` drains this before the body.
+    # point but its DECL text precedes the whole body
+    # (`ctx.pending_hoist_decls`). `emit_thir_body` drains this before the body.
     hoist_lines: list[str] = field(default_factory=list)
     # Rebind-slot hoist lines held back until a rebind consumes the slot --
-    # mirrors the AST's deferred_rebind_slot_decls. The slot is reserved at the
+    # mirrors `ctx.deferred_rebind_slot_decls`. The slot is reserved at the
     # declaration (a rebind must not emplace over an aliased init value), but a
     # name whose every assignment is a fresh declaration in its own scope has
     # no consumer, and emitting it there leaves a dead `std::optional<T>`.
@@ -525,7 +523,7 @@ class _EmitState:
     # produce site rather than emitting an undeclared `__slot_N`.
     hoist_drainable: bool = True
     # The sgen leaf's drain: a callable routing a held-back rebind-slot decl
-    # into the live ctx's nested hoist scope, which the AST skeleton's
+    # into the live ctx's nested hoist scope, which the skeleton's
     # _lambda_body_sink flushes at the lambda prologue (its own drain
     # point). Only the rebind-slot producer consults it; the other
     # hoist_lines producers keep the drainable assert.
@@ -535,7 +533,7 @@ class _EmitState:
     # reseat (function-top only). A SEPARATE registry from `rebind_slots`:
     # the THIRAssign rebind-slot special case keys on that dict, and a
     # slotless local's later field-lift / pointer-copy reseats are plain
-    # assigns the AST renders without consulting the slot -- registering
+    # assigns rendered without consulting the slot -- registering
     # here keeps them from being hijacked into `p = &*(__slot = ...)`.
     inline_rvalue_slots: dict[str, int] = field(default_factory=dict)
     # Names whose rebind slot backs a ptr-variant UNION local: their rvalue
@@ -548,7 +546,7 @@ class _EmitState:
     # (`t = tuple_to_pointer<..>(h.pair);`), never the optional-slot arm.
     btuple_slot_locals: set[str] = field(default_factory=set)
     # Enclosing `with` layers, innermost last -- return/break/continue walk it
-    # to render the inline `__exit__` chain (the AST's `ctx.finally_stack`);
+    # to render the inline `__exit__` chain (the emit-side finally stack);
     # `loop_depth` mirrors `len(ctx.loop_else_labels)` (bumped around every
     # loop body) for the break/continue frame boundary. `return_cpp` is the
     # signature's return spelling (`ctx.current_return_cpp`), read only by the
@@ -560,7 +558,7 @@ class _EmitState:
     # guard only when its name is present (per-function; names are unique
     # via the module-cumulative finally_guard_counter).
     live_finally_guards: set[str] = field(default_factory=set)
-    # Leaf-mode bridge to the skeleton's AST finally stack: push mirrors a
+    # Leaf-mode bridge to the skeleton's finally stack: push mirrors a
     # THIR finally frame as a FinallyContext (so the resumable return
     # hook's chain walk inlines the finally with the SAME guard), pop
     # removes it. None in sync emission.
@@ -587,7 +585,7 @@ class _EmitState:
     # The current statement's indent level, stamped by _emit_stmt before its
     # arms render expressions: the comprehension stmt-expr is the one
     # multi-line EXPRESSION render, and its inner lines indent relative to
-    # the enclosing statement (the AST reads ctx.indent_level the same way).
+    # the enclosing statement (the same role as ctx.indent_level).
     stmt_indent_level: int = 0
 
     def next_loop_index(self) -> int:
@@ -633,19 +631,18 @@ class CtxCommentSink(CommentSink):
         self._ctx.emit_source_comment(out, loc, indent)
 
     def inline(self, out: TextIO, loc, indent: str) -> None:
-        # Leading `#`-comment trivia only (a skipped statement's comments;
-        # the AST's gen_stmt emits these before the None-code suppression).
+        # Leading `#`-comment trivia only: a skipped statement's comments
+        # still emit even though its code does not.
         self._ctx.emit_inline_comments(out, loc, indent)
 
     def elif_(self, out: TextIO, loc, indent: str) -> None:
-        # An elif condition gets only its source line (the AST path emits no
-        # inline comments for a flattened elif).
+        # An elif condition gets only its source line: a flattened elif
+        # emits no inline comments.
         self._ctx.emit_source_comment(out, loc, indent)
 
     def case_(self, out: TextIO, loc, indent: str) -> None:
-        # A `match` arm gets only its source line: every AST match emitter
-        # calls emit_source_comment for the case loc and none of them emits
-        # the leading `#`-comment trivia.
+        # A `match` arm gets only its source line -- the case loc's source
+        # comment, never the leading `#`-comment trivia.
         self._ctx.emit_source_comment(out, loc, indent)
 
     def else_(self, out: TextIO, else_body, indent: str) -> None:
@@ -680,19 +677,18 @@ def _emit_literal(lit: THIRLiteral) -> str:
             return "nullptr"
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
-        # Matches the gen_expr float-literal arm: repr() is the shortest
-        # round-tripping form and a valid C++ double literal; a Float32-typed
+        # repr() is the shortest round-tripping form and a valid C++
+        # double literal; a Float32-typed
         # literal (retyped at lowering from its float_literal_to_float32
         # coerce) takes the `f` suffix.
         rendered = repr(v)
         f32 = is_float32_type(lit.result_type)
         if rendered in ("inf", "-inf", "nan"):
-            # No C++ literal spells these, so both paths fold to the constexpr
-            # numeric_limits form. Keyed on the SAME `repr()` token gen_expr
-            # keys on, so the two spellings cannot drift -- including the
-            # `-inf` leg, which mirrors an oracle arm no source form is known
-            # to reach (a negative float literal parses as a unary minus over
-            # the positive one, which renders through the operator).
+            # No C++ literal spells these, so they fold to the constexpr
+            # numeric_limits form, keyed on the `repr()` token. The `-inf`
+            # leg is unreachable from source (a negative float literal parses
+            # as a unary minus over the positive one, which renders through
+            # the operator).
             base = "float" if f32 else "double"
             lim = (f"std::numeric_limits<{base}>::quiet_NaN()"
                    if rendered == "nan"
@@ -708,18 +704,17 @@ def _emit_literal(lit: THIRLiteral) -> str:
 
 def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                                    state: _EmitState) -> str:
-    # Mirrors _gen_chained_compare_lambda: bind each non-simple operand to an
-    # `auto&& _cmpI` temp, then interleave bindings with the left-folded `&&`
-    # chain so operands after a failed pair never evaluate. Each pair renders
-    # `_gen_comparison_pair` (bare op + per-side `{0}` casts) over the operand
-    # REPRs (temp name or inline render).
+    # Bind each non-simple operand to an `auto&& _cmpI` temp, then interleave
+    # bindings with the left-folded `&&` chain so operands after a failed pair
+    # never evaluate. Each pair renders as a bare op with per-side `{0}` casts
+    # over the operand REPRs (temp name or inline render).
     n = len(e.ops)
     reprs: list[str] = []
     binds: list[str | None] = []
     for i in range(n + 1):
         # Operands 0 and 1 always run; every later one sits behind a passed
         # compare, so its deferred temps bank into a region and splice at
-        # the operand (the AST's i >= 2 regions).
+        # the operand.
         if i >= 2:
             with state.temps.conditional_region() as _region:
                 code = _emit_expr(e.inits[i], state)
@@ -753,8 +748,8 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
 
 
 def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
-    # Mirrors ExpressionGenerator._gen_binop_from_result: apply the operand
-    # wrappers, expand the operator's cpp_template, swap the checked div/mod
+    # Apply the operand wrappers, expand the operator's cpp_template, swap
+    # the checked div/mod
     # helper when the divisor is proven non-zero, and paren-wrap the result.
     # Comparisons reuse this path (their dunder carries a `{self} OP {0}`
     # template), so the same code emits both arithmetic and comparison binops.
@@ -762,14 +757,14 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     if e.resolved is None and e.op in ("&&", "||"):
         # The RHS runs only when the LHS does not short-circuit: its
         # deferred temps bank into a conditional region and splice ahead of
-        # the operand, exactly the AST's `({prefix}{right})` wrap.
+        # the operand -- the `({prefix}{right})` wrap.
         with state.temps.conditional_region() as _rhs_region:
             right = _emit_expr(e.right, state)
     else:
         _rhs_region = None
         right = _emit_expr(e.right, state)
     # Post-generation operand casts (int-enum underlying / mixed BigInt-float),
-    # applied before the wrapper/template expansion like the AST's.
+    # applied before the wrapper/template expansion.
     if e.left_cast is not None:
         left = e.left_cast.format(left)
     if e.right_cast is not None:
@@ -777,10 +772,8 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     if _rhs_region is not None and _rhs_region.prefix:
         right = f"({_rhs_region.prefix}{right})"
     if e.template_override is not None:
-        # The rebuilt fixed-int literal arm (gen_call_from_fi over the
-        # target-typed operands): plain template expansion, no wrappers, no
-        # parens, no divisor swap -- the AST's dedicated arm bypasses all of
-        # those the same way.
+        # The rebuilt fixed-int literal arm over the target-typed operands:
+        # plain template expansion, no wrappers, no parens, no divisor swap.
         return expand_cpp_template(e.template_override, left, right)
     rb = e.resolved
     if rb is None:
@@ -795,15 +788,14 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
         result = expand_cpp_template(rb.method.cpp_template, wl, wr)
     else:
         # A @native free-function dunder (bytes `==` -> `::tpy::bytes_eq`):
-        # gen_call_from_fi's native arm with the receiver prepended. The gate
+        # the free function takes both operands as arguments. The gate
         # admits a template-less rb only in this shape.
         result = (f"{qualify_native_name(rb.method.native_name)}"
                   f"({wl}, {wr})")
     if e.divisor_non_zero:
         result = result.replace("div_check", "div_floor").replace("mod_check", "mod_floor")
     if e.op == "!=" and rb.method.name == "__eq__":
-        # `!=` resolved via `__eq__` derives by negation -- `(!(...))`,
-        # mirroring gen_binop's derived-negation wrap.
+        # `!=` resolved via `__eq__` derives by negation -- `(!(...))`.
         return f"(!({result}))"
     return f"({result})" if e.paren_wrap else result
 
@@ -811,8 +803,7 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
 def _emit_call(e: THIRCall, state: _EmitState) -> str:
     if e.cpp_template is not None:
         # A scalar type-constructor call: expand the (sema-substituted,
-        # positional-only) __init__ template over the args with no receiver --
-        # gen_call_from_fi's cpp_template arm for a free call.
+        # positional-only) __init__ template over the args with no receiver.
         return expand_cpp_template(e.cpp_template, None,
                                    *[_emit_expr(a, state) for a in e.args])
     args = ", ".join(_emit_expr(a, state) for a in e.args)
@@ -822,7 +813,7 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
         return f"({_emit_expr(e.callee_expr, state)})({args})"
     if e.native_name is not None:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
-        # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
+        # dispatch on the resolved symbol.
         return f"{qualify_native_name(e.native_name)}({args})"
     # A generic TPy callee's explicit template-arg list (pre-rendered at
     # lowering): `callee<T1, T2>(args)` over the plain / imported spelling.
@@ -830,16 +821,16 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
              if e.template_args_cpp else "")
     if e.callee_cpp is not None:
         # A cross-module callee: the pre-rendered absolute spelling
-        # (imported_free_callee_cpp, shared with the AST emit).
+        # (from `imported_free_callee_cpp`).
         return f"{e.callee_cpp}{targs}({args})"
     return f"{escape_cpp_name(e.callee)}{targs}({args})"
 
 
 def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
-    # Mirrors _gen_union_arg's temp-free pointer-variant arms: the monostate
-    # member for a None literal, the address-of lift for a member-typed name
-    # (deref prepends the pointer-local/receiver `(*...)`, gen_expr_deref's
-    # indirect render), and the mutable->const conversion for an already-union
+    # The temp-free pointer-variant arms: the monostate member for a None
+    # literal, the address-of lift for a member-typed name (deref prepends the
+    # pointer-local/receiver `(*...)`), and the mutable->const conversion for
+    # an already-union
     # name into a deep-const slot (const_wrap). variant_cpp was fixed at
     # lowering (const-pointee spelling for a deep-const slot).
     if e.value is None:
@@ -859,7 +850,7 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
 
 
 def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
-    # _gen_call's record-branch tail: the RAW source name (same-module) or
+    # The record-construction render: the RAW source name (same-module) or
     # the qualified `::ns::Name` spelling (imported record), decided at
     # lowering, over the lowering-admitted args. @native_c PODs take the
     # aggregate `{args}` init.
@@ -870,16 +861,16 @@ def _emit_ctor_call(e: THIRCtorCall, state: _EmitState) -> str:
 
 
 def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
-    # Mirrors gen_call_from_fi's three dispatch arms for a receiver call, in the
-    # same order: cpp_template expansion, @native free-function symbol (receiver
-    # prepended), plain member call. The member accessor is `->` only for a
-    # user-record pointer-local receiver (`is_arrow`, the _gen_method_call
-    # indirect-name arm); container receivers are pinned to bare names.
+    # Three dispatch arms for a receiver call, in order: cpp_template
+    # expansion, @native free-function symbol (receiver prepended), plain
+    # member call. The member accessor is `->` only for a user-record
+    # pointer-local receiver (`is_arrow`); container receivers are pinned to
+    # bare names.
     recv = _emit_expr(e.receiver, state)
     arrow = e.is_arrow
     if e.move_receiver:
-        # Consuming method: the rvalue-qualified call moves the receiver
-        # (_gen_method_call's is_consuming wrap). A pointer-local receiver
+        # Consuming method: the rvalue-qualified call moves the receiver.
+        # A pointer-local receiver
         # moves its DEREF (`std::move(*w).take()` -- the arrow folds into
         # the deref, so the member access is `.`).
         if arrow:
@@ -894,8 +885,8 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
     if e.deref_check:
         # Unproven pointer-repr Optional receiver: null-check the (already
-        # `T*`) receiver before the `.` member call -- _gen_method_call's
-        # runtime-check arm (type args are gate-excluded, so no {method_targs}).
+        # `T*`) receiver before the `.` member call (type args are
+        # gate-excluded, so no {method_targs}).
         return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
     if e.deref_chain:
         # User Deref-wrapper method call: N `.__deref__()` calls between the
@@ -910,16 +901,15 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
               if e.method_targs_cpp else "")
     if e.callable_value_unwrap:
         # Optional[Callable] field invoke: the `.value()` unwrap between
-        # the member and the call (the AST arm's string append).
+        # the member and the call.
         return f"{recv}.{e.method_cpp}.value()({', '.join(args)})"
     return (f"{recv}{'->' if arrow else '.'}"
             f"{e.method_cpp}{mtargs}({', '.join(args)})")
 
 
 def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
-    """The GCC stmt-expr comprehension render -- `_gen_comprehension_iife`'s
-    mirror for the C1+C2 slice. Inner lines indent relative to the enclosing
-    statement (`state.stmt_indent_level`, the AST's `ctx.indent_level`); the
+    """The GCC stmt-expr comprehension render. Inner lines indent relative
+    to the enclosing statement (`state.stmt_indent_level`); the
     first line is bare `({` (it renders inline after `= `). NB the range arm
     draws one loop index PER non-literal bound (the comprehension emitter's
     scheme -- unlike the statement range-for's single draw), start before
@@ -930,11 +920,10 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
     ind3 = ind2 + INDENT
     cpp_var = escape_cpp_name(e.var)
     if e.loop == "array_range":
-        # The array_from_index RANGE arm (_gen_array_comprehension): sema
-        # proved literal bounds, so start/step inline as index arithmetic
-        # inside the per-index lambda; no `({` prelude, no reserve. Element
-        # temps flush into the lambda before the `return` (the AST's
-        # per-iteration flush: `auto __tmp_N = i;` ahead of
+        # The array_from_index RANGE arm: sema proved literal bounds, so
+        # start/step inline as index arithmetic inside the per-index lambda;
+        # no `({` prelude, no reserve. Element temps flush into the lambda
+        # before the `return` (per-iteration: `auto __tmp_N = i;` ahead of
         # `Box(std::move(__tmp_N))`).
         n = state.next_loop_index()
         idx = f"{e.counter_cpp}(__i_{n})"
@@ -957,11 +946,11 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         buf.write(f"{stmt_ind}}})")
         return buf.getvalue()
     if e.loop == "array_source":
-        # The array_from_index SOURCE arm (_gen_array_comprehension's non-range
-        # branch): a `({...})` prelude borrows the sized source once (lvalue
-        # verdict) and the per-index lambda indexes it (`__obj_N[__i_N]`). The
-        # loop-var binding is the shared non-const `loop_var_binding` (value
-        # copy / `auto&&` borrow), matching the AST's value/non-value split.
+        # The array_from_index SOURCE arm: a `({...})` prelude borrows the
+        # sized source once (lvalue verdict) and the per-index lambda indexes
+        # it (`__obj_N[__i_N]`). The loop-var binding is the shared non-const
+        # `loop_var_binding` (value copy / `auto&&` borrow, split on whether
+        # the element is a value type).
         n = state.next_loop_index()
         obj = f"__obj_{n}"
         binding_kw = "auto&" if e.iterable_lvalue else "auto"
@@ -1080,8 +1069,8 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         insert = f"__result.push_back({_emit_expr(e.element, state)})"
     if e.conditions:
         # Condition temps land at loop-body indent BEFORE the `if` -- the
-        # loop var they consume is only in scope here (the AST's per-clause
-        # cond-temp placement). checkpoint/flush_since drains ONLY the
+        # loop var they consume is only in scope here.
+        # checkpoint/flush_since drains ONLY the
         # conditions' own temps: an outer pending decl (a walrus predecl
         # enqueued before this comp rendered) must stay for the statement
         # flush, not fall inside the loop. Element temps flush innermost
@@ -1096,10 +1085,9 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         buf.write(f"{ind2}}}\n")
     else:
         # Element temps flush per-iteration at loop-body indent, right
-        # above the insert -- the AST's placement (and the degrade seam: a
-        # temp DEFERRED by an enclosing conditional region relocates here
-        # as the eager `std::optional<T> __tmp_N = init;` decl, exactly
-        # like the AST's intervening-flush arm).
+        # above the insert (the degrade seam: a temp DEFERRED by an
+        # enclosing conditional region relocates here as the eager
+        # `std::optional<T> __tmp_N = init;` decl).
         if e.kind != "dict":
             state.temps.flush_since(buf, cp_el, ind2)
         buf.write(f"{ind2}{insert};\n")
@@ -1110,7 +1098,7 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
 
 
 def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
-    """The make_generator render of _gen_generator_expression: an inner mutable
+    """The make_generator render of a generator expression: an inner mutable
     lambda binds each element and yields `optional<slot>`. An LVALUE source
     aliases through an outer `[caps]()` IIFE; a NON-LVALUE source moves into the
     lambda's init-captures under an `if (!__started)` seed. Indents relative to
@@ -1135,9 +1123,8 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
         return out
 
     def yield_lines(buf: io.StringIO, ind: str, ind_inner: str) -> None:
-        # _gen_genexpr_yield: cond/yield temps flush per-iteration inside
-        # the lambda (the AST's _emit_iter_temps), the yield wrapped in the
-        # &&-joined filter when conditions exist.
+        # Cond/yield temps flush per-iteration inside the lambda, the yield
+        # wrapped in the &&-joined filter when conditions exist.
         if e.conditions:
             cp = state.temps.checkpoint()
             cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
@@ -1156,8 +1143,8 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
             buf.write(f"{ind}return std::optional<{e.slot_cpp}>({elem_s});\n")
 
     if e.range_args:
-        # The counter lambda (_gen_genexpr_counter_lambda): range bounds
-        # move into the init-captures, no IIFE at any arity.
+        # The counter lambda: range bounds move into the init-captures, no
+        # IIFE at any arity.
         ind2 = ind1 + INDENT
         ind3 = ind2 + INDENT
         cpp_iter = e.counter_cpp
@@ -1240,10 +1227,10 @@ def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
 
 
 def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:
-    # Mirror _gen_vararg_pack: a sole `*expr` unpack forwards the container
-    # directly (span source) or through a borrowed span, the empty pack takes
-    # the nullary ctor, and the per-arg form hoists a std::array temp (element
-    # temps first, then the array) exactly like the AST cascade.
+    # A sole `*expr` unpack forwards the container directly (span source) or
+    # through a borrowed span, the empty pack takes the nullary ctor, and the
+    # per-arg form hoists a std::array temp (element temps first, then the
+    # array).
     if e.star_source is not None:
         inner = _emit_expr(e.star_source, state)
         if e.span_fn is None:
@@ -1271,8 +1258,8 @@ def _emit_vararg_pack(e: 'THIRVarargPack', state: _EmitState) -> str:
 
 
 def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
-    # Dispatch on the resolved container family, mirroring _gen_array_literal /
-    # _gen_dict_literal / _gen_set_literal. list/Array brace-inits are consumed
+    # Dispatch on the resolved container family. list/Array brace-inits are
+    # consumed
     # by the spelled decl type; dict/set spell their runtime container
     # constructor; `make_container` picks the reserve+emplace helpers (const
     # std::initializer_list elements would copy a std::move / cannot hold a
@@ -1298,8 +1285,8 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
         if e.make_container:
             return f"::tpy::make_ordered_set<{cpp_elem}>({elems})"
         return f"::tpy::ordered_set<{cpp_elem}>({{{elems}}})"
-    # An empty list literal spells its type (the T*-assignment-ambiguity guard in
-    # _gen_array_literal); an empty Array is gated out at eligibility.
+    # An empty list literal spells its type (a bare `{}` would be ambiguous
+    # against a T* assignment); an empty Array is gated out at eligibility.
     if not e.elements and is_list(t):
         return f"{t.to_cpp()}{{}}"
     elems = ", ".join(_emit_expr(x, state) for x in e.elements)
@@ -1308,8 +1295,7 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
     literal = f"{{{elems}}}"
     # A std::array of a brace-initialised aggregate element (a nested list)
     # needs the extra std::array brace level so each element copy-list-inits
-    # cleanly (mirrors _gen_array_literal's elem_target check; only a demoted
-    # Array threads a container element target).
+    # cleanly (only a demoted Array threads a container element target).
     if is_array(t):
         args = getattr(t, "type_args", None)
         et = args[0] if args else None
@@ -1323,9 +1309,9 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
 
 
 def _emit_list_repeat(e: THIRListRepeat, state: _EmitState) -> str:
-    """`[elems] * count` -- the _gen_list_repeat mirror. Elements render before
-    the array counter draws / before the count (the AST computes `repeat_elems`
-    first), so a counter drawn by an element keeps its AST position."""
+    """`[elems] * count`. Elements render before the array counter draws and
+    before the count, so a counter drawn by an element numbers ahead of
+    both."""
     if is_array(unwrap_qualifiers(e.result_type)):
         # Aggregate build: evaluate the element(s) once, then array_from_index
         # copies each slot (from_range's array branch would default-construct N
@@ -1363,8 +1349,8 @@ def _emit_list_repeat(e: THIRListRepeat, state: _EmitState) -> str:
 
 def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
     if e.deref_check:
-        # Unproven Optional member access: null-check the (already `T*`) receiver
-        # before the `.` member read. Mirrors _gen_field_access's runtime-check path.
+        # Unproven Optional member access: null-check the (already `T*`)
+        # receiver before the `.` member read.
         return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
     if e.opt_deref_check:
         # Unproven access off a WHOLE value-repr Optional lvalue receiver
@@ -1382,7 +1368,7 @@ def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
         return f"(*{base})" if e.narrowed_deref else base
     base = f"{_emit_expr(e.receiver, state)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
     # Sema-narrowed Optional field: the storage stays std::optional<T>, so the
-    # value read unwraps unconditionally (gen_expr_deref's narrowed-field arm).
+    # value read unwraps unconditionally.
     return f"(*{base})" if e.narrowed_deref else base
 
 
@@ -1390,8 +1376,8 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
     recv = _emit_expr(e.receiver, state)
     if isinstance(unwrap_qualifiers(e.receiver.result_type), TupleType):
         # Tuple element read: the index is a normalized compile-time constant (a
-        # THIRLiteral), so the C++ template argument is a bare non-negative int.
-        # Mirrors _gen_subscript's tuple branch (value-scalar element, no lift).
+        # THIRLiteral), so the C++ template argument is a bare non-negative
+        # int (a value-scalar element, no lift).
         if not isinstance(e.index, THIRLiteral):
             raise THIRCodeGenError("tuple subscript index is not a THIRLiteral")
         get = f"std::get<{e.index.value}>({recv})"
@@ -1399,35 +1385,33 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
             # Generic val_or_ptr slot: read as a usable value/reference.
             get = f"::tpy::tuple_elem_ref({get})"
         return f"(*{get})" if e.deref else get
-    # Container (list / dict) index/key lookup, mirroring _gen_subscript's
-    # container branch. A runtime-BigInt index arrives pre-wrapped in its
-    # `.to_fixed_check<int32_t>()` THIRCoerce (lowering's _narrow_bigint_index
-    # mirrors gen_index_expr), so the emit stays index-type-neutral.
+    # Container (list / dict) index/key lookup. A runtime-BigInt index arrives
+    # pre-wrapped in its `.to_fixed_check<int32_t>()` THIRCoerce (lowering's
+    # `_narrow_bigint_index`), so the emit stays index-type-neutral.
     idx = _emit_expr(e.index, state)
     if e.record_getitem:
         # User-record operator[]: bare, no size_t cast (the operator takes the
-        # user's declared key type -- mirrors _gen_subscript's fi fallback).
+        # user's declared key type).
         return f"{recv}[{idx}]"
     if e.bounds_safe:
         # Index proven in [0, len): skip normalize_index. A literal index needs no
         # cast (a compile-time constant is -Wsign-conversion-exempt); a variable
-        # index casts to size_t for the builtin operator[]. Mirrors _gen_subscript.
+        # index casts to size_t for the builtin operator[].
         if isinstance(e.index, THIRLiteral):
             return f"{recv}[{idx}]"
         return f"{recv}[static_cast<std::size_t>({idx})]"
     rt = unwrap_qualifiers(e.receiver.result_type)
     if is_bytes_type(rt) or is_bytes_view_type(rt) or is_bytearray_type(rt):
         # bytes' `__getitem__(Int32)` is a @native free-function dunder, not
-        # the containers' checked `::tpy::__getitem__` template -- mirrors
-        # _gen_subscript's fi dispatch (get_type_method_fi -> the native arm).
+        # the containers' checked `::tpy::__getitem__` template.
         # bytearray shares that dunder (its own natives are the WRITE side).
         return f"::tpy::bytes_getitem({recv}, {idx})"
     return f"::tpy::__getitem__({recv}, {idx})"
 
 
 def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
-    # Mirrors ExpressionGenerator._gen_fstring's assembly as a pure string
-    # function (the per-arg type dispatch is already carried as wrap templates):
+    # Assembled as a pure string function (the per-arg type dispatch is
+    # already carried as wrap templates):
     # a pure-literal f-string renders as a std::string of the joined segments;
     # an interpolated one as std::format over the brace-escaped format string.
     # A literal segment embedding a NUL byte takes the explicit-length arms --
@@ -1449,8 +1433,8 @@ def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
         else:
             all_literal = False
             # A constant format spec splices into the placeholder verbatim
-            # (the AST arm's raw concatenation -- never brace-escaped or
-            # C++-escaped), in both the source and runtime-length views.
+            # (never brace-escaped or C++-escaped), in both the source and
+            # runtime-length views.
             placeholder = ("{}" if part.format_spec is None
                            else "{:" + part.format_spec + "}")
             fmt_parts.append(placeholder)
@@ -1474,11 +1458,10 @@ def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
 
 
 def _emit_str_slice(e: THIRStrSlice, state: _EmitState) -> str:
-    # Mirrors _gen_subscript's slice arm: the resolved __getitem__ @cpp_template
-    # expanded over the receiver and the slice argument -- a slice-typed
-    # variable index rendered bare, or a BasicSlice/Slice initializer
-    # (_gen_slice_object, stepped per the source syntax); an absent bound
-    # renders std::nullopt (_gen_optional_slice_bound).
+    # The slice arm: the resolved __getitem__ @cpp_template expanded over the
+    # receiver and the slice argument -- a slice-typed variable index rendered
+    # bare, or a BasicSlice/Slice initializer (stepped per the source syntax);
+    # an absent bound renders std::nullopt.
     if e.index is not None:
         return expand_cpp_template(e.cpp_template, _emit_expr(e.receiver, state),
                                    _emit_expr(e.index, state))
@@ -1493,10 +1476,10 @@ def _emit_str_slice(e: THIRStrSlice, state: _EmitState) -> str:
 
 
 def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
-    # storage->borrow lifts. optional_to_ptr's const overload is auto-selected by
-    # the optional's own const-ness, so is_const here is carried for MIR / other
-    # families, not the rendered helper. The borrow->storage direction (F2b) and
-    # the union / tuple families arrive in later rungs.
+    # Form lifts in both directions. optional_to_ptr's const overload is
+    # auto-selected by the optional's own const-ness, so is_const here is
+    # carried for other families, not the rendered helper. A pairing no arm
+    # below covers is a THIRCodeGenError, not a silent passthrough.
     inner = _emit_expr(e.value, state)
     t = unwrap_qualifiers(e.result_type)
     if e.form is Form.BORROW:
@@ -1522,8 +1505,8 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
     elif e.form is Form.STORAGE:
         # borrow `T*` -> storage `std::optional<T>` (write/return direction). An
         # owned source at last use moves (`ptr_to_optional_move`, F2e); a
-        # non-owning borrow copies (`ptr_to_optional`, F2b/F2c). `move` is set by
-        # lowering from the same `movable_locals` + last-use facts the AST reads.
+        # non-owning borrow copies (`ptr_to_optional`, F2b/F2c). `move` is set
+        # by lowering from the `movable_locals` + last-use facts.
         if isinstance(t, OptionalType):
             helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
             return f"::tpy::{helper}({inner})"
@@ -1542,8 +1525,7 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
         # an owned storage sink (decl init / return) copies via the family's
         # owned constructor -- `std::string(x)` / `::tpy::bytes_copy(x)` -- the
-        # view->owned construction being explicit. Mirrors the AST's
-        # `_view_source_to_owned` chokepoint spelling via the shared
+        # view->owned construction being explicit, spelled through the shared
         # `view_to_owned_conv` helper. The materializing str-family coercions
         # (strview_to_str / str_to_string / strview_to_string) lower here too:
         # the cross-type respelling is family-internal, the emit identical --
@@ -1567,8 +1549,8 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # A plain non-value record/container slot (a field write / MIL cell):
         # the storage sink consumes the source directly -- `std::move(v)` for
         # an owned source at its last use, the bare render (a copy) otherwise.
-        # The record sibling of the TypeParamRef arm; the AST spells both
-        # inline with no runtime helper.
+        # The record sibling of the TypeParamRef arm; both spell inline with
+        # no runtime helper.
         if is_plain_nonvalue(t):
             return f"std::move({inner})" if e.move else inner
     raise THIRCodeGenError(
@@ -1579,9 +1561,9 @@ def _declare_rebind_slot(state: '_EmitState', name: str, slot: int,
                          slot_cpp: str) -> None:
     """Reserve `name`'s rebind slot, holding its hoist line back.
 
-    The single registration point for a PRE-declared slot -- mirrors the AST's
-    `ctx.declare_rebind_slot`. Emitting the line here instead is what left dead
-    `std::optional<T>` locals behind on both paths.
+    The single registration point for a PRE-declared slot -- mirrors
+    `ctx.declare_rebind_slot`. Emitting the line here instead would leave dead
+    `std::optional<T>` locals behind.
     """
     state.rebind_slots[name] = slot
     state.deferred_rebind_hoists[slot] = f"std::optional<{slot_cpp}> __slot_{slot};"
@@ -1605,10 +1587,10 @@ def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
 
 def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRName):
-        # `deref`: an F2 pointer-local read in a value position (a record call
-        # arg) -- gen_expr_deref's `(*p)` indirect render. A pre-spelled
-        # native/imported global (`cpp`) renders verbatim -- the AST emits
-        # qualify_native_name / imported_variable_cpp output unescaped.
+        # `deref`: a pointer-local read in a value position (a record call
+        # arg) renders `(*p)`. A pre-spelled native/imported global (`cpp`)
+        # renders verbatim -- `qualify_native_name` / `imported_variable_cpp`
+        # output is already spelled, never escaped.
         name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
         if e.opt_deref_check:
             return f"::tpy::deref_optional_check({name})"
@@ -1626,9 +1608,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return cpp_string_literal_expr(e.value)
     if isinstance(e, THIRBytesLiteral):
         # The owned/span verdict was decided at lowering from the sink and
-        # rides the form tag (see the node's doc); the empty-literal arms
-        # mirror gen_expr's TpyBytesLiteral branch and gen_call_arg's
-        # static-span pin.
+        # rides the form tag (see the node's doc); an empty span literal
+        # spells the bare `std::span<const uint8_t>{}`.
         if e.form is Form.STORAGE:
             return cpp_bytes_literal_owned(e.value)
         if not e.value:
@@ -1638,8 +1619,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_fstring(e, state)
     if isinstance(e, THIRCharLiteral):
         # A Char-targeted str literal (compare operand opposite a Char, a
-        # Char-annotated decl init, a Char-slot call arg) -- mirrors
-        # gen_expr's char-literal branch.
+        # Char-annotated decl init, a Char-slot call arg).
         return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRWalrus):
         # The per-class walrus render (see the node doc); the first binding
@@ -1651,15 +1631,15 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         v = _emit_expr(e.value, state)
         if e.emplace_cpp is not None:
             # frame_slot<T> write: a bare brace-init needs its type prefix to
-            # bind to emplace's forwarding ref (the AST's typed_brace_init,
-            # shared with the frame-slot statement write).
+            # bind to emplace's forwarding ref (`typed_brace_init`, shared
+            # with the frame-slot statement write).
             if v.startswith("{"):
                 v = f"{e.emplace_cpp}{v}"
             return f"{e.cpp_name}.emplace({v})"
         if e.slot_cpp is not None:
             # Reassigned borrow-tuple: the owning slot is allocated once per
-            # target (sibling occurrences reuse it, the AST's rebind_slots
-            # read) and declared on the named row next to the target.
+            # target (sibling occurrences reuse it, keyed on `rebind_slots`)
+            # and declared on the named row next to the target.
             slot_n = _use_rebind_slot(state, e.name)
             if slot_n is None:
                 slot_n = (state.assert_local_slot() or state.next_slot())
@@ -1679,7 +1659,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"({e.cpp_name} = {v}, {e.cpp_name})"
         return f"({e.cpp_name} = {v})"
     if isinstance(e, THIRIsinstance):
-        # Mirrors the AST isinstance arm over value/pointer variants: one
+        # Over value/pointer variants: one
         # holds_alternative per check member, OR-joined and parenthesized for
         # the multi-member (tuple / inline-union) form.
         checks = [f"std::holds_alternative<{m}>({e.variant_cpp})"
@@ -1687,17 +1667,17 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
     if isinstance(e, THIRDynIsinstance):
         # The C++17 if-init form: the whole `init; cond` sits inside the if's
-        # own parens (mirrors _gen_if's `{init_clause}{cond}` composition).
+        # own parens (the `{init_clause}{cond}` composition).
         return f"{e.init_cpp}; ({e.ptr_local} != nullptr)"
     if isinstance(e, THIRDynIsinstanceMulti):
         # The tuple form's OR-chain; a single check (the root-class form)
-        # renders bare (mirrors the AST isinstance arm's join rule).
+        # renders bare -- only a multi-member join takes the outer parens.
         if len(e.checks_cpp) == 1:
             return e.checks_cpp[0]
         return "(" + " || ".join(e.checks_cpp) + ")"
     if isinstance(e, THIRAnyIsinstance):
         # The shared composition (any_isinstance_check) -- one spelling for
-        # the AST isinstance arm's Any branch and this node.
+        # every Any-typed isinstance check.
         return any_isinstance_check(e.subject_cpp, e.member_cpps)
     if isinstance(e, THIRNarrowedRead):
         # A compound-condition read of the narrowed subject: the bare get, no
@@ -1719,18 +1699,17 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRChainedCompareStmtExpr):
         return _emit_chained_compare_stmtexpr(e, state)
     if isinstance(e, THIRUnaryNot):
-        # Mirrors _gen_unaryop's `!` arm over a bool operand, whose truthiness
-        # render is the plain value render. A pointer-repr Optional borrow
-        # name's truthiness render is the bare `T*` (gen_truthy_expr), so the
-        # same wrap serves `not p` too.
+        # The `!` arm over a bool operand, whose truthiness render is the
+        # plain value render. A pointer-repr Optional borrow name's truthiness
+        # render is the bare `T*`, so the same wrap serves `not p` too.
         return f"(!({_emit_expr(e.operand, state)}))"
     if isinstance(e, THIRUnaryArith):
-        # _gen_unaryop's resolved-dunder tail: expand the operator template
+        # The resolved-dunder tail: expand the operator template
         # (`{self}` = operand) -- neg/pos/invert, checked or bare per the
         # method's own template.
         return expand_cpp_template(e.cpp_template, _emit_expr(e.operand, state))
     if isinstance(e, THIRMembership):
-        # _gen_binop's resolved_contains arm: `(recv.contains(needle))`, the
+        # The resolved_contains arm: `(recv.contains(needle))`, the
         # negation wrapping the already-parenthesized find expr. A bytes
         # container's `__contains__` is a native FREE function, so it renders
         # `(::tpy::name(recv, needle))` instead.
@@ -1763,7 +1742,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                      f"({_emit_expr(e.needle, state)}))")
         return f"(!{inner})" if e.negate else inner
     if isinstance(e, THIRStrMembership):
-        # _gen_binop's str `.find()` arm: `(s.find(needle) != npos)`, or
+        # The str `.find()` arm: `(s.find(needle) != npos)`, or
         # `== npos` for `not in`. A str-literal receiver wraps in string_view
         # (C string literals lack `.find`).
         recv = _emit_expr(e.receiver, state)
@@ -1773,7 +1752,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         needle = _emit_expr(e.needle, state)
         return f"({recv}.find({needle}) {op} std::string::npos)"
     if isinstance(e, THIRTupleMembership):
-        # _gen_binop's tuple-literal `in` arm: an OR-chain of `==` compares.
+        # The tuple-literal `in` arm: an OR-chain of `==` compares.
         left = _emit_expr(e.left, state)
         elems = [_emit_expr(el, state) for el in e.elements]
         if e.need_temp:
@@ -1786,12 +1765,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"(!({joined}))" if len(conditions) > 1 else f"(!{conditions[0]})"
         return f"({joined})"
     if isinstance(e, THIRValueSelect):
-        # Value-position and/or (`_gen_logical_value`'s value slice): the
-        # LHS renders (and hoists) FIRST so temp numbering matches the AST;
-        # the RHS render sits inside the ternary branch (its EVALUATION is
-        # lazy at runtime -- an RHS-nested temp would hoist above the
-        # ternary exactly as on the AST path, but no admitted RHS shape
-        # carries one).
+        # Value-position and/or: the LHS renders (and hoists) FIRST, so it
+        # takes the lower temp numbers; the RHS render sits inside the ternary
+        # branch (its EVALUATION is lazy at runtime -- an RHS-nested temp would
+        # hoist above the ternary, but no admitted RHS shape carries one).
         lhs_r = _emit_expr(e.lhs, state)
         if e.lhs_temp_cpp is not None:
             lhs_r = state.temps.create(e.lhs_temp_cpp, lhs_r)
@@ -1809,8 +1786,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         else:
             truthy = lhs_r
         # The RHS evaluates lazily inside its branch: deferred temps bank
-        # into the region and splice ahead of the operand -- the AST's
-        # `rhs_region` in `_gen_logical_value`.
+        # into the region and splice ahead of the operand.
         with state.temps.conditional_region() as _rhs_region:
             rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
@@ -1841,10 +1817,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"(!{check})" if e.negate else check
         if e.value_repr:
             # `std::optional<T>` param: `is None` -> `(!p.has_value())`,
-            # `is not None` -> `(p.has_value())` (_gen_binop's has_value arm).
+            # `is not None` -> `(p.has_value())`.
             return f"({inner}.has_value())" if e.negate else f"(!{inner}.has_value())"
         if e.union_monostate:
-            # Union binding: the monostate holds test (_gen_binop's union arm).
+            # Union binding: the monostate holds test.
             # A wrapper binding reads the variant through `.value`
             # (VariantAccess.variant_expr's wrapper indirection).
             if e.union_wrapper:
@@ -1877,7 +1853,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # borrow-form `optional<view>` param -> the owned-storage
         # `optional<owned>` slot. The owned copy spelling keys on the view
         # FAMILY's owned type (`std::string` for str, incl. a `StrView` inner
-        # whose family owned_type is still `str`), matching the AST's
+        # whose family owned_type is still `str`), through
         # `view_to_owned_conv(family.owned_type)`.
         n = escape_cpp_name(e.name)
         fam = view_family_for_type(e.result_type.inner)
@@ -1889,11 +1865,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return (f"{n} ? std::optional<{e.inner_cpp}>(std::move(*{n}))"
                 f" : std::nullopt")
     if isinstance(e, THIRIfExpr):
-        # _gen_if_expr's render; arm targets and the mixed-arm str wraps were
-        # decided at lowering. Each arm evaluates only when chosen, so its
-        # deferred temps bank into a per-arm region and splice ahead of the
-        # arm render (the AST's then/else regions -- an empty prefix
-        # concatenates as a no-op, exactly like the AST).
+        # Arm targets and the mixed-arm str wraps were decided at lowering.
+        # Each arm evaluates only when chosen, so its deferred temps bank into
+        # a per-arm region and splice ahead of the arm render (an empty prefix
+        # concatenates as a no-op).
         cond_cpp = _emit_expr(e.cond, state)
         with state.temps.conditional_region() as _then_region:
             then_cpp = _emit_expr(e.then, state)
@@ -1912,8 +1887,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_vararg_pack(e, state)
     if isinstance(e, THIRArgTemp):
         # Register the hoisted decl with the sink and read the real __tmp_N
-        # here; args render left-to-right, so creation order matches the AST's
-        # per-arg cascade. The pending decl flushes before the statement line.
+        # here; args render left-to-right, so temps are created in argument
+        # order. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
         cpp_type = e.cpp_type if e.cpp_type is not None else "auto"
         name = state.temps.create(cpp_type, init_cpp, brace_init=e.brace_init,
@@ -1975,7 +1950,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # result_type is the slot TupleType, whose scalar/owned-str elements
         # spell identically via to_cpp and the resolver. A single-element
         # tuple parenthesizes instead (GCC brace-init ambiguity with
-        # std::tuple constructors in C++23 -- _gen_tuple_literal's tail).
+        # std::tuple constructors in C++23).
         elems = ", ".join(_emit_expr(x, state) for x in e.elements)
         cpp_type = unwrap_qualifiers(e.result_type).to_cpp()
         if len(e.elements) == 1:
@@ -2005,8 +1980,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                else f"{e.src_cpp}{{{elems}}}")
         return f"::tpy::tuple_value_to_borrow<{e.dst_cpp}>({src})"
     if isinstance(e, THIRRecordCopy):
-        # `copy(x)` of an F1 record: the explicit copy-ctor call `T(x)`
-        # (the AST's `_gen_copy_expr` record arm).
+        # `copy(x)` of a record: the explicit copy-ctor call `T(x)`.
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRComprehension):
         return _emit_comprehension(e, state)
@@ -2022,9 +1996,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return e.wrap.format(inner)
         return inner
     if isinstance(e, THIRErrorReturnUnwrap):
-        # _maybe_error_return_unwrap: the call renders first, THEN the
-        # counter draws (the AST wraps an already-rendered call), so nested
-        # unwraps in arguments number lower than their host.
+        # The call renders first, THEN the counter draws, so nested unwraps
+        # in arguments number lower than their host.
         call_cpp = _emit_expr(e.call, state)
         tmp = f"__er_{state.try_counter.next()}"
         check = _er_check_inline(tmp, state)
@@ -2045,8 +2018,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
 
 
 def _is_elif(outer: THIRIf, inner: THIRIf) -> bool:
-    """Mirror StatementGenerator._is_elif: an `else_body` of a single THIRIf is
-    a flattenable elif (vs a nested `else: if`) when their source columns match."""
+    """An `else_body` of a single THIRIf is a flattenable elif (vs a nested
+    `else: if`) when their source columns match."""
     if outer.loc is None and inner.loc is None:
         return True
     if outer.loc is None or inner.loc is None:
@@ -2056,12 +2029,12 @@ def _is_elif(outer: THIRIf, inner: THIRIf) -> bool:
 
 def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) -> None:
     # The outer `// if ...:` comment is emitted by the caller (_emit_stmts).
-    # Flatten the elif chain into `} else if (...)`, matching the AST path.
+    # Flatten the elif chain into `} else if (...)`.
     indent = INDENT * indent_level
     body_indent = INDENT * (indent_level + 1)
-    # Hoisted predecls precede the whole chain, like the AST's
-    # _emit_branch_decls run before _gen_if (see _emit_try). A hoist_slots
-    # entry allocates that name's rebind slot immediately before its predecl
+    # Hoisted predecls precede the whole chain (`_emit_branch_decls`). A
+    # hoist_slots entry allocates that name's rebind slot immediately before
+    # its predecl
     # line (the rvalue-reassigned arm's `std::optional<T> __slot_N;`).
     slot_types = dict(stmt.hoist_slots)
     for name, cpp_type in stmt.hoist_decls:
@@ -2078,12 +2051,12 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     # An elif condition that registers temps abandons the flat `} else if`
     # chain: the temps have no legal spot between `}` and `else`, so the
     # remainder nests in an `} else {` block with the decls flushed inside
-    # (_gen_if's probe-then-nest arm; the single render here reissues the
-    # same `__tmp_N` names the AST's discard-and-regenerate produces).
+    # -- the probe-then-nest arm, which renders the condition once so the
+    # `__tmp_N` names it registers are the ones emitted.
     extra_closes: list[str] = []
     for i, node in enumerate(chain):
-        # The AST's per-node keyword choice: a protocol-isinstance
-        # condition compiles `if constexpr`.
+        # Per-node keyword choice: a protocol-isinstance condition compiles
+        # `if constexpr`.
         if_kw = "if constexpr" if node.is_constexpr else "if"
         if i == 0:
             cond = _emit_expr(node.condition, state)
@@ -2118,9 +2091,8 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
 
 
 def _push_loop_frame(state: _EmitState, has_else: bool = False) -> int:
-    # Mirrors the loop-entry bracketing shared by _gen_while/_gen_for_each:
-    # the else label drawn from iter_counter FIRST (before the loop draws its
-    # own index -- the AST allocates it at the top of _gen_while/_gen_for_each),
+    # The loop-entry bracketing shared by every loop shape: the else label
+    # drawn from iter_counter FIRST (before the loop draws its own index),
     # one empty loop-break slot per loop, and a zeroed switch depth (a switch
     # OUTSIDE the loop must not reroute a break INSIDE it). Returns the saved
     # depth for _pop_loop_frame.
@@ -2140,9 +2112,8 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
     # The loop-exit half: restore the switch depth, emit the else block (a
     # bare `{...}` + its `__after_else_N:;` label -- run on normal completion,
     # jumped past by a break), then place the lazily allocated
-    # `__loop_break_N:;` label (the AST's `if break_label:` tail). The else
-    # body emits AFTER the loop frames pop, so a break inside it targets the
-    # enclosing loop, exactly like the AST's pop-then-emit order.
+    # `__loop_break_N:;` label. The else body emits AFTER the loop frames
+    # pop, so a break inside it targets the enclosing loop.
     state.switch_depth = saved_depth
     else_label = state.loop_else_labels.pop()
     break_label = state.loop_break_labels.pop()
@@ -2159,9 +2130,9 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
 
 def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
                      state: _EmitState) -> None:
-    # _gen_nested_def's lambda: header spelled at lowering (capture list from
-    # sema's node facts, resolver param/return spellings), body one level
-    # deeper. Name counters continue across the lambda, exactly like the AST
+    # A nested def emits as a lambda: header spelled at lowering (capture
+    # list from sema's node facts, resolver param/return spellings), body one
+    # level deeper. Name counters continue across the lambda
     # (nested_def_emission_scope leaves them alone) -- but the PER-FUNCTION
     # emission state must not leak in: the lambda is its own function, so a
     # return inside it must not walk the enclosing finally chain, its
@@ -2193,9 +2164,9 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     state.in_except_tier = None
     # A hoist line this body produces must be drained INSIDE the lambda: the
     # enclosing body's prologue is outside this capture list, so a declaration
-    # written there is unreachable from the lambda. The AST's
-    # `nested_hoist_scope` + buffered body; every `hoist_lines` producer is
-    # covered, not just the rebind-slot one lowering knows about.
+    # written there is unreachable from the lambda (`nested_hoist_scope` +
+    # buffered body). Every `hoist_lines` producer is covered, not just the
+    # rebind-slot one lowering knows about.
     saved_hoists = state.hoist_lines
     state.hoist_lines = []
     # ... and must not leak through an active sgen hoist_sink either: a
@@ -2205,9 +2176,8 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
     state.hoist_sink = None
     body_buf = io.StringIO()
     try:
-        # No trailing-comment emission: _gen_nested_def raw-loops gen_stmt
-        # with no emit_block_trailing_comments call, so a comment after the
-        # lambda's last statement stays OUTSIDE the closing brace.
+        # No trailing-comment emission for a lambda body, so a comment after
+        # its last statement stays OUTSIDE the closing brace.
         _emit_stmts(body_buf, stmt.body, indent_level + 1, state)
         if state.hoist_lines:
             _witness("stmt.nested_def_hoist")
@@ -2230,7 +2200,7 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
-    # Mirror _gen_while's restructured head: anonymous cond temps re-evaluate
+    # The restructured head: anonymous cond temps re-evaluate
     # per iteration, so they live in the loop head behind `while (true)` with
     # an inverted break -- a pre-loop flush would freeze a stale snapshot.
     # Lowering rejects the mixed walrus+temps shape, so a walrus pre-decl here
@@ -2263,9 +2233,8 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
 
 def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
                     state: _EmitState) -> None:
-    # Mirrors _gen_range_counter_loop (plus_one / non-hoisted branch): grab the
-    # loop index BEFORE the body so nested loops number after this one (the AST
-    # grabs `n` at the top of _gen_range_counter_loop). Non-literal bounds are
+    # Grab the loop index BEFORE the body so nested loops number after this
+    # one. Non-literal bounds are
     # captured once into `__start_N`/`__stop_N` temps -- Python's range() reads
     # its args at call time, but the C++ condition re-reads each iteration.
     indent = INDENT * indent_level
@@ -2276,7 +2245,7 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     cpp_elem = stmt.elem_type.to_cpp()
     var = escape_cpp_name(stmt.var)
     # A hoisted rebind runs the counter through a hidden `__range_N` and assigns
-    # the user var inside the body (mirrors _gen_range_counter_loop).
+    # the user var inside the body.
     counter = f"__range_{n}" if stmt.hoist_loop_var else var
     start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start, state)
     stop_cpp = _emit_expr(stmt.stop, state)
@@ -2286,9 +2255,9 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     if not stmt.stop_is_literal:
         out.write(f"{indent}{cpp_elem} __stop_{n} = {stop_cpp};\n")
         stop_cpp = f"__stop_{n}"
-    # Mirror _gen_range_counter_loop's step arms. The unit steps are the plain
-    # ascending / descending loop; the non-unit literal / variable steps add the
-    # AST's upfront range_check_overflow (fixed-int only -- the gate admits no
+    # The step arms. The unit steps are the plain ascending / descending
+    # loop; the non-unit literal / variable steps add an upfront
+    # range_check_overflow (fixed-int only -- the gate admits no
     # other counter here) and, for a variable step, a `__step_N` capture with a
     # nonzero check and a ternary direction condition.
     if stmt.step_kind == "plus_one":
@@ -2301,8 +2270,7 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         step_cpp = _emit_expr(stmt.step, state)
         if is_big_int_type(stmt.elem_type):
             # A BigInt counter's literal step captures into a `__step_N`
-            # temp and skips the overflow check (fixed-int only) --
-            # _gen_range_counter_loop's is_big_int_type arm.
+            # temp and skips the overflow check (fixed-int only).
             out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
             step_cpp = f"__step_{n}"
         else:
@@ -2332,11 +2300,11 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
 
 def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
                    state: _EmitState) -> None:
-    # Mirrors _gen_begin_end_loop for an element off an lvalue name container: grab the
+    # The begin/end loop over an element off an lvalue name container: grab the
     # loop index before the body (nested loops number after this one), capture the
     # container -- `auto&` for an lvalue, owning `auto` for an rvalue (a
     # str-returning or Own-container-returning call: the temporary must outlive
-    # the loop; mirrors _gen_begin_end_loop's obj_binding) -- then the loop-var binding via the
+    # the loop) -- then the loop-var binding via the
     # shared loop_var_binding (a scalar is a typed copy; a record is a borrow
     # alias -- auto&& / const auto&, so the const flag is threaded through,
     # not hardcoded).
@@ -2372,10 +2340,9 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
 
 def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
                          indent_level: int, state: _EmitState) -> None:
-    # Mirrors _gen_direct_next_loop_with_iter (the universal ::tpy::__iter__
-    # default): the iterable renders BEFORE the brace scope opens (the AST
-    # renders it in _gen_for_each_loop, so its arg temps flush inside the
-    # scope at the AST's flush point), the source captures `auto&` (lvalue) /
+    # The direct-`__next__` loop (the universal ::tpy::__iter__ default): the
+    # iterable renders BEFORE the brace scope opens, so its arg temps flush
+    # inside the scope, the source captures `auto&` (lvalue) /
     # owning `auto` (rvalue, brace-scoped so the temp dies at loop exit like
     # CPython's refcount drop), and the src/itr and __r indices are two
     # consecutive per-function loop-index draws.
@@ -2404,10 +2371,9 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
     # The body emits at the ORIGINAL level + 1 even inside the rvalue brace
-    # scope: the AST's scope bump changes only _gen_direct_next_loop's local
-    # `indent` string, never ctx.indent_level, which _gen_loop_body's
-    # gen_stmt/trailing-comment walk draws from. The prelude/close lines
-    # above follow the bumped string; the body follows the level.
+    # scope: the scope bump changes only the local `indent` string, never the
+    # statement indent LEVEL the body and its trailing comments follow. The
+    # prelude/close lines above follow the bumped string.
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
     state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
@@ -2422,8 +2388,8 @@ def _emit_finally_chain(out: TextIO, indent: str, state: _EmitState,
     # Mirrors _emit_finally_chain: render each frame's cleanup innermost-first
     # down to stop_at (exclusive). A stmt frame emits with itself (and
     # everything above) popped, so a return/break/continue inside the finally
-    # body walks the OUTER frames only; the stack is restored on exit (the
-    # AST snapshots and restores around the walk). Returns True when a frame
+    # body walks the OUTER frames only; the stack is restored on exit.
+    # Returns True when a frame
     # terminates (its finally body ends in raise/return) -- the caller must
     # suppress its own trailing exit statement, control already left.
     snapshot = list(state.finally_frames)
@@ -2466,12 +2432,11 @@ def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
     # signature-typed temp BEFORE the chain runs (Python evaluates the return
     # expression first -- and still evaluates it when a terminating finally
     # overrides the return: the [[maybe_unused]] decl + suppressed trailing
-    # return). The temp draws from the same per-function iter_counter the AST
-    # uses; the chain buffers first like the AST so its own counter bumps land
-    # between the temp's allocation and the decl's write. `value_cpp` is the
-    # already-rendered (and temp-flushed) return value, None for a bare
-    # `return;` -- callers render it first so the counter draws stay in the
-    # AST's order.
+    # return). The temp draws from the per-function iter_counter; the chain
+    # buffers first so its own counter bumps land between the temp's
+    # allocation and the decl's write. `value_cpp` is the already-rendered
+    # (and temp-flushed) return value, None for a bare `return;` -- callers
+    # render it first, so its own counter draws precede the temp's.
     _witness_chain("return", state, 0)
     if value_cpp is None:
         if _emit_finally_chain(out, indent, state):
@@ -2498,9 +2463,9 @@ def _deferred_return_triple(stmt: THIRFinallyDeferredReturn,
     finally-deferred return, shared by the sync statement emit and the
     resumable frame's leaf seam.
 
-    The local's own render comes first and the pointer name second, so the
-    counter draws land in the AST recipe's order; both happen before the
-    finally chain renders, which is where the chain's own draws belong."""
+    The local's own render comes first and the pointer name second, so their
+    counter draws stay in that order; both happen before the finally chain
+    renders, which is where the chain's own draws belong."""
     assert stmt.capture is not None
     base = _emit_expr(stmt.capture, state)
     ptr = f"__tpy_retp_{state.iter_counter.draw()}"
@@ -2511,11 +2476,10 @@ def _deferred_return_triple(stmt: THIRFinallyDeferredReturn,
 
 
 def _er_check_inline(tmp: str, state: _EmitState) -> str:
-    # The one-line has_value check of the expression-level unwrap
-    # (_maybe_error_return_unwrap's three dispositions). The propagate arm
-    # deliberately does NOT walk finally frames -- the AST expression unwrap
-    # returns directly (unlike the statement-level _gen_propagate_check);
-    # mirrored, not endorsed.
+    # The one-line has_value check of the expression-level unwrap, in its
+    # three dispositions. The propagate arm deliberately does NOT walk finally
+    # frames -- the expression-level unwrap returns directly, unlike the
+    # statement-level check below. Preserved, not endorsed.
     if state.try_except_label:
         if state.try_except_err_opt:
             return (f"if (!{tmp}.has_value()) {{ "
@@ -2530,10 +2494,10 @@ def _er_check_inline(tmp: str, state: _EmitState) -> str:
 
 
 def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
-    # The statement-block check line(s): _gen_error_goto (in a return-tier
-    # try), _gen_propagate_check (in an @error_return body; finally-aware --
-    # active finally bodies run before the unexpected value returns), or the
-    # top-level panic.
+    # The statement-block check line(s): the goto disposition (in a
+    # return-tier try), the propagate disposition (in an @error_return body;
+    # finally-aware -- active finally bodies run before the unexpected value
+    # returns), or the top-level panic.
     if state.try_except_label:
         if state.try_except_err_opt:
             return (f"{indent}if (!{tmp}.has_value()) "
@@ -2557,13 +2521,12 @@ def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
 
 def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
                     *, is_break: bool) -> None:
-    # Mirrors _make_break_continue: only frames pushed inside the innermost
-    # active loop body run (the first index whose loop_depth >= the live loop
-    # count -- the stack is monotone non-decreasing in loop_depth). A
-    # terminating finally suppresses the tail -- control already left through
-    # it. A break out of an else-loop jumps its `__after_else_N` label (this
-    # also escapes any intervening match switch, so it precedes the switch
-    # reroute exactly like the AST's arm order). The break tail otherwise
+    # Only frames pushed inside the innermost active loop body run (the first
+    # index whose loop_depth >= the live loop count -- the stack is monotone
+    # non-decreasing in loop_depth). A terminating finally suppresses the tail
+    # -- control already left through it. A break out of an else-loop jumps
+    # its `__after_else_N` label, which also escapes any intervening match
+    # switch, so it precedes the switch reroute. The break tail otherwise
     # routes around an intervening match switch via the loop's
     # lazily-allocated `__loop_break_N` label (a bare `break;` would exit the
     # switch). C++ `continue` passes through a switch to the enclosing loop,
@@ -2594,13 +2557,10 @@ def _emit_loop_exit(out: TextIO, indent: str, state: _EmitState,
 
 def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                state: _EmitState) -> None:
-    # Mirrors _gen_with + _emit_with_try_catch (see THIRWith for the shape):
-    # per-item header lines, then one try/catch layer per manager, closed
-    # innermost-first so the innermost __exit__ runs first. The header flush
-    # mirrors _gen_with's `ctx.temps.flush` (a no-op in the slice --
-    # temp-registering manager expressions are gate-rejected). Hoisted
-    # predecls render first, like the AST's gen_stmt dispatch
-    # (_emit_branch_decls before _gen_with).
+    # See THIRWith for the shape: per-item header lines, then one try/catch
+    # layer per manager, closed innermost-first so the innermost __exit__ runs
+    # first. The header flush is a no-op in the slice -- temp-registering
+    # manager expressions are gate-rejected. Hoisted predecls render first.
     indent = INDENT * indent_level
     for name, cpp_type in stmt.hoist_decls:
         out.write(f"{indent}{cpp_type} {name};\n")
@@ -2617,17 +2577,17 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             # Resumable leaf owned manager with a frame home: the target's
             # frame field aliases `__enter__()`'s result, so the manager
             # lives in the skeleton-declared `__with_ctx_<K>` field and
-            # `__ctx_N` binds through it (`_gen_with`'s frame_ctx branch).
+            # `__ctx_N` binds through it (the frame_ctx arm).
             out.write(f"{indent}__with_ctx_{item.frame_ctx}"
                       f".emplace({ctx_cpp});\n")
             out.write(f"{indent}auto& __ctx_{n} = "
                       f"(*__with_ctx_{item.frame_ctx});\n")
         elif item.manager_hoist_cpp is not None:
-            # Kept owned manager (the _with_manager_needs_hoist mirror): the
-            # target's slot aliases `__enter__()`'s result past the block, so
-            # the manager lives in a function-scope optional and `__ctx_N`
-            # binds through it. Slot allocated AFTER the manager expr renders,
-            # matching the AST's gen_expr-then-next_slot order.
+            # Kept owned manager (`_with_manager_needs_hoist`): the target's
+            # slot aliases `__enter__()`'s result past the block, so the
+            # manager lives in a function-scope optional and `__ctx_N` binds
+            # through it. Slot allocated AFTER the manager expr renders, so
+            # the expression's own counter draws come first.
             assert state.hoist_drainable, (
                 "a with manager-hoist slot in a leaf emitter with no "
                 "function-top drain (lowering should have rejected this body)")
@@ -2639,8 +2599,8 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             out.write(f"{indent}auto& __ctx_{n} = (*{slot});\n")
         else:
             out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_cpp};\n")
-        # The as-target spells the RAW source name (the AST arm does not
-        # escape it), while later reads escape -- mirrored, not fixed.
+        # The as-target spells the RAW source name while later reads escape
+        # it -- preserved, not fixed.
         if item.target_arm is WithTargetArm.VALUE:
             out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.REF:
@@ -2660,8 +2620,7 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
         else:
             out.write(f"{indent}__ctx_{n}.__enter__();\n")
     # Per-layer terminates: the innermost layer carries body_terminates; once
-    # an inner layer may suppress, every layer outside it can fall through --
-    # the AST's layer_terminates propagation, folded here from node facts.
+    # an inner layer may suppress, every layer outside it can fall through.
     layer_term = [False] * len(stmt.items)
     t = stmt.body_terminates
     for k in range(len(stmt.items) - 1, -1, -1):
@@ -2700,8 +2659,8 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                  if frames[k].guard_name in state.live_finally_guards else None)
         if not layer_term[k]:
             out.write(f"{body_ind}goto __with_exit_{n};\n")
-        # Popped before the catch arms, mirroring _emit_with_try_catch's pop
-        # discipline (the catches are fixed strings; nothing walks the stack).
+        # Popped before the catch arms (the catches are fixed strings;
+        # nothing walks the stack).
         state.finally_frames.pop()
         if item.can_suppress or item.takes_exc_val:
             exc_obj = f"&__exc_{n}" if item.takes_exc_val else "{}"
@@ -2735,7 +2694,7 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
 
 def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
                         stmt: THIRTry, emit_body) -> None:
-    # _emit_try_with_finally's unified shape: the finally frame sits on the
+    # The unified try/finally shape: the finally frame sits on the
     # stack while the body emits; the catch-path and normal-path copies emit
     # with the frame popped, so nested exits redirect through OUTER frames
     # only. `stmt.body_terminates` is the terminates fact of whatever the
@@ -2745,10 +2704,10 @@ def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
     inner = INDENT * inner_level
     ast_fctx = None
     if state.ast_finally_push is not None:
-        # Leaf mode: mirror this frame onto the skeleton's AST finally
-        # stack so the resumable return hook's chain walk inlines the
-        # finally (with the SAME guard -- the AST push allocates it from
-        # the shared counter and we reuse its name).
+        # Leaf mode: mirror this frame onto the skeleton's finally stack so
+        # the resumable return hook's chain walk inlines the finally with the
+        # SAME guard -- that push allocates the guard from the shared counter
+        # and we reuse its name.
         def _fin_writer(w, ind, _stmts=stmt.finally_body):
             _emit_stmts(w, _stmts, len(ind) // len(INDENT), state)
         ast_fctx = state.ast_finally_push(_fin_writer,
@@ -2795,12 +2754,12 @@ def _emit_frame_wrapped(out: TextIO, inner_level: int, state: _EmitState,
 
 def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
                      state: _EmitState) -> None:
-    # Mirrors _gen_try_throw's emit_try_except: the C++ try, one catch arm
-    # per handler (headers pre-rendered at lowering; the catch parameter IS
-    # the as-binding), else jumping past via the goto label drawn from the
-    # module-cumulative try_except_counter sink. Handlers close with `}` and
-    # the next header appends ` catch ... {` on the same line, the final `}`
-    # taking the newline -- the AST's exact write sequence.
+    # The throw-tier try: the C++ try, one catch arm per handler (headers
+    # pre-rendered at lowering; the catch parameter IS the as-binding), else
+    # jumping past via the goto label drawn from the module-cumulative
+    # try_except_counter sink. Handlers close with `}` and the next header
+    # appends ` catch ... {` on the same line, the final `}` taking the
+    # newline.
     ind = INDENT * level
     label = ""
     if stmt.else_body:
@@ -2835,13 +2794,12 @@ def _emit_try_except(out: TextIO, stmt: THIRTry, level: int,
 
 def _emit_try_return(out: TextIO, stmt: THIRTry, inner_level: int,
                      state: _EmitState) -> None:
-    # Mirrors _gen_try_return (see THIRTry): the counter draws first, the
-    # optional `__err_opt_N` capture decl, then the goto-dispatch body --
-    # wrapped in the finally frame when a finally is present. The emit
-    # state's label/err_opt are live only while the TRY body emits (the AST
-    # restores the label before the else body), while err_opt stays set
-    # until the whole statement closes (the bare-raise re-raise in the
-    # handler reads it).
+    # The return tier (see THIRTry): the counter draws first, the optional
+    # `__err_opt_N` capture decl, then the goto-dispatch body -- wrapped in
+    # the finally frame when a finally is present. The label is live only
+    # while the TRY body emits (restored before the else body), while err_opt
+    # stays set until the whole statement closes (the bare-raise re-raise in
+    # the handler reads it).
     inner = INDENT * inner_level
     h = stmt.handlers[0]
     n = state.try_counter.next()
@@ -2893,9 +2851,8 @@ def _emit_try_return(out: TextIO, stmt: THIRTry, inner_level: int,
 
 def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
               state: _EmitState) -> None:
-    # Mirrors _gen_try over the two routed tiers (see THIRTry). The hoisted
-    # predecls render first, like the AST's gen_stmt dispatch
-    # (_emit_branch_decls before _gen_try).
+    # Dispatch over the routed tiers (see THIRTry). The hoisted predecls
+    # render first.
     indent = INDENT * indent_level
     for name, cpp_type in stmt.hoist_decls:
         out.write(f"{indent}{cpp_type} {name};\n")
@@ -2930,11 +2887,11 @@ def _emit_match_arm_body(out: 'TextIO', entry, lvl: int,
 
 def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
                 state: _EmitState) -> None:
-    # Mirrors _gen_match_dispatch's scalar tiers (see THIRMatch): the hoisted
-    # predecls, the numbered subject binding, then the tier body. `gen_match`
-    # draws ONE counter per match (subject + inner names off a single bump;
-    # the inner name is an Optional-tier concern); the guarded tiers' second
-    # draw is gate-rejected.
+    # The scalar tiers (see THIRMatch): the hoisted predecls, the numbered
+    # subject binding, then the tier body. ONE counter draw per match
+    # (subject + inner names off a single bump; the inner name is an
+    # Optional-tier concern); the guarded tiers' second draw is
+    # gate-rejected.
     indent = INDENT * indent_level
     # A hoist_slots entry allocates that name's rebind slot immediately
     # before its predecl line (THIRIf's rvalue-reassigned arm).
@@ -2948,9 +2905,8 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     subject = f"__match_subject_{state.match_counter}"
     binding = "auto&" if stmt.subject_ref else "auto"
     subject_cpp = _emit_expr(stmt.subject, state)
-    # The AST flushes subject arg temps before the bind line
-    # (gen_match's `ctx.temps.flush`); admitted subjects rarely carry
-    # any, but a call-rooted rvalue subject can.
+    # Subject arg temps flush before the bind line; admitted subjects rarely
+    # carry any, but a call-rooted rvalue subject can.
     state.temps.flush(out, indent)
     out.write(f"{indent}{binding} {subject} = {subject_cpp};\n")
     if stmt.strategy == "if_elif":
@@ -2987,14 +2943,13 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
 def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
                         subject: str, inner: str,
                         bases: 'dict[str, str] | None' = None) -> None:
-    # _emit_binding's value-subject arms, mode folded at lowering (see
+    # The value-subject binding arms, mode folded at lowering (see
     # THIRMatchBinding); the arm block's first line, before the body. A
-    # field capture composes the `.field` accessor onto the base spelling
-    # (_gen_match_field_bindings' `{case_var}.{field}` RHS). Nested rows:
-    # `base_name` swaps the base for a previously-bound name (recorded in
-    # `bases`); mode 'field_alias' draws `_gen_match_field_bindings`'
-    # `__field_{parent}_{field}` temp, its name derived from the runtime
-    # base spelling exactly as the AST derives it.
+    # field capture composes the `.field` accessor onto the base spelling.
+    # Nested rows: `base_name` swaps the base for a previously-bound name
+    # (recorded in `bases`); mode 'field_alias' draws a
+    # `__field_{parent}_{field}` temp, its name derived from the runtime base
+    # spelling.
     if binding is None:
         return
     base = subject
@@ -3022,7 +2977,7 @@ def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
         out.write(f"{inner}{name} = std::move({rhs});\n")
     elif binding.mode == "frame_emplace":
         # Resumable dispatch-hook capture into a frame_slot local: the
-        # slot's emplace copy, the AST's frame-resident bind.
+        # slot's emplace copy, a frame-resident bind.
         out.write(f"{inner}{name}.emplace({rhs});\n")
     elif binding.mode == "copy":
         out.write(f"{inner}auto {name} = {rhs};\n")
@@ -3097,7 +3052,7 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
 
 def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
                              state: _EmitState, subject: str) -> None:
-    # _gen_match_switch_union: `switch (subject.index())`, arms in SOURCE
+    # The union switch tier: `switch (subject.index())`, arms in SOURCE
     # order (`default:` emits in place -- no regrouping), numeric variant-
     # index case labels, the `__case_{i}` extraction alias when sema
     # narrowing drew one (`auto& __case_i = [*]std::get<idx>(subject);`),
@@ -3145,8 +3100,8 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
 def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                               indent_level: int, state: _EmitState,
                               subject: str) -> None:
-    # _gen_match_guarded_union + _gen_guarded_switch_arm_action: the end
-    # label draws the second per-function counter bump BEFORE the switch;
+    # The guarded union tier: the end label draws the second per-function
+    # counter bump BEFORE the switch;
     # per index group the case label, the once-per-block `__case_{idx}`
     # extraction (when any class entry drew it), then each entry -- its
     # source comment at INNER indent (unlike the unguarded tiers' case
@@ -3155,7 +3110,7 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     # for always-match entries, vs the alias for class entries), the guard
     # as `if (guard) { <body> goto end; }` one level deeper, or the
     # unguarded `<body> goto end;` inline; `break;` closes each block. The
-    # trailing end label mirrors the AST's UNINDENTED write.
+    # trailing end label writes UNINDENTED, at column 0.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     inner2 = INDENT * (indent_level + 2)
@@ -3187,7 +3142,7 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
             if not entry.field_conds:
                 # No field conditions: bindings precede the guard (it may
                 # read them). With conditions they move INSIDE the if block
-                # below (_gen_guarded_switch_arm_action's split).
+                # below.
                 for fb in entry.field_bindings:
                     _emit_match_binding(out, fb, alias, bind_indent, bases)
                 if entry.binding is not None:
@@ -3239,7 +3194,7 @@ def _emit_poly_whole_binding(out: TextIO, entry, subject: str,
 def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
                              indent_level: int, state: _EmitState,
                              subject: str) -> None:
-    # _gen_match_polymorphic_if_elif: per class arm the C++17 if-init cast
+    # The polymorphic chain: per class arm the C++17 if-init cast
     # (poly_cast composed around the subject), the `__case_i` ref line,
     # field bindings + the `as` binding against the alias, the body one
     # level in; or-arms the ||-joined null tests; the always-match arm the
@@ -3274,8 +3229,8 @@ def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
 def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
                              indent_level: int, state: _EmitState,
                              subject: str) -> None:
-    # _gen_match_polymorphic_guarded + _emit_poly_guarded_action: the end
-    # label draws the second counter bump; class arms are standalone
+    # The guarded polymorphic chain: the end label draws the second counter
+    # bump; class arms are standalone
     # `if (cast) {` blocks -- alias + bindings first, then the field-cond /
     # guard `if` gating body + `goto end` (or the inline body + goto when
     # unconditional); or-arms AND the guard into the block condition;
@@ -3337,7 +3292,7 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
 
 def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
                          state: _EmitState, subject: str) -> None:
-    # _gen_match_optimized_optional over the pointer-repr subject slice (see
+    # The optimized-Optional tier over the pointer-repr subject slice (see
     # THIRMatch.none_entry): the None arm's comment at the OUTER indent, then
     # `if (subj == nullptr) { <none body> } else {` (or the bare
     # `if (subj != nullptr) {` when no None arm exists), the
@@ -3345,8 +3300,8 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     # -- `_emit_optional_inner_record`'s no-field `{` ... `}` (comment at the
     # else level, binding vs the alias, body two levels in). The inner name
     # must snapshot the subject's counter draw BEFORE the None body emits: a
-    # nested match in there bumps the counter (the AST saves/restores its
-    # names per gen_match the same way). No switch, so no switch_depth
+    # nested match in there bumps the counter, and each match's names are
+    # saved and restored around it. No switch, so no switch_depth
     # bracket -- a `break` in an arm body exits the loop directly.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
@@ -3375,8 +3330,8 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
         _emit_match_if_elif(out, stmt, indent_level + 1, state, inner_name,
                             paren_or=False)
     elif stmt.inner_strategy == "if_elif_record":
-        # _emit_optional_inner_record is the record tier's unguarded chain
-        # over the deref alias, one level in (guarded/true-alt shapes are
+        # The inner record shape is the record tier's unguarded chain over
+        # the deref alias, one level in (guarded/true-alt shapes are
         # gate-rejected), so the record chain emitter is reused verbatim.
         _emit_match_if_elif_record(out, stmt, indent_level + 1, state,
                                    inner_name)
@@ -3386,7 +3341,7 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
 
 
 def _opt_chain_cond(opt_conds, subject: str) -> str:
-    # _gen_match_optional_cond's join: per group the (prefix, suffix) pieces
+    # The Optional condition join: per group the (prefix, suffix) pieces
     # composed around the subject and &&-joined; groups ||-joined, or-pattern
     # alternatives parenthesized (the bare null alternative is not).
     parts = []
@@ -3398,7 +3353,7 @@ def _opt_chain_cond(opt_conds, subject: str) -> str:
 
 def _emit_match_opt_arm_bindings(out: TextIO, entry, subject: str,
                                  inner: str) -> None:
-    # _emit_optional_arm_bindings' routed slice: class-arm field captures
+    # The Optional arm bindings: class-arm field captures
     # against the `(*subj)` deref, then the whole-subject capture/`as`
     # binding -- the deref for a value-side binding (from_case_var), the
     # full Optional for sema's binds_full_optional.
@@ -3413,7 +3368,7 @@ def _emit_match_opt_arm_bindings(out: TextIO, entry, subject: str,
 def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
                                  indent_level: int, state: _EmitState,
                                  subject: str) -> None:
-    # _gen_match_if_elif_optional's unguarded chain, arms in source order:
+    # The Optional chain, unguarded, arms in source order:
     # per arm the comment, `if (cond) {` / `} else if (cond) {` off the
     # pre-rendered opt_conds (the always-match arm is `{` / `} else {`),
     # the bindings, the body one level in; one closing brace ends the chain.
@@ -3435,7 +3390,7 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
 
 def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
                           state: _EmitState, end_label: str) -> None:
-    # _emit_guarded_arm_tail: inside an opened arm block (bindings already
+    # The guarded arm tail: inside an opened arm block (bindings already
     # emitted), the guard as `if (guard) { <body> goto end; }` two levels
     # in, or the unguarded body + goto one level; closes the block.
     indent = INDENT * indent_level
@@ -3455,7 +3410,7 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
                                          indent_level: int,
                                          state: _EmitState,
                                          subject: str) -> None:
-    # _gen_match_if_elif_optional_guarded's standalone-if + goto shape (the
+    # The guarded Optional chain's standalone-if + goto shape (the
     # end label draws the second per-function counter bump): each arm opens
     # its own `if (cond) {` (bare `{` for an always-match arm), binds, then
     # the goto tail. The label line closes the match at the arm indent.
@@ -3478,7 +3433,7 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
 
 def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
                            state: _EmitState, subject: str) -> None:
-    # _gen_match_switch_str: the end label draws the second per-function
+    # The str switch tier: the end label draws the second per-function
     # counter bump; the guarded-literal prefix arms (standalone `if (cond)
     # {` + binding + goto tail, source order); the discriminator switch --
     # `switch (subj.size())` for 'length', or `switch (static_cast<unsigned
@@ -3540,12 +3495,12 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
 def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
                         state: _EmitState, subject: str,
                         paren_or: bool = True) -> None:
-    # _gen_match_if_elif's unguarded chain, arms in source order: per arm the
+    # The scalar chain, unguarded, arms in source order: per arm the
     # comment, then `if (cond) {` / `} else if (cond) {` (the wildcard arm is
     # `{` / `} else {`), the body one level in; one closing brace ends the
     # chain. Conditions compose `{subject} == {rhs}` per pre-rendered
     # alternative, or-patterns ||-joined in parens (a single alternative
-    # stays bare -- _gen_match_if_elif_cond's join). No break, no default,
+    # stays bare). No break, no default,
     # no switch_depth: a chain is not a switch, so `break` inside an arm
     # exits the loop directly like any if body.
     indent = INDENT * indent_level
@@ -3557,9 +3512,8 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
             conds = [f"{subject} == {rhs}" for rhs in arm.labels]
-            # The optional inner chain joins or-alternatives bare
-            # (_emit_optional_inner_if_elif); the top-level chain wraps
-            # (_gen_match_if_elif_cond's join).
+            # The Optional inner chain joins or-alternatives bare; the
+            # top-level chain wraps them in parens.
             joined = " || ".join(conds)
             cond = (conds[0] if len(conds) == 1
                     else joined if not paren_or else f"({joined})")
@@ -3573,13 +3527,12 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
 def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
                                 indent_level: int, state: _EmitState,
                                 subject: str) -> None:
-    # _gen_match_if_elif_guarded's standalone-if + goto shape: the end label
+    # The guarded scalar chain's standalone-if + goto shape: the end label
     # draws the SECOND per-function counter bump (the subject took the
     # first); each arm is its own `if (cond) {` (bare `{` for an
     # always-match arm) so a failed guard falls out of the block to the
-    # next arm; _emit_guarded_arm_tail places the guarded body + goto two
-    # levels in (inside the guard if), the unguarded one level. The label
-    # line closes the match.
+    # next arm; the guarded body + goto sit two levels in (inside the guard
+    # if), the unguarded one level. The label line closes the match.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
@@ -3617,7 +3570,7 @@ def _record_or_cond(or_conds, subject: str) -> str:
 def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
                                indent_level: int, state: _EmitState,
                                subject: str) -> None:
-    # _gen_match_if_elif_record's unguarded chain, arms in source order: a
+    # The record chain, unguarded, arms in source order: a
     # class arm's field conditions &&-join into `if (...)` / `} else if
     # (...)` (condition-free class arms and wildcards open bare `{` / `}
     # else {`), then the field capture bindings, the whole-subject
@@ -3657,7 +3610,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
 def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
                                indent_level: int, state: _EmitState,
                                subject: str) -> None:
-    # _gen_match_guarded_record's standalone-if + goto shape (the end label
+    # The guarded record chain's standalone-if + goto shape (the end label
     # draws the second per-function counter bump): a class/wildcard arm
     # opens `if (conds) {` (bare `{` without conditions), binds its fields
     # and whole-subject name, then nests the guard as `if (guard) { <body>
@@ -3716,9 +3669,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         if stmt.cpp_local_representation is LocalBinding.REBIND_SLOT:
             # F2d two-slot rvalue pointer-local: a direct init slot holding the
             # value (so an alias taken before a reseat survives) + an empty
-            # `std::optional<T>` rebind slot reused on each reseat. Mirrors
-            # _gen_pointer_local_init's rvalue branch: the init slot is allocated
-            # before the rebind slot.
+            # `std::optional<T>` rebind slot reused on each reseat. The init
+            # slot is allocated before the rebind slot.
             init_slot = (state.assert_local_slot() or state.next_slot())
             rebind_slot = (state.assert_local_slot() or state.next_slot())
             cpp = stmt.cpp_type
@@ -3744,7 +3696,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                      else "*")
             # Render before flushing: a container-select init hoists its
             # non-name LHS as an `auto&& __tmp_N` line that must precede
-            # the alias decl (the AST's TempState flush point).
+            # the alias decl (the statement's temp flush point).
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}{const_pfx}{stmt.cpp_type}{sigil} {name} = "
@@ -3757,7 +3709,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Reassigned borrow-tuple decl off an owning call: the rvalue
             # emplaces into a per-target `std::optional<...>` slot the local
             # aliases. Init renders before the slot draws its number (the
-            # AST's _borrow_tuple_rhs gen_expr-then-next_slot order); the
+            # init's own counter draws come first); the
             # slot registers for sibling reuse, and the btuple_slot_locals
             # membership keeps THIRAssign's rebind-slot reseat off these
             # names (their reseats are plain tuple_to_pointer assigns).
@@ -3782,8 +3734,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                           f"(__slot_{slot}.emplace({init_cpp}));\n")
         else:
             # Render before flushing: the init may register arg temps, whose
-            # decls the AST flushes between the source comment and the
-            # statement line (gen_stmt's single flush point).
+            # decls flush between the source comment and the statement line.
             # cpp_type (when set at lowering -- enum decls) overrides the
             # bare to_cpp() spelling.
             cpp_type = stmt.cpp_type if stmt.cpp_type is not None \
@@ -3792,15 +3743,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             out.write(f"{indent}{cpp_type} {name} = {init_cpp};\n")
     elif isinstance(stmt, THIRPtrLocalDecl):
-        # Slot-hoist pointer-repr locals. Slot NUMBERING mirrors the AST's
-        # allocation order exactly (SlotState.next_slot call sites in
-        # _gen_pointer_local_init / _gen_ptr_variant_local_init): the OPT
-        # kinds allocate the init slot before the rebind slot; the UNION
-        # rvalue kind allocates the value slot before the rebind slot but
-        # EMITS the rebind pre-decl line first.
+        # Slot-hoist pointer-repr locals. Slot NUMBERING follows a fixed
+        # allocation order: the OPT kinds allocate the init slot before the
+        # rebind slot; the UNION rvalue kind allocates the value slot before
+        # the rebind slot but EMITS the rebind pre-decl line first.
         name = escape_cpp_name(stmt.name)
-        # `const T*` only on the pointer line (mirrors the AST `const_pfx`); the
-        # rebind `std::optional<T>` slot backing a reseat stays non-const.
+        # `const T*` only on the pointer line; the rebind `std::optional<T>`
+        # slot backing a reseat stays non-const.
         cpfx = "const " if stmt.is_const else ""
         if stmt.kind is PtrSlotKind.OPT_NONE:
             if stmt.needs_rebind_slot:
@@ -3814,7 +3763,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # record is the REBIND_SLOT binding, not this kind).
             init_cpp = _emit_expr(stmt.init, state)
             # The decl is a flush position: an init's arg temps print before
-            # the slot line (the AST's statement-level drain).
+            # the slot line (the statement-level drain).
             state.temps.flush(out, indent)
             init_slot = (state.assert_local_slot() or state.next_slot())
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot} = "
@@ -3844,8 +3793,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{_gs_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
             out.write(f"{indent}{name} = &{slot};\n")
-            # A later rvalue write reuses this slot (the AST registers it in
-            # `rebind_slots` at the same point); the slot is plain, not an
+            # A later rvalue write reuses this slot, so it registers in
+            # `rebind_slots` here; the slot is plain, not an
             # optional, so the reseat takes `&(slot = ...)`.
             state.rebind_slots[stmt.name] = state.slot_counter
             _witness("top_level.global_slot")
@@ -3853,8 +3802,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Hoisted record pointer-local: the `std::optional<T>` slot
             # pre-decl rides the function-top hoist lines; the decl statement
             # re-emplaces per execution and re-points the alias
-            # (`T* x = &*(__slot_N = init);` -- _gen_pointer_local_init's
-            # hoisted rvalue branch via _ptr_from_rvalue_slot).
+            # (`T* x = &*(__slot_N = init);`).
             init_cpp = _emit_expr(stmt.init, state)
             # No assert_local_slot: the hoist line spells the scope's own
             # prefix + static, so the module-scope flavor is lifetime-safe.
@@ -3891,11 +3839,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
             # @dynamic protocol local: a concrete/adapter slot brace-inited from
-            # the init, aliased by a protocol Base* pointer (the AST's
-            # _gen_dynamic_protocol_init non-erased arm). Draw the slot BEFORE
-            # emitting the init, matching the oracle's `next_slot()`-then-
-            # `gen_expr` order, so the numbering stays aligned even if an init
-            # ever consumes a slot of its own.
+            # the init, aliased by a protocol Base* pointer (the non-erased
+            # arm). Draw the slot BEFORE emitting the init, so the numbering
+            # stays aligned even if an init ever consumes a slot of its own.
             init_slot = (state.assert_local_slot() or state.next_slot())
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}{stmt.cpp_type} __slot_{init_slot}"
@@ -3904,7 +3850,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f"&__slot_{init_slot};\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL_ERASED:
             # `p2: P = p1` -- alias the same erased object (no slot). The deref'd
-            # source already renders its own `(*p1)` parens (AST: `&{expr}`).
+            # source already renders its own `(*p1)` parens, so this is a
+            # bare `&{expr}`.
             out.write(f"{indent}{stmt.base_cpp}* {name} = "
                       f"&{_emit_expr(stmt.init, state)};\n")
         elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
@@ -3912,8 +3859,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # optional materializes in a slot, the binding lifts the
             # pointer (`std::optional<T> __slot_N = make_some();`
             # `T* s = ::tpy::optional_to_ptr(__slot_N);`). The slot is
-            # registered for reseat reuse like the AST's rebind_slots
-            # write at the decl site -- the OPT_STORAGE_CALL rebind arm
+            # registered in `rebind_slots` here at the decl site for reseat
+            # reuse -- the OPT_STORAGE_CALL rebind arm
             # is its only consumer (lowering rejects other reseat shapes
             # for such names, so the THIRAssign special-case cannot see
             # them).
@@ -3927,8 +3874,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
             # Address-of an existing lvalue -- the decl itself takes no slot
             # (the decl twin of the PTR_ADDR reseat). A rebind slot is drawn
-            # ahead of the pointer line, matching the AST's lvalue-init
-            # pre-declaration order.
+            # ahead of the pointer line, as an lvalue init's slot
+            # pre-declaration always is.
             init_cpp = _emit_expr(stmt.init, state)
             if stmt.needs_rebind_slot:
                 rebind = (state.assert_local_slot() or state.next_slot())
@@ -3958,8 +3905,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.kind is PtrSlotKind.FRAME_RVALUE:
             # Resumable frame-field slot reseat: emplace-assign the field
             # and re-point the pointer in one expression
-            # (`saved = &*(__ptr_slot_fN = Point(9));` -- the AST's
-            # _ptr_from_rvalue_slot over the prescanned frame field).
+            # (`saved = &*(__ptr_slot_fN = Point(9));`, over the prescanned
+            # frame field).
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             out.write(f"{indent}{name} = "
@@ -3979,8 +3926,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.kind is PtrSlotKind.OPT_STORAGE_CALL:
             # Reseat of an OPT_STORAGE_CALL-declared name: re-fill the slot
             # registered at the decl, re-lift the pointer (`__slot_1 =
-            # make(43);` `z = ::tpy::optional_to_ptr(__slot_1);` -- the
-            # AST rebind's own-ptr-optional call-source branch).
+            # make(43);` `z = ::tpy::optional_to_ptr(__slot_1);`).
             slot = state.rebind_slots.get(stmt.name)
             assert slot is not None, (
                 "OPT_STORAGE_CALL reseat without its decl-registered slot")
@@ -3990,9 +3936,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{name} = "
                       f"::tpy::optional_to_ptr(__slot_{slot});\n")
         elif stmt.kind is PtrSlotKind.DYN_PROTOCOL:
-            # @dynamic rebind: a FRESH hoisted optional slot per reseat (the
-            # AST's _gen_dynamic_protocol_rebind -- a distinct concrete/adapter
-            # type per target). Slot drawn before the value (oracle order); its
+            # @dynamic rebind: a FRESH hoisted optional slot per reseat (a
+            # distinct concrete/adapter type per target). Slot drawn before
+            # the value; its
             # decl hoists to the function top, the emplace + `p = &*slot` reseat
             # stay inline. `val_cpp` carries the slot (concrete/adapter)
             # spelling. At module-init scope the slot spells
@@ -4058,9 +4004,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             _witness("top_level.global_slot_reuse")
         elif stmt.kind is PtrSlotKind.INLINE_RVALUE:
             # Slotless local's rvalue reseat: the first allocates the plain
-            # block slot in place (value renders before the slot draw,
-            # matching _gen_pointer_local_rebind's order); later rvalue
-            # reseats reuse it.
+            # block slot in place (value renders before the slot draw);
+            # later rvalue reseats reuse it.
             val_cpp = _emit_expr(stmt.value, state)
             slot = state.inline_rvalue_slots.get(stmt.name)
             if slot is None:
@@ -4074,10 +4019,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.kind is PtrSlotKind.BRANCH_RVALUE:
             # Branch-hoisted rvalue reseat without an if-head slot: the first
             # reseat allocates the function-top `std::optional<T>` lazily
-            # (the AST's pending_hoist_decls append) and registers it; later
-            # rvalue reseats reuse it. Value renders before the allocation,
-            # matching _gen_pointer_local_rebind's gen_expr-then-next_slot
-            # order.
+            # (appended to the function-top hoist lines) and registers it;
+            # later rvalue reseats reuse it. Value renders before the
+            # allocation, so its own counter draws come first.
             val_cpp = _emit_expr(stmt.value, state)
             slot = _use_rebind_slot(state, stmt.name)
             if slot is None:
@@ -4091,8 +4035,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{name} = &*(__slot_{slot} = {val_cpp});\n")
         elif stmt.kind is PtrSlotKind.UNION_INLINE_SLOT:
             # The slotless reseat: a FRESH value-variant slot declared at
-            # the reseat line + the lift (the AST's inline-slot fallback
-            # when the decl pre-declared no rebind slot).
+            # the reseat line + the lift, for a decl that pre-declared no
+            # rebind slot.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
@@ -4160,10 +4104,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{stmt.recv_wrap.format(recv_cpp)};\n")
             out.write(f"{indent}{target_cpp} = {value_cpp};\n")
     elif isinstance(stmt, THIRSetItem):
-        # Mirrors _gen_assign_code's subscript arm (and the aug-assign
-        # subscript arm, whose synthetic binop value arrives pre-built):
-        # bounds-safe writes share _emit_subscript's operator[] render;
-        # checked writes call the free-function dunder.
+        # The subscript write (and the aug-assign subscript form, whose
+        # synthetic binop value arrives pre-built): bounds-safe writes share
+        # _emit_subscript's operator[] render; checked writes call the
+        # free-function dunder.
         value_cpp = _emit_expr(stmt.value, state)
         if stmt.target.bounds_safe:
             target_cpp = _emit_subscript(stmt.target, state)
@@ -4175,17 +4119,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.temps.flush(out, indent)
             # bytearray's `__setitem__` is its own @native free-function
             # dunder (range-checked value), not the containers' checked
-            # template -- mirrors _gen_assign_code's fi dispatch
-            # (get_type_method_fi -> gen_call_from_fi), like the
-            # bytes_getitem read arm.
+            # template -- the write-side twin of the bytes_getitem read
+            # arm.
             rt = unwrap_qualifiers(stmt.target.receiver.result_type)
             sym = ("::tpy::bytearray_setitem" if is_bytearray_type(rt)
                    else "::tpy::__setitem__")
             out.write(f"{indent}{sym}({recv_cpp}, {idx_cpp}, "
                       f"{value_cpp});\n")
     elif isinstance(stmt, THIRSliceAssign):
-        # Mirrors _gen_slice_assign: the resolved slice __setitem__ @native
-        # free-function (list_set_slice / list_set_stepped_slice) over the
+        # The resolved slice __setitem__ @native free-function
+        # (list_set_slice / list_set_stepped_slice) over the
         # receiver, the slice initializer (like _emit_str_slice's bound arm),
         # and the RHS. A non-empty array-literal RHS wears the std::vector<E>{...}
         # type prefix the checked helper needs to deduce its Range.
@@ -4205,8 +4148,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
                   f"({recv_cpp}, {slice_arg}, {value_cpp});\n")
     elif isinstance(stmt, THIRInplaceContainerOp):
-        # Mirrors _gen_aug_assign_code's resolved_inplace arm: the mutating
-        # dunder's @native free-function (list_extend, ...) over the receiver
+        # The resolved_inplace arm: the mutating dunder's @native
+        # free-function (list_extend, ...) over the receiver
         # and the RHS. A non-empty array-literal RHS wears the std::vector<E>{...}
         # type prefix the two-parameter template needs to deduce its Range.
         recv_cpp = _emit_expr(stmt.receiver, state)
@@ -4227,7 +4170,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRFrameSlotWrite):
         # `name.emplace(value);` -- a resumable frame_slot local write (R1c).
         # Render the value first so its arg temps flush before the line
-        # (mirroring the AST frame_slot write's single flush point). A
+        # (one flush point per write). A
         # brace-init value takes the typed_brace_init type prefix so it binds
         # to emplace's forwarding ref (a record-ctor value is self-describing).
         value_cpp = _emit_expr(stmt.value, state)
@@ -4236,30 +4179,27 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         state.temps.flush(out, indent)
         out.write(f"{indent}{escape_cpp_name(stmt.name)}.emplace({value_cpp});\n")
     elif isinstance(stmt, THIRCoroHandleMove):
-        # The NAME-source coro-handle write's two-line pair
-        # (_gen_concrete_coro_write's name arm).
+        # The NAME-source coro-handle write's two-line pair.
         tgt = escape_cpp_name(stmt.target)
         src = escape_cpp_name(stmt.source)
         out.write(f"{indent}{tgt}.emplace(std::move(*{src}));\n")
         out.write(f"{indent}{src}.reset();\n")
     elif isinstance(stmt, THIRNarrowAlias):
-        # The isinstance-narrowing extraction (F4 U3) -- mirrors
-        # _emit_isinstance_extractions' variant arm (VariantAccess.get_by_type
-        # with lvalue=True: the ptr-variant deref carries no outer parens).
+        # The isinstance-narrowing extraction's variant arm
+        # (VariantAccess.get_by_type with lvalue=True: the ptr-variant deref
+        # carries no outer parens).
         qualifier = "const auto&" if stmt.const_ref else "auto&"
         deref = "*" if stmt.is_ptr_variant else ""
         out.write(f"{indent}{qualifier} {stmt.alias} = {deref}"
                   f"std::get<{stmt.member_cpp}>({stmt.variant_cpp});\n")
     elif isinstance(stmt, THIRDynNarrowAlias):
-        # The polymorphic cast-and-cache extraction -- mirrors
-        # _emit_isinstance_extractions' poly arm (explicit type + `*` deref
-        # of the pre-composed cast RHS).
+        # The polymorphic cast-and-cache extraction: explicit type + `*`
+        # deref of the pre-composed cast RHS.
         const_pfx = "const " if stmt.is_const else ""
         out.write(f"{indent}{const_pfx}{stmt.member_cpp}& {stmt.alias} = "
                   f"*{stmt.cast_rhs_cpp};\n")
     elif isinstance(stmt, THIRAnyNarrowAlias):
-        # The Any-narrowing extraction (D15) -- mirrors
-        # _emit_isinstance_extractions' Any arm (explicit type, not auto&).
+        # The Any-narrowing extraction: explicit type, not auto&.
         out.write(f"{indent}const {stmt.member_cpp}& {stmt.alias} = "
                   f"std::any_cast<const {stmt.member_cpp}&>"
                   f"({stmt.subject_cpp}.value);\n")
@@ -4293,7 +4233,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}}}\n")
     elif isinstance(stmt, THIRReturn):
         # A bare `return` in an @error_return body constructs the success
-        # value: `return {};` (_gen_simple_stmt's current_error_return arm).
+        # value: `return {};`.
         if stmt.value is None:
             value_cpp = "{}" if state.error_return_cpp else None
             if value_cpp is not None:
@@ -4308,8 +4248,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         else:
             out.write(f"{indent}return {value_cpp};\n")
     elif isinstance(stmt, THIRFinallyDeferredReturn):
-        # Mirrors _gen_finally_deferred_return: the pointer capture binds
-        # BEFORE the chain, the materialize move runs after it, and a
+        # The pointer capture binds BEFORE the chain, the materialize move
+        # runs after it, and a
         # terminating finally keeps the [[maybe_unused]] capture -- Python
         # still evaluates the return expression it then overrides.
         _witness_chain("return", state, 0)
@@ -4348,12 +4288,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         state.temps.flush(out, indent)
         out.write(f"{indent}{expr_cpp};\n")
     elif isinstance(stmt, THIRTupleUnpack):
-        # Mirrors _gen_tuple_unpack's slice arm: each non-discard target
-        # declares a fresh value-scalar local. The source bind splits on shape
-        # -- a bare-name / loop-shadow source is ref-bound (`const auto&`, no
-        # owned/ref elements), a call / field rvalue is materialized by value
-        # (`auto`, the AST's non-name `else` arm; its arg temps flush before the
-        # bind line, exactly like a bare expr statement).
+        # Each non-discard target declares a fresh value-scalar local. The
+        # source bind splits on shape -- a bare-name / loop-shadow source is
+        # ref-bound (`const auto&`, no owned/ref elements), a call / field
+        # rvalue is materialized by value (`auto`; its arg temps flush before
+        # the bind line, exactly like a bare expr statement).
         tmp = f"__tup_{state.next_unpack()}"
         # One holder line per TupleSourceBind form (renders documented on
         # the enum); the name forms share the source_cpp spelling override.
@@ -4408,9 +4347,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                           f"::tpy::optional_to_ptr({get});\n")
             elif bind in ("frame_assign", "frame_emplace"):
                 # Resumable frame targets: assigned, never re-declared. The
-                # wrap mirrors the AST's per-element is_owned move (ref
-                # elements reject at lowering -- re-add an unwrap_ref wrap
-                # when the name-source ladder cell makes them reachable);
+                # wrap is the per-element is_owned move (ref elements
+                # reject at lowering -- they would need an unwrap_ref wrap);
                 # an emplace's typed_brace_init is identity for a get-expr.
                 wrap = stmt.wraps[i] if stmt.wraps else ""
                 if wrap == "move":
@@ -4421,7 +4359,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 else:
                     out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "assign":
-                # Reused target: the AST's declared-name tail (no decl).
+                # Reused target: an already-declared name, so no decl.
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "global_slot":
                 # Pointer-slot global at module init: the moved-out element
@@ -4432,8 +4370,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
                           f"std::move({get});\n")
                 out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
-                # A later rvalue write reuses this slot (the AST's
-                # rebind_slots registration at the same point).
+                # A later rvalue write reuses this slot, so it registers in
+                # `rebind_slots` here.
                 state.rebind_slots[name] = state.slot_counter
             elif bind == "unwrap_ref":
                 # Wrapper-reference element: the capture's slot is a live
@@ -4466,11 +4404,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRContinue):
         _emit_loop_exit(out, indent, state, is_break=False)
     elif isinstance(stmt, THIRRaise):
-        # Mirrors _gen_raise. Throw-tier arms never walk the finally-frame
-        # stack -- the throw propagates through the emitted catch(...) arms,
-        # which run the finally bodies. The return-tier arms are RETURNS
-        # (make_unexpected), so they take the finally-aware _make_return
-        # shape like THIRReturn.
+        # Throw-tier arms never walk the finally-frame stack -- the throw
+        # propagates through the emitted catch(...) arms, which run the
+        # finally bodies. The return-tier arms are RETURNS (make_unexpected),
+        # so they take the finally-aware return shape like THIRReturn.
         if stmt.raise_expr is not None:
             # `raise <expr>` -> `<expr>{.__deref__()*N}.__raise__();` -- render
             # the source first (a call-result may register arg temps), flush the
@@ -4494,7 +4431,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}return {value_cpp};\n")
         elif stmt.cpp_type is None and state.in_except_tier == "return":
             # Bare re-raise inside a return-tier handler: re-return the
-            # captured error (_gen_raise's bare return-tier arm).
+            # captured error.
             assert state.try_except_err_opt is not None, \
                 "return-tier re-raise without a live error capture"
             _witness("er.reraise")
@@ -4509,7 +4446,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.args:
             # Render args first so a mutated-ref-slot / Own-copy / union-ctor
             # arg temp registers, then flush the `__tmp_N` decls ahead of the
-            # throw line -- the AST's per-statement temp flush.
+            # throw line -- the per-statement temp flush.
             args = ", ".join(_emit_expr(a, state) for a in stmt.args)
             state.temps.flush(out, indent)
             if stmt.via_virtual:
@@ -4521,9 +4458,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         else:
             out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
     elif isinstance(stmt, THIRErrorReturnBind):
-        # _gen_error_return_[propagate_/unwrap_]var_decl / _assign: the
-        # counter draws BEFORE the call renders (the AST bumps first, so a
-        # nested unwrap in an argument gets the higher number).
+        # The bind form: the counter draws BEFORE the call renders, so a
+        # nested unwrap in an argument gets the higher number.
         n = state.try_counter.next()
         tmp = f"__try_tmp_{n}"
         call_cpp = _emit_expr(stmt.call, state)
@@ -4553,9 +4489,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         out.write(f"{indent}}}\n")
         _witness("er.bind")
     elif isinstance(stmt, THIRErrorReturnDiscard):
-        # _gen_error_return_stmt_block via the expr-stmt handler: there the
-        # call renders BEFORE the counter draws (the block helper takes the
-        # rendered call and bumps inside).
+        # The discard form, reached through the expr-stmt position: the call
+        # renders BEFORE the counter draws, the reverse of the bind form.
         call_cpp = _emit_expr(stmt.call, state)
         state.temps.flush(out, indent)
         n = state.try_counter.next()
@@ -4568,7 +4503,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _witness("er.discard")
     elif isinstance(stmt, THIRParamCopy):
         # Mutable owned copy of a reassigned const-ref param; the signature
-        # (AST-emitted) renamed the param to `__param_{name}`.
+        # renamed the param to `__param_{name}`.
         init = stmt.init_cpp or f"__param_{stmt.name}"
         out.write(f"{indent}{stmt.cpp_type} {stmt.name} = {init};\n")
     elif isinstance(stmt, THIROverloadDefault):
@@ -4583,8 +4518,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{{ auto __del_sink = "
                       f"std::move({sigil}{name}); }}\n")
     elif isinstance(stmt, THIRDelItem):
-        # One `::tpy::__delitem__(recv, key);` line per target, source order
-        # (_gen_del_item_code's loop).
+        # One `::tpy::__delitem__(recv, key);` line per target, in source
+        # order.
         for call in stmt.calls:
             call_cpp = _emit_expr(call, state)
             state.temps.flush(out, indent)
@@ -4620,9 +4555,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
     elif isinstance(stmt, THIRFoldedBlock):
         # Per-@overload-stub fold splice: the surviving statements emit flat
-        # at the enclosing indent (the AST's direct gen_stmt calls). The
-        # chain head's preceding `#` comments emit even for an all-dead
-        # chain (gen_stmt flushes them before the fold dispatch).
+        # at the enclosing indent. The chain head's preceding `#` comments
+        # emit even for an all-dead chain.
         _witness("fold.overload_block")
         if stmt.trivia_loc is not None:
             state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
@@ -4631,9 +4565,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_stmts(out, stmt.stmts, indent_level, state)
     elif isinstance(stmt, THIRFoldedIfChain):
         # The partially-folded live chain: clean `if / else if` over the
-        # surviving branches, NO condition source comments (the AST's
-        # _gen_if_overload_specialized live path), else from the last
-        # original node. Temps flush before each branch line; lowering
+        # surviving branches, NO condition source comments, else from the
+        # last original node. Temps flush before each branch line; lowering
         # admits them only on the first branch.
         _witness("fold.overload_live_chain")
         if stmt.trivia_loc is not None:
@@ -4709,10 +4642,10 @@ def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
 
 
 def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
-    """gen_print's chain_token: a runtime kwarg renders as its expression, a
+    """One print chain token: a runtime kwarg renders as its expression, a
     literal via cpp_string_literal_expr, an empty/suppressed one skips (None).
-    The " "/"\\n" defaults ride the value slot too -- cpp_string_literal_expr
-    spells them byte-identically to gen_print's f'"{default}"' tokens."""
+    The " "/"\\n" defaults ride the value slot too, spelled by the same
+    helper."""
     if expr is not None:
         return _emit_expr(expr, state)
     if value is None:
@@ -4736,24 +4669,23 @@ def _print_parts(args, sep_token: 'str | None', end_token: 'str | None',
 
 def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
                 state: _EmitState) -> None:
-    # Mirrors gen_print's cout-sink path: `std::cout << a0 << SEP << a1
-    # << ... << END;`. Default sep=" " between args, end="\n"; empty print()
-    # is just the newline.
+    # The cout-sink path: `std::cout << a0 << SEP << a1 << ... << END;`.
+    # Default sep=" " between args, end="\n"; empty print() is just the
+    # newline.
     indent = INDENT * indent_level
-    # The AST path renders end before sep. Order is unobservable while the
-    # kwarg gate admits only literal/plain-name sources (no hoisted temps);
-    # match the AST order before widening that gate.
+    # end renders before sep. The order is unobservable while the kwarg gate
+    # admits only literal/plain-name sources (no hoisted temps); revisit it
+    # before widening that gate.
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
     parts = _print_parts(stmt.args, sep_token, end_token, state)
     if stmt.flush:
         parts.append("std::flush")
-    # Args render first: their hoisted temps flush before the cout line
-    # (the AST's pre-statement `ctx.temps.flush`).
+    # Args render first: their hoisted temps flush before the cout line.
     state.temps.flush(out, indent)
     if not parts:
-        # gen_print returns "" for a fully-suppressed chain; lowering rejects
-        # the kwargs-on-empty-print shape, so this is a defensive no-op.
+        # A fully-suppressed chain emits nothing; lowering rejects the
+        # kwargs-on-empty-print shape, so this is a defensive no-op.
         return
     sink = ("std::cout" if stmt.sink_expr is None
             else f"::tpy::as_ostream({_emit_expr(stmt.sink_expr, state)})")
@@ -4764,7 +4696,7 @@ def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> Non
     indent = INDENT * indent_level
     for stmt in stmts:
         # A desugar-expanded statement (no_source_comment) shares the first
-        # statement's source comment -- skip the repeat, mirroring the AST path.
+        # statement's source comment -- skip the repeat.
         if not stmt.no_source_comment:
             state.comments.stmt(out, stmt.loc, indent)
         _emit_stmt(out, stmt, indent_level, state)
@@ -4799,16 +4731,15 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                        slot_prefix=("__global_slot" if global_scope
                                     else "__slot"),
                        slot_static=("static " if global_scope else ""))
-    # Buffer the body so function-top hoists (@dynamic rebind slots, allocated
-    # mid-body) can be prepended in the AST's `pending_hoist_decls` position.
+    # Buffer the body so function-top hoists (@dynamic rebind slots,
+    # allocated mid-body) can be prepended ahead of it.
     body_buf = io.StringIO()
     _emit_stmts(body_buf, fn.body, indent_level, state)
     for content in state.hoist_lines:
         out.write(f"{INDENT * indent_level}{content}\n")
     out.write(body_buf.getvalue())
     # Void @error_return functions return `{}` at the end -- the implicit
-    # success value (gen_body's current_error_return tail; unconditional,
-    # like the AST's).
+    # success value, emitted unconditionally.
     if fn.error_return_cpp and isinstance(fn.return_type, VoidType):
         out.write(f"{INDENT * indent_level}return {{}};\n")
         _witness("er.void_tail")
@@ -4822,10 +4753,9 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
                                finally_guard_counter: ModuleCounter | None = None,
                                body_indent_level: int = 2) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
-    follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
-    emit: the signature is written by the AST path before this is called (the M1
-    precedent -- signatures stay on the AST path). Byte-identical to that path's
-    tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
+    follows the signature). The signature itself is written by the record
+    skeleton before this is called. A pure-MIL constructor has an empty
+    `body`, so this emits ` {}` (or
     ` : inits {}`). MIL / base-init cells have no flush point, so arg temps
     never lower there (gate + validator enforced); the body shares the
     statement machinery and its sink. ``body_indent_level`` is 2 for an
@@ -4868,9 +4798,9 @@ class ResumableLeafEmitter:
     from the ctx-backed sinks -- the same contract as `emit_thir_body`.
 
     The skeleton looks up exactly the leaves lowering stored, keyed by the
-    id() of the AST node it holds; a missing key means the gate and the
-    seam disagree on the routed body's shape -- a hard error, never a
-    silent per-leaf fallback (per-body routing is all-or-nothing)."""
+    id() of the parse-tree node it holds; a missing key means the gate and
+    the seam disagree on the routed body's shape -- a hard error, never
+    silently skipped."""
 
     def __init__(self, body, *, comments: 'CommentSink | None' = None,
                  temps: 'TempSink | None' = None,
@@ -4916,8 +4846,8 @@ class ResumableLeafEmitter:
 
     def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:
         """Emit one BB leaf statement (or a RaiseT terminator's statement),
-        source comment included -- the seam replacement for the skeleton's
-        `statements.gen_stmt(out, stmt)` calls."""
+        source comment included -- the seam the skeleton calls at each
+        leaf-statement position."""
         node = self._lookup(self._body.leaves, stmt, "leaf statement")
         _emit_stmts(out, (node,), indent_level, self._state)
 
@@ -4939,8 +4869,8 @@ class ResumableLeafEmitter:
         bakes the last-use move (THIRMove) position-blind; the scaffolding
         knows the site, so a pre-finally store unwraps it -- an alias bound
         before the try can still read the local from the finally body.
-        Defaults to no-move (the AST flag's fail-safe polarity): a future
-        call site that forgets the kwarg gets the copy, never the move."""
+        Defaults to no-move, the fail-safe polarity: a call site that
+        forgets the kwarg gets the copy, never the move."""
         node = self._lookup(self._body.return_values, ret, "return value")
         if not allow_move and isinstance(node, THIRMove):
             node = node.value
@@ -4961,15 +4891,15 @@ class ResumableLeafEmitter:
         return _deferred_return_triple(node, self._state)
 
     def render_yield_value(self, ys) -> str:
-        """Render a generator `yield v`'s value -- the seam replacement for
-        the skeleton's `statements.gen_yield_value(ys)`."""
+        """Render a generator `yield v`'s value -- the seam the skeleton
+        calls at the yield site."""
         return _emit_expr(self._lookup(self._body.yield_values, ys,
                                        "yield value"), self._state)
 
     def emit_nested_def_body(self, out: TextIO, func,
                              indent_level: int) -> None:
-        """Emit a frame nested def's MEMBER body -- the seam replacement for
-        `gen_coro_finally_top_def`'s `gen_nested_def_body` call. The
+        """Emit a frame nested def's MEMBER body -- the seam
+        `gen_coro_finally_top_def` calls for it. The
         signature/struct-decl lines stay skeleton; the body statements were
         lowered under the member scope at frame lowering."""
         body = self._lookup(self._body.nested_def_bodies, func,
@@ -4978,17 +4908,16 @@ class ResumableLeafEmitter:
 
     def render_suspend_expr(self, expr) -> str:
         """Render an ERASED/BORROWED await operand or a bound-method await
-        receiver -- the seam replacement for the skeleton's
-        `gen_expr(operand)` / `gen_expr(call.obj)` at the suspend site (the
-        skeleton keeps its move / & / .get() / __self-prepend wrap)."""
+        receiver -- the seam the skeleton calls at the suspend site (it keeps
+        its own move / & / .get() / __self-prepend wrap)."""
         return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
                                        "suspend expr"), self._state)
 
     def render_region_expr(self, expr) -> str:
         """Render a region/loop pseudo-statement's user expression (with
-        manager, for-loop iterable, range bound) -- the seam replacement for
-        the skeleton's `gen_expr(...)` inside its emplace / &(..) /
-        static_cast scaffolding (same flush contract as `render_cond`)."""
+        manager, for-loop iterable, range bound) -- the seam the skeleton
+        calls inside its emplace / &(..) / static_cast scaffolding (same
+        flush contract as `render_cond`)."""
         return _emit_expr(self._lookup(self._body.region_exprs, expr,
                                        "region expr"), self._state)
 
@@ -4996,18 +4925,18 @@ class ResumableLeafEmitter:
                             indent_level: int,
                             arm_hook: 'Callable[[int, int], None]') -> None:
         """Emit a MatchDispatch's whole type-aware dispatch (subject +
-        labels + guards) through THIR's match tiers -- the seam replacement
-        for the skeleton's `gen_match` call. `arm_hook` is the skeleton's
-        arm emitter keyed by id(case.body); it fires at each arm-body point
-        (the same contract gen_match honors via resumable_arm_emitter), so
-        arm bodies stay BB chains in the state machine."""
+        labels + guards) through THIR's match tiers -- the seam the skeleton
+        calls for a match inside a resumable frame. `arm_hook` is the
+        skeleton's arm emitter keyed by id(case.body); it fires at each
+        arm-body point, so arm bodies stay BB chains in the state
+        machine."""
         node = self._lookup(self._body.match_dispatches, match_stmt,
                             "match dispatch")
         prev = self._state.match_arm_hook
         self._state.match_arm_hook = arm_hook
         try:
-            # Direct tier emit: the skeleton calls gen_match without a
-            # gen_stmt wrapper, so no leading statement comment here either.
+            # Direct tier emit: the skeleton calls this without a statement
+            # wrapper, so no leading statement comment here either.
             _emit_match(out, node, indent_level, self._state)
         finally:
             self._state.match_arm_hook = prev
@@ -5038,8 +4967,8 @@ class SimpleGenLeafEmitter:
                                  hoist_sink=hoist_sink)
 
     def emit_init(self, out: TextIO, indent_level: int) -> None:
-        """Emit the pre-loop init block -- the seam replacement for the
-        skeleton's `gen_body(init_stmts, ...)` call."""
+        """Emit the pre-loop init block -- the seam the skeleton calls for
+        it."""
         _emit_stmts(out, self._body.init, indent_level, self._state)
 
     def emit_pre_yield(self, out: TextIO, indent_level: int) -> None:
@@ -5053,14 +4982,14 @@ class SimpleGenLeafEmitter:
         return _emit_expr(self._body.cond, self._state)
 
     def render_yield_value(self) -> str:
-        """Render the yield value -- the seam replacement for the skeleton's
-        `statements.gen_yield_value(ys)`."""
+        """Render the yield value -- the seam the skeleton calls at the
+        yield site."""
         return _emit_expr(self._body.yield_value, self._state)
 
     def render_iterable(self) -> str:
         """Render the for-branch source expression (the skeleton reuses the
         returned string across its capture / decltype / emplace scaffolding,
-        exactly like the AST's single `gen_expr(iterable)` render)."""
+        so the iterable renders exactly once)."""
         return _emit_expr(self._body.iterable, self._state)
 
     def render_range_arg(self, i: int) -> str:

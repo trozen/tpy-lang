@@ -24,6 +24,8 @@ from .nodes import (
     Form, THIRExpr, THIRFunction, THIRFunctionLayout, THIRName, THIRReturn,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_routes_byte_identical, _compile, _entry, _fn, _thir_ctx,
 )
 from .validate import THIRValidationError, validate_function
@@ -167,8 +169,7 @@ class TestAdjacentShapesKeepTheirBehaviour:
             "    print(pick(a).n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell.get("body:expr.ifexpr") == 1, fell
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
 
 class TestBorrowReturnRuleStillCatchesFormLies:

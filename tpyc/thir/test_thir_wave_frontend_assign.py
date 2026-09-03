@@ -9,11 +9,13 @@ import pytest
 
 from ..codegen_cpp import CodeGenOptions
 from ..parse.nodes import TpyAssign, TpyIf, TpyName, TpyNoneLiteral, TpyVarDecl
-from .fallback import ThirUnsupported
+from .reject import ThirUnsupported
 from .lower import _LowerCtx
 from .lower.statements import _lower_stmt
 from .nodes import THIRAssign, THIRLiteral, Form
-from .testutil import _compile, _entry
+from .testutil import (
+    _assert_rejects_at, _compile, _entry,
+                      _reject_tally)
 
 _PTR = (
     "from tpy import Int32, Ptr\n"
@@ -110,15 +112,14 @@ def _raw_global_write(source: str, *, in_branch: bool):
                     stmts[i] = TpyAssign(target=TpyName("xs"), value=st.init,
                                          loc=st.loc)
 
-    def gen(thir: bool):
+    def gen():
         return compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=thir))
+                                          comment_line_numbers=False))
 
-    ast = gen(False)
-    thir = gen(True)
-    return ast, thir, dict(compiler._thir_fallback)
+    ast = gen()
+    thir = gen()
+    return ast, thir
 
 
 class TestRawAssignGlobalSlot:
@@ -128,12 +129,11 @@ class TestRawAssignGlobalSlot:
     block-scoped `__slot_N` that module scope never declares."""
 
     def test_global_container_write_routes_slot_reuse(self):
-        ast, thir, fallback = _raw_global_write(
+        ast, thir = _raw_global_write(
             "from tpy import Int32\n"
             "xs: list[Int32] = [1, 2]\n"
             "xs = [3, 4]\n"
             "print(len(xs))\n", in_branch=False)
-        assert not fallback
         assert thir == ast
         assert "xs = &(__global_slot_1 = {3, 4});" in "".join(thir)
 
@@ -142,12 +142,5 @@ class TestRawAssignGlobalSlot:
         # var-decl side (static-keyword placement differs by branch kind)
         # and none is witnessed through a raw assign -- so the whole body
         # falls back rather than pick one.
-        ast, thir, fallback = _raw_global_write(
-            "from tpy import Int32\n"
-            "xs: list[Int32] = [1, 2]\n"
-            "if len(xs) > 1:\n"
-            "    xs = [3, 4]\n"
-            "print(len(xs))\n", in_branch=True)
-        assert fallback == {
-            "top_level:stmt.assign:assign.global_slot_branch": 1}
-        assert thir == ast
+        _assert_rejects_at(_reject_tally('from tpy import Int32\nxs: list[Int32] = [1, 2]\nif len(xs) > 1:\n    xs = [3, 4]\nprint(len(xs))\n'),
+                           "top_level:stmt.var_decl:top_level.global_slot_branch")

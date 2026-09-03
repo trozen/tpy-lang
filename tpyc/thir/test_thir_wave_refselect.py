@@ -7,6 +7,8 @@ all-rvalue plain-copy decl."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -179,8 +181,8 @@ class TestRecordSelect:
                "    x.append(6)\n"
                "    print(len(a), len(b))\n"
                "def main() -> None:\n    f([1], [2])\nmain()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:binop.shape.||")
 
     def test_reassigned_select_target_stays_ast(self):
         # A REASSIGNED select target is the pointer-local reseat rung the
@@ -192,5 +194,5 @@ class TestRecordSelect:
                "    x.append(5)\n"
                "    print(len(a), len(b))\n"
                "def main() -> None:\n    f([1], [2])\nmain()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")

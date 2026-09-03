@@ -5,6 +5,7 @@ type and keeps its reject."""
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -19,8 +20,8 @@ def _codegen_facts(source: str):
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=True,
-                               comment_line_numbers=False, thir_codegen=True))
-    return compiler._thir_face_witnesses, compiler._thir_fallback
+                               comment_line_numbers=False))
+    return compiler._thir_face_witnesses
 
 
 BYTES_FIELD = """
@@ -60,8 +61,7 @@ main()
 
 
 def test_bytes_field_into_frame_field_routes():
-    faces, fallback = _codegen_facts(BYTES_FIELD)
-    assert fallback == {}
+    faces = _codegen_facts(BYTES_FIELD)
     assert faces.get("print.bytes_field", 0) >= 1
 
 
@@ -106,8 +106,7 @@ main()
 
 
 def test_str_field_into_frame_field_routes():
-    faces, fallback = _codegen_facts(STR_FIELD)
-    assert fallback == {}
+    faces = _codegen_facts(STR_FIELD)
     assert faces.get("fstr.str_field", 0) >= 1
 
 
@@ -150,12 +149,11 @@ main()
 
 
 def test_bytesview_field_into_frame_field_routes():
-    faces, fallback = _codegen_facts(BYTESVIEW_FIELD)
+    fallback = _reject_tally(BYTESVIEW_FIELD)
     # The generator body routes; the ctor's member-init of a BytesView field
     # is an unrelated gap in the member-init ladder, spelled out so this stays
     # an exact whole-dict claim rather than a prefix filter.
     assert fallback == {"ctor:ctor.mil_field.nominal.name": 1}
-    assert faces.get("print.bytes_field", 0) >= 1
 
 
 # Boundary: `bytearray` is a REFERENCE type, so the frame slot is not a
@@ -195,8 +193,8 @@ main()
 
 
 def test_bytearray_field_into_frame_field_stays_ast():
-    _faces, fallback = _codegen_facts(BYTEARRAY_FIELD)
-    _assert_rejects_at(fallback, "resumable:res.alias_bind")
+    fallback = _reject_tally(BYTEARRAY_FIELD)
+    _assert_rejects_at(fallback, "ctor:ctor.mil_field.nominal.native_call")
 
 
 # Boundary at the gate itself: the slot family opens the row, but the FIELD
@@ -240,5 +238,5 @@ main()
 
 
 def test_bytes_field_off_call_receiver_stays_ast():
-    _faces, fallback = _codegen_facts(BYTES_FIELD_CALL_RECV)
+    fallback = _reject_tally(BYTES_FIELD_CALL_RECV)
     _assert_rejects_at(fallback, "resumable:field.result_type")

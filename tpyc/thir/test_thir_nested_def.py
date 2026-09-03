@@ -10,18 +10,18 @@ from ..parse.nodes import TpyNestedDef
 from .lower import lower_module
 from .nodes import THIRNestedDef
 from .testutil import (
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
 )
 
 _PRELUDE = "from tpy import Int32\n"
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -42,8 +42,8 @@ class TestNestedDefRoutes:
         nd = next(s for s in fn.body if isinstance(s, THIRNestedDef))
         assert nd.capture_cpp == "[&total]"
         assert nd.ret_cpp is None
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "auto accumulate = [&total](int32_t x) {" in out
 
     def test_no_capture_and_return_type(self):
@@ -58,8 +58,8 @@ class TestNestedDefRoutes:
         nd = next(s for s in fn.body if isinstance(s, THIRNestedDef))
         assert nd.capture_cpp == "[]"
         assert nd.ret_cpp == "int32_t"
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "auto add = [](int32_t a, int32_t b) -> int32_t {" in out
 
     def test_multi_capture_sorted_by_ref(self):
@@ -72,7 +72,6 @@ class TestNestedDefRoutes:
         nd = next(s for s in _fn(thir, "main").body
                   if isinstance(s, THIRNestedDef))
         assert nd.capture_cpp == "[&a, &b, &c]"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_escaping_value_copy_capture(self):
         # An escaping closure copies a scalar param; the enclosing function
@@ -84,8 +83,8 @@ class TestNestedDefRoutes:
                + "    return add\n"
                + "def main() -> None:\n"
                + "    f = make_adder(2)\n    print(f(3))\n")
-        out_ast = _cpp(src, thir=False)
-        assert _cpp(src, thir=True) == out_ast
+        out_ast = _cpp(src)
+        assert _cpp(src) == out_ast
         assert "auto add = [n](int32_t x) -> int32_t {" in out_ast
 
     def test_sibling_closure_captured(self):
@@ -100,14 +99,13 @@ class TestNestedDefRoutes:
         assert fn is not None
         nds = [s for s in fn.body if isinstance(s, THIRNestedDef)]
         assert nds[1].capture_cpp == "[&double_]"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestNestedDefRejects:
     def _rejects(self, src: str, name: str = "main") -> None:
         thir = _lower_ctx(src)
         assert _fn(thir, name) is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _reject_tally(src)
 
     def test_param_default_rejects(self):
         # A nested-def default is dead surface (sema resolves calls against
@@ -195,8 +193,8 @@ class TestNestedDefEmitState:
                + "def main() -> None:\n"
                + "    a = Cfg(1)\n"
                + "    f = make(a, Cfg(2), 3)\n    print(f())\n")
-        out_ast = _cpp(src, thir=False)
-        assert _cpp(src, thir=True) == out_ast
+        out_ast = _cpp(src)
+        assert _cpp(src) == out_ast
         assert ("[k, own_cfg = std::move(own_cfg), &ref_cfg]"
                 in out_ast or "&ref_cfg" in out_ast)
 
@@ -212,8 +210,8 @@ class TestNestedDefEmitState:
                + "            return x + i\n"
                + "        print(bump(10))\n"
                + "        i += 1\n")
-        out_ast = _cpp(src, thir=False)
-        assert _cpp(src, thir=True) == out_ast
+        out_ast = _cpp(src)
+        assert _cpp(src) == out_ast
 
     def test_return_in_closure_inside_try_finally(self):
         # A return inside a closure inside the outer try/finally must NOT
@@ -225,21 +223,20 @@ class TestNestedDefEmitState:
                + "        print(g())\n"
                + "    finally:\n"
                + "        print(1)\n")
-        out_ast = _cpp(src, thir=False)
-        assert _cpp(src, thir=True) == out_ast
+        out_ast = _cpp(src)
+        assert _cpp(src) == out_ast
         assert "return 5;" in out_ast
 
     def test_trailing_comment_in_body_matches_ast(self):
         # A comment after the closure's last statement stays OUTSIDE the
         # lambda's closing brace on both paths (the AST emits no
         # block-trailing comments for lambdas).
-        def cpp_with_comments(src: str, thir: bool) -> str:
+        def cpp_with_comments(src: str) -> str:
             compiler, modules = _compile(src)
             entry = _entry(modules)
             _, cpp = compiler.generate_code_to_strings(
                 entry, options=CodeGenOptions(emit_source_comments=True,
-                                              comment_line_numbers=False,
-                                              thir_codegen=thir))
+                                              comment_line_numbers=False))
             return cpp
         src = (_PRELUDE
                + "def main() -> None:\n"
@@ -247,7 +244,6 @@ class TestNestedDefEmitState:
                + "        return x + 1\n"
                + "        # trailing note\n"
                + "    print(f(1))\n")
-        assert cpp_with_comments(src, True) == cpp_with_comments(src, False)
 
     def test_closure_name_returned_at_callable_slot_routes(self):
         # A nested-def local is also flagged is_function_ref, so it must take
@@ -263,7 +259,6 @@ class TestNestedDefEmitState:
                + "def main() -> None:\n"
                + "    a = make_adder(5)\n    print(a(10))\nmain()\n")
         assert _fn(_lower_ctx(src), "make_adder") is not None
-        assert _cpp(src, True) == _cpp(src, False)
 
 
 class TestSelfCapturingLambda:
@@ -286,12 +281,9 @@ class TestSelfCapturingLambda:
         thir, w = _lower_ctx_witnessed(self._SRC)
         assert _fn(thir, "apply") is not None
         assert w.get("expr.lambda", 0) >= 1
-        cpp = _cpp(self._SRC, thir=True)
+        cpp = _cpp(self._SRC)
         assert "[this](int32_t x) -> int32_t" in cpp
         assert "this->n" in cpp
-
-    def test_byte_identical(self):
-        assert _cpp(self._SRC, thir=True) == _cpp(self._SRC, thir=False)
 
     def test_generator_method_self_capture_still_defers(self):
         # A generator method's receiver is not a plain `this` -- the AST
@@ -310,5 +302,4 @@ class TestSelfCapturingLambda:
             + "def main() -> None:\n"
             + "    for v in C().gen(2):\n        print(v)\nmain()\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "gen") is None

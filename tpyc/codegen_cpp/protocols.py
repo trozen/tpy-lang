@@ -162,8 +162,8 @@ def narrow_cast_rhs(cpp_type: str, check_type: TpyType,
     unwraps the `Adapter`/`RefAdapter` the structural value sits inside --
     a plain `dynamic_cast<Sub*>` would always fail there. The structural
     overload infers const-ness from `cast_arg`, so `is_const` only shapes
-    the `dynamic_cast` form. Module-level (analyzer-pure) so the AST emit
-    and the THIR lowering share one composition."""
+    the `dynamic_cast` form. Module-level (analyzer-pure) so every caller
+    shares one composition."""
     if (is_protocol_type(source_inner)
             and isinstance(check_type, NominalType)
             and not record_inherits_dynamic(check_type, source_inner,
@@ -227,8 +227,8 @@ def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
     (@dynamic protocol) without an Adapter wrap -- same protocol (joint
     qualified_name + type_args check, so generic instantiations like
     `Container[int]` and `Container[str]` stay distinct) or inheriting
-    peer. Module-level (analyzer-pure) so the AST emit and the THIR
-    lowering share one verdict."""
+    peer. Module-level (analyzer-pure) so every caller shares one
+    verdict."""
     if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
         return False
     if (source.qualified_name() == target.qualified_name()
@@ -240,9 +240,9 @@ def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
 
 def resolve_own_source_type(arg: 'TpyExpr', declared: 'TpyType | None',
                             analyzer) -> 'OwnType | None':
-    """The source ownership type if `arg` is shaped as Own[X] in C++ --
-    ExpressionGenerator._resolve_own_source_type with the declared-type
-    lookup passed IN (`declared`: the caller's var_types/param/field
+    """The source ownership type if `arg` is shaped as Own[X] in C++, with
+    the declared-type lookup passed IN (`declared`: the caller's
+    var_types/param/field
     resolution for a name/field arg, None otherwise), so the verdict is
     analyzer-pure and THIR lowering can thread its own scope dict."""
     declared = unwrap_send_sync(declared) if declared is not None else None
@@ -293,9 +293,9 @@ def classify_dyn_own_arg(arg: 'TpyExpr', protocol: TpyType,
                          declared: 'TpyType | None',
                          analyzer) -> str:
     """Classify one arg bound for an `Own[@dynamic P]` slot -- the single
-    verdict behind `_gen_dynamic_protocol_own_arg`'s dispatch (and, negated
-    on 'forward', `_is_dyn_own_wrap_needed`), shared with THIR so the two
-    paths cannot drift. `declared` is the caller's declared-type resolution
+    verdict behind the Own[@dynamic P] argument dispatch (and, negated on
+    'forward', the wrap-needed test).
+    `declared` is the caller's declared-type resolution
     for the arg (var_types/param/field), None for other shapes.
 
     Verdicts and their renders:
@@ -460,12 +460,6 @@ class ProtocolGenerator:
 
     def get_dynamic_base_name(self, protocol: NominalType) -> str:
         return dynamic_base_name(protocol, self.ctx.analyzer)
-
-    def get_dynamic_adapter_type(self, protocol: NominalType, concrete_cpp: str) -> str:
-        return dynamic_adapter_type(protocol, concrete_cpp, self.ctx.analyzer)
-
-    def get_dynamic_ref_adapter_type(self, protocol: NominalType, concrete_cpp: str) -> str:
-        return dynamic_ref_adapter_type(protocol, concrete_cpp, self.ctx.analyzer)
 
     def dynamic_narrow_cast_rhs(
         self, cpp_type: str, check_type: TpyType, source_inner: 'TpyType | None',

@@ -81,10 +81,10 @@ class THIRExpr(THIRNode):
 class THIRStmt(THIRNode):
     """Base statement.
 
-    `no_source_comment` mirrors the AST flag: a multi-statement desugar (e.g. a
-    tuple-unpack expanding to several assigns that share one source line) marks
-    its non-first statements so the shared source comment is emitted once. Set at
-    lowering from the AST stmt; honored by `_emit_stmts`."""
+    `no_source_comment` marks a multi-statement desugar (e.g. a tuple-unpack
+    expanding to several assigns that share one source line): its non-first
+    statements set the flag so the shared source comment is emitted once. Set
+    at lowering from the Tpy stmt; honored by `_emit_stmts`."""
     no_source_comment: bool = field(default=False, kw_only=True)
 
 
@@ -115,8 +115,8 @@ class THIRDefaultConstruct(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRStrLiteral(THIRExpr):
-    """A string literal, rendered via `cpp_string_literal_expr` so the
-    quoting/escaping matches the AST path. Form stays VALUE: the emitted
+    """A string literal, rendered via `cpp_string_literal_expr`, the single
+    quoting/escaping helper. Form stays VALUE: the emitted
     const char[N] converts implicitly to both string_view and string slots,
     so a literal is never wrapped by the owned-sink view->owned copy."""
     value: str
@@ -144,13 +144,11 @@ class THIRFStringArg:
     """One interpolated f-string value: the lowered expression plus its
     Python-compatible formatting wrapper as a positional `{0}` template
     (e.g. `::tpy::bool_to_str({0})`), decided at lowering from the arg's
-    resolved type and conversion -- the carried mirror of `_gen_fstring`'s
-    per-arg wrapper table (`!r` carries `::tpy::repr_of({0})`; a format
-    spec flips the bool row to `static_cast<int>` and the float rows to
-    bare). None passes the arg through unwrapped (str-family values, plain
+    resolved type and conversion (`!r` carries `::tpy::repr_of({0})`; a
+    format spec flips the bool row to `static_cast<int>` and the float rows
+    to bare). None passes the arg through unwrapped (str-family values, plain
     fixed ints, Char). `format_spec` is the parser-validated constant spec
-    text, spliced verbatim into the `{:spec}` placeholder exactly as the
-    AST arm concatenates it."""
+    text, spliced verbatim into the `{:spec}` placeholder."""
     expr: THIRExpr
     wrap: str | None = None
     format_spec: str | None = None
@@ -160,12 +158,12 @@ class THIRFStringArg:
 class THIRFString(THIRExpr):
     """An f-string: literal segments (raw, unescaped source text) interleaved
     with interpolated args. All type dispatch is decided at lowering (the arg
-    wrap templates); the emitter reassembles `_gen_fstring`'s output as a pure
-    string function -- `std::string("joined")` for the all-literal shape,
+    wrap templates); the emitter assembles a pure string function --
+    `std::string("joined")` for the all-literal shape,
     `std::format("fmt", args...)` otherwise, with the explicit-length
     `std::string("...", N)` / `std::vformat` arms when a literal segment embeds
-    a NUL byte. The non-mirrored arg-type rows (user / union / container / Any)
-    are gate-excluded under any conversion.
+    a NUL byte. The user / union / container / Any arg-type rows are
+    gate-excluded under any conversion.
     The result is an owned `str` (STORAGE form), landing bare in owned sinks
     like any owned-str call result."""
     parts: tuple['str | THIRFStringArg', ...]
@@ -174,9 +172,9 @@ class THIRFString(THIRExpr):
 @dataclass(frozen=True)
 class THIRCharLiteral(THIRExpr):
     """A single-char str literal rendered as a C++ char literal (`'x'`, via
-    `escape_cpp_char`). Arises only where the AST threads a `Char` target into
-    the literal render (gen_expr's is_char_type arm): a comparison operand
-    opposite a Char-typed value (`_comparison_targets`' char arm), a
+    `escape_cpp_char`). Arises only where a `Char` target is threaded into
+    the literal render: a comparison operand
+    opposite a Char-typed value, a
     Char-annotated decl init (`c: Char = 'x'` -> `char c = 'x';`), or a call
     arg into a Char param slot (`take('a')` -> `take('a')`). Every other str
     literal stays a `THIRStrLiteral`. Char-targeted literal reassigns and
@@ -188,8 +186,8 @@ class THIRCharLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRWalrus(THIRExpr):
-    """A walrus binding (`(n := v)`), mirroring _gen_named_expr's
-    target-class renders: the target pre-declares `type name[ = init];`
+    """A walrus binding (`(n := v)`), rendered per target class: the target
+    pre-declares `type name[ = init];`
     through the temp sink's named row on FIRST binding (`cpp_type` set)
     and assigns in place on a rebind (`cpp_type` None). The named pre-decl
     flushes at the statement flush point -- for a while condition that is
@@ -202,8 +200,8 @@ class THIRWalrus(THIRExpr):
     borrow-alias pointer target pre-declares `[const ]T* n = nullptr;` and
     renders `(n = &(v), *n)` (`addr_of` off for an already-pointer
     source). `tail="deref"` appends the `, *n` result deref. Remaining
-    non-value targets (tuples, non-value slots, hoisted names) stay on
-    the AST path."""
+    non-value targets (tuples, non-value slots, hoisted names) are not
+    lowered yet."""
     name: str
     cpp_name: str
     value: 'THIRExpr'
@@ -221,15 +219,15 @@ class THIRWalrus(THIRExpr):
     # A resumable-frame `frame_slot<T>` target: the write is
     # `name.emplace(v)` (the slot has no operator=), and the string is the
     # type prefix a bare brace-init value needs to bind to emplace's
-    # forwarding ref (the AST's typed_brace_init).
+    # forwarding ref (`typed_brace_init`).
     emplace_cpp: 'str | None' = None
 
 
 @dataclass(frozen=True)
 class THIRName(THIRExpr):
     """Local / param reference. `deref` marks an F2 pointer-local (`T*`) read
-    in a value position (a record call arg), rendered `(*name)` -- the mirror
-    of `gen_expr_deref`'s indirect-name deref. Non-pointer names render bare.
+    in a value position (a record call arg), rendered `(*name)` -- the
+    indirect-name deref. Non-pointer names render bare.
 
     `cpp` (when set) is a native-linkage or imported value global's
     PRE-RENDERED spelling (`::g_count` via qualify_native_name /
@@ -242,8 +240,8 @@ class THIRName(THIRExpr):
     is_movable: bool = False
     deref: bool = False
     # An UNPROVEN value-repr Optional[scalar] read consumed as its inner scalar:
-    # renders `::tpy::deref_optional_check(name)` (the AST's runtime-checked
-    # unwrap). Mutually exclusive with `deref` (the proven `(*name)` unwrap).
+    # renders `::tpy::deref_optional_check(name)` -- the runtime-checked
+    # unwrap. Mutually exclusive with `deref` (the proven `(*name)` unwrap).
     opt_deref_check: bool = False
     cpp: str | None = None
 
@@ -283,7 +281,7 @@ class THIRSelf(THIRExpr):
 class THIRBinOp(THIRExpr):
     """Binary operation. `resolved` carries the operator's C++ template and
     operand wrappers (from sema); `divisor_non_zero` swaps the checked div/mod
-    helper for the unchecked one, mirroring the AST emit path. `resolved` is
+    helper for the unchecked one. `resolved` is
     None for the derived comparisons (`<= > >= !=`) and for logical `&&`/`||`
     (bool-result and/or, plus the pair-fold of an inline chained comparison),
     which sema leaves to the bare C++ operator -- the emitter renders
@@ -294,33 +292,32 @@ class THIRBinOp(THIRExpr):
     resolved: ResolvedBinop | None
     divisor_non_zero: bool = False
     # An expression-position binop paren-wraps its result for precedence safety
-    # (`x = (a + b)`); an augmented-assignment RHS is a full statement RHS where
-    # the AST omits that wrap (`x = a + b;`). False reproduces the latter.
+    # (`x = (a + b)`); an augmented-assignment RHS is a full statement RHS that
+    # needs no wrap (`x = a + b;`). False selects the latter.
     paren_wrap: bool = True
     # Per-side operand cast wraps (`{0}` templates), applied to the emitted
-    # operand strings before the wrapper/template expansion -- the AST's
-    # post-generation casts: int-enum operands cast to their underlying type
+    # operand strings before the wrapper/template expansion: int-enum
+    # operands cast to their underlying type
     # (`static_cast<int32_t>(...)`), a BigInt operand of a mixed BigInt/float
     # compare casts to the float operand's type. Computed at lowering.
     left_cast: 'str | None' = None
     right_cast: 'str | None' = None
-    # Lowering's position-independent stamp for gen_binop's dedicated
-    # fixed-int literal arm: both operands are IntLiteral-typed NON-names
+    # Lowering's position-independent stamp for the dedicated fixed-int
+    # literal arm: both operands are IntLiteral-typed NON-names
     # (literals, nested literal binops, subscripts over literal-seeded
-    # containers). `_slot_literal_retype` -- the AST's target-threading
-    # positions -- consumes it to rebuild the node with `template_override`.
+    # containers). `_slot_literal_retype`, at the target-threading
+    # positions, consumes it to rebuild the node with `template_override`.
     both_literal_int_operands: bool = False
     # When set (the rebuilt dedicated arm), emit expands this
     # target-resolved cpp_template over the bare operands -- no wrappers,
-    # no parens (`::tpy::add_check<int64_t>(l, r)`), gen_call_from_fi's
-    # render.
+    # no parens (`::tpy::add_check<int64_t>(l, r)`).
     template_override: 'str | None' = None
 
 
 @dataclass(frozen=True)
 class THIRValueSelect(THIRExpr):
-    """Python `and`/`or` in VALUE position (`_gen_logical_value`'s value
-    slice): renders `(t ? lhs : rhs)` for `or`, `(t ? rhs : lhs)` for
+    """Python `and`/`or` in VALUE position: renders
+    `(t ? lhs : rhs)` for `or`, `(t ? rhs : lhs)` for
     `and`, where `t` is the truthiness of the (once-evaluated) LHS and the
     RHS sits lazily inside the ternary branch (short-circuit preserved).
 
@@ -354,14 +351,14 @@ class THIRValueSelect(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRChainedCompareStmtExpr(THIRExpr):
-    """The complex-intermediate chained comparison
-    (`_gen_chained_compare_lambda`): a GCC statement-expression that binds each
+    """The complex-intermediate chained comparison: a GCC
+    statement-expression that binds each
     non-simple operand to an `auto&& _cmpI` temp so it evaluates exactly once,
     interleaving bindings with the left-folded `&&` chain (operands after a
     failed pair never evaluate). `inits[i]` is operand i's lowered value (the
     temp init, or the inline render when `bound[i]` is False); the n pairs carry
-    the operator and the per-side `{0}`-cast wraps of `_gen_comparison_pair`
-    (BigInt/float + IntEnum), applied to the operand REPRs (`_cmpI` or inline)."""
+    the operator and the per-side `{0}`-cast wraps (BigInt/float + IntEnum),
+    applied to the operand REPRs (`_cmpI` or inline)."""
     inits: tuple[THIRExpr, ...]
     bound: tuple[bool, ...]
     ops: tuple[str, ...]
@@ -374,11 +371,11 @@ class THIRIsNone(THIRExpr):
     """A `name is None` / `name is not None` identity test. On a pointer-repr
     Optional borrow name (an `Optional[record]` param or an OPTIONAL_TO_PTR
     local -- a bare `T*`) it renders the pointer comparison
-    `(operand == nullptr)` / `(operand != nullptr)` -- _gen_binop's identity
-    arm over an indirect name. On a value-repr `Optional[scalar]` /
+    `(operand == nullptr)` / `(operand != nullptr)` -- the identity test
+    over an indirect name. On a value-repr `Optional[scalar]` /
     `Optional[str]` param (`std::optional<T>` / `std::optional<std::string_view>`,
     `value_repr=True`) it renders `(!operand.has_value())` /
-    `(operand.has_value())`. The AST canonicalizes the operand order (the
+    `(operand.has_value())`. The operand order is canonical (the
     Optional side renders first whichever side of `is` it appears on), so the
     node carries only the Optional operand; the storage-form record sources and
     protocol slots (typed null) are gate-rejected. `result_type` is always
@@ -391,7 +388,7 @@ class THIRIsNone(THIRExpr):
 
     On a union-typed NAME binding (`union_monostate=True`) it renders the
     monostate holds test `(std::holds_alternative<std::monostate>(v))` /
-    `(!...)` -- _gen_binop's union arm, identical for value- and
+    `(!...)`, identical for value- and
     pointer-variant reprs (monostate is a value member in both). A
     recursive-alias WRAPPER binding (`union_wrapper=True`) reads the variant
     through `.value` (VariantAccess.variant_expr's wrapper indirection)."""
@@ -410,11 +407,11 @@ class THIRTruthy(THIRExpr):
     `mode` selects one analyzer-free emit spelling. `operand` is always
     present, including in the constant-true user-record arm, which emits it as
     a discard rather than dropping it -- the render can carry effects and
-    runtime checks. The AST's bare-literal form (`_gen_logical_value` over an
-    already-evaluated name / hoisted-temp LHS) has no THIR shape: that whole
+    runtime checks. The bare-literal form (an already-evaluated name /
+    hoisted-temp LHS) has no THIR shape: that whole
     position rejects at `valuesel.lhs_truthy`, so restore an operand-less form
-    here if that gate is ever widened. `deref` mirrors
-    `gen_truthy_expr`'s indirect-record adjustment before dunder dispatch.
+    here if that gate is ever widened. `deref` is the indirect-record
+    adjustment applied before dunder dispatch.
     `result_type` is always bool; VALUE form.
     """
     mode: TruthinessMode
@@ -426,14 +423,14 @@ class THIRTruthy(THIRExpr):
 class THIROptViewArg(THIRExpr):
     """A value-repr `Optional[view]` param NAME (str or bytes) passed into
     another value-repr `Optional[view]` slot of the same family (a call arg or a
-    return) -- the AST's `_maybe_convert_opt_view_param` same-TPy-type ARG split.
+    return) -- the same-TPy-type ARG split.
     The borrow-form `std::optional<std::string_view>` /
     `std::optional<std::span<const uint8_t>>` binding is converted to the
     owned-storage `std::optional<std::string>` / `std::optional<std::vector<
     uint8_t>>` the slot's boundary needs: `x ? std::make_optional(<conv>(*x)) :
     std::nullopt`, where `<conv>` is `std::string` / `::tpy::bytes_copy` per the
-    view family. Fires for the WHOLE optional (narrowed or not -- gen_expr
-    threads the slot type, not the narrowed read). `result_type` is the Optional
+    view family. Fires for the WHOLE optional (narrowed or not -- the slot
+    type drives it, not the narrowed read). `result_type` is the Optional
     slot, whose inner drives the owned-copy spelling (`view_to_owned_conv`);
     VALUE form. `moved` wraps the rebuilt optional in `std::move(...)` --
     the consuming STORAGE positions' spelling (the setitem value)."""
@@ -444,8 +441,8 @@ class THIROptViewArg(THIRExpr):
 @dataclass(frozen=True)
 class THIROwnOptRebuild(THIRExpr):
     """A pointer-repr `Optional[record]` INDIRECT name passed into an
-    `Own[Optional[record]]` slot -- `gen_expr_deref`'s null-safe Own
-    conversion: `n ? std::optional<Inner>(std::move(*n)) : std::nullopt`.
+    `Own[Optional[record]]` slot -- the null-safe Own conversion:
+    `n ? std::optional<Inner>(std::move(*n)) : std::nullopt`.
 
     The binding is a `T*`, the slot is the owning `std::optional<T>`, so the
     pointee has to be moved into a fresh optional rather than dereferenced
@@ -461,11 +458,11 @@ class THIROwnOptRebuild(THIRExpr):
 class THIRMembership(THIRExpr):
     """A `needle in c` / `needle not in c` test over a dict/set container name
     whose `__contains__` is a plain @native member -- `(c.contains(needle))`,
-    optionally negated `(!(c.contains(needle)))`, mirroring _gen_binop's
-    resolved_contains arm. `method_cpp` is the member spelling (the
+    optionally negated `(!(c.contains(needle)))`. `method_cpp` is the
+    member spelling (the
     `@native("contains")` name). The needle renders bare: the admitted
     containers carry fixed-int / owned-str keys and scalar set members, never a
-    StrView key, so the AST's `view_key_target` is None and the needle takes the
+    StrView key, so no view-key target applies and the needle takes the
     plain value render. `result_type` is always bool; VALUE form.
 
     When `free_function` is set (a bytes/BytesView container, whose
@@ -476,14 +473,14 @@ class THIRMembership(THIRExpr):
     (bytes-substring needle) per the resolved overload; the needle renders in
     its owned form.
 
-    When `ranges_contains` is set (the AST's `is_native_in` fallback for a
-    native container whose `__contains__` is NOT a resolved member -- e.g. a
+    When `ranges_contains` is set (a native container whose
+    `__contains__` is NOT a resolved member -- e.g. a
     `readonly[set[T]]`, whose readonly wrapper strips the resolved member), the
     emit is `[!]std::ranges::contains(receiver, needle)` -- no outer parens, the
     negation a bare `!` prefix. `method_cpp` is unused in this form.
 
-    When `iter_loop` is set (the AST's universal `__iter__`+`__next__`
-    fallback for a user iterable with no `__contains__`), the emit is the
+    When `iter_loop` is set (a user iterable with no `__contains__`, driven
+    by the universal `__iter__`+`__next__` protocol), the emit is the
     fixed statement-expression loop (`({ auto&& __itr = ::tpy::__iter__(
     recv); ... __found; })`), negation the same bare `!` prefix.
     `method_cpp` is unused in this form too."""
@@ -499,7 +496,7 @@ class THIRMembership(THIRExpr):
 @dataclass(frozen=True)
 class THIRStrMembership(THIRExpr):
     """A `needle in s` / `not in` test over a str-family value (str/String/
-    StrView), which has no `__contains__` member -- the AST's `.find()` arm:
+    StrView), which has no `__contains__` member -- the `.find()` render:
     `(s.find(needle) != std::string::npos)` for `in`, `== std::string::npos`
     for `not in`. A str-LITERAL receiver is wrapped in `std::string_view(...)`
     (C string literals lack `.find`, `wrap_receiver_sv`); a name/field receiver
@@ -514,11 +511,11 @@ class THIRStrMembership(THIRExpr):
 @dataclass(frozen=True)
 class THIRTupleMembership(THIRExpr):
     """A `needle in (a, b, ...)` / `not in` test against a TUPLE LITERAL, which
-    the AST expands to an OR-chain of equality compares (no `__contains__`):
+    expands to an OR-chain of equality compares (no `__contains__`):
     `((needle == a) || (needle == b) || ...)`, negated as `(!(...))`. A
     single-element tuple drops the join parens (`(needle == a)`, negated
     `(!(needle == a))`). When the needle is a non-trivial expression AND the
-    tuple has more than one element, the AST binds it to a `__in_lhs` temp
+    tuple has more than one element, the needle binds to a `__in_lhs` temp
     inside a GCC statement expression to keep the multiple evaluations
     side-effect-safe (`need_temp`). Elements are value-comparable (scalar /
     str / bool) so `==` renders as a plain C++ comparison. `result_type` is
@@ -532,19 +529,19 @@ class THIRTupleMembership(THIRExpr):
 @dataclass(frozen=True)
 class THIRUnaryNot(THIRExpr):
     """Logical `not` over a bool-typed operand -> `(!(operand))`. Eligibility
-    pins the operand to bool, where the AST's truthiness render
-    (`gen_truthy_expr`) reduces to the plain value render this wraps -- so one
+    pins the operand to bool, where the truthiness render reduces to the
+    plain value render this wraps -- so one
     emit serves value and condition position alike. `result_type` is always
-    bool. Non-bool truthiness (int / Optional / `__bool__` wrappers) stays on
-    the AST path; the arithmetic unaries are `THIRUnaryArith`."""
+    bool. Non-bool truthiness (int / Optional / `__bool__` wrappers) is not
+    lowered here; the arithmetic unaries are `THIRUnaryArith`."""
     operand: THIRExpr
 
 
 @dataclass(frozen=True)
 class THIRUnaryArith(THIRExpr):
-    """An arithmetic unary (`- + ~`) resolved to an operator dunder, mirroring
-    _gen_unaryop's `gen_call_from_fi(resolved_unaryop.method, operand, [])`
-    tail: `cpp_template` is the resolved method's template (`-({self})` for
+    """An arithmetic unary (`- + ~`) resolved to an operator dunder and
+    rendered from that resolved method alone:
+    `cpp_template` is the resolved method's template (`-({self})` for
     float/int negation, `::tpy::neg_check<int32_t>({self})` for a checked
     fixed-int neg) and the emitter expands it over the lowered operand. The
     folded negated-int literal and the IntEnum-negation static_cast are
@@ -558,8 +555,8 @@ class THIRIfExpr(THIRExpr):
     """Conditional expression `a if c else b` -> `((cond) ? (then) : (else))`.
     `cond` is a truthiness position (same admitted set as if/while conditions,
     where the truthy render equals the value render or the enum wrap). Arms are
-    lowered against the ternary's own resolved type -- the AST ignores the
-    consumer's target (`branch_target = result_type`), so the node needs no
+    lowered against the ternary's own resolved type, not the consumer's
+    target (`branch_target = result_type`), so the node needs no
     position threading; a mixed view/owned str arm pair carries the view arm's
     `std::string(...)` materialization as a THIRFormConvert built at lowering.
     `form` is load-bearing for a str-family result: BORROW (a view result --
@@ -574,23 +571,22 @@ class THIRIfExpr(THIRExpr):
 class THIRCall(THIRExpr):
     """Call to a plain free function, or -- when `callee_expr` is set -- to a
     computed callable (`make_adder(10)(5)`, `fns[i](x)`): the callee renders
-    parenthesized ahead of the arg list (`(make_adder(10))(5)`), which is
-    `_gen_call`'s expression-callee arm. `callee` is empty there.
+    parenthesized ahead of the arg list (`(make_adder(10))(5)`). `callee`
+    is empty there.
 
     Otherwise `callee` is the source name; the
     emitter renders `escape_cpp_name(callee)(args)` for the same-module
     case. Eligibility guarantees no generic/overload name mangling.
 
     `callee_cpp` (when set) is a cross-module callee's PRE-RENDERED
-    absolute spelling (`::tpyapp::mod::f` -- `imported_free_callee_cpp`,
-    the qualification decision shared with the AST emit): the emitter
-    renders it verbatim over the args. Mutually exclusive with
+    absolute spelling (`::tpyapp::mod::f` -- `imported_free_callee_cpp`):
+    the emitter renders it verbatim over the args. Mutually exclusive with
     `native_name`/`cpp_template`; `callee` stays the source name for the
     dump.
 
     `native_name` (when set) is a runtime-helper C++ symbol -- an fi-resolved
     `@native` free-function builtin (e.g. `tpy::__len__` for `len(c)`) or a
-    hardcoded fallback helper mirroring an AST hardcode (`tpy::__delitem__`
+    hardcoded helper (`tpy::__delitem__`
     for `del c[k]`): the emitter renders
     `qualify_native_name(native_name)(args)` instead of the bare callee, so the
     dispatch keys on the resolved symbol, not the source name (a user function
@@ -601,17 +597,16 @@ class THIRCall(THIRExpr):
     `__init__` template (`Int32(x)` -> `::tpy::int_cast_check<int32_t>({0})`),
     already fully substituted by sema ({cpp} / class type params) so only
     positional `{0}, {1}, ...` placeholders remain -- lowering enforces that.
-    The emitter expands it over the args with no receiver
-    (gen_call_from_fi's template arm); `callee` is the source type name, kept
-    for the dump only.
+    The emitter expands it over the args with no receiver; `callee` is the
+    source type name, kept for the dump only.
 
     `template_args_cpp` (when set) is a generic TPy callee's explicit
-    template-arg list, pre-rendered at lowering the way the AST spells it
+    template-arg list, pre-rendered at lowering
     (`type_to_cpp_stored` per arg -- the render that avoids C++ deduction
     against `param_val_or_ref_t<T>` slots): the emitter renders
     `callee<T1, T2>(args)` over the plain or `callee_cpp` spelling. Never
-    combined with `native_name`/`cpp_template` (the AST emits no explicit
-    args for those arms)."""
+    combined with `native_name`/`cpp_template`, which take no explicit
+    template args."""
     callee: str
     args: tuple[THIRExpr, ...]
     native_name: str | None = None
@@ -623,12 +618,12 @@ class THIRCall(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRUnionArgLift(THIRExpr):
-    """A temp-free call arg lifted inline into a pointer-variant union slot --
-    the inline arms of `_gen_union_arg`: a `None` literal renders the monostate
+    """A temp-free call arg lifted inline into a pointer-variant union slot:
+    a `None` literal renders the monostate
     member (`std::variant<...>{std::monostate{}}`, `value=None`), a
     member-typed record name the address-of lift (`std::variant<...>{&(name)}`;
-    `deref` prepends the pointer-local/receiver deref -- `&((*p))` /
-    `&((*this))` -- mirroring `gen_expr_deref`'s indirect-name render), and an
+    `deref` prepends the pointer-local/receiver indirect-name deref --
+    `&((*p))` / `&((*this))`), and an
     already-union name into a deep-const slot the explicit const conversion
     (`const_wrap`: `::tpy::ptr_variant_to_const<std::variant<...>>(name)`).
 
@@ -636,15 +631,15 @@ class THIRUnionArgLift(THIRExpr):
     const-pointee (`std::variant<const A*, ...>`) for a deep-const slot (a
     `readonly[...]` annotation or the callee's `deep_const_borrow_params`
     verdict), the mutable spelling otherwise. Beyond that split the member
-    render is const-blind on the AST path (it spells the callee's variant
+    render is const-blind (it spells the callee's variant
     whatever the source's const-ness -- a const source into a MUTABLE slot is
-    a pre-existing AST miscompile the mirror reproduces, see BUGS.md). BORROW
+    a miscompile, see BUGS.md). BORROW
     form -- the variant aliases the named source.
 
-    `temp_cpp` set marks `_gen_union_arg`'s RVALUE branch instead: `value` is
+    `temp_cpp` set marks the RVALUE branch instead: `value` is
     a member-typed ctor rvalue hoisted into a `temp_cpp __tmp_N = <value>;`
     decl at the statement flush, the variant lifting the temp's address
-    (`pv{&__tmp_N}` -- no parens, the AST's temp-arm spelling)."""
+    (`pv{&__tmp_N}` -- no parens)."""
     variant_cpp: str
     value: THIRExpr | None = None  # None -> the monostate member
     deref: bool = False
@@ -657,9 +652,8 @@ class THIROptionalPtrArg(THIRExpr):
     """A temp-free value lowered to a pointer the slot binds -- a pointer-repr
     `Optional[record]` slot (`const A*` / `A*`) or a protocols-only union ctor
     slot whose `&`-lift arm reuses this node (a record / Span name into
-    `Iterable[...] | Spannable[...] | None`, `addr_of`). A call arg (the inline
-    arms of `_gen_optional_ptr_arg`'s non-protocol tail) or a return value (the
-    same renders via `_optional_pointer_form_value`): a `None` literal renders
+    `Iterable[...] | Spannable[...] | None`, `addr_of`). A call arg or a
+    return value -- the same renders at both: a `None` literal renders
     `nullptr` (`value=None`; the typed-null spelling is protocol-only, and
     Optional protocol slots are gate-rejected), a record / Span name the
     address-of (`&(name)`, `addr_of`), and a storage-form Optional field read
@@ -683,25 +677,25 @@ class THIRCtorCall(THIRExpr):
     method arg loop inlines the expansion, unlike the free-fn rvalue-temp
     arm), or as a `THIRArgTemp` init (the free-fn same-record ref-slot
     hoist). Renders
-    `type_cpp(args)` -- `_gen_call`'s record-branch tail: the RAW source
+    `type_cpp(args)` with the RAW source
     name (no `escape_cpp_name`; lowering-enforced) for a same-module record, or
     the `record_qualification` spelling (`::ns::Name`) for an imported
     one. Args are value scalars into plain scalar slots, str-slice
     sources into view slots, or record rvalues into same-nominal record slots
-    (`_gen_record_ctor_args`'s ctor_mutated arm: a MUTATED ref slot carries a
+    (a MUTATED ref slot carries a
     `THIRArgTemp`, a const slot the inline prvalue expansion); every other
     special arm is gate-excluded. STORAGE form -- a fresh self-contained
     value the slot's variant converting ctor consumes."""
     type_cpp: str
     args: tuple[THIRExpr, ...] = ()
-    # @native_c POD aggregate init: `::Name{args}` (the AST's is_native_c arm).
+    # @native_c POD aggregate init: `::Name{args}`.
     brace_init: bool = False
 
 
 @dataclass(frozen=True)
 class THIRVarargPack(THIRExpr):
-    """A `*args` call-site pack (sema's `TpyVarargPack`) rendered per
-    `_gen_vararg_pack`: the trailing positional args collected into a stack
+    """A `*args` call-site pack (sema's `TpyVarargPack`): the trailing
+    positional args collected into a stack
     `std::array` temp wrapped in `::tpy::varargs<E>(...)`.
 
     - Empty pack -> `::tpy::varargs<E>()` (no temp).
@@ -718,8 +712,8 @@ class THIRVarargPack(THIRExpr):
       `temp_args`).
 
     `elem_cpp` is the `varargs<...>` element spelling (`const T` for a
-    readonly slot). Element exprs render position-blind (gen_expr, no target),
-    matching the AST pack loop. VALUE form -- the pack is a fresh rvalue the
+    readonly slot). Element exprs render position-blind (no target is
+    threaded into the pack loop). VALUE form -- the pack is a fresh rvalue the
     slot consumes."""
     elem_cpp: str
     is_ref: bool = False
@@ -735,14 +729,14 @@ class THIRArgTemp(THIRExpr):
     enclosing statement, rendering as the bare temp name at the arg position
     (or `std::move(__tmp_N)` when `move`). Three admitted rows: a
     member-valued scalar into a value-union slot
-    (`std::variant<...> __tmp_N = <arg>;`, `_gen_union_arg`'s value branch),
+    (`std::variant<...> __tmp_N = <arg>;`, the union value branch),
     a same-module record-ctor rvalue into a same-nominal ref slot
     (`A __tmp_N = A(7);`, the free-call `is_ref_param + is_temporary_expr`
     arm), an lvalue into an `Own[T]` slot (`auto __tmp_N = <arg>;` +
-    the `move` wrap -- gen_call_arg's copy+move cascade; a movable NAME at
+    the `move` wrap -- the arg copy+move cascade; a movable NAME at
     its last use skips the temp via `THIRMove` instead), and a record-ctor
     rvalue into a pointer-repr `Optional[record]` slot (`A __tmp_N = A(7);`
-    + the `addr_of` wrap -- `_gen_optional_ptr_arg`'s temporary face). Only
+    + the `addr_of` wrap -- the optional-pointer temporary face). Only
     the flushable statement positions admit it (expr stmt / var-decl init /
     name assign / scalar field write / return): a while-condition hoist is
     the stale-snapshot miscompile (BUGS.md), an elif temp breaks the flat
@@ -750,11 +744,11 @@ class THIRArgTemp(THIRExpr):
 
     Carries NO temp number: numbering is emit-time via the TempSink (the
     `__slot_N` precedent), drawing real numbers from the module-cumulative
-    `ctx.temps` counter so THIR and AST bodies interleaved in one module
-    stay continuous. `cpp_type` is the declared C++ type rendered at
+    `ctx.temps` counter so every body in one module numbers
+    continuously. `cpp_type` is the declared C++ type rendered at
     lowering (`None` -> `auto`, the Own-slot copy row / `TempState.create`'s
     protocol arm); `brace_init` selects `{init}` over `= init`.
-    `form` mirrors how the temp reads at the arg position: VALUE for
+    `form` says how the temp reads at the arg position: VALUE for
     the value-union row (like a same-union name) and for a scalar Own-slot
     payload, BORROW for the record ref-slot row (a record lvalue the ref
     param binds) and the optional-ptr `addr_of` row, STORAGE for a moved
@@ -764,7 +758,7 @@ class THIRArgTemp(THIRExpr):
     brace_init: bool = False
     move: bool = False
     addr_of: bool = False
-    # The AUDITED defer fact: the movable argument the AST's creator passes
+    # The AUDITED defer fact: the movable argument passed
     # to `TempState.create`/`create_typed` for this row, decided at lowering
     # (inside a conditional region, movable AND spellable => the deferred
     # optional-slot render). None = the row is UNAUDITED -- the
@@ -774,9 +768,9 @@ class THIRArgTemp(THIRExpr):
     movable: 'bool | None' = None
 
     def would_defer(self) -> bool:
-        """Would the AST's conditional-operand machinery DEFER this temp
+        """Would the conditional-operand machinery DEFER this temp
         (an uninit `std::optional<T>` slot + a banked `emplace`) instead of
-        hoisting it eagerly at the statement? Mirrors
+        hoisting it eagerly at the statement? Follows
         `TempState._register`'s decision: movable AND slot-spellable. A
         `None` cpp_type is the `auto` row (never spellable). The audited
         `movable` fact answers directly; an unaudited row guesses off the
@@ -798,10 +792,10 @@ class THIRArgTemp(THIRExpr):
 @dataclass(frozen=True)
 class THIRCopy(THIRExpr):
     """An explicit `copy(x)` of a plain F1-record source -- the copy-construct
-    rvalue `_gen_copy_expr` renders for a bare-record arg (`T(x)`), an owned
+    rvalue for a bare-record arg (`T(x)`), an owned
     duplicate for an `Own[T]` sink. `cpp_type` is the record's C++ spelling.
     Only the plain-record arm: the Optional-ptr / pointer-variant / tuple
-    branches of `_gen_copy_expr` stay on the AST path."""
+    copy sources are not lowered yet."""
     value: THIRExpr = None  # type: ignore[assignment]
     cpp_type: str = ""
 
@@ -810,7 +804,7 @@ class THIRCopy(THIRExpr):
 class THIRConsumingIter(THIRExpr):
     """A container consumed by a for-loop whose element type is owned at last
     use (`::tpy::own_iter(std::move(<value>))`): the native auto-consuming
-    iterable of `_gen_consuming_iter`. `native_name` is the consuming
+    iterable. `native_name` is the consuming
     `__iter__`'s C++ symbol (qualified at emit). The wrapped `value` is the
     movable container name; the result is an rvalue range, so the for-each
     captures it owning (`auto __obj_N =`, iterable_lvalue False)."""
@@ -822,11 +816,11 @@ class THIRConsumingIter(THIRExpr):
 class THIRMove(THIRExpr):
     """A movable owned name consumed at its last use: renders
     `std::move(<value>)`. Created for an `Own[T]` call-arg slot
-    (gen_call_arg's `_maybe_move` arm) and for the resumable return leaf's
+    (the arg `_maybe_move` arm) and for the resumable return leaf's
     direct-ready move (containers/records/expensive values move out of the
     completing frame; the emit hook unwraps it at pre-finally sites).
-    Lowering creates it only when the movability + last-use facts fire (the
-    same `movable_locals` + `all_last_uses` reads as the AST); the
+    Lowering creates it only when the movability + last-use facts fire
+    (the `movable_locals` + `all_last_uses` reads); the
     non-movable lvalue shape hoists a `THIRArgTemp` copy instead."""
     value: THIRExpr
 
@@ -841,7 +835,7 @@ class THIRDecayCopy(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRLambda(THIRExpr):
-    """A lambda expression -- `_gen_lambda`'s C++ closure:
+    """A lambda expression -- a C++ closure:
 
         <capture>(<params>) -> <ret_cpp> { return <body>; }   (value return)
         <capture>(<params>) { <body>; }                       (void return)
@@ -849,9 +843,9 @@ class THIRLambda(THIRExpr):
     `capture_cpp` is the full `[...]` list, `params_cpp` the spelled param
     slots, both from sema's lambda facts; `ret_cpp` is None for a void body
     (emit drops the trailing type and renders the body as a bare statement).
-    The body is a single lowered expression -- the AST's `gen_expr(body,
-    ret_type)`. The by-value-capture (Callable/std::function) and
-    readonly-param (key-function) param spellings stay on the AST path."""
+    The body is a single lowered expression, lowered against `ret_type`.
+    The by-value-capture (Callable/std::function) and readonly-param
+    (key-function) param spellings are not lowered yet."""
     capture_cpp: str
     params_cpp: tuple[str, ...]
     body: THIRExpr
@@ -861,8 +855,8 @@ class THIRLambda(THIRExpr):
 @dataclass(frozen=True)
 class THIRMethodCall(THIRExpr):
     """Method call on a builtin-container or user-record receiver, carrying the
-    facts `gen_call_from_fi` dispatches on, materialized at lowering from the
-    resolved FunctionInfo. Emit tries the arms in the same order: `cpp_template`
+    facts the call render dispatches on, materialized at lowering from the
+    resolved FunctionInfo. Emit tries the arms in order: `cpp_template`
     (expanded with the receiver + args, e.g. `xs.sort()` -> `std::stable_sort(
     xs.begin(), xs.end())`), else `native_function_name` (a `@native(...,
     function=True)` free-function symbol with the receiver prepended as the
@@ -871,7 +865,7 @@ class THIRMethodCall(THIRExpr):
     member rename or the escaped source name, e.g. `xs.append(v)` ->
     `xs.push_back(v)`; `a.combine(b)` -> `a.combine(b)`).
 
-    Lowering admits only the AST path's pass-through shapes -- a
+    Lowering admits only pass-through shapes -- a
     bare-name receiver, value-scalar args into scalar / `Own[scalar]` slots
     (plain scalar only for user records: their non-template callees temp+move
     an Own[scalar] arg), str-slice args into non-Own str-family slots, and
@@ -884,8 +878,8 @@ class THIRMethodCall(THIRExpr):
     arms, picked by sema's `ptr_non_null` fact: proven non-null -> `is_arrow`
     (`p->m(args)`), unproven -> `deref_check`. `deref_check` wraps an UNPROVEN
     pointer receiver (pointer-repr Optional borrow, or that Ptr value) in the
-    runtime null check (`::tpy::deref_check(p).method(args)`,
-    _gen_method_call's runtime-check arm) -- like THIRFieldAccess it is
+    runtime null check (`::tpy::deref_check(p).method(args)`) -- like
+    THIRFieldAccess it is
     mutually exclusive with `is_arrow` (the checked deref yields a reference,
     read with `.`). An owned-str result (`xs.pop()`, S5) is STORAGE form,
     landing bare in owned sinks."""
@@ -897,25 +891,25 @@ class THIRMethodCall(THIRExpr):
     is_arrow: bool = False
     deref_check: bool = False
     # A generic method call's explicit template args
-    # (`b.transform<::tpy::BigInt>(42)` -- the AST's method_targs), spelled
+    # (`b.transform<::tpy::BigInt>(42)`), spelled
     # at lowering via render_type over the inferred args. Plain member arm
     # only (the deref_check arm gate-excludes type args).
     method_targs_cpp: tuple[str, ...] | None = None
     # A USER Deref-wrapper method call: N `.__deref__()` calls between the
     # receiver and the member call (`r.sum()` -> `r.__deref__().sum()`),
-    # _gen_method_call's `deref_chain and not is_pointer()` arm. A
+    # for a non-pointer receiver. A
     # pointer-local receiver joins the FIRST hop with `->`
     # (`g->__deref__().push_back(3)`, is_arrow); still exclusive with
     # deref_check (the checked deref yields a reference).
     deref_chain: int = 0
     # A consuming method's receiver move (`std::move(b1).take()` --
-    # _gen_method_call's is_consuming wrap). Lowering admits a bare
+    # the is_consuming wrap). Lowering admits a bare
     # non-narrowed NAME receiver; a pointer-local one moves its deref
     # (`std::move(*w).take()` -- the emit folds is_arrow into the deref).
     move_receiver: bool = False
     # An Optional[Callable] FIELD invocation's `.value()` unwrap between
-    # the member and the call (`(*this).on_event.value()(msg)` -- the AST
-    # callable-field arm's unconditional, narrowing-blind string append).
+    # the member and the call (`(*this).on_event.value()(msg)`): the
+    # unwrap is unconditional and narrowing-blind.
     callable_value_unwrap: bool = False
 
     def __post_init__(self) -> None:
@@ -944,8 +938,7 @@ class THIRContainerLiteral(THIRExpr):
     """A container-literal local initializer, emitted per the sema-RESOLVED
     container family in `result_type` (the vector-vs-array decision for a list
     literal -- sema's PendingListType resolution -- is already final at lowering).
-    Mirrors the scalar branches of `_gen_array_literal` / `_gen_dict_literal` /
-    `_gen_set_literal`:
+    The scalar element branches:
 
     - list / `Array[T, N]` -> `{e1, e2}` (brace-init consumed by the spelled
       decl type); an empty LIST spells the type (`std::vector<T>{}`, the
@@ -963,7 +956,7 @@ class THIRContainerLiteral(THIRExpr):
     aggregate brace level), and F1 records (ctor rvalues and names; a movable
     name at its last use arrives wrapped in `THIRMove`).
 
-    `make_container` mirrors the AST's non-copyable / last-use-movable
+    `make_container` is the non-copyable / last-use-movable
     switch: std::initializer_list elements are const, so a `std::move` in a
     brace-init would silently copy -- the emit uses the reserve+emplace
     helpers instead (`::tpy::make_vector<elem_cpp>(...)` for list, the
@@ -971,14 +964,14 @@ class THIRContainerLiteral(THIRExpr):
     `::tpy::make_ordered_map`/`make_ordered_set` for dict/set, spelled from
     result_type like the brace arms). std::array aggregate-init moves fine,
     so the Array family never sets it. The union / protocol element branches
-    stay gate-excluded.
+    are gate-excluded.
 
-    `typed_brace_cpp` mirrors `typed_brace_init` for the positions whose
+    `typed_brace_cpp` applies `typed_brace_init` at the positions whose
     consumer is a template that cannot deduce a bare brace-init (the
     dict-comp `insert_or_assign` value slot): the resolver-rendered
     destination type, prefixed onto the render ONLY when it starts with `{`
-    (the make_container / empty-list spellings are already self-describing,
-    matching the AST's startswith check)."""
+    (the make_container / empty-list spellings are already
+    self-describing)."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
     make_container: bool = False
@@ -988,7 +981,7 @@ class THIRContainerLiteral(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRListRepeat(THIRExpr):
-    """`[elems] * count` -- the `_gen_list_repeat` mirror. Element children lower
+    """`[elems] * count`. Element children lower
     through the container-element wraps with the move SUPPRESSED (one source is
     copied into every slot; a move would use-after-move slots 1..N-1). The emit
     dispatches on `result_type`'s family (like `THIRContainerLiteral`):
@@ -996,12 +989,12 @@ class THIRListRepeat(THIRExpr):
     - list (materialized) ->
       `::tpy::from_range<result_cpp>(::tpy::repeat_range<elem_cpp>(count, {elems}))`
     - `Array[T, N]` -> the `({ ... array_from_index ...; })` statement-expression
-      (mirrors the comprehension array-demotion arm). One element:
+      (the comprehension array-demotion arm). One element:
       `elem_cpp __rep_N = e0;` + `[&](std::size_t) -> elem_cpp { return __rep_N; }`;
       k>1: `std::array<elem_cpp, k> __rep_N{elems};` +
       `[&](std::size_t __i_N) -> elem_cpp { return __rep_N[__i_N % k]; }`. The
-      `__rep_N` index draws the per-function `iter_counter` at EMIT (matching
-      the AST's single `iter_counter` draw), so it is NOT baked into the node.
+      `__rep_N` index draws the per-function `iter_counter` at EMIT (a
+      single draw for the whole shape), so it is NOT baked into the node.
 
     - lazy `ListRepeatType` -> the bare `repeat_range` (no `from_range` wrap):
       the unmaterialized `[v] * n` binding.
@@ -1021,11 +1014,11 @@ class THIRListRepeat(THIRExpr):
 @dataclass(frozen=True)
 class THIRTupleLiteral(THIRExpr):
     """A value-tuple literal `(a, b)` at a fully-targeted slot -- the
-    all-VALUE-elements path of `_gen_tuple_literal` (`has_ref_elements`
+    all-VALUE-elements path (`has_ref_elements`
     False): the spelled `std::tuple<...>{e1, e2}` render, position-independent
     (return / decl init / call arg). `result_type` is the SLOT TupleType, so
-    the spelled type is the target's resolved element list, matching the
-    AST's `resolved_elem_types` (target-provided). Elements are value scalars
+    the spelled type is the target's resolved element list. Elements are
+    value scalars
     or owned-str values, lowered per element slot (`_lower_container_elem`:
     target-typed literal retypes -- the BigInt ctor wraps / Float32 `f`
     suffix -- and the S1 view->owned `std::string(x)` wrap for view-form str
@@ -1038,7 +1031,7 @@ class THIRTupleLiteral(THIRExpr):
 @dataclass(frozen=True)
 class THIRBorrowTupleLiteral(THIRExpr):
     """A tuple literal at a BORROW-form slot (`std::tuple<..., T*>`) -- the
-    ref-element path of `_gen_tuple_literal` reduced to its lvalue subset:
+    ref-element path reduced to its lvalue subset:
     value elements render bare into their value slots, pointer-repr
     lvalue-NAME elements lift `&(name)` (an already-pointer name passes
     bare). `spelled_cpp` is the slot spelling from the slot-info ladder
@@ -1064,7 +1057,7 @@ class THIRBorrowTupleLiteral(THIRExpr):
 @dataclass(frozen=True)
 class THIRTupleValueToBorrow(THIRExpr):
     """A tuple literal with RVALUE elements at a borrow-form slot -- the
-    `tuple_value_to_borrow` path of `_gen_tuple_literal`: a value-form source
+    `tuple_value_to_borrow` path: a value-form source
     tuple is built inline (`src_cpp{...}`; its full-expression lifetime keeps
     the addresses valid through the consuming call) and the helper takes
     addresses / binds references into the borrow-form `dst_cpp`. Rvalue
@@ -1091,19 +1084,19 @@ class THIRTupleValueToBorrow(THIRExpr):
 @dataclass(frozen=True)
 class THIRRecordCopy(THIRExpr):
     """An explicit `copy(x)` of an F1 record rendered as the copy-ctor call
-    `T(x)` -- the record arm of the AST's `_gen_copy_expr`. Reachable today
+    `T(x)`. Reachable today
     only as a pointer-repr tuple-literal ELEMENT (the MIL tuple cell); every
     other admitted `copy()` position unwraps to the bare source instead
     (direct-init / MIL copies implicitly). `cpp_type` is the copied record's
-    spelled type (`arg_type.to_cpp()` on the AST side)."""
+    spelled type (`arg_type.to_cpp()`)."""
     value: THIRExpr
     cpp_type: str
 
 
 @dataclass(frozen=True)
 class THIRComprehension(THIRExpr):
-    """A list/set/dict comprehension at a fresh local's decl-init -- the GCC
-    stmt-expr mirror of `_gen_comprehension_iife` (the C1+C2 slice):
+    """A list/set/dict comprehension at a fresh local's decl-init -- a GCC
+    statement-expression IIFE (the C1+C2 slice):
 
         ({ <container_cpp> __result; <loop head> { <binding>
            [if (c1 && c2) {] <insert>; [}] } std::move(__result); })
@@ -1115,10 +1108,10 @@ class THIRComprehension(THIRExpr):
     `__beg_N`/`__end_N`, the shared `loop_var_binding` or the inline
     tuple-unpack `__tup_N` lines). A 3-arg range iterates begin/end over
     the Range OBJECT (`iterable` is the substituted `::tpy::Range<T>(...)`
-    template call, an rvalue capture -- _gen_comp_range_loop's fallback).
+    template call, an rvalue capture).
     A list result reserves (`sized_reserve`
     for begin/end over sized iterables; the range arms' `> 0` / BigInt
-    `to_size_checked` guards); set/dict skip (the AST's `skip_reserve`).
+    `to_size_checked` guards); set/dict skip the reserve.
     Inserts: `push_back(elem)` / `insert(elem)` / `insert_or_assign(k, v)`;
     elements arrive through the S5 per-slot owned-str wrap. Gate-excluded:
     owned-move elements (`owns_elements` -- the `__dk_N` key-sequencing and
@@ -1162,8 +1155,8 @@ class THIRComprehension(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRGenExpr(THIRExpr):
-    """A lazy generator expression (`x > 0 for x in xs`) as the make_generator
-    render of `_gen_generator_expression` -- an argument to a native Iterable
+    """A lazy generator expression (`x > 0 for x in xs`) as a make_generator
+    render -- an argument to a native Iterable
     consumer (`all`/`any`/`sum`). Slice: single loop var, NO filter, scalar
     element/binding. Two source shapes:
 
@@ -1182,7 +1175,7 @@ class THIRGenExpr(THIRExpr):
     `inner_captures` are the outer locals the element reads (none when it only
     reads the loop var). The multi-line render reads the enclosing statement
     indent off `_EmitState.stmt_indent_level`. Range / filtered / unpack / owned /
-    narrowed-Optional / dict shapes raise ThirUnsupported (body fallback)."""
+    narrowed-Optional / dict shapes raise ThirUnsupported."""
     iterable: 'THIRExpr | None' = None       # lvalue source
     element: 'THIRExpr | None' = None
     slot_cpp: str = ""
@@ -1202,11 +1195,11 @@ class THIRGenExpr(THIRExpr):
     const_loop_var: bool = False
     # Filter conditions (`x for x in xs if x > t`): &&-joined truthy exprs
     # wrapping the yield (`if (...) { return optional<slot>(elem); }` --
-    # _gen_genexpr_yield's conditional arm; cond/yield temps flush inside
+    # the conditional yield arm; cond/yield temps flush inside
     # the lambda body at their own indents).
     conditions: tuple = ()
-    # RANGE source (`x for x in range(...)`): the counter-lambda flavor of
-    # _gen_genexpr_counter_lambda. `range_args` are the lowered bounds
+    # RANGE source (`x for x in range(...)`): the counter-lambda flavor.
+    # `range_args` are the lowered bounds
     # (1-3, each cast `static_cast<counter_cpp>(...)` in the init-captures);
     # `binding_cpp` carries the pre-rendered `{counter} {var} = __i++;`
     # (2-arg) / `= __i;` (3-arg, the emit adds `__i += __step;`); nargs==3
@@ -1227,7 +1220,7 @@ class THIRCoerce(THIRExpr):
       `_coerce_disposition`), so the inner expression renders directly in the
       target type.
     * TEMPLATE (`wrap` set): the scalar-cast family (`static_cast<float>({0})`
-      and friends) -- the coercion's codegen lambda mirrored as a positional
+      and friends) -- the coercion rendered as a positional
       `{0}` template computed at lowering, where the target type's C++
       spelling is at hand.
 
@@ -1255,8 +1248,8 @@ class THIRConceptTest(THIRExpr):
     constraint an `if constexpr` tests (`::tpy::Sized<T_items>`, the
     Optional[Protocol] `!std::same_as<T_x, std::nullptr_t>` special, or
     either under `(!...)` negation). `cpp` is the full rendered spelling,
-    computed at lowering via the codegen concept renderer hook (the same
-    _concept_constraint the AST arm calls)."""
+    computed at lowering via the codegen concept renderer hook
+    (`_concept_constraint`)."""
     cpp: str
 
 
@@ -1265,12 +1258,12 @@ class THIRClassConstant(THIRExpr):
     """Class-constant read `C.X` / `c.X` / `mod.C.X` -> the bare qualified
     static (`C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X`). `cpp`
     is the full spelling composed at lowering (native rename, generic
-    instantiation, cross-module qualification) -- the AST's
-    `_class_constant_access_parts`. An effectful / runtime-checked INSTANCE
+    instantiation, cross-module qualification).
+    An effectful / runtime-checked INSTANCE
     receiver carries `recv_eval` + `recv_wrap` (the statement-expression
     wrapper: `({ <wrap(recv)>; C::LIMIT; })`, wrap `::tpy::deref_check({0})`
     for the unproven-Optional check or `static_cast<void>({0})` for the
-    effect discard -- gen_class_constant's receiver_eval split). `form`
+    effect discard -- the receiver_eval split). `form`
     follows the constant's type like a name read: a `StrView` constant is a
     view (BORROW -- owned-str sinks copy it)."""
     cpp: str
@@ -1306,8 +1299,8 @@ class THIREnumWrap(THIRExpr):
 
     A PLAIN-enum truthiness test is always true, so its wrap is
     `(static_cast<void>({0}), true)` -- the value is a constant but the
-    operand still evaluates, as gen_truthy_expr does. Every arm fills the
-    `{0}` slot, so `operand` is never absent."""
+    operand still evaluates. Every arm fills the `{0}` slot, so `operand` is
+    never absent."""
     wrap: str
     operand: THIRExpr
 
@@ -1332,17 +1325,16 @@ class THIRFieldAccess(THIRExpr):
 
     `narrowed_deref` wraps the WHOLE access in `(*...)`: a sema-NARROWED
     `Optional` field read (declared `std::optional<T>` storage, analyzed
-    non-Optional) unwraps unconditionally in value positions -- gen_expr_deref's
-    narrowed-optional-field arm. Plain-assign targets and the
-    `print_optional_val` wrap read the bare storage instead; those consumers
-    strip the flag (mirroring the AST's gen_expr-vs-gen_expr_deref split).
+    non-Optional) unwraps unconditionally in value positions. Plain-assign
+    targets and the `print_optional_val` wrap read the bare storage instead;
+    those consumers strip the flag.
 
     `deref_chain` (>0) inserts N `__deref__()` calls between the receiver and
     the field -- a field access through a USER Deref-style wrapper
-    (`r.x` -> `r.__deref__().x`), _gen_field_access's deref_chain arm. A
+    (`r.x` -> `r.__deref__().x`). A
     pointer-local receiver (proven narrowed-Optional / F2-reseated `T*`)
     joins the first hop with `->` via `is_arrow`
-    (`r->__deref__().x`), mirroring the method twin."""
+    (`r->__deref__().x`), like the method twin."""
     receiver: THIRExpr
     field_cpp: str
     is_arrow: bool = False
@@ -1382,7 +1374,7 @@ class THIRFieldAccess(THIRExpr):
 @dataclass(frozen=True)
 class THIRSubscript(THIRExpr):
     """Subscript read `receiver[index]`, dispatched at emit on the receiver's
-    resolved type family (mirrors `_gen_subscript`'s tuple and container branches).
+    resolved type family (tuple vs container).
 
     Tuple -- `std::get<N>(receiver)`. `index` is a `THIRLiteral` holding the element
     offset, already normalized to a non-negative int at lowering (a negative literal
@@ -1402,15 +1394,15 @@ class THIRSubscript(THIRExpr):
     S5) carries its resolved shape instead: BORROW when the read's view var
     resolved `StrView` (drives the S1 owned-sink `std::string(x)` copy),
     STORAGE when it resolved owned (bare -- the `const std::string&` element
-    copies implicitly at owned sinks on both paths). `index` is
+    copies implicitly at owned sinks). `index` is
     the lowered index expression; `bounds_safe` (sema value-range analysis)
     picks the emit -- `receiver[static_cast<std::size_t>(index)]` when proven
     in-bounds (a literal index needs no cast), else the checked dunder
     `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
     spells the same dunder, so one emit covers both; a BYTES receiver instead
     dispatches to `::tpy::bytes_getitem(receiver, index)` -- bytes'
-    `__getitem__(Int32)` is a @native free-function dunder, mirroring
-    `_gen_subscript`'s fi lookup). The index is a value
+    `__getitem__(Int32)` is a @native free-function dunder). The index is a
+    value
     scalar (a runtime-BigInt one arrives pre-wrapped in its
     `.to_fixed_check<int32_t>()` THIRCoerce from lowering) or, for an
     owned-str-keyed dict, a
@@ -1421,12 +1413,12 @@ class THIRSubscript(THIRExpr):
     bounds_safe: bool = False
     # A GENERIC tuple element read (`p[0]` on `tuple[T, T]`): the val_or_ptr
     # slot reads through `::tpy::tuple_elem_ref(std::get<N>(p))` (deref at
-    # instantiation for non-value T) -- _gen_subscript's TypeParamRef arm.
+    # instantiation for non-value T) -- the TypeParamRef arm.
     elem_ref: bool = False
     # A user-record `__getitem__` subscript -> the record's generated C++
     # `operator[]`, spelled bare `receiver[index]` over the plainly-rendered
     # index (no size_t cast -- the operator takes the user's declared key type,
-    # like _gen_subscript's concrete-user-record / fi-fallback arms).
+    # like the concrete-user-record / fi-fallback arms).
     record_getitem: bool = False
     # An UNPROVEN value-repr Optional[scalar] ELEMENT read consumed as its
     # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
@@ -1442,7 +1434,7 @@ class THIRSubscript(THIRExpr):
 class THIRStrSlice(THIRExpr):
     """A str/bytes slice off a str/bytes-family receiver, emitted via the
     sema-resolved slice `__getitem__`'s `@cpp_template` expanded over the
-    receiver and the slice argument (mirrors `_gen_subscript`'s slice arm;
+    receiver and the slice argument (the slice arm;
     the template carried on the node makes the emit family-neutral -- bytes
     carries `::tpy::bytes_slice` / `::tpy::bytes_stepped_slice`). Three index
     shapes:
@@ -1461,14 +1453,14 @@ class THIRStrSlice(THIRExpr):
 
     The receiver is a str/bytes name, a str/bytes-family field off an
     F1-record receiver, or an eligible owned/view-returning call (all render
-    bare into `{self}`). An absent bound renders `std::nullopt`
-    (`_gen_optional_slice_bound`). A VIEW result is consumed at view sinks or
+    bare into `{self}`). An absent bound renders `std::nullopt`.
+    A VIEW result is consumed at view sinks or
     materialized at an owned sink by the view->owned `THIRFormConvert` keyed
     on the BORROW form -- str: a sema `strview_to_str` TpyCoerce (decl init /
     return) lowered via `_coerce_disposition` to `std::string(...)`; bytes: a
     coerce-less owned decl init wrapped `::tpy::bytes_copy(...)` at lowering
     (an owned bytes RETURN arrives as the gate-rejected `bytesview_to_bytes`
-    coerce -> AST, the deferred cross-type bytes-coercion cell). Bounds are
+    coerce, which is not lowered yet). Bounds are
     eligible fixed-int value exprs rendered bare (a BigInt bound's
     `.to_fixed_check` narrow is gate-excluded)."""
     receiver: THIRExpr
@@ -1484,13 +1476,13 @@ class THIRStrSlice(THIRExpr):
 class THIRIsinstance(THIRExpr):
     """`isinstance(v, A)` / `isinstance(v, (A, B))` over a routed union
     local/param -> `std::holds_alternative<M>(v)` per check member, OR-joined
-    and parenthesized for the multi-member form -- mirrors the AST isinstance
-    arm over value/pointer variants (F4 U3). `member_cpps` are the final
+    and parenthesized for the multi-member form, over value or pointer
+    variants (F4 U3). `member_cpps` are the final
     template args (the `*` suffix and `const` prefix already applied for
-    pointer variants at lowering, mirroring VariantAccess._type_arg);
-    `variant_cpp` is the source spelled the way the AST spells it (the bare
-    Python name -- the AST deliberately skips the narrowed_vars alias, and the
-    slice excludes indirect / frame-slot sources)."""
+    pointer variants at lowering, like VariantAccess._type_arg);
+    `variant_cpp` is the source spelled as the bare Python name -- the
+    narrowed_vars alias is deliberately skipped, and the
+    slice excludes indirect / frame-slot sources."""
     variant_cpp: str
     member_cpps: tuple[str, ...]
 
@@ -1500,8 +1492,8 @@ class THIRDynIsinstanceMulti(THIRExpr):
     """The TUPLE form of a polymorphic isinstance condition --
     `isinstance(v, (A, B))` -> the no-init OR-chain
     `((dynamic_cast<const A*>(v) != nullptr) || (...))`. `checks_cpp` are
-    the pre-rendered per-member null-checks (narrow_cast_rhs at lowering,
-    the AST chokepoint); no extraction alias exists (the branch fact is
+    the pre-rendered per-member null-checks (the shared `narrow_cast_rhs`
+    chokepoint at lowering); no extraction alias exists (the branch fact is
     the checked union)."""
     checks_cpp: tuple[str, ...] = ()
 
@@ -1514,7 +1506,7 @@ class THIRAnyIsinstance(THIRExpr):
         (v.value.has_value() && v.value.type() == typeid(T))
         (v.value.has_value() && (..typeid(A) || ..typeid(B)))
 
-    -- mirrors the AST isinstance arm's Any branch. `subject_cpp` is the bare
+    -- the isinstance Any branch. `subject_cpp` is the bare
     Python name (the slice excludes indirect / frame-slot subjects, like the
     variant sibling `THIRIsinstance`)."""
     subject_cpp: str
@@ -1524,7 +1516,7 @@ class THIRAnyIsinstance(THIRExpr):
 @dataclass(frozen=True)
 class THIRDynIsinstance(THIRExpr):
     """Polymorphic isinstance over a @dynamic-dispatch subject (a dyn-protocol
-    ref or polymorphic base class) -> the AST's C++17 if-init render, emitted
+    ref or polymorphic base class) -> the C++17 if-init render, emitted
     whole inside the if-condition parens:
 
         [const ]Sub* __p_ptr = <narrow_cast_rhs>; (__p_ptr != nullptr)
@@ -1587,13 +1579,13 @@ class THIRVarDecl(THIRStmt):
 
     `cpp_type` is the rendered C++ declaration type for non-value locals (where
     `resolved_type.to_cpp()` is insufficient -- e.g. the inner type of a
-    pointer-local Optional); None for the value-scalar slice (emit falls back to
+    pointer-local Optional); None for the value-scalar slice (emit defaults to
     `resolved_type.to_cpp()`). `form` is the coarse semantic form of the local --
     `BORROW` for the F1 `T&` alias / `T*` optional-read locals -- and drives the
     insertion rule. `cpp_local_representation` is the `LocalCppForm` analog
     carried verbatim: non-semantic COMPATIBILITY metadata that selects the exact
-    C++ slot shape (REF_ALIAS `T&` vs OPTIONAL_TO_PTR `T*`) so emit reproduces
-    today's eager codegen byte-for-byte; no other node may depend on it."""
+    C++ slot shape (REF_ALIAS `T&` vs OPTIONAL_TO_PTR `T*`); no other node
+    may depend on it."""
     name: str
     resolved_type: TpyType
     init: THIRExpr | None = None
@@ -1632,13 +1624,13 @@ class PtrSlotKind(Enum):
                           `v: A | B | None = None; v = A(...)`): a FRESH
                           value-variant `__slot_N = init;` declared at the
                           reseat + `v = to_ptr_variant(__slot_N);` (the
-                          AST's slotless inline-slot fallback).
+                          slotless inline-slot form).
       * `UNION_ADDR`   -- `v: A | B = name` (concrete-member lvalue) ->
                           `variant<A*, B*> v{&(name)};`.
       * `DYN_PROTOCOL` -- `p: P = Concrete(...)` for a @dynamic protocol P ->
                           a concrete/adapter `__slot_N{init}` + a protocol
-                          `Base* p = &__slot_N;` (the AST's
-                          `_gen_dynamic_protocol_init` direct/adapter arm).
+                          `Base* p = &__slot_N;` (the direct/adapter
+                          arm).
                           `cpp_type` is the SLOT spelling (concrete, or the
                           `Adapter<Base, Concrete>` for a structural conformer);
                           `base_cpp` is the protocol base pointer spelling.
@@ -1651,7 +1643,7 @@ class PtrSlotKind(Enum):
     UNION_ADDR = auto()
     DYN_PROTOCOL = auto()
     # Escape-hoist PLAIN-record pointer-locals (the classifier's OTHER, the
-    # AST pointer path's rvalue branches):
+    # pointer path's rvalue branches):
     #   * `RECORD_RVALUE` -- a name-reassigned (not rvalue-reassigned) local
     #     with a record-rvalue init: `T __slot_N = init;\nT* x = &__slot_N;`
     #     (the REBIND_SLOT render minus the rebind slot -- reseats copy
@@ -1677,13 +1669,13 @@ class PtrSlotKind(Enum):
     # `s = make_some()` where the callee returns an Own-declared storage
     # optional: materialize the whole `std::optional<T>` in a slot and lift
     # the pointer binding (`std::optional<T> __slot_N = make_some();`
-    # `T* s = ::tpy::optional_to_ptr(__slot_N);` -- the AST's is_opt_field
+    # `T* s = ::tpy::optional_to_ptr(__slot_N);` -- the is_opt_field
     # slot machinery). `cpp_type` carries the pointee spelling.
     OPT_STORAGE_CALL = auto()
     # ... and the INLINE-slot reseat of a ptr-repr Optional local whose
     # source is a storage-form Optional FIELD off an rvalue receiver
     # (`v = make_holder(p).value` -> `v = ::tpy::optional_to_ptr(__slot_N =
-    # make_holder(p).value);`, the AST's `_ptr_from_rvalue_slot` is_opt_field
+    # make_holder(p).value);`, the `_ptr_from_rvalue_slot` is_opt_field
     # branch over the decl-site rebind slot). One line, unlike the
     # OPT_STORAGE_CALL reseat's fill-then-lift pair.
     OPT_FIELD_RVALUE = auto()
@@ -1692,8 +1684,8 @@ class PtrSlotKind(Enum):
     # mixed rvalue/lvalue flavor): the first such reseat allocates the
     # `std::optional<T> __slot_N;` lazily into the function-top hoist lines
     # and registers it for reuse; every reseat renders
-    # `name = &*(__slot_N = <rvalue>);` (`_gen_pointer_local_rebind`'s
-    # is_hoisted rvalue branch). `val_cpp` carries the slot's T spelling.
+    # `name = &*(__slot_N = <rvalue>);` (the is_hoisted rvalue branch).
+    # `val_cpp` carries the slot's T spelling.
     BRANCH_RVALUE = auto()
     # Resumable frame body: an rvalue reseat of a pointer-form frame local
     # materializes in its prescanned FRAME-FIELD slot (one per write site,
@@ -1708,7 +1700,7 @@ class PtrSlotKind(Enum):
     # Address-of an lvalue, in BOTH directions of the decl/reseat pair (like
     # the OPT_NONE / UNION_NONE twins above):
     #   * as a RESEAT -- `items = base;` -> `items = &(base);`
-    #     (`_gen_pointer_local_rebind`'s address-of catch-all);
+    #     (the address-of catch-all);
     #   * as a DECL -- a reassigned container-ELEMENT borrow local, `p =
     #     ps[0]` -> `P* p = &(::tpy::__getitem__(ps, 0));`. The decl draws a
     #     rebind slot when a later RVALUE reseat needs one, so unlike the
@@ -1722,7 +1714,7 @@ class PtrSlotKind(Enum):
     # annotation-only decl -- no pre-declared rebind slot): the first such
     # reseat declares its PLAIN block slot in place and registers it
     # (`T __slot_N = <rvalue>;\nname = &__slot_N;` --
-    # `_gen_pointer_local_rebind`'s no-slot rvalue branch); later rvalue
+    # the no-slot rvalue branch); later rvalue
     # reseats reuse it (`name = &(__slot_N = <rvalue>);`). `val_cpp`
     # carries the pointee T spelling. Straight-line positions only (a
     # block-scoped slot inside a branch/loop is not this slice).
@@ -1731,12 +1723,12 @@ class PtrSlotKind(Enum):
     # list[Int32] = [...]` at top level). The name is already declared at
     # namespace scope (`std::vector<int32_t>* items{};`), so only the slot
     # carries a type: `static T __global_slot_N = init;` + `items =
-    # &__global_slot_N;` -- `_gen_pointer_local_rebind`'s "first rvalue
-    # assignment (e.g. global init)" branch, whose `static` and slot prefix
-    # both come from the global scope.
+    # &__global_slot_N;` -- the "first rvalue assignment (e.g. global
+    # init)" branch, whose `static` and slot prefix both come from the
+    # global scope.
     GLOBAL_RVALUE = auto()
     # The three module-init sibling writes of a NON-VALUE global, all
-    # `_gen_pointer_local_rebind` branches at global scope: a later rvalue
+    # pointer-local rebind branches at global scope: a later rvalue
     # write reusing the slot GLOBAL_RVALUE allocated
     # (`g = &(__global_slot_N = init);`), a `None` source (`g = nullptr;`),
     # and a pointer-slot-global source, which is already a `T*` and copies
@@ -1761,10 +1753,10 @@ class THIRPtrLocalDecl(THIRStmt):
     `cpp_type` is the POINTEE spelling for the OPT_* kinds (`T` of `T* x`)
     and the full pointer-variant spelling for the UNION_* kinds. `val_cpp`
     is the value-variant spelling backing a UNION slot (None for OPT_*,
-    whose slots reuse `cpp_type`). `needs_rebind_slot` mirrors the AST's
+    whose slots reuse `cpp_type`). `needs_rebind_slot` is the
     `name in rvalue_reassigned_vars` pre-declaration of the shared
-    `std::optional<...>` rebind slot; emit allocates slot numbers in the
-    exact AST order (init slot before rebind slot; union rebind slot before
+    `std::optional<...>` rebind slot; emit allocates slot numbers in a fixed
+    order (init slot before rebind slot; union rebind slot before
     the value slot's TEXT but after it in NUMBERING -- see the emit arm)."""
     name: str
     resolved_type: TpyType
@@ -1774,14 +1766,14 @@ class THIRPtrLocalDecl(THIRStmt):
     val_cpp: str | None = None
     needs_rebind_slot: bool = False
     # GLOBAL_RVALUE only: the write sits inside a top-level branch/loop, so
-    # the in-place slot decl drops the `static` (the AST's current_ns leaves
-    # global_ns there; a static would init once across iterations).
+    # the in-place slot decl drops the `static` (a static would init once
+    # across iterations).
     branch_scope: bool = False
     # DYN_PROTOCOL only: the protocol base pointer spelling (`Base` of
     # `Base* p`), distinct from `cpp_type` (the concrete/adapter SLOT spelling).
     base_cpp: str | None = None
-    # `const T*` (not `T*`): the pointee is a readonly source. Mirrors the AST's
-    # `const_pfx` (name in `const_indirect_locals`); only the pointer line takes
+    # `const T*` (not `T*`): the pointee is a readonly source (name in
+    # `const_indirect_locals`); only the pointer line takes
     # the prefix -- the rebind `std::optional<T>` slot stays non-const.
     is_const: bool = False
 
@@ -1803,7 +1795,7 @@ class THIRPtrLocalRebind(THIRStmt):
 class THIRImportInit(THIRStmt):
     """A module-init import statement's `__tpy_init()` chain. `calls` holds the
     fully-qualified callee spellings in emit order, resolved at lowering by the
-    shared `module_init_targets` (so the AST arm and this cannot drift); an
+    shared `module_init_targets`; an
     import that chains into nothing lowers to a plain no-op instead, keeping
     only its source comment."""
     calls: tuple[str, ...] = ()
@@ -1819,8 +1811,8 @@ class THIRAssign(THIRStmt):
     A class-constant write (`C.X = v` / `obj.X += v`) uses a THIRClassConstant
     target (the bare qualified lvalue) and, when the receiver has observable
     cost, carries `recv_eval` + `recv_wrap` (`static_cast<void>({0})` /
-    `::tpy::deref_check({0})`): the AST's gen_class_constant_lvalue emits the
-    receiver eval as a leading statement so the qualified name stays a real
+    `::tpy::deref_check({0})`): the receiver eval emits as a leading
+    statement so the qualified name stays a real
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
     value: THIRExpr
@@ -1850,8 +1842,7 @@ class THIRSetItem(THIRStmt):
     index needs no cast), sharing `_emit_subscript`'s bounds-safe render.
     An augmented `c[k] OP= v` lowers to the same node with `value` the
     synthetic `c[k] OP v` binop and `bounds_safe` forced off on BOTH reads
-    -- the AST's `_gen_aug_assign_subscript_code` never takes the
-    bounds-safe form. `value` is a flushable position (arg temps hoist
+    -- the augmented form never takes the bounds-safe form. `value` is a flushable position (arg temps hoist
     before the line, like an assign value)."""
     target: 'THIRSubscript'
     value: THIRExpr
@@ -1862,15 +1853,16 @@ class THIRSliceAssign(THIRStmt):
     """A list/Array/Span slice assignment `c[a:b] = v` / `c[a:b:s] = v` ->
     the sema-resolved slice `__setitem__`'s @native free-function
     (`::tpy::list_set_slice` / `::tpy::list_set_stepped_slice`) over the
-    receiver, the slice initializer, and the RHS (mirrors `_gen_slice_assign`
-    -> `gen_call_from_fi`'s native arm). `receiver` is a bare list/Array/Span
+    receiver, the slice initializer, and the RHS. `receiver` is a bare
+    list/Array/Span
     name or F1-field. The slice initializer is built like `THIRStrSlice`'s
     bound arm (`::tpy::BasicSlice{lo, hi}` / `::tpy::Slice{lo, hi, step}`,
     `stepped` per the source syntax; an absent bound -> `std::nullopt`).
     `value` is the lowered RHS (a move at last use rides on it); a non-empty
     array-literal RHS takes the `std::vector<E>{...}` type prefix
-    (`value_vector_cpp`) that the checked helper needs to deduce its Range (the
-    AST's bare-brace guard). `native_name` is the unqualified stub name, qualified
+    (`value_vector_cpp`) that the checked helper needs to deduce its Range (a
+    bare brace-init deduces nothing). `native_name` is the unqualified stub
+    name, qualified
     at emit."""
     receiver: THIRExpr
     native_name: str
@@ -1886,12 +1878,12 @@ class THIRSliceAssign(THIRStmt):
 class THIRInplaceContainerOp(THIRStmt):
     """An in-place container aug-assign `c OP= v` resolved to a mutating dunder
     (`__iadd__` -> `::tpy::list_extend`, ...) -- the @native free-function over
-    the receiver and the RHS (mirrors `_gen_aug_assign_code`'s
-    `resolved_inplace` arm -> `gen_call_from_fi`'s native arm). `receiver` is a
+    the receiver and the RHS (the `resolved_inplace` arm). `receiver` is a
     bare list name; `value` is the lowered RHS. A non-empty array-literal RHS
     takes the `std::vector<E>{...}` type prefix (`value_vector_cpp`) that the
-    two-parameter template needs to deduce its Range (the AST's bare-brace
-    guard). `native_name` is the unqualified stub name, qualified at emit."""
+    two-parameter template needs to deduce its Range (a bare brace-init
+    deduces nothing). `native_name` is the unqualified stub name, qualified
+    at emit."""
     receiver: THIRExpr
     native_name: str
     value: THIRExpr
@@ -1907,7 +1899,7 @@ class THIRFrameSlotWrite(THIRStmt):
     destroys any prior payload before constructing the new one. `value`
     renders normally (its arg temps flush before the emplace line, like a
     THIRAssign value). `cpp_type` is the slot's element C++ type, used only
-    to reproduce the AST's `typed_brace_init` prefix when the value renders
+    to apply the `typed_brace_init` prefix when the value renders
     as a bare brace-init (`{n, n}` -> `std::array<int32_t, 2>{n, n}`, so it
     binds to `emplace`'s forwarding ref); a record-ctor value (non-brace)
     ignores it."""
@@ -1954,20 +1946,20 @@ class THIRResumableReturn(THIRStmt):
 @dataclass(frozen=True)
 class THIRStmtSeq(THIRStmt):
     """A fixed sequence emitted as consecutive statements -- the resumable
-    leaf seam's carrier when ONE AST leaf lowers to more than one THIR
+    leaf seam's carrier when ONE parse-tree leaf lowers to more than one THIR
     statement (the early-return narrowing `if` + its post-if extraction
-    alias, which the AST's `_gen_if` emits inline after the close brace).
+    alias, emitted inline after the close brace).
     Carries no loc of its own (its caller-side source comment is a no-op);
-    each child emits its own comment, mirroring the AST's inline emission."""
+    each child emits its own comment inline."""
     stmts: tuple[THIRStmt, ...] = ()
 
 
 @dataclass(frozen=True)
 class THIRStrAppend(THIRStmt):
-    """In-place append to an owned-str local -- `t += v;` (S3). Two AST sources
-    share it: the str `+=` statement (`_gen_aug_assign_code`'s string branch)
-    and the `x = x + y` self-append peephole (`_try_str_inplace_append`, fired
-    at a decl-reassign/assign whose RHS concat's left operand is the target).
+    """In-place append to an owned-str local -- `t += v;` (S3). Two source
+    shapes share it: the str `+=` statement and the `x = x + y` self-append
+    peephole (fired at a decl-reassign/assign whose RHS concat's left operand
+    is the target).
     `target` is the local's source name; `value` renders bare --
     `std::string::operator+=` accepts string_view / const char* / string /
     an owned concat result alike, so no form wrap arises. A str-FIELD append
@@ -1985,20 +1977,19 @@ class THIRReturn(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRFinallyDeferredReturn(THIRStmt):
-    """A sema-stamped finally-deferred return of a named local (the AST's
-    `_gen_finally_deferred_return`): bind a pointer to the local's storage
+    """A sema-stamped finally-deferred return of a named local: bind a
+    pointer to the local's storage
     BEFORE the inline finally chain, materialize the value out of it AFTER,
     so finally mutations of the local stay visible in the returned object
     (CPython's pending return is an alias).
 
     `capture` is the local's OWN render, not the pointer RHS: a resumable
     frame slot spells `(*name)`, and leaving that render to emit is what lets
-    a C++-local shadow of the frame field suppress the peel exactly where the
-    AST's does. `indirect` adds the `(*p)` lvalue wrap a pointer-bound local
+    a C++-local shadow of the frame field suppress the peel. `indirect` adds
+    the `(*p)` lvalue wrap a pointer-bound local
     needs before the address-of; `optional_move` picks the materialize arm
     (`::tpy::ptr_to_optional_move(p)` vs `std::move(*p)`). The `__tpy_retp_N`
-    name draws from the emit-side iter counter so the two paths' counter
-    draws stay in step.
+    name draws from the emit-side iter counter.
 
     A resumable frame carries the same node through its leaf seam rather than
     emitting it: the Poll wrap and done-state transition around the capture
@@ -2012,7 +2003,7 @@ class THIRFinallyDeferredReturn(THIRStmt):
 class THIRNarrowAlias(THIRStmt):
     """The isinstance-narrowing extraction alias (F4 U3): declared at branch
     entry, or -- for the early-return implicit else -- at statement level
-    right after the `if`. Mirrors _emit_isinstance_extractions' variant arm:
+    right after the `if`. The variant arm:
 
         auto& __v = *std::get<A*>(v);        (pointer variant)
         const auto& __v = std::get<T>(v);    (value variant; const for
@@ -2021,8 +2012,8 @@ class THIRNarrowAlias(THIRStmt):
     Reads of the narrowed source inside the alias's scope lower to
     `THIRName(alias)`; the isinstance condition keeps reading the original
     variant. `member_cpp` is the final template arg (const/`*` applied for
-    pointer variants). Never carries a source comment -- the AST writes the
-    alias between the brace and the first statement's comment."""
+    pointer variants). Never carries a source comment -- the alias is
+    written between the brace and the first statement's comment."""
     alias: str
     variant_cpp: str
     member_cpp: str
@@ -2038,8 +2029,8 @@ class THIRDynNarrowAlias(THIRStmt):
         [const ]Sub& __v = *dynamic_cast<[const ]Sub*>(&v);
 
     emitted at STATEMENT level after an early-return guard (`if not
-    isinstance(v, Sub): return/raise`) or a narrowing assert -- mirrors
-    `_emit_isinstance_extractions`' poly arm with persistent=True. The cast
+    isinstance(v, Sub): return/raise`) or a narrowing assert -- the poly
+    arm with persistent=True. The cast
     RHS is pre-composed at lowering via the shared `narrow_cast_rhs` /
     `_poly_cast_context` chokepoints (dynamic_cast, or `dyn_adapter_cast`
     for a structural conformer of a @dynamic protocol), anchored to the
@@ -2060,9 +2051,8 @@ class THIRAnyNarrowAlias(THIRStmt):
 
     declared at branch entry; reads of the narrowed subject inside the
     alias's scope lower to `THIRName(alias)`; the outer Any cell survives
-    unchanged. The explicit type spelling (not `auto&`) mirrors
-    `_emit_isinstance_extractions`' Any arm. Never carries a source
-    comment."""
+    unchanged. The type is spelled explicitly, not `auto&`. Never carries a
+    source comment."""
     alias: str
     subject_cpp: str
     member_cpp: str
@@ -2077,7 +2067,7 @@ class THIRFrameNestedDef(THIRStmt):
     the leaf seam), so the statement renders only the
     `// def {name}: frame member` marker line under its ordinary source
     comment. `loc` drives the source comment; the marker spells the PYTHON
-    name (the AST comment is unescaped -- a keyword-colliding def like
+    name (the comment is unescaped -- a keyword-colliding def like
     `double` stays `double` there)."""
     name: str = ""
 
@@ -2087,38 +2077,38 @@ class THIRNoOpStmt(THIRStmt):
     """A statement that emits no C++ code -- a `pass` or a docstring in a
     constructor body (M3c-trivia). It carries no payload; its only effect is to
     make `THIRConstructor.body` non-empty so the emitter writes ` {\n    }`
-    instead of ` {}`, matching the AST. The inherited `loc` drives the source
-    comment exactly as the AST does: a `pass` keeps its `loc` (so `_emit_stmts`
+    instead of ` {}`. The inherited `loc` drives the source
+    comment: a `pass` keeps its `loc` (so `_emit_stmts`
     emits its `// pass` source line), while a docstring lowers with `loc=None`
-    -- the AST's None simple-stmt code suppresses the source line. A docstring
+    -- a None loc suppresses the source line. A docstring
     still carries `trivia_loc`, because suppressing the source line does not
     suppress the leading comments (see below).
 
     `trivia_loc` is the SKIPPED statement's loc when its leading
     `#`-comment trivia must still emit without the statement's own source
-    line (a compile-time assert: the AST's gen_stmt emits inline comments
-    before dispatch, then the None code suppresses the source comment)."""
+    line (a compile-time assert: leading comments emit before dispatch,
+    then the None loc suppresses the source comment)."""
     trivia_loc: 'object | None' = None
 
 
 @dataclass(frozen=True)
 class THIRFoldedBlock(THIRStmt):
     """The surviving statements of a per-@overload-stub dead-branch fold,
-    spliced flat at the enclosing block's indent (the AST emits them via
-    direct `gen_stmt` calls, no brace scope). An if-chain fold carries
-    `no_source_comment=True` (the AST fold flattens with no `// if` line);
+    spliced flat at the enclosing block's indent (no brace scope). An
+    if-chain fold carries
+    `no_source_comment=True` (the fold flattens with no `// if` line);
     a match fold keeps the match stmt's `loc` so its `// match ...` source
     comment emits before the spliced bindings. Inner statements carry their
     own locs/comments. May be empty (an all-dead chain with no else).
 
-    `burns_match_counter` marks a folded MATCH: the AST's `gen_match` bumps
-    `ctx.match_counter` before the fold dispatch, so a later match in the
+    `burns_match_counter` marks a folded MATCH: `ctx.match_counter` bumps
+    before the fold dispatch, so a later match in the
     same body numbers its `__match_subject_N` past the folded one -- the
     emit arm must consume one counter slot without emitting a subject.
 
     `trivia_loc` (an if-chain fold): the chain head's line, whose PRECEDING
-    `#` comments the AST emits before the fold dispatch (gen_stmt's
-    emit_preceding_comments runs before _gen_if) -- even when every branch
+    `#` comments emit before the fold dispatch (`emit_preceding_comments`
+    runs before the chain) -- even when every branch
     folds dead and the block emits nothing else."""
     stmts: tuple[THIRStmt, ...] = ()
     burns_match_counter: bool = False
@@ -2129,12 +2119,12 @@ class THIRFoldedBlock(THIRStmt):
 class THIRFoldedIfChain(THIRStmt):
     """A PARTIALLY-folded per-@overload-stub if-chain: the surviving dynamic
     branches emit as a clean `if / else if` chain with NO condition source
-    comments (the AST's `_gen_if_overload_specialized` live path), the else
+    comments, the else
     body coming from the last ORIGINAL chain node. `trivia_loc` carries the
     chain head's preceding `#` comments, like THIRFoldedBlock. The lowering
     admits only temp-free conditions past the first branch and no
-    branch-decl / concrete-extraction carriers -- shapes the AST live path
-    renders with machinery this mirror does not reproduce reject."""
+    branch-decl / concrete-extraction carriers; every other shape
+    rejects."""
     branches: tuple[tuple[THIRExpr, tuple[THIRStmt, ...]], ...] = ()
     else_body: tuple[THIRStmt, ...] = ()
     trivia_loc: 'SourceLocation | None' = None
@@ -2142,12 +2132,12 @@ class THIRFoldedIfChain(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRMatchFoldBind(THIRStmt):
-    """One capture binding of a folded @overload match arm: the AST's
-    `_emit_binding` free-binding forms -- `auto {name} = {source};` when
+    """One capture binding of a folded @overload match arm, in its
+    free-binding forms -- `auto {name} = {source};` when
     sema's per-capture bind_by_value fact is set (a free-copy scalar),
     `auto& {name} = {source};` otherwise. Pre-declared/hoisted targets are
     gate-rejected, so only the fresh-declaration forms exist here. Never
-    carries a source comment (the AST emits bindings comment-less between
+    carries a source comment (bindings emit comment-less between
     the match's source comment and the arm body)."""
     name_cpp: str
     source_cpp: str
@@ -2160,8 +2150,8 @@ class THIROverloadDefault(THIRStmt):
     initialized to the impl's default at the top of the body
     (`{cpp_type} {name} = {cpp_default};`, comment-free like the param
     copies). `cpp_default` is pre-rendered by the shared
-    `default_to_cpp_from_analyzer` (with the AST's `{}`
-    value-initialization fallback applied by lowering)."""
+    `default_to_cpp_from_analyzer` (with the `{}` value-initialization
+    fallback applied by lowering)."""
     name: str
     cpp_type: str
     cpp_default: str
@@ -2171,17 +2161,16 @@ class THIROverloadDefault(THIRStmt):
 class THIRParamCopy(THIRStmt):
     """The mutable owned copy of a reassigned const-ref param --
     `{cpp_type} {name} = __param_{name};` at the top of the body, before any
-    statement (loc stays None: the AST writes the copies comment-free ahead
+    statement (loc stays None: the copies are comment-free, ahead
     of the first statement's source comment). The `__param_{name}` signature
-    rename is emitted by the AST path (gen_params), keyed on the same
+    rename is emitted by `gen_params`, keyed on the same
     scan.reassigned + param_needs_copy_for_reassign facts, so body reads keep
     the plain name. `name` is the escaped C++ name; `cpp_type` the owned
-    storage spelling (`ptype.to_cpp()`, exactly the AST prologue's).
+    storage spelling (`ptype.to_cpp()`).
     `init_cpp` overrides the plain `__param_{name}` read for the
     view-family variants (`std::string(__param_x)` / the Optional
     make_optional split); body reads keep their view-form renders -- the
-    owned local converts implicitly at every view sink, exactly as on the
-    AST path."""
+    owned local converts implicitly at every view sink."""
     name: str
     cpp_type: str
     init_cpp: str | None = None
@@ -2190,7 +2179,7 @@ class THIRParamCopy(THIRStmt):
 @dataclass(frozen=True)
 class THIRDelVar(THIRStmt):
     """`del x[, y]` where at least one name needs the early-destruction
-    move-sink -- `_gen_del_var_code`'s `{ auto __del_sink = std::move(name); }`
+    move-sink -- `{ auto __del_sink = std::move(name); }`
     (one block per sunk name, in source order). `sinks` holds
     `(cpp_name, deref)` pairs: `deref` derefs a pointer-local first
     (`std::move(*name)` -- the sink moves the pointee, not the pointer).
@@ -2202,8 +2191,8 @@ class THIRDelVar(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRDelItem(THIRStmt):
-    """Multi-target `del d[a], e[b]` -- `_gen_del_item_code`'s per-target
-    loop: one `::tpy::__delitem__(recv, key);` statement line per target, in
+    """Multi-target `del d[a], e[b]` -- a per-target loop: one
+    `::tpy::__delitem__(recv, key);` statement line per target, in
     source order. A single-target del keeps the plain THIRExprStmt render
     (identical bytes); this node exists because one source statement emits N
     lines."""
@@ -2212,8 +2201,8 @@ class THIRDelItem(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRBreak(THIRStmt):
-    """`break` -- a bare `break;`, or the emit-side reroutes of
-    `_make_break_continue`: an enclosing else-loop makes it
+    """`break` -- a bare `break;`, or an emit-side reroute: an enclosing
+    else-loop makes it
     `goto __after_else_N` (skipping the else block), an intervening match
     switch `goto __loop_break_N`, and enclosing finally frames inline their
     cleanup first (a terminating finally suppresses the tail)."""
@@ -2234,24 +2223,24 @@ class THIRIf(THIRStmt):
     `THIRNarrowAlias` leading each narrowed branch (lowering resolved the
     read renames), so the emitter still needs no scope machinery.
 
-    `else_is_nested` mirrors the AST's elif-flattening gate: an elif whose
+    `else_is_nested` is the elif-flattening gate: an elif whose
     outer `else_type_facts` carry a concrete extraction cannot flatten to
     `} else if (...)` (the alias must be declared inside the else block), so
     the chain breaks and the inner if emits as a nested statement --
     `} else {` + its own source comment + `if (...)` one level deeper
-    (`_gen_if`'s `_has_concrete_isinstance_facts` chain-collect gate).
+    (the `_has_concrete_isinstance_facts` chain-collect gate).
 
     `hoist_decls` mirrors `THIRTry.hoist_decls`: a var first-declared in a
     branch and definitely-assigned-after is predeclared `{cpp_type} v;` at
-    the chain head (the AST's `_emit_branch_decls` before `_gen_if`), the
-    in-branch assigns lowering as bare reassigns against the slot. The
+    the chain head, the in-branch assigns lowering as bare reassigns
+    against the slot. The
     cpp_type carries the full spelling per flavor: `T` for a value var,
     `std::optional<T>` for a single-bind non-value (OPTIONAL_STORAGE), a
     `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
     protocols. `hoist_slots` names the rvalue-reassigned subset: emit
     writes `std::optional<T> __slot_N;` (allocating N from the shared slot
     counter, registered in `rebind_slots`) immediately before that name's
-    predecl line, mirroring `_emit_branch_decls`' rebind-slot arm. The
+    predecl line -- the rebind-slot arm. The
     narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
@@ -2260,8 +2249,7 @@ class THIRIf(THIRStmt):
     hoist_decls: tuple[tuple[str, str], ...] = ()
     hoist_slots: tuple[tuple[str, str], ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
-    # keyword renders `if constexpr` (the AST's
-    # _is_protocol_isinstance_condition keyword choice). Per-node -- an
+    # keyword renders `if constexpr`. Per-node -- an
     # elif chain can mix constexpr and runtime members.
     is_constexpr: bool = False
 
@@ -2281,7 +2269,7 @@ class THIRWhile(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRNestedDef(THIRStmt):
-    """A nested function definition -- `_gen_nested_def`'s lambda:
+    """A nested function definition -- a lambda:
 
         auto <name> = <capture_cpp>(<params_cpp>)[ -> <ret_cpp>] {
             <body>
@@ -2293,7 +2281,8 @@ class THIRNestedDef(THIRStmt):
     return type are the resolver's spellings. The body is lowered under
     the nested function's own per-function state (its prescan return
     slots, fresh classification sets) over the outer `declared` -- the
-    mirror of `nested_def_emission_scope` + the local-scope snapshot."""
+    same scoping as `nested_def_emission_scope` + the local-scope
+    snapshot."""
     name: str
     capture_cpp: str
     params_cpp: tuple[str, ...] = ()
@@ -2323,13 +2312,13 @@ class THIRAssert(THIRStmt):
 class THIRForRange(THIRStmt):
     """`for <var> in range(...)` lowered to a C-style counter loop.
 
-    Mirrors the AST path's `_gen_range_counter_loop`. `start` is None for
+    `start` is None for
     `range(stop)` (implicit 0). A non-literal bound is hoisted by the emitter
     into a `__start_N`/`__stop_N` temp, where N is the per-function loop index
-    reproducing `ctx.iter_counter`; `*_is_literal` mirrors `_is_literal_range_arg`'s
+    off `ctx.iter_counter`; `*_is_literal` carries the
     inline-vs-hoist decision (`start_is_literal` is unused when `start` is None).
 
-    `step_kind` selects the AST emit arm: `plus_one` (`i < stop; ++i`, also a
+    `step_kind` selects the emit arm: `plus_one` (`i < stop; ++i`, also a
     literal +1 step), `unit_neg` (`i > stop; --i`, literal -1 step), `literal_pos`
     / `literal_neg` (a non-unit literal step -- upfront overflow check then
     `i +/-> stop; i += step`), or `variable` (a fixed-int-name step captured into
@@ -2355,8 +2344,8 @@ class THIRForRange(THIRStmt):
     # so post-loop reads see the last value, not the post-increment overshoot.
     hoist_loop_var: bool = False
     # Branch-first-declared value locals used after the loop (sema's
-    # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop, mirroring
-    # _emit_branch_decls. Includes the loop var itself when `hoist_loop_var`.
+    # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop.
+    # Includes the loop var itself when `hoist_loop_var`.
     hoist_decls: tuple[tuple[str, str], ...] = ()
 
 
@@ -2399,10 +2388,9 @@ class TupleSourceBind(Enum):
 @dataclass(frozen=True)
 class THIRTupleUnpack(THIRStmt):
     """A standalone `a, b = <source>` (or the `a, b = __for_tup_M` head of a
-    tuple-unpack for loop) over a value-scalar tuple -- mirrors
-    `_gen_tuple_unpack`'s slice arm (all-new plain value-scalar targets, no
-    ref/owned/const-ref elements). The SOURCE bind splits on shape, exactly as
-    the AST's `isinstance(stmt.value, TpyName)` discriminator:
+    tuple-unpack for loop) over a value-scalar tuple (all-new plain
+    value-scalar targets, no ref/owned/const-ref elements). The SOURCE bind
+    splits on whether the value is a bare name:
 
         const auto& __tup_N = <name>;   // a bare name / loop-shadow source
         auto __tup_N = <expr>;          // a call / field rvalue source
@@ -2417,12 +2405,12 @@ class THIRTupleUnpack(THIRStmt):
     ref-binding form. `N` reproduces `ctx.unpack_counter` (per-function,
     pre-incremented). The counter's other consumers (expression-position
     `__tup_`/`__dk_` temps) are all gate-rejected, so a per-body emit counter
-    numbers identically. A None target is the `_` discard -- its slot emits
+    suffices. A None target is the `_` discard -- its slot emits
     nothing. `target_cpps` carries the rendered decl types (render_type at
     lowering), None at discard slots.
 
     `binds` (parallel to `targets`; empty = all "value") picks each target's
-    decl arm, mirroring `_gen_tuple_unpack`'s per-element flags:
+    decl arm:
 
         "value"  -> T name = std::get<i>(tup);
         "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
@@ -2438,7 +2426,7 @@ class THIRTupleUnpack(THIRStmt):
 
     Two RESUMABLE-frame modes (targets are frame fields -- assigned, never
     re-declared; the `wraps` slot carries the per-element unwrap_ref /
-    std::move the AST applies before the write; sema guarantees ref and
+    std::move applied before the write; sema guarantees ref and
     owned are mutually exclusive per element):
 
         "frame_assign"  -> name = <wrapped get>;
@@ -2495,8 +2483,7 @@ class THIRTupleUnpack(THIRStmt):
 @dataclass(frozen=True)
 class THIRForEach(THIRStmt):
     """`for <var> in <container>` over a NativeIterable (list / set / dict / Span /
-    Array), lowered to the canonical begin/end iterator loop -- mirrors
-    `_gen_begin_end_loop`:
+    Array), lowered to the canonical begin/end iterator loop:
 
         auto& __obj_N = <container>;
         auto __beg_N = __obj_N.begin();
@@ -2517,7 +2504,7 @@ class THIRForEach(THIRStmt):
     (`char c = *__beg_N;`); for a bytes-family iterable (bytes/BytesView,
     NativeIterable[UInt8]) it is UInt8 (`uint8_t x = *__beg_N;`, the same
     value-scalar typed copy). `N` is the
-    per-function loop index (reproducing `ctx.iter_counter`). `const_loop_var` mirrors
+    per-function loop index (off `ctx.iter_counter`). `const_loop_var` carries
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
     way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
     container, a str/bytes-family field off an F1-record receiver (both C++
@@ -2528,9 +2515,9 @@ class THIRForEach(THIRStmt):
     bytes-returning calls stay gate-excluded); loop var not reassigned/moved
     (a record alias can't reseat) and not used after the loop. Any
     `list`/`dict`/`set`/`Span`/`Array` param of a fully-concrete element reaches
-    here (the param is admitted structurally now that signatures stay AST-emitted;
-    the loop var binds through the shared `loop_var_binding`, and the element USE
-    gates decide). Generators
+    here (the param is admitted structurally -- signatures are emitted by the
+    skeleton; the loop var binds through the shared `loop_var_binding`, and
+    the element USE gates decide). Generators
     / user iterators (the
     `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
     ride later cells."""
@@ -2543,7 +2530,7 @@ class THIRForEach(THIRStmt):
     orelse: tuple[THIRStmt, ...] = ()
     # A str-literal iterable (`for ch in "abc"`) wraps the rendered literal in
     # `std::string_view(...)` -- C string literals include the NUL terminator,
-    # which the view trims (mirrors _gen_for_each_loop's TpyStrLiteral wrap).
+    # which the view trims.
     str_literal_iterable: bool = False
     # A consuming (own_iter) loop: the elem binds `auto&&` into the
     # move-iterator storage whatever its type -- loop_var_binding's
@@ -2569,7 +2556,7 @@ class THIRForEach(THIRStmt):
 @dataclass(frozen=True)
 class THIRForIterProto(THIRStmt):
     """`for <var> in <iterator-source>` over the universal `::tpy::__iter__`
-    protocol loop -- mirrors `_gen_direct_next_loop_with_iter`:
+    protocol loop:
 
         [{]                                    # rvalue source: brace scope
         auto& __src_N = <iterable>;            # `auto` for an rvalue source
@@ -2582,10 +2569,10 @@ class THIRForIterProto(THIRStmt):
         }
         [}]
 
-    The rvalue brace scope mirrors the AST's CPython-refcount-drop scoping (a
+    The rvalue brace scope reproduces CPython's refcount-drop scoping (a
     temporary source dies at loop exit -- observable when the iterator owns
-    cleanup). `N`/`M` are consecutive draws off the per-function loop index,
-    exactly like the AST's two `iter_counter` draws. Slice: a plain/imported
+    cleanup). `N`/`M` are two consecutive draws off the per-function loop
+    index. Slice: a plain/imported
     free generator call (rvalue: `iterable_lvalue=False`, the owning `auto`
     capture) or a user-iterator local name (lvalue: `auto&`); the loop var
     binds through the shared `loop_var_binding`, same contract as
@@ -2600,12 +2587,12 @@ class THIRForIterProto(THIRStmt):
 
 
 class WithTargetArm(Enum):
-    """Which `_gen_with` as-target binding arm a `with` item takes -- decided
-    at lowering. The value-typed REUSE arm stays gate-rejected: its AST
-    renders assign `&(__enter__())` into a value slot -- the BUGS.md
+    """Which as-target binding arm a `with` item takes -- decided
+    at lowering. The value-typed REUSE arm stays gate-rejected: it would
+    assign `&(__enter__())` into a value slot -- the BUGS.md
     ill-formed with-target-reuse family. An OPTIONAL-slot target is different:
     when the name was hoist-predeclared (`std::optional<T> name;` by an
-    enclosing if/with branch-decl pass), the AST assigns the slot plainly --
+    enclosing if/with branch-decl pass), the slot is assigned plainly --
     the ASSIGN_OPT arm, keyed on optional-locals membership.
 
       * `NONE`       -- no target: `__ctx_N.__enter__();`
@@ -2649,7 +2636,7 @@ class THIRWithItem:
     `target_cpp` is the PTR_DECL arm's pointee type, pre-rendered at lowering
     (`lc.render_type`, the same source as an F2 borrow local's cpp_type).
     `manager_hoist_cpp` is the KEPT owned manager's type (the
-    `_with_manager_needs_hoist` mirror: an already-declared target aliases
+    hoist rule: an already-declared target aliases
     `__enter__()`'s result past the block, so the manager hoists to a
     function-scope `std::optional<CM> __slot_N` and `__ctx_N` binds through
     it); None keeps the plain `auto __ctx_N = ...` bind. `frame_ctx` is the
@@ -2671,7 +2658,7 @@ class THIRWithItem:
 
 @dataclass(frozen=True)
 class THIRWith(THIRStmt):
-    """A sync `with` statement -- mirrors `_gen_with` + `_emit_with_try_catch`:
+    """A sync `with` statement:
 
         auto[&] __ctx_N = <manager>;
         [<target binding>]
@@ -2688,20 +2675,19 @@ class THIRWith(THIRStmt):
 
     Multiple items nest one try/catch layer per manager (innermost `__exit__`
     first). `N` draws from the module-cumulative `ctx.with_counter` via the
-    emit-side counter sink (shared with AST-emitted bodies). `body_terminates`
-    is the AST's `stmts_terminate(stmt.body)` fact, computed at lowering; the
+    emit-side counter sink. `body_terminates`
+    is the `stmts_terminate(stmt.body)` fact, computed at lowering; the
     emitter folds it with the items' `can_suppress` flags into the per-layer
-    normal-exit elision exactly like the AST's `layer_terminates` propagation.
+    normal-exit elision (`layer_terminates` propagation).
     While emitting the body, each layer sits on the emit-state finally-frame
     stack so `return`/`break`/`continue` inside the body render the inline
-    `__exit__` chain (`_make_return` / `_make_break_continue`). The
+    `__exit__` chain. The
     async / resumable-generator lowerings of `TpyWith` are different emit
     shapes entirely and stay gate-rejected (the function gate).
 
     `hoist_decls` mirrors `THIRTry.hoist_decls`: a value var first-declared
     in the body and read after the statement pre-declares `{cpp} {name};`
-    before the first manager binding (the AST's `_emit_branch_decls` run
-    before `_gen_with`)."""
+    before the first manager binding."""
     items: tuple[THIRWithItem, ...] = ()
     body: tuple[THIRStmt, ...] = ()
     body_terminates: bool = False
@@ -2716,8 +2702,8 @@ class THIRExceptHandler:
     `binding` is the `as` name (raw; emit escapes) -- the catch parameter IS
     the binding, `catch (const T& name)`, no extra decl. Return tier: the
     single goto-dispatch handler -- `source_display` carries the SOURCE
-    exception spelling for the `// except E:` comment (the AST prints the
-    un-rendered name there), and a `binding` reads through the emitted
+    exception spelling for the `// except E:` comment (the un-rendered
+    name), and a `binding` reads through the emitted
     `auto& name = *__err_opt_N;` alias instead of a catch parameter."""
     cpp_type: 'str | None'
     binding: 'str | None'
@@ -2729,10 +2715,9 @@ class THIRExceptHandler:
 class THIRTry(THIRStmt):
     """A sync `try` statement -- the finally_only and throw tiers.
 
-    finally_only (no handlers) mirrors `_gen_try_finally_only` +
-    `_emit_try_with_finally`'s unified shape:
+    finally_only (no handlers) is the unified shape:
 
-        <hoist decls>       // plain-value predecls, _emit_branch_decls' tail arm
+        <hoist decls>       // plain-value predecls
         {
             try {
                 <try body>
@@ -2743,13 +2728,13 @@ class THIRTry(THIRStmt):
             <finally body>          // unless body_terminates
         }
 
-    throw mirrors `_gen_try_throw`: a real C++ try with one catch arm per
+    throw: a real C++ try with one catch arm per
     handler, `else` jumping past via `goto __after_else_N` (N from the
     module-cumulative `ctx.try_except_counter` through the emit-side sink),
     the whole try/except wrapped in the finally frame above when a finally
     is present.
 
-    return mirrors `_gen_try_return`: the goto dispatch around @error_return
+    return: the goto dispatch around @error_return
     calls -- one outer brace, an optional `std::optional<E> __err_opt_N;`
     when the (single) handler binds, the try body emitted with the emit
     state's `try_except_label`/`try_except_err_opt` live (each fallible call
@@ -2762,10 +2747,10 @@ class THIRTry(THIRStmt):
 
     `hoist_decls` is the sema hoist (`if_branch_decls[id(stmt)]`) rendered at
     lowering as `(name, cpp_type)` pairs in sema's sorted order -- names spell
-    RAW like the AST arm (no escape). The finally body re-emits at every exit
+    RAW (no escape). The finally body re-emits at every exit
     site through the emit-state finally-frame stack (the with frames' stmt-list
-    generalization): counters keep advancing per copy exactly like the AST's
-    repeated `gen_stmt` runs. `finally_terminates` is the AST's last-stmt
+    generalization): counters keep advancing per copy. `finally_terminates`
+    is the last-stmt
     raise/return fact; `body_terminates` is the terminates fact of whatever
     the finally frame wraps -- `try_terminates_ignoring_finally` in every
     tier -- driving the normal-path finally elision. It deliberately excludes
@@ -2787,12 +2772,12 @@ class THIRTry(THIRStmt):
 @dataclass(frozen=True)
 class THIRRaise(THIRStmt):
     """`raise X(args)` -> `throw <cpp>(<args>);` / `raise X` -> `throw <cpp>{};`
-    (the AST's fresh-construction peephole: static and dynamic types coincide,
+    (the fresh-construction peephole: static and dynamic types coincide,
     so no `__raise__()` virtual hop); bare `raise` -> `throw;` (a C++ rethrow;
     sema restricts placement) -- EXCEPT inside a return-tier handler body,
     where the emit state's in_except_tier makes it re-raise as
-    `return ::tpy::make_unexpected(std::move(*__err_opt_N));` (_gen_raise's
-    bare return-tier arm). `return_tier` marks a `raise E(args)` of a
+    `return ::tpy::make_unexpected(std::move(*__err_opt_N));` (the bare
+    return-tier arm). `return_tier` marks a `raise E(args)` of a
     ReturnException inside an @error_return body -- it renders as the
     finally-aware `return ::tpy::make_unexpected(<cpp>(<args>));` (or `{}`
     construction when arg-less), never a C++ throw. `cpp_type` pre-renders at
@@ -2815,12 +2800,12 @@ class THIRRaise(THIRStmt):
 @dataclass(frozen=True)
 class THIRErrorReturnUnwrap(THIRExpr):
     """An @error_return call in EXPRESSION position -- the statement-expression
-    unwrap (`_maybe_error_return_unwrap`): `({ auto __er_N = <call>; <check>
+    unwrap: `({ auto __er_N = <call>; <check>
     ::tpy::unwrap_ref_move(*__er_N); })` for a value-type result, the
     pointer form `(*({ ...; &::tpy::unwrap_ref(*__er_N); }))` otherwise
-    (`value_form` folds the AST's `ret_type.is_value_type()` verdict at
-    lowering). The check renders from the emit state exactly like the AST's
-    ctx reads: goto-except inside a return-tier try body (with the `as`
+    (`value_form` folds the `ret_type.is_value_type()` verdict at
+    lowering). The check renders from the emit state: goto-except inside a
+    return-tier try body (with the `as`
     capture when the handler binds), propagate inside an @error_return body,
     panic otherwise. `__er_N` draws from the module-cumulative
     try_except_counter sink. `result_type` is the callee's SUCCESS type."""
@@ -2831,8 +2816,7 @@ class THIRErrorReturnUnwrap(THIRExpr):
 @dataclass(frozen=True)
 class THIRErrorReturnBind(THIRStmt):
     """A var-decl / name-assign whose init is a DIRECT @error_return call --
-    the statement-level unwrap block (`_gen_error_return_[propagate_/unwrap_]
-    var_decl` / `_assign`):
+    the statement-level unwrap block:
 
         [<cpp_type> <name>;]            // predecl when first binding
         {
@@ -2842,19 +2826,18 @@ class THIRErrorReturnBind(THIRStmt):
         }
 
     `decl_cpp` is the predecl's pre-rendered C++ type (`unwrap_ref_type(
-    fi.return_type).to_cpp()`, the AST's spelling), None when the name is
+    fi.return_type).to_cpp()`), None when the name is
     already declared (a reassign, or a try-hoisted local). `ptr_rebind`
     switches the bind line to a rebind-slot pointer reseat
     (`<name> = &*(__slot_N = ::tpy::unwrap_ref_move(*__try_tmp_N));`) --
-    `_error_return_assign_to_name`'s `_ptr_from_rvalue_slot` arm.
+    the `_ptr_from_rvalue_slot` arm.
     `alias_bind` switches it to the borrow-aliasing pointer bind
     (`<name> = &(::tpy::unwrap_ref(*__try_tmp_N));` -- an aliasing result
-    into a hoisted pointer target; the AST's aliases-and-pointer-local
-    arm). Other aliasing-result target shapes and slot-less pointer
+    into a hoisted pointer target -- the aliases-and-pointer-local arm). Other aliasing-result target shapes and slot-less pointer
     targets are gate-rejected. `name` is raw; emit escapes. A non-None
     `target` replaces the name on the bind line with the rendered lvalue
-    (`this->p = ::tpy::unwrap_ref_move(*__try_tmp_N);` -- the AST's
-    `_error_return_target_assign` non-name branch, plain gen_expr)."""
+    (`this->p = ::tpy::unwrap_ref_move(*__try_tmp_N);` -- the non-name
+    branch, rendered as a plain lvalue)."""
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
@@ -2865,8 +2848,7 @@ class THIRErrorReturnBind(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRErrorReturnDiscard(THIRStmt):
-    """An @error_return call in statement position, result discarded --
-    `_gen_error_return_stmt_block`:
+    """An @error_return call in statement position, result discarded:
 
         {
             auto __try_tmp_N = <call>;
@@ -2879,7 +2861,7 @@ class THIRErrorReturnDiscard(THIRStmt):
 @dataclass(frozen=True)
 class THIRMatchBinding:
     """A capture / `as` name bound to the whole subject in a scalar-tier
-    arm. `mode` folds `_emit_binding`'s value-subject arms at lowering:
+    arm. `mode` folds the value-subject arms at lowering:
     'assign' (a hoisted / pre-declared local -- plain `name = subject;`,
     including a hoisted pointer-local aliasing a pointer-repr subject),
     'assign_addr' (a hoisted pointer-local aliasing a value lvalue subject
@@ -2893,13 +2875,13 @@ class THIRMatchBinding:
     arm's `__case_{i}` extraction alias (or the composed `std::get` when
     no alias was drawn) instead of the subject. A FIELD capture
     (`case C(f=name)`) carries `subject_suffix=".f"`: the emit composes
-    `{prefix}{base}{suffix}` for the RHS (`_gen_match_field_bindings`'
-    spelling), the base being the subject (record tiers) or the alias
+    `{prefix}{base}{suffix}` for the RHS, the base being the subject (record
+    tiers) or the alias
     (union tiers). NESTED sub-patterns extend the same composition:
     `subject_prefix` carries the left half of a `std::get<T>(...)` wrap
     (a union-field guard's extraction); mode 'field_alias' is the
-    `auto& __field_{base}_{f} = ...;` temp `_gen_match_field_bindings`
-    draws for keyword captures under a union-field guard -- its NAME is
+    `auto& __field_{base}_{f} = ...;` temp drawn for keyword captures under
+    a union-field guard -- its NAME is
     derived at emit from the runtime base spelling (`name` holds the
     FIELD name), and later rows reach it via `base_name`, which switches
     a row's base from the subject to a previously-bound name (a field
@@ -2914,21 +2896,21 @@ class THIRMatchBinding:
     base_name: 'str | None' = None
     # field_alias rows only: the PLAIN field path accumulated between the
     # base and this guard (e.g. ".v" for `W(v=A(n=...))` where `v` is a
-    # non-union field). The AST derives the temp name from its threaded
-    # `case_var`, which includes those segments -- the emit composes
-    # `{base}{alias_path}` before sanitizing, or the name would drop them.
+    # non-union field). The temp name derives from the accumulated path --
+    # the emit composes `{base}{alias_path}` before sanitizing, or the name
+    # would drop those segments.
     alias_path: str = ""
 
 
 @dataclass(frozen=True)
 class THIRMatchArmEntry:
-    """One source `case` inside a THIRMatchArm group -- the mirror of
-    `_group_switch_arms`' `_SwitchEntry`. `binding` is the arm block's
+    """One source `case` inside a THIRMatchArm group. `binding` is the arm
+    block's
     first line (a `case x:` capture or a `case <pattern> as z:` name);
     `guard` is the lowered guard, rendered raw (`if (guard)`) -- bool-typed
     and call-free by the gate, so no truthy wrap and no temp flush point
-    needed. `loc` feeds the source comment (the AST comments each group's
-    FIRST entry only; the chain tiers comment every arm -- their groups
+    needed. `loc` feeds the source comment (only each group's FIRST entry
+    is commented; the chain tiers comment every arm -- their groups
     are single-entry)."""
     body: tuple[THIRStmt, ...] = ()
     loc: 'SourceLocation | None' = None
@@ -2947,22 +2929,22 @@ class THIRMatchArmEntry:
     # subject were renamed to the alias at lowering (the U3 mechanic).
     variant_index: 'int | None' = None
     case_alias: 'str | None' = None
-    # Record/union field sub-patterns. `field_conds` are `_record_field_
-    # conditions`' literal arms as (prefix, suffix) pairs around the runtime
+    # Record/union field sub-patterns. `field_conds` are the field-condition
+    # literal arms as (prefix, suffix) pairs around the runtime
     # base spelling (only known at emit: `__match_subject_N` for the record
     # tiers, `__case_{idx}` for the guarded-union tier) -- the emit composes
     # `{prefix}{base}{suffix}`, `&&`-joined. `field_bindings` are the
     # keyword captures (`subject_suffix` carries the `.field` accessor).
     # `or_conds` marks an or-pattern arm of condition-only class
-    # alternatives: one (possibly empty after the AST's wildcard-alt clear /
+    # alternatives: one (possibly empty after the wildcard-alt clear /
     # empty-alt skip) tuple of cond groups, `||`-joined in parens; None for
-    # non-or arms. Or-arms never carry bindings (the AST drops them --
+    # non-or arms. Or-arms never carry bindings (they are dropped --
     # gate-rejected, see BUGS.md).
     field_conds: tuple[tuple[str, str], ...] = ()
     field_bindings: tuple[THIRMatchBinding, ...] = ()
     or_conds: 'tuple[tuple[tuple[str, str], ...], ...] | None' = None
     # Optional-chain tiers (if_elif_optional[_guarded]): the arm condition as
-    # `_gen_match_optional_cond`'s ||-join -- a tuple of (paren, pieces)
+    # an ||-join -- a tuple of (paren, pieces)
     # groups, each piece a (prefix, suffix) pair around the subject spelling
     # (the null/has-value tests and the `(*subj) == lit` / `(*subj).f == lit`
     # compares reference the subject once each), pieces `&&`-joined per group,
@@ -2992,17 +2974,16 @@ class THIRMatchArmEntry:
 class THIRMatchArm:
     """One arm GROUP of a scalar-tier THIRMatch. `labels` are
     per-alternative spellings pre-rendered at lowering: for the switch
-    tiers, C++ case labels (`_enum_member_cpp` for enum members -- the
-    AST's gen_expr ENUM arm -- or `_switch_literal_label`'s bare int
-    spelling; an or-pattern carries one label per alternative, stacked
+    tiers, C++ case labels (`_enum_member_cpp` for enum members, or a bare
+    int spelling; an or-pattern carries one label per alternative, stacked
     `case A:` lines sharing one block); for the if/elif tiers,
-    `_gen_literal_cond`'s comparison RHS (the emit composes
+    a comparison RHS (the emit composes
     `{subject} == {rhs}`, ||-joined for or-patterns). Empty `labels` is the
-    always-match arm -> `default:` (grouped last, like `_group_switch_arms`'
-    default_entries) or the chain's `} else {` / bare `{` block. The chain
+    always-match arm -> `default:` (grouped last) or the chain's
+    `} else {` / bare `{` block. The chain
     tiers keep one source case per group (source order); the switch tiers
-    merge same-label cases into one group whose `entries` emit as
-    `_emit_switch_groups`' guard chain (guarded-first, unguarded-last --
+    merge same-label cases into one group whose `entries` emit as a guard
+    chain (guarded-first, unguarded-last --
     sema's duplicate-case check enforces the order)."""
     labels: tuple[str, ...] = ()
     entries: tuple[THIRMatchArmEntry, ...] = ()
@@ -3011,16 +2992,16 @@ class THIRMatchArm:
 @dataclass(frozen=True)
 class THIRMatch(THIRStmt):
     """A `match` statement -- the unguarded scalar tiers: the switch tiers
-    (M1: switch_enum / switch_primitive) mirroring `_gen_match_dispatch` +
-    `_emit_switch_groups`' no-guard/no-capture shape, and the if/elif tier
+    (M1: switch_enum / switch_primitive) in their no-guard/no-capture shape,
+    and the if/elif tier
     (M2: bool/BigInt/float/str subjects below the str switch-dispatch
-    threshold) mirroring `_gen_match_if_elif`'s unguarded `==` chain --
+    threshold) as an unguarded `==` chain --
     source-order arms, wildcard as the final `} else {`, no end label, no
     counter draw beyond the subject, and no `default:`/`break;` (a chain is
     not a switch, so `break` in an arm needs no goto escape either). The
     switch shape:
 
-        <hoist decls>                       // _emit_branch_decls' plain tail
+        <hoist decls>                       // plain-value predecls
         auto& __match_subject_N = <subj>;   // auto for rvalue subjects
         switch (__match_subject_N) {
         // case A:
@@ -3037,7 +3018,7 @@ class THIRMatch(THIRStmt):
     iter_counter precedent), NOT the module-cumulative with/try sinks. The
     emitter brackets the switch with the emit-state `switch_depth` (zeroed
     around loop bodies like `ctx.match_switch_depth`) so a `break` in an arm
-    body inside a loop renders the AST's `goto __loop_break_M` escape (M off
+    body inside a loop renders the `goto __loop_break_M` escape (M off
     the per-function iter_counter, the label after the loop's close brace)
     instead of a switch-eating bare `break;`. Guards, captures/as bindings,
     the if-elif tiers, and every non-scalar subject stay gate-rejected;
@@ -3059,8 +3040,8 @@ class THIRMatch(THIRStmt):
     is_exhaustive: bool = False
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
     synthetic_default: bool = False   # no wildcard AND not exhaustive
-    # _emit_switch_groups' needs_default_goto fold: a user default exists
-    # AND some labeled group is entirely guarded -- its chain falls back via
+    # The needs_default_goto fold: a user default exists
+    # AND some labeled group is entirely guarded -- its chain falls through via
     # `goto __match_default_N;` onto the `default: __match_default_N: {`
     # label, N drawing the second per-function counter bump (before the
     # switch head).
@@ -3073,15 +3054,15 @@ class THIRMatch(THIRStmt):
     # over `subj.value`); always value-variant, so is_ptr_variant stays
     # False (is_ptr_variant_union excludes needs_wrapper).
     wrapper_value: bool = False
-    # optional_partition (O1): `_gen_match_optimized_optional` over a
+    # optional_partition (O1): the optimized-Optional shape over a
     # pointer-repr `Optional[F1-record]` name subject. The None prefix arm
     # (body/loc; bindings gate-rejected -- a None-arm `as` is a sema error
     # and a full-Optional capture defeats the partition) emits inside
     # `if (subj == nullptr) { ... } else {`; None here is the no-None-arm
     # form (`if (subj != nullptr) {`). The else block draws the
     # `__match_inner_N` deref alias (SAME counter value as the subject --
-    # gen_match numbers both off one bump) and `arms` holds the single
-    # always-match inner arm (`_emit_optional_inner_record`'s no-field
+    # both numbered off one bump) and `arms` holds the single
+    # always-match inner arm (the no-field
     # `{ }` block; sema's unreachable-arm rule caps the unguarded inner
     # dispatch at one). Its binding binds vs the inner alias.
     none_entry: 'THIRMatchArmEntry | None' = None
@@ -3090,13 +3071,13 @@ class THIRMatch(THIRStmt):
     # instead of the pointer nullptr compares, and `inner_strategy` selects the
     # multi-arm inner dispatch over the `__match_inner_N` alias --
     # 'switch_enum' / 'switch_primitive' reuse the grouped-switch emit,
-    # 'if_elif' the unguarded `==` chain (the AST's `_emit_switch_groups` /
-    # `_emit_optional_inner_if_elif` inner calls). None keeps the O1
+    # 'if_elif' the unguarded `==` chain (the inner-dispatch calls). None
+    # keeps the O1
     # single-arm pointer-repr shape.
     optional_value_repr: bool = False
     inner_strategy: 'str | None' = None
     # The chain-optional tiers (if_elif_optional / if_elif_optional_guarded)
-    # mirror `_gen_match_if_elif_optional[_guarded]` -- the non-partitioned
+    # cover the non-partitioned
     # Optional subject shapes: per-arm pre-rendered conditions ride each
     # entry's `opt_conds`; a class arm's field captures bind against the
     # `(*subj)` deref (the emit's base for `field_bindings`); a whole-subject
@@ -3106,7 +3087,7 @@ class THIRMatch(THIRStmt):
     # `goto __match_end_N` shape (second counter draw), guards nested inside
     # the arm block after the bindings.
     #
-    # switch_str -- `_gen_match_switch_str`'s discriminator dispatch (a str
+    # switch_str -- a discriminator dispatch (a str
     # subject at or above STRING_SWITCH_THRESHOLD unguarded literal
     # alternatives): the guarded-literal prefix arms (`str_guarded`,
     # standalone `if (subj == "lit") {` blocks + the goto tail), the
@@ -3127,35 +3108,33 @@ class THIRMatch(THIRStmt):
 class PrintForm(Enum):
     """How a `print()` argument is wrapped in the `std::cout << ...` chain --
     decided at lowering from the arg's resolved type, so the emitter renders the
-    chosen wrapper without re-inspecting types (mirrors `gen_print`'s per-arg
-    dispatch for the common-arg subset).
+    chosen wrapper without re-inspecting types (the common-arg subset).
 
       * `RAW`     -- direct `<<` (a wider fixed-int, or a `THIRStrLiteral`).
       * `INT8`    -- `static_cast<int>(...)`, so an 8-bit int isn't printed as a char.
       * `BOOL`    -- `::tpy::print_bool(...)` (Python-style `True`/`False`).
       * `FLOAT`   -- `::tpy::print_float(...)` (Python-style float formatting).
       * `FLOAT32` -- `::tpy::print_float(static_cast<double>(...))` (the float
-        overload takes double; gen_print's is_float32_type arm).
+        overload takes double).
       * `BYTES`   -- `::tpy::BytesPrinter(...)` (Python-style `b'...'` repr).
       * `REPR`    -- `::tpy::__repr__(...)` (an @native enum: no operator<< is
-        emitted for it, so gen_print routes through the EnumUtil-backed repr).
+        emitted for it, so printing routes through the EnumUtil-backed repr).
       * `VARARGS` -- `::tpy::VarargsPrinter(...)` on a whole `*args` body
-        view, which Python prints tuple-style (gen_print's is_varargs arm).
+        view, which Python prints tuple-style.
       * `VALUE_GENERIC` -- `::tpy::ValuePrinter(...)` on an open type-param
-        value, which dispatches the formatting at runtime (gen_print's
-        TypeParamRef arm; a `bool` T must print True/False, not 1/0).
-      * `LIST`/`SET`/`DICT` -- the container-printer wraps (gen_print's
-        container arms); currently only comprehension args take these (the
-        C3 print-arg row).
+        value, which dispatches the formatting at runtime (the TypeParamRef
+        arm; a `bool` T must print True/False, not 1/0).
+      * `LIST`/`SET`/`DICT` -- the container-printer wraps; currently only
+        comprehension args take these.
       * `OPT_VAL` -- `::tpy::print_optional_val(...)` on the whole (bare,
-        un-narrowed) value-repr `Optional[int/Char/str]` (gen_print's
-        value-repr Optional arm, plain form).
+        un-narrowed) value-repr `Optional[int/Char/str]` (the value-repr
+        Optional arm, plain form).
       * `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` -- the same on `Optional[bool]` /
         `Optional[float]`, taking an explicit Formatter + inner-type template
         (`<::tpy::print_bool, T>` / `<::tpy::print_float, T>`); the inner C++
         type rides `THIRPrintArg.opt_inner_cpp`.
       * `OPT_PTR` -- `::tpy::print_optional(...)` on a bare pointer-repr
-        `Optional[F1-record]` NAME (gen_print's pointer-repr arm, CTAD form:
+        `Optional[F1-record]` NAME (the pointer-repr arm, CTAD form:
         a record inner streams via its own operator<<, no Formatter).
     """
     RAW = auto()
@@ -3207,29 +3186,28 @@ class THIRPrintArg:
 @dataclass(frozen=True)
 class THIRPrintChain(THIRExpr):
     """The `std::cout << a0 << " " << a1 << ... << "\\n"` chain as an
-    EXPRESSION -- the body of a void print-call lambda (`_gen_lambda`'s
-    statement-body arm renders `gen_print(...)` as the closure body; the
-    enclosing THIRLambda adds the `;`). Plain `print(args)` only: the
-    default sep/end literals, no file/flush kwargs (those shapes stay on
-    the AST path)."""
+    EXPRESSION -- the body of a void print-call lambda (the enclosing
+    THIRLambda adds the `;`). Plain `print(args)` only: the
+    default sep/end literals, no file/flush kwargs -- those shapes
+    reject."""
     args: tuple[THIRPrintArg, ...] = ()
 
 
 @dataclass(frozen=True)
 class THIRPrint(THIRStmt):
     """A `print(<args>)` statement. Default sink `std::cout`; a `file=` kwarg
-    rides `sink_expr` and emits `::tpy::as_ostream(<sink>) << ...` (gen_print's
-    file-sink arm -- the sink expr lowers in value position, so a pointer-typed
+    rides `sink_expr` and emits `::tpy::as_ostream(<sink>) << ...` (the sink
+    expr lowers in value position, so a pointer-typed
     global like `sys.stderr` renders `(*...)`). The slice admits the
     `sep=`/`end=`/`file=` kwargs (sep/end a str literal or a resolved str-value
     NAME) and excludes `flush=`. Emits `<sink> << a0 << SEP << a1 << ...
     << END;`. A literal separator/end rides `sep_value`/`end_value` (the
-    Python VALUE, rendered via cpp_string_literal_expr like gen_print's
-    literal arm; None suppresses the token entirely -- the AST's empty-literal
+    Python VALUE, rendered via cpp_string_literal_expr; None suppresses the
+    token entirely -- the empty-literal
     skip); a runtime one rides `sep_expr`/`end_expr` and wins over the value
     slot. Each arg carries its PrintForm wrap (scalar/str/bytes/enum forms,
     the container/tuple printer wraps, records raw); args outside the wrap
-    set stay AST."""
+    set reject."""
     args: tuple[THIRPrintArg, ...] = ()
     sep_expr: 'THIRExpr | None' = None
     end_expr: 'THIRExpr | None' = None
@@ -3237,7 +3215,7 @@ class THIRPrint(THIRStmt):
     end_value: 'str | None' = "\n"
     sink_expr: 'THIRExpr | None' = None
     # A literal `flush=True` appends `<< std::flush` after the end token
-    # (gen_print's flush arm); runtime flush values stay AST.
+    # runtime flush values reject.
     flush: bool = False
 
 
@@ -3274,7 +3252,7 @@ class THIRFunctionLayout:
 @dataclass(frozen=True)
 class THIRFunction:
     """`error_return_cpp` is the @error_return error type's C++ render
-    (`error_return_to_cpp`, the AST's `ctx.current_error_return`), None for
+    (`error_return_to_cpp`), None for
     ordinary functions. It seeds the emit state: bare `return` renders
     `return {};`, a void body appends the trailing `return {};` success, and
     propagate checks read it as the innermost disposition."""
@@ -3285,7 +3263,7 @@ class THIRFunction:
     layout: THIRFunctionLayout
     error_return_cpp: 'str | None' = None
     # A per-@overload-stub body whose dead-branch fold ended in a terminating
-    # True branch: the AST suppresses the function-level trailing-comment scan
+    # True branch: the function-level trailing-comment scan is suppressed
     # (the emitted stmts come from a then_body, so scanning forward from the
     # TpyIf's line would pick up comments from inside the dead branches).
     suppress_trailing_comments: bool = False
@@ -3312,8 +3290,8 @@ class THIRMilInit:
 class THIRBaseInit:
     """A base-class initializer in a derived constructor's member-init-list:
     `Base(args)`, emitted before the field inits (M3d). `base_cpp` is the base's
-    rendered C++ name (`super_parent_type.to_cpp()`, byte-identical to the AST's
-    `_extract_base_inits`); `args` are the lowered `super().__init__(...)` argument
+    rendered C++ name (`super_parent_type.to_cpp()`); `args` are the lowered
+    `super().__init__(...)` argument
     expressions, rendered at emit (M3d-1 admits eligible-scalar args only)."""
     base_cpp: str
     args: tuple[THIRExpr, ...]
@@ -3322,17 +3300,17 @@ class THIRBaseInit:
 @dataclass(frozen=True)
 class THIRConstructor:
     """A lowered constructor: only the member-init-list + body tail that
-    `gen_record_decl` emits, NOT the signature (which stays on the AST path, the
-    M1 method precedent -- only the body/tail routes through THIR).
+    `gen_record_decl` emits, NOT the signature (the skeleton emits that --
+    only the body/tail comes from THIR).
 
     `mil_inits` are the hoisted field initializers in source order; `base_inits`
     are the base-class initializers (M3d; empty for a flat record); `body` is the
     non-init constructor body (M3c). The M3a slice is pure-MIL -- every field init
     hoists, so `body` is empty and the emitted C++ body is `{}`.
 
-    `record_name` and `params` model the constructor faithfully but are not read by
-    the tail-only emitter (the signature stays on the AST path); they are the inputs a
-    future signature-emit increment would consume."""
+    `record_name` and `params` model the constructor faithfully but are not
+    read by the tail-only emitter (the skeleton emits the signature); they are
+    the inputs a future signature-emit increment would consume."""
     record_name: str
     params: tuple[THIRParam, ...]
     mil_inits: tuple[THIRMilInit, ...]
@@ -3347,10 +3325,9 @@ class THIRResumableBody:
 
     The skeleton (`resumable_cfg` + `gen_async`) owns the frame struct, case
     labels, region replay and suspend/resume plumbing -- structural emission,
-    shared by both paths like signatures. Every user-source leaf it would
-    delegate to the AST emitters instead renders through these maps when the
-    body routed; a missing key is a hard error (lowering and seam must agree),
-    never a silent per-leaf fallback.
+    like signatures. Every user-source leaf renders through these maps; a
+    missing key is a hard error (lowering and seam must agree), never a
+    silent per-leaf skip.
 
     `leaves` covers BB leaf statements and RaiseT terminator statements;
     `conds` the Branch terminator conditions; `await_args` each suspension's
@@ -3404,9 +3381,9 @@ class THIRSimpleGenBody:
     The peephole skeleton (`gen_generators.gen_simple_generator_inline`) owns
     the signature, capture list, `make_generator` scaffolding, iterator-slot
     types, loop-var decl and the per-pull optional return -- structural
-    emission, like the resumable frame skeleton. The user-source leaves it
-    would delegate to the AST emitters render from these fields instead when
-    the body routed. Unlike `THIRResumableBody`, the seam sites are static
+    emission, like the resumable frame skeleton. The user-source leaves
+    render from these fields instead. Unlike `THIRResumableBody`, the seam
+    sites are static
     (one loop, one yield), so the blocks are direct fields, not id()-keyed
     tables.
 
@@ -3429,9 +3406,9 @@ class THIRSimpleGenBody:
 class THIRModule:
     """Container for a module's lowered functions.
 
-    Holds only the functions that lowering proved eligible; ineligible ones
-    are absent and stay on the AST-driven codegen path. Mutable container by
-    design (the nodes it holds are frozen).
+    Holds the functions lowering produced; a body it cannot lower is a
+    compile error rather than an omission. Mutable container by design (the
+    nodes it holds are frozen).
     """
     module_name: str
     functions: list[THIRFunction] = field(default_factory=list)

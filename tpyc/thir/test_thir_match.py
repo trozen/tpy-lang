@@ -23,17 +23,18 @@ import pytest
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 from ..diagnostics import SemanticError
 from .nodes import THIRMatch
-from .testutil import (_assert_byte_identical, _compile, _entry, _fn,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_byte_identical, _compile, _entry, _fn,
                        _lower_ctx, _lower_ctx_witnessed, _raised_in_lowering,
                        _assert_routes_byte_identical)
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -63,7 +64,6 @@ class TestMatchSwitchPrimitive:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "pick") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -78,7 +78,7 @@ class TestMatchSwitchPrimitive:
         assert not m.synthetic_default and not m.emit_unreachable
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void pick"):]
         assert "auto& __match_subject_1 = n;" in body
         assert "switch (__match_subject_1) {" in body
@@ -108,7 +108,6 @@ class TestMatchSwitchEnumExhaustive:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "describe") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -123,7 +122,7 @@ class TestMatchSwitchEnumExhaustive:
         assert not m.synthetic_default
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("describe"):]
         assert "case Color::Red: {" in body
         assert "default" not in body
@@ -150,7 +149,6 @@ class TestMatchOrPatternAndSyntheticDefault:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "bucket") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -161,7 +159,7 @@ class TestMatchOrPatternAndSyntheticDefault:
     def test_emit_shape(self):
         # Stacked labels share one block (bare `{` line); the non-exhaustive
         # switch closes with the synthetic default.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void bucket"):]
         assert "    case 1:\n    case 2:\n    {\n" in body
         assert "default: break;" in body
@@ -190,11 +188,10 @@ class TestMatchNumberingAndNesting:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "two") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_numbering(self):
         # Pre-order per function: sequential matches then the nested one.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void two"):]
         assert "auto& __match_subject_1 = a;" in body
         assert "auto& __match_subject_2 = b;" in body
@@ -218,13 +215,12 @@ class TestMatchBreakInLoop:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "scan") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
         # The break sits inside the emitted switch: a bare `break;` would
         # exit the switch, so it renders as the goto with the label after
         # the loop's close brace. The arm's synthetic `break;` still follows.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void scan"):]
         assert "goto __loop_break_0;" in body
         assert "__loop_break_0:;" in body
@@ -234,8 +230,7 @@ class TestMatchBreakInLoop:
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("match.loop_break_goto", 0) > 0
 
 
@@ -255,7 +250,6 @@ class TestMatchHoistDecl:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "route") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -283,7 +277,6 @@ class TestMatchIfElifStr:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "dispatch") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -296,7 +289,7 @@ class TestMatchIfElifStr:
         assert not m.synthetic_default and not m.emit_unreachable
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void dispatch"):]
         assert 'if (__match_subject_1 == "quit") {' in body
         assert ('} else if ((__match_subject_1 == "help" || '
@@ -337,7 +330,6 @@ class TestMatchIfElifBigIntAndBool:
         thir = _lower_ctx(self.INT_SRC)
         m = _fn(thir, "pick").body[0]
         assert m.strategy == "if_elif"
-        assert _cpp(self.INT_SRC, thir=True) == _cpp(self.INT_SRC, thir=False)
 
     def test_bool_routed_and_byte_identical(self):
         # bool stays off the switch (-Wswitch-bool): `b == true` chain.
@@ -345,7 +337,6 @@ class TestMatchIfElifBigIntAndBool:
         m = _fn(thir, "flip").body[0]
         assert m.strategy == "if_elif"
         assert [a.labels for a in m.arms] == [("true",), ("false",)]
-        assert _cpp(self.BOOL_SRC, thir=True) == _cpp(self.BOOL_SRC, thir=False)
 
 
 class TestMatchBindings:
@@ -365,9 +356,9 @@ class TestMatchBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.arms[-1].labels == () and m.arms[-1].entries[0].binding.mode == "copy"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto x = __match_subject_1;" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_switch_as_binding(self):
         src = (
@@ -383,7 +374,6 @@ class TestMatchBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.arms[0].labels == ("0",) and m.arms[0].entries[0].binding is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_if_elif_capture_ref(self):
         # A str capture binds by reference: `auto& other = subject;`.
@@ -399,9 +389,9 @@ class TestMatchBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.arms[-1].entries[0].binding.mode == "ref"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& other = __match_subject_1;" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_hoisted_capture_assign(self):
         # The capture leaks past the match -> sema hoists it; the binding
@@ -420,9 +410,9 @@ class TestMatchBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.arms[-1].entries[0].binding.mode == "assign"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "x = __match_subject_1;" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_witnesses(self):
         src = (
@@ -455,7 +445,6 @@ class TestMatchIfElifGuarded:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "greet") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -468,7 +457,7 @@ class TestMatchIfElifGuarded:
     def test_emit_shape(self):
         # Standalone if blocks (no else-chaining), the guard nested inside,
         # goto tails, and the end label drawn as the second counter bump.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void greet"):]
         assert body.count('if (__match_subject_1 == "hello") {') == 2
         assert "} else if" not in body
@@ -495,10 +484,10 @@ class TestMatchIfElifGuarded:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& other = __match_subject_1;" in cpp
         assert "if (strict) {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_guarded_default_group(self):
         # A guarded capture + plain wildcard merge into ONE default group
@@ -517,9 +506,9 @@ class TestMatchIfElifGuarded:
         m = _fn(thir, "f").body[0]
         assert m.strategy == "switch_primitive"
         assert len(m.arms) == 1 and len(m.arms[0].entries) == 2
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if ((x > 5)) {" in cpp and "} else {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_guard_with_call_lowers(self):
         # A call that needs no argument temps lowers in the arm condition.
@@ -536,7 +525,6 @@ class TestMatchIfElifGuarded:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_truthy_wrapped_guard_lowers(self):
         # The AST renders every guard through gen_truthy_expr, so a guard
@@ -558,14 +546,14 @@ class TestMatchIfElifGuarded:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "(static_cast<void>(make()), true)" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
-    def test_non_bool_guard_rejects(self):
+    def test_scalar_guard_renders_bare(self):
         # A native-int guard has no truthiness WRAP -- its render IS its value
-        # (`if (k)`), so the lowered result stays Int32 and the bool-result
-        # check keeps rejecting it.
+        # (`if (k)`), which is exactly what the guard position needs, so it
+        # routes like any other scalar condition.
         src = (
             "from tpy import Int32\n"
             "def f(s: str, k: Int32) -> None:\n"
@@ -577,8 +565,8 @@ class TestMatchIfElifGuarded:
             "f(\"a\", 1)\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _fn(thir, "f") is not None
+        assert "if (k) {" in _cpp(src)
 
 
 class TestConstFoldedGuard:
@@ -600,7 +588,7 @@ class TestConstFoldedGuard:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("match.guard_const_fold", 0) == 1
-        assert "if (true)" in _cpp(src, thir=True)
+        assert "if (true)" in _cpp(src)
         _assert_routes_byte_identical(src)
 
     def test_static_false_guard_routes(self):
@@ -622,7 +610,7 @@ class TestConstFoldedGuard:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("match.guard_const_fold", 0) == 1
-        assert "if (false)" in _cpp(src, thir=True)
+        assert "if (false)" in _cpp(src)
         _assert_routes_byte_identical(src)
 
 
@@ -655,7 +643,6 @@ class TestMatchSwitchUnion:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "legs") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -670,7 +657,7 @@ class TestMatchSwitchUnion:
     def test_emit_shape(self):
         # The alias extracts the deref'd ptr alternative; body reads of the
         # subject rename to it.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("legs"):]
         assert "switch (__match_subject_1.index()) {" in body
         assert "auto& __case_0 = *std::get<0>(__match_subject_1);" in body
@@ -697,10 +684,10 @@ class TestMatchSwitchUnion:
         m = _fn(thir, "legs").body[0]
         assert m.arms[0].entries[0].binding.from_case_var
         assert m.arms[1].labels == ()
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& c = __case_0;" in cpp
         assert "default: {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_or_pattern_stacked_indices(self):
         src = UNION_PREAMBLE + (
@@ -721,8 +708,8 @@ class TestMatchSwitchUnion:
         thir = _lower_ctx(src)
         m = _fn(thir, "kind").body[0]
         assert len(m.arms[0].labels) == 2
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
 
     _OR_WILDCARD_SRC = UNION_PREAMBLE + (
         "def kind(a: Cat | Dog | None) -> str:\n"
@@ -744,7 +731,7 @@ class TestMatchSwitchUnion:
         thir = _lower_ctx(self._OR_WILDCARD_SRC)
         m = _fn(thir, "kind").body[0]
         assert [a.labels for a in m.arms] == [("1",), ()]
-        cpp = _cpp(self._OR_WILDCARD_SRC, thir=True)
+        cpp = _cpp(self._OR_WILDCARD_SRC)
         assert "default: {" in cpp
         _, w = _lower_ctx_witnessed(self._OR_WILDCARD_SRC)
         assert w.get("match.or_wildcard_default", 0) > 0
@@ -782,7 +769,7 @@ class TestMatchSwitchUnion:
             "main()\n"
         )
         with pytest.raises(CodeGenError) as exc:
-            _cpp(src, thir=True)
+            _cpp(src)
         assert not _raised_in_lowering(exc.value)
 
     def test_field_binding_routes(self):
@@ -803,9 +790,9 @@ class TestMatchSwitchUnion:
         m = _fn(thir, "legs").body[0]
         fb = m.arms[0].entries[0].field_bindings
         assert len(fb) == 1 and fb[0].subject_suffix == ".legs"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto n = __case_0.legs;" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_guarded_union_routes(self):
         # M4b: per-index guard groups. Cat has a guarded + implicit
@@ -830,10 +817,10 @@ class TestMatchSwitchUnion:
         assert m.arms[0].entries[0].guard is not None
         # Dog's index is all-wildcard -> the coalesced default group.
         assert m.arms[1].labels == ()
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (ok) {" in cpp
         assert "goto __match_end_2;" in cpp and "__match_end_2:;" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_guarded_union_shared_index(self):
         # Two guarded arms on ONE member share its case block as a
@@ -855,8 +842,8 @@ class TestMatchSwitchUnion:
         m = _fn(thir, "legs").body[0]
         assert m.strategy == "guarded_union"
         assert len(m.arms[0].entries) == 2
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
 
 
 class TestMatchUnionOrBindings:
@@ -873,7 +860,6 @@ class TestMatchUnionOrBindings:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "legs") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         # One case block PER alternative, each with its own alias and a
@@ -889,7 +875,7 @@ class TestMatchUnionOrBindings:
                    for a in m.arms)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "auto& __case_0_0 = *std::get<0>(__match_subject_1);" in cpp
         assert "auto& __case_0_1 = *std::get<1>(__match_subject_1);" in cpp
         assert cpp.count("auto n = ") == 2
@@ -917,9 +903,9 @@ class TestMatchUnionOrBindings:
         assert m.strategy == "guarded_union"
         assert [a.labels for a in m.arms] == [("0",), ("1",)]
         assert all(len(a.entries) == 2 for a in m.arms)
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if ((n > 3)) {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_guarded_or_field_cond(self):
         # A literal field condition inside an or-alternative routes the
@@ -938,9 +924,9 @@ class TestMatchUnionOrBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "kind").body[0]
         assert m.strategy == "guarded_union"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "__case_0.legs == 4" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
 
 class TestMatchGateRejections:
@@ -966,9 +952,9 @@ class TestMatchGateRejections:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert len(m.arms[0].entries) == 2
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (ok) {" in cpp and "} else {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_all_guarded_group_default_goto(self):
         # An all-guarded labeled group with a user default falls back via
@@ -986,10 +972,10 @@ class TestMatchGateRejections:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.default_goto
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "goto __match_default_2;" in cpp
         assert "default: __match_default_2: {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_capture_under_as_rejects(self):
         # `case x as z:` binds TWO names to the subject -- out of the slice.
@@ -1004,7 +990,6 @@ class TestMatchGateRejections:
             "f(0)\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_literal_subject_routes(self):
         # A Literal[...] subject dispatches on its BASE type; the arms'
@@ -1022,7 +1007,6 @@ class TestMatchGateRejections:
             "f(\"r\")\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_str_over_threshold_routes_switch_str(self):
         # A guarded str match at/over the threshold takes the discriminator
@@ -1052,7 +1036,6 @@ class TestMatchGateRejections:
         m = _fn(thir, "f").body[0]
         assert m.strategy == "switch_str"
         assert len(m.str_guarded) == 1
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_str_switch_threshold_routes_switch_str(self):
         # 5+ unguarded str-literal alternatives take the discriminator
@@ -1077,7 +1060,6 @@ class TestMatchGateRejections:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.strategy == "switch_str"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_non_name_subject_rejects(self):
         src = (
@@ -1092,7 +1074,6 @@ class TestMatchGateRejections:
             "f()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 RECORD_PREAMBLE = (
@@ -1121,7 +1102,6 @@ class TestMatchIfElifRecord:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1136,7 +1116,7 @@ class TestMatchIfElifRecord:
         assert m.is_exhaustive and m.emit_unreachable
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("int32_t f"):]
         assert ("if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {"
                 in body)
@@ -1168,7 +1148,6 @@ class TestMatchGuardedRecord:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1181,7 +1160,7 @@ class TestMatchGuardedRecord:
     def test_emit_shape(self):
         # Standalone blocks: the guarded arm binds its capture, then nests
         # the guard; every arm tail is a goto to the second-counter label.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("int32_t f"):]
         assert "if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {" in body
         assert "auto x = __match_subject_1.x;" in body
@@ -1212,11 +1191,11 @@ class TestMatchGuardedRecord:
         assert m.arms[0].entries[0].or_conds == (
             (("", ".x == 0"), ("", ".y == 0")),
             (("", ".x == 1"), ("", ".y == 1")))
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert ("if (((__match_subject_1.x == 0 && __match_subject_1.y == 0)"
                 " || (__match_subject_1.x == 1 && __match_subject_1.y == 1))"
                 " && ok) {") in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_or_witness(self):
         src = RECORD_PREAMBLE + (
@@ -1230,7 +1209,6 @@ class TestMatchGuardedRecord:
         )
         _, w = _lower_ctx_witnessed(src)
         assert w.get("match.record_or", 0) > 0
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchRecordFieldNone:
@@ -1257,7 +1235,6 @@ class TestMatchRecordFieldNone:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts_and_emit(self):
         thir = _lower_ctx(self.SRC)
@@ -1266,7 +1243,7 @@ class TestMatchRecordFieldNone:
             ("!", ".opt.has_value()"),)
         assert m.arms[1].entries[0].field_conds == (
             ("std::holds_alternative<std::monostate>(", ".uni)"),)
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "if (!__match_subject_1.opt.has_value()) {" in cpp
         assert ("} else if (std::holds_alternative<std::monostate>"
                 "(__match_subject_1.uni)) {") in cpp
@@ -1293,7 +1270,6 @@ class TestMatchGuardedUnionFieldCond:
         thir = _lower_ctx(self.SRC)
         m = _fn(thir, "f").body[0]
         assert m.strategy == "guarded_union"
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts_and_emit(self):
         # A field condition routes the union to the guarded path; the
@@ -1304,7 +1280,7 @@ class TestMatchGuardedUnionFieldCond:
         dog = m.arms[0]
         assert dog.labels == ("1",) and len(dog.entries) == 2
         assert dog.entries[0].field_conds == (("", ".legs == 3"),)
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "auto& __case_1 = *std::get<1>(__match_subject_1);" in cpp
         assert "if (__case_1.legs == 3) {" in cpp
         assert "__match_end_2:;" in cpp
@@ -1327,9 +1303,9 @@ class TestMatchGuardedUnionFieldCond:
             "    print(f(Dog(), True))\n"
             "main()\n"
         )
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (__case_1.legs == 3 && ok) {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_cond_and_binding_binds_inside(self):
         # With field conds the bindings move INSIDE the condition block
@@ -1345,11 +1321,11 @@ class TestMatchGuardedUnionFieldCond:
             "    print(f(Dog()))\n"
             "main()\n"
         )
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         i_cond = cpp.index("if (__case_1.legs == 4) {")
         i_bind = cpp.index("auto& d = __case_1;")
         assert i_cond < i_bind
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
 
 class TestMatchRecordRejections:
@@ -1412,7 +1388,6 @@ class TestMatchRecordRejections:
             "main()\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_field_as_subpattern_routes(self):
         # `field=(<lit> as v)` renders the literal condition plus the `as`
@@ -1426,7 +1401,6 @@ class TestMatchRecordRejections:
             "            return 9\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_union_guard_reads_cond_capture_rejects(self):
         # With field conds the AST composes `if (conds && guard)` and only
@@ -1463,7 +1437,6 @@ class TestMatchRecordRejections:
             "f(Dog())\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_hoisted_record_as_capture_routes(self):
         # A leaked record `as` capture hoists in pointer form (`Point* q;`)
@@ -1478,7 +1451,6 @@ class TestMatchRecordRejections:
             "f(Point(1, 2))\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 OPT_PREAMBLE = (
@@ -1506,7 +1478,6 @@ class TestMatchOptionalPartition:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "check") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1522,7 +1493,7 @@ class TestMatchOptionalPartition:
         assert not m.synthetic_default and not m.default_goto
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void check"):]
         assert "auto& __match_subject_1 = x;" in body
         assert "if (__match_subject_1 == nullptr) {" in body
@@ -1558,7 +1529,6 @@ class TestMatchWildcardAsBinding:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "check") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1573,7 +1543,7 @@ class TestMatchWildcardAsBinding:
         assert second.binding is None and second.guard is None
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("check"):]
         assert "default: {" in body
         assert "auto y = __match_subject_1;" in body
@@ -1596,8 +1566,8 @@ class TestMatchWildcardAsBinding:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "label") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
 
     def test_witness(self):
         _, w = _lower_ctx_witnessed(self.SRC)
@@ -1630,7 +1600,6 @@ class TestMatchOptionalInnerRecord:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "check") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1649,7 +1618,7 @@ class TestMatchOptionalInnerRecord:
         assert m.is_exhaustive and m.emit_unreachable
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("check"):]
         assert "if (__match_subject_1 == nullptr) {" in body
         assert "auto& __match_inner_1 = (*__match_subject_1);" in body
@@ -1688,7 +1657,6 @@ class TestMatchOptionalInnerRecordOrAs:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "pick") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1702,7 +1670,7 @@ class TestMatchOptionalInnerRecordOrAs:
         assert binding.mode == "ref" and binding.from_case_var
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("pick"):]
         assert ("if ((__match_inner_1.n == 1) || "
                 "(__match_inner_1.n == 2)) {") in body
@@ -1725,9 +1693,9 @@ class TestMatchOptionalInnerRecordOrAs:
         m = _fn(thir, "grade").body[0]
         assert m.inner_strategy == "if_elif_record"
         assert m.none_entry is None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (__match_subject_1 != nullptr) {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_witness(self):
         _, w = _lower_ctx_witnessed(self.SRC)
@@ -1757,7 +1725,6 @@ class TestMatchOptionalValueDispatch:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "classify") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -1771,7 +1738,7 @@ class TestMatchOptionalValueDispatch:
         assert not m.synthetic_default
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("classify"):]
         assert "if (!__match_subject_1.has_value()) {" in body
         assert "auto& __match_inner_1 = (*__match_subject_1);" in body
@@ -1802,11 +1769,11 @@ class TestMatchOptionalValueDispatch:
         m = _fn(thir, "pick").body[0]
         assert m.optional_value_repr and m.inner_strategy == "if_elif"
         assert m.none_entry is None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (__match_subject_1.has_value()) {" in cpp
         assert ('if (__match_inner_1 == "a" || __match_inner_1 == "b") {'
                 in cpp)
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_enum_inner_routes(self):
         # An Optional[enum] name is inside the value-optional binding slice
@@ -1830,10 +1797,10 @@ class TestMatchOptionalValueDispatch:
         m = _fn(thir, "label").body[0]
         assert m.strategy == "optional_partition"
         assert m.inner_strategy == "switch_enum"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "switch (__match_inner_1) {" in cpp
         assert "case Color::Red: {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_inner_guarded_group_default_goto(self):
         # An all-guarded labeled inner group backed by a user default draws
@@ -1857,9 +1824,9 @@ class TestMatchOptionalValueDispatch:
         thir = _lower_ctx(src)
         m = _fn(thir, "pick").body[0]
         assert m.default_goto
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "goto __match_default_" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_str_guard_no_none_prefix_routes_chain(self):
         # A guarded arm + catch-all without a None prefix defeats the
@@ -1881,10 +1848,10 @@ class TestMatchOptionalValueDispatch:
         thir = _lower_ctx(src)
         m = _fn(thir, "pick").body[0]
         assert m.strategy == "if_elif_optional_guarded"
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert ("if (__match_subject_1.has_value() && "
                 "(*__match_subject_1) == \"a\") {") in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_record_inner_rejects(self):
         src = OPT_PREAMBLE + (
@@ -1924,7 +1891,6 @@ class TestMatchOptionalValueDispatch:
         thir = _lower_ctx(src)
         m = _fn(thir, "classify").body[0]
         assert m.strategy == "if_elif_optional"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchOptionalPartitionBindings:
@@ -1944,9 +1910,8 @@ class TestMatchOptionalPartitionBindings:
         m = _fn(thir, "check").body[0]
         b = m.arms[0].entries[0].binding
         assert b is not None and b.mode == "ref" and b.from_case_var
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& v = __match_inner_1;" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         _, w = _lower_ctx_witnessed(src)
         assert w.get("match.optional_inner_bind", 0) > 0
         assert w.get("match.bind_ref", 0) > 0
@@ -1967,9 +1932,8 @@ class TestMatchOptionalPartitionBindings:
         m = _fn(thir, "pick").body[0]
         assert m.arms[0].entries[0].binding.name == "v"
         assert m.is_exhaustive and m.emit_unreachable
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::std::unreachable();" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_no_none_arm_has_value_guard(self):
         src = OPT_PREAMBLE + (
@@ -1984,9 +1948,8 @@ class TestMatchOptionalPartitionBindings:
         thir = _lower_ctx(src)
         m = _fn(thir, "check").body[0]
         assert m.strategy == "optional_partition" and m.none_entry is None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (__match_subject_1 != nullptr) {" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         _, w = _lower_ctx_witnessed(src)
         assert w.get("match.optional_value_only", 0) > 0
 
@@ -2008,10 +1971,9 @@ class TestMatchOptionalPartitionBindings:
             "    check(Leaf(3), None)\n"
             "main()\n"
         )
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& __match_inner_2 = (*__match_subject_2);" in cpp
         assert "auto& __match_inner_1 = (*__match_subject_1);" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchOptionalGateRejections:
@@ -2037,7 +1999,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_non_prefix_none_routes_chain(self):
         # class-then-None defeats the partition: the chain-optional tier
@@ -2054,7 +2015,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_value_repr_record_inner_rejects(self):
         # A ValueType-record inner (value-repr Optional) stays on the O2
@@ -2081,7 +2041,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert not self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_condfree_or_alt_rejects(self):
         # A cond-free class alternative inside an or-pattern renders as a
@@ -2099,7 +2058,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert not self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_inner_arm_rejects(self):
         src = OPT_PREAMBLE + (
@@ -2116,7 +2074,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert not self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_capture_through_write_mirrors(self):
         # Mutation through the capture routes and mirrors the AST
@@ -2139,7 +2096,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_full_optional_capture_routes(self):
         # No None prefix + a catchall: the chain tier binds the full
@@ -2155,7 +2111,6 @@ class TestMatchOptionalGateRejections:
             "main()\n"
         )
         assert self._routed(src, "check")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchOptionalChainLiteral:
@@ -2179,7 +2134,6 @@ class TestMatchOptionalChainLiteral:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "label") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -2194,7 +2148,7 @@ class TestMatchOptionalChainLiteral:
         assert m.is_exhaustive and m.emit_unreachable
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("label"):]
         assert ("if (__match_subject_1.has_value() && "
                 "(*__match_subject_1) == 5) {") in body
@@ -2226,10 +2180,9 @@ class TestMatchOptionalChainOrNone:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("if (!__match_subject_1.has_value() || "
                 "(__match_subject_1.has_value() && "
                 "(*__match_subject_1) == 5)) {") in cpp
@@ -2250,7 +2203,6 @@ class TestMatchOptionalChainOrNone:
         thir = _lower_ctx(src)
         m = _fn(thir, "f").body[0]
         assert m.arms[0].entries[0].opt_conds is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_witness(self):
         _, w = _lower_ctx_witnessed(self.SRC)
@@ -2281,7 +2233,6 @@ class TestMatchOptionalChainGuarded:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "classify") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -2295,7 +2246,7 @@ class TestMatchOptionalChainGuarded:
             (False, (("!", ".has_value()"),)),)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("classify"):]
         assert "auto& x = __match_subject_1;" in body
         assert "if (((x.has_value()) && ((*x) > 5))) {" in body
@@ -2332,10 +2283,9 @@ class TestMatchOptionalChainFullCaptureAssign:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "full") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void full"):]
         assert "std::optional<int32_t> x;" in body
         assert "x = __match_subject_1;" in body
@@ -2364,10 +2314,9 @@ class TestMatchOptionalChainClassThenNone:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "bump") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("bump"):]
         assert "if (__match_subject_1 != nullptr) {" in body
         assert "} else if (__match_subject_1 == nullptr) {" in body
@@ -2398,10 +2347,9 @@ class TestMatchOptionalChainFieldCaptureGuard:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("void f"):]
         assert "auto k = (*__match_subject_1).n;" in body
         assert "if ((k > 10)) {" in body
@@ -2431,10 +2379,9 @@ class TestMatchOptionalChainNoneOnly:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("int32_t f"):]
         assert "if (__match_subject_1 == nullptr) {" in body
         assert "else" not in body
@@ -2464,10 +2411,9 @@ class TestMatchOptionalChainEnum:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "label") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("label"):]
         assert ("if (__match_subject_1.has_value() && "
                 "(*__match_subject_1) == Color::Red) {") in body
@@ -2496,7 +2442,6 @@ class TestMatchOptionalChainRejections:
             "main()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_value_opt_view_full_capture_rejects(self):
         # An Optional[str] full-Optional capture is outside the value-opt
@@ -2513,7 +2458,6 @@ class TestMatchOptionalChainRejections:
             "main()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_or_as_binding_rejects(self):
         # An or-arm `as` binding is dropped by the AST emitters (or-arms
@@ -2531,7 +2475,6 @@ class TestMatchOptionalChainRejections:
             "main()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchSwitchStrCharAt:
@@ -2562,7 +2505,6 @@ class TestMatchSwitchStrCharAt:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "classify") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -2576,7 +2518,7 @@ class TestMatchSwitchStrCharAt:
         assert all(len(a.labels) == 1 for a in m.arms)
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("classify"):]
         assert "if (__match_subject_1.size() >= " in body
         assert ("switch (static_cast<unsigned char>"
@@ -2622,7 +2564,6 @@ class TestMatchSwitchStrLengthGuardedOr:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "pick") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_facts(self):
         thir = _lower_ctx(self.SRC)
@@ -2639,7 +2580,7 @@ class TestMatchSwitchStrLengthGuardedOr:
             ("1",), ("2",), ("3",), ("4",), ("5",)]
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("pick"):]
         assert "switch (__match_subject_1.size()) {" in body
         # The guarded arm precedes the switch.
@@ -2709,7 +2650,6 @@ class TestMatchWholeSubjectCapture:
         m = next(s for s in fn.body if isinstance(s, THIRMatch))
         assert m.hoist_decls == (("q", "Point*"),)
         assert m.arms[0].entries[0].binding.mode == "assign_addr"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_borrow_subject_capture_assign(self):
         # A pointer-repr Optional local narrowed to the record: the subject
@@ -2732,7 +2672,6 @@ class TestMatchWholeSubjectCapture:
         m = next(s for s in fn.body if isinstance(s, THIRMatch))
         assert m.hoist_decls == (("q", "Point*"),)
         assert m.arms[0].entries[0].binding.mode == "assign"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_rvalue_subject_capture_moves(self):
         # A call rvalue subject materializes (`auto __match_subject_N =
@@ -2759,7 +2698,6 @@ class TestMatchWholeSubjectCapture:
         assert not m.subject_ref
         assert m.hoist_decls == (("s", "std::optional<Point>"),)
         assert m.arms[0].entries[0].binding.mode == "assign_move"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guarded_rvalue_subject_still_defers(self):
         # Any guard routes the strategy to guarded_record, where an rvalue
@@ -2779,7 +2717,6 @@ class TestMatchWholeSubjectCapture:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_rvalue_subject_still_defers(self):
         # An Optional-typed rvalue subject stays out: the tiers' pointer
@@ -2798,7 +2735,6 @@ class TestMatchWholeSubjectCapture:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_leaked_container_arm_decl_routes(self):
         # A leaked arm-body container decl takes the OPTIONAL_STORAGE
@@ -2816,7 +2752,6 @@ class TestMatchWholeSubjectCapture:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_field_subject_full_capture_routes(self):
         # Chain-optional tier, storage-form Optional FIELD subject: the
@@ -2843,7 +2778,6 @@ class TestMatchWholeSubjectCapture:
         assert m.hoist_decls == (("q", "Point*"),)
         b = m.arms[0].entries[0].binding
         assert b.mode == "assign" and not b.from_case_var
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_name_subject_full_capture_routes(self):
         # Same tier over a NAME subject: the borrow-form `T*` binding passes
@@ -2865,7 +2799,6 @@ class TestMatchWholeSubjectCapture:
         m = next(s for s in fn.body if isinstance(s, THIRMatch))
         assert m.subject_ref
         assert m.hoist_decls == (("q", "Point*"),)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_subscript_subject_still_defers(self):
         # A subscript Optional source has no lift witness -- stays AST.
@@ -2879,7 +2812,6 @@ class TestMatchWholeSubjectCapture:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_resumable_capture_still_defers(self):
         # Non-value hoist forms place storage at function top -- no drain
@@ -2898,7 +2830,6 @@ class TestMatchWholeSubjectCapture:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "g") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchRecordOrWildcardAlt:
@@ -2921,10 +2852,6 @@ class TestMatchRecordOrWildcardAlt:
     def test_routes(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
 
 class TestMatchArmBranchDecls:
     # Arm-local branch-first decls (value and owned-record) lower inline in
@@ -2954,10 +2881,9 @@ class TestMatchArmBranchDecls:
 
     def test_routes_and_byte_identical(self):
         assert _fn(_lower_ctx(self.SRC), "pick") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_arm_decl_renders_inline(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "Holder h = Holder(1);" in cpp
 
 
@@ -2987,8 +2913,8 @@ class TestMatchStorageFormSubjects:
 
     def test_union_field_subject_routes_value_variant(self):
         assert _fn(_lower_ctx(self.UNION_SRC), "f") is not None
-        cpp = _cpp(self.UNION_SRC, thir=True)
-        assert cpp == _cpp(self.UNION_SRC, thir=False)
+        cpp = _cpp(self.UNION_SRC)
+        assert cpp == _cpp(self.UNION_SRC)
         assert "auto& __match_subject_1 = h.pet;" in cpp
         # Value-variant storage: no `*` on the extraction.
         assert "auto& __case_0 = std::get<1>(__match_subject_1);" in cpp
@@ -3011,8 +2937,8 @@ class TestMatchStorageFormSubjects:
 
     def test_optional_field_subject_lifts(self):
         assert _fn(_lower_ctx(self.OPT_SRC), "f") is not None
-        cpp = _cpp(self.OPT_SRC, thir=True)
-        assert cpp == _cpp(self.OPT_SRC, thir=False)
+        cpp = _cpp(self.OPT_SRC)
+        assert cpp == _cpp(self.OPT_SRC)
         # Storage-form source: the optional_to_ptr lift, bound by VALUE,
         # and the through-write via the inner alias stays admitted.
         assert ("auto __match_subject_1 = "
@@ -3090,8 +3016,8 @@ class TestMatchStorageFormSubjectRungs:
             + "            print(\"cat\", k2)\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert ("auto& __match_subject_1 = "
                 "::tpy::__getitem__(xs, 0);") in cpp
 
@@ -3114,8 +3040,8 @@ class TestMatchStorageFormSubjectRungs:
             + "            print(\"cat\", k2)\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "*std::get" not in cpp
 
     _OPT_PRE = (
@@ -3148,7 +3074,6 @@ class TestMatchStorageFormSubjectRungs:
             + "            print(bb.val)\n"
         )
         assert _fn(_lower_ctx(src), "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_field_over_subscript_subject_routes(self):
         # A field-over-subscript O1 subject (`ms[0].opt`) is a
@@ -3163,8 +3088,8 @@ class TestMatchStorageFormSubjectRungs:
             + "            print(bb.val)\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert ("::tpy::optional_to_ptr(::tpy::__getitem__(ms, 0).opt)"
                 in cpp)
 
@@ -3195,7 +3120,6 @@ class TestMatchStorageFormSubjectRungs:
             + "            bb.data[0] = 9\n"
         )
         assert _fn(_lower_ctx(src), "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestUnionMemberCtorFieldWrite:
@@ -3224,8 +3148,8 @@ class TestUnionMemberCtorFieldWrite:
 
     def test_routes_and_byte_identical(self):
         assert _fn(_lower_ctx(self.SRC), "f") is not None
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "h.pet = Cat(9);" in cpp
         assert "to_value_variant" not in cpp
 
@@ -3247,8 +3171,8 @@ class TestMatchArmComments:
             "            return 20\n"
             "f(1)\n"
         )
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "a note about the first arm" not in cpp
 
 
@@ -3329,7 +3253,6 @@ class TestMatchNestedSubPatterns:
             "main()\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_guard_as_bind_routes(self):
         # `field=Member() as m`: the bind composes the `std::get` wrap into
@@ -3346,7 +3269,6 @@ class TestMatchNestedSubPatterns:
             "main()\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_union_tier_nested_subpattern_routes(self):
         # The union SUBJECT tiers admit nested sub-patterns too (second
@@ -3365,7 +3287,6 @@ class TestMatchNestedSubPatterns:
             "main()\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_field_as_wildcard_still_rejects(self):
         # `field=(_ as x)` stays the AST's double-bind shape -- its own row.
@@ -3380,7 +3301,6 @@ class TestMatchNestedSubPatterns:
             "main()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optional_chain_tier_nested_still_rejects(self):
         # The optional CHAIN tiers (if_elif_optional -- no None-arm prefix)
@@ -3403,7 +3323,6 @@ class TestMatchNestedSubPatterns:
             "main()\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestMatchLiteralSubject:
@@ -3427,7 +3346,6 @@ class TestMatchLiteralSubject:
             "f(\"r\")\n"
         )
         assert self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
     def test_witness_literal_facts(self):
@@ -3460,8 +3378,8 @@ class TestMatchLiteralSubject:
             "f(\"r\")\n"
         )
         assert self._routed(src, "f")
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "if (true) {" in out
 
     def test_literal_fact_membership_defers(self):
@@ -3479,7 +3397,6 @@ class TestMatchLiteralSubject:
             "f(\"r\")\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_literal_str_switch_threshold_defers(self):
         # 5+ unguarded literal alternatives take the DISCRIMINATOR switch
@@ -3502,7 +3419,6 @@ class TestMatchLiteralSubject:
             "f(\"a\")\n"
         )
         assert not self._routed(src, "f")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_mixed_plain_then_guard_alias_byte_identical(self):
         # A PLAIN (non-union) level between the subject and a keyword-
@@ -3523,8 +3439,8 @@ class TestMatchLiteralSubject:
             "main()\n"
         )
         assert self._routed(src, "f")
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "__field_match_subject_1_v_n" in cpp
 
     def test_union_rooted_guard_chain_byte_identical(self):
@@ -3544,8 +3460,8 @@ class TestMatchLiteralSubject:
             "main()\n"
         )
         assert self._routed(src, "f")
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "__field_case_0_n" in cpp
 
     def test_witness_nested_faces(self):
@@ -3701,8 +3617,7 @@ class TestOptPtrFrameFieldCapture:
             "            if v is not None:\n"
             "                print(v.n)\n"
             "sync_cap(Box(Inner(3)))\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "sync_cap") is None
+        _assert_rejects_at(_reject_tally(src), "body:stmt.match")
 
     def test_rvalue_subject_capture_raises_from_lowering(self):
         # A call-RVALUE subject with a ptr-Optional field capture and a
@@ -3724,7 +3639,7 @@ class TestOptPtrFrameFieldCapture:
             "                yield v.n\n")
         with pytest.raises(CodeGenError,
                            match="would dangle across a suspension") as exc:
-            _cpp(src, thir=True)
+            _cpp(src)
         assert _raised_in_lowering(exc.value)
 
     def test_async_rvalue_subject_capture_raises_from_lowering(self):
@@ -3746,7 +3661,7 @@ class TestOptPtrFrameFieldCapture:
             "    return None\n")
         with pytest.raises(CodeGenError,
                            match="would dangle across a suspension") as exc:
-            _cpp(src, thir=True)
+            _cpp(src)
         assert _raised_in_lowering(exc.value)
 
     def test_nonlvalue_subject_without_a_ptr_capture_is_untouched(self):
@@ -3806,7 +3721,7 @@ class TestOptPtrFrameFieldCapture:
             "            yield 3\n")
         with pytest.raises(CodeGenError,
                            match="would dangle across a suspension") as exc:
-            _cpp(src, thir=True)
+            _cpp(src)
         # Both paths share one message builder and a fallback body re-emits
         # through the other, so the text cannot say which layer decided.
         assert _raised_in_lowering(exc.value)
@@ -3948,10 +3863,7 @@ class TestMatchScalarRvalueSubject:
             "        case 1.5:\n            return 10.0\n"
             "        case _:\n            return 0.0\n"
         )
-        thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "pick") is None
-        assert not witnessed.get("match.scalar_rvalue_subject")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.match")
 
     def test_ptr_name_lvalue_chain_subject_not_claimed(self):
         # ADVERSARIAL NEIGHBOR: `match p.tag:` on `p: Ptr[Rec]` spells the

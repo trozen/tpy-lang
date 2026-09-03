@@ -6,6 +6,8 @@ rvalue, and the optional-field write off an accessor-call receiver."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -125,9 +127,8 @@ class TestStorageOptRecvMethodArgs:
                + "    if m is None:\n"
                + "        return\n"
                + "    print(take(m))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.record_f1")
 
 
 class TestAccessorReceiverOptFieldWrite:
@@ -170,9 +171,8 @@ class TestAccessorReceiverOptFieldWrite:
                "        return self.v\n"
                "def use(h: Holder, n: Holder) -> None:\n"
                "    n.byval = h.get()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
 
 class TestValueOptRecordSlot:
@@ -222,10 +222,8 @@ class TestValueOptRecordSlot:
                + "    g = t.goal\n"
                + "    print(g is None)\n"
                + "use(Track())\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
-        assert not faces.get("decl.opt_value_record")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_narrowed_field_read_routes(self):
         # The `(*g).x` receiver read ported in grind wave 7
@@ -313,7 +311,5 @@ class TestPropertyIsNoneSubject:
                + "def probe(w: Wrapper) -> None:\n"
                + "    print(w.find() is None)\n"
                + "probe(Wrapper())\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        assert not faces.get("isnone.property_subject")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.ret_type")

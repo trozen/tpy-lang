@@ -16,18 +16,18 @@ from .nodes import (
     THIRSelf, THIRSetItem, THIRStrLiteral, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn,
     _PRELUDE, _F1_RECORDS, _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical,
 )
 
 
-def _module_cpp(src: str, thir: bool) -> str:
+def _module_cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 # --- Statement-shape axis: container subscript reads (list[scalar] /
@@ -228,7 +228,7 @@ class TestContainerSubscriptRead:
                + "    print(build(cs).name)\n"
                + "main()\n")
         _assert_routes_byte_identical(src)
-        cpp = _module_cpp(src, thir=True)
+        cpp = _module_cpp(src)
         assert "out.insert(c);" in cpp
         assert "::tpy::set_remove(out, Color::Red);" in cpp
 
@@ -242,14 +242,7 @@ class TestContainerSubscriptRead:
                + "    d = {c: 1 for c in cs}\n"
                + "    return len(d)\n"
                + "def main():\n    print(f([Color.Red]))\nmain()\n")
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert compiler._thir_fallback == {"body:expr.dict_comp": 1}
+        _assert_rejects_at(_reject_tally(src), "body:expr.dict_comp")
 
     def test_value_opt_scalar_element_read_routes(self):
         # A value-repr Optional-scalar element read into a value-opt decl slot
@@ -267,11 +260,11 @@ class TestContainerSubscriptRead:
 
 
 class TestContainerSubscriptReadEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -285,11 +278,8 @@ class TestContainerSubscriptReadEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_getitem(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__getitem__(items, 0);" in cpp        # literal index
         assert "return ::tpy::__getitem__(items, i);" in cpp        # dynamic list index
         assert "return ::tpy::__getitem__(d, k);" in cpp            # dict fixed-int key
@@ -543,7 +533,6 @@ class TestMethodCall:
                + "def f(s: set[Int32], n: Int32) -> None:\n    s.add(n)\n"
                + "f({1, 2}, 3)\n")
         assert _fn(_lower(src), "f") is not None
-        assert _module_cpp(src, thir=True) == _module_cpp(src, thir=False)
 
     def test_user_record_method_ineligible(self):
         # A user-record method call takes the record emit path (temps, TypeParamRef
@@ -573,11 +562,11 @@ class TestMethodCall:
 
 
 class TestMethodCallEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -597,11 +586,8 @@ class TestMethodCallEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "xs.push_back(n);" in cpp                      # @native member rename
         assert "::tpy::list_insert(xs, 0, 7);" in cpp         # @native free function
         assert "::tpy::sort_in_place(xs);" in cpp             # @native free function
@@ -614,11 +600,11 @@ class TestMethodCallEmit:
 
 
 class TestContainerElementAppendEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -641,11 +627,8 @@ class TestContainerElementAppendEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "xs.push_back(std::string(s));" in cpp   # view local owned copy
         assert "xs.push_back(std::string(sp));" in cpp  # str param owned copy
         assert 'xs.push_back("lit");' in cpp            # literal bare
@@ -785,14 +768,7 @@ class TestContainerLiteralLocal:
                + "        for v in items:\n            self.total += v\n"
                + "def f() -> Int32:\n"
                + "    s = Sink()\n    s.take([5] * 3)\n    return s.total\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
-                           "method.arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.method_call', 'method.arg_shape')
 
     def test_reassigned_lazy_repeat_stays_ast(self):
         # A REBOUND lazy local is a pointer-local on the AST path
@@ -802,8 +778,8 @@ class TestContainerLiteralLocal:
                + "    r = [1] * n\n"
                + "    if flag:\n        r = [2] * n\n"
                + "    return len(r)\n")
-        assert _fn(_lower(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:container_lit.rebound")
 
     def test_lazy_repeat_dyn_protocol_arg_stays_ast(self):
         # A @dynamic slot takes the adapter machinery, not the structural
@@ -816,8 +792,8 @@ class TestContainerLiteralLocal:
                + "    def __len__(self) -> Int32: ...\n"
                + "def dyn_len(d: DynSized) -> Int32:\n    return len(d)\n"
                + "def f(n: Int32) -> Int32:\n    return dyn_len([1] * n)\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.protocol.dyn")
 
     def test_list_repeat_materialized_routes(self):
         # A materialized `list[T] = [v] * n` -> from_range(repeat_range(...)).
@@ -889,11 +865,11 @@ class TestContainerLiteralLocal:
 
 
 class TestContainerLiteralLocalEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -912,11 +888,8 @@ class TestContainerLiteralLocalEmit:
         + "def main():\n    print(f())\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_families(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::vector<int32_t> xs = {1, 2};" in cpp             # mutated -> vector
         assert "std::array<int32_t, 3> ys = {10, 20, 30};" in cpp     # read-only -> array
         assert "std::vector<int32_t> zs = std::vector<int32_t>{};" in cpp  # empty list
@@ -942,7 +915,6 @@ class TestContainerLiteralLocalEmit:
         assert fn is not None
         assert isinstance(fn.body[0].init, THIRContainerLiteral)
         assert isinstance(fn.body[2].init, THIRContainerLiteral)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 # --- Container-literal element families (the widened THIRContainerLiteral
@@ -960,16 +932,16 @@ _ELEM_RECORDS = (
 
 
 class TestContainerLiteralElementFamilies:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def _both(self, src: str) -> str:
-        ast_cpp = self._cpp(src, thir=False)
-        assert self._cpp(src, thir=True) == ast_cpp
+        ast_cpp = self._cpp(src)
+        assert self._cpp(src) == ast_cpp
         return ast_cpp
 
     def test_record_ctor_rvalues_route(self):
@@ -1312,11 +1284,11 @@ class TestContainerLiteralElementFamilies:
 
 
 class TestContainerCallArgs:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_free_call_container_arg_routes(self):
@@ -1383,8 +1355,8 @@ class TestContainerCallArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = self._cpp(src, thir=True)
-        assert cpp == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
+        assert cpp == self._cpp(src)
         assert "use_span(b.__span__())" in cpp
 
     def test_span_array_literal_arg_routes_byte_identical(self):
@@ -1399,8 +1371,8 @@ class TestContainerCallArgs:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        cpp = self._cpp(src, thir=True)
-        assert cpp == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
+        assert cpp == self._cpp(src)
         assert ("::tpy::as_mut_span(std::array<::tpy::BigInt, 3>"
                 "{::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)})"
                 in cpp)
@@ -1425,7 +1397,7 @@ class TestContainerCallArgs:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert ("::tpy::make_vector<std::string>"
                 "(std::move(std::string((*a))))") in cpp
 
@@ -1452,7 +1424,6 @@ class TestContainerCallArgs:
             + "    ys = [1, 2]\n    grow(ys, 3)\n    return use(ys)\n"
             + "def main():\n    print(f())\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_method_call_container_arg_routes(self):
         # The method-call validation half of the widening: d.update(e) -- the
@@ -1479,7 +1450,6 @@ class TestContainerCallArgs:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 # --- Value-view Span returns (`-> Span[scalar]` / `-> Span[readonly[scalar]]`,
@@ -1491,11 +1461,11 @@ class TestContainerCallArgs:
 
 
 class TestSpanReturn:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     _SPAN = "from tpy import Int32, Span, Array, readonly\n"
@@ -1586,9 +1556,8 @@ class TestSpanReturn:
             "    items: list[Int32] = [1, 2, 3]\n"
             "    print(take(span(items)))\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.span")
 
     def test_span_span_return_ineligible(self):
         # Span[Span[Int32]] -- the element is not a scalar -> AST.
@@ -1610,8 +1579,8 @@ class TestSpanReturn:
             + "    return buf\n"
             + "def main() -> None:\n    pass\nmain()\n"
         )
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "std::span<const int32_t> widen(std::span<int32_t> buf)" in thir_cpp
 
 
@@ -1623,11 +1592,11 @@ class TestSpanReturn:
 # `const T&`) is a C++ lvalue (`auto& __obj_N =`). Bytes-returning calls and
 # subscript iterables stay gate-excluded.
 class TestContainerCallIterable:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_own_list_return_is_rvalue_capture(self):
@@ -1744,8 +1713,8 @@ class TestContainerCallIterable:
             "    for z in view(items):\n        s = s + z\n"
             "    return s\n"
             "def main():\n    print(f())\nmain()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "auto __obj_0 = make_list(4);" in thir_cpp
         assert "auto& __obj_1 = get_list(items);" in thir_cpp
         assert "auto& __obj_2 = view(items);" in thir_cpp
@@ -1867,11 +1836,9 @@ class TestNativeIterableBuiltins:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         ast_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=False))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         thir_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         assert ast_cpp == thir_cpp
         assert "make_generator<bool>" in thir_cpp
 
@@ -1888,11 +1855,9 @@ class TestNativeIterableBuiltins:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         ast_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=False))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         thir_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         assert ast_cpp == thir_cpp
         assert "__started = false" in thir_cpp
 
@@ -1942,11 +1907,9 @@ class TestNativeIterableBuiltins:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         ast_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=False))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         thir_cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))[1]
+            entry, options=CodeGenOptions(emit_source_comments=False))[1]
         assert ast_cpp == thir_cpp
         assert "&t" in thir_cpp
 
@@ -1960,11 +1923,11 @@ class TestNativeIterableBuiltins:
 # any list[str] name. Bytes-receiver splits (`data.split(sep)` -> list[bytes])
 # and non-name / field receivers defer.
 class TestStrListMethodIterable:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_whitespace_split_routes_rvalue_capture(self):
@@ -2016,8 +1979,8 @@ class TestStrListMethodIterable:
             "    for w in s.split(',', 1):\n        print(w)\n"
             "    for line in s.splitlines():\n        print(line)\n"
             "def main():\n    f('a b c')\nmain()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "auto __obj_0 = ::tpy::str_split_whitespace(s);" in thir_cpp
         assert "std::string_view w = *__beg_0;" in thir_cpp
 
@@ -2026,11 +1989,11 @@ class TestStrListMethodIterable:
 
 
 class TestContainerStorageReturn:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_bare_owned_name_routes(self):
@@ -2117,7 +2080,7 @@ class TestContainerStorageReturn:
             "def main():\n    print(len(forward()))\n"
             "main()\n")
         _assert_byte_identical(src)
-        assert "return make();" in self._cpp(src, thir=True)
+        assert "return make();" in self._cpp(src)
 
     def test_byte_identical(self):
         src = (
@@ -2131,8 +2094,8 @@ class TestContainerStorageReturn:
             "def main():\n"
             "    print(len(make()), len(rl()), len(re()), len(rd()), len(rs()))\n"
             "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "return xs;" in thir_cpp                 # bare owned-name NRVO
         assert "return {7, 8};" in thir_cpp
         assert "return std::vector<int32_t>{};" in thir_cpp
@@ -2468,12 +2431,11 @@ class TestContainerAugSetItem:
 
 
 class TestContainerSetItemEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -2512,39 +2474,9 @@ class TestContainerSetItemEmit:
         "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_setitem_family(self):
-        cpp = self._cpp(self.SRC, thir=True)
-        assert "::tpy::__setitem__(xs, 0, 1);" in cpp        # literal index
-        assert "::tpy::__setitem__(xs, i, 2);" in cpp        # dynamic index
-        assert "::tpy::__setitem__(sp, i, 3);" in cpp        # span
-        assert "::tpy::__setitem__(ar, i, 4);" in cpp        # Array
-        # bounds-proven loop write takes the direct operator[] (both sides).
-        assert ("xs[static_cast<std::size_t>(j)] = "
-                "(::tpy::add_check<int32_t>("
-                "xs[static_cast<std::size_t>(j)], 1));" in cpp)
-        # BigInt index narrows inside the checked dunder.
-        assert ("::tpy::__setitem__(xs, n.to_fixed_check<int32_t>(), 6);"
-                in cpp)
-        # aug renders the checked read-modify-write pair...
-        assert ("::tpy::__setitem__(xs, i, "
-                "::tpy::add_check<int32_t>(::tpy::__getitem__(xs, i), 7));"
-                in cpp)
-        # ...even inside a bounds-proven loop (the AST aug arm never
-        # bounds-elides).
-        assert ("::tpy::__setitem__(xs, k, "
-                "::tpy::add_check<int32_t>(::tpy::__getitem__(xs, k), 1));"
-                in cpp)
-        # str values: view source copies, literal lands bare; str-keyed dict.
-        assert "::tpy::__setitem__(ys, 0, std::string(s));" in cpp
-        assert '::tpy::__setitem__(ys, 1, "lit");' in cpp
-        assert '::tpy::__setitem__(t, "b", std::string(s));' in cpp
-        assert ('::tpy::__setitem__(d, "x", '
-                '::tpy::add_check<int32_t>(::tpy::__getitem__(d, "x"), 1));'
-                in cpp)
-        assert '::tpy::__delitem__(d, "x");' in cpp
+        _assert_rejects_at(_reject_tally(self.SRC),
+                           "body:expr.call:call.inst_shape")
 
 
 # --- Field-access receivers: `self.xs[i]` / `h.d[k] = v` / `del self.d[k]` --
@@ -2720,13 +2652,12 @@ class TestFieldReceiverSubscript:
 
 
 class TestFieldReceiverSubscriptEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         # hpp + cpp: methods of a record emit inline in the header.
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -2760,11 +2691,8 @@ class TestFieldReceiverSubscriptEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_field_receiver_forms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__getitem__(this->xs, i);" in cpp
         assert "::tpy::__setitem__(this->xs, i, v);" in cpp
         assert ("::tpy::__setitem__(this->d, k, "
@@ -2787,11 +2715,11 @@ class TestFieldReceiverSubscriptEmit:
 # (the two-slot rebind machinery), and a record-element container return is
 # outside the literal-decl families -- both stay on the AST path.
 class TestContainerCallSlots:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -2819,11 +2747,8 @@ class TestContainerCallSlots:
         assert faces.get("decl.storage_call", 0) >= 3   # list + dict + set decls
         assert faces.get("ret.container_call", 0) == 1  # fwd's return
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_bare_call_decl(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::vector<int32_t> xs = make_list(n);" in cpp
         assert "::tpy::ordered_map<int32_t, int32_t> d = make_dict();" in cpp
         assert "::tpy::ordered_set<int32_t> s = make_set();" in cpp
@@ -2840,12 +2765,8 @@ class TestContainerCallSlots:
             + "    xs = make_list(n + 1)\n"
             + "    return xs[0]\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        cpp_t = self._cpp(src + "def main():\n    print(use(1))\nmain()\n", thir=True)
-        cpp_a = self._cpp(src + "def main():\n    print(use(1))\nmain()\n", thir=False)
-        assert cpp_t == cpp_a
-        assert "std::vector<int32_t>* xs" in cpp_t  # the AST pointer-local shape
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.container_call_reassigned")
 
     def test_record_element_container_call_decl_and_return_route(self):
         # A container-of-records RETURN from a call lands bare (the whole
@@ -2870,11 +2791,11 @@ class TestLenFieldReceiver:
     """`len(recv.field)` -- the builtin len over one-level container/str/bytes
     fields (the `for i in range(len(self.xs))` unblock)."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -2904,9 +2825,6 @@ class TestLenFieldReceiver:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes_and_witnesses(self):
         thir, wit = _lower_ctx_witnessed(self.SRC)
         for name in ("total", "vlen", "sum_all", "free_len"):
@@ -2914,7 +2832,7 @@ class TestLenFieldReceiver:
         assert wit.get("len.field_recv", 0) >= 4
 
     def test_emits_len_over_field(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__len__(this->xs);" in cpp
         assert "return ::tpy::__len__(h.xs);" in cpp
         # The range-len bound hoists to a stop temp like any non-literal bound.
@@ -2934,7 +2852,6 @@ class TestLenFieldReceiver:
             + "def f(b: B) -> Int32:\n    return len(b.xs)\n"
             + "def main():\n    b = B()\n    print(f(b))\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -2951,7 +2868,6 @@ class TestLenFieldReceiver:
             + "    def __init__(self):\n        self.a = A()\n"
             + "def f(b: B) -> Int32:\n    return len(b.a.xs)\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -2984,11 +2900,11 @@ class TestContainerFieldIteration:
     """`for x in recv.field:` over container fields -- the field renders inside
     the same lvalue `auto& __obj_N =` capture a name iterable takes."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -3030,9 +2946,6 @@ class TestContainerFieldIteration:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes_and_witnesses(self):
         thir, wit = _lower_ctx_witnessed(self.SRC)
         for name in ("sums", "bump", "free_iter"):
@@ -3040,7 +2953,7 @@ class TestContainerFieldIteration:
         assert wit.get("foreach.container_field", 0) >= 4
 
     def test_emits_field_capture(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "auto& __obj_0 = this->xs;" in cpp
         assert "auto& __obj_0 = h.xs;" in cpp
         # Record loop var stays the borrow alias off the field capture.
@@ -3071,21 +2984,21 @@ class TestContainerFieldIteration:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "auto& __obj_0 = (*h.xs);" in cpp
         assert "(*(*h.xs))" not in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
 
 class TestBytesFieldSubscript:
     """Bytes-family FIELD subscript reads (`self.data[i]` -> UInt8) through the
     `::tpy::bytes_getitem` dispatch, incl. the readonly-method const receiver."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -3108,9 +3021,6 @@ class TestBytesFieldSubscript:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes_and_witnesses(self):
         thir, wit = _lower_ctx_witnessed(self.SRC)
         for name in ("first", "at", "free_at"):
@@ -3118,7 +3028,7 @@ class TestBytesFieldSubscript:
         assert wit.get("subscript.bytes_field", 0) >= 3
 
     def test_emits_bytes_getitem_over_field(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::bytes_getitem(this->data, 0);" in cpp
         assert "return ::tpy::bytes_getitem(this->data, i);" in cpp
         assert "return ::tpy::bytes_getitem(h.data, i);" in cpp
@@ -3129,11 +3039,11 @@ class TestBytesElementRead:
     io.py family): STORAGE form -- owned decl/return sinks copy implicitly,
     view-resolved bindings / span args convert implicitly, all bare."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -3167,9 +3077,6 @@ class TestBytesElementRead:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes_and_witnesses(self):
         thir, wit = _lower_ctx_witnessed(self.SRC)
         for name in ("owned", "first", "viewed", "arg_pos", "cmp_pos",
@@ -3180,7 +3087,7 @@ class TestBytesElementRead:
     def test_storage_form_no_copy_wrap(self):
         # The element lvalue lands bare -- an owned decl copies implicitly and
         # a return copies implicitly; no ::tpy::bytes_copy wrap on either path.
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert ("std::vector<uint8_t> buf = "
                 "::tpy::__getitem__(this->_chunks, 0);") in cpp
         assert "return ::tpy::__getitem__(this->_chunks, 0);" in cpp
@@ -3227,11 +3134,11 @@ class TestRecordElementSubscript:
     off the element, and the REF_ALIAS borrow-local bind with the AST's
     element-borrow const propagation."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -3264,9 +3171,6 @@ class TestRecordElementSubscript:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes_and_witnesses(self):
         thir, wit = _lower_ctx_witnessed(self.SRC)
         for name in ("read_field", "write_field", "aug_field", "bind_mut",
@@ -3275,7 +3179,7 @@ class TestRecordElementSubscript:
         assert wit.get("subscript.record_elem", 0) >= 6
 
     def test_emits_element_access(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__getitem__(ps, 0).x;" in cpp
         assert "::tpy::__getitem__(ps, 1).x = 42;" in cpp
         # Aug-assign doubles the target render like the AST substitution.
@@ -3286,7 +3190,7 @@ class TestRecordElementSubscript:
     def test_ref_alias_const_propagation(self):
         # A read-only receiver (const-inferred or readonly-annotated) makes
         # the element alias const; a mutated one binds mutable.
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "P& p = ::tpy::__getitem__(ps, 0);" in cpp        # bind_mut
         assert "const P& p = ::tpy::__getitem__(ps, 0);" in cpp  # bind_ro*
         thir = _lower_ctx(self.SRC)
@@ -3339,7 +3243,7 @@ class TestRecordElementSubscript:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("decl.subscript_elem_addr")
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "P* p = &(::tpy::__getitem__(ps, 0));" in cpp
         assert "p = &(::tpy::__getitem__(ps, 1));" in cpp
         _assert_byte_identical(src)
@@ -3351,11 +3255,11 @@ class TestNestedContainerSubscript:
     again -> nested `::tpy::__getitem__`. The subscript-receiver twin of the
     field-over-record-element-subscript arm (`ps[i].x`)."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -3368,15 +3272,12 @@ class TestNestedContainerSubscript:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_routes(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "read2") is not None
 
     def test_emits_nested_getitem(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert ("return ::tpy::__getitem__(::tpy::__getitem__(m, 0), 1);"
                 in cpp)
 
@@ -3467,13 +3368,11 @@ class TestMembership:
         compiler, modules = _compile(src)
         _, cpp_t = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         compiler, modules = _compile(src)
         _, cpp_a = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=False))
+            options=CodeGenOptions(emit_source_comments=False))
         assert cpp_t == cpp_a
         assert "(d.contains(p.name))" in cpp_t
 
@@ -3525,7 +3424,6 @@ class TestMembership:
                + "def f(xs: set[Int32], n: Int32) -> None:\n    xs.add(n)\n"
                + "f({1, 2}, 3)\n")
         assert _fn(_lower(src), "f") is not None
-        assert _module_cpp(src, thir=True) == _module_cpp(src, thir=False)
 
     def test_list_membership_routes(self):
         # list has no `__contains__` member -- the native NativeIterable
@@ -3552,16 +3450,16 @@ class TestMembership:
 
 
 class TestMembershipEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def _both(self, src: str) -> str:
-        ast_cpp = self._cpp(src, thir=False)
-        assert self._cpp(src, thir=True) == ast_cpp
+        ast_cpp = self._cpp(src)
+        assert self._cpp(src) == ast_cpp
         return ast_cpp
 
     SRC = (
@@ -3578,9 +3476,6 @@ class TestMembershipEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_contains(self):
         cpp = self._both(self.SRC)
         assert "return (xs.contains(n));" in cpp
@@ -3595,16 +3490,16 @@ class TestMembershipEmit:
 # by-span param signature is AST-emitted and element-type-neutral. Each case here
 # is a container-of-nonscalar the old element-family gate rejected. ---
 class TestCompositionalContainerParam:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def _routes_identical(self, src: str):
         assert _fn(_lower_ctx(src), "f") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert self._cpp(src) == self._cpp(src)
 
     _P = ("from tpy import Int32\nclass P:\n    x: Int32\n"
           "    def __init__(self, x: Int32):\n        self.x = x\n")
@@ -3699,19 +3594,15 @@ class TestMethodArgLiteralTargets:
         "    c.bump(5)\n"
     )
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_target_typed_stub_literals(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         # plain BigInt slots (T substituted) take the ctor wrap
         assert "::tpy::set_remove(s, ::tpy::BigInt(99))" in cpp
         assert "s.erase(::tpy::BigInt(3))" in cpp
@@ -3739,12 +3630,11 @@ class TestContainerFromCallDecl:
         "        return [3, 4]\n"
     )
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_view_method_container_decl_routes(self):
@@ -3825,8 +3715,8 @@ class TestContainerFromCallDecl:
             + "    h = H()\n"
             + "    print(f(\"a,b\"), g(h))\n"
             + "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "std::vector<std::string> parts = ::tpy::str_split(s, \",\");" in thir_cpp
         assert "std::vector<int32_t>& ys = h.borrowed();" in thir_cpp
 
@@ -3836,12 +3726,11 @@ class TestContainerFromCallDecl:
 class TestSpanLocalDecl:
     _SPAN = "from tpy import Int32, Span, Array, readonly\n"
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_span_name_copy_decl_routes(self):
@@ -3936,8 +3825,8 @@ class TestSpanLocalDecl:
             + "    a = [1, 2, 3]\n"
             + "    print(f(a), ro(a))\n"
             + "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "std::span<int32_t> s2 = view(xs);" in thir_cpp
         assert "std::span<const int32_t> s2 = sp;" in thir_cpp
 
@@ -3957,12 +3846,11 @@ class TestSetitemWidenedValueSlots:
         "    def __init__(self, y: Int32) -> None:\n        self.y = y\n"
     )
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_container_literal_value_type_prefix(self):
@@ -3972,8 +3860,7 @@ class TestSetitemWidenedValueSlots:
             "    groups: dict[str, list[Int32]] = {}\n"
             "    groups[\"odds\"] = [1, 3, 5]\n"
             "def main() -> None:\n    f()\nmain()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert ('::tpy::__setitem__(groups, "odds", '
                 "std::vector<int32_t>{1, 3, 5});") in cpp
 
@@ -3986,8 +3873,7 @@ class TestSetitemWidenedValueSlots:
             "    for i in range(len(rows)):\n"
             "        rows[i] = [i, i + 1]\n"
             "def main() -> None:\n    f()\nmain()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert ("rows[static_cast<std::size_t>(i)] = "
                 "{i, (::tpy::add_check<int32_t>(i, 1))};") in cpp
 
@@ -3997,9 +3883,8 @@ class TestSetitemWidenedValueSlots:
                + "    xs[0] = p\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "store") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         assert ("::tpy::__setitem__(xs, 0, ::tpy::ptr_to_optional(p));"
-                in self._cpp(src, thir=True))
+                in self._cpp(src))
 
     def test_union_elem_name_lifts_narrowed_stores_bare(self):
         src = (self._RECS
@@ -4011,8 +3896,8 @@ class TestSetitemWidenedValueSlots:
         thir = _lower_ctx(src)
         assert _fn(thir, "store") is not None
         assert _fn(thir, "store_narrowed") is not None
-        cpp = self._cpp(src, thir=True)
-        assert cpp == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
+        assert cpp == self._cpp(src)
         assert ("::tpy::__setitem__(xs, 0, "
                 "::tpy::to_value_variant<std::variant<A, B>>(p));") in cpp
         assert "::tpy::__setitem__(xs, 0, __p);" in cpp
@@ -4063,8 +3948,7 @@ class TestBytearraySurface:
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert "std::vector<uint8_t> ba = ::tpy::bytes_copy(" in cpp
         assert "::tpy::ByteArrayPrinter(ba)" in cpp
         assert "ba.push_back(4);" in cpp
@@ -4168,8 +4052,8 @@ class TestValueOptElemContainer:
         src = (self._HDR
                + "def f(items: list[Optional[Int32]]) -> None:\n"
                + "    items[0] = 5\n")
-        assert _fn(_lower(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.optval_value_shape")
 
     def test_view_elem_receiver_routes_but_its_arg_rows_still_gate(self):
         # The METHOD RECEIVER is element-blind (the render never spells the
@@ -4203,13 +4087,15 @@ class TestValueOptElemContainer:
                + "    ys: list[Optional[str]] = [\"b\"]\n"
                + "    print(read(ys))\n"
                + "main()\n")
-        assert _fn(_lower(src), "read") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.elem_family.optional")
 
 class TestGenericRecordSetItem:
     """The open-T user-record setitem value slot (tplib ArrayList as the
     monomorphized-generic fixture): eligibility keys on the SUBSTITUTED
-    element; record elements (the move machinery) stay deferred."""
+    element. A record element admits a move source or an rvalue; a
+    copy-shaped name has no binding for the `Own[T]` slot's `V&&` and
+    stays out."""
 
     _HDR = ("from tpy import Int32\n"
             "from tplib import ArrayList\n")
@@ -4224,7 +4110,7 @@ class TestGenericRecordSetItem:
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_record_element_setitem_deferred(self):
+    def test_record_element_rvalue_routes(self):
         src = (self._HDR
                + "class R:\n    x: Int32\n"
                + "    def __init__(self) -> None:\n        self.x = 1\n"
@@ -4232,8 +4118,21 @@ class TestGenericRecordSetItem:
                + "    a = ArrayList[R, 4]()\n"
                + "    a.append(R())\n"
                + "    a[0] = R()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        assert _fn(_lower_ctx(src), "f") is not None
+        assert "::tpy::__setitem__(a, 0, R());" in _assert_byte_identical(src)[1]
+
+    def test_record_element_copy_shaped_name_deferred(self):
+        src = (self._HDR
+               + "class R:\n    x: Int32\n"
+               + "    def __init__(self) -> None:\n        self.x = 1\n"
+               + "def f() -> None:\n"
+               + "    a = ArrayList[R, 4]()\n"
+               + "    a.append(R())\n"
+               + "    z = R()\n"
+               + "    a[0] = z\n"
+               + "    print(z.x)\n")
+        _assert_rejects_at(_reject_tally(src), "body:stmt.assign",
+                           shape="setitem.record_own_copy")
 
 
 class TestProtocolUnionCtorArg:
@@ -4269,8 +4168,8 @@ class TestProtocolUnionCtorArg:
                + "    xs = [1, 2, 3]\n"
                + "    d = ArrayList[Int32, 8](xs)\n"
                + "    print(d[0])\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.union")
 
 
 class TestRecordElementSetItem:
@@ -4362,8 +4261,8 @@ class TestRecordElementSetItem:
                + "def f(h: H) -> None:\n"
                + "    items: list[Point] = [Point()]\n"
                + "    items[0] = h.pt\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.record_value_shape")
 
 
 class TestRecordElementSetItemMove:
@@ -4507,7 +4406,7 @@ class TestStructProtoUnionArg:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "a.extend(b);" in cpp
         assert "a.extend(&(b));" not in cpp
 
@@ -4604,12 +4503,11 @@ class TestRecordRvalueNeedleMembership:
             "class Key:\n"
             "    n: Int32\n")
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_ctor_needle_set_literal_routes(self):
@@ -4620,7 +4518,7 @@ class TestRecordRvalueNeedleMembership:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("binop.membership")
-        assert ".contains(Key(1))" in self._cpp(src, thir=True)
+        assert ".contains(Key(1))" in self._cpp(src)
         _assert_byte_identical(src)
 
     def test_ctor_needle_set_name_routes(self):
@@ -4631,7 +4529,7 @@ class TestRecordRvalueNeedleMembership:
                + "f({Key(1)})\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "s.contains(Key(1))" in cpp
         assert "!(s.contains(Key(9)))" in cpp
         _assert_byte_identical(src)
@@ -4643,7 +4541,7 @@ class TestRecordRvalueNeedleMembership:
                + "f({Key(3): 1})\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert "d.contains(Key(3))" in self._cpp(src, thir=True)
+        assert "d.contains(Key(3))" in self._cpp(src)
         _assert_byte_identical(src)
 
     def test_non_record_rvalue_needle_still_defers(self):
@@ -4654,9 +4552,8 @@ class TestRecordRvalueNeedleMembership:
                + "def f(d: dict[Key, Int32]) -> None:\n"
                + "    print((Key(3), 1) in d.items())\n"
                + "f({Key(3): 1})\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:btuple.elem_rvalue")
 
     def test_method_call_rvalue_needle_still_defers(self):
         # BOUNDARY: `_record_rvalue_source_shape` admits a by-value
@@ -4671,9 +4568,8 @@ class TestRecordRvalueNeedleMembership:
                + "def f(s: set[Key], m: Mint) -> None:\n"
                + "    print(m.make(1) in s)\n"
                + "f({Key(1)}, Mint())\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.in.record")
 
 
 class TestArrayMoveThroughDecl:
@@ -4748,7 +4644,7 @@ class TestDelItemElementBlindReceiver:
         assert faces["delitem.user_record"] >= 1
 
     def test_renders_the_bare_helper_call(self):
-        cpp = _module_cpp(self.SRC, thir=True)
+        cpp = _module_cpp(self.SRC)
         assert "::tpy::__delitem__(recs, 0);" in cpp
         assert "::tpy::__delitem__(a, 0);" in cpp
 
@@ -4771,10 +4667,8 @@ class TestDelItemElementBlindReceiver:
             "    print(take([P(1), P(2)]))\n"
             "main()\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "take") is None
-        assert faces.get("delitem.container", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.del_item:recv_or_index")
 
 
 class TestPrintTupleRecordElement:
@@ -4812,7 +4706,7 @@ class TestPrintTupleRecordElement:
         assert faces["print.tuple_record_elem"] >= 3
 
     def test_borrow_element_derefs_and_storage_element_does_not(self):
-        cpp = _module_cpp(self.SRC, thir=True)
+        cpp = _module_cpp(self.SRC)
         assert "std::cout << (*std::get<1>(t)) << " in cpp
         assert "std::cout << std::get<0>(h.points) << " in cpp
         # the value-scalar element keeps its own row -- no deref
@@ -4915,9 +4809,8 @@ class TestMembershipFieldAndIterRows:
                + "def probe() -> None:\n"
                + "    print(\"k\" in boxes()[0].jar)\n"
                + "probe()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.in.record")
 
     _BUF = (
         "from tpy import Int32, Own\n"
@@ -4963,8 +4856,7 @@ class TestMembershipFieldAndIterRows:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert "auto&& __itr = ::tpy::__iter__(b);" in cpp
         assert "if (::tpy::unwrap_ref(*__r) == 10)" in cpp
 
@@ -4992,10 +4884,8 @@ class TestMembershipFieldAndIterRows:
                + "def probe(b: Bag) -> None:\n"
                + "    print(\"x\" in b)\n"
                + "probe(Bag())\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        assert not faces.get("binop.iter_membership")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.in.record")
 
     def test_protocol_param_receiver_routes(self):
         # A structural Iterable[T] param receiver takes the same universal
@@ -5026,9 +4916,8 @@ class TestMembershipFieldAndIterRows:
                "    arr: Array[Int32, 3] = [10, 20, 30]\n"
                "    print(contains_value(arr, 30))\n"
                "go()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "contains_value") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.in")
 
 
 class TestScalarPtrOptBinding:
@@ -5058,8 +4947,7 @@ class TestScalarPtrOptBinding:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert "int32_t* v = ::tpy::dict_get(d, \"a\");" in cpp
         assert "(::tpy::add_check<int32_t>((*v), 1))" in cpp
 
@@ -5075,9 +4963,8 @@ class TestScalarPtrOptBinding:
                "    print(take(d.get(\"a\")))\n"
                "    return d.get(\"b\")\n"
                "print(probe({\"a\": 1, \"b\": 2}))\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.expr_stmt:call.arg_shape.container")
 
     def test_reassigned_local_still_defers(self):
         src = (self._P
@@ -5087,9 +4974,8 @@ class TestScalarPtrOptBinding:
                + "    print(v)\n"
                + "    return 0\n"
                + "print(probe({\"a\": 1}))\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_slot_source")
 
     def test_unwired_whole_optional_sinks_defer(self):
         # The batch-3 Critical's boundary: an UNPROVEN whole read of the
@@ -5111,10 +4997,8 @@ class TestScalarPtrOptBinding:
                "    d = {\"a\": 10}\n"
                "    print(ret_bound(d), arg_bound(d))\n"
                "main()\n")
-        thir, _f = _lower_ctx_witnessed(src)
-        assert _fn(thir, "ret_bound") is None
-        assert _fn(thir, "arg_bound") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:name.scalar_ptr_opt_unwired")
 
 
 class TestListConcatBinop:
@@ -5196,9 +5080,8 @@ class TestListConcatBinop:
                "def main() -> None:\n"
                "    f(H())\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:binop.shape.|")
 
     def test_method_call_operand_still_defers(self):
         # BOUNDARY: the leg admits FREE calls only -- a method-call operand
@@ -5216,9 +5099,8 @@ class TestListConcatBinop:
                "def main() -> None:\n"
                "    f(H())\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:binop.shape.|")
 
     def test_list_ordering_compare_still_defers(self):
         # BOUNDARY: the ordering widening in _container_compare_pair is
@@ -5229,9 +5111,8 @@ class TestListConcatBinop:
                "    b: list[Int32] = [1, 3]\n"
                "    print(a < b)\n"
                "f()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.<")
 
     def test_return_container_concat_still_defers(self):
         # BOUNDARY: the RETURN container row is a separate unrouted gate
@@ -5245,9 +5126,8 @@ class TestListConcatBinop:
                "    b: list[Int32] = [2]\n"
                "    print(concat(a, b))\n"
                "go()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "concat") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.container_source")
 
 
 class TestCallableElementLiteral:
@@ -5380,9 +5260,8 @@ class TestNarrowedOptDictWrite:
                "def main() -> None:\n"
                "    f([1])\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.optional_check")
 
     def test_narrowed_opt_list_local_routes(self):
         # A slot-hoisted LOCAL is a pointer BINDING just like a param, so the
@@ -5452,9 +5331,8 @@ class TestElemFieldChainSetitem:
             "    put(ns)\n"
             "    print(ns[0].inner.slots[\"k\"])\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "put") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.recv.field_chain")
 
 
 class TestContainerBorrowCallDecl:
@@ -5486,7 +5364,6 @@ class TestContainerBorrowCallDecl:
         assert "std::vector<int32_t>& ys = identity<std::vector<int32_t>>(xs);" in cpp
 
     def test_reassigned_alias_defers(self):
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = (
             "from typing import Sized\n"
             "from tpy import Int32\n"
@@ -5498,13 +5375,12 @@ class TestContainerBorrowCallDecl:
             "    zs = identity(xs)\n"
             "    print(len(zs))\n"
             "reassigned()\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "reassigned") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.container_call_reassigned")
 
     def test_readonly_callee_defers(self):
         # BOUNDARY: a readonly-wrapped borrow return keeps the reject --
         # the const spelling (`const T&`) is unverified at this arm.
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = (
             "from tpy import Int32, readonly\n"
             "def pick_ro(a: readonly[list[Int32]])"
@@ -5514,8 +5390,8 @@ class TestContainerBorrowCallDecl:
             "    xs = pick_ro(a)\n"
             "    return len(xs)\n"
             "f([1])\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "f") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.container_call_borrow")
 
 
 class TestReturnListRepeat:
@@ -5764,9 +5640,8 @@ class TestTparamDictKey:
             "    print(s.has(\"a\"))\n"
             "main()\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "has") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.in.tparam")
 
 
 class TestNestedArrayCtorAndChainedSubscript:
@@ -5914,9 +5789,8 @@ class TestNarrowedOptRecordGetitem:
             "def main() -> None:\n"
             "    read(Grid())\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "read") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.optional_check")
 
 
 class TestNarrowedOptNestedSubscript:
@@ -5968,9 +5842,8 @@ class TestNarrowedOptNestedSubscript:
             "def main() -> None:\n"
             "    write([[1, 2]])\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "write") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.recv.subscript")
 
 
 class TestBytearraySubscriptRead:
@@ -6019,9 +5892,8 @@ class TestBytearraySubscriptRead:
                "def main() -> None:\n"
                "    take(bytearray(b\"ab\"))\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "take") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.recv_type")
 
     def test_list_subscript_keeps_checked_template(self):
         # The bytearray dispatch must not leak into the container families.

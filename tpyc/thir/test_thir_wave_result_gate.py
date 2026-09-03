@@ -11,7 +11,8 @@ import io
 
 from ..codegen_cpp.context import CodeGenOptions
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 
@@ -53,8 +54,8 @@ class TestTemplateRecordRvalue:
             "def f() -> None:\n"
             "    show(make_default[Point]())\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.record_f1")
 
 
 _ER = (
@@ -99,8 +100,8 @@ class TestErRecordRvalue:
             "    except E:\n"
             "        print(\"err\")\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.error_return")
 
 
 class TestCtorArgRows:
@@ -179,8 +180,8 @@ class TestCtorArgRows:
             "    h = Holder(copy(xs[0]))\n"
             "    return h.item.value\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_record_f1")
 
     def test_default_factory_instantiation(self):
         src = (
@@ -375,15 +376,7 @@ class TestCopyFaces:
             "    print(v)\n"
             "f()\n"
         )
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
-                           "call.copy_source.str")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.copy_source.str')
 
     def test_copy_of_span_name(self):
         src = (
@@ -408,8 +401,8 @@ class TestCopyFaces:
             "        sp2: Span[Int32] = copy(sp)\n"
             "        print(len(sp2))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:name.optspan_narrowed_read")
 
 
 class TestCallableShadowGate:
@@ -427,9 +420,8 @@ class TestCallableShadowGate:
             "def use() -> None:\n"
             "    print(apply(f, 10))\n"
         )
-        assert _fn(_lower_ctx(src), "apply") is None
-        # Both paths emit the same (broken-oracle) AST render via fallback.
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.callable_shadow")
 
 
 class TestBorrowLambdaBody:

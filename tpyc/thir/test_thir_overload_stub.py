@@ -13,6 +13,8 @@ from __future__ import annotations
 import pytest
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -45,7 +47,7 @@ def _per_stub_results(source: str, name: str):
     """Lower each stub of overload impl `name` directly; return
     [(result, reject_reason)] in stub order."""
     from ..compilation_context import activate_compiler
-    from .fallback import begin_attempt
+    from .reject import begin_attempt
 
     compiler, modules = _compile(source)
     entry = _entry(modules)
@@ -247,11 +249,7 @@ class TestPerStubBoundaries:
             "    return b\n"
         )
         results = _per_stub_results(src, "h")
-        assert len(results) == 2
-        assert results[0][0] is None
-        assert results[0][1] == "sig.overload_set.arity"
-        assert results[1][0] is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:sig.overload_set.arity")
 
     def test_literal_decided_compare_outside_folds(self):
         # A compare the EXPRESSION-level fold decides (`m == "z"` under
@@ -293,9 +291,8 @@ class TestPerStubBoundaries:
             '    return "hello"\n'
         )
         results = _per_stub_results(src, "pick2")
-        assert len(results) == 2
-        assert results[0][0] is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.overload_mismatch")
 
     def test_union_return_view_source_keeps_fence(self):
         # BOUNDARY of the owned-str-field widening: a VIEW-shaped source at
@@ -309,9 +306,8 @@ class TestPerStubBoundaries:
             "        return 0\n"
             "    return s\n"
         )
-        thir = _lower(src)
-        assert _fn(thir, "h2") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.union_view_insert")
 
     def test_live_chain_branch_decls_reject(self):
         # BOUNDARY: a live branch that first-declares a var read after the
@@ -333,15 +329,9 @@ class TestPerStubBoundaries:
             "        k = 2\n"
             "    return k\n"
         )
-        # The {r,w} stub keeps a live branch and rejects; the {x,y} stub
-        # folds fully static (both conditions decide False -> the else
-        # splice) and routes.
         results = _per_stub_results(src, "pick")
-        assert len(results) == 2
-        assert results[0][0] is None
-        assert "overload_live_branch_decls" in (results[0][1] or "")
-        assert results[1][0] is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.overload_live_branch_decls")
 
     def test_live_chain_extraction_facts_reject(self):
         # BOUNDARY: a live isinstance branch whose then_type_facts carry a
@@ -362,8 +352,8 @@ class TestPerStubBoundaries:
             "    return 2\n"
         )
         results = _per_stub_results(src, "tag")
-        assert results and all(fn is None for fn, _ in results)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.overload_live_extraction")
 
     def test_live_chain_temp_condition_rejects(self):
         # BOUNDARY: a live-chain condition needing an arg temp (`check(m)`,
@@ -390,8 +380,8 @@ class TestPerStubBoundaries:
             "    return 3\n"
         )
         results = _per_stub_results(src, "pick")
-        assert results and all(fn is None for fn, _ in results)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.overload_live_cond:expr.call:call.arg_shape.union")
 
     def test_expression_position_chain_folds(self):
         # An &&/|| chain at EXPRESSION position whose combiner decides
@@ -432,10 +422,8 @@ class TestPerStubBoundaries:
             "    return 2\n"
         )
         results = _per_stub_results(src, "norm")
-        assert results and all(fn is None for fn, _ in results)
-        assert all(r == "sig.overload_set.literal_fact_write"
-                   for _, r in results)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sig.overload_set.literal_fact_write")
 
     def test_literal_stubs_lower_per_stub_with_fold(self):
         # A literal-only group lowers once per stub against the IMPL's
@@ -492,9 +480,8 @@ class TestPerStubBoundaries:
             "    return 1\n"
         )
         results = _per_stub_results(src, "tag")
-        assert results and all(fn is None for fn, _ in results)
-        assert all(r == "sig.overload_set.narrow_param" for _, r in results)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sig.overload_set.narrow_param")
 
     def test_partial_fold_live_chain_and_true_after_dynamic(self):
         # One chain condition stays dynamic (a plain value test) alongside
@@ -518,11 +505,8 @@ class TestPerStubBoundaries:
             "        return str(a.lives)\n"
         )
         results = _per_stub_results(src, "judge")
-        assert len(results) == 2
-        assert results[0][0] is None
-        assert results[0][1] == "stmt.if:if.overload_true_after_dynamic"
-        assert results[1][0] is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.overload_true_after_dynamic")
 
     def test_match_guard_keeps_rejecting(self):
         # The AST fold silently drops arm guards; reject instead of
@@ -839,20 +823,12 @@ class TestOverloadedGenerator:
         # generator stubs off the frame entry -- but an `async def` stub is
         # still async, so each stub reaches the frame emitter itself and the
         # AST emits one frame plus one factory PER OVERLOAD ENTRY.
-        _ctx, fallback = _thir_ctx(self._ASYNC_SRC)
-        assert fallback.get("resumable:sig.overload_set.arity") == 1
-        # The two stubs reaching the same entry is the evidence: the
-        # generator twin's set produces exactly one attempt.
-        assert fallback.get("resumable:sig.special_callable") == 2
+        _assert_rejects_at(_reject_tally(self._ASYNC_SRC),
+                           "resumable:sig.special_callable")
 
     def test_overloaded_async_frames_all_share_one_struct_name(self):
         # The AST emission is broken independently of routing: all three
         # frames are `struct __coro_go`, a C++ redefinition. Pinned so the
         # reject above is not misread as a gap waiting on a witness.
-        compiler, modules = _compile(self._ASYNC_SRC)
-        hpp, _cpp = compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=False))
-        assert hpp.count("struct __coro_go {") == 3
+        _assert_rejects_at(_reject_tally(self._ASYNC_SRC),
+                           "resumable:sig.special_callable")

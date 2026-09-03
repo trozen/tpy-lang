@@ -30,7 +30,7 @@ the repository. Do not run pytest. Do not use git to change anything.
 - `<SCRATCH>/known_39_shapes.txt`: 39 shapes already KNOWN to fall back (from a
   2026-09-01 adversarial sweep). If a site in your slice is the one behind a known
   shape, say so; do not re-derive those from scratch.
-- Reading aids: `docs/IR_DESIGN.md` (design), `tpyc/thir/fallback.py` (the
+- Reading aids: `docs/IR_DESIGN.md` (design), `tpyc/thir/reject.py` (the
   `ThirUnsupported` class, `note()`, attempt bracketing), `tpyc/thir/testutil.py`
   (`_assert_rejects_at`: unit tests that PIN a reject use it; grep
   `tpyc/thir/test_*.py` for the site's reason literal to find pinned shapes).

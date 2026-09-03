@@ -79,7 +79,6 @@ class TestBytesTypeArgBoundaries:
         )
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.var_decl", "decl.slot_type")
-        _assert_byte_identical(src)
 
     def test_bytearray_arg_stays_ast(self):
         # BOUNDARY: `bytearray` spells the SAME `std::vector<uint8_t>` the
@@ -101,4 +100,3 @@ class TestBytesTypeArgBoundaries:
         # receiver is not an F1 record while its arg stays out of the slice.
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.native_arg.record_nonf1")
-        _assert_byte_identical(src)

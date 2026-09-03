@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
 )
@@ -76,7 +77,7 @@ class TestCtorOwnListLiteral:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "Bag b = Bag({1, 2, 3});" in cpp
 
     def test_own_dict_literal_routes(self):
@@ -126,7 +127,7 @@ class TestCtorTupleLiteralArg:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "std::tuple<Point*, int32_t>{&(p), 4}" in cpp
         assert "std::tuple<Point*, int32_t>{nullptr, 9}" in cpp
 
@@ -159,7 +160,7 @@ class TestPrintTupleField:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "::tpy::TuplePrinter(h.pair)" in cpp
 
 
@@ -185,7 +186,7 @@ class TestConsumingInstArg:
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "::tpy::own_iter(std::move(pairs))" in cpp
 
     def test_not_last_use_stays_bare(self):
@@ -199,7 +200,7 @@ class TestConsumingInstArg:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "own_iter" not in cpp
 
 
@@ -304,15 +305,7 @@ class TestValueOptMemberCtorArg:
             "def main() -> None:\n"
             "    print(mk(2, Cfg(\"CET\")).off)\n"
             "main()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
-                           "call.ctor_arg.optional")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.ctor_arg.optional')
 
 
 class TestProtocolOptionalContainerArg:
@@ -363,7 +356,7 @@ class TestTryParseSpecial:
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "::tpy::EnumUtil<Hue>::try_parse(s)" in cpp
 
 
@@ -386,7 +379,7 @@ class TestNativeRetCast:
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "static_cast<int32_t>(::nx::wide_add(1, 2))" in cpp
 
 
@@ -430,7 +423,7 @@ class TestMethodUnionDcbpWrap:
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "::tpy::ptr_variant_to_const<std::variant<const A*, const B*>>(u)" in cpp
         assert "k.keep(u);" in cpp
 
@@ -469,7 +462,7 @@ class TestMethodUnionDcbpGenericReceiver:
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert ("::tpy::ptr_variant_to_const<std::variant<const A*, "
                 "const B*>>(u)") in cpp
 
@@ -481,9 +474,8 @@ class TestMethodUnionDcbpGenericReceiver:
             "    u: A | B = A()\n"
             "    if isinstance(u, A):\n        return k.peek(u)\n"
             "    return 0\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
 
 class TestProtocolUnionContainerArg:
@@ -580,10 +572,6 @@ class TestFieldReadRefCtorArg:
     def test_container_field_ctor_arg_routes(self):
         thir, w = _lower_ctx_witnessed(self._SRC)
         assert w.get("ctor.field_read_ref_arg", 0) == 1
-        _assert_byte_identical(
-            self._SRC
-            + "def main() -> None:\n    print(len(Holder([1, 2]).make().items))\n"
-            + "main()\n")
 
     def test_open_t_field_ctor_arg_routes(self):
         # Same row, open-T slot: `Grid<T, N>(this->_value)`.
@@ -704,7 +692,8 @@ class TestDictSetLiteralCtorArg:
                + '    print(len(MutSink({"e": 5}).d))\n'
                + '    print(free_takes_dict({"f": 6}))\n'
                + "main()\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.native_arg.container")
 
 
 class TestBytearrayTypeCtor:

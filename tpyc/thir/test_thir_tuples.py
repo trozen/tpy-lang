@@ -12,6 +12,8 @@ from .nodes import (
     THIRTupleUnpack, THIRVarDecl, TupleSourceBind,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctor, _ctor_tail,
     _lower_ctx_witnessed, _assert_byte_identical,
     _assert_routes_byte_identical, _top_level, _PRELUDE,
@@ -94,11 +96,11 @@ class TestF3TupleReturn:
 
 
 class TestF3TupleReturnEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -108,12 +110,9 @@ class TestF3TupleReturnEmit:
         + "main()\n"
     )
 
-    def test_f3_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_tuple_to_pointer(self):
         assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, Leaf*>>(h.pair);"
-                in self._cpp(self.SRC, thir=True))
+                in self._cpp(self.SRC))
 
     ALIAS_SRC = (
         _F3_RECORDS
@@ -123,11 +122,8 @@ class TestF3TupleReturnEmit:
         + "main()\n"
     )
 
-    def test_alias_byte_identical(self):
-        assert self._cpp(self.ALIAS_SRC, thir=True) == self._cpp(self.ALIAS_SRC, thir=False)
-
     def test_alias_emits_auto_ref(self):
-        cpp = self._cpp(self.ALIAS_SRC, thir=True)
+        cpp = self._cpp(self.ALIAS_SRC)
         assert "auto&& t = h.pair;" in cpp
         assert "return ::tpy::tuple_to_pointer<std::tuple<int32_t, Leaf*>>(t);" in cpp
 
@@ -144,11 +140,8 @@ class TestF3TupleReturnEmit:
         + "main()\n"
     )
 
-    def test_const_byte_identical(self):
-        assert self._cpp(self.CONST_SRC, thir=True) == self._cpp(self.CONST_SRC, thir=False)
-
     def test_const_receiver_emits_const_tuple_to_pointer(self):
-        cpp = self._cpp(self.CONST_SRC, thir=True)
+        cpp = self._cpp(self.CONST_SRC)
         # direct field return + alias local both lift with const element pointers.
         assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, const Leaf*>>(h.pair);"
                 in cpp)
@@ -321,11 +314,11 @@ class TestF3TupleFieldWrite:
 
 
 class TestF3TupleFieldWriteEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -336,12 +329,9 @@ class TestF3TupleFieldWriteEmit:
         + "main()\n"
     )
 
-    def test_f3_write_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_tuple_to_storage(self):
         assert ("h.pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
-                "std::optional<T>>>(p);" in self._cpp(self.SRC, thir=True))
+                "std::optional<T>>>(p);" in self._cpp(self.SRC))
 
 
 
@@ -447,14 +437,13 @@ class TestTupleSubscriptRead:
         compiler, modules = _compile(src)
         entry = _entry(modules)
 
-        def cpp(thir: bool):
+        def cpp():
             _, out = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return out
 
-        thir_cpp = cpp(True)
-        assert thir_cpp == cpp(False)
+        thir_cpp = cpp()
+        assert thir_cpp == cpp()
         assert "std::tuple<int32_t, int32_t> u = t;" in thir_cpp
         assert "std::tuple<int32_t, int32_t> t = h.pair();" in thir_cpp
 
@@ -499,8 +488,7 @@ class TestEnumTupleElement:
     def test_emits_bare_std_get(self):
         compiler, modules = _compile(self._SRC)
         _, cpp = compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                    thir_codegen=True))
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
         assert "std::tuple<Color, int32_t>" in cpp
         assert "return std::get<0>(t);" in cpp
 
@@ -530,11 +518,11 @@ class TestEnumTupleElement:
 
 
 class TestTupleSubscriptReadEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -544,11 +532,8 @@ class TestTupleSubscriptReadEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_std_get(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::get<0>(p)" in cpp and "std::get<1>(p)" in cpp
 
 
@@ -559,17 +544,16 @@ class TestTupleSubscriptCallReceiver:
     _lower_expr, so a non-routable call rejects the body there (safe
     fallback, never a mis-render)."""
 
-    def _gen(self, src: str, thir: bool):
+    def _gen(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return compiler, cpp
 
     def _identical(self, src: str):
-        _, cpp_ast = self._gen(src, thir=False)
-        c, cpp_thir = self._gen(src, thir=True)
+        _, cpp_ast = self._gen(src)
+        c, cpp_thir = self._gen(src)
         assert cpp_ast == cpp_thir
         return c, cpp_thir
 
@@ -581,7 +565,6 @@ class TestTupleSubscriptCallReceiver:
                + "def main():\n    print(f(1))\nmain()\n")
         c, cpp = self._identical(src)
         assert "std::get<1>(pair(n))" in cpp
-        assert not any(k.startswith("body:") for k in c._thir_fallback)
 
     def test_method_call_receiver_routes(self):
         # The record-method flavor also exercises the widened method
@@ -612,7 +595,6 @@ class TestTupleSubscriptCallReceiver:
                + "    return t[1]\n"
                + "def main():\n    print(f(Sock(7)))\nmain()\n")
         c, _cpp = self._identical(src)
-        assert not any(k.startswith("body:") for k in c._thir_fallback)
 
     def test_arg_sink_routes(self):
         # The widened method return at an ARG sink: the value-tuple
@@ -627,7 +609,6 @@ class TestTupleSubscriptCallReceiver:
                + "def f(s: Sock) -> Int32:\n    return g(s.name())\n"
                + "def main():\n    print(f(Sock(7)))\nmain()\n")
         c, _cpp = self._identical(src)
-        assert not any(k.startswith("body:") for k in c._thir_fallback)
 
     def test_nonvalue_element_call_receiver_defers(self):
         # A pointer-repr-element result keeps the tuple outside
@@ -640,20 +621,18 @@ class TestTupleSubscriptCallReceiver:
                + "    return (1, b)\n"
                + "def f(b: Leaf) -> Int32:\n    return make(b)[0]\n"
                + "def main():\n    f(Leaf(1))\nmain()\n")
-        c, _cpp = self._identical(src)
-        assert "body:stmt.return:subscript.tuple_shape" in c._thir_fallback
+        assert 'body:stmt.return:subscript.tuple_shape' in _reject_tally(src)
 
 
 # --- Nested value-tuple subscript reads: `t[i]` yielding a whole (recursively
 # value) tuple, and the chained `t[i][j]` off that inner tuple read. Both stay
 # bare value reads (`std::get<j>(std::get<i>(t))`), printed via TuplePrinter. ---
 class TestNestedTupleSubscript:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -678,11 +657,8 @@ class TestNestedTupleSubscript:
         assert isinstance(decl.init, THIRSubscript)
         assert decl.init.index.value == 1 and decl.init.form is Form.VALUE
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_chained_and_tupleprinter(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::get<1>(std::get<1>(t))" in cpp
         assert "::tpy::TuplePrinter(std::get<0>(t))" in cpp
 
@@ -691,12 +667,11 @@ class TestNestedTupleSubscript:
 # OR-chain, with the `__in_lhs` statement-expression temp for a non-trivial
 # needle. A dict/set `in` keeps the `.contains` arm. ---
 class TestTupleLiteralMembership:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_scalar_membership_routes_node(self):
@@ -777,11 +752,8 @@ class TestTupleLiteralMembership:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_or_chain_and_stmtexpr(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "(x == 1) || (x == 17) || (x == 42)" in cpp
         assert "(!((x == 1) || (x == 2) || (x == 3)))" in cpp
         assert 'auto&& __in_lhs = get_val();' in cpp
@@ -871,11 +843,11 @@ class TestTupleSubscriptRecordRead:
 
 
 class TestTupleSubscriptRecordReadEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -887,11 +859,8 @@ class TestTupleSubscriptRecordReadEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_arrow_and_dot(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return std::get<1>(t)->n;" in cpp   # borrow param
         assert "return std::get<1>(a).n;" in cpp     # storage alias
 
@@ -964,11 +933,11 @@ class TestTupleSubscriptOptionalRead:
 
 
 class TestTupleSubscriptOptionalReadEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -979,11 +948,8 @@ class TestTupleSubscriptOptionalReadEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_deref_check(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "::tpy::deref_check(std::get<0>(t)).x" in cpp
         assert "::tpy::deref_check(::tpy::optional_to_ptr(std::get<0>(a))).x" in cpp
 
@@ -1033,11 +999,11 @@ class TestTupleSubscriptWrite:
 
 
 class TestTupleSubscriptWriteEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     # Both target forms are byte-diffed and emit-checked: the borrow-param arrow write
@@ -1055,11 +1021,8 @@ class TestTupleSubscriptWriteEmit:
         "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_writes(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::get<1>(t)->n = 5;" in cpp                      # borrow param -> arrow
         assert ("std::get<1>(t)->n = ::tpy::add_check<int32_t>(std::get<1>(t)->n, 3);"
                 in cpp)
@@ -1072,11 +1035,11 @@ class TestTupleSubscriptWriteEmit:
 
 
 class TestValueTupleSlots:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_literal_return_routes(self):
@@ -1122,8 +1085,6 @@ class TestValueTupleSlots:
             + "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _assert_byte_identical(src)
-        assert "return std::get<1>(t);" in cpp[0] + cpp[1]
         from .testutil import _thir_ctx, _assert_rejects_at
         _, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.expr_stmt",
@@ -1143,7 +1104,6 @@ class TestValueTupleSlots:
         sub = _fn(thir, "f").body[0].value
         assert isinstance(sub, THIRSubscript)
         assert sub.index.value == 0 and sub.form is Form.VALUE
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_byte_identical(self):
         src = (
@@ -1164,8 +1124,8 @@ class TestValueTupleSlots:
             + "    print(two(1, 2)[1], big()[0], f32()[1], pick(mix('x', 3)),\n"
             + "          echo((8, 9))[0], locals_())\n"
             + "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         assert "return t;" in thir_cpp                  # bare value-tuple name
         assert "return std::tuple<int32_t, int32_t>{a, b};" in thir_cpp
         assert ("return std::tuple<::tpy::BigInt, ::tpy::BigInt>"
@@ -1190,8 +1150,8 @@ class TestValueTupleSlots:
         thir = _lower(src)
         for name in ("take", "pass_along", "lit"):
             assert _fn(thir, name) is not None, name
-        cpp = self._cpp(src, thir=True)
-        assert cpp == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
+        assert cpp == self._cpp(src)
         assert "return take(t);" in cpp
         assert "return take(std::tuple<int32_t, int32_t>{3, 4});" in cpp
 
@@ -1258,11 +1218,8 @@ class TestOpenValueTupleCallReturn:
                "def main() -> None:\n"
                "    print(smaller((\"a\", Box(3)), (\"b\", Box(1)))[1].n)\n"
                "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("call.open_value_tuple_ret", 0) == 0
-        assert w.get("arg.open_value_tuple_name", 0) == 0
-        assert _fn(thir, "smaller") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ret_type.tuple")
 
     def test_method_call_source_stays_ast(self):
         # BOUNDARY: a METHOD-call source at the OST return reaches the
@@ -1283,8 +1240,8 @@ class TestOpenValueTupleCallReturn:
                "    h = H(2)\n"
                "    print(relay(h)[0])\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "relay") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.ret_type")
 
     def test_generator_frame_return_stays_ast(self):
         # BOUNDARY: inside a resumable frame the return takes the frame's own
@@ -1299,17 +1256,16 @@ class TestOpenValueTupleCallReturn:
                "    for v in walk((\"a\", 3), (\"b\", 1)):\n"
                "        print(v)\n"
                "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("call.open_value_tuple_ret", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:tuple")
 
 
 class TestTupleCallSlots:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1334,11 +1290,8 @@ class TestTupleCallSlots:
         assert faces.get("decl.storage_call", 0) >= 1
         assert faces.get("ret.tuple_call", 0) == 1
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_bare_call(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::tuple<int32_t, int32_t> t = make(n);" in cpp
         assert "t = make((::tpy::add_check<int32_t>(n, 1)));" in cpp
         assert "return make(n);" in cpp
@@ -1370,12 +1323,11 @@ class TestTupleCallSlots:
 # only: the param / decl / subscript-read / bare-name-return sinks stay on the
 # narrow value-tuple family (no bare-copy read arm for a widened-element receiver).
 class TestWidenedValueTupleReturn:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_nested_tuple_literal_return_routes(self):
@@ -1430,12 +1382,11 @@ class TestWidenedValueTupleReturn:
         # Reading the NESTED-tuple element (`t[1]`) off a nested value-tuple
         # param is a bare whole-tuple value read (`std::get<1>(t)`), copied into
         # the local -- byte-identical to AST.
-        def _cpp(src, thir):
+        def _cpp(src):
             compiler, modules = _compile(src)
             _, cpp = compiler.generate_code_to_strings(
                 _entry(modules),
-                options=CodeGenOptions(emit_source_comments=False,
-                                       thir_codegen=thir))
+                options=CodeGenOptions(emit_source_comments=False))
             return cpp
         src = (
             _PRELUDE
@@ -1444,8 +1395,8 @@ class TestWidenedValueTupleReturn:
             + "def main():\n    print(f((1, (2, 3))))\n"
             + "main()\n")
         assert _fn(_lower(src), "f") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "std::get<1>(t)" in cpp
 
     def test_widened_bare_name_return_ineligible(self):
@@ -1515,11 +1466,11 @@ class TestWidenedValueTupleReturn:
 
 
 class TestWidenedValueTupleReturnEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1545,11 +1496,8 @@ class TestWidenedValueTupleReturnEmit:
         + "def main():\n    print(0)\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_nested_spell(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert ("return std::tuple<int32_t, std::tuple<int32_t, std::string>>"
                 "{a, std::tuple<int32_t, std::string>{b, std::string(s)}};" in cpp)
         assert ("return std::tuple<int32_t, std::optional<int32_t>>{a, std::nullopt};"
@@ -1557,7 +1505,7 @@ class TestWidenedValueTupleReturnEmit:
         assert ("return std::tuple<int32_t, std::optional<int32_t>>{a, b};" in cpp)
 
     def test_emits_optional_str_wrap(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         # A view source wraps `std::string(s)` (implicit optional conversion),
         # `None`->`std::nullopt`, a str literal bare.
         assert ("return std::tuple<int32_t, std::optional<std::string>>"
@@ -1736,12 +1684,11 @@ class TestStandaloneTupleUnpack:
         # The reassigned-owns shape: a str target reused across a loop
         # (`head, tail = split2(head)`) assigns into the owned local; the
         # declared entry keeps its original type for later reads.
-        def cpp(src: str, thir: bool):
+        def cpp(src: str):
             compiler, modules = _compile(src)
             _, out = compiler.generate_code_to_strings(
                 _entry(modules),
-                options=CodeGenOptions(emit_source_comments=False,
-                                       thir_codegen=thir))
+                options=CodeGenOptions(emit_source_comments=False))
             return out
         src = (
             "def split2(s: str) -> tuple[str, str]:\n"
@@ -1753,8 +1700,8 @@ class TestStandaloneTupleUnpack:
             "        head, tail = split2(head)\n"
             "    print(head)\n"
             "f()\n")
-        thir_cpp = cpp(src, thir=True)
-        assert thir_cpp == cpp(src, thir=False)
+        thir_cpp = cpp(src)
+        assert thir_cpp == cpp(src)
         assert "head = std::get<0>(__tup_1);" in thir_cpp
 
 
@@ -1771,11 +1718,11 @@ class TestStandaloneTupleUnpack:
 
 
 class TestStandaloneTupleUnpackEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1791,11 +1738,8 @@ class TestStandaloneTupleUnpackEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_const_ref_bind_and_gets(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "const auto& __tup_1 = t;" in cpp
         assert "int32_t a = std::get<0>(__tup_1);" in cpp
         assert "int32_t b = std::get<1>(__tup_1);" in cpp
@@ -1803,7 +1747,7 @@ class TestStandaloneTupleUnpackEmit:
     def test_per_function_counter_continuous(self):
         # Two unpacks in one body -> __tup_1 then __tup_2 (the counter mirrors
         # the AST's per-function ctx.unpack_counter).
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "const auto& __tup_2 = u;" in cpp
 
     RVALUE_SRC = (
@@ -1817,14 +1761,10 @@ class TestStandaloneTupleUnpackEmit:
         + "main()\n"
     )
 
-    def test_rvalue_source_byte_identical(self):
-        assert (self._cpp(self.RVALUE_SRC, thir=True)
-                == self._cpp(self.RVALUE_SRC, thir=False))
-
     def test_rvalue_source_emits_auto_value_bind(self):
         # A call / field rvalue source materializes by value (`auto __tup_N =
         # <expr>;`), not the name arm's `const auto&`.
-        cpp = self._cpp(self.RVALUE_SRC, thir=True)
+        cpp = self._cpp(self.RVALUE_SRC)
         assert "auto __tup_1 = mk(n);" in cpp
         assert "auto __tup_1 = h.pair;" in cpp
         assert "const auto& __tup_1 = mk(n);" not in cpp
@@ -2147,13 +2087,11 @@ class TestStandaloneUnpackTargetRungs:
         assert isinstance(up, THIRTupleUnpack)
         assert up.binds == ("move", "assign")
         compiler, modules = _compile(src)
-        opts_thir = CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True)
+        opts_thir = CodeGenOptions(emit_source_comments=False)
         _, cpp_t = compiler.generate_code_to_strings(_entry(modules),
                                                      options=opts_thir)
         compiler, modules = _compile(src)
-        opts_ast = CodeGenOptions(emit_source_comments=False,
-                                  thir_codegen=False)
+        opts_ast = CodeGenOptions(emit_source_comments=False)
         _, cpp_a = compiler.generate_code_to_strings(_entry(modules),
                                                      options=opts_ast)
         assert cpp_t == cpp_a
@@ -2161,11 +2099,11 @@ class TestStandaloneUnpackTargetRungs:
 
 
 class TestStandaloneUnpackTargetRungsEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     CREF_SRC = (
@@ -2175,12 +2113,8 @@ class TestStandaloneUnpackTargetRungsEmit:
         + "main()\n"
     )
 
-    def test_cref_byte_identical(self):
-        assert self._cpp(self.CREF_SRC, thir=True) == self._cpp(
-            self.CREF_SRC, thir=False)
-
     def test_cref_emit(self):
-        cpp = self._cpp(self.CREF_SRC, thir=True)
+        cpp = self._cpp(self.CREF_SRC)
         assert "const ::tpy::BigInt& a = std::get<0>(__tup_1);" in cpp
         assert "const ::tpy::BigInt& b = std::get<1>(__tup_1);" in cpp
 
@@ -2191,12 +2125,8 @@ class TestStandaloneUnpackTargetRungsEmit:
         + "main()\n"
     )
 
-    def test_own_byte_identical(self):
-        assert self._cpp(self.OWN_SRC, thir=True) == self._cpp(
-            self.OWN_SRC, thir=False)
-
     def test_own_emit_moves_elements(self):
-        cpp = self._cpp(self.OWN_SRC, thir=True)
+        cpp = self._cpp(self.OWN_SRC)
         assert "auto __tup_1 = mk();" in cpp
         assert "Leaf a = std::move(std::get<0>(__tup_1));" in cpp
         assert "Leaf b = std::move(std::get<1>(__tup_1));" in cpp
@@ -2240,14 +2170,13 @@ class TestOwnTupleReturn:
         compiler, modules = _compile(src)
         entry = _entry(modules)
 
-        def cpp(thir: bool):
+        def cpp():
             _, out = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return out
 
-        thir_cpp = cpp(True)
-        assert thir_cpp == cpp(False)
+        thir_cpp = cpp()
+        assert thir_cpp == cpp()
         assert ("return std::tuple<Leaf, Leaf>{Leaf(1), Leaf(2)};"
                 in thir_cpp)
         assert ("return std::tuple<Leaf, Leaf>{std::move(a), std::move(b)};"
@@ -2315,14 +2244,13 @@ class TestFinalTupleUnpackSources:
         compiler, modules = _compile(src)
         entry = _entry(modules)
 
-        def cpp(thir: bool):
+        def cpp():
             _, out = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return out
 
-        thir_cpp = cpp(True)
-        assert thir_cpp == cpp(False)
+        thir_cpp = cpp()
+        assert thir_cpp == cpp()
         assert "const auto& __tup_1 = VERSION;" in thir_cpp
         assert "auto __tup_1 = Version::SEMVER;" in thir_cpp
 
@@ -2331,13 +2259,11 @@ def _both_cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, ast_cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=False))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     compiler2, modules2 = _compile(src)
     entry2 = _entry(modules2)
     _, thir_cpp = compiler2.generate_code_to_strings(
-        entry2, options=CodeGenOptions(emit_source_comments=False,
-                                       thir_codegen=True))
+        entry2, options=CodeGenOptions(emit_source_comments=False))
     assert thir_cpp == ast_cpp
     return ast_cpp
 
@@ -2367,8 +2293,7 @@ class TestBorrowTupleHoistRejects:
             + "    return t[0]\n"
             + "f(Box2(1), True)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _both_cpp(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:if.hoist_type")
 
     def test_call_source_hoist_rejects(self):
         # BOUNDARY: a PLAIN borrow-tuple return (no Own element) is neither
@@ -2387,8 +2312,7 @@ class TestBorrowTupleHoistRejects:
             + "    return t[0]\n"
             + "f(Box2(1), True)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _both_cpp(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:if.hoist_type")
 
     def test_walrus_bound_name_rejects_sources(self):
         # _borrow_tuple_binding_sources returns None when a walrus binds the
@@ -2451,8 +2375,8 @@ class TestSetitemMethodRvalueMismatch:
             "    d[\"x\"] = b.clone()\n"
             "seed(Box(Tcp()))\n"
         )
-        assert _fn(_lower_ctx(src), "seed") is None
-        _both_cpp(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.record_value_shape")
 
 
 def _gen_witnessed(source: str):
@@ -2462,8 +2386,8 @@ def _gen_witnessed(source: str):
     compiler, modules = _compile(source)
     compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
-    return compiler._thir_face_witnesses, compiler._thir_fallback
+        options=CodeGenOptions(emit_source_comments=False))
+    return compiler._thir_face_witnesses
 
 
 class TestTupleTernary:
@@ -2494,10 +2418,9 @@ class TestTupleTernary:
                + "    u = t if cond else t2\n"
                + "    yield u\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _gen_witnessed(src)
+        witnesses = _gen_witnessed(src)
         assert witnesses.get("res.btuple_write", 0) >= 3
         assert witnesses.get("ifexpr.tuple", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
         _assert_byte_identical(src)
 
     def test_storage_arm_ternary_frame_write_defers(self):
@@ -2513,8 +2436,7 @@ class TestTupleTernary:
                + "    u = s if cond else t\n"
                + "    yield u\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _fn(_lower_ctx(src), "gen") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.btuple_source")
 
 
 class TestBorrowTupleAliasDecl:
@@ -2706,8 +2628,8 @@ class TestStorageTupleAliasSourceShapes:
                + "    xs: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
                + "    print(f(xs))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_const_alias_of_alias_stays_ast(self):
         # BOUNDARY, the NAME arm's half of the const rejection: `t = h.pair` off
@@ -2727,8 +2649,8 @@ class TestStorageTupleAliasSourceShapes:
                + "def main() -> None:\n"
                + "    print(f(Holder(Box(5))))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestStorageTupleAliasFieldSubscriptSource:
@@ -2800,15 +2722,8 @@ class TestStorageTupleAliasFieldSubscriptSource:
                + "    h = Holder(Box(5))\n"
                + "    print(h.peek(\"a\"))\n"
                + "main()\n")
-        compiler, modules = _compile(src)
-        entry = _entry(modules)
-        outs = [compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=t))
-            for t in (False, True)]
-        assert outs[1] == outs[0]
-        fb = dict(compiler._thir_fallback)
-        assert fb.get("body:stmt.var_decl:decl.slot_type") == 1, fb
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_branch_position_stays_ast(self):
         # BOUNDARY: the alias arm requires `fn_top` -- a decl inside a branch
@@ -2823,9 +2738,8 @@ class TestStorageTupleAliasFieldSubscriptSource:
                + "    h = Holder(Box(5))\n"
                + "    print(h.pick(\"a\", True))\n"
                + "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.branch_slot_type")
 
     def test_generator_position_stays_ast(self):
         # BOUNDARY: inside a generator frame the alias would need a frame slot,
@@ -2841,9 +2755,7 @@ class TestStorageTupleAliasFieldSubscriptSource:
                + "    for n in walk(h, \"a\"):\n"
                + "        print(n)\n"
                + "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("decl.storage_tuple_alias_field_subscript", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.btuple_source")
 
 
 class TestBorrowTupleLiteralReturn:
@@ -2856,12 +2768,11 @@ class TestBorrowTupleLiteralReturn:
             "    x: Int32\n"
             "    def __init__(self, x: Int32) -> None:\n        self.x = x\n")
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_param_ref_element_routes(self):
@@ -2877,7 +2788,7 @@ class TestBorrowTupleLiteralReturn:
         assert _fn(thir, "f") is not None
         assert faces.get("ret.btuple_literal")
         assert "return std::tuple<int32_t, P*>{n, &(p)};" in self._cpp(
-            src, thir=True)
+            src)
         _assert_byte_identical(src)
 
     def test_readonly_return_spells_const_elements(self):
@@ -2894,7 +2805,7 @@ class TestBorrowTupleLiteralReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("ret.btuple_literal")
-        assert "std::tuple<const P*, const P*>{" in self._cpp(src, thir=True)
+        assert "std::tuple<const P*, const P*>{" in self._cpp(src)
         _assert_byte_identical(src)
 
     def test_field_element_routes(self):
@@ -2931,7 +2842,7 @@ class TestBorrowTupleLiteralReturn:
         assert _fn(thir, "f") is not None
         assert faces.get("ret.btuple_literal")
         assert "return std::tuple<int32_t, R*>{a, nullptr};" in self._cpp(
-            src, thir=True)
+            src)
         _assert_byte_identical(src)
 
     def test_three_element_tuple_routes(self):
@@ -2949,7 +2860,7 @@ class TestBorrowTupleLiteralReturn:
         assert _fn(thir, "f") is not None
         assert faces.get("ret.btuple_literal")
         assert ("std::tuple<int32_t, P*, int32_t>{n, &(p), m}"
-                in self._cpp(src, thir=True))
+                in self._cpp(src))
         _assert_byte_identical(src)
 
     def test_already_pointer_optional_element_passes_bare(self):
@@ -2967,7 +2878,7 @@ class TestBorrowTupleLiteralReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("btuple.elem_optptr")
-        assert "{n, q}" in self._cpp(src, thir=True)
+        assert "{n, q}" in self._cpp(src)
         _assert_byte_identical(src)
 
 
@@ -3055,11 +2966,8 @@ class TestStorageCallTupleDecl:
                + "    return t\n"
                + "h = Holder(Box(5))\n"
                + "print(pick(h)[0])\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "pick") is not None
-        assert faces.get("decl.btuple_rebind_slot")
-        assert not faces.get("decl.storage_call_tuple")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.expr_stmt:subscript.tuple_shape")
 
 
 class TestBtupleRebindDecl:
@@ -3151,10 +3059,8 @@ class TestBtupleRebindDecl:
                + "t[1].val = 99\n"
                + "print(t[0])\n"
                + "print(h.pair[1].val)\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "pick") is not None
-        assert faces.get("decl.btuple_name_copy")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.tuple_global_source")
 
     def test_borrow_call_init_stays_out(self):
         # BOUNDARY: an aliasing (non-owning) tuple-returning call init has
@@ -3169,11 +3075,8 @@ class TestBtupleRebindDecl:
                + "    t = h2.pair\n"
                + "    return first\n"
                + "print(use(Holder(Box(5)), Holder(Box(9))))\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
-        assert not faces.get("decl.btuple_lift")
-        assert not faces.get("decl.btuple_rebind_slot")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_owning_call_reseat_stays_out(self):
         # BOUNDARY: an owning call at RESEAT position needs the rebind-slot
@@ -3189,9 +3092,8 @@ class TestBtupleRebindDecl:
                + "    t = make_pair(9)\n"
                + "    return first + t[1].val\n"
                + "print(use(Holder(Box(5))))\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_annotated_const_decl_routes_const(self):
         # Converted fence: `ensure_borrow_tuple_const`'s whole-body fixpoint
@@ -3284,8 +3186,7 @@ class TestBorrowTupleElementSources:
         compiler, modules = _compile(self.SWAP_SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "std::tuple<int32_t, P*>{std::get<1>(p), std::get<0>(p)}" in cpp
         assert "&(std::get<" not in cpp
 
@@ -3324,15 +3225,8 @@ class TestBorrowTupleElementSources:
             "    print(via_storage([(p, 3)]))\n"
             "main()\n"
         )
-        from ..codegen_cpp.context import CodeGenOptions
-        from .testutil import _compile, _entry
-        compiler, modules = _compile(src)
-        _hpp, cpp = compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert "std::tuple<P*, int32_t>{&(std::get<0>(it)), std::get<1>(it)}" in cpp
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.branch_slot_type")
 
     def test_rvalue_element_at_a_plain_slot_still_defers(self):
         # The boundary for the container-literal `rvalue_ok` grant: the flag
@@ -3447,9 +3341,8 @@ class TestPtrTupleLiteralCompare:
                + "    t2 = (1, b)\n"
                + "    print(t1 == t2)\n"
                + "f()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.==")
 
 
 class TestValueOptScalarUnpackTargets:
@@ -3601,7 +3494,7 @@ class TestOwnTupleDecayCopyArg:
         from .testutil import _compile, _entry
         c, mods = _compile(src)
         _hpp, cpp = c.generate_code_to_strings(
-            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+            _entry(mods), options=CodeGenOptions())
         assert "sink(auto(p))" in cpp
         assert "sink(std::move(t))" in cpp
 
@@ -3609,7 +3502,6 @@ class TestOwnTupleDecayCopyArg:
         # BOUNDARY: the AST's auto() gate keys on is_owned_movable (ALL
         # non-value elements Own) -- a MIXED slot binds a const& of the
         # mixed render, never a && slot, so the decay arm must not fire.
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
         src = (
             "from tpy import Own, Int32\n"
             "class A:\n"
@@ -3625,9 +3517,8 @@ class TestOwnTupleDecayCopyArg:
             "def mixed_caller(p: tuple[Own[A], Own[B]]) -> Int32:\n"
             "    got = mixed_sink(p)\n"
             "    return got + p[0].n\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "mixed_caller") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.tuple")
 
 
 class TestOwnedBytesTupleFamily:
@@ -3808,12 +3699,8 @@ class TestBorrowTupleFieldElem:
             "def main() -> None:\n"
             "    o = Outer()\n    print(o.pair()[1])\n"
             "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        # `pair` holds the arm under test; `main` (the borrow-tuple call
-        # subscript consumer) falls back for its own unrelated reason.
-        assert _fn(thir, "pair") is not None
-        assert faces.get("btuple.elem_field", 0) >= 1
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.tuple_shape")
 
     def test_narrowed_optional_field_elem_still_defers(self):
         # Boundary: an Optional-DECLARED field element stays out -- the AST
@@ -3838,9 +3725,8 @@ class TestBorrowTupleFieldElem:
             "def main() -> None:\n"
             "    o = Outer()\n    print(o.pair()[1])\n"
             "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "pair") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.tuple_shape")
 
 
 class TestCopyWholeTupleLiteral:
@@ -3909,8 +3795,8 @@ class TestCopyWholeTupleLiteral:
             "    u = copy(t)\n"
             "    print(u[0], u[1].val)\n"
             "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.copy_source.tuple")
 
     def test_all_value_tuple_literal_still_defers(self):
         # Boundary: the arm is keyed on a pointer-repr element. An all-value
@@ -3922,8 +3808,8 @@ class TestCopyWholeTupleLiteral:
             "    t = copy((1, n))\n"
             "    print(t[0], t[1])\n"
             "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.copy_source.tuple")
 
 
 # --- F3 tuple GLOBALS (storage form at namespace scope) ---
@@ -3967,15 +3853,7 @@ class TestF3TupleGlobal:
             + "    a, b = g\n"
             + "    if a is not None:\n        print(a.x)\n"
             + "main()\n")
-        top, faces, fell = _top_level(src)
-        assert top is not None
-        assert faces.get("top_level.tuple_storage_global")
-        # main's `a, b = g` (global-name unpack at opt_ptr targets) is a
-        # known deferral -- the top_level body itself must not fall back.
-        assert not any(k.startswith("top_level:") for k in fell)
-        _hpp, cpp = _assert_byte_identical(src)
-        assert ("g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
-                "std::optional<T>>>(std::tuple<T*, T*>{t1, t2});" in cpp)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.tuple_unpack")
 
     def test_top_level_none_element_routes(self):
         # The corpus shape: a None element renders nullptr inside the lifted
@@ -3987,7 +3865,7 @@ class TestF3TupleGlobal:
             + "def use() -> None:\n    print(0)\n"
             + "use()\n")
         top, faces, fell = _top_level(src)
-        assert top is not None and fell == {}
+        assert top is not None and not fell
         _hpp, cpp = _assert_byte_identical(src)
         assert ("g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
                 "std::optional<T>>>(std::tuple<T*, T*>{t1, nullptr});"
@@ -4004,10 +3882,8 @@ class TestF3TupleGlobal:
             + "g2: tuple[T | None, T | None] = g\n"
             + "def use() -> None:\n    print(0)\n"
             + "use()\n")
-        top, _faces, fell = _top_level(src)
-        assert top is None
-        assert fell == {
-            "top_level:stmt.var_decl:top_level.tuple_global_source": 1}
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.tuple_global_source")
 
     def test_top_level_storage_global_fresh_literal_routes_identity_lift(self):
         # The IDENTITY sub-shape of the same arm: every element of the
@@ -4023,7 +3899,7 @@ class TestF3TupleGlobal:
             + "    g[1].v = 9\n    print(g[0])\n    print(g[1].v)\n"
             + "main()\n")
         top, faces, fell = _top_level(src)
-        assert top is not None and fell == {}
+        assert top is not None and not fell
         assert faces.get("top_level.tuple_storage_global")
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert ("g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>("
@@ -4039,7 +3915,7 @@ class TestF3TupleGlobal:
             "def main() -> None:\n    print(gv[0])\n"
             "main()\n")
         top, faces, fell = _top_level(src)
-        assert top is not None and fell == {}
+        assert top is not None and not fell
         assert not faces.get("top_level.tuple_storage_global")
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "gv = std::tuple<int32_t, int32_t>{1, 2};" in cpp
@@ -4063,7 +3939,7 @@ class TestF3TupleGlobal:
             "main()\n")
         top, faces, fell = _top_level(src)
         assert top is not None
-        assert fell == {}
+        assert not fell
         assert faces.get("top_level.tuple_global_mixed_call")
         _hpp, cpp = _assert_byte_identical(src)
         assert ("g = ::tpy::tuple_to_storage<std::tuple<B, B>>("
@@ -4090,7 +3966,7 @@ class TestF3TupleGlobal:
             "main()\n")
         top, faces, fell = _top_level(src)
         assert top is not None
-        assert fell == {}
+        assert not fell
         assert faces.get("top_level.tuple_global_mixed_call")
         _hpp, cpp = _assert_byte_identical(src)
         assert ("g = ::tpy::tuple_to_storage<std::tuple<B, B>>("
@@ -4111,11 +3987,8 @@ class TestF3TupleGlobal:
             "def main() -> None:\n"
             "    print(g[0].x, g[1].x)\n"
             "main()\n")
-        top, _faces, fell = _top_level(src)
-        assert top is None
-        assert fell == {
-            "top_level:stmt.var_decl:top_level.tuple_global_source": 1}
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.tuple_global_source")
 
     def test_global_read_at_borrow_tuple_param_lifts_const(self):
         # A seeded read-only F3 tuple global at a const borrow-tuple param
@@ -4175,9 +4048,7 @@ class TestF3TupleUnpackFromField:
             + "    t = T(1)\n"
             + "    read(Holder((t, None)))\n"
             + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "read") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.tuple_unpack")
 
 
 class TestMilNoneTupleElement:
@@ -4427,9 +4298,8 @@ class TestOwnTupleParam:
             + "def main() -> None:\n"
             + "    print(relay((P(1), P(2))))\n"
             + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "relay") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.own_tuple")
 
 
 # --- REFERENCE-element (wrapper-member) tuples ---
@@ -4497,10 +4367,8 @@ class TestWrapperRefTuple:
             + "    print(elem_value_decl(tree))\n"
             + "    print(unpack_whole(tree))\n"
             + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "elem_value_decl") is None
-        assert _fn(thir, "unpack_whole") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 # --- Nullable borrow-form tuple locals (OPTIONAL_BORROW_TUPLE) ---
@@ -4587,9 +4455,8 @@ class TestOptionalBorrowTupleLocal:
             + "    h = Holder(Box(9))\n"
             + "    print(read_only(h, True))\n"
             + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "read_only") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:field.result_type")
 
 
 class TestValueTupleContainerElem:

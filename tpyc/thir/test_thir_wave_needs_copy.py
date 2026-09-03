@@ -23,7 +23,9 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical)
 
 
@@ -67,8 +69,8 @@ class TestIdentityCoerceChainCopy:
             "def f(s: Sink, b: int) -> None:\n"
             "    s.push(b)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
 
 class TestOwnStrTemp:
@@ -216,9 +218,8 @@ class TestOwnViewfamParamReads:
             "    xs: list[str] = []\n"
             "    xs.append(v)\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:name.own_read")
 
     def test_reassigned_own_str_param_still_defers(self):
         # Boundary: a reassigned Own[str] param stays out -- the AST renders
@@ -230,9 +231,8 @@ class TestOwnViewfamParamReads:
             "from tpy import Own\n"
             'def f(v: Own[str]) -> str:\n    v = v + "x"\n    return v\n'
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:binop.shape.+")
 
 
 class TestOwnCoerceFieldBoundary:
@@ -335,9 +335,8 @@ class TestRecordSliceMethod:
             "    b = Buf()\n"
             "    print(b.head_count())\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "head_count") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:subscript.slice_shape")
 
     def test_stepped_record_slice_routes(self):
         # The stepped overload now dispatches on the 3-part

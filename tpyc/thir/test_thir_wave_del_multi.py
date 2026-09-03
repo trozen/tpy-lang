@@ -4,7 +4,8 @@ source order. Single-target dels keep the plain THIRExprStmt render; every
 per-target admission check (subscript shape, receiver shape, key slice) runs
 per target, so one rejecting target folds the whole statement."""
 
-from .testutil import _assert_routes_byte_identical
+from .testutil import (_assert_routes_byte_identical,
+                      _reject_tally)
 
 
 class TestDelItemMultiTarget:
@@ -65,14 +66,4 @@ class TestOneRejectingTargetFoldsStatement:
     )
 
     def test_mixed_targets_fold_whole_body(self):
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:stmt.del_item")
-                   for k in compiler._thir_fallback), compiler._thir_fallback
+        assert any((k.startswith('body:stmt.del_item') for k in _reject_tally(self.SRC))), _reject_tally(self.SRC)

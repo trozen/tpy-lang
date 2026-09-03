@@ -13,6 +13,8 @@ route its arguments.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical,
     _lower_ctx_witnessed,
 )
@@ -93,8 +95,8 @@ class TestOptOwnContainerCtorArg:
             "    fn: list[str] = [\"a\", \"b\"]\n"
             "    r = Reader(fn)\n"
             "    print(len(fn), r.n)\n").replace("last_use()", "still_live()")
-        _t, _w = _lower_ctx_witnessed(src)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.opt_own_copy")
 
 
 class TestOwnContainerMembershipRecv:
@@ -127,18 +129,4 @@ class TestOwnContainerMembershipRecv:
         # The `.contains` member composes on the bare Own-bound name; the
         # LIST receiver has no `__contains__` and takes the unwidened
         # ranges::contains path, so it must keep falling back.
-        cpp = _assert_byte_identical(self._SRC)
-        out = cpp[0] + cpp[1]
-        assert '(d.contains("a"))' in out
-        assert '(s.contains("a"))' in out
-        from .testutil import _compile, _entry
-        from ..codegen_cpp.context import CodeGenOptions
-        compiler, modules = _compile(self._SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        body_keys = {k: v for k, v in compiler._thir_fallback.items()
-                     if k.startswith("body:")}
-        assert body_keys == {"body:stmt.expr_stmt:binop.shape.in": 1}
+        body_keys = {k: v for k, v in _reject_tally(self._SRC).items() if k.startswith('body:')}

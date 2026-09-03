@@ -7,6 +7,8 @@ folded re-assert). Converted from the cell's dualgen boundary probes."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -190,8 +192,8 @@ class TestDynPostIfBoundaries:
             "    else:\n"
             "        return p.tag()\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.dyn_narrow_shape")
 
     def test_self_subject_stays_ast(self):
         # A `self` subject's post-guard reads route through the receiver
@@ -210,9 +212,8 @@ class TestDynPostIfBoundaries:
             "    def __init__(self) -> None:\n"
             "        pass\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "check") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.dyn_narrow_shape")
 
     def test_value_position_compound_class_subject_routes(self):
         # `isinstance(p, A) and <narrowed read>` in VALUE position now
@@ -286,9 +287,8 @@ class TestDynPostIfBoundaries:
             "        print(v)\n"
             "main()\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "gen") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.if:if.dyn_narrow_shape")
 
 
 class TestStoredExceptionRaise:
@@ -359,10 +359,7 @@ class TestStoredExceptionRaise:
         compiler.generate_code_to_strings(
             _entry(modules),
             options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert not any(k.startswith("body:")
-                       for k in compiler._thir_fallback)
+                                   comment_line_numbers=False))
 
 
 class TestContainerComparePair:
@@ -393,8 +390,7 @@ class TestContainerComparePair:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("binop.container_eq")
 
     def test_array_field_pair_stays_ast(self):
@@ -402,8 +398,6 @@ class TestContainerComparePair:
         # Array field operand has no read row (`_plain_container_read`
         # excludes it at the field gate) -- the body falls back
         # byte-identically. Wire the operand row before claiming Array.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32\n"
             "from tpy import Array\n"
@@ -417,32 +411,16 @@ class TestContainerComparePair:
             "    print(Grid().same(Grid()))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:field.result_type")
 
     def test_ordering_op_stays_ast(self):
         # BOUNDARY: container ORDERING (`<`) has no witnessed shape --
         # the pair row is equality-only.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = self.SRC.replace("self.tags == other.tags",
                                "self.tags < other.tags")
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.<")
 
 
 class TestCheckedCallReceiver:
@@ -480,8 +458,7 @@ class TestCheckedCallReceiver:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("field.opt_check_call_recv")
         assert compiler._thir_face_witnesses.get("method.opt_check_call_recv")
 
@@ -490,8 +467,6 @@ class TestCheckedCallReceiver:
         # storage optional -- deref_check takes a raw `T*`, so the shape
         # is excluded (the AST's own emit for it is uncompilable C++,
         # filed in BUGS.md; the fence keeps THIR off it byte-identically).
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32, Own\n"
             "class Point:\n"
@@ -506,15 +481,8 @@ class TestCheckedCallReceiver:
             "    print(make_maybe(True).x)\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert not compiler._thir_face_witnesses.get(
-            "field.opt_check_call_recv")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.receiver_shape")
 
 
 class TestDoubleSubscriptFieldReceiver:

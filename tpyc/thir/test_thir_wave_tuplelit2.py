@@ -6,6 +6,8 @@ register storage like the record-tuple decl."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -155,8 +157,8 @@ class TestTupleElemContainerWrite:
                "    row = t[0]\n"
                "    print(row)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestDemotedArrayAlias:
@@ -199,8 +201,7 @@ class TestUnionLiteralBoundaries:
                "    d: dict[str, list[int] | list[str]] = {\"a\": [1]}\n"
                "    print(len(d))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.container_literal")
 
 
 class TestChainedTupleElemWrite:

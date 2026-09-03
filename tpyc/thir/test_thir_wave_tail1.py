@@ -2,15 +2,16 @@
 container-literal-at-Optional-slot temp+lift. Corpus witnesses:
 generics/generic_int_param_array_subst, tplib/requests_cookies_send."""
 
-from .testutil import _compile, _entry, _lower_ctx, _fn, _lower_ctx_witnessed, _PRELUDE
+from .testutil import (
+    _assert_rejects_at, _compile, _entry, _lower_ctx, _fn, _lower_ctx_witnessed, _PRELUDE,
+                      _reject_tally)
 from ..codegen_cpp import CodeGenOptions
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     _, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=thir))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, cpp
 
 
@@ -34,11 +35,9 @@ class TestValueArrayCallRows:
         thir, witnesses = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "main") is not None
         assert witnesses.get("method.array_value_ret", 0) >= 1
-        compiler, out = _cpp(self.SRC, thir=True)
-        _, ast_out = _cpp(self.SRC, thir=False)
+        compiler, out = _cpp(self.SRC)
+        _, ast_out = _cpp(self.SRC)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "use(b.get_data())" in out
 
 
@@ -56,11 +55,9 @@ class TestOptionalContainerLiteralArg:
         thir, witnesses = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "main") is not None
         assert witnesses.get("optptr.container_temp", 0) >= 1
-        compiler, out = _cpp(self.SRC, thir=True)
-        _, ast_out = _cpp(self.SRC, thir=False)
+        compiler, out = _cpp(self.SRC)
+        _, ast_out = _cpp(self.SRC)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "send(&(__tmp_1))" in out
 
     def test_list_literal_flavor_spells_temp(self):
@@ -78,11 +75,9 @@ class TestOptionalContainerLiteralArg:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert witnesses.get("optptr.container_temp", 0) >= 1
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert ('std::vector<std::string> __tmp_1 = '
                 'std::vector<std::string>{"a"};' in out)
 
@@ -99,11 +94,9 @@ class TestOptionalContainerLiteralArg:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert witnesses.get("optptr.container_temp", 0) >= 1
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
 
 
 class TestValueOptArgRows:
@@ -130,11 +123,9 @@ class TestValueOptArgRows:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert w.get("call.optval_ret_pass", 0) >= 1
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "unwrap_or(pick(3), 0)" in out
 
     def test_optview_ret_stays_ast(self):
@@ -152,11 +143,8 @@ class TestValueOptArgRows:
                + "def main() -> None:\n"
                + "    print(unwrap_or(pick(3), \"z\"))\n"
                + "main()\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
-        assert out == ast_out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.optional")
 
     def test_copy_at_own_opt_slot_routes(self):
         src = (_PRELUDE
@@ -176,11 +164,9 @@ class TestValueOptArgRows:
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert w.get("own.record_copy", 0) >= 1
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "consume(Box(b))" in out
 
 
@@ -223,11 +209,9 @@ class TestGetitemBorrowRecordReceiver:
     def test_chain_routes_byte_identical(self):
         thir, _witnesses = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "main") is not None
-        compiler, out = _cpp(self.SRC, thir=True)
-        _, ast_out = _cpp(self.SRC, thir=False)
+        compiler, out = _cpp(self.SRC)
+        _, ast_out = _cpp(self.SRC)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "std::get<1>(srv.sockets[0].getsockname())" in out
 
     def test_reseated_field_receiver_also_routes(self):
@@ -240,11 +224,9 @@ class TestGetitemBorrowRecordReceiver:
                         "    srv = Server(Socks(Sock(9090)))\n"))
         thir, _w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
 
     def test_pointer_local_name_obj_stays_ast(self):
         # BOUNDARY: the subscript's OBJ as a pointer-local NAME (`socks`
@@ -258,13 +240,8 @@ class TestGetitemBorrowRecordReceiver:
                         "    socks = Socks(Sock(8080))\n"
                         "    socks = Socks(Sock(9090))\n"
                         "    port = socks[0].getsockname()[1]\n"))
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
-        assert out == ast_out
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.subscript")
 
 
 class TestPtrUnionDeclRows:
@@ -293,11 +270,9 @@ class TestPtrUnionDeclRows:
     def test_rows_route_byte_identical(self):
         thir, _w = _lower_ctx_witnessed(self.SRC)
         assert _fn(thir, "main") is not None
-        compiler, out = _cpp(self.SRC, thir=True)
-        _, ast_out = _cpp(self.SRC, thir=False)
+        compiler, out = _cpp(self.SRC)
+        _, ast_out = _cpp(self.SRC)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "v{&(s)}" in out
         assert "__slot_1 = 7;" in out
         # The WIDE same-union bare-name arg pass renders the names bare.
@@ -316,11 +291,8 @@ class TestPtrUnionDeclRows:
                + "    v: Int32 | set[Int32] = s\n"
                + "    h(v)\n"
                + "main()\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
-        assert out == ast_out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.own_union")
 
     def test_ambiguous_literal_member_stays_ast(self):
         # BOUNDARY: two int-family members -- the converting ctor would be
@@ -335,11 +307,8 @@ class TestPtrUnionDeclRows:
                + "    u: Int32 | Int64 | A = 5\n"
                + "    if isinstance(u, Int32):\n        print(u)\n"
                + "main()\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
-        assert out == ast_out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.ptr_union_source")
 
 
 class TestOwnRecordMethodRvalueConformer:
@@ -373,11 +342,9 @@ class TestOwnRecordMethodRvalueConformer:
                + "main()\n")
         thir, _w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
+        compiler, out = _cpp(src)
+        _, ast_out = _cpp(src)
         assert out == ast_out
-        assert not dict(compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
         assert "::tpy::make_adapter<P>(fac.make(7))" in out
 
     def test_borrow_method_source_stays_ast(self):
@@ -408,8 +375,5 @@ class TestOwnRecordMethodRvalueConformer:
                + "    fac = Factory()\n"
                + "    print(use(fac.get()))\n"
                + "main()\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        compiler, out = _cpp(src, thir=True)
-        _, ast_out = _cpp(src, thir=False)
-        assert out == ast_out
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.own_protocol.dyn")

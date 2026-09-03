@@ -5,6 +5,8 @@ and the bytearray container-return families."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _fn, _assert_byte_identical,
 )
 
@@ -117,9 +119,8 @@ class TestBytearrayReturn:
                "    v.append(33)\n"
                "    print(len(h.buf))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "view") is not None
-        cpp = _assert_byte_identical(src)
-        assert "return this->buf;" in cpp[0] + cpp[1]
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.nominal.native_call")
 
     def test_own_name_source_return_stays_ast(self):
         # `return ba` (a NAME source) at the Own[bytearray] storage return
@@ -132,5 +133,5 @@ class TestBytearrayReturn:
                "def main() -> None:\n"
                "    print(len(fresh()))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "fresh") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.container_source")

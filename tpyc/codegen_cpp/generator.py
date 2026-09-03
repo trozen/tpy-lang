@@ -13,7 +13,6 @@ import io
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
-from ..binding_audit import end_ast_body as _binding_end_body
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -25,9 +24,6 @@ from .resumable_cfg import (
 from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
-from .builtins import BuiltinGenerator
-from .expressions import ExpressionGenerator
-from .statements import StatementGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
 from .type_resolution import resolve_stmt_type_cascade
@@ -101,20 +97,13 @@ class CodeGenerator:
         self.options = options or CodeGenOptions()
 
         # Create context (shared state)
-        self.ctx = CodeGenContext(
-            analyzer=analyzer,
-            options=self.options,
-            thir_codegen=self.options.thir_codegen,
-        )
+        self.ctx = CodeGenContext(analyzer=analyzer, options=self.options)
 
         # Create component generators (ordered by dependencies)
         self.protocols = ProtocolGenerator(self.ctx)
         self.types = TypeResolver(self.ctx, self.protocols)
-        self.builtins = BuiltinGenerator(self.ctx, self.types)
-        self.expressions = ExpressionGenerator(self.ctx, self.types, self.builtins, self.protocols)
-        self.statements = StatementGenerator(self.ctx, self.types, self.builtins, self.protocols, self.expressions)
-        self.functions = FunctionGenerator(self.ctx, self.types, self.protocols, self.statements)
-        self.records = RecordGenerator(self.ctx, self.types, self.protocols, self.expressions, self.functions)
+        self.functions = FunctionGenerator(self.ctx, self.types, self.protocols)
+        self.records = RecordGenerator(self.ctx, self.types, self.protocols, self.functions)
         # CPython extension glue (shares the records topo sort for exc-class
         # ordering and the type resolver for exposed-constant types)
         # Imported here, not at module level: extension.py needs this
@@ -123,16 +112,16 @@ class CodeGenerator:
         from ..interop.extension import ExtensionGenerator
         self.extension = ExtensionGenerator(self.ctx, self.records, self.types)
 
-        # Generator codegen (must be created after wiring since it uses statements/functions)
+        # Generator codegen (must be created after wiring since it uses types/functions)
         from .gen_generators import GeneratorCodegen
         self.gen_generators = GeneratorCodegen(
-            self.ctx, self.types, self.expressions, self.statements, self.functions)
+            self.ctx, self.types, self.functions)
         self.records.gen_generators = self.gen_generators
 
         # Async coroutine codegen (state-machine struct + Poll<T> poll())
         from .gen_async import AsyncCoroCodegen
         self.gen_async = AsyncCoroCodegen(
-            self.ctx, self.types, self.expressions, self.statements, self.functions)
+            self.ctx, self.types, self.functions)
         self.records.gen_async = self.gen_async
         # The resumable for-loop emit reuses the legacy strategy analysis
         # (`_analyze_for_strategy`) so range/begin_end peepholes match.
@@ -473,141 +462,124 @@ class CodeGenerator:
         # above: an F1 borrow local's decl type renders through codegen's
         # `type_to_cpp`, which consults that map (cross-module qualification,
         # the live module). Running it earlier would mis-qualify those types.
-        if self.ctx.thir_codegen:
-            from ..thir.lower import (
-                iter_module_callables as _thir_callables,
-                iter_module_constructors as _thir_ctors,
-                lower_constructor as _thir_lower_ctor,
-                lower_function as _thir_lower,
-                lower_simple_generator as _thir_lower_sgen,
-                module_native_globals as _thir_native_globals,
-            )
-            from ..thir.fallback import (begin_attempt, commit_attempt,
-                                         fold_attempt, is_bodyless_binding,
-                                         record_arm_residual)
-            from ..thir.shape import record_shape
+        from ..thir.lower import (
+            iter_module_callables as _thir_callables,
+            iter_module_constructors as _thir_ctors,
+            lower_constructor as _thir_lower_ctor,
+            lower_function as _thir_lower,
+            lower_simple_generator as _thir_lower_sgen,
+            module_native_globals as _thir_native_globals,
+        )
+        from ..thir.reject import (begin_attempt, commit_attempt,
+                                   is_bodyless_binding, reject_attempt)
 
-            _thir_strict = self.options.thir_strict
-            _ng = _thir_native_globals(module)
+        _ng = _thir_native_globals(module)
 
-            _render_concept = self.protocols.concept_test_cpp
+        _render_concept = self.protocols.concept_test_cpp
 
-            def _shadow_ctx(owner) -> 'contextlib.AbstractContextManager':
-                """The AST emits a shadowing record's decl and method defs
-                inside `qualify_shadowed_nominals()`, so every local nominal
-                leaf renders fully-qualified. THIR pre-renders its type
-                spellings at LOWERING time, which happens here rather than at
-                emission -- so the same context has to be live around the
-                lowering call or the routed body spells the raw name.
-                `owner` is the enclosing record: its `self_type` for a method,
-                the TpyRecord itself for a constructor."""
-                registry = self.analyzer.registry
-                ri_s = (registry.get_record_for_type(owner)
-                        if isinstance(owner, NominalType)
-                        else registry.get_record(getattr(owner, "name", "")))
-                if (ri_s is None or not ri_s.shadows_local_type
-                        or self.records._is_native(ri_s.name)):
-                    return contextlib.nullcontext()
-                return qualify_shadowed_nominals()
+        def _shadow_ctx(owner) -> 'contextlib.AbstractContextManager':
+            """A shadowing record's decl and method defs are emitted
+            inside `qualify_shadowed_nominals()`, so every local nominal
+            leaf renders fully-qualified. THIR pre-renders its type
+            spellings at LOWERING time, which happens here rather than at
+            emission -- so the same context has to be live around the
+            lowering call or the body spells the raw name.
+            `owner` is the enclosing record: its `self_type` for a method,
+            the TpyRecord itself for a constructor."""
+            registry = self.analyzer.registry
+            ri_s = (registry.get_record_for_type(owner)
+                    if isinstance(owner, NominalType)
+                    else registry.get_record(getattr(owner, "name", "")))
+            if (ri_s is None or not ri_s.shadows_local_type
+                    or self.records._is_native(ri_s.name)):
+                return contextlib.nullcontext()
+            return qualify_shadowed_nominals()
 
-            self.ctx.thir_functions = {}
-            self.ctx.thir_resumables = {}
-            self.ctx.thir_simple_gens = {}
-            for f, self_type in _thir_callables(module, self.analyzer):
-                if is_bodyless_binding(f) or f.is_overload_stub:
-                    continue
-                if f.is_async or (f.is_generator and
-                                  not self.gen_generators.is_simple_generator(f)):
-                    # Resumable-frame bodies attempt at first frame emission
-                    # (lowering walks the CFG, which needs live codegen ctx);
-                    # they tally under the "resumable" component there.
-                    continue
-                begin_attempt()
-                if f.is_generator:
-                    # Simple-peephole generator: leaf-seam lowering (the
-                    # lambda skeleton stays AST, like the resumable frame).
+        self.ctx.thir_functions = {}
+        self.ctx.thir_resumables = {}
+        self.ctx.thir_simple_gens = {}
+        for f, self_type in _thir_callables(module, self.analyzer):
+            # A bodyless binding has no emit at all. A BODIED `@overload`
+            # variant does have one -- the function driver emits it standalone
+            # -- so it is lowered like any other body.
+            if is_bodyless_binding(f):
+                continue
+            if f.is_async or (f.is_generator and
+                              not self.gen_generators.is_simple_generator(f)):
+                # Resumable-frame bodies attempt at first frame emission
+                # (lowering walks the CFG, which needs live codegen ctx);
+                # they reject under the "resumable" component there.
+                continue
+            begin_attempt()
+            if f.is_generator:
+                # Simple-peephole generator: leaf-seam lowering (the lambda
+                # skeleton comes from gen_generators, like the resumable frame).
+                with _shadow_ctx(self_type):
+                    sg = _thir_lower_sgen(
+                        f, self.analyzer, self.types.type_to_cpp,
+                        self_type=self_type, native_globals=_ng,
+                        render_type_stored=self.types.type_to_cpp_stored,
+                        render_resolve=self.types.resolve_type)
+                if sg is None:
+                    reject_attempt("body", f)
+                self.ctx.thir_simple_gens[id(f)] = sg
+                commit_attempt()
+                continue
+            stubs = self.analyzer.overload_groups.get(id(f))
+            if stubs:
+                # Per-stub seeding: an @overload impl body is emitted
+                # once per stub, so each (impl, stub) pair lowers with
+                # that stub's facts and keys its own entry (the
+                # thir_overload_key seam). All-or-nothing: the body
+                # routes only when EVERY stub's specialization lowers
+                # (a partial set would leave hybrid per-stub emission).
+                entries = []
+                for stub in stubs:
                     with _shadow_ctx(self_type):
-                        sg = _thir_lower_sgen(
+                        stf = _thir_lower(
                             f, self.analyzer, self.types.type_to_cpp,
                             self_type=self_type, native_globals=_ng,
                             render_type_stored=self.types.type_to_cpp_stored,
-                            render_resolve=self.types.resolve_type)
-                    if sg is not None:
-                        self.ctx.thir_simple_gens[id(f)] = sg
-                        commit_attempt()
-                        record_shape(f, "body", routed=True)
-                    else:
-                        fold_attempt("body", f, strict=_thir_strict)
-                        record_arm_residual(f.body)
-                        record_shape(f, "body", routed=False)
-                    continue
-                stubs = self.analyzer.overload_groups.get(id(f))
-                if stubs:
-                    # Per-stub seeding: an @overload impl body is emitted
-                    # once per stub, so each (impl, stub) pair lowers with
-                    # that stub's facts and keys its own entry (the
-                    # thir_overload_key seam). All-or-nothing: the body
-                    # routes only when EVERY stub's specialization lowers
-                    # (a partial set would leave hybrid per-stub emission).
-                    entries = []
-                    for stub in stubs:
-                        with _shadow_ctx(self_type):
-                            stf = _thir_lower(
-                                f, self.analyzer, self.types.type_to_cpp,
-                                self_type=self_type, native_globals=_ng,
-                                render_type_stored=self.types.type_to_cpp_stored,
-                                render_resolve=self.types.resolve_type,
-                                stub=stub, render_concept=_render_concept)
-                        if stf is None:
-                            entries = None
-                            break
-                        entries.append((stub, stf))
-                    if entries is not None:
-                        for stub, stf in entries:
-                            self.ctx.thir_functions[(id(f), id(stub))] = stf
-                        commit_attempt()
-                        record_shape(f, "body", routed=True)
-                    else:
-                        fold_attempt("body", f, strict=_thir_strict)
-                        record_arm_residual(f.body)
-                        record_shape(f, "body", routed=False)
-                    continue
-                with _shadow_ctx(self_type):
-                    tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
-                                     self_type=self_type, native_globals=_ng,
-                                     render_type_stored=self.types.type_to_cpp_stored,
-                                     render_resolve=self.types.resolve_type,
-                                     render_concept=_render_concept)
-                if tf is not None:
-                    self.ctx.thir_functions[id(f)] = tf
-                    commit_attempt()
-                    record_shape(f, "body", routed=True)
-                else:
-                    fold_attempt("body", f, strict=_thir_strict)
-                    record_arm_residual(f.body)
-                    record_shape(f, "body", routed=False)
-            self.ctx.thir_constructors = {}
-            for rec, init, self_type in _thir_ctors(module, self.analyzer):
-                if is_bodyless_binding(init):
-                    continue
-                begin_attempt()
-                with _shadow_ctx(rec):
-                    tc = _thir_lower_ctor(rec, init, self.analyzer,
-                                          self.types.type_to_cpp,
-                                          self_type=self_type,
-                                          native_globals=_ng,
-                                          render_type_stored=self.types.type_to_cpp_stored,
-                                          render_resolve=self.types.resolve_type,
-                                          render_concept=_render_concept)
-                if tc is not None:
-                    self.ctx.thir_constructors[id(init)] = tc
-                    commit_attempt()
-                    record_shape(init, "ctor", routed=True)
-                else:
-                    fold_attempt("ctor", init, strict=_thir_strict,
-                                 where=f"in the constructor of '{rec.name}'")
-                    record_arm_residual(init.body)
-                    record_shape(init, "ctor", routed=False)
+                            render_resolve=self.types.resolve_type,
+                            stub=stub, render_concept=_render_concept)
+                    if stf is None:
+                        entries = None
+                        break
+                    entries.append((stub, stf))
+                if entries is None:
+                    reject_attempt("body", f)
+                for stub, stf in entries:
+                    self.ctx.thir_functions[(id(f), id(stub))] = stf
+                commit_attempt()
+                continue
+            with _shadow_ctx(self_type):
+                tf = _thir_lower(f, self.analyzer, self.types.type_to_cpp,
+                                 self_type=self_type, native_globals=_ng,
+                                 render_type_stored=self.types.type_to_cpp_stored,
+                                 render_resolve=self.types.resolve_type,
+                                 render_concept=_render_concept)
+            if tf is None:
+                reject_attempt("body", f)
+            self.ctx.thir_functions[id(f)] = tf
+            commit_attempt()
+        self.ctx.thir_constructors = {}
+        for rec, init, self_type in _thir_ctors(module, self.analyzer):
+            if is_bodyless_binding(init):
+                continue
+            begin_attempt()
+            with _shadow_ctx(rec):
+                tc = _thir_lower_ctor(rec, init, self.analyzer,
+                                      self.types.type_to_cpp,
+                                      self_type=self_type,
+                                      native_globals=_ng,
+                                      render_type_stored=self.types.type_to_cpp_stored,
+                                      render_resolve=self.types.resolve_type,
+                                      render_concept=_render_concept)
+            if tc is None:
+                reject_attempt("ctor", init,
+                               where=f"in the constructor of '{rec.name}'")
+            self.ctx.thir_constructors[id(init)] = tc
+            commit_attempt()
 
         hpp = io.StringIO()
         cpp = io.StringIO()
@@ -794,27 +766,23 @@ class CodeGenerator:
         init_globals = {k: v for k, v in seen_globals.items() if k not in self.ctx.final_globals}
         # Top-level lowering runs HERE, not in the seeding loop above: it needs
         # `init_globals`, the generator's own global-name/type map.
-        if self.ctx.thir_codegen:
-            from ..thir.lower import lower_top_level as _thir_lower_top
-            from ..thir.fallback import (begin_attempt, commit_attempt,
-                                         fold_attempt, record_arm_residual)
-            begin_attempt()
-            self.ctx.thir_top_level = _thir_lower_top(
-                module, self.analyzer, init_globals,
-                final_types={k: v for k, v in seen_globals.items()
-                             if k in self.ctx.final_globals},
-                render_type=self.types.type_to_cpp,
-                render_type_stored=self.types.type_to_cpp_stored,
-                render_resolve=self.types.resolve_type,
-                render_concept=self.protocols.concept_test_cpp,
-                user_module_imports=self.ctx.user_module_imports,
-                all_user_modules=self.ctx.all_user_modules)
-            if self.ctx.thir_top_level is None:
-                fold_attempt("top_level", module,
-                             strict=self.options.thir_strict)
-                record_arm_residual(module.top_level_stmts)
-            else:
-                commit_attempt()
+        from ..thir.lower import lower_top_level as _thir_lower_top
+        from ..thir.reject import (begin_attempt, commit_attempt,
+                                   reject_attempt)
+        begin_attempt()
+        self.ctx.thir_top_level = _thir_lower_top(
+            module, self.analyzer, init_globals,
+            final_types={k: v for k, v in seen_globals.items()
+                         if k in self.ctx.final_globals},
+            render_type=self.types.type_to_cpp,
+            render_type_stored=self.types.type_to_cpp_stored,
+            render_resolve=self.types.resolve_type,
+            render_concept=self.protocols.concept_test_cpp,
+            user_module_imports=self.ctx.user_module_imports,
+            all_user_modules=self.ctx.all_user_modules)
+        if self.ctx.thir_top_level is None:
+            reject_attempt("top_level", module)
+        commit_attempt()
         self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module
@@ -826,10 +794,6 @@ class CodeGenerator:
 
         self._write_header_epilogue(hpp)
 
-        # The module's last body has no successor whose scope setup would
-        # close its binding-audit window -- close it here.
-        _binding_end_body(self.ctx)
-
         return hpp.getvalue(), cpp.getvalue()
 
     def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
@@ -837,7 +801,7 @@ class CodeGenerator:
         through the resumable state-machine emitter (`gen_async`). Returns
         False only for the simple-peephole shape (which is emitted inline);
         for any other generator it returns True or raises a clean diagnostic
-        -- there is no longer a legacy struct path to fall back to.
+        -- there is no other emitter to fall back to.
         Protocol-typed params are rejected (the for-loop frame field would be
         typed against the abstract concept, not the deduced template param);
         generic generators (`[T]`) are eligible (templated struct + `__next__`
@@ -864,7 +828,7 @@ class CodeGenerator:
         # emitted inline in the header for templated coros, exactly like
         # generic async defs). For a non-simple generator this returns True
         # or raises a clean diagnostic -- it never returns False (there is
-        # no longer a legacy struct path to fall back to).
+        # no other emitter to fall back to).
         if not func.is_generator:
             return False
         # Simple single-yield generators use the lightweight lambda peephole
@@ -976,7 +940,7 @@ class CodeGenerator:
         spelled `iter_type_t<S>`, so it needs `S::__iter__`'s RETURN TYPE
         complete. The first three plus `iter_next` come from `frame_dep_units`,
         recorded where the callee is resolved rather than re-derived here. Two
-        collectors stay AST-side on purpose: the delegated `__for_src` target,
+        collectors walk the parse tree here on purpose: the `__for_src` target,
         because the force-resumable pre-pass needs it before any CFG exists,
         and the bound-coro frame local, which is a sema type fact rather than a
         prescan output. A genuine cycle (mutually recursive inline await,

@@ -10,12 +10,11 @@ from ..codegen_cpp.context import CodeGenOptions
 from .testutil import _compile, _entry, _fn, _lower_ctx_witnessed
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -33,11 +32,8 @@ class TestCastPassthrough:
         assert _fn(thir, "f") is not None
         assert wit.get("call.cast_passthrough", 0) >= 1
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emit_bare_source(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         # The cast is erased: the decl init is the bare source, no cast wrap.
         assert "::tpy::BigInt x = y;" in cpp
         assert "cast" not in cpp
@@ -59,10 +55,6 @@ class TestCastAnySourceIneligible:
         _, wit = _lower_ctx_witnessed(self.SRC)
         assert wit.get("call.cast_passthrough", 0) == 0
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
-
 class TestMacroExpansion:
     # hasattr on a declared field static-folds to a bool literal; the call node
     # carries that folded expr as `macro_expansion`.
@@ -81,9 +73,6 @@ class TestMacroExpansion:
         assert _fn(thir, "f") is not None
         assert wit.get("call.macro_expansion", 0) >= 1
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emit_folded_literal(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "bool b = true;" in cpp

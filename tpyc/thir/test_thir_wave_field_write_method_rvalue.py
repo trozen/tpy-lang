@@ -7,7 +7,8 @@ sinks, which bind a REF_ALIAS off the same result. A BORROW-returning method
 result stays out on both. Corpus witness: `asyncio.create_task`
 (`task._waker = handle->make_waker_for_slot(..);`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -42,13 +43,8 @@ _SRC = ("from tpy import Int32, Own, Ptr, ValueType, take_ptr\n"
         "        return self.held\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestMethodRvalueFieldWrite:
@@ -112,9 +108,8 @@ class TestMethodRvalueFieldWriteBoundary:
                + "    put(t, Exec(1))\n"
                + "    print(t.b.n)\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.assign",
-                           "assign.field_write_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_user_deref_receiver_keeps_rejecting(self):
         # BOUNDARY: the user-Deref chain arm is a separate render row and
@@ -128,6 +123,5 @@ class TestMethodRvalueFieldWriteBoundary:
                + "    put(t, Box(Exec(2)))\n"
                + "    print(t.w.g)\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call",
-                           "method.qualcall.ret.record_f1")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.qualcall.ret.record_f1")

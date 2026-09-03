@@ -13,6 +13,7 @@ Corpus witness: tplib.requests `_request_on`.
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical, _compile, _entry, _fn, _lower_ctx,
 )
@@ -22,8 +23,7 @@ from ..codegen_cpp import CodeGenOptions
 def _emit(src: str):
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp + cpp
 
 
@@ -102,6 +102,4 @@ class TestOptViewElementUnpack:
                + "    if s is not None:\n"
                + "        return k + Int32(len(s))\n"
                + "    return k\n")
-        compiler, _ = _emit(src)
-        _assert_rejects_at(compiler._thir_fallback, "body:stmt.tuple_unpack")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.tuple_unpack')

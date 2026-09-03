@@ -9,6 +9,8 @@ their own renders/rejects."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -65,10 +67,8 @@ class TestMixedSignCompare:
             "def main() -> None:\n"
             "    print(f(3, 5))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("binop.mixed_sign_cmp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.<")
 
     def test_narrowed_opt_eq_still_defers(self):
         # The `==` flavor of the narrowed guard: the optional_safe_eq /
@@ -82,9 +82,8 @@ class TestMixedSignCompare:
             "def main() -> None:\n"
             "    print(f(3, 5))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("binop.mixed_sign_cmp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.==")
 
     def test_unproven_opt_ordering_still_defers(self):
         # The unproven value-opt ordering operand unwraps through
@@ -97,9 +96,8 @@ class TestMixedSignCompare:
             "def main() -> None:\n"
             "    print(f(3, 5))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("binop.mixed_sign_cmp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.<")
 
     def test_literal_side_keeps_plain_render(self):
         # A literal side folds cleanly on the AST path (no cmp_*); the
@@ -152,9 +150,8 @@ class TestPtrTupleFieldCompare:
             "    pt = Point(1)\n"
             "    print(eq(P((pt, 2)), P((pt, 2))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("binop.tuple_field_compare")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.==")
 
     def test_narrowed_optional_field_pair_still_defers(self):
         # A field DECLARED `tuple[..] | None` narrowed non-None reads with
@@ -173,9 +170,8 @@ class TestPtrTupleFieldCompare:
             "    pt = Point(1)\n"
             "    print(eq(N((pt, 2)), N((pt, 2))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("binop.tuple_field_compare")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.==")
 
     def test_field_vs_name_pair_still_defers(self):
         # A mixed field-vs-name operand pair sits outside BOTH pair
@@ -190,10 +186,8 @@ class TestPtrTupleFieldCompare:
             "    h1 = H((pt, 2))\n"
             "    print(mixed(h1, h1.pair))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "mixed") is None
-        assert not faces.get("binop.tuple_field_compare")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:binop.shape.==")
 
 
 _VAL = (
@@ -257,18 +251,8 @@ class TestValueTupleFieldCompare:
             "def main() -> None:\n"
             "    print(eq(N((1, 'a')), N((1, 'a'))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "eq") is not None
-        assert faces["field.value_tuple"] >= 2
-        from .testutil import _compile, _entry
-        from ..codegen_cpp.context import CodeGenOptions
-        compiler, modules = _compile(src)
-        _hpp, cpp = compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert "return ((*a.maybe) == (*b.maybe));" in cpp
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.optional.name")
 
     def test_ordering_and_literal_side_route(self):
         # The row is comparison-op blind and does not need both sides to be
@@ -356,7 +340,5 @@ class TestValueTupleFieldCompare:
             "def main() -> None:\n"
             "    print(eq(H(((1, 2), 3)), H(((1, 2), 3))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "eq") is None
-        assert not faces.get("field.value_tuple")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:field.result_type")

@@ -1,0 +1,6 @@
+scalar 957
+moded 22
+operands 31
+guards 2
+drained 3
+rows 3

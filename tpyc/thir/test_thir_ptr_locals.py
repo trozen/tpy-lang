@@ -8,7 +8,9 @@ the None / rvalue reseats, and the ptr-variant union rvalue / address kinds.
 
 import pytest
 
-from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _compile, _entry, _lower_ctx, _lower_ctx_witnessed,
                        _fn, _F1_RECORDS, _assert_byte_identical,
                        _assert_routes_byte_identical, _raised_in_lowering,
                        _thir_ctx)
@@ -35,12 +37,11 @@ _UNION_RECORDS = (
 )
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -129,7 +130,6 @@ class TestOptPtrSlotDecl:
         reseat = fn.body[1]
         assert isinstance(reseat, THIRPtrLocalRebind)
         assert reseat.kind is PtrSlotKind.INLINE_RVALUE
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_no_init_double_reseat_reuses_slot(self):
         # The second rvalue reseat reuses the first's plain slot
@@ -144,10 +144,10 @@ class TestOptPtrSlotDecl:
             + "    return 0\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "Inner __slot_1 = Inner(1);" in cpp
         assert "p = &(__slot_1 = Inner(2));" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
     def test_no_init_ptr_param_copy_reseat_routes(self):
         # `q = a` off a same-Optional borrow param copies the pointer bare.
@@ -162,7 +162,6 @@ class TestOptPtrSlotDecl:
         assert fn is not None
         reseat = fn.body[1]
         assert isinstance(reseat, THIRAssign)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_no_init_branch_reseat_still_defers(self):
         # A branch-positioned rvalue reseat would block-scope the slot
@@ -176,7 +175,6 @@ class TestOptPtrSlotDecl:
             + "    return p is None\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_optional_call_init_routes_slot_lift(self):
         # An `Own[Inner | None]`-returning call init on a REASSIGNED name:
@@ -193,8 +191,8 @@ class TestOptPtrSlotDecl:
                + "    return p is None\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "std::optional<Inner> __slot_1 = make();" in cpp
         assert "p = nullptr;" in cpp
 
@@ -212,7 +210,6 @@ class TestOptPtrSlotDecl:
                + "    return p is None\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_lvalue_reseat_routes(self):
         # Reseating a pointer-repr Optional local from a field lvalue
@@ -261,9 +258,7 @@ class TestOptPtrSlotByteIdentical:
         + "    return 0\n")
 
     def test_byte_identical(self):
-        assert (_cpp(self.SRC_NONE_RESEAT, thir=True)
-                == _cpp(self.SRC_NONE_RESEAT, thir=False))
-        cpp = _cpp(self.SRC_NONE_RESEAT, thir=True)
+        cpp = _cpp(self.SRC_NONE_RESEAT)
         assert "std::optional<Inner> __slot_1;" in cpp
         assert "Inner* p = nullptr;" in cpp
         assert "p = &*(__slot_1 = Inner(1));" in cpp
@@ -281,8 +276,7 @@ class TestOptPtrSlotByteIdentical:
             + "    if k > 0:\n        b = Inner(k)\n"
             + "    if b is not None:\n        return b.value\n"
             + "    return 0\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "b = &*(__slot_1 = Inner(k));" in _cpp(src, thir=True)
+        assert "b = &*(__slot_1 = Inner(k));" in _cpp(src)
 
 
 class TestUnionPtrSlot:
@@ -331,8 +325,7 @@ class TestUnionPtrSlot:
             + "def g() -> None:\n"
             + "    dog = Dog(3)\n"
             + "    d: Dog | Cat = dog\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::optional<std::variant<Cat, Dog>> __slot_2;" in cpp
         assert "std::variant<Cat, Dog> __slot_1 = Dog(1);" in cpp
         assert "std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);" in cpp
@@ -388,8 +381,7 @@ class TestPtrSpanCoerceDispositions:
         assert _fn(thir, "g") is not None
 
     def test_value_to_ptr_byte_identical(self):
-        assert _cpp(self.PTR_SRC, thir=True) == _cpp(self.PTR_SRC, thir=False)
-        cpp = _cpp(self.PTR_SRC, thir=True)
+        cpp = _cpp(self.PTR_SRC)
         # take_ptr's cpp_template is identity, so the arg's value_to_ptr
         # coercion IS the whole render.
         assert "use(&n);" in cpp
@@ -412,8 +404,7 @@ class TestPtrSpanCoerceDispositions:
     def test_spanlike_args_route_byte_identical(self):
         thir = _lower_ctx(self.SPAN_SRC)
         assert _fn(thir, "f") is not None
-        assert _cpp(self.SPAN_SRC, thir=True) == _cpp(self.SPAN_SRC, thir=False)
-        cpp = _cpp(self.SPAN_SRC, thir=True)
+        cpp = _cpp(self.SPAN_SRC)
         # Mutable slot takes as_mut_span, readonly slot as_span, and the
         # span -> const-span widening passes bare (C++-implicit).
         assert "sum_span(::tpy::as_mut_span(lst))" in cpp
@@ -454,8 +445,7 @@ class TestBranchHoistDecls:
         assert fn.body[0].hoist_slots == ()
         assign = fn.body[0].then_body[0]
         assert isinstance(assign, THIRAssign) and assign.target.name == "p"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "std::optional<Inner> p;" in _cpp(src, thir=True)
+        assert "std::optional<Inner> p;" in _cpp(src)
 
     def test_rvalue_reassigned_slot_at_if_head(self):
         # Both branches bind rvalues: `std::optional<Inner> __slot_1;` +
@@ -470,8 +460,8 @@ class TestBranchHoistDecls:
         assert fn is not None
         assert fn.body[0].hoist_decls == (("p", "Inner*"),)
         assert fn.body[0].hoist_slots == (("p", "Inner"),)
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "p = &*(__slot_1 = Inner(1));" in cpp
 
     def test_lvalue_then_rvalue_slot_at_if_head(self):
@@ -493,8 +483,8 @@ class TestBranchHoistDecls:
         assert isinstance(reseat_alias, THIRPtrLocalRebind)
         assert reseat_alias.kind is PtrSlotKind.PTR_ADDR
         assert isinstance(fn.body[1].else_body[0], THIRAssign)
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "p = &(base);" in cpp
         assert "p = &*(__slot_1 = Inner(2));" in cpp
 
@@ -518,8 +508,8 @@ class TestBranchHoistDecls:
         reseat_alias = fn.body[1].else_body[0]
         assert isinstance(reseat_alias, THIRPtrLocalRebind)
         assert reseat_alias.kind is PtrSlotKind.PTR_ADDR
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "p = &*(__slot_1 = Inner(2));" in cpp
         assert "p = &(base);" in cpp
 
@@ -534,8 +524,8 @@ class TestBranchHoistDecls:
         thir = _lower_ctx(src)
         fn = _fn(thir, "f")
         assert fn is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "p = &(::tpy::__getitem__(items, 0));" in cpp
 
     def test_readonly_hoist_rejects(self):
@@ -549,7 +539,6 @@ class TestBranchHoistDecls:
                + "    return p.value\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_resumable_nonvalue_hoist_rejects(self):
         # Resumable leaves cannot drain the reseat hoist lines -- the body
@@ -577,7 +566,6 @@ class TestBranchHoistDecls:
                + "    return x.value\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_nested_branch_nonvalue_hoist_rejects(self):
         # An INNER-scope if's non-value hoist (any in_branch body)
@@ -598,7 +586,6 @@ class TestBranchHoistDecls:
                + "    return r + p.value\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_sibling_branch_same_name_hoist_restores(self):
         # Registry restore: branch 1's nested-if hoist registrations
@@ -614,7 +601,6 @@ class TestBranchHoistDecls:
                + "        p = Inner(2)\n"
                + "        return p.value\n")
         thir = _lower_ctx(src)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_move_through_hoist_rejects(self):
         # A move-through hoisted name takes the AST's plain storage decl (a
@@ -626,7 +612,6 @@ class TestBranchHoistDecls:
                + "    b = a\n"
                + "    return b.value\n")
         thir = _lower_ctx(src)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_dict_hoist_routes(self):
         # The container flavors beyond list: a both-branch dict hoist rides
@@ -640,7 +625,6 @@ class TestBranchHoistDecls:
         assert fn is not None
         assert fn.body[0].hoist_slots == (
             ("d", "::tpy::ordered_map<int32_t, int32_t>"),)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_set_single_bind_optional_storage_routes(self):
         # A single-bind set hoist takes the OPTIONAL_STORAGE flavor and the
@@ -654,7 +638,6 @@ class TestBranchHoistDecls:
         assert fn is not None
         assert fn.body[0].hoist_decls == (
             ("s", "std::optional<::tpy::ordered_set<int32_t>>"),)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_async_name_alias_stays_byte_identical(self):
         # The decl.ptr_alias_borrow guard exempts resumable leaves (the no-op
@@ -670,7 +653,6 @@ class TestBranchHoistDecls:
                + "    await asyncio.sleep(0)\n"
                + "    x = b\n"
                + "    return x.value\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_f2d_slot_container_print_routes(self):
         # The print wrap's rebind_slot_locals admission also covers a plain
@@ -683,8 +665,8 @@ class TestBranchHoistDecls:
                + "    print(items)\n")
         fn = _fn(_lower_ctx(src), "f")
         assert fn is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "::tpy::ListPrinter((*items))" in cpp
 
     def test_optional_storage_comprehension_source_routes(self):
@@ -711,7 +693,7 @@ class TestBranchHoistDecls:
         _assert_routes_byte_identical(src)
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("reseat.opt_storage_comp", 0) >= 1
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::optional<std::vector<int32_t>> xs;" in cpp
         assert "xs = ({" in cpp
 
@@ -733,8 +715,7 @@ class TestBranchHoistDecls:
                "    else:\n"
                "        return -1\n"
                "    return xs[0] + len(xs)\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.list_comp")
 
     def test_optional_storage_call_source_routes(self):
         # The OPTIONAL_STORAGE assign's storage-call source flavor
@@ -748,8 +729,8 @@ class TestBranchHoistDecls:
                + "    print(items)\n")
         fn = _fn(_lower_ctx(src), "f")
         assert fn is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "items = make();" in cpp
 
 
@@ -788,9 +769,7 @@ class TestAliasPtrDerefSource:
                + "    if q is not None:\n"
                + "        r = q\n"
                + "        print(r.x)\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert not faces.get("decl.alias_ptr_deref_src")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
 
 class TestElementBorrowPtrDecl:
@@ -812,8 +791,8 @@ class TestElementBorrowPtrDecl:
         assert isinstance(decl, THIRPtrLocalDecl)
         assert decl.kind is PtrSlotKind.PTR_ADDR
         assert not decl.needs_rebind_slot
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "Inner* p = &(::tpy::__getitem__(items, 0));" in cpp
         _assert_byte_identical(src)
 
@@ -827,9 +806,8 @@ class TestElementBorrowPtrDecl:
                + "    p = items[0]\n"
                + "    p = items[1]\n"
                + "    return p.value\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.reseat_source")
 
     def test_rvalue_reseat_predeclares_rebind_slot(self):
         # A later RVALUE reseat needs its own `std::optional<Inner>` slot so
@@ -846,8 +824,8 @@ class TestElementBorrowPtrDecl:
         decl = fn.body[0]
         assert isinstance(decl, THIRPtrLocalDecl)
         assert decl.kind is PtrSlotKind.PTR_ADDR and decl.needs_rebind_slot
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "std::optional<Inner> __slot_1;" in cpp
         assert "p = &*(__slot_1 = Inner(9));" in cpp
 
@@ -863,7 +841,7 @@ class TestElementBorrowPtrDecl:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("decl.subscript_elem_addr")
-        assert "Inner* p = &(::tpy::__getitem__(d, \"a\"));" in _cpp(src, thir=True)
+        assert "Inner* p = &(::tpy::__getitem__(d, \"a\"));" in _cpp(src)
         _assert_byte_identical(src)
 
     def test_reassigned_field_recv_elem_decl_routes(self):
@@ -882,7 +860,7 @@ class TestElementBorrowPtrDecl:
         assert _fn(thir, "f") is not None
         assert faces.get("decl.subscript_elem_addr")
         assert ("Inner* p = &(::tpy::__getitem__(h.items, 0));"
-                in _cpp(src, thir=True))
+                in _cpp(src))
         _assert_byte_identical(src)
 
     def test_tparam_elem_decl_and_return_route(self):
@@ -916,10 +894,8 @@ class TestElementBorrowPtrDecl:
                + "    row = m[0]\n"
                + "    row = m[1]\n"
                + "    return Int32(len(row))\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("decl.subscript_elem_addr")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_slice_source_still_defers(self):
         # BOUNDARY: a SLICE is not an element borrow (it materializes a new
@@ -995,8 +971,8 @@ class TestTparamHoistedOptionalReturn:
             "            value = self.pop_one() if n > 0 else self.pop_one()\n"
             "        return value\n"
         ) + self._TAIL
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"body:stmt.var_decl:reseat.opt_storage_source": 1}
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:reseat.opt_storage_source")
 
 
 class TestOptNameCopyDecl:
@@ -1182,10 +1158,8 @@ class TestOptReassignedFieldDecl:
                + "    p = items[1]\n"
                + "    print(p is None)\n"
                + "test([None, None])\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "test") is None
-        assert not faces.get("reseat.opt_field_lift")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_reseat_source")
 
 
 class TestCopyReseatRows:
@@ -1216,7 +1190,7 @@ class TestCopyReseatRows:
                + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "= Point(p));" in cpp
         _assert_byte_identical(src)
 
@@ -1295,7 +1269,7 @@ class TestCopyReseatRows:
                + "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "= Point(best));" in cpp
         _assert_byte_identical(src)
 
@@ -1318,8 +1292,8 @@ class TestCopyReseatRows:
                + "def main() -> None:\n"
                + "    print(f(True))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_reseat_source")
 
 
 class TestOptSlotStorageReseatSource:
@@ -1422,9 +1396,8 @@ class TestCopyPointerLocalRecord:
                + "def main() -> None:\n"
                + "    print(plain_copy(Point(5)))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "plain_copy") is None
-        assert "Point dup = Point(src);" in "".join(
-            _assert_byte_identical(src))
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.copy_source.record_f1")
 
 
 class TestPtrValueHoistAndTernary:
@@ -1792,10 +1765,8 @@ class TestGenericOptionalPtrSlot:
             "    print(is_def_gen(t.o))\n"
             "main()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.expr_stmt:call.generic_arg_shape": 1}, fell
-        assert "is_def_gen<Pod>(&(t.o))" in "".join(
-            _assert_byte_identical(src))
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.generic_arg_shape")
 
 
 _PETS = (
@@ -1843,7 +1814,7 @@ class TestPolymorphicOptSlotRebindDiagnostic:
         # full codegen -- and that also has the other path standing by, hence
         # the author assertion.
         with pytest.raises(CodeGenError, match="with rvalue rebind") as exc:
-            _cpp(src, thir=True)
+            _cpp(src)
         assert _raised_in_lowering(exc.value)
 
     def test_init_only_slot_routes(self):

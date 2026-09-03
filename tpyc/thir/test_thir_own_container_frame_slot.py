@@ -46,8 +46,7 @@ class TestGenericCompositeOpenSlotField:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         faces = dict(compiler._thir_face_witnesses)
         assert faces["call.generic_open_slot_field_composite"] >= 1
 
@@ -127,8 +126,7 @@ class TestOwnContainerFrameSlotReads:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         faces = dict(compiler._thir_face_witnesses)
         assert faces["name.frame_own_field"] >= 1
 

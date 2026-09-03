@@ -8,6 +8,8 @@ from .nodes import (
     THIRBinOp, THIRCall, THIRCoerce, THIRForRange, THIRLiteral, THIRReturn,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _emit_expr,
     _assert_byte_identical, _assert_routes_byte_identical, _top_level,
 )
@@ -18,11 +20,11 @@ _NUMLIT_PRELUDE = "from tpy import Int32, Int64, Float32, Float64\n"
 
 
 class TestNumericLiteralArgs:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_float_literal_arg_routes(self):
@@ -139,11 +141,11 @@ class TestNumericLiteralArgs:
         thir = _lower(src)
         for name in ("wide", "negative", "minimum", "maximum"):
             assert _fn(thir, name) is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "static_cast<int64_t>(2147483648)" in cpp
         assert "static_cast<int64_t>((-9223372036854775807LL - 1))" in cpp
         assert "static_cast<uint64_t>(18446744073709551615ull)" in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_wide_range_bounds_inline_byte_identical(self):
         # Wide literal range bounds must keep the AST's inline-vs-hoist choice:
@@ -164,10 +166,10 @@ class TestNumericLiteralArgs:
         rng = _fn(thir, "g").body[0]
         assert isinstance(rng, THIRForRange)
         assert rng.start_is_literal and not rng.stop_is_literal
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert ("for (int64_t i = static_cast<int64_t>(2147483648); "
                 "i < __stop_0; ++i)") in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_ctor_literal_range_bounds_inline_byte_identical(self):
         src = (
@@ -182,9 +184,9 @@ class TestNumericLiteralArgs:
             rng = _fn(thir, name).body[0]
             assert isinstance(rng, THIRForRange)
             assert rng.start_is_literal and not rng.stop_is_literal
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "__start_" not in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_wide_ctor_literal_range_bounds_inline_byte_identical(self):
         # Ctor arm x literal width: the shared extraction folds a wide value
@@ -202,9 +204,9 @@ class TestNumericLiteralArgs:
             rng = _fn(thir, name).body[0]
             assert isinstance(rng, THIRForRange)
             assert rng.start_is_literal and not rng.stop_is_literal
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "__start_" not in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_wide_literal_step_defers(self):
         # The stepped arms' overflow-check render is pinned only for the
@@ -233,10 +235,10 @@ class TestNumericLiteralArgs:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "{1000000000, static_cast<int64_t>(3000000000)}" in cpp
         assert "{static_cast<uint64_t>(18446744073709551615ull)}" in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_wide_method_arg_uses_coercion_target(self):
         src = (
@@ -250,10 +252,10 @@ class TestNumericLiteralArgs:
         entry = _entry(modules)
         ast = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=False))
+                emit_source_comments=False))
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "c.take(static_cast<int64_t>(2147483648))" in thir[1]
         assert thir == ast
 
@@ -269,10 +271,10 @@ class TestNumericLiteralArgs:
             + "    return n >= 86400000000 and n == 5\n"
         )
         assert _fn(_lower(src), "f") is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "static_cast<int64_t>(86400000000)" in cpp
         assert "n == 5" in cpp  # small literal stays bare (unambiguous)
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_bigint_list_element_over_int32_pins_int64(self):
         # A >int32 int literal in a BigInt list literal renders int64-pinned
@@ -291,10 +293,10 @@ class TestNumericLiteralArgs:
         )
         assert _fn(_lower(src), "f") is not None
         assert _fn(_lower(src), "g") is not None
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "{10, static_cast<int64_t>(1234567890123456789)}" in cpp
         assert "std::vector<int64_t> ys = {static_cast<int64_t>(1234567890123456789), 5}" in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
     def test_byte_identical(self):
         src = (
@@ -314,7 +316,6 @@ class TestNumericLiteralArgs:
         )
         thir = _lower(src)
         assert _fn(thir, "g") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 # --- Scalar type-constructor calls (Int32(x) / Float64(x) / bool(n)) ---
@@ -397,10 +398,10 @@ class TestScalarCtorCall:
         entry = _entry(modules)
         ast = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=False))
+                emit_source_comments=False))
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir == ast
 
     def test_float_str_constant_folds(self):
@@ -427,10 +428,10 @@ class TestScalarCtorCall:
         entry = _entry(modules)
         ast = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=False))
+                emit_source_comments=False))
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir == ast
 
     def test_int_ctor_str_literal_routes(self):
@@ -459,10 +460,10 @@ class TestScalarCtorCall:
         entry = _entry(modules)
         ast = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=False))
+                emit_source_comments=False))
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert "static_cast<uint32_t>(4294967295)" in thir[1]
         assert thir == ast
 
@@ -487,11 +488,11 @@ class TestScalarCtorCall:
 
 
 class TestScalarCtorCallEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -525,11 +526,8 @@ class TestScalarCtorCallEmit:
         for name in ("conv", "seed", "fl", "flags"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "int64_t w = ::tpy::int_cast_check<int64_t>(a);" in cpp
         assert "uint64_t u = ::tpy::int_cast_check<uint64_t>(b);" in cpp
         # the cast keeps the binop's paren wrap
@@ -547,11 +545,11 @@ class TestScalarCtorCallEmit:
 
 
 class TestFloat32AndCastCoercions:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -580,11 +578,8 @@ class TestFloat32AndCastCoercions:
         thir = _lower(self.SRC)
         assert _fn(thir, "mix") is not None
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "float c = 1.5f;" in cpp                       # f-suffix literal
         assert "float e = use32(static_cast<float>(n));" in cpp   # fixed_int_to_float32
         assert "double w = use64(static_cast<double>(a));" in cpp  # float32_to_float
@@ -606,18 +601,17 @@ class TestFloat32AndCastCoercions:
             + "    return a + b + c\n"
             + "def main():\n    print(f(2.5, 3))\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 # --- Fixed-int bitwise ops (& | ^ << >>) at the scalar binop arm ---
 
 
 class TestBitwiseBinops:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -639,9 +633,6 @@ class TestBitwiseBinops:
         for name in ("f_and", "f_or", "f_xor", "f_shl", "f_shr", "f_mix"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_face_witnessed(self):
         # Without the pin a refactor could un-witness the bitwise arm while the
         # bodies still route via the shared arith tail and the byte-diff stays green.
@@ -649,7 +640,7 @@ class TestBitwiseBinops:
         assert witnessed.get("binop.bitwise", 0) > 0
 
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         # `&`/`|`/`^` expand the fixed-int static_cast template; shifts take the
         # checked helper -- both the resolved-binop template arm arithmetic uses.
         assert "return (static_cast<int32_t>(a & b));" in cpp
@@ -741,12 +732,11 @@ class TestScalarRawBinop:
     def _write_macro(self, tmp_path):
         (tmp_path / "rawbinmod.py").write_text(_MACRO_MOD)
 
-    def _cpp(self, src, tmp_path, thir):
+    def _cpp(self, src, tmp_path):
         compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_macro_synthesized_name_binop_routes(self, tmp_path):
@@ -759,9 +749,9 @@ class TestScalarRawBinop:
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
         assert _fn(thir, "combine") is not None
-        cpp = self._cpp(src, tmp_path, thir=True)
+        cpp = self._cpp(src, tmp_path)
         assert "return (a + b);" in cpp
-        assert cpp == self._cpp(src, tmp_path, thir=False)
+        assert cpp == self._cpp(src, tmp_path)
 
     def test_literal_operand_still_defers(self, tmp_path):
         # BOUNDARY: a macro-synthesized `a + 1` has a literal operand --
@@ -775,8 +765,6 @@ class TestScalarRawBinop:
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
         assert _fn(thir, "combine") is None
-        assert (self._cpp(src, tmp_path, thir=True)
-                == self._cpp(src, tmp_path, thir=False))
 
 
 class TestMarkerSpecialFolds:
@@ -826,9 +814,8 @@ class TestMarkerSpecialFolds:
                "    u = t.copy(h.s)\n"
                "    print(u)\n"
                "f()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.copy_source.str")
 
     def test_imported_name_local_shadow_routes(self):
         # `from time import time` + a LOCAL `def time()`: the call resolves

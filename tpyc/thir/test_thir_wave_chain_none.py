@@ -10,6 +10,8 @@ two-link chains and Optional intermediate links keep deferring."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -71,9 +73,8 @@ class TestChainNoneBoundaries:
             "def main() -> None:\n"
             "    print(get_value(Top(Outer(Inner(5)))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "get_value") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not")
 
     def test_narrowed_read_predicate_is_link_blind(self):
         # The READ predicate is deliberately LINK-BLIND (the AST's
@@ -140,6 +141,5 @@ class TestChainNoneBoundaries:
             "def main() -> None:\n"
             "    print(get_value(OptTop(Inner(5))))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "get_value") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.&&.scalar_scalar:binop.shape.is not")

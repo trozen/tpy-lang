@@ -34,10 +34,7 @@ from ..type_def_registry import (
     is_borrowing_view_type, is_big_int_type, is_fixed_int_type,
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
-from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
-from ..binding_audit import (capture_ast as _binding_capture,
-                             end_ast_body as _binding_end_body)
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
@@ -349,10 +346,9 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
     """The cross-module free-callee spelling, or None when `func_name` is
     not bound as an imported FUNCTION in the calling module's attribute
     table (local definitions spell bare). The ONE qualification decision
-    shared by the AST call emit and the THIR gate/lowering mirror.
-    `mangled` overrides the canonical name for literal-specialized
-    overload stubs (the AST's `is_literal_mangled` arm; THIR's
-    `_free_callee_kind` threads the same mangled spelling here)."""
+    behind every cross-module free call. `mangled` overrides the canonical
+    name for literal-specialized overload stubs (`_free_callee_kind`
+    threads that spelling here)."""
     qual = lookup_imported(module_attributes, func_name, SymbolKind.FUNCTION)
     if qual is None:
         return None
@@ -364,8 +360,8 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
 def module_qualified_callee_cpp(registry, module_attributes, module_name: str,
                                 user_module: str, method: str, fi) -> str:
     """The plain cross-module dotted-call spelling (`import m; m.f(...)` ->
-    `::tpyapp::m::f`). The ONE qualification decision shared by the AST
-    method-call emit and the THIR gate/lowering mirror. A qualified `mod.X`
+    `::tpyapp::m::f`). The ONE qualification decision behind every
+    cross-module dotted call. A qualified `mod.X`
     is authoritative for X's module: resolve X by its qname under `mod`
     (records) or its sema-resolved originating module (functions) BEFORE the
     bare-name attribute lookup -- that lookup collides when a same-named
@@ -390,7 +386,7 @@ def imported_variable_cpp(registry, imported_names: 'dict[str, tuple[str, str]]'
                           name: str) -> str | None:
     """The cross-module imported-variable spelling, or None when `name` is
     not an imported module-level VARIABLE. The ONE qualification decision
-    shared by the AST name render and the THIR seeding/lowering mirror.
+    behind every cross-module variable read.
     Detection keys on the IMMEDIATE import source's `variables` dict (the
     shadow-resilient `imported_names` history, not the attribute table);
     the spelling follows the re-export chain to the ultimate defining
@@ -449,10 +445,9 @@ def module_init_targets(stmt, *, registry, module_name: str,
     """Modules whose `__tpy_init()` a top-level import chains into, in emit
     order -- the render behind `__tpy_init`'s import statements.
 
-    Shared by the AST's `gen_stmt` import arm and THIR's top-level lowering
-    (which resolves the call list at lowering time), so the two paths cannot
-    drift; `emitted` is the caller's own once-per-module dedup set, mutated
-    here exactly as the AST arm mutated `ctx.emitted_tpy_inits`."""
+    Top-level lowering resolves the call list here, at lowering time;
+    `emitted` is the caller's own once-per-module dedup set, mutated in
+    place."""
     info = registry.get_module(stmt.module_name)
     has_init = info is None or info.has_runtime_init
     out: list[str] = []
@@ -518,8 +513,7 @@ def static_method_callee_cpp(registry, implicit_stdlib_modules: 'set[str]',
                              module_name: str, class_name: str, method: str,
                              fi, owner=None) -> str:
     """The non-generic static-method-call spelling (`Rec.m(...)` ->
-    `Rec::m`), shared by the AST emit and the THIR gate/lowering mirror.
-    Native records spell the C++ class and any explicit method rename;
+    `Rec::m`). Native records spell the C++ class and any explicit method rename;
     implicit-stdlib peers don't emit a `using ::ns::Foo;` alias (suppressed
     to avoid include cycles), so the class qualifies explicitly there.
     `owner` is sema's resolved record, used when the receiver's spelling
@@ -544,11 +538,9 @@ def module_static_class_cpp(registry, user_module: str,
                             class_short: str) -> str:
     """The module-qualified static call's CLASS spelling (`m.Cls.m(...)`):
     a native record spells its C++ class name, everything else qualifies
-    through the module namespace (`::tpyapp::m::Cls`). The ONE composition
-    shared by the AST module-static emit and the THIR gate mirror; the
-    method half is `fi.native_name or escape_cpp_name(method)` at both
-    sites (the AST arm appends targs to the class part, so only the class
-    composition is shared whole)."""
+    through the module namespace (`::tpyapp::m::Cls`). Only the CLASS
+    composition lives here; the caller appends the method half
+    (`fi.native_name or escape_cpp_name(method)`) and any targs."""
     record_info = registry.find_record_by_qname(f"{user_module}.{class_short}")
     if record_info and record_info.is_native and record_info.native_name:
         return record_info.native_name
@@ -679,8 +671,7 @@ def is_constructor_call(expr: 'TpyExpr',
     than a synthetic ctor.
 
     Binding `auto&` to such a result does not compile, so every
-    iterable-lvalue decision -- the AST's and both THIR mirrors' -- must ask
-    exactly this question.
+    iterable-lvalue decision must ask exactly this question.
     """
     if not isinstance(expr, TpyCall):
         return False
@@ -835,9 +826,6 @@ class TempState:
         self._pending: list[tuple[str, str, str | None, bool]] = []
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
-        # Counter-CONSUMING named slots (declare_named_auto) ever created;
-        # rollback_walrus_probe keys its counter-restore safety on it.
-        self._auto_named: int = 0
         self._regions: list[CondRegion] = []
 
     @contextmanager
@@ -927,7 +915,6 @@ class TempState:
         (e.g. the optional<T> backing a short-circuit pointer-select), where the
         caller needs the generated name back rather than supplying it."""
         self._counter += 1
-        self._auto_named += 1
         name = f"{prefix}_{self._counter}"
         self._pending_named.append((name, cpp_type, init, False))
         return name
@@ -968,45 +955,6 @@ class TempState:
         del self._pending[pending:]
         del self._pending_named[pending_named:]
         return True
-
-    def probe_checkpoint(self) -> tuple[int, int, int, int]:
-        """`checkpoint()` plus the name counter and the named-auto tally, for
-        `rollback_discarded` / `rollback_walrus_probe`.
-
-        Compatible with `has_pending_since` / `has_named_since` (same first
-        two elements)."""
-        return (len(self._pending), len(self._pending_named), self._counter,
-                self._auto_named)
-
-    def rollback_discarded(self, checkpoint: tuple[int, int, int]) -> None:
-        """Discard temps registered after `checkpoint` AND restore the counter.
-
-        Unlike `rollback_to`, only valid when the render since the checkpoint
-        is discarded wholesale and regenerated verbatim in a flushable
-        position (the elif-with-temps fallback): the regeneration then
-        reissues the same `__tmp_N` names instead of burning counter slots.
-        Requires no named entries since the checkpoint: named pre-decls carry
-        registry side effects that cannot be rolled back, and a kept
-        named-auto slot would collide with its reissued number."""
-        assert len(self._pending_named) == checkpoint[1]
-        del self._pending[checkpoint[0]:]
-        self._counter = checkpoint[2]
-
-    def rollback_walrus_probe(self, checkpoint: tuple[int, int, int, int]) -> None:
-        """Discard anonymous temps after `checkpoint` and restore the counter
-        when that is safe -- the walrus-flavored probe discard (the elif
-        whose condition carries both a walrus and temps). Named pre-decls
-        registered since stay: their registry side effects persist and the
-        regeneration suppresses re-creation (walrus_pre_declared) -- and a
-        walrus `declare_named` consumes no number, so the regeneration
-        reissues the identical `__tmp_N` sequence. The one hazard is a
-        counter-CONSUMING named-auto slot since the checkpoint (an elif
-        mixing a walrus with a short-circuit rvalue-select): its kept name
-        would collide with a reissued number, so the counter then stays
-        burned -- the pre-fix behavior, with no corpus witness."""
-        del self._pending[checkpoint[0]:]
-        if self._auto_named == checkpoint[3]:
-            self._counter = checkpoint[2]
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
@@ -1067,8 +1015,7 @@ def any_isinstance_check(subject_cpp: str, member_cpps: 'tuple[str, ...]') -> st
     """The Any-isinstance condition render (D15): the has_value guard + one
     typeid check per member (tuple form OR-joined in one paren group). An
     empty/moved-from Any has no value() and is not any concrete type, so the
-    guard is essential. Shared by the AST isinstance arm and THIR's
-    `THIRAnyIsinstance` emit so the spellings cannot drift."""
+    guard is essential. The one spelling behind `THIRAnyIsinstance`."""
     if len(member_cpps) == 1:
         return (f"({subject_cpp}.value.has_value() && "
                 f"{subject_cpp}.value.type() == typeid({member_cpps[0]}))")
@@ -1109,10 +1056,18 @@ class CodeGenError(Exception):
 
 
 class ThirRejectError(CodeGenError):
-    """A body THIR cannot lower, reported instead of falling back to the AST
-    path. Kept distinct from other codegen diagnostics because the AST path
-    still emits code for the same source, so a harness comparing the two
-    paths' verdicts must not read this one as a disagreement."""
+    """A construct THIR has no lowering for. Kept distinct from other codegen
+    diagnostics so tooling can tell a lowering GAP (the source is valid TPy;
+    the compiler is what is missing) from a diagnostic about the source, and
+    carries the failing position and reason tag as fields rather than only in
+    its message."""
+
+    def __init__(self, message: str, loc: SourceLocation | None = None,
+                 filename: str | None = None, *, component: str | None = None,
+                 reason: str | None = None):
+        super().__init__(message, loc, filename)
+        self.component = component
+        self.reason = reason
 
 
 @dataclass
@@ -1121,16 +1076,6 @@ class CodeGenOptions:
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
     comment_line_numbers: bool = True   # Include .py line numbers in source comments
     no_main: bool = False               # Skip main() generation, emit __tpy_main() only
-    # THIR authors every body it can lower, in every module. Setting this False
-    # emits the whole module through the AST path instead -- the dual-path test
-    # helpers and the same-run stdlib oracle need that side until the AST body
-    # emitters are gone.
-    thir_codegen: bool = True
-    # Refuse to fall back: a body THIR cannot lower raises CodeGenError instead
-    # of being re-emitted through the AST path. This is the behaviour once the
-    # AST body emitters are gone, so it is how a reject is seen (and pinned)
-    # while both paths still exist.
-    thir_strict: bool = False
 
 
 class LocalCppForm(Enum):
@@ -1342,34 +1287,30 @@ class CodeGenContext:
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
-    # Mirror of CodeGenOptions.thir_codegen, always supplied by the generator.
-    # When set, functions in `thir_functions` (keyed by id() of the source
-    # TpyFunction, or by (id(impl), id(stub)) for a per-@overload-stub
-    # specialization) emit their bodies from THIR instead of the AST path.
+    # Lowered bodies, keyed by id() of the source TpyFunction (or by
+    # (id(impl), id(stub)) for a per-@overload-stub specialization).
     # Populated per-module in CodeGenerator.generate.
-    thir_codegen: bool = True
     thir_functions: dict["int | tuple[int, int]", "THIRFunction"] = field(default_factory=dict)
-    # THIR module-init frontier: the `__tpy_init` body when top-level lowering
-    # routed it (None = the AST path emits it). Seeded right before
-    # gen_module_init, which is where the generator's global-type map exists.
+    # The `__tpy_init` body, lowered from the module's top-level statements.
+    # Seeded right before gen_module_init, which is where the generator's
+    # global-type map exists.
     thir_top_level: "THIRFunction | None" = None
-    # THIR ctor frontier (M3): an eligible constructor's member-init-list + body
-    # tail emits from its THIRConstructor (the signature stays on the AST path).
+    # A constructor's member-init-list + body tail emit from its
+    # THIRConstructor; the signature comes from the record skeleton.
     # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.
     thir_constructors: dict[int, "THIRConstructor"] = field(default_factory=dict)
-    # THIR resumable frontier: attempt-once cache of async-body leaf lowerings,
-    # keyed by id() of the source TpyFunction; None records a rejected attempt
-    # (so the fallback tally folds once). Populated lazily at first frame
+    # Attempt-once cache of async-body leaf lowerings, keyed by id() of the
+    # source TpyFunction. Populated lazily at first frame
     # emission (the CFG needs live codegen ctx), unlike the seeding-loop maps.
     thir_resumables: dict[int, "THIRResumableBody | None"] = field(default_factory=dict)
-    # The active routed body's leaf renderer while gen_async emits its state
+    # The active body's leaf renderer while gen_async emits its state
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
-    # async-return value) consults it. None on the AST path.
+    # async-return value) consults it. None outside a frame emission.
     thir_resumable_leaf: "ResumableLeafEmitter | None" = None
-    # THIR simple-generator frontier: an eligible peephole generator's leaves
-    # (init block, while cond, pre-/post-yield blocks, yield value, iterable /
-    # range args) emit from its THIRSimpleGenBody inside the AST-emitted
-    # lambda skeleton. Keyed by id() of the source TpyFunction; populated in
+    # A peephole generator's leaves (init block, while cond, pre-/post-yield
+    # blocks, yield value, iterable / range args) emit from its
+    # THIRSimpleGenBody inside the skeleton's
+    # lambda. Keyed by id() of the source TpyFunction; populated in
     # the same seeding loop as `thir_functions` (no live-ctx dependency,
     # unlike resumables); consumed in gen_simple_generator_inline.
     thir_simple_gens: dict[int, "THIRSimpleGenBody"] = field(default_factory=dict)
@@ -1469,20 +1410,15 @@ class CodeGenContext:
     # via optional<T>::operator-> (correct arrow). The is_storage_form_-
     # optional_source predicate deliberately excludes them; consumer sites
     # that need an optional_to_ptr lift to feed a T* slot check
-    # optional_locals directly (_optional_pointer_form_value,
-    # _gen_optional_ptr_arg, the var-decl and rebind paths in statements.py).
+    # optional_locals directly (the pointer-form value read, the optional-ptr
+    # argument pass, and the var-decl / rebind paths).
     optional_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
     # Pre-bound polymorphic-isinstance cast locals for the C++17 if-init form
-    # (var -> ptr local name). Populated by `_gen_if` before emitting the
-    # condition; the isinstance bool-check and cast-and-cache extraction both
-    # consult this map and reuse the local instead of re-emitting dynamic_cast.
+    # (var -> ptr local name), bound before the condition is emitted; the
+    # isinstance bool-check and cast-and-cache extraction both consult this
+    # map and reuse the local instead of re-emitting dynamic_cast.
     isinstance_init_locals: dict[str, str] = field(default_factory=dict)
-    # Same idea for deref-view narrowing through an owning wrapper (Box/Rc):
-    # keyed by the wrapper receiver name (e.g. `rc`), the value is the pre-bound
-    # `Sub*` local cast from the deref payload pointer, so the condition and the
-    # narrowed member accesses share one cast instead of re-deriving it.
-    deref_view_init_locals: dict[str, str] = field(default_factory=dict)
     # Locals whose tuple type contains pointer-repr Optional but whose C++
     # representation is the storage form (std::tuple<std::optional<T>, ...>):
     # for-loop variables iterating storage-form containers, and locals
@@ -1614,12 +1550,6 @@ class CodeGenContext:
     # slot -> the hoist scope that reserved it; outlives the held-back decl.
     rebind_slot_scopes: dict[str, int] = field(default_factory=dict)
 
-    # True while generating container element expressions (dict/list/set/tuple
-    # literals, comprehension elements). Ternary codegen checks this to produce
-    # std::optional<T> instead of T*/nullptr -- containers always store
-    # std::optional<T>, while locals/returns use T*.
-    in_container_element: bool = False
-
     # --- Union type narrowing (isinstance -> std::get) ---
     narrowed_vars: dict[str, str] = field(default_factory=dict)
     # Protocol isinstance narrowing: var -> narrowed protocol type.
@@ -1645,7 +1575,7 @@ class CodeGenContext:
     # For short-arity stubs, the missing impl params that must be emitted as
     # locals (with their default expressions) at the start of the body.
     # Each entry: (param_name, param_type, default_expr). Consumed by
-    # StatementGenerator.gen_body right after the opening brace and then
+    # FunctionGenerator.gen_body right after the opening brace and then
     # cleared so inner bodies don't re-emit them.
     overload_missing_param_locals: list[tuple[str, 'TpyType', object]] = field(default_factory=list)
     # THIR interception key for the per-stub emission in flight:
@@ -1703,10 +1633,6 @@ class CodeGenContext:
 
     # --- with statement ---
     with_counter: int = 0
-    # Variables pre-declared by _emit_branch_decls for hoisting out of a loop
-    # OR an if/try/with/match branch. A same-named tuple-unpack target then
-    # assigns instead of re-declaring (consumed in _gen_tuple_unpack).
-    predecl_hoisted_vars: set[str] = field(default_factory=set)
 
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
@@ -1721,7 +1647,7 @@ class CodeGenContext:
     generator_field_names: set[str] = field(default_factory=set)
     # id(write stmt) -> frame-field slot name for rvalue writes into
     # pointer-form frame locals (seeded per body from the resumable
-    # state's ptr_slot_map; consumed by _gen_pointer_local_rebind).
+    # state's ptr_slot_map).
     resumable_ptr_slot_map: dict[int, str] = field(default_factory=dict)
     # Hoisted locals that are compile-time aliases of a captured static-protocol
     # param (`xs = it`): they occupy no frame field of their own; every storage
@@ -1772,7 +1698,7 @@ class CodeGenContext:
     # `return v` is rewritten to `__state = <done>; return Poll<T>::ready(v);`.
     # The flag piggybacks on in_generator_body for the field-rewrite path
     # (locals -> this->field) -- both share the resumable-frame shape -- but
-    # has its own return-rewrite handling in statements.py.
+    # has its own return-rewrite handling (`_resumable_return_code`).
     in_async_coro_body: bool = False
     async_coro_return_cpp: str | None = None  # C++ return type for Poll<T>::ready
     async_coro_done_state: str | None = None  # name of the DONE state enumerator
@@ -1781,32 +1707,13 @@ class CodeGenContext:
     # the legacy goto-label generator codegen: there a bare `return` emits
     # `goto __done`, but the resumable while/switch has no such label, so a
     # bare `return` / fall-off-end lowers to `__state = S_DONE; return
-    # make_unexpected(StopIteration{})` instead (see statements.py).
+    # make_unexpected(StopIteration{})` instead.
     in_generator_resumable_body: bool = False
     generator_resumable_done_state: str | None = None
     # Set when emitting a helper-based finally body for a generator on the
     # resumable frame. `return` here sets `this->__finally_stop = true` and
     # void-returns; callers check the flag and emit StopIteration.
     in_generator_finally_helper: bool = False
-    # Resumable-frame `match` decomposition (H1): when a suspending `match`
-    # is emitted, the existing `gen_match` dispatch is reused unchanged, but
-    # each arm BODY is routed back through the resumable walker instead of
-    # emitted inline. `resumable_arm_emitter(arm_bb)` emits one arm's body
-    # via the state machine; `resumable_arm_bb_by_body` maps `id(case.body)`
-    # to its arm BB. Consulted in the single shared `_emit_case_body`
-    # chokepoint. None outside a suspending-match emit.
-    resumable_arm_emitter: 'Callable[[int], None] | None' = None
-    resumable_arm_bb_by_body: dict[int, int] = field(default_factory=dict)
-    # Whether the `match` currently being emitted has an lvalue subject (set
-    # by `gen_match`). A non-lvalue subject is bound to a dispatch-local copy,
-    # so a pointer-form (pointer-repr `Optional`) arm binding would alias that
-    # copy and dangle across a suspension -- the resumable binding emit rejects
-    # that combination. Default True (lvalue) for non-match / non-resumable.
-    resumable_match_subject_is_lvalue: bool = True
-    # Source location of the `match` currently being emitted, used to locate
-    # the resumable binding-emit reject (the binding emit is deep in the
-    # dispatch and has no stmt in hand otherwise). Set by `gen_match`.
-    resumable_match_loc: 'SourceLocation | None' = None
     # True iff the current generator's struct has a `__finally_stop` field
     # (i.e. at least one helper-based finally body contains a `return`).
     # Controls whether _emit_finally_helper_call appends the stop check.
@@ -1844,9 +1751,7 @@ class CodeGenContext:
     all_user_modules: set[str] = field(default_factory=set)
     implicit_stdlib_modules: set[str] = field(default_factory=set)
     macro_dep_modules: set[str] = field(default_factory=set)
-    emitted_tpy_inits: set[str] = field(default_factory=set)
     top_level_decls: dict[str, int] = field(default_factory=dict)
-    current_stmt_line: int = 0
 
     # --- Native global variable imports ---
     # TODO: replace with dict[str, NativeGlobalInfo] holding c_name, linkage, var_type
@@ -1917,7 +1822,7 @@ class CodeGenContext:
             fi = expr.resolved_function_info
             if fi is not None and self.is_ptr_variant_union(fi.return_type):
                 return True
-        # A ptr-variant union ternary: `_gen_if_expr` normalizes each arm to
+        # A ptr-variant union ternary: the ternary emit normalizes each arm to
         # variant<A*, B*>, so the ternary itself yields the pointer variant and
         # must not be re-wrapped by the consuming sink.
         if isinstance(expr, TpyIfExpr):
@@ -1927,9 +1832,6 @@ class CodeGenContext:
 
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""
-        # The previous body's binding-audit window closes against its still-
-        # live sets; must run before the wipe below.
-        _binding_end_body(self)
         self.declared_vars = set()
         self.var_types = {}
         self.local_scope_names = set()
@@ -2011,7 +1913,6 @@ class CodeGenContext:
         self.loop_else_labels = []
         self.loop_break_labels = []
         self.match_switch_depth = 0
-        self.predecl_hoisted_vars = set()
         self.finally_stack = []
 
     def indent(self) -> str:
@@ -2089,9 +1990,6 @@ class CodeGenContext:
 
     def restore_local_scope(self, snap: LocalScopeSnap) -> None:
         """Restore local-variable declaration state from a snapshot."""
-        # Branch-scoped binding adds are still live here -- the audit's one
-        # chance to see them before the overwrite discards them.
-        _binding_capture(self)
         self.declared_vars = snap.declared_vars.copy()
         self.var_types = dict(snap.var_types)
         self.local_scope_names = snap.local_scope_names.copy()
@@ -2759,49 +2657,6 @@ class CodeGenContext:
                     or expr.name in self.const_indirect_locals)
         return False
 
-    def source_form(self, expr: TpyExpr) -> CppForm:
-        """Classify the borrow/storage form a leaf expression renders as --
-        the expr-level generalization of `local_cpp_form`, folded together
-        with the expr-shape predicates (field / subscript / storage-Optional).
-
-        Only meaningful for LEAF sources (names, field/subscript reads). Join
-        expressions (ternary / walrus RHS / await result) do not have a single
-        form; their producers normalize each operand and build the `FormValue`
-        directly, so this is not consulted for them.
-
-        Peels `TpyCoerce` up front so every call site classifies the underlying
-        source uniformly -- a coerce-wrapped storage-form Optional/Union arm
-        must not fall through to the conservative BORROW default and skip its
-        lift.
-        """
-        while isinstance(expr, TpyCoerce):
-            expr = expr.expr
-        t = self.get_expr_type(expr)
-        if t is None or t.is_value_type():
-            return CppForm.VALUE
-        # Storage-form Optional lvalue (Optional field, pointer-repr Optional
-        # container element, storage-optional loop/unpack var) -> optional<T>.
-        if self.is_storage_form_optional_source(expr):
-            return CppForm.STORAGE
-        if self.is_ptr_variant_source(expr):
-            return CppForm.BORROW
-        if isinstance(expr, TpyName):
-            form = self.local_cpp_form(expr.name)
-            if form in (LocalCppForm.OPTIONAL_STORAGE, LocalCppForm.STORAGE_OPTIONAL,
-                        LocalCppForm.VALUE_VARIANT, LocalCppForm.STORAGE_TUPLE):
-                return CppForm.STORAGE
-            # POINTER / PTR_VARIANT / BORROW_TUPLE / OPTIONAL_BORROW_TUPLE are
-            # borrow form; LocalCppForm.VALUE on a NON-value type is a
-            # T&-bound borrow (record param / ref-bound local), not storage.
-            return CppForm.BORROW
-        # Field / subscript / non-value global: an lvalue into owned storage.
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)) or self._is_pointer_global(expr):
-            return CppForm.STORAGE
-        # Conservative default: treat unknown non-value sources as borrow form
-        # (the common case for call returns that are not Own-storage). Sites
-        # that know better build the FormValue explicitly.
-        return CppForm.BORROW
-
     def convert(self, val: 'FormValue', *, dst_type: TpyType, dst_form: CppForm) -> str:
         """The single door for borrow<->storage form conversion.
 
@@ -2888,12 +2743,11 @@ class CodeGenContext:
         `pointer_locals` (Own[Opt[T_ref]] params live in both for arrow
         access vs. lift dispatch), so OPTIONAL_STORAGE must take
         precedence over POINTER. STORAGE_OPTIONAL tracks iteration-source
-        loop/unpack vars (populated only by
-        `register_loop_var_storage_form`); its population is
-        producer-disjoint from `optional_locals` today, so the priority
-        slot is conventional, not load-bearing -- a same-name shadow
-        between a param and a loop var would still resolve consistently
-        because both forms lift the same way via `optional_to_ptr`.
+        loop/unpack vars; its population is producer-disjoint from
+        `optional_locals` today, so the priority slot is conventional, not
+        load-bearing -- a same-name shadow between a param and a loop var
+        would still resolve consistently because both forms lift the same
+        way via `optional_to_ptr`.
         VALUE_VARIANT (Own[Union] param) is looked up via
         `current_func_params`, not a set; it precedes PTR_VARIANT
         because a single name cannot match both.
@@ -2965,57 +2819,6 @@ class CodeGenContext:
         self.frame_field_shadows.add(name)
         return True
 
-    def register_loop_var_storage_form(self, name: str, elem_type: 'TpyType | None',
-                                        iterable: 'TpyExpr',
-                                        detect_const_source: bool = True) -> None:
-        """Register a loop / unpack variable into the storage-form tracking
-        sets based on its sema element type.
-
-        Shared by the producer-side sites: `_gen_loop_body` (regular
-        for-loop) and `_enter_comp_scope` (comprehension/genexpr scope). The
-        sites differ
-        only in whether they detect a const-bound iteration source:
-          - regular for-loop + comp/genexpr: default
-            `detect_const_source=True` runs `iteration_yields_const`
-            against `iterable`; the const-variant set gets populated
-            when the source is const-bound.
-          - generator-body for-loop: pass `detect_const_source=False`
-            (no const-source channel in generator bodies today; tracked
-            separately).
-
-        Peels `ReadonlyType` from `elem_type` -- const-source iteration
-        yields `ReadonlyType(OptionalType(P))` / `ReadonlyType(TupleType(...))`
-        at the sema level, but the C++ shape is the same storage form;
-        const-ness rides on `iteration_yields_const`.
-        """
-        if elem_type is None:
-            return
-        # Only a native-iterable source (list/dict/set/array/Span) stores its
-        # elements in storage form, so its loop var binds storage form. A
-        # generator / Iterator yields BORROW form (the function-return ABI) --
-        # its loop var is already pointer/borrow form and must NOT be flagged as
-        # storage, or storage<->pointer wraps and the borrow-deref access path
-        # would misfire on an already-borrow value.
-        iter_type = self.get_expr_type(iterable)
-        if iter_type is None or not is_native_iterable(iter_type, self.analyzer.registry):
-            return
-        elem_peeled = unwrap_readonly(elem_type)
-        is_const_source = (detect_const_source
-                           and self.iteration_yields_const(iterable))
-        if (isinstance(elem_peeled, TupleType)
-                and elem_peeled.has_pointer_repr_element()
-                # A hoisted loop var forward-declared in BORROW form keeps
-                # that classification; the loop advance lifts each element.
-                and name not in self.borrow_form_tuple_locals):
-            self.storage_form_tuple_locals.add(name)
-            if is_const_source:
-                self.const_storage_form_tuple_locals.add(name)
-        if (isinstance(elem_peeled, OptionalType)
-                and elem_peeled.uses_pointer_repr()):
-            self.storage_form_optional_locals.add(name)
-            if is_const_source:
-                self.const_storage_form_optional_locals.add(name)
-
     def needs_optional_to_ptr_lift(self, name: str) -> bool:
         """True when `name` is in `OPTIONAL_STORAGE` form -- an
         `Own[Opt[T_ref]]` param whose C++ shape is `std::optional<T>`
@@ -3071,19 +2874,6 @@ class CodeGenContext:
             return escaped
         return f"&{escaped}"
 
-    def deref_view_cast_arg(self, var_name: str, depth: int) -> str:
-        """C++ payload pointer for a deref-view isinstance/narrowing on owning
-        wrapper `var_name`: `&(<v>.__deref__()...)` peeled `depth` times. The
-        wrapper's reference-returning __deref__ yields a `[const] P&`, so the
-        address-of is the same `[const] P*` dynamic_cast input the bare/Ptr/
-        Optional sources expose directly. Const-ness tracks the wrapper
-        receiver (auto_readonly __deref__), decided by the caller."""
-        name_expr = TpyName(var_name)
-        escaped = escape_cpp_name(var_name)
-        base = f"(*{escaped})" if self.is_indirect_name(name_expr) else escaped
-        chain = ".__deref__()" * depth
-        return f"&({base}{chain})"
-
     def deref_dispatch_inner(self, var_decl: 'TpyType | None', depth: int) -> 'TpyType | None':
         """Peel `depth` __deref__ steps off `var_decl` to recover the
         dispatch inner (the @dynamic protocol / polymorphic class behind an
@@ -3098,18 +2888,6 @@ class CodeGenContext:
             if cur is not None:
                 cur = unwrap_readonly(cur)
         return cur
-
-    def deref_dispatch_source(self, var_decl: 'TpyType | None') -> 'tuple[TpyType, int] | None':
-        """Peel __deref__ steps off `var_decl` until reaching a @dynamic
-        dispatch inner; return (inner, depth). Delegates to the shared
-        typesys.deref_dispatch_inner so the if-init cast-and-cache recovers the
-        depth a deref-view fact omits (the fact carries only the narrowed
-        subclass, not the wrapper or its deref depth)."""
-        from ..typesys import deref_dispatch_inner
-        if var_decl is None:
-            return None
-        return deref_dispatch_inner(
-            var_decl, self.analyzer.type_ops, self.analyzer.registry)
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
@@ -3390,12 +3168,12 @@ class CodeGenContext:
         return isinstance(expr, _CONTAINER_LITERAL_NODES)
 
     def is_value_emit_rvalue(self, expr: TpyExpr) -> bool:
-        """Rvalue source whose `gen_expr` yields a value (not a `T*`), so a
+        """Rvalue source that renders as a value (not a `T*`), so a
         pointer-form Optional sink needs to materialize a named slot before
         taking address. Container/comprehension/generator literals plus
         rvalue field accesses (`temp.field` on a moved-from object) are the
         exhaustive set under the pointer-repr-Optional outer guard at the
-        two `_gen_pointer_local_init`/`_rebind` call sites.
+        pointer-local init and rebind sites.
         """
         return self.is_container_literal_expr(expr) or (
             isinstance(expr, TpyFieldAccess) and self.is_rvalue_source(expr))

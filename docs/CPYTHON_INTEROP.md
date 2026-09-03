@@ -70,23 +70,16 @@ everything else and is the natural `/tpy-add-feature` entry point.
 A design-interview pass over phases 1-3 resolved the open shape questions
 and reframed the build as a single **vertical thread** (one function
 imported from CPython, end to end) rather than a marshalling layer built in
-a vacuum. Confirmed against the current `tpyc` sources: the THIR migration
-is **active but isolated** -- it lives on a parallel feature branch
-(`thir-increment-1`, off the 0.4.0 freeze, not on master), is **dual-mode /
-off-by-default / eligibility-gated** (only a narrow value-scalar slice
-routes through THIR; everything else stays on the AST path), and has not
-merged to master. On master, codegen is still AST-driven and every surface
-this work touches -- the `(hpp, cpp)` `generate()` contract +
-`generate_fwd_header` sibling, `all_cpp_paths`, `ModuleDirectives` /
-`_DIRECTIVE_SPECS`, `FunctionLinkage` / `RecordLinkage`, the string-keyed
-`BorrowTracker` -- is stable there. v1.0 stays IR-independent by design
-(copy-in, no foreign-borrow primitive). The interop compiler footprint (a
-sibling `generate_extension_glue()` plus parser hooks) barely overlaps
-THIR's body-lowering seam (an early return in `StatementGenerator.gen_body`
-keyed by `id(func)`), so the real cost of the two parallel branches is
-**branch coordination, not architectural conflict** -- whichever merges to
-master first, the other reconciles mechanically, and interop just becomes
-part of the corpus THIR's byte-identical net must preserve. (Post-v1.0,
+a vacuum. The THIR migration was in flight when this pass ran and has
+since landed: THIR is the single sema->codegen boundary for every body.
+That did not move any surface this work touches -- the `(hpp, cpp)`
+`generate()` contract + `generate_fwd_header` sibling, `all_cpp_paths`,
+`ModuleDirectives` / `_DIRECTIVE_SPECS`, `FunctionLinkage` /
+`RecordLinkage`, the string-keyed `BorrowTracker` -- all of which live in
+the skeleton layer the migration kept. v1.0 stays IR-independent by design
+(copy-in, no foreign-borrow primitive), and the interop compiler footprint
+is a sibling `generate_extension_glue()` plus parser hooks, disjoint from
+body lowering. (Post-v1.0,
 interop's deferred zero-copy foreign-borrow converges with THIR's form
 design -- the same long pole.)
 

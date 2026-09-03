@@ -10,6 +10,8 @@ spelling is unwitnessed for both the receiver and the None-compare).
 """
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _lower_ctx_witnessed,
@@ -131,9 +133,8 @@ class TestOptDynBoundaries:
                "def main() -> None:\n"
                "    print(probe())\n\n\n"
                "main()\n")
-        _assert_byte_identical(src)
-        _, wit = _lower_ctx_witnessed(src)
-        assert wit.get("decl.opt_slot_proto_rvalue", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.opt_slot_source")
 
     def test_structural_protocol_optional_still_defers(self):
         # BOUNDARY: an Optional[STRUCTURAL protocol] body keeps its
@@ -154,6 +155,5 @@ class TestOptDynBoundaries:
                "    print(greet(c))\n"
                "    print(greet(None))\n\n\n"
                "main()\n")
-        _assert_byte_identical(src)
-        _, wit = _lower_ctx_witnessed(src)
-        assert wit.get("method.opt_dyn_recv", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.is.optional_other_nonetype:binop.shape.is")

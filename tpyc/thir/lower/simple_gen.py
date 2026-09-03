@@ -3,9 +3,8 @@
 The peephole SKELETON -- signature, capture list, `make_generator` +
 mutable-lambda scaffolding, iterator-slot types, loop-var decl, the `__val`
 binding and the per-pull optional return -- is shared machinery in
-`gen_generators` (the structural-emission precedent, like the resumable
-frame skeleton). What routes through THIR is every user-source LEAF the
-skeleton would otherwise delegate to the AST emitters: the pre-loop init
+`gen_generators`, like the resumable frame skeleton. What THIR lowers is
+every user-source LEAF the skeleton delegates to it: the pre-loop init
 statements, the while condition, the pre-/post-yield loop-body statements,
 the yield value, and the for-branch iterable / range-bound expressions.
 
@@ -13,10 +12,10 @@ the yield value, and the for-branch iterable / range-bound expressions.
 (`split_at_yield` over the trailing while/for -- `is_simple_generator`
 already routed the body here, so the shape holds), lowers every leaf through
 the shared statement/expression lowering, and returns a `THIRSimpleGenBody`
--- or None (with an `sgen.*` / composed `stmt.*` fallback reason) when any
+-- or None (with an `sgen.*` / composed `stmt.*` reject reason) when any
 leaf or scaffolding-adjacent feature falls outside the slice.
 
-Foundation slice (deliberately tight; widening cells follow the metrics):
+Slice currently lowered:
 value-scalar yield values and for-loop element types (the skeleton's
 `__val` slot / loop-var decl and the position-blind yield render are only
 proven for those families -- the resumable yield precedent); locals behave
@@ -26,10 +25,9 @@ params/locals/statements gate at the shared arms, not here.
 
 from __future__ import annotations
 
-from ..fallback import ThirUnsupported, note
+from ..reject import ThirUnsupported, note
 from ..faces import witness as _witness
 from ..validate import validate_simple_gen_body
-from ...binding_audit import publish_thir as publish_binding_facts
 from ..nodes import Form, THIRFormConvert, THIRSimpleGenBody
 from ...parse.nodes import (
     SourceLocation,
@@ -137,8 +135,8 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(iter_elem)))
     # A str/bytes element: the skeleton declares the element type by
     # `type_to_cpp`, so the binding is OWNED where a sync for-each binds the
-    # usage-resolved view -- but that decl is shared machinery, emitted the
-    # same on both paths. The leaf reads consult the same sema form
+    # usage-resolved view -- but that decl is shared skeleton machinery,
+    # not rendered here. The leaf reads consult the same sema form
     # resolution either way, which is why the yield slot already rides this
     # reasoning.
     if (_resolved_str_value(u, analyzer) is not None
@@ -153,8 +151,8 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     # the skeleton advances via the tuple_to_pointer proxy-ref holder and
     # the body reads ride the borrow-tuple/unpack arms like a sync
     # for-each var. NB the storage_form registration below keys the RAW
-    # iterable type, so a BOUNDED-T iterable (whose bound the AST
-    # resolves at its registration site) must not reach this leg -- the
+    # iterable type, so a BOUNDED-T iterable (whose bound is resolved at
+    # that registration site) must not reach this leg -- the
     # caller rejects TypeParamRef iterables for the tuple flavor.
     if isinstance(u, TupleType) and u.has_pointer_repr_element():
         return True
@@ -170,8 +168,8 @@ def lower_simple_generator(func: TpyFunction, analyzer, render_type,
                            native_globals=None,
                            render_type_stored=None,
                            render_resolve=None) -> 'THIRSimpleGenBody | None':
-    """Lower a simple-generator body's leaves, falling back cleanly on a
-    lowering reject."""
+    """Lower a simple-generator body's leaves, or None on a lowering
+    reject."""
     try:
         body = _lower_simple_generator(
             func, analyzer, render_type, self_type=self_type,
@@ -227,7 +225,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         # skeleton's optional<owned> ctor converts), F1 records (val_or_ref
         # borrow slot, bare render), and Own[F1 record] (owned value slot;
         # the skeleton's `yld` moves __val out). Tuple yields interact with
-        # `gen_yield_value`'s tuple_to_pointer bridge and the borrow-form
+        # the yield slot's tuple_to_pointer bridge and the borrow-form
         # literal builder; readonly (const-borrow slot), Optional/Union
         # (pointer/storage machinery) and generics stay their own rungs.
         return _reject("sgen.yield_type")
@@ -276,7 +274,6 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         sg = THIRSimpleGenBody(init=init, pre_yield=pre_l,
                                post_yield=post_l, yield_value=yv, cond=cond)
         validate_simple_gen_body(func.name, sg)
-        publish_binding_facts(lc)
         return sg
 
     assert isinstance(last, TpyForEach)
@@ -297,9 +294,9 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
             and _ie_tup.has_pointer_repr_element()
             and isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 analyzer.get_expr_type(last.iterable)))), TypeParamRef)):
-        # A BOUNDED-T iterable with a pointer-repr tuple element: the AST's
+        # A BOUNDED-T iterable with a pointer-repr tuple element: the
         # storage_form registration resolves the T BOUND at its site; the
-        # raw-type mirror below cannot, so the flavor stays fenced until a
+        # raw-type check below cannot, so the flavor rejects until a
         # bound-following witness lands (dot-vs-arrow channel otherwise).
         return _reject("sgen.loop_var_type")
     is_range = for_range_uses_counter_loop(last)
@@ -307,27 +304,26 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     iterable = None
     if is_range:
         # Position-blind bound renders: the skeleton's `static_cast<elem>`
-        # scaffolding supplies the conversion (plain `gen_expr`, unlike the
+        # scaffolding supplies the conversion (a plain render, unlike the
         # sync range arm's literal retype).
         range_args = tuple(_lower_expr(a, lc, declared)
                            for a in last.iterable.args)
         if range_args:
             _witness("sgen.range_arg")
     else:
-        # A pointer-slot GLOBAL iterable: the AST lambda captures the bare
+        # A pointer-slot GLOBAL iterable: the lambda captures the bare
         # slot name and calls `.begin()` on the pointer -- uncompilable C++
-        # (pre-existing, see BUGS.md); reject rather than mirror or
-        # silently diverge until the AST emit is fixed.
+        # (pre-existing, see BUGS.md); reject rather than emit it.
         if (isinstance(last.iterable, TpyName)
                 and last.iterable.name in lc.prescan.global_slots):
             return _reject("sgen.iterable_global_slot")
         # The skeleton picks its iteration strategy off the DECLARED binding
         # and does not unwrap `Own`, so an Own-bound CONTAINER name is not a
-        # native iterable there and the AST captures the universal `__iter__`
+        # native iterable there and it captures the universal `__iter__`
         # object -- never the begin/end pair this leaf would spell off the
         # payload. The sync for-head's container route declines the same
         # binding for the same reason. An Own-bound PROTOCOL name is not this
-        # shape: both paths agree it iterates through the protocol.
+        # shape: it iterates through the protocol either way.
         if isinstance(last.iterable, TpyName):
             _ib = declared.get(last.iterable.name)
             _ibu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_ib)))
@@ -374,8 +370,8 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
         # tuple, so member reads render value-form (`std::get<1>(kv).v`,
         # dot not arrow). Direct-iterator sources yield the BORROW tuple
         # (pointer elements, arrow reads) and stay out -- the same two
-        # branch predicates the AST dispatches on, checked on the RAW
-        # element like the AST's registration site.
+        # branch predicates the skeleton dispatches on, checked on the RAW
+        # element like its registration site.
         lc.storage_tuple_locals.add(last.var)
     pre_l, yv, post_l = _lower_loop_body(last, lc, body_declared,
                                          loop_depth=1 if is_range else 0)
@@ -385,7 +381,6 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
                            yield_value=yv, iterable=iterable,
                            range_args=range_args)
     validate_simple_gen_body(func.name, sg)
-    publish_binding_facts(lc)
     return sg
 
 
@@ -481,7 +476,7 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 _witness("sgen.yield_copy_record")
                 yv = copy_row
             else:
-                # gen_yield_value threads the yield type into the render
+                # The yield type is threaded into the render
                 # (`yield 1` at an `Iterator[int]` -> `::tpy::BigInt(1)`).
                 yv = _lower_expr(yield_stmt.value, lc, body_declared)
                 # The lambda's `__val` slot owns its str/bytes payload just
@@ -509,7 +504,7 @@ def _reject_cross_scope_rebind(init, pre_l, post_l) -> None:
     list. Unlike the nested-def seam, the two operands here are one Python scope,
     so a name reserving a slot in the prologue reserves none inside the loop:
     the predicate matches the diagnostic's condition exactly and is safe to
-    raise on rather than fall back."""
+    raise on rather than reject the body."""
     site = cross_scope_rebind_site(init, (*pre_l, *post_l))
     if site is not None:
         emit_prims.reject_rebind_slot_crosses_scope(*site)

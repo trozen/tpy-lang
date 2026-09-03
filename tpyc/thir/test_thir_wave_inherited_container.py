@@ -10,6 +10,8 @@ from ..compilation_context import activate_compiler
 from ..typesys import NominalType
 from .lower.checks import _inherited_container_base, _method_recv_family
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -145,8 +147,7 @@ class TestContainerBaseCtor:
             "    print(len(s))\n"
             "main()\n"
         )
-        assert _lower_ctor(src, "Seeded") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "ctor:ctor.non_f1_base")
 
 
 class TestAdjacentBasesStayOut:
@@ -164,8 +165,7 @@ class TestAdjacentBasesStayOut:
             "main()\n"
         )
         base, _ = _classify(src, "MyBA", "append")
-        assert base is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "ctor:ctor.non_f1_base")
 
     def test_generic_record_over_generic_container_routes(self):
         src = _PRELUDE + (

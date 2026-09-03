@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -166,8 +167,8 @@ class TestOptOwnMoveArg:
             "    sink(it)\n"
             "    use(it)\n"
         )
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.opt_own_copy")
 
 
 class TestNativeProtocolValueArg:
@@ -263,15 +264,7 @@ class TestNativeProtocolOpenCallArg:
             "    g(True)\n"
             "main()\n"
         )
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:stmt.expr_stmt", "call.native_arg.union")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.expr_stmt', 'call.native_arg.union')
 
 
 _CB = _PRELUDE + (
@@ -311,8 +304,8 @@ class TestVoidPrintLambda:
             "    run(lambda x: xs.append(x), 1)\n"
             "    print(len(xs))\n"
         )
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.other_callabletype")
 
     def test_print_kwargs_body_stays_ast(self):
         # sep=/end= inside the closure body stay AST (unwitnessed chain
@@ -322,8 +315,8 @@ class TestVoidPrintLambda:
             "    run(lambda x: print(x, end=\"\"), 5)\n"
             "    print(\"\")\n"
         )
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.other_callabletype")
 
 
 class TestCallableFieldCall:
@@ -380,8 +373,8 @@ class TestCallableFieldCall:
             "        if h.cb is not None:\n"
             "            h.cb(3)\n"
         )
-        assert _fn(_lower_ctx(src), "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.marker.callable_field")
 
     def test_optional_callable_field_write_from_lambda_stays_ast(self):
         # A lambda RHS at an Optional[Callable] field write stays out
@@ -395,8 +388,7 @@ class TestCallableFieldCall:
             "def install(h: Handler) -> None:\n"
             "    h.cb = lambda n: print(n)\n"
         )
-        assert _fn(_lower_ctx(src), "install") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.lambda")
 
 
 class TestReadonlyEmptyContainer:
@@ -423,5 +415,5 @@ class TestReadonlyEmptyContainer:
             "def main() -> None:\n"
             "    f([1, 2, 3])\n"
         )
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.container")

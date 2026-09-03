@@ -21,7 +21,9 @@ live in test_thir_wave_dunder_borrow.py).
 
 from __future__ import annotations
 
-from .testutil import (_assert_routes_byte_identical, _lower_ctx_witnessed,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_routes_byte_identical, _lower_ctx_witnessed,
                        _thir_ctx)
 
 # Own-returning dunders: every result is a FRESH record.
@@ -118,9 +120,8 @@ class TestOwnDunderStorageReturn:
             "    print(bigger(Acc(3), Acc(1)).n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {
-            "body:stmt.return:return.record_source.TpyBinOp.storage": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.record_source.TpyBinOp.storage")
 
 
 class TestInplaceDunderRecordValue:
@@ -147,8 +148,7 @@ class TestInplaceDunderRecordValue:
             "    print(v.x)\n"
             "use([Vec(2)])\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.aug_assign": 1}, fell
+        _assert_rejects_at(_reject_tally(src), "body:stmt.aug_assign")
 
 
 class TestRecordAugBinopFallback:
@@ -198,5 +198,4 @@ class TestRecordAugBinopFallback:
             "    print(bx.acc.n)\n"
             "use()\n"
         )
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.aug_assign": 1}, fell
+        _assert_rejects_at(_reject_tally(src), "body:stmt.aug_assign")

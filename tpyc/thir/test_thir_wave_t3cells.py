@@ -7,6 +7,8 @@ member arg + the Optional[Own[record]] print wrap)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical, _top_level,
 )
@@ -86,10 +88,8 @@ class TestTopLevelGenericRefSlotTemps:
                "class D(B): ...\n"
                "g: B = D(7)\n"
                "print(g.v)\n")
-        top, _, fallback = _top_level(src)
-        assert top is None
-        assert any("top_level" in k for k in fallback)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_slot_shape")
 
 
 class TestGenericStaticMethodChain:
@@ -150,10 +150,8 @@ class TestGenericStaticMethodChain:
                "def main() -> None:\n"
                "    print(Helper.probe(P(3)))\n"
                "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert faces.get("call.optval_member", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.qualcall.arg.optional")
 
     def test_storage_opt_ret_non_storage_sink_stays_out(self):
         # The marker escape is STORAGE-gated: the same Own-optional return
@@ -164,10 +162,8 @@ class TestGenericStaticMethodChain:
                "def main() -> None:\n"
                "    print(check(Container.wrap_optional(99)))\n"
                "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert faces.get("method.qualcall.storage_opt_ret", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.optional")
 
     def test_narrowed_optional_own_record_print_stays_out(self):
         # The print row keys on the RESOLVED type: a narrowed read arrives
@@ -178,6 +174,5 @@ class TestGenericStaticMethodChain:
                "    if c3 is not None:\n"
                "        print(\"x:\", c3)\n"
                "main()\n")
-        _, faces = _lower_ctx_witnessed(src)
-        assert faces.get("print.optval", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:print.arg.record_f1_name")

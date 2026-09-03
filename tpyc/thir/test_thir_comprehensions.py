@@ -8,17 +8,18 @@ from __future__ import annotations
 from .dump import dump_thir
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _fn, _lower_ctx_witnessed, _PRELUDE,
     _F1_RECORDS, _assert_byte_identical,
 )
 
 
-def _cpp(src: str, thir: bool, comments: bool = False):
+def _cpp(src: str, comments: bool = False):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=comments,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=comments))
     return cpp
 
 
@@ -61,15 +62,8 @@ class TestComprehensionRoutes:
                      "comp.unpack"):
             assert w.get(face, 0) >= 1, face
 
-    def test_byte_identical(self):
-        assert _cpp(SRC, thir=True) == _cpp(SRC, thir=False)
-
-    def test_byte_identical_with_comments(self):
-        assert (_cpp(SRC, thir=True, comments=True)
-                == _cpp(SRC, thir=False, comments=True))
-
     def test_range_bound_hoist_and_reserve(self):
-        cpp = _cpp(SRC, thir=True)
+        cpp = _cpp(SRC)
         # Per-bound counter draws (the comprehension scheme): start then stop.
         assert "const int32_t __start_0 = a;" in cpp
         assert "const int32_t __stop_1 = n;" in cpp
@@ -80,7 +74,7 @@ class TestComprehensionRoutes:
                 "(__obj_0.size()));") in cpp
 
     def test_filter_and_inserts(self):
-        cpp = _cpp(SRC, thir=True)
+        cpp = _cpp(SRC)
         assert "if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {" in cpp
         assert "__result.push_back((::tpy::mul_check<int32_t>(x, 2)));" in cpp
         assert "__result.insert(x);" in cpp
@@ -88,7 +82,7 @@ class TestComprehensionRoutes:
                 "(::tpy::mul_check<int32_t>(i, i)));") in cpp
 
     def test_unpack_binding(self):
-        cpp = _cpp(SRC, thir=True)
+        cpp = _cpp(SRC)
         assert "auto& __tup_1 = *__beg_0;" in cpp
         assert "int32_t a = std::get<0>(__tup_1);" in cpp
 
@@ -99,10 +93,9 @@ class TestComprehensionRoutes:
             + "    names = {name for name, _ in pairs}\n"
             + "    return len(names)\n"
             + "def main():\n    print(f([(\"a\", 1)]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::string name = std::get<0>(__tup_1);" in cpp
 
     def test_str_elements_route(self):
@@ -111,7 +104,6 @@ class TestComprehensionRoutes:
             + "def owned(names: list[str]) -> Int32:\n"
             + "    xs = [s for s in names]\n    return len(xs)\n"
             + "def main():\n    print(owned([\"a\"]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "owned") is not None
 
@@ -123,12 +115,11 @@ class TestComprehensionRoutes:
                + "    xs = [i for i in range(0, n, 2)]\n"
                + "    return len(xs)\n"
                + "def main():\n    print(f(9))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         _, w = _lower_ctx_witnessed(src)
         assert w.get("comp.range3", 0) >= 1
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto __obj_0 = ::tpy::Range<int32_t>(0, n, 2);" in cpp
 
     def test_array_range_comp_routes(self):
@@ -142,13 +133,12 @@ class TestComprehensionRoutes:
                + "def h():\n"
                + "    print([i for i in range(0, 6, 2)])\n"
                + "def main():\n    print(f())\n    print(g())\n    h()\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         for name in ("f", "g", "h"):
             assert _fn(thir, name) is not None, name
         _, w = _lower_ctx_witnessed(src)
         assert w.get("comp.array_range", 0) >= 3
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::tpy::array_from_index<int32_t, 3>(" in cpp
         assert "int32_t i = 1 + int32_t(" in cpp          # 2-arg start offset
         assert " * (2);" in cpp                           # 3-arg step arm
@@ -163,12 +153,11 @@ class TestComprehensionRoutes:
                + "def f(src: Array[Int32, 3]) -> Int32:\n"
                + "    xs = [v + 1 for v in src]\n    return len(xs)\n"
                + "def main():\n    print(f([1, 2, 3]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         _, w = _lower_ctx_witnessed(src)
         assert w.get("comp.array_source", 0) >= 1
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& __obj_0 = src;" in cpp
         assert "int32_t v = __obj_0[__i_0];" in cpp
         assert "::tpy::array_from_index<int32_t, 3>(" in cpp
@@ -181,12 +170,11 @@ class TestComprehensionRoutes:
                + "    print([x * 2 for x in xs])\n"
                + "    print({x for x in xs}, {i: i for i in range(n)})\n"
                + "def main():\n    f([1, 2], 2)\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         _, w = _lower_ctx_witnessed(src)
         assert w.get("comp.print_arg", 0) >= 3
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::tpy::ListPrinter(({" in cpp
         assert "::tpy::SetPrinter(({" in cpp
         assert "::tpy::DictPrinter(({" in cpp
@@ -206,7 +194,6 @@ class TestComprehensionRoutes:
             + "    print(len(ret_set(2)))\n"
             + "    print(len(ret_dict(2)))\n"
             + "main()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         for name in ("ret_list", "ret_set", "ret_dict"):
             assert _fn(thir, name) is not None, name
@@ -220,10 +207,9 @@ class TestComprehensionRoutes:
                + "def f(s: str) -> Int32:\n"
                + "    cs = [c for c in s]\n    return len(cs)\n"
                + "def main():\n    print(f(\"ab\"))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "std::vector<char> __result;" in cpp
         assert "__result.push_back(c);" in cpp
 
@@ -235,8 +221,7 @@ class TestComprehensionRoutes:
                + "    xs = [i for i in range(0, n, 2)]\n"
                + "    return len(xs)\n"
                + "def main():\n    print(f(9))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert ("auto __obj_0 = ::tpy::Range<::tpy::BigInt>"
                 "(::tpy::BigInt(0), n, ::tpy::BigInt(2));") in cpp
 
@@ -255,23 +240,22 @@ class TestComprehensionRoutes:
             "def main():\n"
             "    h = Holder()\n    print(h.doubled())\n    print(outer(h))\n"
             "main()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "outer") is not None
         assert _fn(thir, "doubled") is not None
         _, w = _lower_ctx_witnessed(src)
         assert w.get("comp.field_iter", 0) >= 2
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "auto& __obj_0 = h.items;" in cpp
         # The method body emits in the header (inline method) -- byte-compare
         # the hpp too, and pin the `this->` receiver render.
-        def hpp(thir: bool) -> str:
+        def hpp() -> str:
             compiler, modules = _compile(src)
             out, _ = compiler.generate_code_to_strings(
-                _entry(modules), options=CodeGenOptions(thir_codegen=thir))
+                _entry(modules), options=CodeGenOptions())
             return out
-        h_thir = hpp(True)
-        assert h_thir == hpp(False)
+        h_thir = hpp()
+        assert h_thir == hpp()
         assert "auto& __obj_0 = this->items;" in h_thir
 
     def test_narrowed_optional_field_iterable_rejects(self):
@@ -289,7 +273,6 @@ class TestComprehensionRoutes:
                + "def main():\n    print(f(H()))\nmain()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_record_iterable_routes(self):
         src = (
@@ -297,7 +280,6 @@ class TestComprehensionRoutes:
             + "def vals(items: list[Inner]) -> Int32:\n"
             + "    xs = [p.value for p in items]\n    return len(xs)\n"
             + "def main():\n    print(vals([Inner(1)]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "vals") is not None
 
@@ -311,7 +293,6 @@ class TestComprehensionRoutes:
             "def f() -> Int32:\n    xs = [Color.RED, Color.GREEN]\n"
             "    ys = [1 for c in xs if c == Color.RED]\n    return len(ys)\n"
             "def main():\n    print(f())\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -323,7 +304,6 @@ class TestComprehensionRoutes:
                + "def f() -> Int32:\n    xs = [[1, 2], [3, 4]]\n"
                + "    ys = [len(row) for row in xs]\n    return len(ys)\n"
                + "def main():\n    print(f())\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower(src)
         assert _fn(thir, "f") is not None
 
@@ -337,7 +317,6 @@ class TestComprehensionRoutes:
             "def f() -> Int32:\n    xs = [Color.RED, Color.GREEN]\n"
             "    ys = [c for c in xs]\n    return len(ys)\n"
             "def main():\n    print(f())\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -349,7 +328,6 @@ class TestComprehensionRoutes:
             + "def f(xs: list[Int32]) -> Int32:\n"
             + "    ps = [Inner(x) for x in xs]\n    return len(ps)\n"
             + "def main():\n    print(f([1, 2]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -361,7 +339,6 @@ class TestComprehensionRoutes:
             + "def f(items: list[Inner]) -> Int32:\n"
             + "    ps = [p for p in items]\n    return len(ps)\n"
             + "def main():\n    print(f([Inner(1)]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
 
@@ -371,7 +348,6 @@ class TestComprehensionRoutes:
                + "def f(xs: list[Int32]) -> Int32:\n"
                + "    bs = {b'ab' for x in xs}\n    return len(bs)\n"
                + "def main():\n    print(f([1, 2]))\nmain()\n")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_dump(self):
         thir = _lower(SRC)
@@ -383,8 +359,7 @@ class TestComprehensionRejects:
         src = _PRELUDE + body
         thir = _lower(src)
         assert _fn(thir, name) is None
-        # A rejected shape must still be byte-identical (it stays AST).
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
+        assert _reject_tally(src)
 
     def test_reassigned_local_rejects(self):
         # A reassigned container local is a pointer-local on the AST path.
@@ -420,8 +395,8 @@ class TestCompReturnPosition:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert witnesses.get("ret.container_comp", 0) >= 1
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "return ({" in out
 
     def test_return_comp_call_iterable_routes(self):
@@ -434,7 +409,6 @@ class TestCompReturnPosition:
                "print(len(f()))\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestCompStrUnpackTarget:
@@ -451,8 +425,8 @@ class TestCompStrUnpackTarget:
     def test_str_unpack_target_routes(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "f") is not None
-        out = _cpp(self.SRC, thir=True)
-        assert out == _cpp(self.SRC, thir=False)
+        out = _cpp(self.SRC)
+        assert out == _cpp(self.SRC)
         assert "std::string k = std::get<0>(" in out
         assert "__result.insert(k)" in out
 
@@ -486,18 +460,13 @@ class TestDictCompContainerValue:
         assert w.get("comp.container_value", 0) >= 2
         assert w.get("comp.nested", 0) >= 1
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-        assert (_cpp(self.SRC, thir=True, comments=True)
-                == _cpp(self.SRC, thir=False, comments=True))
-
     def test_array_value_renders_self_typed(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("__result.insert_or_assign(i, std::array<int32_t, 2>"
                 "{i, (::tpy::add_check<int32_t>(i, 1))});") in cpp
 
     def test_nested_comp_value_renders_stmt_expr(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         # The inner comp opens inside the insert, shadows __result, and draws
         # the next __stop index after the outer comp's.
         assert "__result.insert_or_assign(i, ({" in cpp
@@ -515,7 +484,6 @@ class TestDictCompContainerValue:
                + "print(f(3))\n")
         thir = _lower(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_list_comp_container_elem_routes(self):
         # A list/set element and an Array-lambda return also take the container
@@ -534,7 +502,6 @@ class TestDictCompContainerValue:
         thir = _lower(src)
         assert _fn(thir, "f") is not None
         assert _fn(thir, "lits") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestBranchPositionCompDecl:
@@ -553,7 +520,6 @@ class TestBranchPositionCompDecl:
                + "print(f(1))\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_loop_body_redecl_routes(self):
         src = (_PRELUDE
@@ -566,7 +532,6 @@ class TestBranchPositionCompDecl:
                + "print(f(3))\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_read_after_if_hoisted_stays_ast(self):
         # A branch comp decl READ AFTER the if is sema-hoisted; the AST
@@ -581,7 +546,6 @@ class TestBranchPositionCompDecl:
                + "print(f(1))\n")
         thir = _lower(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_comp_var_shadowing_narrowed_stays_ast(self):
         # A comp loop var shadowing the live NARROWED union subject: the
@@ -596,7 +560,6 @@ class TestBranchPositionCompDecl:
                + "print(f(7))\n")
         thir = _lower(src)
         assert _fn(thir, "f") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestCompGlobalShadow:
@@ -630,11 +593,7 @@ class TestCompGlobalShadow:
             "x = [10, 20, 30]\n"
             "s = [x + 1 for x in x]\n"
             "def main() -> None:\n    print(s)\nmain()\n")
-        from .testutil import _top_level
-        top, _wit, fallback = _top_level(src)
-        assert top is None
-        assert fallback.get("top_level:expr.list_comp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "top_level:expr.list_comp")
 
 
 class TestGenexprC4Cells:
@@ -654,8 +613,8 @@ class TestGenexprC4Cells:
         assert _fn(thir, "total") is not None
         assert _fn(thir, "stepped") is not None
         assert witnesses.get("genexpr.range", 0) >= 2
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "__i = int32_t(0), __stop = static_cast<int32_t>(n)" in out
         assert "::tpy::range_check_step_nonzero(__step);" in out
 
@@ -667,8 +626,8 @@ class TestGenexprC4Cells:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "evens") is not None
         assert witnesses.get("genexpr.filter", 0) >= 1
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {" in out
 
     def test_structural_slot_hoists_auto_temp(self):
@@ -687,8 +646,8 @@ class TestGenexprC4Cells:
         thir, witnesses = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
         assert witnesses.get("argtemp.genexpr_proto", 0) >= 1
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "auto __tmp_1 = ::tpy::make_generator<int32_t>(" in out
 
 
@@ -755,7 +714,6 @@ class TestStorageOptCompLoopVar:
                + "main()\n")
         thir = _lower(src)
         assert _fn(thir, "pick") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_record_slot_arg_defers(self):
         # A NARROWED storage-opt read at a plain RECORD param slot is not the
@@ -770,7 +728,6 @@ class TestStorageOptCompLoopVar:
                + "main()\n")
         thir = _lower(src)
         assert _fn(thir, "main") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 _SPAN_BUF_PRE = (
@@ -832,7 +789,6 @@ class TestSynthBeginEndCompIterable:
                "main()\n")
         thir = _lower(src)
         assert _fn(thir, "main") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_genexpr_over_spannable_defers(self):
         # The genexpr route keeps its own native-iterable gate -- a synth
@@ -844,7 +800,6 @@ class TestSynthBeginEndCompIterable:
                + "main()\n")
         thir = _lower(src)
         assert _fn(thir, "main") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestCompStorageOptFences:
@@ -862,7 +817,6 @@ class TestCompStorageOptFences:
                + "main()\n")
         thir = _lower(src)
         assert _fn(thir, "main") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_synth_source_optional_elem_defers(self):
         src = (_OPT_COMP_PRE
@@ -884,7 +838,6 @@ class TestCompStorageOptFences:
                + "main()\n")
         thir = _lower(src)
         assert _fn(thir, "main") is None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestGenexprRecordElements:
@@ -1077,9 +1030,7 @@ class TestGenfacUnpackCompSource:
             "def f() -> None:\n"
             "    print([a + b for a, b in make()])\n\n"
             "def main() -> None:\n    f()\nmain()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.list_comp")
 
 
 class TestFilterWalrusLeak:

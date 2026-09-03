@@ -26,11 +26,10 @@ _CONTAINER = (
 _MAIN = "\ndef main() -> None:\n    f()\nmain()\n"
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     _, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=thir))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -49,7 +48,7 @@ class TestScalarTempMethodArg:
         assert witnesses.get("optptr.scalar_temp", 0) == 1
 
     def test_emits_typed_temp_and_addr_of(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "int32_t __tmp_1 = 99;" in out
         assert "c.set(&(__tmp_1));" in out
 
@@ -75,7 +74,7 @@ class TestScalarTempCtorArg:
         assert witnesses.get("optptr.scalar_temp", 0) == 1
 
     def test_emits_typed_temp_not_bare_value(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert "int32_t __tmp_1 = 42;" in out
         assert "Container<int32_t> c = Container<int32_t>(&(__tmp_1));" in out
         assert "Container<int32_t>(42)" not in out
@@ -116,7 +115,7 @@ class TestScalarTempRvalueSources:
         assert witnesses.get("optptr.scalar_temp", 0) == 1
 
     def test_binop_emits_typed_temp(self):
-        out = _cpp(self.BINOP, thir=True)
+        out = _cpp(self.BINOP)
         assert "int32_t __tmp_1 = (::tpy::add_check<int32_t>(n, 1));" in out
         assert "c.set(&(__tmp_1));" in out
 
@@ -182,8 +181,9 @@ class TestScalarTempBoundaries:
                                      BARE_INT_LITERAL, FIELD_LVALUE,
                                      RECORD_INNER, TERNARY_SOURCE,
                                      MATCH_GUARD])
-    def test_stays_ast_byte_identical(self, src):
-        _assert_byte_identical(src)
+    def test_no_scalar_temp_is_hoisted(self, src):
+        # The boundary is the FACE: none of these shapes reaches the
+        # scalar-temp hoist, whatever else the body does with them.
         _thir, witnesses = _lower_ctx_witnessed(src)
         assert witnesses.get("optptr.scalar_temp", 0) == 0
 

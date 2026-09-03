@@ -5,19 +5,15 @@ A non-simple lvalue cannot bind the `T&&` slot, so the AST hoists
 NAME and never fires here. Corpus witness: tplib.box's `Box.clone`
 (`Box(self.get())`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestOwnSlotBorrowCallArg:
@@ -86,11 +82,10 @@ class TestOwnSlotBorrowCallArgBoundary:
                "    c = Cell(3)\n"
                "    print(c.dup().get())\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.ctor_arg.own_generic")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_generic")
 
-    def test_str_payload_keeps_rejecting(self):
+    def test_str_payload_routes_through_the_owned_slot(self):
         # A str payload's temp is a view->owned CONVERSION with its own
         # spelling, not the `auto` copy this row renders.
         src = ("from tpy import Own\n"
@@ -105,9 +100,9 @@ class TestOwnSlotBorrowCallArgBoundary:
                "def main() -> None:\n"
                "    print(dup(Sack('hi')).s)\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.ctor_arg.own_str")
-        _assert_byte_identical(src)
+        # The Own[str] ctor slot has its own owned-copy row now, so this
+        # position routes rather than landing on the borrow-arg boundary.
+        assert not _reject_tags(src)
 
     def test_container_payload_keeps_rejecting(self):
         src = ("from tpy import Int32, Own\n"
@@ -123,9 +118,8 @@ class TestOwnSlotBorrowCallArgBoundary:
                "    b = Bag([1, 2])\n"
                "    print(len(dup(b).xs))\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.ctor_arg.own_container")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_container")
 
     def test_match_guard_position_keeps_rejecting(self):
         src = ("from tpy import Int32, Own, auto_readonly\n"
@@ -150,6 +144,5 @@ class TestOwnSlotBorrowCallArgBoundary:
                "    h = Holder(Item(5))\n"
                "    print(dup(h, 1))\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.ctor_arg.own_record_f1")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_record_f1")

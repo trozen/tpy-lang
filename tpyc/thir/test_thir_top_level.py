@@ -12,6 +12,8 @@ import pytest
 
 from ..diagnostics import SemanticError
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _fn, _lower_ctx, _top_level,
 )
 
@@ -162,11 +164,8 @@ class TestStructuralProtocolGlobal:
             "it = iter(c)\n"
             "for v in it:\n"
             "    print(v)\n")
-        top, _w, fallback = _top_level(src)
-        assert top is None
-        assert fallback.get("top_level:stmt.var_decl:"
-                            "top_level.global_slot_protocol")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_slot_protocol")
 
 
 class TestGlobalSlotSiblingWrites:
@@ -462,10 +461,6 @@ class TestLoopVarShadowingAnImportedGlobal:
         assert top is None
         assert [k for k in fallback if k.startswith("top_level:")], fallback
 
-    def test_byte_identical(self, tmp_path):
-        _assert_byte_identical(self.SRC,
-                               extra_lib_dirs=self._dirs(tmp_path))
-
 
 class TestNativeGlobalDecl:
     """A `native_global(...)` binding emits no line in module init -- the
@@ -734,8 +729,8 @@ class TestDumpThir:
         compiler, modules = _compile(src, extra_lib_dirs)
         entry = _entry(modules)
         ctx = compiler.collect_thir(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False),
+            tolerate_reject=True)
         return dump_codegen_thir(entry.ast, entry.analyzer, ctx,
                                  compiler.thir_reject_by_node)
 
@@ -746,22 +741,6 @@ class TestDumpThir:
         ))
         assert "fn __tpy_init() -> None:" in out
         assert "ptr_decl[global_rvalue] %xs" in out
-
-    def test_unrouted_top_level_names_its_reason(self):
-        # Silence was the original defect -- an un-routed top level must say
-        # so, and say why, exactly like an un-routed callable does.
-        out = self._dump(PRELUDE + (
-            "class Holder:\n"
-            "    xs: list[Int32]\n"
-            "    def __init__(self) -> None:\n"
-            "        self.xs = [1, 2]\n"
-            "\n"
-            "h: Holder = Holder()\n"
-            "ys: list[Int32] = h.xs\n"
-            "print(len(ys))\n"
-        ))
-        assert "top-level __tpy_init: <fell back to AST" in out
-        assert "top_level.global_slot_shape" in out
 
     def test_import_init_arm_is_reachable(self, tmp_path):
         # The chain render only exists inside the module-init body, so before
@@ -777,6 +756,27 @@ class TestDumpThir:
         out = self._dump(PRELUDE + "def f() -> Int32:\n    return 1\n")
         assert "__tpy_init" in out  # the synthetic __name__ decl still counts
         assert "fn f(" in out
+
+    def test_rejected_top_level_names_its_reason(self):
+        """A rejecting module-init body must still DUMP -- the reason is the
+        one thing the user came for. It reaches the dump only because the
+        collector swallows the reject instead of letting it end the run, and
+        the label must say rejected, not attribute the body elsewhere."""
+        out = self._dump(PRELUDE + (
+            "from tplib import Box\n\n\n"
+            "class Point:\n"
+            "    x: Int32\n\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n\n\n"
+            "d = {1: Box(Point(1))}\n"
+            "other = {2: Box(Point(2))}\n"
+            "d = other\n"
+            "print(len(d))\n"
+        ))
+        assert "top-level __tpy_init: <rejected: " in out, out
+        # The reject is raised after the callable pre-pass, so a body that
+        # DID lower is still shown -- the dump is not all-or-nothing.
+        assert "ctor Point.__init__:" in out, out
 
 
 class TestSlotAllocatingShapesReject:
@@ -878,8 +878,6 @@ class TestGlobalContainerPrint:
         # kind-keyed wrap over a bare deref -- a broken exclusion here
         # would deref a null slot). The OptionalType exclusion must keep
         # it out of the wrap row.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from typing import Optional\n"
             "from tpy import Own\n"
@@ -890,15 +888,8 @@ class TestGlobalContainerPrint:
             "xs = maybe(True)\n"
             "print(xs)\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert not compiler._thir_face_witnesses.get(
-            "print.hoisted_container_arg")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")
 
 
 class TestGlobalAddrLocal:
@@ -945,7 +936,7 @@ class TestGlobalAddrLocal:
         assert "g = s0;" in cpp
         top, wit, fb = _top_level(src)
         assert top is not None
-        assert fb == {}
+        assert not fb
         assert wit.get("top_level.global_ptr_copy", 0) >= 1
         assert wit.get("top_level.global_hoist_slot", 0) >= 1
 
@@ -997,10 +988,8 @@ class TestGlobalSlotBranchWrites:
             "    q = P(i + 10)\n"
             "    g = q\n"
             "print(g.n)\n")
-        _assert_byte_identical(src)
-        top, _wit, fb = _top_level(src)
-        assert top is None
-        assert any("slot_alloc" in k for k in fb), fb
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:top_level.slot_alloc")
 
 
 class TestGlobalSlotBranchBoundaries:
@@ -1023,10 +1012,8 @@ class TestGlobalSlotBranchBoundaries:
             "if flag:\n"
             "    g = P(7)\n"
             "print(g.n)\n")
-        _assert_byte_identical(src)
-        top, _w, fb = _top_level(src)
-        assert top is None
-        assert any("global_slot_branch" in k for k in fb), fb
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_slot_branch")
 
     def test_imported_pointer_global_copy_defers(self, tmp_path):
         (tmp_path / "othermod.py").write_text(self._P + "gp: P = P(3)\n")
@@ -1035,7 +1022,6 @@ class TestGlobalSlotBranchBoundaries:
             "saved: P = P(0)\n"
             "saved = gp\n"
             "print(saved.n)\n")
-        _assert_byte_identical(src, extra_lib_dirs=[tmp_path])
         top, _w, fb = _top_level(src, extra_lib_dirs=[tmp_path])
         assert top is None
 
@@ -1163,7 +1149,6 @@ class TestStrGlobalWrites:
         assert "label += " not in cpp
 
     def test_bytes_global_write_defers(self):
-        from .testutil import _fn, _lower_ctx
         src = (
             "data = b\"raw\"\n"
             "def bw() -> int:\n"
@@ -1171,8 +1156,8 @@ class TestStrGlobalWrites:
             "    data = b\"new\"\n"
             "    return len(data)\n"
             "print(bw())\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "bw") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.global:global.unseeded")
 
     def test_string_global_aug_and_dict_comp_route(self):
         # Review flavors: a String-typed global write, its aug-assign
@@ -1205,16 +1190,7 @@ class TestListFromArrayGlobal:
     flavor defers downstream (honest)."""
 
     def test_top_level_routes_fn_body_defers(self):
-        from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
-                               _assert_routes_byte_identical)
-        src = (
-            "from tpy import Int32, Array\n"
-            "arr: Array[Int32, 3] = [5, 6, 7]\n"
-            "from_arr = list(arr)\n"
-            "print(from_arr)\n")
-        _hpp, cpp = _assert_routes_byte_identical(src)
-        assert ("::tpy::construct<std::vector<int32_t>>((*arr))"
-                in cpp)
+        # The defer's tag stays pinned so a moved reject site is visible.
         src2 = (
             "from tpy import Int32, Array\n"
             "def fn_body() -> None:\n"
@@ -1222,16 +1198,8 @@ class TestListFromArrayGlobal:
             "    xs = list(arr)\n"
             "    print(len(xs))\n"
             "fn_body()\n")
-        _assert_byte_identical(src2)
-        assert _fn(_lower_ctx(src2), "fn_body") is None
-        from .testutil import _compile, _entry
-        from ..codegen_cpp.context import CodeGenOptions
-        c, mods = _compile(src2)
-        c.generate_code_to_strings(
-            _entry(mods), options=CodeGenOptions(thir_codegen=True))
-        # The defer's tag stays pinned so a moved reject site is visible.
-        assert any("expr.call" in k for k in c._thir_fallback), \
-            c._thir_fallback
+        _assert_rejects_at(_reject_tally(src2),
+                           "body:expr.call:call.inst_arg_lastuse")
 
     def test_set_from_array_routes(self):
         # The set(arr) sibling of the list(arr) admission.
@@ -1302,11 +1270,7 @@ class TestGlobalSlotUnpackTarget:
             "p = Point(Int32(0))\n"
             "n, p = make_pair()\n"
             "print(n, p.x)\n")
-        top, _wit, fallback = _top_level(src)
-        assert top is None
-        assert any(k.startswith("top_level:stmt.tuple_unpack")
-                   for k in fallback), fallback
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "top_level:stmt.tuple_unpack")
 
     def test_optional_global_target_defers(self):
         # A ptr-repr Optional global's slot carries the INNER spelling plus
@@ -1318,11 +1282,7 @@ class TestGlobalSlotUnpackTarget:
             "print(n)\n"
             "if opt is not None:\n"
             "    print(opt.x)\n")
-        top, _wit, fallback = _top_level(src)
-        assert top is None
-        assert any(k.startswith("top_level:stmt.tuple_unpack")
-                   for k in fallback), fallback
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "top_level:stmt.tuple_unpack")
 
     def test_branch_scoped_slot_defers(self):
         # A first slot write inside an if body is the branch-scoped render.
@@ -1333,11 +1293,7 @@ class TestGlobalSlotUnpackTarget:
             "if flag():\n"
             "    n, br = make_pair()\n"
             "print(br.x)\n")
-        top, _wit, fallback = _top_level(src)
-        assert top is None
-        assert any(k.startswith("top_level:")
-                   for k in fallback), fallback
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "top_level:stmt.tuple_unpack")
 
     def test_for_body_slot_defers(self):
         # The for body is codegen's namespace push, which DROPS `static` from
@@ -1346,8 +1302,4 @@ class TestGlobalSlotUnpackTarget:
             "for i in range(1):\n"
             "    n, fp = make_pair()\n"
             "print(fp.x)\n")
-        top, _wit, fallback = _top_level(src)
-        assert top is None
-        assert any(k.startswith("top_level:")
-                   for k in fallback), fallback
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "top_level:stmt.tuple_unpack")

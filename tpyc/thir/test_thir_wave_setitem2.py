@@ -8,6 +8,8 @@ dict-value tuple-element field write (`d[1][0].n = 24`)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -60,8 +62,8 @@ class TestSetitemValueRows:
                "def main() -> None:\n"
                "    store(\"x\")\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "store") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.optview_value_shape")
 
     def test_generic_dict_field_write_routes(self):
         src = ("from tpy import Int32\n"
@@ -112,8 +114,8 @@ class TestSetitemBoundaries:
                "    out[\"k\"] = src\n"
                "    print(len(out))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.family")
 
 
 class TestRecordTupleValue:
@@ -160,5 +162,5 @@ class TestRecordTupleValue:
             "def main() -> None:\n"
             "    f(Box(1), Box(2))\n"
             "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.btuple_value_shape")

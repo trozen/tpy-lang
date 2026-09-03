@@ -209,7 +209,6 @@ class TestUnmirroredFactsReject:
             "    print(take(A(3), False))\n"
             "use()\n"
         )
-        _assert_byte_identical(src)
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "body:stmt.if", "if.cond_facts_unmirrored")
 
@@ -227,8 +226,6 @@ class TestUnmirroredFactsReject:
             "    print(take(A(3), False))\n"
             "use()\n"
         )
-        hpp, cpp = _assert_byte_identical(src)
-        assert "const auto& __u = std::get<A>(u);" in hpp + cpp
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "body:stmt.if", "if.cond_facts_unmirrored")
 
@@ -250,8 +247,6 @@ class TestUnmirroredFactsReject:
             "    print(take(a))\n"
             "use()\n"
         )
-        hpp, cpp = _assert_byte_identical(src)
-        assert "__v_2 = std::get<::tpy::BigInt>(v.value);" in hpp + cpp
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "body:stmt.if", "if.post_narrow_unmirrored")
 
@@ -270,8 +265,6 @@ class TestUnmirroredFactsReject:
             "    print(take(A(3), True))\n"
             "use()\n"
         )
-        hpp, cpp = _assert_byte_identical(src)
-        assert "const auto& __u = std::get<A>(u);" in hpp + cpp
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "body:stmt.while",
                            "while.cond_facts_unmirrored")
@@ -290,11 +283,9 @@ class TestUnmirroredFactsReject:
             "        print(v)\n"
             "use()\n"
         )
-        hpp, cpp = _assert_byte_identical(src)
         # The landmark is shared by every narrow reject in the resumable walk,
         # so it cannot name WHICH fence held; the alias assertion pins the
         # obligation itself -- the AST declares it here, unread or not.
-        assert "const auto& __u = std::get<A>(u);" in hpp + cpp
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "resumable:res.narrowed_resume")
 
@@ -316,7 +307,5 @@ class TestUnmirroredFactsReject:
             "        print(v)\n"
             "use()\n"
         )
-        hpp, cpp = _assert_byte_identical(src)
-        assert "const auto& __u = std::get<A>(u);" in hpp + cpp
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "resumable:res.narrowed_resume")

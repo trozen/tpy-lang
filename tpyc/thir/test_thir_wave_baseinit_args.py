@@ -80,7 +80,7 @@ def _hpp(src: str) -> str:
     compiler, modules = _compile(src)
     hpp, _cpp = compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        options=CodeGenOptions(emit_source_comments=False))
     return hpp
 
 

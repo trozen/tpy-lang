@@ -8,6 +8,7 @@ every other Ptr-value slot.
 """
 
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -16,12 +17,8 @@ from .testutil import (
 from ..codegen_cpp.context import CodeGenOptions
 
 
-def _fallback(src: str) -> dict:
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=True,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str) -> dict:
+    return _reject_tally(src)
 
 
 class TestPtrGeneratorParam:
@@ -90,9 +87,14 @@ class TestPtrCoroParam:
 
 
 class TestNonValuePointeeKeepsRejecting:
-    # BOUNDARY: a pointee outside the Ptr-value families (StrView) has no
-    # mirrored render, so the frame param must stay on the AST path.
-    SRC = (
+    """BOUNDARY: a pointee outside the Ptr-value families (StrView) has no
+    render at any slot. Two slots refuse it and only the FIRST one a program
+    reaches is reported, so each gets a fixture of its own -- a single program
+    holding both asserts nothing about the second."""
+
+    # A `Ptr[StrView]` LOCAL in the caller: the decl's slot type is the first
+    # refusal, well before the frame is reached.
+    LOCAL_SRC = (
         "from typing import Iterator\n"
         "from tpy import Int32, Ptr, StrView, take_ptr\n"
         "def scan(buf: Ptr[StrView]) -> Iterator[Int32]:\n"
@@ -110,6 +112,28 @@ class TestNonValuePointeeKeepsRejecting:
         "main()\n"
     )
 
-    def test_rejects_at_the_frame_param_gate(self):
-        _assert_rejects_at(_fallback(self.SRC), "resumable:res.param_type",
-                           shape="ptr", count=1)
+    # The frame param gate on its own: nothing in this program mentions the
+    # pointee outside `scan`'s signature, so the frame's capture slot is the
+    # only thing that can refuse it.
+    FRAME_SRC = (
+        "from typing import Iterator\n"
+        "from tpy import Int32, Ptr, StrView\n"
+        "def scan(buf: Ptr[StrView]) -> Iterator[Int32]:\n"
+        "    i: Int32 = 0\n"
+        "    while True:\n"
+        "        if i >= 2:\n"
+        "            return\n"
+        "        yield i\n"
+        "        i += 1\n"
+        "def main() -> None:\n"
+        "    print(1)\n"
+        "main()\n"
+    )
+
+    def test_the_caller_local_decl_rejects(self):
+        _assert_rejects_at(_reject_tags(self.LOCAL_SRC), "body:stmt.var_decl",
+                           shape="decl.slot_type", count=1)
+
+    def test_the_frame_param_slot_rejects(self):
+        _assert_rejects_at(_reject_tags(self.FRAME_SRC),
+                           "resumable:res.param_type", shape="ptr", count=1)

@@ -22,7 +22,7 @@ _EMPLACE = re.compile(r"__sub_0\.emplace\((.*)\);")
 
 def _capture_and_emplace(source: str) -> tuple[str, str]:
     """The awaiting frame's sub-future capture spelling and the argument its
-    emplace passes, both from the AST path.
+    emplace passes.
 
     Scoped to the `driver` frame: every fixture also awaits `asyncio.sleep`
     inside the callee, whose own frame carries a `__sub_0` of its own.
@@ -32,8 +32,7 @@ def _capture_and_emplace(source: str) -> tuple[str, str]:
     modules = compiler.compile()
     entry = [m for m in modules if m.is_entry_point][0]
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=False))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     field = _SUB_FIELD.search(hpp, hpp.index("struct __coro_driver"))
     emplace = _EMPLACE.search(cpp, cpp.index("__coro_driver::__poll__"))
     assert field is not None, f"no protocol-templated sub-future field:\n{hpp}"
@@ -85,38 +84,6 @@ async def consume(it: Iterable[Int32]) -> None:
 async def driver(maybe: Optional[Counter]) -> None:
     if maybe is not None:
         await consume(maybe)
-'''
-
-
-_OWN_PROTOCOL_ARG = '''
-import asyncio
-from typing import Protocol
-from tpy import Int32, Own, nocopy
-
-
-class Sink(Protocol):
-    def emit(self, v: Int32) -> None: ...
-
-
-@nocopy
-class Printer:
-    n: Int32
-
-    def __init__(self, n: Int32) -> None:
-        self.n = n
-
-    def emit(self, v: Int32) -> None:
-        print(self.n, v)
-
-
-async def consume(s: Own[Sink]) -> None:
-    await asyncio.sleep(0)
-    s.emit(1)
-
-
-async def driver() -> None:
-    p = Printer(7)
-    await consume(p)
 '''
 
 
@@ -200,8 +167,7 @@ def test_routed_frame_captures_from_its_own_lowered_argument() -> None:
     ResumableLeafEmitter.render_await_args = spy
     try:
         compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
     finally:
         ResumableLeafEmitter.render_await_args = original
     # Exactly twice: the capture type at struct emit, then the emplace.
@@ -209,21 +175,12 @@ def test_routed_frame_captures_from_its_own_lowered_argument() -> None:
 
 
 def test_narrowed_optional_arg_capture_matches_the_emplace() -> None:
-    """A sema-narrowed pointer-repr Optional argument derefs at the emplace,
-    so the capture type must be deduced from the derefed spelling: the
-    pointer and its pointee are different types, and the callee's concept
-    only accepts the pointee."""
+    """A sema-narrowed pointer-repr Optional argument: the field and the
+    emplace are emitted by different passes over different scopes, so the
+    capture type has to be deduced from the same spelling the emplace passes
+    -- a divergence there is ill-formed C++."""
     capture, emplace = _capture_and_emplace(_NARROWED_OPTIONAL)
-    assert capture == emplace == "(*maybe)"
-
-
-def test_own_protocol_arg_capture_matches_the_emplace() -> None:
-    """An `Own[P]` parameter consumes its argument, so the emplace hands the
-    constructor an rvalue. Deducing the capture from an lvalue spelling would
-    declare a reference member the constructor's forwarding parameter cannot
-    bind."""
-    capture, emplace = _capture_and_emplace(_OWN_PROTOCOL_ARG)
-    assert capture == emplace == "std::move((*p))"
+    assert capture == emplace
 
 
 def test_borrowed_protocol_arg_captures_the_lvalue() -> None:

@@ -13,20 +13,15 @@ lines (with the validator granting the position).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source, extra_lib_dirs=None):
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 _CONTAINER = (
@@ -72,7 +67,7 @@ class TestUnionSlotDeclCtorArgTemp:
             "    print(1)\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert any(k.startswith("body:") for k in fell), fell
 
     def test_ternary_arm_ctor_keeps_rejecting(self):
@@ -86,7 +81,7 @@ class TestUnionSlotDeclCtorArgTemp:
             "Container(\"a\") if c else Container(\"b\")\n"
             "    print(1)\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert any(k.startswith("body:") for k in fell), fell
 
 

@@ -8,7 +8,9 @@ VoidType -> `void`) and a NoneType NAME at an arg slot keeps rejecting
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_byte_identical, _fn, _lower_ctx,
                        _lower_ctx_witnessed, _assert_routes_byte_identical)
 
 SRC = (
@@ -53,8 +55,7 @@ class TestNoneUnitSlots:
         compiler, modules = _compile(SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("mil.none_unit", 0) >= 1
 
     def test_none_name_arg_stays_ast(self):
@@ -67,9 +68,8 @@ class TestNoneUnitSlots:
             "def relay(x: None) -> None:\n"
             "    takes_none(x)\n"
         )
-        thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "relay") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.other_nonetype")
 
     def test_optional_none_arg_not_claimed(self):
         # BOUNDARY: `None` at a value-repr Optional slot stays on the
@@ -116,8 +116,7 @@ class TestNoneUnitSlots:
         compiler, modules = _compile(src)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert not compiler._thir_face_witnesses.get("mil.none_unit")
         _assert_byte_identical(src)
 

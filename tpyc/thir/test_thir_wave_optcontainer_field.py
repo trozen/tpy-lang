@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
     _lower_ctx_witnessed,
 )
@@ -25,10 +26,8 @@ def _gen_witnessed(source: str):
     compiler, modules = _compile(source)
     hpp, cpp = compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False,
-                               thir_codegen=True))
-    return hpp + cpp, dict(compiler._thir_face_witnesses), \
-        dict(compiler._thir_fallback)
+        options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, dict(compiler._thir_face_witnesses)
 
 
 class TestOptionalContainerCtorAndFieldWrite:
@@ -57,8 +56,7 @@ class TestOptionalContainerCtorAndFieldWrite:
 
     def test_literal_hoists_at_the_decl_and_narrowed_read_derefs(self):
         hpp, cpp = _assert_routes_byte_identical(self._SRC)
-        out, wit, fell = _gen_witnessed(self._SRC)
-        assert not fell, fell
+        out, wit = _gen_witnessed(self._SRC)
         assert wit.get("optptr.container_temp", 0) == 2
         assert wit.get("field_write.container_narrowed_optptr", 0) == 2
         # The DECL is a flush position, so the literal's temp lands ahead of
@@ -90,9 +88,8 @@ class TestOptionalContainerCtorAndFieldWrite:
             "    print(h.opt is None)\n"
             "main()\n"
         )
-        _out, _wit, fell = _gen_witnessed(src)
+        fell = _reject_tally(src)
         assert "ctor:stmt.assign:assign.field_write_shape" in fell, fell
-        _assert_byte_identical(src)
 
 
 class TestConstStorageOptLoopVar:
@@ -226,8 +223,7 @@ class TestOptionalContainerLiteralSlots:
 
     def test_slot_and_field_literals_route(self):
         _assert_routes_byte_identical(self._SRC)
-        out, wit, fell = _gen_witnessed(self._SRC)
-        assert not fell, fell
+        out, wit = _gen_witnessed(self._SRC)
         assert wit.get("decl.opt_slot_container_literal", 0) == 5
         assert wit.get("field_write.opt_container_lit", 0) == 6
         # The slot line self-spells the list brace; dict/set literals already
@@ -250,8 +246,7 @@ class TestOptionalContainerLiteralSlots:
         # The discriminator for threading the INNER: targeting the Optional
         # leaves the nested element with no container target and the brace
         # picks up an extra level (`{{{1}, {2, 3}}}`).
-        out, _wit, fell = _gen_witnessed(self._SRC)
-        assert not fell, fell
+        out, _wit = _gen_witnessed(self._SRC)
         assert ("std::vector<std::vector<int32_t>> __slot_4 = "
                 "std::vector<std::vector<int32_t>>{{1}, {2, 3}};") in out
         assert ("this->nested = std::vector<std::vector<int32_t>>"
@@ -281,6 +276,5 @@ class TestOptionalContainerLiteralSlots:
             "    go(F(3))\n"
             "main()\n"
         )
-        _out, _wit, fell = _gen_witnessed(src)
+        fell = _reject_tally(src)
         assert fell == {"body:stmt.var_decl:decl.opt_slot_source": 1}, fell
-        _assert_byte_identical(src)

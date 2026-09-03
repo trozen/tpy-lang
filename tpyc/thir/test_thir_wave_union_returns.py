@@ -26,6 +26,8 @@ TestFlatAssertNarrowScoping in test_thir_resumable).
 """
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -199,10 +201,8 @@ class TestWrapperValueCallAndGlobal:
             "    discard_sink()\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "storage_sink") is not None
-        assert _fn(thir, "discard_sink") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ret_type.union_ptr")
 
     def test_reassigned_wrapper_literal_decl_defers(self):
         # BOUNDARY: the wrapper-literal DECL arm excludes reassigned names
@@ -217,9 +217,8 @@ class TestWrapperValueCallAndGlobal:
             "    print(isinstance(seed, int))\n"
             "f()\n"
         )
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:container_lit.slot_family")
 
 
 class TestUnionReturnsBoundaries:
@@ -236,9 +235,8 @@ class TestUnionReturnsBoundaries:
             "    print(len(xs))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        thir, wit = _lower_ctx_witnessed(src)
-        assert wit.get("arg.ru_wrapper_elem_literal", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_wrapper_elem_literal_int32_edge_keeps_rejecting(self):
         # The wrapper-element literal insert reuses _ru_elem_ok's strict
@@ -253,9 +251,8 @@ class TestUnionReturnsBoundaries:
             "    print(len(xs))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        thir, wit = _lower_ctx_witnessed(src)
-        assert wit.get("arg.ru_wrapper_elem_literal", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_wrapper_name_return_keeps_rejecting(self):
         # A WRAPPER NAME at the Own[V] return slot is outside the source
@@ -272,6 +269,5 @@ class TestUnionReturnsBoundaries:
             "    print(echo())\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        thir, wit = _lower_ctx_witnessed(src)
-        assert wit.get("ret.own_wrapper_member", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")

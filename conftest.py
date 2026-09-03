@@ -43,16 +43,8 @@ class _TestCompilerContext:
     _thir_face_journal: dict[str, int] | None = None
     _thir_reject_reason: str | None = None
     _thir_reject_detail: str | None = None
-    _thir_fallback: dict[str, int] = field(default_factory=dict)
-    _move_verdict_ast: dict[int, tuple[Any, bool, str | None]] = field(
-        default_factory=dict)
-    _move_verdict_thir: dict[int, tuple[Any, bool, str | None]] = field(
-        default_factory=dict)
-    _move_verdict_journal: set[int] | None = None
-    _binding_facts_ast: dict[int, tuple] = field(default_factory=dict)
-    _binding_facts_thir: dict[int, tuple] = field(default_factory=dict)
-    _binding_ast_open: tuple | None = None
-    _binding_journal: set[int] | None = None
+    _thir_reject_loc: Any = None
+    _thir_reject_by_node: dict[int, str] = field(default_factory=dict)
     _thir_arg_reached: dict[tuple[str, str], int] = field(
         default_factory=dict)
 

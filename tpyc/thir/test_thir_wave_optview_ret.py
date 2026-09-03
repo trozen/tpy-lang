@@ -127,7 +127,6 @@ class TestValueOptViewReturnResult:
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.return",
                            "return.opt_view_source")
-        _assert_byte_identical(src)
 
     def test_coerced_slice_at_owned_inner_routes_through_the_coerce(self):
         # The slice arm above admits only a BARE subscript; at an owned inner

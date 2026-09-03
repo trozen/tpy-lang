@@ -19,7 +19,9 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn, _thir_ctx,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn, _thir_ctx,
                        _assert_byte_identical, _assert_routes_byte_identical)
 
 
@@ -210,9 +212,8 @@ class TestGateBoundaries:
         src = ("from tpy import Int32\n"
                "def f(m: list[Int32]) -> Int32:\n"
                "    return len(m[0:4][0:2])\n")
-        ctx, fallback = _thir_ctx(src)
-        assert not ctx.thir_functions
-        assert fallback == {"body:stmt.return:subscript.slice_shape": 1}
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:subscript.slice_shape")
 
 
 class TestElemRowsDictSetFlavors:
@@ -247,7 +248,8 @@ class TestElemRowsDictSetFlavors:
                "    for c in xs[0]:\n"
                "        print(c)\n"
                "main()\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.subscript_elem_family")
 
 
 class TestLenCallArg:

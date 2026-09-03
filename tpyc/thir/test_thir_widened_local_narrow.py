@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
     _fn, _lower_ctx_witnessed,
 )
@@ -26,11 +28,10 @@ from .testutil import (
 _GI = "from tpy import Int32\ndef gi() -> int:\n    return 1\n"
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     _, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=thir))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -71,7 +72,7 @@ class TestWidenedLocalSubscriptIndex:
         assert w.get("narrow.subscript_index", 0) >= 5
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("::tpy::__getitem__(data, p.to_fixed_check<int32_t>())"
                 in cpp)
         assert "::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), 5)" in cpp
@@ -137,7 +138,7 @@ class TestWidenedLocalOtherNarrowSinks:
         assert w.get("narrow.fstring_arg", 0) >= 1
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}"
                 in cpp)
         assert ("::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}"
@@ -195,7 +196,7 @@ class TestWidenedLocalBinopParamSlot:
         assert w.get("narrow.binop_param", 0) >= 2
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "((b) + ((p).to_fixed_check<int32_t>()))" in cpp
         assert "(((p).to_fixed_check<int32_t>()) + (b))" in cpp
         # the __contains__ needle takes the same call-arg narrow
@@ -216,7 +217,7 @@ class TestWidenedLocalBinopParamSlot:
             "main()\n"
         )
         _assert_routes_byte_identical(src, comments=False)
-        assert "to_fixed_check" not in _cpp(src, thir=True)
+        assert "to_fixed_check" not in _cpp(src)
 
 
 class TestWidenedLocalNarrowBrackets:
@@ -244,13 +245,13 @@ class TestWidenedLocalNarrowBrackets:
 
     def test_never_widened_stays_bare(self):
         _assert_routes_byte_identical(self.NEVER_WIDENED, comments=False)
-        cpp = _cpp(self.NEVER_WIDENED, thir=True)
+        cpp = _cpp(self.NEVER_WIDENED)
         assert "::tpy::__getitem__(data, p)" in cpp
         assert "to_fixed_check" not in cpp
 
     def test_bigint_seeded_narrows(self):
         _assert_routes_byte_identical(self.ALWAYS_BIGINT, comments=False)
-        cpp = _cpp(self.ALWAYS_BIGINT, thir=True)
+        cpp = _cpp(self.ALWAYS_BIGINT)
         assert ("::tpy::__getitem__(data, p.to_fixed_check<int32_t>())"
                 in cpp)
 
@@ -270,7 +271,7 @@ class TestWidenedLocalNarrowBrackets:
             + "main()\n"
         )
         _assert_routes_byte_identical(src, comments=False)
-        assert "to_fixed_check" not in _cpp(src, thir=True)
+        assert "to_fixed_check" not in _cpp(src)
 
     def test_int_literal_index_stays_bare(self):
         # An in-int32-range literal index is exempt on both paths
@@ -287,7 +288,7 @@ class TestWidenedLocalNarrowBrackets:
             + "main()\n"
         )
         _assert_routes_byte_identical(src, comments=False)
-        assert "to_fixed_check" not in _cpp(src, thir=True)
+        assert "to_fixed_check" not in _cpp(src)
 
 
 class TestWidenedLocalIndexRejects:
@@ -382,8 +383,8 @@ class TestWidenedLocalIndexRejects:
             + "    probe()\n"
             + "main()\n"
         )
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.enum_from_value.arg")
 
     def test_composite_fstring_arg_over_widened_local_stays_ast(self):
         src = (
@@ -397,8 +398,8 @@ class TestWidenedLocalIndexRejects:
             + "    probe()\n"
             + "main()\n"
         )
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:fstring.arg_wrap")
 
 
 class TestCompositeOverWidenedLocalUserRecordRejects:
@@ -439,20 +440,20 @@ class TestCompositeOverWidenedLocalUserRecordRejects:
 
     def test_composite_binop_param_stays_ast(self):
         src = self._src("print(b + (p + 1))")
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.+.record")
 
     def test_composite_contains_needle_stays_ast(self):
         src = self._src("print((p + 1) in b)")
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.in.record")
 
     def test_composite_record_getitem_key_stays_ast(self):
         src = self._src("print(b[p + 1])")
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.record_getitem")
 
     def test_composite_record_setitem_key_stays_ast(self):
         src = self._src("b[p + 1] = 5")
-        assert _fn(_lower_ctx_witnessed(src)[0], "probe") is None
-        _assert_byte_identical(src, comments=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.family")

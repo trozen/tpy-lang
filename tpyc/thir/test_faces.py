@@ -8,9 +8,18 @@ import pytest
 
 from ..compilation_context import _current_compiler, activate_compiler
 from .faces import THIR_FACES, witness
-from .fallback import begin_attempt, commit_attempt, fold_attempt
+from ..codegen_cpp.context import ThirRejectError
+from .reject import begin_attempt, commit_attempt, reject_attempt
 from .lower import lower_module
 from .testutil import _compile, _entry
+
+
+def _reject(component: str) -> None:
+    """Close an attempt on the reject side. `reject_attempt` raises the
+    user-facing diagnostic; these units are about the witness journal it
+    rolls back on the way out, not the message."""
+    with pytest.raises(ThirRejectError):
+        reject_attempt(component)
 
 _SELF_SRC = (
     "from tpy import Int32\n"
@@ -68,36 +77,36 @@ def test_lowering_witnesses_self_faces():
 
 
 class TestWitnessRollback:
-    """A body that FALLS BACK emits its whole tree through the AST path, so the
-    arms it reached during the failed attempt cover nothing. Without rollback an
-    arm that witnesses before it can raise reads as covered forever -- the
-    blind spot that let a dead arm pass this check."""
+    """A body that REJECTS emits nothing, so the arms it reached during the
+    failed attempt cover nothing. Without rollback an arm that witnesses
+    before it can raise reads as covered forever -- the blind spot that let
+    a dead arm pass this check."""
 
-    def test_fallback_undoes_the_attempt_s_witnesses(self):
+    def test_reject_undoes_the_attempt_s_witnesses(self):
         compiler, _ = _compile("def f() -> None:\n    pass\n")
         with activate_compiler(compiler):
             begin_attempt()
             witness("self.this")
             witness("self.this")
             witness("optptr.none")
-            fold_attempt("body")
+            _reject("body")
         assert compiler._thir_face_witnesses == {}
 
     def test_routed_body_keeps_its_witnesses(self):
-        # The success side: no fold_attempt, so the journal is simply
-        # superseded by the next attempt and the counts stand.
+        # The success side: no reject, so the journal is simply superseded
+        # by the next attempt and the counts stand.
         compiler, _ = _compile("def f() -> None:\n    pass\n")
         with activate_compiler(compiler):
             begin_attempt()
             witness("self.this")
             begin_attempt()
             witness("optptr.none")
-            fold_attempt("body")
+            _reject("body")
         assert compiler._thir_face_witnesses == {"self.this": 1}
 
     def test_rollback_leaves_earlier_bodies_alone(self):
         # Only the failing attempt's share is subtracted -- a face witnessed by
-        # a routed body AND a fallback body stays witnessed.
+        # a routed body AND a rejected body stays witnessed.
         compiler, _ = _compile("def f() -> None:\n    pass\n")
         with activate_compiler(compiler):
             begin_attempt()
@@ -105,34 +114,34 @@ class TestWitnessRollback:
             begin_attempt()
             witness("self.this")
             witness("self.this")
-            fold_attempt("body")
+            _reject("body")
         assert compiler._thir_face_witnesses == {"self.this": 1}
 
-    def test_fold_with_no_journal_open_is_a_hard_error(self):
+    def test_reject_with_no_journal_open_is_a_hard_error(self):
         # The enforcement the 6-site begin/commit-or-fold convention would
-        # otherwise lack: a fold whose begin is missing would subtract
+        # otherwise lack: a reject whose begin is missing would subtract
         # whatever ran last. Loud beats a silent mis-attribution, so a second
-        # fold without a new attempt raises rather than quietly no-opping.
+        # reject without a new attempt raises rather than quietly no-opping.
         compiler, _ = _compile("def f() -> None:\n    pass\n")
         with activate_compiler(compiler):
             begin_attempt()
             witness("self.this")
-            fold_attempt("body")
+            _reject("body")
             with pytest.raises(AssertionError, match="no journal open"):
-                fold_attempt("ctor")
+                reject_attempt("ctor")
         assert compiler._thir_face_witnesses == {}
 
     def test_witness_outside_any_attempt_is_never_rolled_back(self):
         # THE EMIT WINDOW. Resumable bodies lower DURING emit, so a routed
         # body's emit-time witnesses (thir/emit.py records ~27 faces) are
         # interleaved with later attempts. They belong to code that shipped
-        # and must survive a neighbouring fallback.
+        # and must survive a neighbouring reject.
         compiler, _ = _compile("def f() -> None:\n    pass\n")
         with activate_compiler(compiler):
             witness("optptr.none")          # no attempt open
             begin_attempt()
             witness("self.this")
-            fold_attempt("body")
+            _reject("body")
         assert compiler._thir_face_witnesses == {"optptr.none": 1}
 
     def test_commit_closes_the_window_so_later_emit_witnesses_survive(self):
@@ -144,6 +153,6 @@ class TestWitnessRollback:
             witness("optptr.none")           # its emit, journal now closed
             begin_attempt()
             witness("call.self_method")
-            fold_attempt("resumable")
+            _reject("resumable")
         assert compiler._thir_face_witnesses == {
             "self.this": 1, "optptr.none": 1}

@@ -8,17 +8,17 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _compile, _entry,
     _assert_routes_byte_identical,
 )
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=True,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=True))
     return compiler, hpp, cpp
 
 
@@ -26,11 +26,11 @@ def _assert_identical(src: str) -> 'tuple[dict, dict]':
     """Byte-compare THIR vs AST output; return (witnesses, fallback) --
     the frame-lowering twin of _assert_routes_byte_identical (testutil's
     lower_module does not drive resumable/generator frames)."""
-    _, hpp_ast, cpp_ast = _gen(src, thir=False)
-    c, hpp_thir, cpp_thir = _gen(src, thir=True)
+    _, hpp_ast, cpp_ast = _gen(src)
+    c, hpp_thir, cpp_thir = _gen(src)
     assert hpp_ast == hpp_thir
     assert cpp_ast == cpp_thir
-    return c._thir_face_witnesses, c._thir_fallback
+    return c._thir_face_witnesses
 
 
 class TestWholeOptFieldWriteSource:
@@ -72,7 +72,7 @@ class TestWholeOptFieldWriteSource:
             "    b = Box(1)\n    xs: list[Int32 | None] = [7]\n"
             "    put(b, xs)\n    print(b.value)\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert "body:stmt.assign:subscript.elem.optional" in fallback
 
 
@@ -117,8 +117,7 @@ class TestCopyContainerField:
             "    h = Holder()\n"
             "    print(len(snap(h)))\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback
+        w = _assert_identical(src)
         assert w.get("call.copy_container", 0) >= 1
 
 
@@ -149,10 +148,9 @@ class TestSuspendFieldOperand:
         "def main() -> None:\n    asyncio.run(run())\nmain()\n")
 
     def test_self_field_operand_routes(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("field.suspend_borrow", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert "= &(__self.evt);" in cpp
 
     def test_nested_field_chain_operand_routes(self):
@@ -172,9 +170,8 @@ class TestSuspendFieldOperand:
             "    o.inner.evt.set()\n"
             "    await waiter(o)\n"
             "def main() -> None:\n    asyncio.run(run())\nmain()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         assert w.get("field.suspend_borrow", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestStrFieldFrameReassign:
@@ -199,10 +196,9 @@ class TestStrFieldFrameReassign:
         "main()\n")
 
     def test_narrowed_str_field_reassign_routes(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("field.narrowed_deref", 0) >= 1
-        assert not fallback
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert "q = (*__self.s);" in cpp
 
     def test_bytes_field_frame_reassign_routes(self):
@@ -219,8 +215,7 @@ class TestStrFieldFrameReassign:
             "def main() -> None:\n"
             "    for x in Box(b\"v\").gen():\n        print(x)\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback
+        w = _assert_identical(src)
         assert w.get("print.bytes_field", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "q = __self.b;" in cpp

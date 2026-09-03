@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from ..typesys import TpyType
-from .fallback import is_bodyless_binding
+from .reject import is_bodyless_binding
 from .lower import iter_module_callables, iter_module_constructors
 from .nodes import (
     Form,
@@ -685,7 +685,7 @@ def _function_lines(fn: 'THIRFunction') -> list[str]:
 
 def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
     """A resumable body holds LEAVES keyed by the skeleton's node ids, not a
-    statement list -- the state machine around them stays AST-emitted. Render
+    statement list -- the skeleton emits the state machine around them. Render
     each keyed group so what THIR contributed is visible per seam."""
     lines = [f"resumable {name}:"]
     groups = (
@@ -767,20 +767,23 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
 
     Unlike `dump_thir` (which renders a standalone `lower_module` result),
     this shows every body kind -- sync, resumable, simple-generator,
-    constructor -- and names the ones that fell back, since "what did NOT
-    route" is usually the question being asked. `reasons` (the compiler's
-    per-body first-reject map) names WHY each fell back.
+    constructor -- and names the ones with no THIR, since "what did NOT
+    lower" is usually the question being asked. `reasons` (the compiler's
+    per-body first-reject map) names WHY a body rejected.
+
+    Three ways a body can have no THIR, and the dump must not conflate them:
+    it has no body to lower at all, lowering was attempted and rejected, or a
+    reject earlier in the module ended emission before this body's turn.
     """
     reasons = reasons or {}
 
     def _not_routed(kind: str, name: str, key: int, fn) -> str:
-        # A bodyless binding is never ATTEMPTED (codegen skips it before
-        # lowering), so calling it a fallback would misreport the frontier.
         if is_bodyless_binding(fn) or getattr(fn, "is_overload_stub", False):
-            return f"{kind} {name}: <not a body-migration candidate>"
+            return f"{kind} {name}: <no body to lower>"
         why = reasons.get(key)
-        return (f"{kind} {name}: <fell back to AST"
-                + (f": {why}>" if why else ">"))
+        if why is not None:
+            return f"{kind} {name}: <rejected: {why}>"
+        return f"{kind} {name}: <not attempted: an earlier reject ended emission>"
 
     lines: list[str] = []
     seen_any = False
@@ -793,8 +796,10 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
             lines.extend(_function_lines(top))
         else:
             why = reasons.get(id(module_ast))
-            lines.append("top-level __tpy_init: <fell back to AST"
-                         + (f": {why}>" if why else ">"))
+            lines.append(
+                f"top-level __tpy_init: <rejected: {why}>" if why is not None
+                else "top-level __tpy_init: "
+                     "<not attempted: an earlier reject ended emission>")
         lines.append("")
         seen_any = True
     for func, _self_type in iter_module_callables(module_ast, analyzer):

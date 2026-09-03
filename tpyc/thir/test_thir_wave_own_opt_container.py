@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from .nodes import Form, THIRFieldAccess, THIRFormConvert, THIRSetItem
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctor,
@@ -70,9 +72,8 @@ class TestOwnOptContainerChain:
             "def main() -> None:\n"
             "    print(read(Args([5, 6])))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "read") is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.ctor_arg.own_optional")
 
     def test_narrowed_opt_field_setitem_routes(self):
         # The WRITE flavor takes the same narrowed_ok receiver unwrap as the
@@ -93,11 +94,8 @@ class TestOwnOptContainerChain:
             "    write(a)\n"
             "    print(a.coord)\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        stmt = _fn(thir, "write").body[1]
-        assert isinstance(stmt, THIRSetItem)
-        assert isinstance(stmt.target.receiver, THIRFieldAccess)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_optional")
 
     def test_narrowed_opt_field_record_elem_setitem_routes(self):
         # The record-element flavor the widened receiver newly reaches: the
@@ -119,10 +117,8 @@ class TestOwnOptContainerChain:
             "    r.write(Box(9))\n"
             "    print(r.items is None)\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        stmt = _fn(thir, "write").body[1]
-        assert isinstance(stmt, THIRSetItem)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_optional")
 
     def test_narrowed_opt_field_delitem_still_defers(self):
         # The DEL gate keeps the DECLARED slice: `narrowed_ok` is threaded
@@ -141,9 +137,8 @@ class TestOwnOptContainerChain:
             "    a.drop()\n"
             "    print(a.d is None)\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "drop") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.del_item:recv_or_index")
 
     def test_opt_container_mil_borrow_ptr_lift_routes(self):
         # The MIL twin of the Optional[F1-record] borrow lift: a pointer-repr
@@ -209,10 +204,8 @@ class TestOwnOptContainerChain:
             "def main() -> None:\n"
             "    print(build_live(True))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "build_live") is None
-        assert not faces.get("arg.own_opt_container_move")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_optional")
 
     def test_record_pointee_ctor_arg_still_defers(self):
         # The RECORD-pointee flavor of the Own[Optional] ctor slot stays

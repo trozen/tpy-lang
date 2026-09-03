@@ -37,8 +37,7 @@ _HOLDER = (
 def _emit(src: str):
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp + cpp
 
 

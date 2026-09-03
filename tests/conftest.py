@@ -46,7 +46,6 @@ from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.codegen_cpp.context import ThirRejectError
 # The committed cutover gate owns the body/skeleton boundary; a second copy of
 # the module list here would drift the moment the boundary moves.
-from tpyc.codegen_cpp.test_cutover_gate import BODY_EMITTER_MODULES
 from tpyc.compilation_context import activate_compiler
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -61,9 +60,6 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
-from tpyc import binding_audit, move_audit
-from tpyc.thir import fallback as thir_fallback
-from tpyc.thir.fallback import arm_universe
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -728,12 +724,11 @@ class CompileResult:
     # For multi-module compilation: list of (module_name, hpp_path, cpp_path, is_local) tuples
     # is_local=True for modules from the test's src/ dir, False for library modules
     # hpp_path/cpp_path are None for native_module (no generated code)
-    # THIR-authored (AST-authored under --no-thir); this is what exec builds.
+    # This is what exec builds.
     all_modules: list[tuple[str, Path | None, Path | None, bool]] = field(default_factory=list)
     # Non-local modules the case ALSO snapshots (options.json
     # `snapshot_lib_modules`), resolved against what actually compiled. Kept
-    # apart from is_local on purpose: these modules are snapshotted but stay
-    # out of the AST oracle pass and the ratchet, which govern USER code only.
+    # apart from is_local on purpose.
     snapshot_lib_modules: frozenset[str] = frozenset()
     # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
     declared_var_types: dict[tuple[int, str], object] | None = None
@@ -757,28 +752,6 @@ class CompileResult:
     third_party_include_dirs: list[Path] = field(default_factory=list)
     third_party_link_flags: list[str] = field(default_factory=list)
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
-    # Per-module names of THIR-routed bodies (None when THIR is off entirely).
-    # Feeds the divergence reporter: a snapshot mismatch is labeled with the
-    # enclosing function and whether THIR routed it.
-    thir_routed_names: dict[str, frozenset[str]] | None = None
-    # AST-oracle generated paths for local modules: (name, hpp, cpp). None only
-    # when THIR is off entirely (--no-thir), where the AST already authored
-    # all_modules -- a no_thir case still gets the pass. Byte-compared to the
-    # same snapshot as all_modules, so both authors are checked per run.
-    ast_modules: list[tuple[str, Path | None, Path | None]] | None = None
-    # Stdlib oracle only: per non-local (lib/tpy + stdlib) module, the AST and
-    # THIR generated paths from THIS run: (name, ast_hpp, ast_cpp, thir_hpp,
-    # thir_cpp). Most stdlib emission has no committed snapshot at these
-    # options, so the same-run AST output is its oracle.
-    thir_lib_modules: list[
-        tuple[str, Path | None, Path | None, Path | None, Path | None]
-    ] | None = None
-    # THIR ratchet count: user-body fallbacks for a case the ratchet governs
-    # (default run, unmarked). None when it doesn't apply (marked case,
-    # whole-corpus/classify runs, or --update-snapshots). >0 fails the comp
-    # phase -- an unmarked case must route every user body through THIR.
-    thir_ratchet_fell: int | None = None
-
 
 def _validate_default_int_name(name: str) -> str:
     allowed = {"Int32", "Int64", "BigInt"}
@@ -790,7 +763,7 @@ def _validate_default_int_name(name: str) -> str:
 
 
 _ALLOWED_OPTIONS_KEYS = {"default_int", "plugin", "dsl_opts",
-                         "snapshot_lib_modules", "thir_strict"}
+                         "snapshot_lib_modules"}
 
 
 def _parse_options_file(path: Path) -> dict:
@@ -830,8 +803,6 @@ def _parse_options_file(path: Path) -> dict:
             pytest.fail(
                 f"{path}: 'snapshot_lib_modules' must be a list of "
                 f"module-name glob patterns")
-    if "thir_strict" in raw and not isinstance(raw["thir_strict"], bool):
-        pytest.fail(f"{path}: 'thir_strict' must be a boolean")
     return raw
 
 
@@ -878,19 +849,6 @@ def get_case_default_int(case_dir: Path) -> str:
     """Resolve default integer mode for a test case."""
     options = load_case_options(case_dir)
     return _validate_default_int_name(options.get("default_int", "Int32"))
-
-
-def get_case_thir_strict(case_dir: Path) -> bool:
-    """Whether this case refuses the THIR->AST fallback.
-
-    A case that opts in fails with the compile error a reject raises once the
-    AST body emitters are gone, instead of silently re-emitting through them --
-    which is how an `error_*` case can pin that diagnostic while both paths
-    still exist. Scoped to the case's OWN modules, unlike the session-wide
-    --thir-strict, which also refuses a fallback in the libraries the wide
-    stdlib oracle routes.
-    """
-    return bool(load_case_options(case_dir).get("thir_strict", False))
 
 
 def get_case_snapshot_lib_modules(case_dir: Path) -> frozenset[str]:
@@ -957,136 +915,9 @@ def _frontend_registry_for(src_file: Path):
     return reg, extra_lib_dirs
 
 
-# A codegen diagnostic still authored by the AST body emitters. Each entry
-# survives only because THIR rejects the body and the AST re-emits it and
-# raises; deleting those emitters turns it into a crash on source that is
-# supposed to be cleanly rejected. Drive this to empty -- an entry that starts
-# passing must be REMOVED, which is why the check runs in both directions.
-AST_ONLY_DIAGNOSTICS: frozenset[str] = frozenset()
-# EMPTY: every codegen diagnostic a case reaches is now authored by a layer
-# that survives the body-emitter deletion. An entry added here is normally a
-# case that would crash instead of diagnosing once those modules are gone, so
-# adding one is normally a regression rather than a park.
-#
-# The exception, because it is foreseeable and the absolute reading would send
-# someone in circles: a case whose AST diagnostic is itself KNOWN-WRONG and
-# which THIR therefore declines to mirror belongs here, since the gate sees
-# only that the two paths disagree and cannot tell a correct refusal from an
-# unmigrated one. A regression case for a filed over-rejection is exactly that
-# shape. Park it here with the bug reference and it comes out when the AST
-# side is fixed.
-#
-# The check stays bidirectional -- a case that stops depending on a
-# body-authored diagnostic fails until its entry is removed -- which is what
-# keeps this set honest in both directions.
-#
-# Note the KEY this set counts: CASES that reach a body-authored diagnostic.
-# A body-authored diagnostic no case reaches is invisible here by
-# construction, so an empty set is not an empty cutover blocker list.
-
-
-# Diagnostics that live in a module the cutover KEEPS but are reached only
-# from one it deletes, so the file they sit in says nothing about their fate.
-# Inventory by CALLER, not by file -- a file-based reading misses every row
-# here.
-BODY_DIAGNOSTIC_FUNCTIONS: frozenset[tuple[str, str]] = frozenset({
-    # callers: statements, expressions
-    ("tpyc.codegen_cpp.context", "use_rebind_slot"),
-    # callers: the AST ctor member-init arm, which the ctor lowering replaces
-    ("tpyc.codegen_cpp.records", "_reject_nondef_ctor_field_in_body"),
-    ("tpyc.codegen_cpp.records", "_extract_base_inits"),
-})
-
-
-def _diagnostic_author(err: CodeGenError) -> str:
-    """Which layer raised `err`: "thir", "body" (dies at cutover) or "skeleton".
-
-    Only "body" is a blocker. A skeleton diagnostic outlives the cutover
-    untouched, so lumping it in with the body ones manufactures work that does
-    not exist.
-
-    A frame in `tpyc.thir.lower` marks a THIR-authored raise, and it stays a
-    valid discriminator even when both paths share one message builder --
-    provided that builder lives OUTSIDE `lower/`, or every AST raise starts
-    reading as a THIR one.
-    """
-    body_modules = {f"tpyc.codegen_cpp.{m}" for m in BODY_EMITTER_MODULES}
-    author = "skeleton"
-    tb = err.__traceback__
-    while tb is not None:
-        mod = tb.tb_frame.f_globals.get("__name__", "")
-        if mod.startswith("tpyc.thir.lower"):
-            return "thir"
-        if (mod in body_modules
-                or (mod, tb.tb_frame.f_code.co_name)
-                in BODY_DIAGNOSTIC_FUNCTIONS):
-            author = "body"
-        tb = tb.tb_next
-    return author
-
-
-def _assert_both_paths_reject(compiler, local_mods, entry_module,
-                              output_dir: Path, src_file: Path, case_dir: Path,
-                              thir_err) -> None:
-    """A codegen diagnostic the emitted (THIR) path raises must also be raised
-    by the AST path, and must not be AUTHORED by an AST body emitter.
-
-    The AST oracle pass runs only AFTER the primary emit succeeds, so a case
-    that fails at codegen is otherwise never emitted through the AST at all --
-    the AST could stay silent there and no gate would notice. Re-emit here and
-    require the same diagnostic.
-
-    Matching the diagnostic is necessary but NOT sufficient: a body THIR
-    rejects yields the identical text, because the fallback re-emits it through
-    the AST body emitter, so text alone cannot tell a re-homed diagnostic from
-    a re-parked one. `AST_ONLY_DIAGNOSTICS` carries that second verdict, and it
-    is what counts down to the deletion of those emitters.
-
-    "Same diagnostic" is `CodeGenError.format()`, which carries `file:line` but
-    no column -- deliberately the SAME granularity `diag.txt` records, so this
-    gate cannot fail a case the snapshot would have accepted. Two diagnostics
-    differing only in column therefore compare equal here.
-    """
-    want = thir_err.format(src_file.name)
-    case_id = f"{case_dir.parent.name}/{case_dir.name}"
-    ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
-    ast_dir = output_dir / "_ast_err"
-    try:
-        for mod in local_mods:
-            compiler.generate_code(
-                mod, ast_dir, entry_module_name=entry_module.name,
-                options=ast_opts)
-    except CodeGenError as ast_err:
-        got = ast_err.format(src_file.name)
-        if got != want:
-            pytest.fail(
-                f"THIR raised a DIFFERENT codegen diagnostic than the AST path.\n"
-                f"  ast:  {got}\n  thir: {want}")
-        author = _diagnostic_author(thir_err)
-        if author == "body" and case_id not in AST_ONLY_DIAGNOSTICS:
-            pytest.fail(
-                f"The diagnostic for {case_id} is authored by an AST body "
-                f"emitter, which the cutover deletes; THIR only rejects the "
-                f"body and lets the fallback's AST emit raise it.\n  {want}\n"
-                f"Raise it from THIR lowering, or record {case_id!r} in "
-                f"AST_ONLY_DIAGNOSTICS as known-unmigrated.")
-        if author != "body" and case_id in AST_ONLY_DIAGNOSTICS:
-            pytest.fail(
-                f"{case_id} no longer depends on an AST body emitter for its "
-                f"diagnostic (now raised from: {author}) -- remove it from "
-                f"AST_ONLY_DIAGNOSTICS so the count keeps falling.")
-        return
-    pytest.fail(
-        f"the AST path emitted code where THIR raised a codegen diagnostic, "
-        f"so the two authors disagree about whether this case is valid.\n"
-        f"  thir: {want}\nEither stop rejecting the shape, or make the AST "
-        f"path reject it too.")
-
-
 def compile_with_diagnostics(
         src_file: Path, output_dir: Path, default_int: str | None = None,
-        snapshot_lib_modules: frozenset[str] = frozenset(),
-        thir_strict: bool = False) -> CompileResult:
+        snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
     Returns CompileResult with success status, diagnostics, and output paths.
@@ -1096,9 +927,7 @@ def compile_with_diagnostics(
     `snapshot_lib_modules` holds glob patterns over the non-local modules the
     caller additionally snapshots; passed in rather than read here so this
     stays usable from harness tests that have no case directory to resolve
-    options against. `thir_strict` (per-case options.json, or --thir-strict for
-    the whole session) makes a THIR reject a compile error instead of a silent
-    re-emit through the AST path.
+    options against.
     """
     frontend_registry, extra_lib_dirs = _frontend_registry_for(src_file)
     plugin_extensions = (frontend_registry.all_extensions()
@@ -1132,31 +961,12 @@ def compile_with_diagnostics(
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
         if has_errors:
-            # NOTE: this returns ahead of BOTH emits, so a case rejected in
-            # sema is never lowered through THIR. That is sound -- the reject
-            # precedes codegen on both paths. A case that reaches codegen and
-            # fails THERE is a different matter, and is covered by
-            # _assert_both_paths_reject below.
             return CompileResult(success=False, diagnostics=diagnostics)
 
-        # THIR is the author of record: it emits every module, that C++ feeds
-        # exec and is byte-compared to the committed snapshot. The AST path
-        # rides alongside as a second, independent author over the same
-        # snapshot -- a divergence between them is a bug in whichever moved --
-        # and supplies the AST side of the move / binding-fact joins. --no-thir
-        # drops the second pass and puts the AST back in the author's seat.
+        # The emitted C++ feeds exec and is byte-compared to the COMMITTED
+        # snapshot -- that snapshot is the oracle.
         entry_module = next(m for m in compiled_modules if m.is_entry_point)
         src_dir = src_file.parent.resolve()
-        case_dir = (src_file.parent.parent if src_file.parent.name == "src"
-                    else src_file.parent)
-        no_thir = (case_dir / "no_thir.txt").exists()
-
-        thir_active, thir_ratchet = _thir_case_mode(
-            thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
-            ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
-            check_flip=THIR_CHECK_FLIP)
-
-        ast_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=False)
         local_mods = []
         lib_mods = []
         for mod in compiled_modules:
@@ -1167,140 +977,16 @@ def compile_with_diagnostics(
             else:
                 local_mods.append(mod)
 
-        # USER modules first, and the tallies are read before the library is
-        # emitted below: the ratchet and the dial count user bodies only, so a
-        # library body must not be able to reach them.
         all_modules = []
-        try:
-            # The per-case strict key applies to the author's emit: a reject
-            # there is the compile error the case pins.
-            primary_opts = (dataclasses.replace(TEST_CODEGEN_OPTIONS,
-                                                thir_strict=True)
-                            if thir_strict else TEST_CODEGEN_OPTIONS)
-            for mod in local_mods:
-                hpp_path, cpp_path = compiler.generate_code(
-                    mod, output_dir, entry_module_name=entry_module.name,
-                    options=primary_opts
-                )
-                # cpp_path is None for native_module (binding-only) modules
-                all_modules.append((mod.name, hpp_path, cpp_path, True))
-        except CodeGenError as err:
-            # A strict reject is THIR refusing a body the AST path would still
-            # emit; that disagreement is the point of strict mode, not a
-            # divergence for the both-paths gate.
-            if thir_active and not isinstance(err, ThirRejectError):
-                _assert_both_paths_reject(compiler, local_mods, entry_module,
-                                          output_dir, src_file, case_dir, err)
-            raise
+        for mod in local_mods:
+            hpp_path, cpp_path = compiler.generate_code(
+                mod, output_dir, entry_module_name=entry_module.name,
+                options=TEST_CODEGEN_OPTIONS
+            )
+            # cpp_path is None for native_module (binding-only) modules
+            all_modules.append((mod.name, hpp_path, cpp_path, True))
 
-        # The AST oracle pass over the same user modules: byte-compared to the
-        # same snapshot, and the AST side of the move / binding-fact joins.
-        # Runs for EVERY case -- a marked case still routes bodies (see
-        # _thir_case_mode).
-        ast_modules = None
-        thir_ratchet_fell = None
-        if thir_active:
-            ast_dir = output_dir / "_ast"
-            ast_modules = []
-            try:
-                for mod in local_mods:
-                    hpp_path, cpp_path = compiler.generate_code(
-                        mod, ast_dir, entry_module_name=entry_module.name,
-                        options=ast_opts
-                    )
-                    ast_modules.append((mod.name, hpp_path, cpp_path))
-            except CodeGenError as ast_err:
-                pytest.fail(
-                    f"the AST path raises a codegen diagnostic THIR does not, "
-                    f"so the reject is gone from the emitted code:\n"
-                    f"  ast: {ast_err.format(src_file.name)}\n"
-                    f"Either lower the shape correctly, or make lowering "
-                    f"reject it too.",
-                    pytrace=False)
-
-        # Feed the THIR non-vacuity gate + per-case ratchet/dial (the emit
-        # above filled the tallies; all 0 when THIR is off).
         record_thir_routed(compiler._thir_routed_bodies)
-        record_thir_faces(compiler._thir_face_witnesses)
-        record_thir_fallback(compiler._thir_fallback)
-        record_thir_arm_residual(compiler._thir_arm_residual)
-        record_thir_shapes(compiler._thir_shapes)
-        # Cross-path move-verdict join. Scoped to ROUTED bodies by the journal
-        # in move_audit, so a fallback body's verdicts (which drove no emitted
-        # C++) cannot raise it. Any hit is a move-vs-copy divergence the
-        # byte-diff structurally cannot see.
-        # Label relative to the corpus when it lives there; the harness's own
-        # synthetic cases are built in a tmpdir and have no corpus-relative
-        # path, so fall back to the leaf name rather than raising.
-        try:
-            _mv_label = str(case_dir.relative_to(CASES_DIR))
-        except ValueError:
-            _mv_label = case_dir.name
-        move_diffs = move_audit.disagreements(compiler)
-        record_move_verdicts(_mv_label, move_diffs,
-                             joined=move_audit.joined(compiler))
-        if move_diffs:
-            rows = "\n".join(
-                f"  {n} in `{fn or '?'}`: ast={a} thir={t}"
-                for n, a, t, fn in move_diffs)
-            pytest.fail(
-                f"move-verdict divergence ({len(move_diffs)}): a name the two "
-                f"paths judge differently at its last use -- one moves where "
-                f"the other copies.\n{rows}\nA wrong verdict at a site whose "
-                f"render ignores it emits identical C++, so the byte-diff "
-                f"cannot catch this. See tpyc/move_audit.py.")
-        # The binding-fact subset join: a routed body whose THIR mirror never
-        # held a name the AST's binding set did has a missed producer, wrong-
-        # form renders waiting to happen at every arm that consults it.
-        binding_gaps = binding_audit.violations(compiler)
-        record_binding_facts(len(binding_gaps),
-                             joined=binding_audit.joined(compiler))
-        if binding_gaps:
-            rows = "\n".join(
-                f"  {label} in `{fn}`: missing {', '.join(names)}"
-                for fn, label, names in binding_gaps)
-            pytest.fail(
-                f"binding-fact gap ({len(binding_gaps)}): a routed body's "
-                f"THIR mirror set never held a name the AST classified into "
-                f"its codegen twin.\n{rows}\nA missing name renders the "
-                f"wrong form at every arm keyed on the set; until an arm "
-                f"consults it the byte-diff cannot see it. See "
-                f"tpyc/binding_audit.py.")
-        if thir_active:
-            fell = thir_fallback.ratchet_total(compiler._thir_fallback)
-            if THIR_CLASSIFY_WRITE:
-                _apply_no_thir_marker(case_dir, dirty=(fell > 0))
-            elif THIR_CHECK_FLIP:
-                if no_thir and fell == 0:
-                    record_thir_flip_candidate(str(case_dir))
-            elif thir_ratchet:  # default per-case run, UNMARKED case
-                # A fallback emits byte-identical AST, so the THIR snapshot
-                # compare can't see a silent THIR->AST regression. Surface the
-                # count so the comp phase fails the case (the ratchet): unmarked
-                # => every user unit must route THIR. The exclusion set
-                # (thir_fallback.NON_RATCHET_COMPONENTS) is empty, so the
-                # non-body constant positions are in scope like every body.
-                thir_ratchet_fell = fell
-                record_thir_case(fell)
-            elif not THIR_IGNORE_MARKERS:
-                # Marked case on the default run: its overlay still byte-diffs
-                # the bodies THIR does route, but the ratchet stays off (the
-                # case is allowed to fall back) and the dial counts it
-                # not-migrated from the marker, not from this measurement.
-                record_thir_case_marked()
-            else:
-                # --thir-codegen whole-corpus: no ratchet, but keep the dial --
-                # same accounting as the default run (marker => un-migrated
-                # regardless of the fallback count just measured; unmarked =>
-                # clean iff zero RATCHETED user bodies fell back, constant
-                # residue excluded as above).
-                if no_thir:
-                    record_thir_case_marked()
-                else:
-                    record_thir_case(fell)
-        # lib/tpy + stdlib, emitted AFTER every record_thir_* call above --
-        # their bodies would otherwise land in the tallies the dial and the
-        # ratchet read, which are about this case's own code.
         snapshot_lib: set[str] = set()
         matched_patterns: set[str] = set()
         lib_paths: dict[str, tuple[Path | None, Path | None]] = {}
@@ -1333,28 +1019,8 @@ def compile_with_diagnostics(
                 f"compiled for {src_file}{hint}",
                 pytrace=False)
 
-        # Stdlib oracle (ON by default; --no-thir-stdlib turns it off, and a
-        # bare --thir-stdlib is the explicit force): re-emit the library through
-        # the AST path and hand test_case both sides to byte-compare. Most
-        # library emission at a case's own instantiations and options has no
-        # committed snapshot, so the same-run AST output is its only oracle.
-        thir_lib_modules = None
-        if thir_active and THIR_STDLIB:
-            lib_dir = output_dir / "_ast_lib"
-            thir_lib_modules = []
-            for mod in lib_mods:
-                ast_hpp, ast_cpp = compiler.generate_code(
-                    mod, lib_dir, entry_module_name=entry_module.name,
-                    options=ast_opts
-                )
-                thir_hpp, thir_cpp = lib_paths[mod.name]
-                thir_lib_modules.append(
-                    (mod.name, ast_hpp, ast_cpp, thir_hpp, thir_cpp))
-
-        # Labels only -- read after the library emit so a divergence in a
-        # snapshotted library module names its function too.
-        thir_routed_names = (dict(compiler._thir_routed_names)
-                             if thir_active else None)
+        # Read after the library emit so a library module's faces count too.
+        record_thir_faces(compiler._thir_face_witnesses)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -1391,10 +1057,6 @@ def compile_with_diagnostics(
             modes=DEP_MODES,
         )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
-                             thir_routed_names=thir_routed_names,
-                             ast_modules=ast_modules,
-                             thir_lib_modules=thir_lib_modules,
-                             thir_ratchet_fell=thir_ratchet_fell,
                              snapshot_lib_modules=frozenset(snapshot_lib),
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
@@ -1520,96 +1182,6 @@ def pytest_addoption(parser):
             "Applies to tests/cases; the interop harness keeps CLI defaults."
         ),
     )
-    parser.addoption(
-        "--thir-codegen",
-        action="store_true",
-        default=False,
-        help=(
-            "THIR AUTHORS every case by default and the AST pass byte-diffs "
-            "against the same snapshots; no_thir.txt only exempts a case from "
-            "the RATCHET (it may fall back bodies), not from the diff. This "
-            "flag ignores the markers entirely: no ratchet anywhere, plus the "
-            "whole-corpus faces/shapes coverage metrics. The stdlib oracle "
-            "rides every run by default now, measurement runs included. Pair "
-            "with --no-exec for a fast comp-only run."
-        ),
-    )
-    parser.addoption(
-        "--no-thir",
-        action="store_true",
-        default=False,
-        help=(
-            "Disable THIR entirely: the AST authors + byte-diffs every case "
-            "(no second pass, no ratchet). The pure-AST mode for fast "
-            "iteration on AST codegen. Conflicts with --update-snapshots "
-            "(THIR authors the snapshots), with --thir-codegen and with "
-            "--thir-classify / --thir-check-flip."
-        ),
-    )
-    parser.addoption(
-        "--thir-strict",
-        action="store_true",
-        default=False,
-        help=(
-            "Refuse the AST fallback wherever THIR emits: a body THIR cannot "
-            "lower fails its case with the compile error it will raise once "
-            "the AST body emitters are gone, instead of being re-emitted "
-            "through the AST path. The listing of what the cutover breaks. "
-            "Needs THIR active, so it conflicts with --no-thir and "
-            "--update-snapshots."
-        ),
-    )
-    parser.addoption(
-        "--thir-check-flip",
-        action="store_true",
-        default=False,
-        help=(
-            "Run THIR on ALL cases (ignoring no_thir.txt) and list the marked "
-            "cases whose user modules now route clean -- candidates to un-mark "
-            "(delete no_thir.txt). Read-only; the porting-progress query. Pair "
-            "with --no-exec."
-        ),
-    )
-    parser.addoption(
-        "--thir-stdlib",
-        action="store_true",
-        default=False,
-        help=(
-            "No-op: the stdlib oracle is ON BY DEFAULT. Kept so existing "
-            "scripts, docs and the nightly row keep working -- and so that "
-            "asking for it explicitly alongside --update-snapshots / --no-thir "
-            "still errors instead of being silently ignored. Use "
-            "--no-thir-stdlib to turn it off."
-        ),
-    )
-    parser.addoption(
-        "--no-thir-stdlib",
-        action="store_true",
-        default=False,
-        help=(
-            "Turn OFF the stdlib oracle: lib/tpy + the stdlib are THIR-"
-            "authored like every other module, and by default they are ALSO "
-            "re-emitted through the AST path in the same run and byte-diffed "
-            "against that THIR output (only the import-only Int32 whole-"
-            "library render is "
-            "committed, in tests/cases/harness/stdlib_render; emission at a "
-            "case's own instantiations and options has no committed snapshot, "
-            "so this is its only oracle). Costs "
-            "~5% wall on a comp-only run (+14.0s of 273.3s); drop it for fast "
-            "local iteration."
-        ),
-    )
-    parser.addoption(
-        "--thir-classify",
-        action="store_true",
-        default=False,
-        help=(
-            "(Re)write no_thir.txt markers: add for a case whose user module has "
-            "any THIR fallback, remove for a clean one. The one-time bootstrap / "
-            "maintenance of the per-case migration state (writes files, like "
-            "--update-snapshots does)."
-        ),
-    )
 
 
 def _cgroup_cpu_quota() -> int | None:
@@ -1641,8 +1213,8 @@ def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
                         clean: bool, updating: bool) -> str | None:
     """Return the error message for a conflicting exec-flag combination, or
     None. Extracted from pytest_configure so the flag-conflict logic is
-    unit-testable (mirrors _thir_flag_conflict). `updating` is the resolved
-    --update-snapshots / UPDATE_EXPECTED state."""
+    unit-testable. `updating` is the resolved --update-snapshots /
+    UPDATE_EXPECTED state."""
     if no_exec and (force_exec or clean or updating):
         return "--no-exec conflicts with --force-exec/--clean/--update-snapshots"
     if build_only and no_exec:
@@ -1653,107 +1225,11 @@ def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
     return None
 
 
-def _thir_flag_conflict(config, updating: bool) -> str | None:
-    """Return the error message for a conflicting THIR-flag combination, or None.
-    Extracted from pytest_configure so the flag-conflict logic is unit-testable
-    without invoking the whole (side-effecting) configure hook. `updating` is the
-    resolved --update-snapshots / UPDATE_EXPECTED state."""
-    forcing = (config.getoption("--thir-codegen")
-               or config.getoption("--thir-classify")
-               or config.getoption("--thir-check-flip"))
-    if config.getoption("--no-thir") and updating:
-        return ("--no-thir conflicts with --update-snapshots: THIR authors the "
-                "snapshots, so regenerating them through the AST path would "
-                "commit the wrong author's output")
-    # The two marker flags mutate / report on no_thir.txt, which regeneration
-    # has no business touching.
-    if updating and (config.getoption("--thir-classify")
-                     or config.getoption("--thir-check-flip")):
-        return ("--thir-classify / --thir-check-flip conflict with "
-                "--update-snapshots: they manage the no_thir.txt markers, "
-                "which a regeneration run must leave alone")
-    if config.getoption("--no-thir") and forcing:
-        return ("--no-thir conflicts with --thir-codegen / --thir-classify / "
-                "--thir-check-flip: it disables THIR, they force it on")
-    # Only an EXPLICIT --thir-stdlib errors here. The oracle is on by DEFAULT,
-    # so the same combination reached without typing the flag must auto-off
-    # silently (_thir_stdlib_enabled). Asking for something impossible still
-    # gets told.
-    if config.getoption("--thir-stdlib") and config.getoption("--no-thir"):
-        return "--thir-stdlib needs THIR active: it conflicts with --no-thir"
-    if config.getoption("--thir-stdlib") and config.getoption("--no-thir-stdlib"):
-        return "--thir-stdlib conflicts with --no-thir-stdlib (on vs off)"
-    if config.getoption("--thir-strict") and (updating
-                                              or config.getoption("--no-thir")):
-        return ("--thir-strict needs THIR active: it conflicts with "
-                "--update-snapshots and --no-thir")
-    return None
-
-
-def _thir_stdlib_enabled(config) -> bool:
-    """Resolve the stdlib oracle's on/off state -- DEFAULT ON.
-
-    Extracted alongside _thir_flag_conflict so the default is unit-testable.
-    THIR being off at all wins silently (there is nothing to diff against);
-    an explicit --thir-stdlib in that company is caught as a conflict instead.
-    Regeneration keeps the oracle: the library's C++ is authored by THIR like
-    everything else, so the AST comparison is exactly the check a regeneration
-    run wants."""
-    if config.getoption("--no-thir"):
-        return False
-    return not config.getoption("--no-thir-stdlib")
-
-
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
     global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
-    global TEST_CODEGEN_OPTIONS
 
-    # THIR authors every emitted body, snapshot regeneration included; the AST
-    # path rides alongside as the oracle. --no-thir is the one way off it
-    # (pure-AST mode: emit + diff via AST only, no overlay, no ratchet). Resolve
-    # before the worker guard below: xdist workers do the compiling.
-    global THIR_IGNORE_MARKERS, THIR_CLASSIFY_WRITE, THIR_CHECK_FLIP
-    global THIR_STDLIB
     updating = bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED
-    if config.getoption("--no-thir"):
-        TEST_CODEGEN_OPTIONS = dataclasses.replace(
-            TEST_CODEGEN_OPTIONS, thir_codegen=False)
-    else:
-        # The cross-path move-verdict join (tpyc/move_audit.py): on whenever
-        # the AST oracle pass runs, since it needs BOTH passes over the same
-        # nodes.
-        # Same footing as the face tally -- it is the only detector for a
-        # move-vs-copy divergence at a site whose render ignores the verdict,
-        # which the byte-diff cannot see, so it must not need remembering.
-        move_audit.set_enabled(True)
-        # The binding-fact subset check (tpyc/binding_audit.py) rides the
-        # same switch: it joins per-function set unions from both passes.
-        binding_audit.set_enabled(True)
-        if config.getoption("--thir-strict"):
-            # Reaches every pass that RUNS THIR -- the emitting pass and the
-            # wide stdlib oracle alike, so the listing covers library bodies
-            # neither ratchet governs. The AST second-opinion pass folds no
-            # attempt, so it cannot see the flag.
-            TEST_CODEGEN_OPTIONS = dataclasses.replace(
-                TEST_CODEGEN_OPTIONS, thir_strict=True)
-    # --thir-codegen / --thir-check-flip / --thir-classify run THIR on ALL user
-    # cases (ignoring no_thir.txt) -- the whole-corpus check / classification;
-    # the default run respects the markers so only migrated cases assert THIR.
-    if (config.getoption("--thir-codegen") or config.getoption("--thir-check-flip")
-            or config.getoption("--thir-classify")):
-        THIR_IGNORE_MARKERS = True
-    if config.getoption("--thir-classify"):
-        THIR_CLASSIFY_WRITE = True
-    if config.getoption("--thir-check-flip"):
-        THIR_CHECK_FLIP = True
-    THIR_STDLIB = _thir_stdlib_enabled(config)
-    # ...and the arm-residual census, on the same footing as the face tally: a
-    # deletion metric that needs an env var remembered is a metric that gets
-    # forgotten. The walk covers fallback bodies only -- noise against a
-    # whole-corpus run. $THIR_ARM_RESIDUAL_JSON now gates only the DUMP.
-    if THIR_IGNORE_MARKERS:
-        thir_fallback._ARM_RESIDUAL_ON = True
 
     # --dep-mode: parsed before the xdist-worker early return -- workers do
     # the per-case compiles, so they need the same modes as the master.
@@ -1777,11 +1253,6 @@ def pytest_configure(config):
     )
     if exec_conflict:
         pytest.exit(exec_conflict, returncode=1)
-
-    conflict = _thir_flag_conflict(
-        config, bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED)
-    if conflict:
-        pytest.exit(conflict, returncode=1)
 
     # Resolve the C++ toolchain first: --cxx rebuilds CPP_CONFIG (which the
     # ccache status, cache keys, and prewarm below all read) and is propagated
@@ -1916,43 +1387,11 @@ def pytest_report_header(config):
     else:
         exec_state = "verify-once-then-cache per case"
 
-    if not TEST_CODEGEN_OPTIONS.thir_codegen:
-        thir_state = "off (--no-thir: the AST authors every module)"
-    elif THIR_IGNORE_MARKERS:
-        thir_state = ("authoring; no ratchet (ignore no_thir.txt) + coverage "
-                      "metrics")
-    else:
-        thir_state = ("authoring every module; AST oracle byte-diffs every "
-                      "case; ratchet on unmarked")
-    if TEST_CODEGEN_OPTIONS.thir_strict:
-        thir_state += " -- STRICT: a reject is a compile error, not a fallback"
-
     # Short lines (hints on their own indented lines) so nothing wraps at ~80 cols.
     dep_mode_lines = []
     if DEP_MODES:
         modes = ", ".join(f"{lib}={mode}" for lib, mode in sorted(DEP_MODES.items()))
         dep_mode_lines = [f"{_LOG_PREFIX} dep modes: {modes} (via --dep-mode)"]
-    # The oracle is green, so a failure here is a fresh regression -- say that
-    # where the failures are seen rather than in CLAUDE.md, which nobody opens
-    # mid-run. The banner keeps the since-date: it tells a reader mid-run which
-    # baseline they are being measured against.
-    if THIR_STDLIB:
-        stdlib_lines = [
-            f"{_LOG_PREFIX} thir stdlib oracle: ON (default) -- lib/tpy + "
-            f"stdlib re-emitted through the AST and diffed vs the THIR output "
-            f"this run built",
-            f"{_LOG_PREFIX}   EXPECTED GREEN since 2026-07-29. A failure here "
-            f"is a new divergence, not the old backlog.",
-        ]
-    elif not TEST_CODEGEN_OPTIONS.thir_codegen:
-        stdlib_lines = [
-            f"{_LOG_PREFIX} thir stdlib oracle: off (THIR is off this run)",
-        ]
-    else:
-        stdlib_lines = [
-            f"{_LOG_PREFIX} thir stdlib oracle: OFF (--no-thir-stdlib) -- "
-            f"stdlib THIR/AST byte-identity is UNCHECKED this run",
-        ]
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}",
         f"{_LOG_PREFIX}   --cxx=<gcc|clang|gcc-14|zig|...> or --cxx=list to enumerate",
@@ -1961,14 +1400,6 @@ def pytest_report_header(config):
         f"{_LOG_PREFIX} exec: {exec_state}",
         f"{_LOG_PREFIX}   --force-exec re-run all / --no-exec skip / --clean wipe caches",
         f"{_LOG_PREFIX}   --update-snapshots regenerate expected",
-        f"{_LOG_PREFIX} thir: {thir_state}",
-        f"{_LOG_PREFIX}   --no-thir          pure AST (no THIR overlay, no ratchet)",
-        f"{_LOG_PREFIX}   --thir-codegen     no ratchet + coverage metrics",
-        f"{_LOG_PREFIX}   --thir-strict      a reject fails its case (cutover preview)",
-        f"{_LOG_PREFIX}   --thir-check-flip  list marked cases now clean (un-mark)",
-        f"{_LOG_PREFIX}   --thir-classify    (re)write no_thir.txt markers",
-        f"{_LOG_PREFIX}   --no-thir-stdlib   drop the stdlib oracle (~5% faster)",
-        *stdlib_lines,
     ]
 
 
@@ -2512,12 +1943,7 @@ def stale_fingerprint_cases() -> list[str]:
     return sorted(set(_stale_fp) | set(_stale_fp_agg))
 
 
-# THIR routed-body tally -- the non-vacuity guard for the --thir-codegen gate.
-# Mirrors the exec tally's per-worker -> controller aggregation. Under forced
-# THIR a full run that routes zero bodies means the flag stopped reaching
-# codegen (a wiring regression), so the byte-diff gate would pass vacuously --
-# fail loudly. A filtered run (-k or an explicit path) may legitimately select
-# only ineligible cases, so there we warn instead of failing.
+# THIR routed-body tally -- how many bodies the run lowered.
 _thir_tally = {"bodies": 0, "cases": 0}
 _thir_tally_agg = {"bodies": 0, "cases": 0}
 
@@ -2529,232 +1955,8 @@ def record_thir_routed(bodies: int) -> None:
         _thir_tally["cases"] += 1
 
 
-# Per-case user-module THIR cleanliness (THIR is scoped to user modules; lib/
-# stdlib stay AST). A case is "clean" when zero user bodies fell back -- i.e.
-# the gate isn't hiding any gap, so it stays byte-green when the gate is
-# dropped -> a THIR-active candidate (no_thir=false). The starting count is the
-# migration's real per-case metric (see CLAUDE.md "THIR migration").
-_thir_cases: dict[str, int] = {"clean": 0, "total": 0}
-_thir_cases_agg: dict[str, int] = {"clean": 0, "total": 0}
-
-
-def record_thir_case(fell_back: int) -> None:
-    """One THIR-active (non-no_thir) case: clean iff no user body fell back."""
-    _thir_cases["total"] += 1
-    if fell_back == 0:
-        _thir_cases["clean"] += 1
-
-
-def record_thir_case_marked() -> None:
-    """One no_thir-marked case on the default run: counted not-clean in the
-    denominator from the MARKER, deliberately ignoring the fallback count the
-    overlay just measured for it. Marked-but-clean is benign porting progress
-    (`--thir-check-flip` turns it into un-mark candidates), so the dial must not
-    read it as migrated on its own."""
-    _thir_cases["total"] += 1
-
-
-# --thir-codegen / --thir-check-flip / --thir-classify run THIR on every case
-# ignoring markers; classify (re)writes them; check-flip reports un-mark
-# candidates. Set in pytest_configure.
-THIR_IGNORE_MARKERS = False
-THIR_CLASSIFY_WRITE = False
-THIR_CHECK_FLIP = False
-THIR_STDLIB = False
-
-# no_thir.txt-marked cases that came back clean under --thir-check-flip: the
-# un-mark candidates. Aggregated worker -> controller like the tallies.
-_thir_flip: list[str] = []
-_thir_flip_agg: list[str] = []
-
-
-def record_thir_flip_candidate(case: str) -> None:
-    _thir_flip.append(case)
-
-
-_NO_THIR_BODY = (
-    "user module has bodies outside the THIR slice; not yet migrated.\n"
-    "Auto-managed by --thir-classify; run --thir-check-flip to see if this\n"
-    "case is now clean enough to un-mark (delete this file).\n"
-)
-
-
-def _thir_case_mode(*, thir_codegen: bool, no_thir: bool, ignore_markers: bool,
-                    classify: bool, check_flip: bool) -> tuple[bool, bool]:
-    """`(overlay_runs, ratchet_applies)` for one case -- the two decisions the
-    marker used to conflate.
-
-    The AST oracle pass runs for EVERY case whenever THIR is on. `no_thir.txt`
-    is per-CASE but fallback is per-BODY: a marked case still routes the bodies
-    that do lower, and those must be byte-diffed against the AST or they can
-    silently regress to AST (a fallback emits byte-identical C++, so no other
-    check sees it).
-
-    The ratchet stays marker-gated: only an unmarked case must route every user
-    body. Classify/check-flip consume the raw fallback count instead.
-    """
-    overlay = thir_codegen
-    ratchet = (thir_codegen and not no_thir and not ignore_markers
-               and not classify and not check_flip)
-    return overlay, ratchet
-
-
-def _apply_no_thir_marker(case_dir: Path, dirty: bool) -> None:
-    """Add no_thir.txt for a dirty case, remove it for a clean one."""
-    marker = case_dir / "no_thir.txt"
-    if dirty and not marker.exists():
-        marker.write_text(_NO_THIR_BODY)
-    elif not dirty and marker.exists():
-        marker.unlink()
-
-
-# tests/interop ext-exec cases: their own THIR dial, deliberately NOT folded
-# into _thir_cases. The migration's steering number and the wave tooling's
-# fallback histogram are both keyed to the tests/cases corpus; mixing a second
-# corpus into either would move the denominator and make every recorded wave
-# measurement non-comparable.
-#
-# The per-FACE witness tally is excluded on the same grounds, and the exclusion
-# is knowing rather than incidental: a face only an interop case reaches then
-# reads as zero-witness. That errs toward building a witness that already
-# exists -- wasted work, never a missed divergence -- which is the direction to
-# err in for a metric whose job is to name shapes nothing exercises.
-_interop_thir: dict[str, int] = {"clean": 0, "total": 0, "routed": 0}
-_interop_thir_agg: dict[str, int] = {"clean": 0, "total": 0, "routed": 0}
-
-
-@dataclasses.dataclass
-class InteropThirResult:
-    """One interop case's overlay outcome: byte-diff reports (empty when the
-    two paths agree) and the user-body fallback count.
-
-    `ratchet_fell` is None when the ratchet does not govern this case (marked,
-    or a marker-writing flag run) -- distinct from 0, which is a governed case
-    that routed everything. Collapsing the two would make a marked-case test
-    unable to tell marker gating from an empty count.
-    """
-    divergences: list[str]
-    ratchet_fell: 'int | None'
-
-
-def run_interop_thir_overlay(mod_py: Path, case_dir: Path,
-                             out_dir: Path) -> 'InteropThirResult | None':
-    """Emit an interop case's user modules twice -- AST oracle and THIR -- and
-    diff the pair. None when THIR is off for this run (--no-thir).
-
-    Unlike the tests/cases overlay this compares the two emissions to EACH
-    OTHER rather than to expected/: the ext-exec harness drives the real tpyc
-    CLI, which emits at the default emit_source_comments=False, so its
-    snapshots carry no source comments and a THIR-vs-snapshot diff would be
-    blind to the whole comment-trivia class. Emitting both sides here with
-    comments on (the tests/cases setting) restores that sensitivity; the
-    snapshot check itself stays with the CLI emit, which is unaffected.
-    """
-    if not TEST_CODEGEN_OPTIONS.thir_codegen:
-        return None
-    no_thir = (case_dir / "no_thir.txt").exists()
-    overlay, ratchet = _thir_case_mode(
-        thir_codegen=TEST_CODEGEN_OPTIONS.thir_codegen, no_thir=no_thir,
-        ignore_markers=THIR_IGNORE_MARKERS, classify=THIR_CLASSIFY_WRITE,
-        check_flip=THIR_CHECK_FLIP)
-    if not overlay:
-        return None
-
-    compiler = Compiler(mod_py, lib_dirs=DEFAULT_LIB_DIRS)
-    compiled_modules = compiler.compile()
-    entry_module = next(m for m in compiled_modules if m.is_entry_point)
-    src_dir = mod_py.parent.resolve()
-    local_mods = []
-    for mod in compiled_modules:
-        try:
-            mod.path.resolve().relative_to(src_dir)
-        except ValueError:
-            continue
-        local_mods.append(mod)
-
-    # no_main mirrors what the CLI does for an `# tpy: ext_module` (a .so has
-    # no main()); both sides share it, so it cannot itself cause a diff.
-    base = dataclasses.replace(TEST_CODEGEN_OPTIONS,
-                               no_main=compiler.is_ext_module_build())
-    emitted: dict[str, dict[str, Path | None]] = {}
-    for label, thir in (("ast", False), ("thir", True)):
-        opts = dataclasses.replace(base, thir_codegen=thir)
-        for mod in local_mods:
-            hpp_path, cpp_path = compiler.generate_code(
-                mod, out_dir / label, entry_module_name=entry_module.name,
-                options=opts)
-            files = emitted.setdefault(mod.name, {})
-            files[f"{label}.hpp"] = hpp_path
-            files[f"{label}.cpp"] = cpp_path
-            # The CPython glue TU rides alongside the module .cpp. It has no
-            # THIR path today, so diffing it pins that it stays insensitive.
-            if cpp_path is not None:
-                glue = Path(cpp_path).with_name(f"{Path(cpp_path).stem}_ext.cpp")
-                files[f"{label}.ext"] = glue if glue.exists() else None
-
-    fell = thir_fallback.ratchet_total(compiler._thir_fallback)
-    routed_names = dict(compiler._thir_routed_names)
-    divergences: list[str] = []
-    for mod_name, files in sorted(emitted.items()):
-        names = routed_names.get(mod_name, frozenset())
-        for kind in ("hpp", "cpp", "ext"):
-            ast_path = files.get(f"ast.{kind}")
-            thir_path = files.get(f"thir.{kind}")
-            if ast_path is None and thir_path is None:
-                continue  # neither path emits this file (no glue, no .cpp)
-            if ast_path is None or thir_path is None:
-                # Emitted on one path only -- itself a divergence, and one a
-                # text compare can never reach.
-                emitted_on = "THIR" if ast_path is None else "the AST oracle"
-                divergences.append(
-                    f"{mod_name}.{kind}: emitted by {emitted_on} only")
-                continue
-            oracle = Path(ast_path).read_text()
-            actual = Path(thir_path).read_text()
-            if oracle == actual:
-                continue
-            label = _thir_divergence_label(oracle, actual, names)
-            divergences.append(
-                f"{mod_name}.{kind}: THIR diverges from the AST oracle "
-                f"{label}\n"
-                + _format_unified_diff(oracle, actual, "ast", "thir"))
-
-    # The move-verdict join, on the same footing as the main corpus path: both
-    # passes ran on THIS compiler, so the verdicts are joinable here too.
-    # Without this the interop half records verdicts nobody ever compares,
-    # while CLAUDE.md promises the gate covers every routed body.
-    move_diffs = move_audit.disagreements(compiler)
-    record_move_verdicts(f"interop/{case_dir.name}", move_diffs,
-                         joined=move_audit.joined(compiler))
-    for name, ast_v, thir_v, fn in move_diffs:
-        divergences.append(
-            f"move-verdict divergence in `{fn or '?'}`: `{name}` "
-            f"ast={ast_v} thir={thir_v} -- "
-            f"one path moves where the other copies. A wrong verdict at a "
-            f"site whose render ignores it emits identical C++, so the text "
-            f"compare above cannot catch this.")
-    binding_gaps = binding_audit.violations(compiler)
-    record_binding_facts(len(binding_gaps),
-                         joined=binding_audit.joined(compiler))
-    for fn, label, names in binding_gaps:
-        divergences.append(
-            f"binding-fact gap in `{fn}`: THIR's {label} mirror never held "
-            f"{', '.join(names)} -- a missed producer renders the wrong form "
-            f"at every arm keyed on the set (tpyc/binding_audit.py).")
-
-    _interop_thir["routed"] += compiler._thir_routed_bodies
-    if THIR_CLASSIFY_WRITE:
-        _apply_no_thir_marker(case_dir, dirty=(fell > 0))
-    elif THIR_CHECK_FLIP:
-        if no_thir and fell == 0:
-            record_thir_flip_candidate(str(case_dir))
-    else:
-        _interop_thir["total"] += 1
-        # Marked cases count not-clean from the MARKER, as in the main dial.
-        if ratchet and fell == 0:
-            _interop_thir["clean"] += 1
-    return InteropThirResult(divergences=divergences,
-                             ratchet_fell=fell if ratchet else None)
+# Zero-witness faces listed in full up to this many; see the summary block.
+_FACE_LIST_MAX = 40
 
 
 # THIR per-face witness tally (tpyc/thir/faces.py) -- byte-diff green only
@@ -2771,142 +1973,14 @@ def record_thir_faces(witnesses: dict[str, int]) -> None:
         _thir_faces[face] = _thir_faces.get(face, 0) + n
 
 
-# THIR per-component AST-fallback tally (tpyc/thir/fallback.py) -- the
-# routed tally's complement: `component:reason` counts of bodies the gate
-# rejected, so the gap to each deletion target is measured. Aggregated
-# worker -> controller like the tallies above.
-_thir_fallback: dict[str, int] = {}
-_thir_fallback_agg: dict[str, int] = {}
-
-
-def record_thir_fallback(counts: dict[str, int]) -> None:
-    """Fold one case's fallback-reason counts (empty when the flag is off)."""
-    for key, n in counts.items():
-        _thir_fallback[key] = _thir_fallback.get(key, 0) + n
-
-
-# Cross-path move-verdict divergences (tpyc/move_audit.py): `case -> [(name,
-# ast, thir)]` for names the two paths judge differently at a last use in a
-# ROUTED body. FAILS the case -- the corpus is at zero, and a wrong verdict at
-# a site whose render ignores it emits identical C++, so this is the only
-# thing standing between such a divergence and a silent miscompile later.
-# The summary line still prints at zero: an absent line and a silently
-# unwired detector would otherwise look the same.
-_move_verdicts: dict[str, list] = {}
-_move_verdicts_agg: dict[str, list] = {}
-
-
-_move_joined = [0]
-_move_joined_agg = [0]
-
-
-def record_move_verdicts(case: str, diffs: list, joined: int) -> None:
-    # `joined` is REQUIRED, not defaulted: the denominator exists because "0
-    # divergences" over an unknown count is a silently-unwired detector, and a
-    # default of 0 would reintroduce exactly that one layer up.
-    _move_joined[0] += joined
-    if diffs:
-        _move_verdicts[case] = diffs
-
-
-# The binding-fact subset join (tpyc/binding_audit.py): gaps FAIL their case,
-# so only the tallies travel -- the denominator for the summary line, and the
-# gap count so the line's zero is the join's zero, not a dropped record.
-_binding_tally = {"joined": 0, "gaps": 0}
-_binding_tally_agg = {"joined": 0, "gaps": 0}
-
-
-def record_binding_facts(gaps: int, joined: int) -> None:
-    _binding_tally["joined"] += joined
-    _binding_tally["gaps"] += gaps
-
-
-# Per-construct arm residual: fallback bodies CONTAINING each construct (the
-# deletion metric, gated on $THIR_ARM_RESIDUAL_JSON). See
-# tpyc/thir/fallback.record_arm_residual.
-_thir_arm_residual: dict[str, int] = {}
-_thir_arm_residual_agg: dict[str, int] = {}
-
-
-def record_thir_arm_residual(counts: dict[str, int]) -> None:
-    """Fold one case's per-construct arm-residual (empty when the flag is off)."""
-    for key, n in counts.items():
-        _thir_arm_residual[key] = _thir_arm_residual.get(key, 0) + n
-
-
-# THIR per-shape tally (tpyc/thir/shape.py) -- the distinct-shape complement of
-# the body-weighted routed count. `signature -> {slot: count}`; a signature is
-# fully routed iff it has no non-`routed` slot. Aggregated worker -> controller
-# by additive inner-dict merge, like the tallies above.
-_thir_shapes: dict[str, dict[str, int]] = {}
-_thir_shapes_agg: dict[str, dict[str, int]] = {}
-
-
-def _fold_shapes(dst: dict[str, dict[str, int]], src: dict[str, dict[str, int]]) -> None:
-    for sig, inner in src.items():
-        d = dst.setdefault(sig, {})
-        for slot, n in inner.items():
-            d[slot] = d.get(slot, 0) + n
-
-
-def record_thir_shapes(shapes: dict[str, dict[str, int]]) -> None:
-    """Fold one case's per-shape slot counts (empty when the flag is off)."""
-    _fold_shapes(_thir_shapes, shapes)
-
-
-# THIR divergence reporter -- one label per failed generated-code snapshot
-# under --thir-codegen ("<case> <file>: in `fn` [THIR-routed]"), aggregated
-# worker -> controller like the tallies and echoed in the terminal summary so
-# a failing byte-diff names its diverging functions without scanning diffs.
-_thir_divergences: list[str] = []
-_thir_divergences_agg: list[str] = []
-
-
-def record_thir_divergence(label: str) -> None:
-    _thir_divergences.append(label)
-
-
-def _thir_gate_verdict(config) -> str:
-    """Verdict for the THIR non-vacuity gate: 'off' (--no-thir), 'ok'
-    (routed > 0), 'warn' (routed 0 on a filtered run),
-    or 'fail' (routed 0 over a full run -- a regression made the byte-diff gate
-    vacuous). THIR is on by default now, so this keys on the resolved option."""
-    if not TEST_CODEGEN_OPTIONS.thir_codegen:
-        return "off"
-    if _thir_tally["bodies"] + _thir_tally_agg["bodies"] > 0:
-        return "ok"
-    # file_or_dir holds positional path/nodeid args, keyword holds -k; either
-    # means a deliberate subset, where selecting zero eligible cases is fine.
-    # Coarse: explicit paths that still cover the full corpus (`pytest tests
-    # tpyc`) read as filtered, and `--collect-only` reads as full -- both
-    # mis-verdict non-canonical runs. The canonical gate is path-less; see TODO.
-    filtered = bool(getattr(config.option, "keyword", "")) or \
-        bool(getattr(config.option, "file_or_dir", []))
-    return "warn" if filtered else "fail"
-
-
 def pytest_sessionfinish(session):
-    """xdist worker: ship this process's tallies to the controller. Controller
-    (or non-xdist): fail the session if the --thir-codegen gate was vacuous."""
+    """xdist worker: ship this process's tallies to the controller."""
     workeroutput = getattr(session.config, "workeroutput", None)
     if workeroutput is not None:
         workeroutput["exec_tally"] = dict(_exec_tally)
         workeroutput["thir_tally"] = dict(_thir_tally)
         workeroutput["thir_faces"] = dict(_thir_faces)
-        workeroutput["thir_fallback"] = dict(_thir_fallback)
-        workeroutput["thir_arm_residual"] = dict(_thir_arm_residual)
-        workeroutput["thir_shapes"] = _thir_shapes
-        workeroutput["thir_divergences"] = list(_thir_divergences)
-        workeroutput["move_verdicts"] = dict(_move_verdicts)
-        workeroutput["move_joined"] = _move_joined[0]
-        workeroutput["binding_tally"] = dict(_binding_tally)
-        workeroutput["thir_cases"] = dict(_thir_cases)
-        workeroutput["interop_thir"] = dict(_interop_thir)
-        workeroutput["thir_flip"] = list(_thir_flip)
         workeroutput["stale_fp"] = list(_stale_fp)
-        return
-    if _thir_gate_verdict(session.config) == "fail":
-        session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 
 def pytest_testnodedown(node, error):
@@ -2922,27 +1996,6 @@ def pytest_testnodedown(node, error):
             _thir_tally_agg[k] += thir.get(k, 0)
     for face, n in wo.get("thir_faces", {}).items():
         _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
-    for key, n in wo.get("thir_fallback", {}).items():
-        _thir_fallback_agg[key] = _thir_fallback_agg.get(key, 0) + n
-    for key, n in wo.get("thir_arm_residual", {}).items():
-        _thir_arm_residual_agg[key] = _thir_arm_residual_agg.get(key, 0) + n
-    _fold_shapes(_thir_shapes_agg, wo.get("thir_shapes", {}))
-    _thir_divergences_agg.extend(wo.get("thir_divergences", []))
-    _move_verdicts_agg.update(wo.get("move_verdicts", {}))
-    _move_joined_agg[0] += wo.get("move_joined", 0)
-    bt = wo.get("binding_tally")
-    if bt:
-        for k in _binding_tally_agg:
-            _binding_tally_agg[k] += bt.get(k, 0)
-    tc = wo.get("thir_cases")
-    if tc:
-        for k in _thir_cases_agg:
-            _thir_cases_agg[k] += tc.get(k, 0)
-    it = wo.get("interop_thir")
-    if it:
-        for k in _interop_thir_agg:
-            _interop_thir_agg[k] += it.get(k, 0)
-    _thir_flip_agg.extend(wo.get("thir_flip", []))
     _stale_fp_agg.extend(wo.get("stale_fp", []))
 
 
@@ -3004,239 +2057,34 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             f"{total['skipped']} skipped via cache ({considered} cases)"
         )
 
-    if THIR_CHECK_FLIP:
-        flips = sorted(set(_thir_flip) | set(_thir_flip_agg))
+    bodies = _thir_tally["bodies"] + _thir_tally_agg["bodies"]
+    cases = _thir_tally["cases"] + _thir_tally_agg["cases"]
+    if bodies:
         terminalreporter.write_line(
-            f"{_LOG_PREFIX} thir flip candidates: {len(flips)} no_thir case(s) "
-            f"now clean -- remove no_thir.txt to make THIR-active:"
+            f"{_LOG_PREFIX} thir: {bodies} bodies lowered across {cases} cases"
         )
-        for c in flips:
-            terminalreporter.write_line(f"{_LOG_PREFIX}   {c}")
-
-    verdict = _thir_gate_verdict(config)
-    if verdict != "off":
-        # The interop corpus reports before the tests/cases block and outside
-        # its `ok` gate: that gate is the tests/cases vacuity check, which a
-        # run filtered to the interop module always trips, and the interop
-        # overlay ran regardless. Kept out of the migration dial on purpose --
-        # that number is keyed to tests/cases.
-        icl = _interop_thir["clean"] + _interop_thir_agg["clean"]
-        itot = _interop_thir["total"] + _interop_thir_agg["total"]
-        irouted = _interop_thir["routed"] + _interop_thir_agg["routed"]
-        if itot:
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} interop thir: {icl}/{itot} migrated; "
-                f"{irouted} bodies routed"
-            )
-        bodies = _thir_tally["bodies"] + _thir_tally_agg["bodies"]
-        cases = _thir_tally["cases"] + _thir_tally_agg["cases"]
-        if verdict == "ok":
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir: {bodies} bodies routed via THIR "
-                f"across {cases} cases"
-            )
-            tcl = _thir_cases["clean"] + _thir_cases_agg["clean"]
-            ttot = _thir_cases["total"] + _thir_cases_agg["total"]
-            if ttot:
-                marked = ttot - tcl
-                # "un-migrated", not "on AST": every case's overlay is
-                # byte-diffed; the marker only exempts a case from the ratchet.
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir cases: {tcl}/{ttot} migrated "
-                    f"(unmarked, zero fallback); {marked} un-migrated (no_thir)"
-                )
-            # Per-face coverage (and shape % below) stay behind the explicit
-            # metrics flags: the default run now routes the whole corpus too, so
-            # these ARE meaningful there -- but they are long, slow-moving lines
-            # that belong to a coverage query, not to every test run.
-            if THIR_IGNORE_MARKERS:
-                hit = set(_thir_faces) | set(_thir_faces_agg)
-                zero = sorted(THIR_FACES - hit)
-                if zero:
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir faces: "
-                        f"{len(THIR_FACES) - len(zero)}/{len(THIR_FACES)} "
-                        f"witnessed; zero-witness: {', '.join(zero)}"
-                    )
-                else:
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} "
-                        f"witnessed"
-                    )
-            # Per-component AST-fallback breakdown: how many candidate bodies
-            # the gate rejected, by first-reject reason -- the measured gap to
-            # each deletion target ("body" = gen_body/gen_expr, "ctor" = the
-            # MIL emit). A coverage-query metric like faces/shapes, so it hides
-            # behind the same flag: it measures standing migration backlog, not
-            # the run that emitted it. With markers at zero the user-body
-            # backlog is nearly empty; the live fallback is in the STDLIB,
-            # which this corpus tally does not reach (see
-            # tests/test_thir_stdlib_gate.py). ($THIR_FALLBACK_JSON still dumps
-            # whole-corpus counts from any run that asks for them.)
-            fallback = dict(_thir_fallback)
-            for key, n in _thir_fallback_agg.items():
-                fallback[key] = fallback.get(key, 0) + n
-            if THIR_IGNORE_MARKERS:
-                for component in ("body", "ctor", "resumable", "top_level"):
-                    pre = component + ":"
-                    items = sorted(
-                        ((k[len(pre):], n) for k, n in fallback.items()
-                         if k.startswith(pre)),
-                        key=lambda kv: (-kv[1], kv[0]))
-                    if not items:
-                        continue
-                    total = sum(n for _, n in items)
-                    top = ", ".join(f"{r} {n}" for r, n in items[:12])
-                    more = len(items) - 12
-                    tail = f", +{more} more kinds" if more > 0 else ""
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir fallback: {component} {total} -- "
-                        f"{top}{tail}"
-                    )
-            dump_path = os.environ.get("THIR_FALLBACK_JSON")
-            if dump_path and fallback:
-                Path(dump_path).write_text(
-                    json.dumps(dict(sorted(fallback.items())), indent=2)
-                    + "\n")
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir fallback: full counts written to "
-                    f"{dump_path}"
-                )
-            # Per-construct ARM RESIDUAL: fallback bodies containing each
-            # construct -- the deletion metric (CLAUDE.md THIR loop step 1).
-            # The SMALLEST residual is the arm closest to deletable; report it
-            # ascending so the next target reads off the top.
-            arm_dump = os.environ.get("THIR_ARM_RESIDUAL_JSON")
-            observed = dict(_thir_arm_residual)
-            for key, n in _thir_arm_residual_agg.items():
-                observed[key] = observed.get(key, 0) + n
-            if observed:
-                # An arm at residual 0 is ABSENT from the counter, so seed the
-                # universe first: without it "deletable" is empty whatever the
-                # tree, which is what the metric exists to report.
-                universe = arm_universe()
-                residual = {k: 0 for k in universe} | observed
-                if arm_dump:
-                    Path(arm_dump).write_text(
-                        json.dumps(dict(sorted(residual.items(),
-                                               key=lambda kv: kv[1])), indent=2)
-                        + "\n")
-                deletable = sorted(k for k, v in residual.items() if v == 0)
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir arm-residual: {len(deletable)}/"
-                    f"{len(residual)} arms DELETABLE (residual 0)"
-                    + (f": {', '.join(deletable)}" if deletable else "")
-                )
-                smallest = sorted(((k, v) for k, v in residual.items() if v),
-                                  key=lambda kv: kv[1])[:10]
-                nearest = ", ".join(f"{k} {v}" for k, v in smallest)
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir arm-residual (bodies keeping each AST "
-                    f"arm alive; smallest = closest to deletable): {nearest}"
-                )
-                drift = sorted(set(observed) - universe)
-                if drift:
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir arm-residual: WARNING -- observed "
-                        f"kinds missing from arm_universe(): {', '.join(drift)}"
-                    )
-                if arm_dump:
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir arm-residual: full counts written "
-                        f"to {arm_dump}"
-                    )
-            # Distinct-SHAPE coverage: the de-inflated complement of the routed
-            # count (which repeats the stdlib body per case). The top blocked
-            # shapes are ranked by which reject reason blocks the most DISTINCT
-            # shapes. The `R/T` percentage was once read as the progress dial;
-            # it is asymptotic by construction, so treat the blocked-shape
-            # ranking as the useful half and ignore the percentage.
-            shapes = dict(_thir_shapes)
-            _fold_shapes(shapes, _thir_shapes_agg)
-            if shapes and THIR_IGNORE_MARKERS:  # whole-corpus metric (see faces)
-                from tpyc.thir.shape import summarize_shapes
-                s = summarize_shapes(shapes)
-                by_reason: dict[str, int] = {}
-                for _sig, _n, reason in s["blocked"]:
-                    by_reason[reason] = by_reason.get(reason, 0) + 1
-                top = ", ".join(
-                    f"{r} {n}" for r, n in sorted(
-                        by_reason.items(), key=lambda kv: (-kv[1], kv[0]))[:10])
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX} thir shapes: {s['routed']}/{s['total']} "
-                    f"distinct shapes routed ({s['pct']:.1f}%); "
-                    f"{s['partial']} partial; {len(s['blocked'])} blocked "
-                    f"(top reasons by distinct shapes: {top})"
-                )
-                shapes_dump = os.environ.get("THIR_SHAPES_JSON")
-                if shapes_dump:
-                    Path(shapes_dump).write_text(
-                        json.dumps({
-                            "summary": {k: s[k] for k in ("total", "routed",
-                                                          "partial", "pct")},
-                            "blocked_by_leverage": [
-                                {"leverage": n, "reason": r, "shape": sig}
-                                for sig, n, r in s["blocked"]],
-                            "shapes": dict(sorted(shapes.items())),
-                        }, indent=2) + "\n")
-                    terminalreporter.write_line(
-                        f"{_LOG_PREFIX} thir shapes: full detail written to "
-                        f"{shapes_dump}"
-                    )
-        elif verdict == "warn":
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir: WARNING -- THIR routed 0 bodies "
-                f"(filtered run; the subset may hold no eligible case)"
-            )
-        else:
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir: ERROR -- THIR routed 0 bodies over "
-                f"the full corpus; the byte-diff gate is vacuous (wiring "
-                f"regression?). Session failed."
-            )
-        divergences = _thir_divergences + _thir_divergences_agg
-        if divergences:
-            shown = sorted(divergences)[:30]
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir divergences: {len(divergences)} snapshot "
-                f"mismatch(es), first-divergent-function labels:"
-            )
-            for label in shown:
-                terminalreporter.write_line(f"{_LOG_PREFIX}   {label}")
-            if len(divergences) > len(shown):
-                terminalreporter.write_line(
-                    f"{_LOG_PREFIX}   ... and {len(divergences) - len(shown)} "
-                    f"more (see individual failures)"
-                )
-        # The move-verdict join (tpyc/move_audit.py). A hit here is a
-        # move-vs-copy divergence in a ROUTED body that the byte-diff cannot
-        # see, so it is worth a line even at zero -- an absent line would be
-        # indistinguishable from the detector having been silently unwired.
-        mv = {**_move_verdicts, **_move_verdicts_agg}
-        if mv:
-            rows = sum(len(v) for v in mv.values())
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir move-verdicts: {rows} divergence(s) in "
-                f"{len(mv)} case(s) -- one path moves where the other copies:"
-            )
-            for case in sorted(mv)[:10]:
-                names = ", ".join(f"{n} in `{fn or '?'}` (ast={a} thir={t})"
-                                  for n, a, t, fn in mv[case])
-                terminalreporter.write_line(f"{_LOG_PREFIX}   {case}: {names}")
-        elif _thir_tally["bodies"] or _thir_tally_agg["bodies"]:
-            # The denominator is the point: "0 divergences" over 0 joined
-            # nodes is a silently-unwired detector, not a clean run.
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir move-verdicts: 0 divergences over "
-                f"{_move_joined[0] + _move_joined_agg[0]} joined nodes")
-        if _thir_tally["bodies"] or _thir_tally_agg["bodies"]:
-            # Same denominator rule for the binding-fact subset join; gaps
-            # fail their case, so the line is a tally, not the report.
-            _bg = _binding_tally["gaps"] + _binding_tally_agg["gaps"]
-            _bj = _binding_tally["joined"] + _binding_tally_agg["joined"]
-            terminalreporter.write_line(
-                f"{_LOG_PREFIX} thir binding-facts: {_bg} gap(s) over "
-                f"{_bj} joined bodies")
+    # Per-face coverage: byte-diffing the emitted code against its snapshot
+    # only proves the code a case REACHES matched, so a face no case reaches is
+    # invisible to it. Unconditional -- a coverage line behind a flag is a
+    # coverage line nobody reads.
+    hit = set(_thir_faces) | set(_thir_faces_agg)
+    zero = sorted(THIR_FACES - hit)
+    if not zero:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} thir faces: all {len(THIR_FACES)} witnessed")
+    else:
+        # The names are the report; the count alone says nothing actionable.
+        # Elided past a threshold because a run that compiles little (a unit
+        # subset, the interop harness) reports nearly the whole registry, and
+        # a screen of face names there buries the rest of the summary.
+        names = (", ".join(zero) if len(zero) <= _FACE_LIST_MAX
+                 else ", ".join(zero[:_FACE_LIST_MAX])
+                 + f", ... and {len(zero) - _FACE_LIST_MAX} more")
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} thir faces: "
+            f"{len(THIR_FACES) - len(zero)}/{len(THIR_FACES)} witnessed; "
+            f"zero-witness: {names}"
+        )
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:
@@ -3959,7 +2807,7 @@ def module_to_expected_path(expected_dir: Path, mod_name: str,
 
 def check_or_update(actual: str, expected_file: Path, description: str,
                     *, compare_only: bool = False,
-                    thir_routed_names: frozenset[str] | None = None) -> None:
+                    name_function: bool = False) -> None:
     """Compare actual with expected, or update expected if UPDATE_EXPECTED is set.
 
     In update mode, creates parent directories and writes the file.
@@ -3969,10 +2817,9 @@ def check_or_update(actual: str, expected_file: Path, description: str,
     cpy phase to verify CPython output against the canonical output.txt
     produced by the exec phase, even in update mode.
 
-    ``thir_routed_names`` (generated-code snapshots under --thir-codegen only)
-    activates the THIR divergence reporter: the failure is prefixed with the
-    function enclosing the first divergent hunk and whether THIR routed it, and
-    the divergence is tallied into the ``tpy| thir divergences`` summary.
+    ``name_function`` (generated-code snapshots) prefixes the failure with the
+    function enclosing the first divergent hunk, so a diff deep in a large file
+    names what changed without reading the hunk.
     """
     if UPDATE_EXPECTED and not compare_only:
         expected_file.parent.mkdir(parents=True, exist_ok=True)
@@ -3985,31 +2832,18 @@ def check_or_update(actual: str, expected_file: Path, description: str,
             # An absent snapshot diffs as an all-additions hunk, which reads
             # like a content change; say which it is.
             missing = "" if exists else " (no such file -- nothing snapshotted)"
-            thir_note = ""
-            if thir_routed_names is not None:
-                label = _thir_divergence_label(
-                    expected, actual, thir_routed_names)
-                record_thir_divergence(
-                    f"{_case_label(expected_file)} {description}: {label}")
-                thir_note = f"THIR divergence: {label}\n"
+            where = ""
+            if name_function:
+                where = f"diverges {_divergence_site(expected, actual)}\n"
             pytest.fail(
                 f"{description} differs: {expected_file}{missing}\n"
-                f"{thir_note}{diff}",
+                f"{where}{diff}",
                 pytrace=False,
             )
 
 
-def _case_label(expected_file: Path) -> str:
-    """`<group>/<case>` for a path under tests/cases, else the file name."""
-    try:
-        rel = expected_file.relative_to(CASES_DIR)
-        return "/".join(rel.parts[:rel.parts.index("expected")])
-    except ValueError:
-        return expected_file.name
-
-
-_THIR_DEF_MARKER_RE = re.compile(r"^\s*// def (\w+)\(")
-_THIR_CLASS_MARKER_RE = re.compile(r"^\s*// class (\w+)")
+_DEF_MARKER_RE = re.compile(r"^\s*// def (\w+)\(")
+_CLASS_MARKER_RE = re.compile(r"^\s*// class (\w+)")
 
 
 def first_divergent_line(expected: str, actual: str) -> int | None:
@@ -4028,40 +2862,38 @@ def enclosing_function(lines: list[str], idx: int) -> str | None:
     every function/method body. A `// class` marker hit first means the
     divergence sits in the record declaration itself (field layout etc.);
     ctor markers (`__init__` sits inside the struct) qualify with the record
-    name to match the `Rec.__init__` form the routed-names set uses.
+    name.
     """
     for i in range(min(idx, len(lines) - 1), -1, -1):
-        m = _THIR_DEF_MARKER_RE.match(lines[i])
+        m = _DEF_MARKER_RE.match(lines[i])
         if m:
             name = m.group(1)
             if name != "__init__":
                 return name
             for k in range(i - 1, -1, -1):
-                cm = _THIR_CLASS_MARKER_RE.match(lines[k])
+                cm = _CLASS_MARKER_RE.match(lines[k])
                 if cm:
                     return f"{cm.group(1)}.__init__"
             return name
-        cm = _THIR_CLASS_MARKER_RE.match(lines[i])
+        cm = _CLASS_MARKER_RE.match(lines[i])
         if cm:
             return f"class {cm.group(1)}"
     return None
 
 
-def _thir_divergence_label(expected: str, actual: str,
-                           routed_names: frozenset[str]) -> str:
+def _divergence_site(expected: str, actual: str) -> str:
     idx = first_divergent_line(expected, actual)
     if idx is None:
-        return "whitespace/trailing-newline only"
-    # Anchor on whichever side names an enclosing function: a THIR emit that
-    # DROPS lines can put actual's divergence point before any marker while
-    # the expected side still sits inside one.
+        return "in whitespace / the trailing newline only"
+    # Anchor on whichever side names an enclosing function: an emit that DROPS
+    # lines can put actual's divergence point before any marker while the
+    # expected side still sits inside one.
     fn = (enclosing_function(actual.splitlines(), idx)
           or enclosing_function(expected.splitlines(),
                                 first_divergent_expected_line(expected, actual)))
     if fn is None:
         return f"outside any function marker (line {idx + 1})"
-    routed = fn in routed_names
-    return f"in `{fn}` [{'THIR-routed' if routed else 'NOT THIR-routed'}]"
+    return f"in `{fn}`"
 
 
 def first_divergent_expected_line(expected: str, actual: str) -> int:
