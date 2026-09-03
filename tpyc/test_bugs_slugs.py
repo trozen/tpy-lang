@@ -31,14 +31,24 @@ def _anchors() -> list[str]:
             if (m := ANCHOR_RE.match(line))]
 
 
+# The trees the project owns. Walked rather than asked of git because the
+# remote test host has no repo metadata; anchored here rather than at the
+# repo root so a scratch file dropped beside them is never read.
+SCANNED_ROOTS = ("tpyc", "tests", "lib", "runtime", "docs", "scripts",
+                 "examples", "frontends", "ci", ".claude")
+SCANNED_TOP_LEVEL = ("BUGS.md", "TODO.md", "CLAUDE.md", "README.md",
+                     "RELEASE_PLAN.md", "RELEASE_NOTES.md")
+
+
 def _scanned_files() -> list[Path]:
-    """Walk rather than ask git: the remote test host has no repo metadata."""
-    found: list[Path] = []
-    for root, dirs, names in os.walk(REPO_ROOT):
-        dirs[:] = [d for d in dirs if d not in PRUNED_DIRS]
-        for name in names:
-            if Path(name).suffix in SCANNED_SUFFIXES:
-                found.append(Path(root) / name)
+    found: list[Path] = [REPO_ROOT / n for n in SCANNED_TOP_LEVEL
+                         if (REPO_ROOT / n).is_file()]
+    for top in SCANNED_ROOTS:
+        for root, dirs, names in os.walk(REPO_ROOT / top):
+            dirs[:] = [d for d in dirs if d not in PRUNED_DIRS]
+            for name in names:
+                if Path(name).suffix in SCANNED_SUFFIXES:
+                    found.append(Path(root) / name)
     return found
 
 
@@ -54,7 +64,13 @@ def test_every_reference_resolves():
     anchors = set(_anchors())
     dangling: list[str] = []
     for path in _scanned_files():
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except FileNotFoundError:
+            # Listed by the walk, gone by the read: a file another process is
+            # rewriting (snapshot regeneration, a sibling checkout's sync) is
+            # not part of what this test asserts.
+            continue
         for match in REFERENCE_RE.finditer(text):
             slug = match.group(1)
             if slug not in anchors:
